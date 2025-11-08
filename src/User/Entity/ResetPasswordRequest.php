@@ -4,23 +4,37 @@ declare(strict_types=1);
 
 namespace App\User\Entity;
 
+use App\User\Repository\ResetPasswordRequestRepository;
+use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
 use SymfonyCasts\Bundle\ResetPassword\Model\ResetPasswordRequestInterface;
 use SymfonyCasts\Bundle\ResetPassword\Model\ResetPasswordRequestTrait;
 
-final class ResetPasswordRequest implements ResetPasswordRequestInterface
+#[ORM\Entity(repositoryClass: ResetPasswordRequestRepository::class)]
+#[ORM\Table(name: 'reset_password_request')]
+#[ORM\Index(name: 'selector_idx', columns: ['selector'])]
+class ResetPasswordRequest implements ResetPasswordRequestInterface
 {
     use ResetPasswordRequestTrait;
 
+    #[ORM\Id]
+    #[ORM\Column(type: 'uuid', unique: true)]
+    #[ORM\GeneratedValue(strategy: 'CUSTOM')]
+    #[ORM\CustomIdGenerator(class: 'Symfony\Bridge\Doctrine\IdGenerator\UuidGenerator')]
     private Uuid $id;
 
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
+    private User $user;
+
     public function __construct(
-        private User $user,
+        User $user,
         \DateTimeInterface $expiresAt,
         string $selector,
         string $hashedToken,
     ) {
         $this->id = Uuid::v7();
+        $this->user = $user;
         $this->initialize($expiresAt, $selector, $hashedToken);
     }
 

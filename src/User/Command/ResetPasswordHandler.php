@@ -36,7 +36,7 @@ final readonly class ResetPasswordHandler
         $hashedPassword = $this->passwordHasher->hashPassword($user, $command->newPassword);
 
         // Update the user's password
-        $user->setPassword($hashedPassword);
+        $user->changePassword($hashedPassword);
 
         // Save the user
         $this->userRepository->save($user);

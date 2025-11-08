@@ -51,4 +51,31 @@ class UserRepository extends ServiceEntityRepository implements UserRepositoryIn
             ->getQuery()
             ->getResult();
     }
+
+    public function countTotal(): int
+    {
+        return (int) $this->createQueryBuilder('u')
+            ->select('COUNT(u.id)')
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    public function countVerified(): int
+    {
+        return (int) $this->createQueryBuilder('u')
+            ->select('COUNT(u.id)')
+            ->where('u.isVerified = true')
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    public function countByRole(string $role): int
+    {
+        return (int) $this->createQueryBuilder('u')
+            ->select('COUNT(u.id)')
+            ->where('JSON_CONTAINS(u.roles, :role) = 1')
+            ->setParameter('role', json_encode($role))
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
 }

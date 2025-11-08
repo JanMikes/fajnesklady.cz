@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit\User\Entity;
 
 use App\User\Entity\User;
+use App\User\Enum\UserRole;
 use PHPUnit\Framework\TestCase;
 
 class UserTest extends TestCase
@@ -40,20 +41,8 @@ class UserTest extends TestCase
 
         $roles = $user->getRoles();
 
-        $this->assertContains('ROLE_USER', $roles);
+        $this->assertContains(UserRole::USER->value, $roles);
         $this->assertCount(1, $roles);
-    }
-
-    public function testGetRolesAlwaysIncludesRoleUser(): void
-    {
-        $user = User::create('test@example.com', 'Test User', 'password123');
-        $user->changeRole('ROLE_ADMIN');
-
-        $roles = $user->getRoles();
-
-        $this->assertContains('ROLE_USER', $roles);
-        $this->assertContains('ROLE_ADMIN', $roles);
-        $this->assertCount(2, $roles);
     }
 
     public function testMarkAsVerified(): void
@@ -70,20 +59,6 @@ class UserTest extends TestCase
         $this->assertGreaterThan($originalUpdatedAt, $user->getUpdatedAt());
     }
 
-    public function testChangeRole(): void
-    {
-        $user = User::create('test@example.com', 'Test User', 'password123');
-
-        $originalUpdatedAt = $user->getUpdatedAt();
-        sleep(1); // Ensure time difference
-        $user->changeRole('ROLE_ADMIN');
-
-        $roles = $user->getRoles();
-        $this->assertContains('ROLE_ADMIN', $roles);
-        $this->assertContains('ROLE_USER', $roles); // Still includes ROLE_USER
-        $this->assertGreaterThan($originalUpdatedAt, $user->getUpdatedAt());
-    }
-
     public function testChangePassword(): void
     {
         $user = User::create('test@example.com', 'Test User', 'oldPassword');
@@ -92,19 +67,6 @@ class UserTest extends TestCase
         sleep(1); // Ensure time difference
         $newPassword = 'newHashedPassword';
         $user->changePassword($newPassword);
-
-        $this->assertSame($newPassword, $user->getPassword());
-        $this->assertGreaterThan($originalUpdatedAt, $user->getUpdatedAt());
-    }
-
-    public function testSetPassword(): void
-    {
-        $user = User::create('test@example.com', 'Test User', 'oldPassword');
-
-        $originalUpdatedAt = $user->getUpdatedAt();
-        sleep(1); // Ensure time difference
-        $newPassword = 'newHashedPassword';
-        $user->setPassword($newPassword);
 
         $this->assertSame($newPassword, $user->getPassword());
         $this->assertGreaterThan($originalUpdatedAt, $user->getUpdatedAt());

@@ -24,4 +24,10 @@ interface UserRepositoryInterface
      * @return User[]
      */
     public function findAllPaginated(int $page, int $limit): array;
+
+    public function countTotal(): int;
+
+    public function countVerified(): int;
+
+    public function countByRole(string $role): int;
 }

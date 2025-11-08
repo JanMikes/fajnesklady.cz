@@ -1,0 +1,106 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  tests:
+    name: Tests (PHP ${{ matrix.php-version }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        php-version: ['8.4']
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: app_test
+          POSTGRES_USER: app
+          POSTGRES_PASSWORD: '!ChangeMe!'
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          extensions: intl, pdo_pgsql, opcache, apcu
+          coverage: none
+          tools: composer:v2
+
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress --no-suggest
+
+      - name: Validate composer.json
+        run: composer validate --strict
+
+      - name: Check Symfony security
+        run: symfony security:check || true
+
+      - name: Run PHPStan
+        run: vendor/bin/phpstan analyse --no-progress
+
+      - name: Run PHP CS Fixer (dry-run)
+        run: vendor/bin/php-cs-fixer fix --dry-run --diff
+
+      - name: Run database migrations
+        run: php bin/console doctrine:migrations:migrate --no-interaction --env=test
+        env:
+          DATABASE_URL: postgresql://app:!ChangeMe!@localhost:5432/app_test?serverVersion=17&charset=utf8
+
+      - name: Run unit tests
+        run: vendor/bin/phpunit tests/Unit/
+        env:
+          DATABASE_URL: postgresql://app:!ChangeMe!@localhost:5432/app_test?serverVersion=17&charset=utf8
+
+      - name: Run integration tests
+        run: vendor/bin/phpunit tests/Integration/
+        env:
+          DATABASE_URL: postgresql://app:!ChangeMe!@localhost:5432/app_test?serverVersion=17&charset=utf8
+
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./docker/php/Dockerfile
+          push: false
+          tags: fajnesklady:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

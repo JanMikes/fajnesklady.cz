@@ -26,26 +26,28 @@ final readonly class RequestPasswordResetHandler
         // Always return successfully even if user not found (security: don't reveal which emails exist)
         $user = $this->userRepository->findByEmail($command->email);
 
-        if (null === $user) {
-            // Don't reveal that the user doesn't exist
-            return;
+        if (null !== $user) {
+            try {
+                $resetToken = $this->resetPasswordHelper->generateResetToken($user);
+
+                // Dispatch event to send password reset email
+                $this->eventBus->dispatch(
+                    new PasswordResetRequested(
+                        userId: $user->getId(),
+                        email: $user->getEmail(),
+                        resetToken: $resetToken->getToken(),
+                        occurredOn: new \DateTimeImmutable(),
+                    )
+                );
+            } catch (ResetPasswordExceptionInterface) {
+                // Don't reveal that there was an error - continue execution
+            }
+        } else {
+            // Prevent timing attacks: simulate the same amount of work when user doesn't exist
+            // Random delay between 50-150ms to match approximate time of token generation
+            usleep(random_int(50000, 150000));
         }
 
-        try {
-            $resetToken = $this->resetPasswordHelper->generateResetToken($user);
-        } catch (ResetPasswordExceptionInterface) {
-            // Don't reveal that there was an error
-            return;
-        }
-
-        // Dispatch event to send password reset email
-        $this->eventBus->dispatch(
-            new PasswordResetRequested(
-                userId: $user->getId(),
-                email: $user->getEmail(),
-                resetToken: $resetToken->getToken(),
-                occurredOn: new \DateTimeImmutable(),
-            )
-        );
+        // Always return without revealing whether user exists or not
     }
 }

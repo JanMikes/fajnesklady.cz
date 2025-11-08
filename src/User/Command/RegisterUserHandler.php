@@ -6,6 +6,7 @@ namespace App\User\Command;
 
 use App\User\Entity\User;
 use App\User\Event\UserRegistered;
+use App\User\Exception\UserAlreadyExistsException;
 use App\User\Repository\UserRepositoryInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Messenger\MessageBusInterface;
@@ -26,7 +27,7 @@ final readonly class RegisterUserHandler
         // Check email uniqueness
         $existingUser = $this->userRepository->findByEmail($command->email);
         if (null !== $existingUser) {
-            throw new \DomainException('User with this email already exists');
+            throw UserAlreadyExistsException::withEmail($command->email);
         }
 
         // Create new User entity
