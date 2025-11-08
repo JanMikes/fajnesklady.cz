@@ -4,7 +4,13 @@
       "WebSearch",
       "WebFetch(domain:github.com)",
       "WebFetch(domain:dev.to)",
-      "WebFetch(domain:www.fabian-kleiser.de)"
+      "WebFetch(domain:www.fabian-kleiser.de)",
+      "Bash(composer require:*)",
+      "Bash(docker compose exec php composer require:*)",
+      "Bash(docker compose exec:*)",
+      "Bash(test:*)",
+      "Bash(docker compose:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []

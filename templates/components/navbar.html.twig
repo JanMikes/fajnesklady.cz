@@ -1,0 +1,50 @@
+<div class="navbar bg-base-100 shadow-lg">
+    <div class="navbar-start">
+        <div class="dropdown">
+            <label tabindex="0" class="btn btn-ghost lg:hidden">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h8m-8 6h16" />
+                </svg>
+            </label>
+            <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
+                <li><a href="{{ path('app_home') }}">Home</a></li>
+                {% if not app.user %}
+                    <li><a href="{{ path('app_login') }}">Login</a></li>
+                    <li><a href="{{ path('app_register') }}">Register</a></li>
+                {% else %}
+                    {% if is_granted('ROLE_ADMIN') %}
+                        <li><a href="{{ path('admin_dashboard') }}">Admin Panel</a></li>
+                    {% endif %}
+                    <li><a href="{{ path('app_logout') }}">Logout</a></li>
+                {% endif %}
+            </ul>
+        </div>
+        <a href="{{ path('app_home') }}" class="btn btn-ghost text-xl">Fajné Sklady</a>
+    </div>
+    <div class="navbar-center hidden lg:flex">
+        <ul class="menu menu-horizontal px-1">
+            <li><a href="{{ path('app_home') }}">Home</a></li>
+        </ul>
+    </div>
+    <div class="navbar-end hidden lg:flex gap-2">
+        {% if not app.user %}
+            <a href="{{ path('app_login') }}" class="btn btn-ghost">Login</a>
+            <a href="{{ path('app_register') }}" class="btn btn-primary">Register</a>
+        {% else %}
+            {% if is_granted('ROLE_ADMIN') %}
+                <a href="{{ path('admin_dashboard') }}" class="btn btn-ghost">Admin Panel</a>
+            {% endif %}
+            <div class="dropdown dropdown-end">
+                <label tabindex="0" class="btn btn-ghost btn-circle avatar">
+                    <div class="w-10 rounded-full bg-neutral text-neutral-content flex items-center justify-center">
+                        <span class="text-lg">{{ app.user.name|first|upper }}</span>
+                    </div>
+                </label>
+                <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
+                    <li class="menu-title">{{ app.user.email }}</li>
+                    <li><a href="{{ path('app_logout') }}">Logout</a></li>
+                </ul>
+            </div>
+        {% endif %}
+    </div>
+</div>

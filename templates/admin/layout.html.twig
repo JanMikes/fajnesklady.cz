@@ -1,0 +1,103 @@
+{% extends 'base.html.twig' %}
+
+{% block body %}
+<div class="drawer lg:drawer-open">
+    <input id="admin-drawer" type="checkbox" class="drawer-toggle" />
+    <div class="drawer-content flex flex-col">
+        {# Navbar for mobile #}
+        <div class="navbar bg-base-300 lg:hidden">
+            <div class="flex-none">
+                <label for="admin-drawer" class="btn btn-square btn-ghost">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-6 h-6 stroke-current">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                    </svg>
+                </label>
+            </div>
+            <div class="flex-1">
+                <a href="{{ path('admin_dashboard') }}" class="text-xl font-bold">Admin Panel</a>
+            </div>
+            <div class="flex-none">
+                <div class="dropdown dropdown-end">
+                    <label tabindex="0" class="btn btn-ghost btn-circle avatar">
+                        <div class="w-10 rounded-full bg-neutral text-neutral-content flex items-center justify-center">
+                            <span class="text-lg">{{ app.user.name|first|upper }}</span>
+                        </div>
+                    </label>
+                    <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow bg-base-100 rounded-box w-52">
+                        <li class="menu-title">{{ app.user.email }}</li>
+                        <li><a href="{{ path('app_logout') }}">Logout</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        {# Main content #}
+        <div class="flex-1 p-6">
+            {% include 'components/flash_messages.html.twig' %}
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+
+    {# Sidebar #}
+    <div class="drawer-side">
+        <label for="admin-drawer" class="drawer-overlay"></label>
+        <aside class="bg-base-200 w-80 min-h-full">
+            {# Sidebar header - Desktop only #}
+            <div class="hidden lg:flex items-center gap-2 px-6 py-4 bg-base-300">
+                <div class="avatar placeholder">
+                    <div class="bg-primary text-primary-content rounded-full w-10">
+                        <span class="text-lg">{{ app.user.name|first|upper }}</span>
+                    </div>
+                </div>
+                <div class="flex flex-col flex-1 min-w-0">
+                    <span class="font-semibold truncate">{{ app.user.name }}</span>
+                    <span class="text-xs text-base-content/60 truncate">{{ app.user.email }}</span>
+                </div>
+            </div>
+
+            {# Navigation menu #}
+            <ul class="menu p-4 text-base-content">
+                <li class="menu-title">
+                    <span>Navigation</span>
+                </li>
+                <li>
+                    <a href="{{ path('admin_dashboard') }}" class="{% if app.request.attributes.get('_route') == 'admin_dashboard' %}active{% endif %}">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                        </svg>
+                        Dashboard
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ path('admin_users_list') }}" class="{% if app.request.attributes.get('_route') starts with 'admin_users' %}active{% endif %}">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                        Users
+                    </a>
+                </li>
+
+                <li class="menu-title mt-4">
+                    <span>Account</span>
+                </li>
+                <li>
+                    <a href="{{ path('app_home') }}">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                        Go to Site
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ path('app_logout') }}">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                        Logout
+                    </a>
+                </li>
+            </ul>
+        </aside>
+    </div>
+</div>
+{% endblock %}

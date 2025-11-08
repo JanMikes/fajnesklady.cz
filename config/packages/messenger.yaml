@@ -33,18 +33,10 @@ framework:
                     - validation
 
         routing:
-            # Commands go to command bus (synchronous)
-            'App\User\Command\*': command.bus
-            'App\Admin\Command\*': command.bus
-
-            # Queries go to query bus (synchronous)
-            'App\User\Query\*': query.bus
-            'App\Admin\Query\*': query.bus
-
-            # Events go to event bus (synchronous for emails)
-            'App\User\Event\*': event.bus
-
-            # Mailer and notifier async
+            # Route async messages to async transport
             Symfony\Component\Mailer\Messenger\SendEmailMessage: async
             Symfony\Component\Notifier\Message\ChatMessage: async
             Symfony\Component\Notifier\Message\SmsMessage: async
+
+            # Commands, queries, and events are handled synchronously (no routing needed)
+            # They will be handled by their respective handlers on their configured buses

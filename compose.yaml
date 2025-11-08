@@ -5,8 +5,7 @@ services:
       dockerfile: docker/php/Dockerfile
       target: dev
     ports:
-      - "80:80"
-      - "443:443"
+      - "8080:80"
     volumes:
       - ./docker/frankenphp/Caddyfile:/etc/caddy/Caddyfile:ro
       - ./:/app:rw

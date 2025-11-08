@@ -1,0 +1,27 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Error - Fajné Sklady{% endblock %}
+
+{% block body %}
+<div class="min-h-screen flex items-center justify-center px-4">
+    <div class="card w-full max-w-md bg-base-100 shadow-xl">
+        <div class="card-body text-center">
+            <div class="text-6xl mb-4">⚠️</div>
+            <h1 class="card-title text-3xl justify-center mb-2">Oops! Something went wrong</h1>
+            <p class="text-base-content/70 mb-6">
+                We're sorry, but an error occurred while processing your request.
+                Our team has been notified and will look into it.
+            </p>
+
+            <div class="card-actions justify-center gap-2">
+                <a href="{{ path('app_home') }}" class="btn btn-primary">
+                    Go to Homepage
+                </a>
+                <button onclick="history.back()" class="btn btn-ghost">
+                    Go Back
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

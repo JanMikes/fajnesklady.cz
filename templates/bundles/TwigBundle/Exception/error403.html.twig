@@ -1,0 +1,36 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Access Denied - Fajné Sklady{% endblock %}
+
+{% block body %}
+<div class="min-h-screen flex items-center justify-center px-4">
+    <div class="card w-full max-w-md bg-base-100 shadow-xl">
+        <div class="card-body text-center">
+            <div class="text-6xl mb-4">🚫</div>
+            <h1 class="card-title text-3xl justify-center mb-2">403 - Access Denied</h1>
+            <p class="text-base-content/70 mb-6">
+                You don't have permission to access this page.
+                {% if is_granted('ROLE_USER') %}
+                    This area might be restricted to administrators only.
+                {% else %}
+                    Please log in to access this content.
+                {% endif %}
+            </p>
+
+            <div class="card-actions justify-center gap-2 flex-wrap">
+                <a href="{{ path('app_home') }}" class="btn btn-primary">
+                    Go to Homepage
+                </a>
+                {% if not is_granted('ROLE_USER') %}
+                <a href="{{ path('app_login') }}" class="btn btn-secondary">
+                    Login
+                </a>
+                {% endif %}
+                <button onclick="history.back()" class="btn btn-ghost">
+                    Go Back
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

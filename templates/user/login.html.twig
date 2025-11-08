@@ -1,0 +1,73 @@
+{% extends 'user/layout.html.twig' %}
+
+{% block title %}Login - {{ parent() }}{% endblock %}
+
+{% block content %}
+    <div class="flex justify-center">
+        <div class="card w-full max-w-md bg-base-100 shadow-xl">
+            <div class="card-body">
+                <h2 class="card-title text-center text-2xl font-bold mb-4">Login</h2>
+
+                {% if error %}
+                    <div role="alert" class="alert alert-error mb-4">
+                        <span>{{ error.messageKey|trans(error.messageData, 'security') }}</span>
+                    </div>
+                {% endif %}
+
+                <form method="post">
+                    <div class="form-control mb-4">
+                        <label class="label">
+                            <span class="label-text">Email Address</span>
+                        </label>
+                        <input
+                            type="email"
+                            name="_username"
+                            value="{{ last_username }}"
+                            class="input input-bordered w-full"
+                            required
+                            autofocus
+                            autocomplete="email"
+                        >
+                    </div>
+
+                    <div class="form-control mb-4">
+                        <label class="label">
+                            <span class="label-text">Password</span>
+                        </label>
+                        <input
+                            type="password"
+                            name="_password"
+                            class="input input-bordered w-full"
+                            required
+                            autocomplete="current-password"
+                        >
+                    </div>
+
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+
+                    <div class="form-control mb-4">
+                        <label class="label cursor-pointer justify-start gap-3">
+                            <input type="checkbox" name="_remember_me" class="checkbox checkbox-primary">
+                            <span class="label-text">Remember me</span>
+                        </label>
+                    </div>
+
+                    <div class="form-control mb-4">
+                        <button type="submit" class="btn btn-primary w-full">Sign In</button>
+                    </div>
+
+                    <div class="text-center">
+                        <a href="{{ path('app_request_password_reset') }}" class="link link-primary text-sm">Forgot your password?</a>
+                    </div>
+                </form>
+
+                <div class="divider">OR</div>
+
+                <p class="text-center">
+                    Don't have an account?
+                    <a href="{{ path('app_register') }}" class="link link-primary">Register here</a>
+                </p>
+            </div>
+        </div>
+    </div>
+{% endblock %}

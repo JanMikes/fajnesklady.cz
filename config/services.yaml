@@ -19,6 +19,39 @@ services:
             - '../src/DependencyInjection/'
             - '../src/Entity/'
             - '../src/Kernel.php'
+            - '../src/*/Entity/'
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
+
+    # Repository interface binding
+    App\User\Repository\UserRepositoryInterface:
+        class: App\User\Repository\UserRepository
+
+when@test:
+    services:
+        _defaults:
+            autowire: true
+            autoconfigure: true
+            public: true  # Make services public in test environment
+
+        test.service_container:
+            alias: service_container
+            public: true
+
+        App\:
+            resource: '../src/'
+            exclude:
+                - '../src/DependencyInjection/'
+                - '../src/Entity/'
+                - '../src/Kernel.php'
+                - '../src/*/Entity/'               # Exclude module entities
+                - '../src/*/Command/*Command.php'  # Exclude CQRS commands
+                - '../src/*/Query/*Query.php'      # Exclude CQRS queries
+                - '../src/*/Event/*.php'           # Exclude domain events
+            public: true
+
+        # Repository interface binding
+        App\User\Repository\UserRepositoryInterface:
+            class: App\User\Repository\UserRepository
+            public: true

@@ -1,0 +1,46 @@
+{% extends 'user/layout.html.twig' %}
+
+{% block title %}Verify Your Email - {{ parent() }}{% endblock %}
+
+{% block content %}
+    <div class="flex justify-center">
+        <div class="card w-full max-w-lg bg-base-100 shadow-xl">
+            <div class="card-body text-center">
+                <div class="mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                </div>
+
+                <h2 class="card-title text-2xl font-bold justify-center mb-4">Check Your Email!</h2>
+
+                <div class="alert alert-success mb-4">
+                    <span>Registration successful!</span>
+                </div>
+
+                <p class="text-lg mb-4">
+                    We've sent a verification link to your email address.
+                </p>
+
+                <p class="text-base-content/70 mb-4">
+                    Please click the link in the email to verify your account and complete the registration process.
+                </p>
+
+                <div class="divider"></div>
+
+                <div class="text-sm text-base-content/60">
+                    <p>Didn't receive the email?</p>
+                    <ul class="list-disc list-inside mt-2">
+                        <li>Check your spam folder</li>
+                        <li>Make sure you entered the correct email address</li>
+                        <li>The link expires in 1 hour</li>
+                    </ul>
+                </div>
+
+                <div class="card-actions justify-center mt-6">
+                    <a href="{{ path('app_home') }}" class="btn btn-outline">Back to Home</a>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

@@ -1,0 +1,174 @@
+{% use "form_div_layout.html.twig" %}
+
+{# Form row #}
+{% block form_row -%}
+    <div class="form-control w-full{% if not errors|length %} mb-4{% else %} mb-2{% endif %}">
+        {{- form_label(form) -}}
+        {{- form_widget(form) -}}
+        {{- form_errors(form) -}}
+        {{- form_help(form) -}}
+    </div>
+{%- endblock form_row %}
+
+{# Form label #}
+{% block form_label -%}
+    {% if label is not same as(false) -%}
+        {% set label_attr = label_attr|merge({class: (label_attr.class|default('') ~ ' label')|trim}) -%}
+        <label{% if label_attr %} {% set label_attr = label_attr|merge({class: (label_attr.class|default('') ~ '')|trim}) %}{{ block('attributes') }}{% endif %}>
+            <span class="label-text font-medium">
+                {%- if label is empty -%}
+                    {{- name|humanize -}}
+                {%- else -%}
+                    {{- translation_domain is same as(false) ? label : label|trans(label_translation_parameters, translation_domain) -}}
+                {%- endif -%}
+                {% if required %}
+                    <span class="text-error">*</span>
+                {% endif %}
+            </span>
+        </label>
+    {%- endif %}
+{%- endblock form_label %}
+
+{# Form widget #}
+{% block form_widget_simple -%}
+    {% set type = type|default('text') -%}
+    {% set attr = attr|merge({
+        class: (attr.class|default('') ~ ' input input-bordered w-full' ~ (errors|length ? ' input-error' : ''))|trim
+    }) -%}
+    <input type="{{ type }}" {{ block('widget_attributes') }} {% if value is not empty %}value="{{ value }}" {% endif %}/>
+{%- endblock form_widget_simple %}
+
+{# Textarea widget #}
+{% block textarea_widget -%}
+    {% set attr = attr|merge({
+        class: (attr.class|default('') ~ ' textarea textarea-bordered w-full' ~ (errors|length ? ' textarea-error' : ''))|trim
+    }) -%}
+    <textarea {{ block('widget_attributes') }}>{{ value }}</textarea>
+{%- endblock textarea_widget %}
+
+{# Choice widget (select) #}
+{% block choice_widget_collapsed -%}
+    {% set attr = attr|merge({
+        class: (attr.class|default('') ~ ' select select-bordered w-full' ~ (errors|length ? ' select-error' : ''))|trim
+    }) -%}
+    <select {{ block('widget_attributes') }}{% if multiple %} multiple="multiple"{% endif %}>
+        {% if placeholder is not none -%}
+            <option value=""{% if required and value is empty %} selected="selected"{% endif %}>{{ placeholder != '' ? (translation_domain is same as(false) ? placeholder : placeholder|trans({}, translation_domain)) }}</option>
+        {%- endif %}
+        {%- if preferred_choices|length > 0 -%}
+            {% set options = preferred_choices %}
+            {% set render_preferred_choices = true %}
+            {{- block('choice_widget_options') -}}
+            {% if choices|length > 0 and separator is not none -%}
+                <option disabled="disabled">{{ separator }}</option>
+            {%- endif %}
+        {%- endif -%}
+        {% set options = choices -%}
+        {{- block('choice_widget_options') -}}
+    </select>
+{%- endblock choice_widget_collapsed %}
+
+{# Checkbox row - override to prevent label duplication #}
+{% block checkbox_row -%}
+    <div class="form-control w-full{% if not errors|length %} mb-4{% else %} mb-2{% endif %}">
+        <label class="label cursor-pointer justify-start gap-3">
+            {{- form_widget(form) -}}
+            {% if label is not same as(false) -%}
+                <span class="label-text">
+                    {%- if label is empty -%}
+                        {{- name|humanize -}}
+                    {%- else -%}
+                        {{- translation_domain is same as(false) ? label : label|trans(label_translation_parameters, translation_domain) -}}
+                    {%- endif -%}
+                    {% if required %}
+                        <span class="text-error">*</span>
+                    {% endif %}
+                </span>
+            {%- endif %}
+        </label>
+        {{- form_errors(form) -}}
+        {{- form_help(form) -}}
+    </div>
+{%- endblock checkbox_row %}
+
+{# Checkbox widget #}
+{% block checkbox_widget -%}
+    {% set attr = attr|merge({
+        class: (attr.class|default('') ~ ' checkbox' ~ (errors|length ? ' checkbox-error' : ''))|trim
+    }) -%}
+    <input type="checkbox" {{ block('widget_attributes') }}{% if value is defined %} value="{{ value }}"{% endif %}{% if checked %} checked="checked"{% endif %} />
+{%- endblock checkbox_widget %}
+
+{# Radio row - override to prevent label duplication #}
+{% block radio_row -%}
+    <div class="form-control w-full{% if not errors|length %} mb-4{% else %} mb-2{% endif %}">
+        <label class="label cursor-pointer justify-start gap-3">
+            {{- form_widget(form) -}}
+            {% if label is not same as(false) -%}
+                <span class="label-text">
+                    {%- if label is empty -%}
+                        {{- name|humanize -}}
+                    {%- else -%}
+                        {{- translation_domain is same as(false) ? label : label|trans(label_translation_parameters, translation_domain) -}}
+                    {%- endif -%}
+                    {% if required %}
+                        <span class="text-error">*</span>
+                    {% endif %}
+                </span>
+            {%- endif %}
+        </label>
+        {{- form_errors(form) -}}
+        {{- form_help(form) -}}
+    </div>
+{%- endblock radio_row %}
+
+{# Radio widget #}
+{% block radio_widget -%}
+    {% set attr = attr|merge({
+        class: (attr.class|default('') ~ ' radio' ~ (errors|length ? ' radio-error' : ''))|trim
+    }) -%}
+    <input type="radio" {{ block('widget_attributes') }}{% if value is defined %} value="{{ value }}"{% endif %}{% if checked %} checked="checked"{% endif %} />
+{%- endblock radio_widget %}
+
+{# Form errors #}
+{% block form_errors -%}
+    {% if errors|length > 0 -%}
+        <div class="label pt-1 pb-0">
+            <span class="label-text-alt text-error">
+                {%- for error in errors -%}
+                    {{ error.message }}
+                    {%- if not loop.last %}<br>{% endif -%}
+                {%- endfor -%}
+            </span>
+        </div>
+    {%- endif %}
+{%- endblock form_errors %}
+
+{# Form help #}
+{% block form_help -%}
+    {%- if help is not empty -%}
+        <div class="label pt-1 pb-0">
+            <span class="label-text-alt text-base-content/60">
+                {{- translation_domain is same as(false) ? help : help|trans({}, translation_domain) -}}
+            </span>
+        </div>
+    {%- endif -%}
+{%- endblock form_help %}
+
+{# Button widget #}
+{% block button_widget -%}
+    {% set attr = attr|merge({
+        class: (attr.class|default('') ~ ' btn btn-primary')|trim
+    }) -%}
+    <button type="{{ type|default('button') }}" {{ block('button_attributes') }}>
+        {{- translation_domain is same as(false) ? label : label|trans(label_translation_parameters, translation_domain) -}}
+    </button>
+{%- endblock button_widget %}
+
+{# Submit button #}
+{% block submit_widget -%}
+    {% set attr = attr|merge({
+        class: (attr.class|default('') ~ ' btn btn-primary')|trim
+    }) -%}
+    {{- block('button_widget') -}}
+{%- endblock submit_widget %}

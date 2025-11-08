@@ -25,6 +25,7 @@
         "symfony/framework-bundle": "7.2.*",
         "symfony/http-client": "7.2.*",
         "symfony/intl": "7.2.*",
+        "symfony/lock": "7.2.*",
         "symfony/mailer": "7.2.*",
         "symfony/messenger": "7.2.*",
         "symfony/mime": "7.2.*",
@@ -33,6 +34,7 @@
         "symfony/process": "7.2.*",
         "symfony/property-access": "7.2.*",
         "symfony/property-info": "7.2.*",
+        "symfony/rate-limiter": "7.2.*",
         "symfony/runtime": "7.2.*",
         "symfony/security-bundle": "7.2.*",
         "symfony/serializer": "7.2.*",
@@ -40,10 +42,14 @@
         "symfony/string": "7.2.*",
         "symfony/translation": "7.2.*",
         "symfony/twig-bundle": "7.2.*",
+        "symfony/uid": "7.2.*",
         "symfony/ux-turbo": "^2.31",
         "symfony/validator": "7.2.*",
         "symfony/web-link": "7.2.*",
         "symfony/yaml": "7.2.*",
+        "symfonycasts/reset-password-bundle": "^1.23",
+        "symfonycasts/tailwind-bundle": "^0.11.1",
+        "symfonycasts/verify-email-bundle": "^1.17",
         "twig/extra-bundle": "^2.12|^3.0",
         "twig/twig": "^2.12|^3.0"
     },
@@ -51,7 +57,8 @@
         "allow-plugins": {
             "php-http/discovery": true,
             "symfony/flex": true,
-            "symfony/runtime": true
+            "symfony/runtime": true,
+            "phpstan/extension-installer": true
         },
         "bump-after-update": true,
         "sort-packages": true
@@ -87,6 +94,29 @@
         ],
         "post-update-cmd": [
             "@auto-scripts"
+        ],
+        "tailwind:build": "php bin/console tailwind:build",
+        "tailwind:watch": "php bin/console tailwind:build --watch",
+        "assets:compile": "php bin/console asset-map:compile",
+        "db:fixtures": [
+            "php bin/console doctrine:fixtures:load --no-interaction"
+        ],
+        "db:reset": [
+            "php bin/console doctrine:database:drop --force --if-exists",
+            "php bin/console doctrine:database:create",
+            "php bin/console doctrine:migrations:migrate --no-interaction",
+            "@db:fixtures"
+        ],
+        "test": "vendor/bin/phpunit",
+        "test:unit": "vendor/bin/phpunit tests/Unit",
+        "test:coverage": "XDEBUG_MODE=coverage vendor/bin/phpunit --coverage-html var/coverage",
+        "cs:check": "vendor/bin/php-cs-fixer fix --dry-run --diff --allow-risky=yes",
+        "cs:fix": "vendor/bin/php-cs-fixer fix --allow-risky=yes",
+        "phpstan": "vendor/bin/phpstan analyse",
+        "quality": [
+            "@cs:check",
+            "@phpstan",
+            "@test:unit"
         ]
     },
     "conflict": {
@@ -99,11 +129,20 @@
         }
     },
     "require-dev": {
+        "dama/doctrine-test-bundle": "^8.3",
+        "doctrine/doctrine-fixtures-bundle": "^4.3",
+        "friendsofphp/php-cs-fixer": "^3.89",
+        "phpstan/extension-installer": "^1.4",
+        "phpstan/phpstan": "^2.1",
+        "phpstan/phpstan-doctrine": "^2.0",
+        "phpstan/phpstan-phpunit": "^2.0",
+        "phpstan/phpstan-symfony": "^2.0",
         "phpunit/phpunit": "^12.4",
         "symfony/browser-kit": "7.2.*",
         "symfony/css-selector": "7.2.*",
         "symfony/debug-bundle": "7.2.*",
         "symfony/maker-bundle": "^1.0",
+        "symfony/phpunit-bridge": "^7.3",
         "symfony/stopwatch": "7.2.*",
         "symfony/web-profiler-bundle": "7.2.*"
     }

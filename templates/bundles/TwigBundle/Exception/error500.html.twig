@@ -1,0 +1,27 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Server Error - Fajné Sklady{% endblock %}
+
+{% block body %}
+<div class="min-h-screen flex items-center justify-center px-4">
+    <div class="card w-full max-w-md bg-base-100 shadow-xl">
+        <div class="card-body text-center">
+            <div class="text-6xl mb-4">💥</div>
+            <h1 class="card-title text-3xl justify-center mb-2">500 - Server Error</h1>
+            <p class="text-base-content/70 mb-6">
+                We're experiencing technical difficulties. Our team has been notified
+                and is working to fix the issue. Please try again later.
+            </p>
+
+            <div class="card-actions justify-center gap-2">
+                <a href="{{ path('app_home') }}" class="btn btn-primary">
+                    Go to Homepage
+                </a>
+                <button onclick="location.reload()" class="btn btn-secondary">
+                    Try Again
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

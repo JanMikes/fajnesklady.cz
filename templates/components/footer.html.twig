@@ -1,0 +1,17 @@
+<footer class="footer footer-center p-10 bg-base-200 text-base-content">
+    <aside>
+        <p class="font-bold">
+            Fajné Sklady
+        </p>
+        <p>Copyright © {{ 'now'|date('Y') }} - All rights reserved</p>
+    </aside>
+    <nav>
+        <div class="grid grid-flow-col gap-4">
+            <a href="{{ path('app_home') }}" class="link link-hover">Home</a>
+            {% if not app.user %}
+                <a href="{{ path('app_login') }}" class="link link-hover">Login</a>
+                <a href="{{ path('app_register') }}" class="link link-hover">Register</a>
+            {% endif %}
+        </div>
+    </nav>
+</footer>

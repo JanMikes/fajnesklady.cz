@@ -1,0 +1,58 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block title %}Edit User Role - Admin{% endblock %}
+
+{% block content %}
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold">Edit User Role</h1>
+        <a href="{{ path('admin_users_view', {id: user.id}) }}" class="btn btn-ghost">Cancel</a>
+    </div>
+
+    <div class="max-w-2xl">
+        <div class="card bg-base-100 shadow-xl mb-6">
+            <div class="card-body">
+                <div class="flex items-center gap-4">
+                    <div class="avatar placeholder">
+                        <div class="bg-neutral text-neutral-content rounded-full w-16">
+                            <span class="text-xl">{{ user.name|first|upper }}</span>
+                        </div>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold">{{ user.name }}</h2>
+                        <p class="text-base-content/60">{{ user.email }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card bg-base-100 shadow-xl">
+            <div class="card-body">
+                {{ form_start(form) }}
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text font-semibold">{{ form_label(form.role) }}</span>
+                        </label>
+                        <div class="space-y-2">
+                            {% for choice in form.role %}
+                                <div class="form-control">
+                                    <label class="label cursor-pointer justify-start gap-3">
+                                        {{ form_widget(choice, {'attr': {'class': 'radio radio-primary'}}) }}
+                                        <span class="label-text">{{ choice.vars.label }}</span>
+                                    </label>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        {{ form_errors(form.role) }}
+                    </div>
+
+                    <div class="divider"></div>
+
+                    <div class="card-actions justify-end">
+                        <a href="{{ path('admin_users_view', {id: user.id}) }}" class="btn btn-ghost">Cancel</a>
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                    </div>
+                {{ form_end(form) }}
+            </div>
+        </div>
+    </div>
+{% endblock %}
