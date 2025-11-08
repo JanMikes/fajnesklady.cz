@@ -1,0 +1,50 @@
+framework:
+    messenger:
+        failure_transport: failed
+
+        transports:
+            # https://symfony.com/doc/current/messenger.html#transport-configuration
+            async:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                options:
+                    use_notify: true
+                    check_delayed_interval: 60000
+                retry_strategy:
+                    max_retries: 3
+                    multiplier: 2
+            failed: 'doctrine://default?queue_name=failed'
+            # sync: 'sync://'
+
+        default_bus: command.bus
+
+        buses:
+            command.bus:
+                middleware:
+                    - doctrine_transaction
+                    - validation
+            query.bus:
+                middleware:
+                    - validation
+            event.bus:
+                default_middleware:
+                    enabled: true
+                    allow_no_handlers: true
+                middleware:
+                    - validation
+
+        routing:
+            # Commands go to command bus (synchronous)
+            'App\User\Command\*': command.bus
+            'App\Admin\Command\*': command.bus
+
+            # Queries go to query bus (synchronous)
+            'App\User\Query\*': query.bus
+            'App\Admin\Query\*': query.bus
+
+            # Events go to event bus (synchronous for emails)
+            'App\User\Event\*': event.bus
+
+            # Mailer and notifier async
+            Symfony\Component\Mailer\Messenger\SendEmailMessage: async
+            Symfony\Component\Notifier\Message\ChatMessage: async
+            Symfony\Component\Notifier\Message\SmsMessage: async

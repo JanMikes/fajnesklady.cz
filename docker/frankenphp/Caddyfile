@@ -1,0 +1,80 @@
+{
+    frankenphp {
+        worker {
+            file public/index.php
+            num 2
+            env APP_RUNTIME Runtime\FrankenPhpSymfony\Runtime
+        }
+    }
+
+    # Enable access logs
+    log {
+        output stdout
+        format json
+        level INFO
+    }
+}
+
+:80 {
+    # Set the root directory
+    root * public/
+
+    # Enable Zstandard and Gzip compression
+    encode zstd gzip
+
+    # Enable FrankenPHP
+    php_server
+
+    # Serve static files
+    file_server
+
+    # Security headers
+    header {
+        # Enable HSTS
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        # Prevent MIME type sniffing
+        X-Content-Type-Options "nosniff"
+        # Enable XSS protection
+        X-Frame-Options "SAMEORIGIN"
+        # Remove server header
+        -Server
+    }
+
+    # Logging
+    log {
+        output stdout
+        format json
+    }
+}
+
+:443 {
+    # Set the root directory
+    root * public/
+
+    # Enable Zstandard and Gzip compression
+    encode zstd gzip
+
+    # Enable FrankenPHP
+    php_server
+
+    # Serve static files
+    file_server
+
+    # Security headers
+    header {
+        # Enable HSTS
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        # Prevent MIME type sniffing
+        X-Content-Type-Options "nosniff"
+        # Enable XSS protection
+        X-Frame-Options "SAMEORIGIN"
+        # Remove server header
+        -Server
+    }
+
+    # Logging
+    log {
+        output stdout
+        format json
+    }
+}

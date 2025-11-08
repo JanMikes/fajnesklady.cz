@@ -1,0 +1,50 @@
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Composer
+vendor/
+
+# Symfony
+var/
+!var/cache/.gitkeep
+!var/log/.gitkeep
+
+# Environment files
+.env.local
+.env.local.php
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Tests
+.phpunit.result.cache
+phpunit.xml
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Build artifacts
+/public/bundles/
+/public/assets/
+
+# Documentation
+*.md
+docs/
+
+# Docker
+docker/
+compose.yaml
+compose.override.yaml
+compose.prod.yaml
+Dockerfile
+.dockerignore
