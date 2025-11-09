@@ -2,7 +2,7 @@
 
 {# Form row #}
 {% block form_row -%}
-    <div class="form-control w-full{% if not errors|length %} mb-4{% else %} mb-2{% endif %}">
+    <div class="form-group">
         {{- form_label(form) -}}
         {{- form_widget(form) -}}
         {{- form_errors(form) -}}
@@ -13,18 +13,16 @@
 {# Form label #}
 {% block form_label -%}
     {% if label is not same as(false) -%}
-        {% set label_attr = label_attr|merge({class: (label_attr.class|default('') ~ ' label')|trim}) -%}
+        {% set label_attr = label_attr|merge({class: (label_attr.class|default('') ~ ' form-label')|trim}) -%}
         <label{% if label_attr %} {% set label_attr = label_attr|merge({class: (label_attr.class|default('') ~ '')|trim}) %}{{ block('attributes') }}{% endif %}>
-            <span class="label-text font-medium">
-                {%- if label is empty -%}
-                    {{- name|humanize -}}
-                {%- else -%}
-                    {{- translation_domain is same as(false) ? label : label|trans(label_translation_parameters, translation_domain) -}}
-                {%- endif -%}
-                {% if required %}
-                    <span class="text-error">*</span>
-                {% endif %}
-            </span>
+            {%- if label is empty -%}
+                {{- name|humanize -}}
+            {%- else -%}
+                {{- translation_domain is same as(false) ? label : label|trans(label_translation_parameters, translation_domain) -}}
+            {%- endif -%}
+            {% if required %}
+                <span class="text-red-600">*</span>
+            {% endif %}
         </label>
     {%- endif %}
 {%- endblock form_label %}
@@ -33,7 +31,7 @@
 {% block form_widget_simple -%}
     {% set type = type|default('text') -%}
     {% set attr = attr|merge({
-        class: (attr.class|default('') ~ ' input input-bordered w-full' ~ (errors|length ? ' input-error' : ''))|trim
+        class: (attr.class|default('') ~ ' form-input' ~ (errors|length ? ' form-input-error' : ''))|trim
     }) -%}
     <input type="{{ type }}" {{ block('widget_attributes') }} {% if value is not empty %}value="{{ value }}" {% endif %}/>
 {%- endblock form_widget_simple %}
@@ -41,7 +39,7 @@
 {# Textarea widget #}
 {% block textarea_widget -%}
     {% set attr = attr|merge({
-        class: (attr.class|default('') ~ ' textarea textarea-bordered w-full' ~ (errors|length ? ' textarea-error' : ''))|trim
+        class: (attr.class|default('') ~ ' form-input' ~ (errors|length ? ' form-input-error' : ''))|trim
     }) -%}
     <textarea {{ block('widget_attributes') }}>{{ value }}</textarea>
 {%- endblock textarea_widget %}
@@ -49,7 +47,7 @@
 {# Choice widget (select) #}
 {% block choice_widget_collapsed -%}
     {% set attr = attr|merge({
-        class: (attr.class|default('') ~ ' select select-bordered w-full' ~ (errors|length ? ' select-error' : ''))|trim
+        class: (attr.class|default('') ~ ' form-input' ~ (errors|length ? ' form-input-error' : ''))|trim
     }) -%}
     <select {{ block('widget_attributes') }}{% if multiple %} multiple="multiple"{% endif %}>
         {% if placeholder is not none -%}
@@ -70,22 +68,22 @@
 
 {# Checkbox row - override to prevent label duplication #}
 {% block checkbox_row -%}
-    <div class="form-control w-full{% if not errors|length %} mb-4{% else %} mb-2{% endif %}">
-        <label class="label cursor-pointer justify-start gap-3">
+    <div class="form-group">
+        <div class="flex items-center">
             {{- form_widget(form) -}}
             {% if label is not same as(false) -%}
-                <span class="label-text">
+                <label for="{{ id }}" class="ml-2 text-sm text-gray-700 cursor-pointer">
                     {%- if label is empty -%}
                         {{- name|humanize -}}
                     {%- else -%}
                         {{- translation_domain is same as(false) ? label : label|trans(label_translation_parameters, translation_domain) -}}
                     {%- endif -%}
                     {% if required %}
-                        <span class="text-error">*</span>
+                        <span class="text-red-600">*</span>
                     {% endif %}
-                </span>
+                </label>
             {%- endif %}
-        </label>
+        </div>
         {{- form_errors(form) -}}
         {{- form_help(form) -}}
     </div>
@@ -94,29 +92,29 @@
 {# Checkbox widget #}
 {% block checkbox_widget -%}
     {% set attr = attr|merge({
-        class: (attr.class|default('') ~ ' checkbox' ~ (errors|length ? ' checkbox-error' : ''))|trim
+        class: (attr.class|default('') ~ ' h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded' ~ (errors|length ? ' border-red-300' : ''))|trim
     }) -%}
     <input type="checkbox" {{ block('widget_attributes') }}{% if value is defined %} value="{{ value }}"{% endif %}{% if checked %} checked="checked"{% endif %} />
 {%- endblock checkbox_widget %}
 
 {# Radio row - override to prevent label duplication #}
 {% block radio_row -%}
-    <div class="form-control w-full{% if not errors|length %} mb-4{% else %} mb-2{% endif %}">
-        <label class="label cursor-pointer justify-start gap-3">
+    <div class="form-group">
+        <div class="flex items-center">
             {{- form_widget(form) -}}
             {% if label is not same as(false) -%}
-                <span class="label-text">
+                <label for="{{ id }}" class="ml-2 text-sm text-gray-700 cursor-pointer">
                     {%- if label is empty -%}
                         {{- name|humanize -}}
                     {%- else -%}
                         {{- translation_domain is same as(false) ? label : label|trans(label_translation_parameters, translation_domain) -}}
                     {%- endif -%}
                     {% if required %}
-                        <span class="text-error">*</span>
+                        <span class="text-red-600">*</span>
                     {% endif %}
-                </span>
+                </label>
             {%- endif %}
-        </label>
+        </div>
         {{- form_errors(form) -}}
         {{- form_help(form) -}}
     </div>
@@ -125,7 +123,7 @@
 {# Radio widget #}
 {% block radio_widget -%}
     {% set attr = attr|merge({
-        class: (attr.class|default('') ~ ' radio' ~ (errors|length ? ' radio-error' : ''))|trim
+        class: (attr.class|default('') ~ ' h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300' ~ (errors|length ? ' border-red-300' : ''))|trim
     }) -%}
     <input type="radio" {{ block('widget_attributes') }}{% if value is defined %} value="{{ value }}"{% endif %}{% if checked %} checked="checked"{% endif %} />
 {%- endblock radio_widget %}
@@ -133,13 +131,11 @@
 {# Form errors #}
 {% block form_errors -%}
     {% if errors|length > 0 -%}
-        <div class="label pt-1 pb-0">
-            <span class="label-text-alt text-error">
-                {%- for error in errors -%}
-                    {{ error.message }}
-                    {%- if not loop.last %}<br>{% endif -%}
-                {%- endfor -%}
-            </span>
+        <div class="form-error">
+            {%- for error in errors -%}
+                {{ error.message }}
+                {%- if not loop.last %}<br>{% endif -%}
+            {%- endfor -%}
         </div>
     {%- endif %}
 {%- endblock form_errors %}
@@ -147,10 +143,8 @@
 {# Form help #}
 {% block form_help -%}
     {%- if help is not empty -%}
-        <div class="label pt-1 pb-0">
-            <span class="label-text-alt text-base-content/60">
-                {{- translation_domain is same as(false) ? help : help|trans({}, translation_domain) -}}
-            </span>
+        <div class="form-help">
+            {{- translation_domain is same as(false) ? help : help|trans({}, translation_domain) -}}
         </div>
     {%- endif -%}
 {%- endblock form_help %}

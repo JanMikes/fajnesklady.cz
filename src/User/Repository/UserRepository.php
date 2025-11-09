@@ -54,28 +54,33 @@ class UserRepository extends ServiceEntityRepository implements UserRepositoryIn
 
     public function countTotal(): int
     {
-        return (int) $this->createQueryBuilder('u')
-            ->select('COUNT(u.id)')
-            ->getQuery()
-            ->getSingleScalarResult();
+        $connection = $this->getEntityManager()->getConnection();
+        $result = $connection->executeQuery('SELECT COUNT(id) FROM users')->fetchOne();
+
+        return (int) $result;
     }
 
     public function countVerified(): int
     {
-        return (int) $this->createQueryBuilder('u')
-            ->select('COUNT(u.id)')
-            ->where('u.isVerified = true')
-            ->getQuery()
-            ->getSingleScalarResult();
+        $connection = $this->getEntityManager()->getConnection();
+        $result = $connection->executeQuery(
+            'SELECT COUNT(id) FROM users WHERE is_verified = :isVerified',
+            ['isVerified' => true],
+            ['isVerified' => \Doctrine\DBAL\Types\Types::BOOLEAN]
+        )->fetchOne();
+
+        return (int) $result;
     }
 
     public function countByRole(string $role): int
     {
-        return (int) $this->createQueryBuilder('u')
-            ->select('COUNT(u.id)')
-            ->where('JSON_CONTAINS(u.roles, :role) = 1')
-            ->setParameter('role', json_encode($role))
-            ->getQuery()
-            ->getSingleScalarResult();
+        $connection = $this->getEntityManager()->getConnection();
+        $result = $connection->executeQuery(
+            'SELECT COUNT(id) FROM users WHERE roles::jsonb @> :role::jsonb',
+            ['role' => json_encode([$role])],
+            ['role' => \Doctrine\DBAL\Types\Types::STRING]
+        )->fetchOne();
+
+        return (int) $result;
     }
 }

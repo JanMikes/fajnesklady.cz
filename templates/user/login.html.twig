@@ -4,9 +4,9 @@
 
 {% block content %}
     <div class="flex justify-center">
-        <div class="card w-full max-w-md bg-base-100 shadow-xl">
+        <div class="card w-full max-w-md">
             <div class="card-body">
-                <h2 class="card-title text-center text-2xl font-bold mb-4">Login</h2>
+                <h2 class="text-center text-2xl font-bold mb-4 text-gray-900">Login</h2>
 
                 {% if error %}
                     <div role="alert" class="alert alert-error mb-4">
@@ -15,29 +15,25 @@
                 {% endif %}
 
                 <form method="post">
-                    <div class="form-control mb-4">
-                        <label class="label">
-                            <span class="label-text">Email Address</span>
-                        </label>
+                    <div class="form-group">
+                        <label class="form-label">Email Address</label>
                         <input
                             type="email"
                             name="_username"
                             value="{{ last_username }}"
-                            class="input input-bordered w-full"
+                            class="form-input"
                             required
                             autofocus
                             autocomplete="email"
                         >
                     </div>
 
-                    <div class="form-control mb-4">
-                        <label class="label">
-                            <span class="label-text">Password</span>
-                        </label>
+                    <div class="form-group">
+                        <label class="form-label">Password</label>
                         <input
                             type="password"
                             name="_password"
-                            class="input input-bordered w-full"
+                            class="form-input"
                             required
                             autocomplete="current-password"
                         >
@@ -45,27 +41,34 @@
 
                     <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
 
-                    <div class="form-control mb-4">
-                        <label class="label cursor-pointer justify-start gap-3">
-                            <input type="checkbox" name="_remember_me" class="checkbox checkbox-primary">
-                            <span class="label-text">Remember me</span>
+                    <div class="form-group">
+                        <label class="flex items-center cursor-pointer gap-3">
+                            <input type="checkbox" name="_remember_me" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                            <span class="text-sm text-gray-700">Remember me</span>
                         </label>
                     </div>
 
-                    <div class="form-control mb-4">
+                    <div class="form-group">
                         <button type="submit" class="btn btn-primary w-full">Sign In</button>
                     </div>
 
                     <div class="text-center">
-                        <a href="{{ path('app_request_password_reset') }}" class="link link-primary text-sm">Forgot your password?</a>
+                        <a href="{{ path('app_request_password_reset') }}" class="link text-sm">Forgot your password?</a>
                     </div>
                 </form>
 
-                <div class="divider">OR</div>
+                <div class="relative my-6">
+                    <div class="absolute inset-0 flex items-center">
+                        <div class="w-full border-t border-gray-200"></div>
+                    </div>
+                    <div class="relative flex justify-center text-sm">
+                        <span class="px-2 bg-white text-gray-500">OR</span>
+                    </div>
+                </div>
 
-                <p class="text-center">
+                <p class="text-center text-gray-700">
                     Don't have an account?
-                    <a href="{{ path('app_register') }}" class="link link-primary">Register here</a>
+                    <a href="{{ path('app_register') }}" class="link">Register here</a>
                 </p>
             </div>
         </div>

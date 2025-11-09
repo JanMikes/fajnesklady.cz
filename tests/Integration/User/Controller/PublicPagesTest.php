@@ -8,7 +8,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 /**
- * Smoke tests to ensure public pages render correctly and return 200 OK
+ * Smoke tests to ensure public pages render correctly and return 200 OK.
  */
 class PublicPagesTest extends WebTestCase
 {

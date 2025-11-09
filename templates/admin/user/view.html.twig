@@ -11,48 +11,40 @@
         </div>
     </div>
 
-    <div class="card bg-base-100 shadow-xl">
+    <div class="card">
         <div class="card-body">
             <div class="flex items-center gap-6 mb-6">
-                <div class="avatar placeholder">
-                    <div class="bg-primary text-primary-content rounded-full w-24">
-                        <span class="text-3xl">{{ user.name|first|upper }}</span>
+                <div class="flex-shrink-0">
+                    <div class="bg-blue-600 text-white rounded-full w-24 h-24 flex items-center justify-center">
+                        <span class="text-3xl font-semibold">{{ user.name|first|upper }}</span>
                     </div>
                 </div>
                 <div>
-                    <h2 class="text-2xl font-bold">{{ user.name }}</h2>
-                    <p class="text-base-content/60">{{ user.email }}</p>
+                    <h2 class="text-2xl font-bold text-gray-900">{{ user.name }}</h2>
+                    <p class="text-gray-600">{{ user.email }}</p>
                 </div>
             </div>
 
-            <div class="divider"></div>
+            <hr class="my-6 border-t border-gray-200">
 
             <div class="grid md:grid-cols-2 gap-6">
                 <div>
-                    <label class="label">
-                        <span class="label-text font-semibold">User ID</span>
-                    </label>
-                    <div class="text-sm font-mono bg-base-200 p-2 rounded">{{ user.id }}</div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">User ID</label>
+                    <div class="text-sm font-mono bg-gray-50 p-2 rounded border border-gray-200">{{ user.id }}</div>
                 </div>
 
                 <div>
-                    <label class="label">
-                        <span class="label-text font-semibold">Email</span>
-                    </label>
-                    <div class="text-sm">{{ user.email }}</div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Email</label>
+                    <div class="text-sm text-gray-900">{{ user.email }}</div>
                 </div>
 
                 <div>
-                    <label class="label">
-                        <span class="label-text font-semibold">Name</span>
-                    </label>
-                    <div class="text-sm">{{ user.name }}</div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Name</label>
+                    <div class="text-sm text-gray-900">{{ user.name }}</div>
                 </div>
 
                 <div>
-                    <label class="label">
-                        <span class="label-text font-semibold">Verification Status</span>
-                    </label>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Verification Status</label>
                     {% if user.isVerified %}
                         <div class="badge badge-success gap-2">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-4 h-4 stroke-current">
@@ -71,32 +63,26 @@
                 </div>
 
                 <div>
-                    <label class="label">
-                        <span class="label-text font-semibold">Roles</span>
-                    </label>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Roles</label>
                     <div class="flex flex-wrap gap-2">
                         {% for role in user.roles %}
                             {% if role == 'ROLE_ADMIN' %}
                                 <div class="badge badge-primary">{{ role }}</div>
                             {% else %}
-                                <div class="badge">{{ role }}</div>
+                                <div class="badge badge-secondary">{{ role }}</div>
                             {% endif %}
                         {% endfor %}
                     </div>
                 </div>
 
                 <div>
-                    <label class="label">
-                        <span class="label-text font-semibold">Member Since</span>
-                    </label>
-                    <div class="text-sm">{{ user.createdAt|date('F j, Y \\a\\t g:i A') }}</div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Member Since</label>
+                    <div class="text-sm text-gray-900">{{ user.createdAt|date('F j, Y \\a\\t g:i A') }}</div>
                 </div>
 
                 <div>
-                    <label class="label">
-                        <span class="label-text font-semibold">Last Updated</span>
-                    </label>
-                    <div class="text-sm">{{ user.updatedAt|date('F j, Y \\a\\t g:i A') }}</div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Last Updated</label>
+                    <div class="text-sm text-gray-900">{{ user.updatedAt|date('F j, Y \\a\\t g:i A') }}</div>
                 </div>
             </div>
         </div>

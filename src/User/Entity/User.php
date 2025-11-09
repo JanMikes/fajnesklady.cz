@@ -6,7 +6,6 @@ namespace App\User\Entity;
 
 use App\User\Enum\UserRole;
 use App\User\Repository\UserRepository;
-use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;

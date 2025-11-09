@@ -30,7 +30,7 @@ final readonly class HealthCheckController
             $checks['checks']['database'] = 'ok';
         } catch (\Throwable $e) {
             $checks['status'] = 'unhealthy';
-            $checks['checks']['database'] = 'failed: ' . $e->getMessage();
+            $checks['checks']['database'] = 'failed: '.$e->getMessage();
         }
 
         // Check PHP version

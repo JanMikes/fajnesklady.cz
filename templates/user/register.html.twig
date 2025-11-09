@@ -4,9 +4,9 @@
 
 {% block content %}
     <div class="flex justify-center">
-        <div class="card w-full max-w-md bg-base-100 shadow-xl">
+        <div class="card w-full max-w-md">
             <div class="card-body">
-                <h2 class="card-title text-center text-2xl font-bold mb-4">Create Account</h2>
+                <h2 class="text-center text-2xl font-bold mb-4 text-gray-900">Create Account</h2>
 
                 {{ form_start(registrationForm) }}
                     {{ form_row(registrationForm.email) }}
@@ -15,16 +15,23 @@
                     {{ form_row(registrationForm.password.second) }}
                     {{ form_row(registrationForm.agreeTerms) }}
 
-                    <div class="form-control mt-2">
+                    <div class="form-group mt-2">
                         <button type="submit" class="btn btn-primary w-full">Register</button>
                     </div>
                 {{ form_end(registrationForm) }}
 
-                <div class="divider">OR</div>
+                <div class="relative my-6">
+                    <div class="absolute inset-0 flex items-center">
+                        <div class="w-full border-t border-gray-200"></div>
+                    </div>
+                    <div class="relative flex justify-center text-sm">
+                        <span class="px-2 bg-white text-gray-500">OR</span>
+                    </div>
+                </div>
 
-                <p class="text-center">
+                <p class="text-center text-gray-700">
                     Already have an account?
-                    <a href="{{ path('app_login') }}" class="link link-primary">Login here</a>
+                    <a href="{{ path('app_login') }}" class="link">Login here</a>
                 </p>
             </div>
         </div>

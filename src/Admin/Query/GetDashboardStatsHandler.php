@@ -16,17 +16,17 @@ final readonly class GetDashboardStatsHandler
     ) {
     }
 
-    public function __invoke(GetDashboardStatsQuery $query): array
+    public function __invoke(GetDashboardStatsQuery $query): GetDashboardStatsResult
     {
         $totalUsers = $this->userRepository->countTotal();
         $verifiedUsers = $this->userRepository->countVerified();
         $adminUsers = $this->userRepository->countByRole(UserRole::ADMIN->value);
 
-        return [
-            'totalUsers' => $totalUsers,
-            'verifiedUsers' => $verifiedUsers,
-            'adminUsers' => $adminUsers,
-            'unverifiedUsers' => $totalUsers - $verifiedUsers,
-        ];
+        return new GetDashboardStatsResult(
+            totalUsers: $totalUsers,
+            verifiedUsers: $verifiedUsers,
+            adminUsers: $adminUsers,
+            unverifiedUsers: $totalUsers - $verifiedUsers,
+        );
     }
 }

@@ -26,5 +26,3 @@ parameters:
         - '#Parameter \#1 \$user of class App\\User\\Entity\\ResetPasswordRequest constructor expects App\\User\\Entity\\User, object given#'
         # Form generic types
         - '#Class App\\Admin\\Form\\ChangeUserRoleType extends generic class.*but does not specify its types#'
-        # Return type arrays in handler
-        - '#Method.*::__invoke\(\) return type has no value type specified in iterable type array#'

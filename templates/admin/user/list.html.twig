@@ -4,125 +4,129 @@
 
 {% block content %}
     <div class="flex justify-between items-center mb-6">
-        <h1 class="text-3xl font-bold">Users</h1>
+        <h1 class="text-3xl font-bold text-gray-900">Users</h1>
     </div>
 
-    <div class="card bg-base-100 shadow-xl">
-        <div class="card-body">
-            <div class="overflow-x-auto">
-                <table class="table table-zebra">
-                    <thead>
+    <div class="card">
+        <div class="overflow-x-auto">
+            <table class="table table-zebra">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th>Created At</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
                         <tr>
-                            <th>Name</th>
-                            <th>Email</th>
-                            <th>Role</th>
-                            <th>Status</th>
-                            <th>Created At</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for user in users %}
-                            <tr>
-                                <td>
-                                    <div class="flex items-center gap-3">
-                                        <div class="avatar placeholder">
-                                            <div class="bg-neutral text-neutral-content rounded-full w-10">
-                                                <span class="text-xs">{{ user.name|first|upper }}</span>
-                                            </div>
-                                        </div>
-                                        <div class="font-semibold">{{ user.name }}</div>
+                            <td>
+                                <div class="flex items-center space-x-3">
+                                    <div class="flex-shrink-0 h-10 w-10 rounded-full bg-gray-600 text-white flex items-center justify-center font-medium text-sm">
+                                        {{ user.name|first|upper }}
                                     </div>
-                                </td>
-                                <td>{{ user.email }}</td>
-                                <td>
+                                    <div class="font-medium text-gray-900">{{ user.name }}</div>
+                                </div>
+                            </td>
+                            <td class="text-gray-500">{{ user.email }}</td>
+                            <td>
+                                <div class="flex flex-wrap gap-1">
                                     {% for role in user.roles %}
                                         {% if role != 'ROLE_USER' %}
-                                            <div class="badge badge-primary">{{ role }}</div>
+                                            <span class="badge badge-primary">{{ role }}</span>
                                         {% else %}
-                                            <div class="badge">{{ role }}</div>
+                                            <span class="badge badge-secondary">{{ role }}</span>
                                         {% endif %}
                                     {% endfor %}
-                                </td>
-                                <td>
-                                    {% if user.isVerified %}
-                                        <div class="badge badge-success gap-2">
-                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-3 h-3 stroke-current">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                            </svg>
-                                            Verified
-                                        </div>
-                                    {% else %}
-                                        <div class="badge badge-warning gap-2">
-                                            Unverified
-                                        </div>
-                                    {% endif %}
-                                </td>
-                                <td>{{ user.createdAt|date('Y-m-d H:i') }}</td>
-                                <td>
-                                    <a href="{{ path('admin_users_view', {id: user.id}) }}" class="btn btn-ghost btn-sm">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </div>
+                            </td>
+                            <td>
+                                {% if user.isVerified %}
+                                    <span class="badge badge-success">
+                                        <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
                                         </svg>
-                                        View
-                                    </a>
-                                </td>
-                            </tr>
-                        {% else %}
-                            <tr>
-                                <td colspan="6" class="text-center">No users found</td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-
-            {% if totalPages > 1 %}
-                <div class="flex justify-between items-center mt-4 pt-4 border-t">
-                    <div class="text-sm">
-                        Showing page {{ currentPage }} of {{ totalPages }} ({{ totalUsers }} total users)
-                    </div>
-                    <div class="join">
-                        {% if currentPage > 1 %}
-                            <a href="{{ path('admin_users_list', {page: currentPage - 1}) }}" class="join-item btn btn-sm">«</a>
-                        {% else %}
-                            <button class="join-item btn btn-sm btn-disabled">«</button>
-                        {% endif %}
-
-                        {% set startPage = max(1, currentPage - 2) %}
-                        {% set endPage = min(totalPages, currentPage + 2) %}
-
-                        {% if startPage > 1 %}
-                            <a href="{{ path('admin_users_list', {page: 1}) }}" class="join-item btn btn-sm">1</a>
-                            {% if startPage > 2 %}
-                                <button class="join-item btn btn-sm btn-disabled">...</button>
-                            {% endif %}
-                        {% endif %}
-
-                        {% for page in startPage..endPage %}
-                            {% if page == currentPage %}
-                                <button class="join-item btn btn-sm btn-active">{{ page }}</button>
-                            {% else %}
-                                <a href="{{ path('admin_users_list', {page: page}) }}" class="join-item btn btn-sm">{{ page }}</a>
-                            {% endif %}
-                        {% endfor %}
-
-                        {% if endPage < totalPages %}
-                            {% if endPage < totalPages - 1 %}
-                                <button class="join-item btn btn-sm btn-disabled">...</button>
-                            {% endif %}
-                            <a href="{{ path('admin_users_list', {page: totalPages}) }}" class="join-item btn btn-sm">{{ totalPages }}</a>
-                        {% endif %}
-
-                        {% if currentPage < totalPages %}
-                            <a href="{{ path('admin_users_list', {page: currentPage + 1}) }}" class="join-item btn btn-sm">»</a>
-                        {% else %}
-                            <button class="join-item btn btn-sm btn-disabled">»</button>
-                        {% endif %}
-                    </div>
-                </div>
-            {% endif %}
+                                        Verified
+                                    </span>
+                                {% else %}
+                                    <span class="badge badge-warning">Unverified</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-gray-500 text-sm">{{ user.createdAt|date('Y-m-d H:i') }}</td>
+                            <td>
+                                <a href="{{ path('admin_users_view', {id: user.id}) }}" class="inline-flex items-center text-blue-600 hover:text-blue-800 text-sm font-medium">
+                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                    View
+                                </a>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center text-gray-500 py-8">No users found</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
+
+        {% if totalPages > 1 %}
+            <div class="flex justify-between items-center mt-4 px-6 py-4 border-t border-gray-200">
+                <div class="text-sm text-gray-500">
+                    Showing page {{ currentPage }} of {{ totalPages }} ({{ totalUsers}} total users)
+                </div>
+                <div class="flex space-x-1">
+                    {% if currentPage > 1 %}
+                        <a href="{{ path('admin_users_list', {page: currentPage - 1}) }}" class="px-3 py-1 rounded-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                            Previous
+                        </a>
+                    {% else %}
+                        <span class="px-3 py-1 rounded-md border border-gray-300 bg-gray-100 text-sm font-medium text-gray-400 cursor-not-allowed">
+                            Previous
+                        </span>
+                    {% endif %}
+
+                    {% set startPage = max(1, currentPage - 2) %}
+                    {% set endPage = min(totalPages, currentPage + 2) %}
+
+                    {% if startPage > 1 %}
+                        <a href="{{ path('admin_users_list', {page: 1}) }}" class="px-3 py-1 rounded-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">1</a>
+                        {% if startPage > 2 %}
+                            <span class="px-3 py-1 text-sm text-gray-400">...</span>
+                        {% endif %}
+                    {% endif %}
+
+                    {% for page in startPage..endPage %}
+                        {% if page == currentPage %}
+                            <span class="px-3 py-1 rounded-md border border-blue-500 bg-blue-50 text-sm font-medium text-blue-700">{{ page }}</span>
+                        {% else %}
+                            <a href="{{ path('admin_users_list', {page: page}) }}" class="px-3 py-1 rounded-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">{{ page }}</a>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if endPage < totalPages %}
+                        {% if endPage < totalPages - 1 %}
+                            <span class="px-3 py-1 text-sm text-gray-400">...</span>
+                        {% endif %}
+                        <a href="{{ path('admin_users_list', {page: totalPages}) }}" class="px-3 py-1 rounded-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">{{ totalPages }}</a>
+                    {% endif %}
+
+                    {% if currentPage < totalPages %}
+                        <a href="{{ path('admin_users_list', {page: currentPage + 1}) }}" class="px-3 py-1 rounded-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                            Next
+                        </a>
+                    {% else %}
+                        <span class="px-3 py-1 rounded-md border border-gray-300 bg-gray-100 text-sm font-medium text-gray-400 cursor-not-allowed">
+                            Next
+                        </span>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
     </div>
 {% endblock %}

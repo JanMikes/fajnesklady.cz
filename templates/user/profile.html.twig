@@ -4,43 +4,37 @@
 
 {% block content %}
     <div class="max-w-2xl mx-auto">
-        <h1 class="text-3xl font-bold mb-6">Your Profile</h1>
+        <h1 class="text-3xl font-bold mb-6 text-gray-900">Your Profile</h1>
 
-        <div class="card bg-base-100 shadow-xl">
+        <div class="card">
             <div class="card-body">
                 <div class="flex items-center gap-4 mb-6">
-                    <div class="avatar placeholder">
-                        <div class="bg-primary text-primary-content rounded-full w-24">
-                            <span class="text-3xl">{{ app.user.name|first|upper }}</span>
+                    <div class="flex-shrink-0">
+                        <div class="bg-blue-600 text-white rounded-full w-24 h-24 flex items-center justify-center">
+                            <span class="text-3xl font-semibold">{{ app.user.name|first|upper }}</span>
                         </div>
                     </div>
                     <div>
-                        <h2 class="card-title text-2xl">{{ app.user.name }}</h2>
-                        <p class="text-base-content/60">{{ app.user.email }}</p>
+                        <h2 class="text-2xl font-bold text-gray-900">{{ app.user.name }}</h2>
+                        <p class="text-gray-600">{{ app.user.email }}</p>
                     </div>
                 </div>
 
-                <div class="divider"></div>
+                <hr class="my-6 border-t border-gray-200">
 
                 <div class="space-y-4">
                     <div>
-                        <label class="label">
-                            <span class="label-text font-semibold">Email</span>
-                        </label>
-                        <input type="text" value="{{ app.user.email }}" class="input input-bordered w-full" readonly />
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Email</label>
+                        <input type="text" value="{{ app.user.email }}" class="form-input bg-gray-50" readonly />
                     </div>
 
                     <div>
-                        <label class="label">
-                            <span class="label-text font-semibold">Name</span>
-                        </label>
-                        <input type="text" value="{{ app.user.name }}" class="input input-bordered w-full" readonly />
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Name</label>
+                        <input type="text" value="{{ app.user.name }}" class="form-input bg-gray-50" readonly />
                     </div>
 
                     <div>
-                        <label class="label">
-                            <span class="label-text font-semibold">Account Status</span>
-                        </label>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Account Status</label>
                         <div class="flex gap-2">
                             {% if app.user.isVerified %}
                                 <div class="badge badge-success gap-2">
@@ -61,9 +55,7 @@
                     </div>
 
                     <div>
-                        <label class="label">
-                            <span class="label-text font-semibold">Roles</span>
-                        </label>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Roles</label>
                         <div class="flex flex-wrap gap-2">
                             {% for role in app.user.roles %}
                                 <div class="badge badge-primary">{{ role }}</div>
@@ -72,10 +64,8 @@
                     </div>
 
                     <div>
-                        <label class="label">
-                            <span class="label-text font-semibold">Member Since</span>
-                        </label>
-                        <input type="text" value="{{ app.user.createdAt|date('F j, Y') }}" class="input input-bordered w-full" readonly />
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Member Since</label>
+                        <input type="text" value="{{ app.user.createdAt|date('F j, Y') }}" class="form-input bg-gray-50" readonly />
                     </div>
                 </div>
             </div>

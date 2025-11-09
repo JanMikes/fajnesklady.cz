@@ -3,82 +3,130 @@
 {% block title %}Dashboard - Admin{% endblock %}
 
 {% block content %}
-    <h1 class="text-3xl font-bold mb-6">Dashboard</h1>
+    <h1 class="text-3xl font-bold text-gray-900 mb-8">Dashboard</h1>
 
     {# Stats Cards #}
-    <div class="stats stats-vertical lg:stats-horizontal shadow w-full mb-8">
-        <div class="stat">
-            <div class="stat-figure text-primary">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-8 h-8 stroke-current">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
-                </svg>
+    <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+        <div class="bg-white overflow-hidden shadow rounded-lg">
+            <div class="p-5">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <svg class="h-6 w-6 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 truncate">Total Users</dt>
+                            <dd class="flex items-baseline">
+                                <div class="text-2xl font-semibold text-gray-900">{{ stats.totalUsers }}</div>
+                            </dd>
+                        </dl>
+                    </div>
+                </div>
             </div>
-            <div class="stat-title">Total Users</div>
-            <div class="stat-value text-primary">{{ stats.totalUsers }}</div>
-            <div class="stat-desc">Registered accounts</div>
+            <div class="bg-gray-50 px-5 py-3">
+                <div class="text-sm text-gray-500">Registered accounts</div>
+            </div>
         </div>
 
-        <div class="stat">
-            <div class="stat-figure text-success">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-8 h-8 stroke-current">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
+        <div class="bg-white overflow-hidden shadow rounded-lg">
+            <div class="p-5">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <svg class="h-6 w-6 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 truncate">Verified Users</dt>
+                            <dd class="flex items-baseline">
+                                <div class="text-2xl font-semibold text-gray-900">{{ stats.verifiedUsers }}</div>
+                            </dd>
+                        </dl>
+                    </div>
+                </div>
             </div>
-            <div class="stat-title">Verified Users</div>
-            <div class="stat-value text-success">{{ stats.verifiedUsers }}</div>
-            <div class="stat-desc">Email confirmed</div>
+            <div class="bg-gray-50 px-5 py-3">
+                <div class="text-sm text-gray-500">Email confirmed</div>
+            </div>
         </div>
 
-        <div class="stat">
-            <div class="stat-figure text-warning">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-8 h-8 stroke-current">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-                </svg>
+        <div class="bg-white overflow-hidden shadow rounded-lg">
+            <div class="p-5">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <svg class="h-6 w-6 text-amber-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 truncate">Unverified Users</dt>
+                            <dd class="flex items-baseline">
+                                <div class="text-2xl font-semibold text-gray-900">{{ stats.unverifiedUsers }}</div>
+                            </dd>
+                        </dl>
+                    </div>
+                </div>
             </div>
-            <div class="stat-title">Unverified Users</div>
-            <div class="stat-value text-warning">{{ stats.unverifiedUsers }}</div>
-            <div class="stat-desc">Pending verification</div>
+            <div class="bg-gray-50 px-5 py-3">
+                <div class="text-sm text-gray-500">Pending verification</div>
+            </div>
         </div>
 
-        <div class="stat">
-            <div class="stat-figure text-secondary">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-8 h-8 stroke-current">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
-                </svg>
+        <div class="bg-white overflow-hidden shadow rounded-lg">
+            <div class="p-5">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <svg class="h-6 w-6 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                        </svg>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 truncate">Administrators</dt>
+                            <dd class="flex items-baseline">
+                                <div class="text-2xl font-semibold text-gray-900">{{ stats.adminUsers }}</div>
+                            </dd>
+                        </dl>
+                    </div>
+                </div>
             </div>
-            <div class="stat-title">Administrators</div>
-            <div class="stat-value text-secondary">{{ stats.adminUsers }}</div>
-            <div class="stat-desc">Admin accounts</div>
+            <div class="bg-gray-50 px-5 py-3">
+                <div class="text-sm text-gray-500">Admin accounts</div>
+            </div>
         </div>
     </div>
 
     {# Quick Actions #}
     <div class="grid md:grid-cols-2 gap-6">
-        <div class="card bg-base-100 shadow-xl">
+        <div class="card">
             <div class="card-body">
-                <h2 class="card-title">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div class="flex items-center mb-4">
+                    <svg class="h-6 w-6 text-gray-700 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                     </svg>
-                    User Management
-                </h2>
-                <p>Manage user accounts, roles, and permissions</p>
-                <div class="card-actions justify-end">
+                    <h2 class="text-xl font-semibold text-gray-900">User Management</h2>
+                </div>
+                <p class="text-gray-600 mb-4">Manage user accounts, roles, and permissions</p>
+                <div class="flex justify-end">
                     <a href="{{ path('admin_users_list') }}" class="btn btn-primary">View All Users</a>
                 </div>
             </div>
         </div>
 
-        <div class="card bg-base-100 shadow-xl">
+        <div class="card">
             <div class="card-body">
-                <h2 class="card-title">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div class="flex items-center mb-4">
+                    <svg class="h-6 w-6 text-gray-700 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                     </svg>
-                    Go to Site
-                </h2>
-                <p>View the public-facing website</p>
-                <div class="card-actions justify-end">
+                    <h2 class="text-xl font-semibold text-gray-900">Go to Site</h2>
+                </div>
+                <p class="text-gray-600 mb-4">View the public-facing website</p>
+                <div class="flex justify-end">
                     <a href="{{ path('app_home') }}" class="btn btn-ghost">Visit Site</a>
                 </div>
             </div>

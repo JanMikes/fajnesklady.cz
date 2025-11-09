@@ -3,14 +3,14 @@
 {% block title %}Reset Password{% endblock %}
 
 {% block body %}
-<div class="min-h-screen flex items-center justify-center bg-base-200 py-12 px-4 sm:px-6 lg:px-8">
-    <div class="card w-full max-w-md bg-base-100 shadow-xl">
+<div class="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div class="card w-full max-w-md">
         <div class="card-body">
-            <h2 class="card-title text-2xl font-bold text-center justify-center mb-6">
+            <h2 class="text-2xl font-bold text-center text-gray-900 mb-6">
                 Set New Password
             </h2>
 
-            <p class="text-center text-base-content/70 mb-6">
+            <p class="text-center text-gray-600 mb-6">
                 Please enter your new password below.
             </p>
 
@@ -19,17 +19,24 @@
                 {{ form_row(form.newPassword.second) }}
                 {{ form_errors(form.newPassword) }}
 
-                <div class="form-control mt-2">
+                <div class="form-group mt-2">
                     <button type="submit" class="btn btn-primary w-full">
                         Reset Password
                     </button>
                 </div>
             {{ form_end(form) }}
 
-            <div class="divider"></div>
+            <div class="relative my-6">
+                <div class="absolute inset-0 flex items-center">
+                    <div class="w-full border-t border-gray-200"></div>
+                </div>
+                <div class="relative flex justify-center text-sm">
+                    <span class="px-2 bg-white text-gray-500"></span>
+                </div>
+            </div>
 
             <div class="text-center">
-                <a href="{{ path('app_login') }}" class="link link-primary text-sm">
+                <a href="{{ path('app_login') }}" class="link text-sm">
                     Back to Login
                 </a>
             </div>
