@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\User\Command;
 
 use App\User\Event\EmailVerified;
-use App\User\Repository\UserRepositoryInterface;
+use App\User\Repository\UserRepository;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Messenger\MessageBusInterface;
 use SymfonyCasts\Bundle\VerifyEmail\VerifyEmailHelperInterface;
@@ -14,7 +14,7 @@ use SymfonyCasts\Bundle\VerifyEmail\VerifyEmailHelperInterface;
 final readonly class VerifyEmailHandler
 {
     public function __construct(
-        private UserRepositoryInterface $userRepository,
+        private UserRepository $userRepository,
         private VerifyEmailHelperInterface $verifyEmailHelper,
         private MessageBusInterface $eventBus,
     ) {

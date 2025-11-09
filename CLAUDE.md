@@ -156,15 +156,37 @@ $user->setEmailVerified(true);  // This method doesn't exist
 - When modifying entities, update corresponding XML mapping
 
 ### Repository Pattern
-All repositories follow interface-first design:
+**NEVER extend `ServiceEntityRepository`** - Use composition instead of inheritance:
+
+Repositories use EntityManager injection (composition over inheritance):
 ```php
-UserRepositoryInterface  → UserRepository (Doctrine implementation)
+// ✓ CORRECT - Composition with EntityManager
+final class UserRepository
+{
+    public function __construct(
+        private readonly EntityManagerInterface $entityManager,
+    ) {}
+
+    public function findById(Uuid $id): ?User
+    {
+        return $this->entityManager->find(User::class, $id);
+    }
+}
+
+// ✗ WRONG - Inheritance from ServiceEntityRepository
+class UserRepository extends ServiceEntityRepository { ... }
 ```
+
+**Do NOT create repository interfaces** - Single implementation pattern:
+- No need for `UserRepositoryInterface` - inject concrete `UserRepository` class
+- Interfaces add unnecessary abstraction when there's only one implementation
+- Symfony's autowiring works perfectly with concrete classes
 
 Repositories provide:
 - Type-safe methods (no generic `find()` or `findBy()`)
 - Performance-optimized queries (COUNT instead of loading entities)
 - Domain-specific query methods (`countVerified()`, `findByEmail()`)
+- EntityManager for complex queries and persistence operations
 
 ### Event-Driven Architecture
 Commands dispatch domain events that trigger side effects:
@@ -363,27 +385,5 @@ $user->changePassword($hashedPassword);
 ### Don't Skip Transactions
 Command handlers automatically run in transactions. Don't manually manage transactions unless you have a specific reason.
 
-## Production Deployment
-
-Before deploying:
-1. Set `APP_ENV=prod` and `APP_DEBUG=0`
-2. Uncomment HTTPS enforcement in `config/packages/security.yaml`
-3. Run migrations: `bin/console doctrine:migrations:migrate --no-interaction`
-4. Clear and warm cache: `bin/console cache:clear --env=prod && bin/console cache:warmup --env=prod`
-5. Build Tailwind CSS: `composer tailwind:build`
-6. Compile asset map: `composer assets:compile`
-
-## Recent Refactoring
-
-This codebase underwent comprehensive refactoring in November 2024 (see `REFACTORING_SUMMARY.md`):
-- Fixed critical N+1 query problems
-- Added account lockout mechanism
-- Implemented timing attack prevention
-- Introduced UserRole enum (replaced magic strings)
-- Created custom exception hierarchy
-- Added database performance indexes
-- Implemented pagination in admin user list
-
-The application is production-ready with strong security and performance optimizations.
 - Always run any command in docker!
 - Always run tests, phpstan, coding standard (static analysis) after doing code changes, to make sure everything works!

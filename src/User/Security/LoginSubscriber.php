@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\User\Security;
 
 use App\User\Entity\User;
-use App\User\Repository\UserRepositoryInterface;
+use App\User\Repository\UserRepository;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\RequestStack;
@@ -18,7 +18,7 @@ class LoginSubscriber implements EventSubscriberInterface
     public function __construct(
         private readonly UrlGeneratorInterface $urlGenerator,
         private readonly RequestStack $requestStack,
-        private readonly UserRepositoryInterface $userRepository,
+        private readonly UserRepository $userRepository,
     ) {
     }
 

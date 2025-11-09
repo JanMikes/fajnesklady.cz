@@ -5,14 +5,14 @@ declare(strict_types=1);
 namespace App\Admin\Query;
 
 use App\User\Enum\UserRole;
-use App\User\Repository\UserRepositoryInterface;
+use App\User\Repository\UserRepository;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]
 final readonly class GetDashboardStatsHandler
 {
     public function __construct(
-        private UserRepositoryInterface $userRepository,
+        private UserRepository $userRepository,
     ) {
     }
 

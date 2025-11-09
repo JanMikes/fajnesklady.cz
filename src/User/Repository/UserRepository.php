@@ -5,46 +5,50 @@ declare(strict_types=1);
 namespace App\User\Repository;
 
 use App\User\Entity\User;
-use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
-use Doctrine\Persistence\ManagerRegistry;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 
-/**
- * @extends ServiceEntityRepository<User>
- */
-class UserRepository extends ServiceEntityRepository implements UserRepositoryInterface
+final class UserRepository
 {
-    public function __construct(ManagerRegistry $registry)
-    {
-        parent::__construct($registry, User::class);
+    public function __construct(
+        private readonly EntityManagerInterface $entityManager,
+    ) {
     }
 
     public function save(User $user): void
     {
-        $this->getEntityManager()->persist($user);
-        $this->getEntityManager()->flush();
+        $this->entityManager->persist($user);
+        $this->entityManager->flush();
     }
 
     public function findById(Uuid $id): ?User
     {
-        return $this->find($id);
+        return $this->entityManager->find(User::class, $id);
     }
 
     public function findByEmail(string $email): ?User
     {
-        return $this->findOneBy(['email' => $email]);
+        return $this->entityManager->getRepository(User::class)->findOneBy(['email' => $email]);
     }
 
+    /**
+     * @return User[]
+     */
     public function findAll(): array
     {
-        return $this->findBy([], ['createdAt' => 'DESC']);
+        return $this->entityManager->getRepository(User::class)->findBy([], ['createdAt' => 'DESC']);
     }
 
+    /**
+     * @return User[]
+     */
     public function findAllPaginated(int $page, int $limit): array
     {
         $offset = ($page - 1) * $limit;
 
-        return $this->createQueryBuilder('u')
+        return $this->entityManager->createQueryBuilder()
+            ->select('u')
+            ->from(User::class, 'u')
             ->orderBy('u.createdAt', 'DESC')
             ->setFirstResult($offset)
             ->setMaxResults($limit)
@@ -54,7 +58,7 @@ class UserRepository extends ServiceEntityRepository implements UserRepositoryIn
 
     public function countTotal(): int
     {
-        $connection = $this->getEntityManager()->getConnection();
+        $connection = $this->entityManager->getConnection();
         $result = $connection->executeQuery('SELECT COUNT(id) FROM users')->fetchOne();
 
         return (int) $result;
@@ -62,7 +66,7 @@ class UserRepository extends ServiceEntityRepository implements UserRepositoryIn
 
     public function countVerified(): int
     {
-        $connection = $this->getEntityManager()->getConnection();
+        $connection = $this->entityManager->getConnection();
         $result = $connection->executeQuery(
             'SELECT COUNT(id) FROM users WHERE is_verified = :isVerified',
             ['isVerified' => true],
@@ -74,7 +78,7 @@ class UserRepository extends ServiceEntityRepository implements UserRepositoryIn
 
     public function countByRole(string $role): int
     {
-        $connection = $this->getEntityManager()->getConnection();
+        $connection = $this->entityManager->getConnection();
         $result = $connection->executeQuery(
             'SELECT COUNT(id) FROM users WHERE roles::jsonb @> :role::jsonb',
             ['role' => json_encode([$role])],

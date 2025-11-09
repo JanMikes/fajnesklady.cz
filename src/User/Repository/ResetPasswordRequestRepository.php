@@ -5,22 +5,25 @@ declare(strict_types=1);
 namespace App\User\Repository;
 
 use App\User\Entity\ResetPasswordRequest;
-use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
-use Doctrine\Persistence\ManagerRegistry;
+use Doctrine\ORM\EntityManagerInterface;
 use SymfonyCasts\Bundle\ResetPassword\Model\ResetPasswordRequestInterface;
 use SymfonyCasts\Bundle\ResetPassword\Persistence\Repository\ResetPasswordRequestRepositoryTrait;
 use SymfonyCasts\Bundle\ResetPassword\Persistence\ResetPasswordRequestRepositoryInterface;
 
-/**
- * @extends ServiceEntityRepository<ResetPasswordRequest>
- */
-final class ResetPasswordRequestRepository extends ServiceEntityRepository implements ResetPasswordRequestRepositoryInterface
+final class ResetPasswordRequestRepository implements ResetPasswordRequestRepositoryInterface
 {
     use ResetPasswordRequestRepositoryTrait;
 
-    public function __construct(ManagerRegistry $registry)
+    /**
+     * Used by ResetPasswordRequestRepositoryTrait.
+     *
+     * @phpstan-ignore property.onlyWritten
+     */
+    private readonly EntityManagerInterface $entityManager;
+
+    public function __construct(EntityManagerInterface $entityManager)
     {
-        parent::__construct($registry, ResetPasswordRequest::class);
+        $this->entityManager = $entityManager;
     }
 
     public function createResetPasswordRequest(

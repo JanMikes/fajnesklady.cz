@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\User\Event;
 
-use App\User\Repository\UserRepositoryInterface;
+use App\User\Repository\UserRepository;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -15,7 +15,7 @@ use SymfonyCasts\Bundle\VerifyEmail\VerifyEmailHelperInterface;
 final readonly class SendVerificationEmailHandler
 {
     public function __construct(
-        private UserRepositoryInterface $userRepository,
+        private UserRepository $userRepository,
         private VerifyEmailHelperInterface $verifyEmailHelper,
         private MailerInterface $mailer,
     ) {

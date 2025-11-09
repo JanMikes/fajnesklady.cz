@@ -7,7 +7,7 @@ namespace App\User\Command;
 use App\User\Entity\User;
 use App\User\Event\UserRegistered;
 use App\User\Exception\UserAlreadyExistsException;
-use App\User\Repository\UserRepositoryInterface;
+use App\User\Repository\UserRepository;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
@@ -16,7 +16,7 @@ use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 final readonly class RegisterUserHandler
 {
     public function __construct(
-        private UserRepositoryInterface $userRepository,
+        private UserRepository $userRepository,
         private UserPasswordHasherInterface $passwordHasher,
         private MessageBusInterface $eventBus,
     ) {

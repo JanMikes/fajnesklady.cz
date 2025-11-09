@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\User\Command;
 
-use App\User\Repository\UserRepositoryInterface;
+use App\User\Repository\UserRepository;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use SymfonyCasts\Bundle\ResetPassword\Exception\ResetPasswordExceptionInterface;
@@ -16,7 +16,7 @@ final readonly class ResetPasswordHandler
     public function __construct(
         private ResetPasswordHelperInterface $resetPasswordHelper,
         private UserPasswordHasherInterface $passwordHasher,
-        private UserRepositoryInterface $userRepository,
+        private UserRepository $userRepository,
     ) {
     }
 

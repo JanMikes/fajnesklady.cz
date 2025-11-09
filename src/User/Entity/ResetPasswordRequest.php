@@ -4,13 +4,12 @@ declare(strict_types=1);
 
 namespace App\User\Entity;
 
-use App\User\Repository\ResetPasswordRequestRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
 use SymfonyCasts\Bundle\ResetPassword\Model\ResetPasswordRequestInterface;
 use SymfonyCasts\Bundle\ResetPassword\Model\ResetPasswordRequestTrait;
 
-#[ORM\Entity(repositoryClass: ResetPasswordRequestRepository::class)]
+#[ORM\Entity]
 #[ORM\Table(name: 'reset_password_request')]
 #[ORM\Index(name: 'selector_idx', columns: ['selector'])]
 class ResetPasswordRequest implements ResetPasswordRequestInterface

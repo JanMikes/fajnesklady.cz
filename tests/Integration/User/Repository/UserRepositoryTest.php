@@ -5,18 +5,18 @@ declare(strict_types=1);
 namespace App\Tests\Integration\User\Repository;
 
 use App\User\Entity\User;
-use App\User\Repository\UserRepositoryInterface;
+use App\User\Repository\UserRepository;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 class UserRepositoryTest extends KernelTestCase
 {
-    private UserRepositoryInterface $repository;
+    private UserRepository $repository;
 
     protected function setUp(): void
     {
         self::bootKernel();
         $container = static::getContainer();
-        $this->repository = $container->get(UserRepositoryInterface::class);
+        $this->repository = $container->get(UserRepository::class);
     }
 
     public function testSaveUser(): void
