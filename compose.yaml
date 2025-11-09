@@ -1,55 +1,63 @@
-services:
-  php:
-    build:
-      context: .
-      dockerfile: docker/php/Dockerfile
-      target: dev
-    ports:
-      - "8080:80"
-    volumes:
-      - ./docker/frankenphp/Caddyfile:/etc/caddy/Caddyfile:ro
-      - ./:/app:rw
-    depends_on:
-      - postgres
-      - mailpit
-    environment:
-      APP_ENV: ${APP_ENV:-dev}
-      APP_SECRET: ${APP_SECRET}
-      DATABASE_URL: ${DATABASE_URL}
-      MAILER_DSN: ${MAILER_DSN}
-      XDEBUG_MODE: ${XDEBUG_MODE:-off}
-    networks:
-      - app-network
-
-  postgres:
-    image: postgres:17-alpine
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-app}
-      POSTGRES_USER: ${POSTGRES_USER:-app}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - app-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-app}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  mailpit:
-    image: axllent/mailpit:latest
-    ports:
-      - "1025:1025"  # SMTP
-      - "8025:8025"  # Web UI
-    networks:
-      - app-network
-
 volumes:
-  postgres_data:
+    postgres_data:
+    mailpit-data:
+    caddy_data:
+    caddy_config:
 
-networks:
-  app-network:
-    driver: bridge
+services:
+    php:
+        image: ghcr.io/thedevs-cz/php:8.4
+        restart: unless-stopped
+        tty: true
+        stdin_open: true
+        volumes:
+            - .:/app
+            - ./.docker/docker-entrypoint.sh:/usr/local/bin/docker-php-entrypoint
+            - caddy_data:/data
+            - caddy_config:/config
+        depends_on:
+            - postgres
+        ports:
+            - "8080:80"
+        environment:
+            XDEBUG_CONFIG: "client_host=host.docker.internal"
+            XDEBUG_MODE: debug
+            PHP_IDE_CONFIG: "serverName=localhost"
+            SERVER_NAME: :80
+
+    postgres:
+        image: postgres:17-alpine
+        environment:
+            POSTGRES_DB: ${POSTGRES_DB:-app}
+            POSTGRES_USER: ${POSTGRES_USER:-app}
+            POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+        ports:
+            - "5432:5432"
+        volumes:
+            - postgres_data:/var/lib/postgresql/data
+        healthcheck:
+            test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-app}" ]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+
+    mailpit:
+        image: axllent/mailpit
+        ports:
+            - "1025:1025"
+            - "8025:8025"
+        environment:
+            MP_SMTP_AUTH_ACCEPT_ANY: 1
+            MP_SMTP_AUTH_ALLOW_INSECURE: 1
+            MP_DATABASE: "/data/mailpit.db"
+        volumes:
+            - mailpit-data:/data
+
+    adminer:
+        image: adminer:5.4.1
+        ports:
+            - "8000:8080"
+        environment:
+            ADMINER_DEFAULT_SERVER: postgres
+        depends_on:
+            - postgres
