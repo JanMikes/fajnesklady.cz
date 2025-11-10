@@ -1,106 +1,87 @@
 name: Tests
 
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+    push:
+        branches: [ main ]
+    pull_request:
+        branches: [ main ]
+
+env:
+    DATABASE_URL: postgresql://postgres:postgres@postgres:5432/fajne_sklady_test?serverVersion=17.0&charset=utf8
 
 jobs:
-  tests:
-    name: Tests (PHP ${{ matrix.php-version }})
-    runs-on: ubuntu-latest
+    tests:
+        runs-on: ubuntu-latest
+        container: ghcr.io/thedevs-cz/php:8.4
 
-    strategy:
-      fail-fast: false
-      matrix:
-        php-version: ['8.4']
+        services:
+            postgres:
+                image: postgres:17.0
+                env:
+                    POSTGRES_PASSWORD: postgres
+                options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+                ports:
+                    - 5432:5432
 
-    services:
-      postgres:
-        image: postgres:17-alpine
-        env:
-          POSTGRES_DB: app_test
-          POSTGRES_USER: app
-          POSTGRES_PASSWORD: '!ChangeMe!'
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
+        steps:
+            -   uses: actions/checkout@v4
+            -   uses: actions/cache@v4
+                with:
+                    path: ./api/vendor
+                    key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+                    restore-keys: |
+                        ${{ runner.os }}-composer-
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+            -   run: composer install --no-scripts --no-progress
 
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: ${{ matrix.php-version }}
-          extensions: intl, pdo_pgsql, opcache, apcu
-          coverage: none
-          tools: composer:v2
+            -   run: vendor/bin/phpunit
 
-      - name: Get Composer cache directory
-        id: composer-cache
-        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
 
-      - name: Cache Composer dependencies
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.composer-cache.outputs.dir }}
-          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
-          restore-keys: ${{ runner.os }}-composer-
+    phpstan:
+        runs-on: ubuntu-latest
+        container: ghcr.io/thedevs-cz/php:8.4
+        steps:
+            -   uses: actions/checkout@v4
+            -   uses: actions/cache@v4
+                with:
+                    path: ./api/vendor
+                    key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+                    restore-keys: |
+                        ${{ runner.os }}-composer-
 
-      - name: Install dependencies
-        run: composer install --prefer-dist --no-progress --no-suggest
+            -   run: composer install --no-scripts --no-progress
 
-      - name: Validate composer.json
-        run: composer validate --strict
+            -   run: bin/console cache:warmup --env=dev
 
-      - name: Check Symfony security
-        run: symfony security:check || true
+            -   run: composer run-script phpstan
 
-      - name: Run PHPStan
-        run: vendor/bin/phpstan analyse --no-progress
 
-      - name: Run PHP CS Fixer (dry-run)
-        run: vendor/bin/php-cs-fixer fix --dry-run --diff
+    migrations-up-to-date:
+        runs-on: ubuntu-latest
+        container: ghcr.io/thedevs-cz/php:8.4
+        services:
+            postgres:
+                image: postgres:17.0
+                env:
+                    POSTGRES_PASSWORD: postgres
+                    POSTGRES_DB: fajne_sklady_test
+                options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+                ports:
+                    - 5432:5432
 
-      - name: Run database migrations
-        run: php bin/console doctrine:migrations:migrate --no-interaction --env=test
-        env:
-          DATABASE_URL: postgresql://app:!ChangeMe!@localhost:5432/app_test?serverVersion=17&charset=utf8
+        steps:
+            -   uses: actions/checkout@v4
+            -   uses: actions/cache@v4
+                with:
+                    path: ./api/vendor
+                    key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+                    restore-keys: |
+                        ${{ runner.os }}-composer-
 
-      - name: Run unit tests
-        run: vendor/bin/phpunit tests/Unit/
-        env:
-          DATABASE_URL: postgresql://app:!ChangeMe!@localhost:5432/app_test?serverVersion=17&charset=utf8
+            -   run: composer install --no-scripts --no-progress
 
-      - name: Run integration tests
-        run: vendor/bin/phpunit tests/Integration/
-        env:
-          DATABASE_URL: postgresql://app:!ChangeMe!@localhost:5432/app_test?serverVersion=17&charset=utf8
+            -   run: bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
 
-  docker-build:
-    name: Docker Build
-    runs-on: ubuntu-latest
+            -   run: bin/console doctrine:schema:update --dump-sql
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./docker/php/Dockerfile
-          push: false
-          tags: fajnesklady:test
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+            -   run: bin/console doctrine:schema:validate
