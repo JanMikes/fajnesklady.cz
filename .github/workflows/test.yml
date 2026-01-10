@@ -33,6 +33,8 @@ jobs:
                         ${{ runner.os }}-composer-
 
             -   run: composer install --no-scripts --no-progress
+            -   run: bin/console importmap:install
+            -   run: bin/console tailwind:build
             -   run: vendor/bin/phpunit
 
 
