@@ -102,6 +102,11 @@ class LoginSubscriber implements EventSubscriberInterface
             return;
         }
 
+        // Reset failed attempts if the previous lock has expired (fresh start)
+        if ($user->isLockExpired()) {
+            $user->resetFailedLoginAttempts();
+        }
+
         // Record failed login attempt
         $user->recordFailedLoginAttempt();
         $this->userRepository->save($user);

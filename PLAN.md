@@ -984,17 +984,17 @@
   - Create fixtures:
     1. Admin user
        - Email: admin@example.com
-       - Password: admin123
+       - Password: password
        - Role: ROLE_ADMIN
        - Verified: true
     2. Regular user
        - Email: user@example.com
-       - Password: user123
+       - Password: password
        - Role: ROLE_USER
        - Verified: true
     3. Unverified user
        - Email: unverified@example.com
-       - Password: user123
+       - Password: password
        - Role: ROLE_USER
        - Verified: false
 
@@ -1016,9 +1016,9 @@
 
 ### 12.4 Document Fixture Credentials
 - [x] Fixture credentials documented in PLAN.md (see Notes section at bottom)
-  - Admin: admin@example.com / admin123
-  - User: user@example.com / user123
-  - Unverified: unverified@example.com / user123
+  - Admin: admin@example.com / password
+  - User: user@example.com / password
+  - Unverified: unverified@example.com / password
   - These are for development only
 
 ---
@@ -1537,9 +1537,9 @@
 - **PostgreSQL**: localhost:5432
 
 ### Default Credentials (Development Fixtures)
-- **Admin**: admin@example.com / admin123
-- **User**: user@example.com / user123
-- **Unverified**: unverified@example.com / user123
+- **Admin**: admin@example.com / password
+- **User**: user@example.com / password
+- **Unverified**: unverified@example.com / password
 
 ### Key Technologies
 - **Symfony**: 7.2 LTS

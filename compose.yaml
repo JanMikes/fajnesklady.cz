@@ -1,18 +1,18 @@
 volumes:
     postgres_data:
-    mailpit-data:
+    mailpit_data:
     caddy_data:
     caddy_config:
 
 services:
-    php:
-        image: ghcr.io/thedevs-cz/php:8.4
+    web:
+        image: ghcr.io/thedevs-cz/php:8.5
         restart: unless-stopped
         tty: true
         stdin_open: true
         volumes:
             - .:/app
-            - ./.docker/docker-entrypoint.sh:/usr/local/bin/docker-php-entrypoint
+            - ./.docker/on-startup.sh:/docker-entrypoint.d/on-startup.sh
             - caddy_data:/data
             - caddy_config:/config
         depends_on:
@@ -20,23 +20,24 @@ services:
         ports:
             - "8080:80"
         environment:
+            FRANKENPHP_WORKER: "1"
+            FRANKENPHP_WATCH: "1"
             XDEBUG_CONFIG: "client_host=host.docker.internal"
             XDEBUG_MODE: debug
             PHP_IDE_CONFIG: "serverName=localhost"
-            SERVER_NAME: :80
 
     postgres:
-        image: postgres:17-alpine
+        image: postgres:17
         environment:
-            POSTGRES_DB: ${POSTGRES_DB:-app}
-            POSTGRES_USER: ${POSTGRES_USER:-app}
-            POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+            POSTGRES_USER: postgres
+            POSTGRES_PASSWORD: postgres
+            POSTGRES_DB: fajnesklady
         ports:
             - "5432:5432"
         volumes:
             - postgres_data:/var/lib/postgresql/data
         healthcheck:
-            test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-app}" ]
+            test: [ "CMD-SHELL", "pg_isready -U postgres" ]
             interval: 10s
             timeout: 5s
             retries: 5
@@ -51,7 +52,7 @@ services:
             MP_SMTP_AUTH_ALLOW_INSECURE: 1
             MP_DATABASE: "/data/mailpit.db"
         volumes:
-            - mailpit-data:/data
+            - mailpit_data:/data
 
     adminer:
         image: adminer:5.4.1

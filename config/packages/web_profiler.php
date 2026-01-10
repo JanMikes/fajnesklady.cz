@@ -1,0 +1,25 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Symfony\Component\DependencyInjection\Loader\Configurator;
+
+return App::config([
+    'when@dev' => [
+        'web_profiler' => [
+            'toolbar' => true,
+        ],
+        'framework' => [
+            'profiler' => [
+                'collect_serializer_data' => true,
+            ],
+        ],
+    ],
+    'when@test' => [
+        'framework' => [
+            'profiler' => [
+                'collect' => false,
+            ],
+        ],
+    ],
+]);

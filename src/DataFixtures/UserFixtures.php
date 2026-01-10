@@ -25,7 +25,7 @@ final class UserFixtures extends Fixture
             name: 'Regular User',
             password: '', // Will be hashed below
         );
-        $user->changePassword($this->passwordHasher->hashPassword($user, 'user123'));
+        $user->changePassword($this->passwordHasher->hashPassword($user, 'password'));
         $user->markAsVerified();
         $manager->persist($user);
 
@@ -35,7 +35,7 @@ final class UserFixtures extends Fixture
             name: 'Unverified User',
             password: '', // Will be hashed below
         );
-        $unverified->changePassword($this->passwordHasher->hashPassword($unverified, 'user123'));
+        $unverified->changePassword($this->passwordHasher->hashPassword($unverified, 'password'));
         // Don't mark as verified
         $manager->persist($unverified);
 
@@ -48,7 +48,7 @@ final class UserFixtures extends Fixture
             name: 'Admin User',
             password: '', // Will be hashed below
         );
-        $admin->changePassword($this->passwordHasher->hashPassword($admin, 'admin123'));
+        $admin->changePassword($this->passwordHasher->hashPassword($admin, 'password'));
         $admin->markAsVerified();
         $manager->persist($admin);
         $manager->flush();

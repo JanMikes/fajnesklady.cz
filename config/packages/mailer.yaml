@@ -1,7 +1,0 @@
-framework:
-    mailer:
-        dsn: '%env(MAILER_DSN)%'
-        envelope:
-            sender: 'noreply@fajnesklady.cz'
-        headers:
-            from: 'Fajné Sklady <noreply@fajnesklady.cz>'

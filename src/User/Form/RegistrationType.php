@@ -46,10 +46,10 @@ class RegistrationType extends AbstractType
                     new NotBlank([
                         'message' => 'Please enter your name',
                     ]),
-                    new Length([
-                        'max' => 255,
-                        'maxMessage' => 'Your name cannot be longer than {{ limit }} characters',
-                    ]),
+                    new Length(
+                        max: 255,
+                        maxMessage: 'Your name cannot be longer than {{ limit }} characters',
+                    ),
                 ],
                 'attr' => [
                     'placeholder' => 'John Doe',
@@ -77,10 +77,10 @@ class RegistrationType extends AbstractType
                     new NotBlank([
                         'message' => 'Please enter a password',
                     ]),
-                    new Length([
-                        'min' => 8,
-                        'minMessage' => 'Your password should be at least {{ limit }} characters',
-                    ]),
+                    new Length(
+                        min: 8,
+                        minMessage: 'Your password should be at least {{ limit }} characters',
+                    ),
                     new PasswordStrength([
                         'minScore' => PasswordStrength::STRENGTH_MEDIUM,
                         'message' => 'Your password is too weak. Please use a stronger password.',

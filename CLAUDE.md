@@ -335,9 +335,9 @@ Key fields:
 ## Fixtures
 
 Development fixtures create three test users:
-- Admin: `admin@example.com` / `admin123`
-- User: `user@example.com` / `user123`
-- Unverified: `unverified@example.com` / `user123`
+- Admin: `admin@example.com` / `password`
+- User: `user@example.com` / `password`
+- Unverified: `unverified@example.com` / `password`
 
 **NEVER use these in production.**
 

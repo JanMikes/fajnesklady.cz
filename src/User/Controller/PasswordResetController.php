@@ -13,7 +13,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
 use Symfony\Component\Messenger\MessageBusInterface;
-use Symfony\Component\RateLimiter\RateLimiterFactory;
+use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use SymfonyCasts\Bundle\ResetPassword\Exception\ResetPasswordExceptionInterface;
 
@@ -21,7 +21,8 @@ final class PasswordResetController extends AbstractController
 {
     public function __construct(
         private readonly MessageBusInterface $commandBus,
-        private readonly RateLimiterFactory $passwordResetLimiter,
+        #[\Symfony\Component\DependencyInjection\Attribute\Autowire(service: 'limiter.password_reset')]
+        private readonly RateLimiterFactoryInterface $passwordResetLimiter,
     ) {
     }
 

@@ -6,14 +6,15 @@ namespace App\User\Security;
 
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
-use Symfony\Component\RateLimiter\RateLimiterFactory;
+use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 use Symfony\Component\Security\Http\Event\CheckPassportEvent;
 use Symfony\Component\Security\Http\Event\LoginFailureEvent;
 
 final class LoginRateLimiterSubscriber implements EventSubscriberInterface
 {
     public function __construct(
-        private readonly RateLimiterFactory $loginLimiter,
+        #[\Symfony\Component\DependencyInjection\Attribute\Autowire(service: 'limiter.login')]
+        private readonly RateLimiterFactoryInterface $loginLimiter,
         private readonly RequestStack $requestStack,
     ) {
     }

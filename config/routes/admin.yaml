@@ -1,4 +1,0 @@
-admin_controllers:
-    resource: ../../src/Admin/Controller/
-    type: attribute
-    prefix: /admin

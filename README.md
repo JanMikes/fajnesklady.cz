@@ -80,9 +80,9 @@ docker compose exec php bin/console doctrine:fixtures:load --no-interaction
 
 | Role | Email | Password |
 |------|-------|----------|
-| Admin | admin@example.com | admin123 |
-| User | user@example.com | user123 |
-| Unverified User | unverified@example.com | user123 |
+| Admin | admin@example.com | password |
+| User | user@example.com | password |
+| Unverified User | unverified@example.com | password |
 
 **Note**: These credentials are for development only and should never be used in production.
 

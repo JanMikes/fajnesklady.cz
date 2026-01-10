@@ -123,11 +123,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this->roles;
     }
 
-    public function eraseCredentials(): void
-    {
-        // If you store any temporary, sensitive data on the user, clear it here
-    }
-
     public function isVerified(): bool
     {
         return $this->isVerified;
@@ -173,14 +168,17 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
             return false;
         }
 
-        // If lock has expired, reset it
-        if ($this->lockedUntil < new \DateTimeImmutable()) {
-            $this->resetFailedLoginAttempts();
+        return $this->lockedUntil >= new \DateTimeImmutable();
+    }
 
-            return false;
-        }
-
-        return true;
+    /**
+     * Check if the lock has expired (was locked but time has passed).
+     * Call resetFailedLoginAttempts() separately if you want to clear the expired lock.
+     */
+    public function isLockExpired(): bool
+    {
+        return null !== $this->lockedUntil
+            && $this->lockedUntil < new \DateTimeImmutable();
     }
 
     public function getFailedLoginAttempts(): int
