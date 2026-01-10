@@ -26,14 +26,12 @@ return App::config([
             'buses' => [
                 'command.bus' => [
                     'middleware' => [
-                        'reset_services',
                         'doctrine_transaction',
                         'validation',
                     ],
                 ],
                 'query.bus' => [
                     'middleware' => [
-                        'reset_services',
                         'validation',
                     ],
                 ],
@@ -43,7 +41,6 @@ return App::config([
                         'allow_no_handlers' => true,
                     ],
                     'middleware' => [
-                        'reset_services',
                         'validation',
                     ],
                 ],
