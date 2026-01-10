@@ -28,12 +28,8 @@ class RegistrationType extends AbstractType
             ->add('email', EmailType::class, [
                 'label' => 'Email Address',
                 'constraints' => [
-                    new NotBlank([
-                        'message' => 'Please enter your email address',
-                    ]),
-                    new Email([
-                        'message' => 'Please enter a valid email address',
-                    ]),
+                    new NotBlank(message: 'Please enter your email address'),
+                    new Email(message: 'Please enter a valid email address'),
                 ],
                 'attr' => [
                     'placeholder' => 'your@email.com',
@@ -43,9 +39,7 @@ class RegistrationType extends AbstractType
             ->add('name', TextType::class, [
                 'label' => 'Full Name',
                 'constraints' => [
-                    new NotBlank([
-                        'message' => 'Please enter your name',
-                    ]),
+                    new NotBlank(message: 'Please enter your name'),
                     new Length(
                         max: 255,
                         maxMessage: 'Your name cannot be longer than {{ limit }} characters',
@@ -74,26 +68,22 @@ class RegistrationType extends AbstractType
                 ],
                 'invalid_message' => 'The password fields must match.',
                 'constraints' => [
-                    new NotBlank([
-                        'message' => 'Please enter a password',
-                    ]),
+                    new NotBlank(message: 'Please enter a password'),
                     new Length(
                         min: 8,
                         minMessage: 'Your password should be at least {{ limit }} characters',
                     ),
-                    new PasswordStrength([
-                        'minScore' => PasswordStrength::STRENGTH_MEDIUM,
-                        'message' => 'Your password is too weak. Please use a stronger password.',
-                    ]),
+                    new PasswordStrength(
+                        minScore: PasswordStrength::STRENGTH_MEDIUM,
+                        message: 'Your password is too weak. Please use a stronger password.',
+                    ),
                 ],
             ])
             ->add('agreeTerms', CheckboxType::class, [
                 'label' => 'I agree to the terms and conditions',
                 'mapped' => false,
                 'constraints' => [
-                    new IsTrue([
-                        'message' => 'You must agree to the terms and conditions.',
-                    ]),
+                    new IsTrue(message: 'You must agree to the terms and conditions.'),
                 ],
                 'attr' => [
                     'class' => 'checkbox checkbox-primary',
