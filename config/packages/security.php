@@ -44,7 +44,7 @@ return App::config([
             ],
         ],
         'access_control' => [
-            ['path' => '^/health', 'roles' => 'PUBLIC_ACCESS'],
+            ['path' => '^/-/health-check/liveness', 'roles' => 'PUBLIC_ACCESS'],
             ['path' => '^/admin', 'roles' => 'ROLE_ADMIN'],
             ['path' => '^/login', 'roles' => 'PUBLIC_ACCESS'],
             ['path' => '^/register', 'roles' => 'PUBLIC_ACCESS'],

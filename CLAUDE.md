@@ -343,7 +343,7 @@ Development fixtures create three test users:
 
 ## Health Check
 
-`/health` endpoint returns JSON with:
+`/-/health-check/liveness` endpoint returns JSON with:
 - Database connectivity status
 - PHP version
 - Debug mode status

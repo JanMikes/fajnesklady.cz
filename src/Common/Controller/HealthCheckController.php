@@ -8,7 +8,7 @@ use Doctrine\DBAL\Connection;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
 
-#[Route('/health', name: 'health_check')]
+#[Route('/-/health-check/liveness', name: 'health_check')]
 final readonly class HealthCheckController
 {
     public function __construct(
