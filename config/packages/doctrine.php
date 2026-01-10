@@ -27,13 +27,6 @@ return App::config([
             ],
         ],
     ],
-    'when@test' => [
-        'doctrine' => [
-            'dbal' => [
-                'dbname_suffix' => '_test%env(default::TEST_TOKEN)%',
-            ],
-        ],
-    ],
     'when@prod' => [
         'doctrine' => [
             'orm' => [
