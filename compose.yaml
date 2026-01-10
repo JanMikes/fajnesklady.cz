@@ -62,3 +62,10 @@ services:
             ADMINER_DEFAULT_SERVER: postgres
         depends_on:
             - postgres
+
+    tailwind:
+        image: ghcr.io/thedevs-cz/php:8.5
+        volumes:
+            - .:/app
+        command: bin/console tailwind:build --watch
+        restart: unless-stopped
