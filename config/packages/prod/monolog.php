@@ -1,0 +1,37 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Symfony\Component\DependencyInjection\Loader\Configurator;
+
+return App::config([
+    'monolog' => [
+        'handlers' => [
+            'main' => [
+                'type' => 'fingers_crossed',
+                'action_level' => 'error',
+                'handler' => 'nested',
+                'excluded_http_codes' => [404, 405],
+                'channels' => ['!deprecation'],
+                'buffer_size' => 50,
+            ],
+            'nested' => [
+                'type' => 'stream',
+                'path' => 'php://stderr',
+                'level' => 'debug',
+                'formatter' => 'monolog.formatter.json',
+            ],
+            'console' => [
+                'type' => 'console',
+                'process_psr_3_messages' => false,
+                'channels' => ['!event', '!doctrine'],
+            ],
+            'deprecation' => [
+                'type' => 'stream',
+                'channels' => ['deprecation'],
+                'path' => 'php://stderr',
+                'formatter' => 'monolog.formatter.json',
+            ],
+        ],
+    ],
+]);

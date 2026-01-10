@@ -11,9 +11,4 @@ return App::config([
             'form/tailwind_theme.html.twig',
         ],
     ],
-    'when@test' => [
-        'twig' => [
-            'strict_variables' => true,
-        ],
-    ],
 ]);

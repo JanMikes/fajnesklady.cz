@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Symfony\Component\DependencyInjection\Loader\Configurator;
 
 return App::config([
-    'monolog' => [
-        'channels' => ['deprecation'],
+    'framework' => [
+        'profiler' => [
+            'collect' => false,
+        ],
     ],
 ]);

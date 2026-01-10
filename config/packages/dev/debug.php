@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Symfony\Component\DependencyInjection\Loader\Configurator;
 
 return App::config([
-    'monolog' => [
-        'channels' => ['deprecation'],
+    'debug' => [
+        'dump_destination' => 'tcp://%env(VAR_DUMPER_SERVER)%',
     ],
 ]);

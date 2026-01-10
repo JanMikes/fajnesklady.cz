@@ -55,16 +55,4 @@ return App::config([
             'ROLE_ADMIN' => 'ROLE_USER',
         ],
     ],
-    'when@test' => [
-        'security' => [
-            'password_hashers' => [
-                'Symfony\\Component\\Security\\Core\\User\\PasswordAuthenticatedUserInterface' => [
-                    'algorithm' => 'auto',
-                    'cost' => 4,
-                    'time_cost' => 3,
-                    'memory_cost' => 10,
-                ],
-            ],
-        ],
-    ],
 ]);

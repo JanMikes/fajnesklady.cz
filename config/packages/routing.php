@@ -10,11 +10,4 @@ return App::config([
             'default_uri' => '%env(DEFAULT_URI)%',
         ],
     ],
-    'when@prod' => [
-        'framework' => [
-            'router' => [
-                'strict_requirements' => null,
-            ],
-        ],
-    ],
 ]);

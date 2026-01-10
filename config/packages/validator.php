@@ -8,11 +8,4 @@ return App::config([
     'framework' => [
         'validation' => true,
     ],
-    'when@test' => [
-        'framework' => [
-            'validation' => [
-                'not_compromised_password' => false,
-            ],
-        ],
-    ],
 ]);

@@ -1487,6 +1487,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     doctrine?: DoctrineConfig,
  *     doctrine_migrations?: DoctrineMigrationsConfig,
  *     twig?: TwigConfig,
+ *     web_profiler?: WebProfilerConfig,
  *     stimulus?: StimulusConfig,
  *     turbo?: TurboConfig,
  *     twig_extra?: TwigExtraConfig,
@@ -1511,23 +1512,6 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         security?: SecurityConfig,
  *         monolog?: MonologConfig,
  *         maker?: MakerConfig,
- *         symfonycasts_verify_email?: SymfonycastsVerifyEmailConfig,
- *         symfonycasts_reset_password?: SymfonycastsResetPasswordConfig,
- *         symfonycasts_tailwind?: SymfonycastsTailwindConfig,
- *     },
- *     "when@prod"?: array{
- *         imports?: ImportsConfig,
- *         parameters?: ParametersConfig,
- *         services?: ServicesConfig,
- *         framework?: FrameworkConfig,
- *         doctrine?: DoctrineConfig,
- *         doctrine_migrations?: DoctrineMigrationsConfig,
- *         twig?: TwigConfig,
- *         stimulus?: StimulusConfig,
- *         turbo?: TurboConfig,
- *         twig_extra?: TwigExtraConfig,
- *         security?: SecurityConfig,
- *         monolog?: MonologConfig,
  *         symfonycasts_verify_email?: SymfonycastsVerifyEmailConfig,
  *         symfonycasts_reset_password?: SymfonycastsResetPasswordConfig,
  *         symfonycasts_tailwind?: SymfonycastsTailwindConfig,
@@ -1631,7 +1615,6 @@ namespace Symfony\Component\Routing\Loader\Configurator;
  * }
  * @psalm-type RoutesConfig = array{
  *     "when@dev"?: array<string, RouteConfig|ImportConfig|AliasConfig>,
- *     "when@prod"?: array<string, RouteConfig|ImportConfig|AliasConfig>,
  *     "when@test"?: array<string, RouteConfig|ImportConfig|AliasConfig>,
  *     ...<string, RouteConfig|ImportConfig|AliasConfig>
  * }
