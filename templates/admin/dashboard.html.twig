@@ -1,9 +1,9 @@
 {% extends 'admin/layout.html.twig' %}
 
-{% block title %}Dashboard - Admin{% endblock %}
+{% block title %}Přehled - Admin{% endblock %}
 
 {% block content %}
-    <h1 class="text-3xl font-bold text-gray-900 mb-8">Dashboard</h1>
+    <h1 class="text-3xl font-bold text-gray-900 mb-8">Přehled</h1>
 
     {# Stats Cards #}
     <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
@@ -17,7 +17,7 @@
                     </div>
                     <div class="ml-5 w-0 flex-1">
                         <dl>
-                            <dt class="text-sm font-medium text-gray-500 truncate">Total Users</dt>
+                            <dt class="text-sm font-medium text-gray-500 truncate">Celkem uživatelů</dt>
                             <dd class="flex items-baseline">
                                 <div class="text-2xl font-semibold text-gray-900">{{ stats.totalUsers }}</div>
                             </dd>
@@ -26,7 +26,7 @@
                 </div>
             </div>
             <div class="bg-gray-50 px-5 py-3">
-                <div class="text-sm text-gray-500">Registered accounts</div>
+                <div class="text-sm text-gray-500">Registrovaných účtů</div>
             </div>
         </div>
 
@@ -40,7 +40,7 @@
                     </div>
                     <div class="ml-5 w-0 flex-1">
                         <dl>
-                            <dt class="text-sm font-medium text-gray-500 truncate">Verified Users</dt>
+                            <dt class="text-sm font-medium text-gray-500 truncate">Ověření uživatelé</dt>
                             <dd class="flex items-baseline">
                                 <div class="text-2xl font-semibold text-gray-900">{{ stats.verifiedUsers }}</div>
                             </dd>
@@ -49,7 +49,7 @@
                 </div>
             </div>
             <div class="bg-gray-50 px-5 py-3">
-                <div class="text-sm text-gray-500">Email confirmed</div>
+                <div class="text-sm text-gray-500">Potvrzený email</div>
             </div>
         </div>
 
@@ -63,7 +63,7 @@
                     </div>
                     <div class="ml-5 w-0 flex-1">
                         <dl>
-                            <dt class="text-sm font-medium text-gray-500 truncate">Unverified Users</dt>
+                            <dt class="text-sm font-medium text-gray-500 truncate">Neověření uživatelé</dt>
                             <dd class="flex items-baseline">
                                 <div class="text-2xl font-semibold text-gray-900">{{ stats.unverifiedUsers }}</div>
                             </dd>
@@ -72,7 +72,7 @@
                 </div>
             </div>
             <div class="bg-gray-50 px-5 py-3">
-                <div class="text-sm text-gray-500">Pending verification</div>
+                <div class="text-sm text-gray-500">Čeká na ověření</div>
             </div>
         </div>
 
@@ -86,7 +86,7 @@
                     </div>
                     <div class="ml-5 w-0 flex-1">
                         <dl>
-                            <dt class="text-sm font-medium text-gray-500 truncate">Administrators</dt>
+                            <dt class="text-sm font-medium text-gray-500 truncate">Administrátoři</dt>
                             <dd class="flex items-baseline">
                                 <div class="text-2xl font-semibold text-gray-900">{{ stats.adminUsers }}</div>
                             </dd>
@@ -95,7 +95,7 @@
                 </div>
             </div>
             <div class="bg-gray-50 px-5 py-3">
-                <div class="text-sm text-gray-500">Admin accounts</div>
+                <div class="text-sm text-gray-500">Admin účtů</div>
             </div>
         </div>
     </div>
@@ -108,26 +108,11 @@
                     <svg class="h-6 w-6 text-gray-700 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                     </svg>
-                    <h2 class="text-xl font-semibold text-gray-900">User Management</h2>
+                    <h2 class="text-xl font-semibold text-gray-900">Správa uživatelů</h2>
                 </div>
-                <p class="text-gray-600 mb-4">Manage user accounts, roles, and permissions</p>
+                <p class="text-gray-600 mb-4">Spravujte uživatelské účty, role a oprávnění</p>
                 <div class="flex justify-end">
-                    <a href="{{ path('admin_users_list') }}" class="btn btn-primary">View All Users</a>
-                </div>
-            </div>
-        </div>
-
-        <div class="card">
-            <div class="card-body">
-                <div class="flex items-center mb-4">
-                    <svg class="h-6 w-6 text-gray-700 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                    </svg>
-                    <h2 class="text-xl font-semibold text-gray-900">Go to Site</h2>
-                </div>
-                <p class="text-gray-600 mb-4">View the public-facing website</p>
-                <div class="flex justify-end">
-                    <a href="{{ path('app_home') }}" class="btn btn-ghost">Visit Site</a>
+                    <a href="{{ path('admin_users_list') }}" class="btn btn-primary">Zobrazit všechny uživatele</a>
                 </div>
             </div>
         </div>

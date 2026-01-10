@@ -1,17 +1,17 @@
 {% extends 'user/layout.html.twig' %}
 
-{% block title %}Reset Password{% endblock %}
+{% block title %}Obnovení hesla{% endblock %}
 
 {% block body %}
 <div class="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
     <div class="card w-full max-w-md">
         <div class="card-body">
             <h2 class="text-2xl font-bold text-center text-gray-900 mb-6">
-                Reset Your Password
+                Obnovení hesla
             </h2>
 
             <p class="text-center text-gray-600 mb-6">
-                Enter your email address and we'll send you a link to reset your password.
+                Zadejte svou e-mailovou adresu a my vám zašleme odkaz pro obnovení hesla.
             </p>
 
             {{ form_start(form) }}
@@ -19,7 +19,7 @@
 
                 <div class="form-group mt-2">
                     <button type="submit" class="btn btn-primary w-full">
-                        Send Reset Link
+                        Odeslat odkaz
                     </button>
                 </div>
             {{ form_end(form) }}
@@ -35,7 +35,7 @@
 
             <div class="text-center">
                 <a href="{{ path('app_login') }}" class="link text-sm">
-                    Back to Login
+                    Zpět na přihlášení
                 </a>
             </div>
         </div>
