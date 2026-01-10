@@ -2,18 +2,66 @@
 
 declare(strict_types=1);
 
+use App\Kernel;
+use App\Tests\TestingDatabaseCaching;
+use Symfony\Bundle\FrameworkBundle\Console\Application;
+use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Dotenv\Dotenv;
+use Symfony\Component\ErrorHandler\ErrorHandler;
 
-require dirname(__DIR__).'/vendor/autoload.php';
+require_once __DIR__ . '/../vendor/autoload.php';
 
-// The method_exists check is technically redundant as bootEnv always exists in modern Symfony
-// but keeping it for backwards compatibility in case someone uses an older version
-(new Dotenv())->bootEnv(dirname(__DIR__).'/.env');
+set_exception_handler([new ErrorHandler(), 'handleException']);
 
-// Ensure APP_ENV is set to test (PHPUnit sets this in phpunit.xml via <server name="APP_ENV" value="test" force="true" />)
-$_ENV['APP_ENV'] = $_SERVER['APP_ENV'] ?? $_ENV['APP_ENV'] ?? 'test';
-$_SERVER['APP_ENV'] = $_ENV['APP_ENV'];
+$_ENV['APP_ENV'] = 'test';
+(new Dotenv())->loadEnv(__DIR__ . '/../.env');
 
-if ($_SERVER['APP_DEBUG'] ?? false) {
-    umask(0000);
+$cacheFilePath = __DIR__ . '/.database.cache';
+$currentDatabaseHash = TestingDatabaseCaching::calculateDirectoriesHash(
+    __DIR__ . '/../migrations',
+    __DIR__ . '/DataFixtures',
+);
+
+if (
+    TestingDatabaseCaching::isCacheUpToDate($cacheFilePath, $currentDatabaseHash) === false
+) {
+    bootstrapDatabase($cacheFilePath);
+    file_put_contents($cacheFilePath, $currentDatabaseHash);
+}
+
+
+function bootstrapDatabase(string $cacheFilePath): void
+{
+    $kernel = new Kernel('test', true);
+    $kernel->boot();
+
+    $application = new Application($kernel);
+    $application->setAutoExit(false);
+
+    $application->run(new ArrayInput([
+        'command' => 'doctrine:database:drop',
+        '--if-exists' => 1,
+        '--force' => 1,
+    ]));
+
+    $application->run(new ArrayInput([
+        'command' => 'doctrine:database:create',
+        '--if-not-exists' => 1
+    ]));
+
+    // Faster than running migrations
+    $application->run(new ArrayInput([
+        'command' => 'doctrine:schema:create',
+    ]));
+
+    $result = $application->run(new ArrayInput([
+        'command' => 'doctrine:fixtures:load',
+        '--no-interaction' => 1,
+    ]));
+
+    if ($result !== 0) {
+        throw new LogicException('Command doctrine:fixtures:load failed');
+    }
+
+    $kernel->shutdown();
 }
