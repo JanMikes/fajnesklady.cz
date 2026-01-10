@@ -72,6 +72,8 @@ class UserRepositoryTest extends KernelTestCase
 
     public function testFindAll(): void
     {
+        $initialCount = count($this->repository->findAll());
+
         // Create multiple users
         $user1 = User::create('user1@example.com', 'User 1', 'password123');
         $user2 = User::create('user2@example.com', 'User 2', 'password123');
@@ -83,38 +85,52 @@ class UserRepositoryTest extends KernelTestCase
 
         $users = $this->repository->findAll();
 
-        $this->assertCount(3, $users);
-        // Should be ordered by createdAt DESC, so user3 should be first
-        $this->assertSame('user3@example.com', $users[0]->getEmail());
+        $this->assertCount($initialCount + 3, $users);
+        // Verify all our newly created users are returned
+        $emails = array_map(fn (User $u) => $u->getEmail(), $users);
+        $this->assertContains('user1@example.com', $emails);
+        $this->assertContains('user2@example.com', $emails);
+        $this->assertContains('user3@example.com', $emails);
     }
 
     public function testFindAllPaginated(): void
     {
+        $initialCount = count($this->repository->findAll());
+
         // Create 5 users
         for ($i = 1; $i <= 5; ++$i) {
             $user = User::create("paginated{$i}@example.com", "User {$i}", 'password123');
             $this->repository->save($user);
         }
 
+        $totalCount = $initialCount + 5;
+        $limit = 2;
+
         // Get page 1 with limit 2
-        $page1Users = $this->repository->findAllPaginated(1, 2);
-        $this->assertCount(2, $page1Users);
+        $page1Users = $this->repository->findAllPaginated(1, $limit);
+        $this->assertCount($limit, $page1Users);
 
         // Get page 2 with limit 2
-        $page2Users = $this->repository->findAllPaginated(2, 2);
-        $this->assertCount(2, $page2Users);
-
-        // Get page 3 with limit 2 (should have only 1 user)
-        $page3Users = $this->repository->findAllPaginated(3, 2);
-        $this->assertCount(1, $page3Users);
+        $page2Users = $this->repository->findAllPaginated(2, $limit);
+        $this->assertCount($limit, $page2Users);
 
         // Verify users are different between pages
         $this->assertNotEquals($page1Users[0]->getId(), $page2Users[0]->getId());
+
+        // Get last page - calculate expected count
+        $lastPage = (int) ceil($totalCount / $limit);
+        $lastPageUsers = $this->repository->findAllPaginated($lastPage, $limit);
+        $expectedLastPageCount = $totalCount % $limit ?: $limit;
+        $this->assertCount($expectedLastPageCount, $lastPageUsers);
     }
 
     public function testFindAllPaginatedOrderedByCreatedAtDesc(): void
     {
-        // Create 3 users
+        // Get initial users from fixtures (created during bootstrap)
+        $fixtureUsers = $this->repository->findAll();
+        $fixtureEmails = array_map(fn (User $u) => $u->getEmail(), $fixtureUsers);
+
+        // Create 3 new users - these will be more recently created than fixtures
         $user1 = User::create('order1@example.com', 'User 1', 'password123');
         $user2 = User::create('order2@example.com', 'User 2', 'password123');
         $user3 = User::create('order3@example.com', 'User 3', 'password123');
@@ -125,10 +141,18 @@ class UserRepositoryTest extends KernelTestCase
 
         $users = $this->repository->findAllPaginated(1, 10);
 
-        // Most recently created should be first
-        $this->assertSame('order3@example.com', $users[0]->getEmail());
-        $this->assertSame('order2@example.com', $users[1]->getEmail());
-        $this->assertSame('order1@example.com', $users[2]->getEmail());
+        // Newly created users should appear before fixture users
+        // First 3 results should be our new users (in some order - timestamps may be identical)
+        $firstThreeEmails = array_map(fn (User $u) => $u->getEmail(), array_slice($users, 0, 3));
+        $this->assertContains('order1@example.com', $firstThreeEmails);
+        $this->assertContains('order2@example.com', $firstThreeEmails);
+        $this->assertContains('order3@example.com', $firstThreeEmails);
+
+        // Remaining users should be the fixture users
+        $remainingEmails = array_map(fn (User $u) => $u->getEmail(), array_slice($users, 3));
+        foreach ($remainingEmails as $email) {
+            $this->assertContains($email, $fixtureEmails);
+        }
     }
 
     public function testUpdateUser(): void

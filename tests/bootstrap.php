@@ -9,21 +9,21 @@ use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Dotenv\Dotenv;
 use Symfony\Component\ErrorHandler\ErrorHandler;
 
-require_once __DIR__ . '/../vendor/autoload.php';
+require_once __DIR__.'/../vendor/autoload.php';
 
 set_exception_handler([new ErrorHandler(), 'handleException']);
 
 $_ENV['APP_ENV'] = 'test';
-(new Dotenv())->loadEnv(__DIR__ . '/../.env');
+(new Dotenv())->loadEnv(__DIR__.'/../.env');
 
-$cacheFilePath = __DIR__ . '/.database.cache';
+$cacheFilePath = __DIR__.'/.database.cache';
 $currentDatabaseHash = TestingDatabaseCaching::calculateDirectoriesHash(
-    __DIR__ . '/../migrations',
-    __DIR__ . '/../src/DataFixtures',
+    __DIR__.'/../migrations',
+    __DIR__.'/../src/DataFixtures',
 );
 
 if (
-    TestingDatabaseCaching::isCacheUpToDate($cacheFilePath, $currentDatabaseHash) === false
+    false === TestingDatabaseCaching::isCacheUpToDate($cacheFilePath, $currentDatabaseHash)
 ) {
     bootstrapDatabase($cacheFilePath);
     file_put_contents($cacheFilePath, $currentDatabaseHash);
@@ -46,7 +46,7 @@ function bootstrapDatabase(string $cacheFilePath): void
 
     $application->run(new ArrayInput([
         'command' => 'doctrine:database:create',
-        '--if-not-exists' => 1
+        '--if-not-exists' => 1,
     ]));
 
     // Faster than running migrations
@@ -59,7 +59,7 @@ function bootstrapDatabase(string $cacheFilePath): void
         '--no-interaction' => 1,
     ]));
 
-    if ($result !== 0) {
+    if (0 !== $result) {
         throw new LogicException('Command doctrine:fixtures:load failed');
     }
 
