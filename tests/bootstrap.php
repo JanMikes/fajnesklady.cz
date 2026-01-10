@@ -19,7 +19,7 @@ $_ENV['APP_ENV'] = 'test';
 $cacheFilePath = __DIR__ . '/.database.cache';
 $currentDatabaseHash = TestingDatabaseCaching::calculateDirectoriesHash(
     __DIR__ . '/../migrations',
-    __DIR__ . '/DataFixtures',
+    __DIR__ . '/../src/DataFixtures',
 );
 
 if (
