@@ -8,25 +8,30 @@ use App\Entity\User;
 use App\Enum\UserRole;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Persistence\ObjectManager;
+use Psr\Clock\ClockInterface;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 final class UserFixtures extends Fixture
 {
     public function __construct(
         private UserPasswordHasherInterface $passwordHasher,
+        private ClockInterface $clock,
     ) {
     }
 
     public function load(ObjectManager $manager): void
     {
+        $now = $this->clock->now();
+
         // Regular verified user
         $user = User::create(
             email: 'user@example.com',
             name: 'Regular User',
             password: '', // Will be hashed below
+            now: $now,
         );
-        $user->changePassword($this->passwordHasher->hashPassword($user, 'password'));
-        $user->markAsVerified();
+        $user->changePassword($this->passwordHasher->hashPassword($user, 'password'), $now);
+        $user->markAsVerified($now);
         $manager->persist($user);
 
         // Unverified user
@@ -34,8 +39,9 @@ final class UserFixtures extends Fixture
             email: 'unverified@example.com',
             name: 'Unverified User',
             password: '', // Will be hashed below
+            now: $now,
         );
-        $unverified->changePassword($this->passwordHasher->hashPassword($unverified, 'password'));
+        $unverified->changePassword($this->passwordHasher->hashPassword($unverified, 'password'), $now);
         // Don't mark as verified
         $manager->persist($unverified);
 
@@ -47,9 +53,10 @@ final class UserFixtures extends Fixture
             email: 'admin@example.com',
             name: 'Admin User',
             password: '', // Will be hashed below
+            now: $now,
         );
-        $admin->changePassword($this->passwordHasher->hashPassword($admin, 'password'));
-        $admin->markAsVerified();
+        $admin->changePassword($this->passwordHasher->hashPassword($admin, 'password'), $now);
+        $admin->markAsVerified($now);
         $manager->persist($admin);
         $manager->flush();
 

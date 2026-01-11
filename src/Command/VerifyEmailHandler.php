@@ -6,6 +6,7 @@ namespace App\Command;
 
 use App\Event\EmailVerified;
 use App\Repository\UserRepository;
+use Psr\Clock\ClockInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Messenger\MessageBusInterface;
 use SymfonyCasts\Bundle\VerifyEmail\VerifyEmailHelperInterface;
@@ -17,6 +18,7 @@ final readonly class VerifyEmailHandler
         private UserRepository $userRepository,
         private VerifyEmailHelperInterface $verifyEmailHelper,
         private MessageBusInterface $eventBus,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -35,8 +37,10 @@ final readonly class VerifyEmailHandler
             userEmail: $user->getEmail(),
         );
 
+        $now = $this->clock->now();
+
         // Mark user as verified
-        $user->markAsVerified();
+        $user->markAsVerified($now);
 
         // Save user
         $this->userRepository->save($user);
@@ -44,6 +48,7 @@ final readonly class VerifyEmailHandler
         // Dispatch EmailVerified event
         $this->eventBus->dispatch(new EmailVerified(
             userId: $user->getId(),
+            occurredOn: $now,
         ));
     }
 }

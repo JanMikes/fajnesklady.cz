@@ -10,7 +10,7 @@ final readonly class EmailVerified
 {
     public function __construct(
         public Uuid $userId,
-        public \DateTimeImmutable $occurredOn = new \DateTimeImmutable(),
+        public \DateTimeImmutable $occurredOn,
     ) {
     }
 }

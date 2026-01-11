@@ -50,23 +50,25 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         string $email,
         string $password,
         string $name,
+        \DateTimeImmutable $now,
     ) {
         $this->id = $id;
         $this->email = $email;
         $this->password = $password;
         $this->name = $name;
         $this->roles = [UserRole::USER->value];
-        $this->createdAt = new \DateTimeImmutable();
-        $this->updatedAt = new \DateTimeImmutable();
+        $this->createdAt = $now;
+        $this->updatedAt = $now;
     }
 
-    public static function create(string $email, string $name, string $password): self
+    public static function create(string $email, string $name, string $password, \DateTimeImmutable $now): self
     {
         return new self(
             id: Uuid::v7(),
             email: $email,
             password: $password,
             name: $name,
+            now: $now,
         );
     }
 
@@ -95,10 +97,10 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this->password;
     }
 
-    public function changePassword(string $hashedPassword): void
+    public function changePassword(string $hashedPassword, \DateTimeImmutable $now): void
     {
         $this->password = $hashedPassword;
-        $this->updatedAt = new \DateTimeImmutable();
+        $this->updatedAt = $now;
     }
 
     public function getName(): string
@@ -122,10 +124,10 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this->isVerified;
     }
 
-    public function markAsVerified(): void
+    public function markAsVerified(\DateTimeImmutable $now): void
     {
         $this->isVerified = true;
-        $this->updatedAt = new \DateTimeImmutable();
+        $this->updatedAt = $now;
     }
 
     public function getCreatedAt(): \DateTimeImmutable

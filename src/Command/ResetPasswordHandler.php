@@ -6,6 +6,7 @@ namespace App\Command;
 
 use App\Entity\User;
 use App\Repository\UserRepository;
+use Psr\Clock\ClockInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use SymfonyCasts\Bundle\ResetPassword\Exception\ResetPasswordExceptionInterface;
@@ -18,6 +19,7 @@ final readonly class ResetPasswordHandler
         private ResetPasswordHelperInterface $resetPasswordHelper,
         private UserPasswordHasherInterface $passwordHasher,
         private UserRepository $userRepository,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -37,7 +39,7 @@ final readonly class ResetPasswordHandler
         $hashedPassword = $this->passwordHasher->hashPassword($user, $command->newPassword);
 
         // Update the user's password
-        $user->changePassword($hashedPassword);
+        $user->changePassword($hashedPassword, $this->clock->now());
 
         // Save the user
         $this->userRepository->save($user);

@@ -6,6 +6,7 @@ namespace App\Command;
 
 use App\Event\PasswordResetRequested;
 use App\Repository\UserRepository;
+use Psr\Clock\ClockInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Messenger\MessageBusInterface;
 use SymfonyCasts\Bundle\ResetPassword\Exception\ResetPasswordExceptionInterface;
@@ -18,6 +19,7 @@ final readonly class RequestPasswordResetHandler
         private UserRepository $userRepository,
         private ResetPasswordHelperInterface $resetPasswordHelper,
         private MessageBusInterface $eventBus,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -36,7 +38,7 @@ final readonly class RequestPasswordResetHandler
                         userId: $user->getId(),
                         email: $user->getEmail(),
                         resetToken: $resetToken->getToken(),
-                        occurredOn: new \DateTimeImmutable(),
+                        occurredOn: $this->clock->now(),
                     )
                 );
             } catch (ResetPasswordExceptionInterface) {

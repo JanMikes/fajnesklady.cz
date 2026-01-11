@@ -8,6 +8,7 @@ use App\Entity\User;
 use App\Event\UserRegistered;
 use App\Exception\UserAlreadyExistsException;
 use App\Repository\UserRepository;
+use Psr\Clock\ClockInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
@@ -19,6 +20,7 @@ final readonly class RegisterUserHandler
         private UserRepository $userRepository,
         private UserPasswordHasherInterface $passwordHasher,
         private MessageBusInterface $eventBus,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -30,16 +32,19 @@ final readonly class RegisterUserHandler
             throw UserAlreadyExistsException::withEmail($command->email);
         }
 
+        $now = $this->clock->now();
+
         // Create new User entity
         $user = User::create(
             email: $command->email,
             name: $command->name,
             password: '', // Will be hashed below
+            now: $now,
         );
 
         // Hash password
         $hashedPassword = $this->passwordHasher->hashPassword($user, $command->password);
-        $user->changePassword($hashedPassword);
+        $user->changePassword($hashedPassword, $now);
 
         // Save user
         $this->userRepository->save($user);
@@ -49,6 +54,7 @@ final readonly class RegisterUserHandler
             userId: $user->getId(),
             email: $user->getEmail(),
             name: $user->getName(),
+            occurredOn: $now,
         ));
     }
 }

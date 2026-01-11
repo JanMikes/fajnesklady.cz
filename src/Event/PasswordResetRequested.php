@@ -12,7 +12,7 @@ final readonly class PasswordResetRequested
         public Uuid $userId,
         public string $email,
         public string $resetToken,
-        public \DateTimeImmutable $occurredOn = new \DateTimeImmutable(),
+        public \DateTimeImmutable $occurredOn,
     ) {
     }
 }

@@ -36,7 +36,7 @@ final class UserRepository
      */
     public function findAll(): array
     {
-        return $this->entityManager->getRepository(User::class)->findBy([], ['createdAt' => 'DESC']);
+        return $this->entityManager->getRepository(User::class)->findBy([], ['createdAt' => 'DESC', 'id' => 'DESC']);
     }
 
     /**
@@ -50,6 +50,7 @@ final class UserRepository
             ->select('u')
             ->from(User::class, 'u')
             ->orderBy('u.createdAt', 'DESC')
+            ->addOrderBy('u.id', 'DESC')
             ->setFirstResult($offset)
             ->setMaxResults($limit)
             ->getQuery()

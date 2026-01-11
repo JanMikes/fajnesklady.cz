@@ -12,7 +12,7 @@ final readonly class UserRegistered
         public Uuid $userId,
         public string $email,
         public string $name,
-        public \DateTimeImmutable $occurredOn = new \DateTimeImmutable(),
+        public \DateTimeImmutable $occurredOn,
     ) {
     }
 }

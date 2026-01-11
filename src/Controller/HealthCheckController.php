@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use Doctrine\DBAL\Connection;
+use Psr\Clock\ClockInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Attribute\Route;
 
@@ -13,6 +14,7 @@ final readonly class HealthCheckController
 {
     public function __construct(
         private Connection $connection,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -20,7 +22,7 @@ final readonly class HealthCheckController
     {
         $checks = [
             'status' => 'healthy',
-            'timestamp' => (new \DateTimeImmutable())->format(\DateTimeImmutable::ATOM),
+            'timestamp' => $this->clock->now()->format(\DateTimeInterface::ATOM),
             'checks' => [],
         ];
 
