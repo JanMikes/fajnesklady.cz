@@ -1,0 +1,48 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Command;
+
+use App\Entity\User;
+use App\Repository\UserRepository;
+use Symfony\Component\Messenger\Attribute\AsMessageHandler;
+use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
+use SymfonyCasts\Bundle\ResetPassword\Exception\ResetPasswordExceptionInterface;
+use SymfonyCasts\Bundle\ResetPassword\ResetPasswordHelperInterface;
+
+#[AsMessageHandler]
+final readonly class ResetPasswordHandler
+{
+    public function __construct(
+        private ResetPasswordHelperInterface $resetPasswordHelper,
+        private UserPasswordHasherInterface $passwordHasher,
+        private UserRepository $userRepository,
+    ) {
+    }
+
+    /**
+     * @throws ResetPasswordExceptionInterface
+     */
+    public function __invoke(ResetPasswordCommand $command): void
+    {
+        // Validate the token and get the user
+        $user = $this->resetPasswordHelper->validateTokenAndFetchUser($command->token);
+
+        if (!$user instanceof User) {
+            throw new \DomainException('Invalid user type');
+        }
+
+        // Hash the new password
+        $hashedPassword = $this->passwordHasher->hashPassword($user, $command->newPassword);
+
+        // Update the user's password
+        $user->changePassword($hashedPassword);
+
+        // Save the user
+        $this->userRepository->save($user);
+
+        // Remove the reset password request
+        $this->resetPasswordHelper->removeResetRequest($command->token);
+    }
+}

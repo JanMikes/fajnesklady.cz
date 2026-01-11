@@ -12,7 +12,7 @@ return App::config([
         'providers' => [
             'app_user_provider' => [
                 'entity' => [
-                    'class' => 'App\\User\\Entity\\User',
+                    'class' => 'App\\Entity\\User',
                     'property' => 'email',
                 ],
             ],

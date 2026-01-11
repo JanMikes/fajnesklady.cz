@@ -99,32 +99,24 @@ This application strictly separates write operations (Commands) from read operat
 - Commands, queries, and events are handled synchronously
 - Failed messages are stored in `failed` transport (Doctrine-based)
 
-### Module Structure
-The codebase is organized by business modules (User, Admin, Common):
+### Directory Structure
+The codebase uses a flat structure organized by technical layer:
 
 ```
 src/
-├── User/                      # User management bounded context
-│   ├── Command/              # Write operations (Commands + Handlers)
-│   ├── Query/                # Read operations (not yet implemented)
-│   ├── Event/                # Domain events + Event handlers
-│   ├── Entity/               # Domain entities (User, ResetPasswordRequest)
-│   ├── Repository/           # Data access (interface + Doctrine implementation)
-│   ├── Controller/           # HTTP entry points
-│   ├── Form/                 # Symfony forms
-│   ├── Security/             # Authentication, login subscribers
-│   ├── Enum/                 # Value objects (UserRole)
-│   └── Exception/            # Domain-specific exceptions
-├── Admin/                     # Admin panel bounded context
-│   ├── Command/              # Admin write operations
-│   ├── Query/                # Admin read operations (GetDashboardStats)
-│   ├── Controller/           # Admin HTTP controllers
-│   └── Form/                 # Admin forms
-└── Common/                    # Shared code across modules
-    ├── Email/                # Email service
-    ├── ValueObject/          # Shared value objects
-    ├── Controller/           # Shared controllers (HealthCheck)
-    └── EventSubscriber/      # Global subscribers (SecurityHeaders)
+├── Command/              # Write operations (Commands + Handlers)
+├── Controller/           # HTTP entry points
+│   └── Admin/           # Admin controllers (routes prefixed with /admin)
+├── DataFixtures/         # Development fixtures
+├── Entity/               # Domain entities (User, ResetPasswordRequest)
+├── Enum/                 # Value objects (UserRole)
+├── Event/                # Domain events + Event handlers
+├── Exception/            # Domain-specific exceptions
+├── Form/                 # Symfony forms
+├── Query/                # Read operations (Queries + Handlers + Results)
+├── Repository/           # Data access (Doctrine implementations)
+├── Security/             # Authentication, login subscribers
+└── Kernel.php
 ```
 
 ### Domain Entity Patterns
@@ -250,7 +242,7 @@ final readonly class UserRegistered { ... }
 Use `UserRole` enum instead of string literals:
 ```php
 // ✓ CORRECT
-use App\User\Enum\UserRole;
+use App\Enum\UserRole;
 if (in_array(UserRole::ADMIN->value, $user->getRoles())) { ... }
 
 // ✗ WRONG

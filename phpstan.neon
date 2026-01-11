@@ -15,7 +15,7 @@ parameters:
         # Test assertions - these are intentional and safe
         - '#Call to method PHPUnit\\Framework\\Assert::assertInstanceOf\(\) with .* will always evaluate to true#'
         # Properties written/read by Doctrine or Symfony internals
-        - '#Property App\\Admin\\Controller\\DashboardController::\$queryBus is never read, only written#'
+        - '#Property App\\Controller\\Admin\\DashboardController::\$queryBus is never read, only written#'
         # Form data is validated by Symfony Form component before this point
         - '#Offset .* might not exist on array<string, mixed>\|null#'
         # These are strict comparisons that are safe
@@ -23,6 +23,4 @@ parameters:
         # Symfony Session getFlashBag() exists at runtime
         - '#Call to an undefined method Symfony\\Component\\HttpFoundation\\Session\\SessionInterface::getFlashBag\(\)#'
         # Third-party bundle type issues
-        - '#Parameter \#1 \$user of class App\\User\\Entity\\ResetPasswordRequest constructor expects App\\User\\Entity\\User, object given#'
-        # Form generic types
-        - '#Class App\\Admin\\Form\\ChangeUserRoleType extends generic class.*but does not specify its types#'
+        - '#Parameter \#1 \$user of class App\\Entity\\ResetPasswordRequest constructor expects App\\Entity\\User, object given#'
