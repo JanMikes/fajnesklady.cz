@@ -142,8 +142,7 @@ $user = new User();
 ```php
 // ✓ CORRECT
 $user->changePassword($hashedPassword);
-$user->verifyEmail();
-$user->recordFailedLoginAttempt();
+$user->markAsVerified();
 
 // ✗ WRONG
 $user->setPassword($password);  // This method doesn't exist
@@ -274,7 +273,6 @@ Available exceptions:
 - `UserAlreadyExistsException`
 - `UserNotFoundException`
 - `UnverifiedUserException`
-- `AccountLockedException`
 
 ### Validation
 Commands are validated using Symfony Validator constraints before handler execution. Validation happens automatically via `validation` middleware on all buses.
@@ -283,12 +281,6 @@ Commands are validated using Symfony Validator constraints before handler execut
 All entity IDs use Symfony UID (UUID v7) for better database performance and sortability.
 
 ## Security Features
-
-### Account Lockout
-Users are locked for 15 minutes after 5 failed login attempts:
-- Attempts tracked per user account (not just IP)
-- Auto-expiration after lockout period
-- Reset on successful login
 
 ### Password Reset Flow
 1. User requests reset → Token generated (1 hour expiry)

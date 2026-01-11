@@ -39,12 +39,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(name: 'is_verified')]
     private bool $isVerified = false;
 
-    #[ORM\Column(name: 'failed_login_attempts')]
-    private int $failedLoginAttempts = 0;
-
-    #[ORM\Column(name: 'locked_until', nullable: true)]
-    private ?\DateTimeImmutable $lockedUntil = null;
-
     #[ORM\Column(name: 'created_at')]
     private \DateTimeImmutable $createdAt;
 
@@ -142,52 +136,5 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function getUpdatedAt(): \DateTimeImmutable
     {
         return $this->updatedAt;
-    }
-
-    public function recordFailedLoginAttempt(): void
-    {
-        ++$this->failedLoginAttempts;
-        $this->updatedAt = new \DateTimeImmutable();
-
-        // Lock account after 5 failed attempts for 15 minutes
-        if ($this->failedLoginAttempts >= 5) {
-            $this->lockedUntil = new \DateTimeImmutable('+15 minutes');
-        }
-    }
-
-    public function resetFailedLoginAttempts(): void
-    {
-        $this->failedLoginAttempts = 0;
-        $this->lockedUntil = null;
-        $this->updatedAt = new \DateTimeImmutable();
-    }
-
-    public function isLocked(): bool
-    {
-        if (null === $this->lockedUntil) {
-            return false;
-        }
-
-        return $this->lockedUntil >= new \DateTimeImmutable();
-    }
-
-    /**
-     * Check if the lock has expired (was locked but time has passed).
-     * Call resetFailedLoginAttempts() separately if you want to clear the expired lock.
-     */
-    public function isLockExpired(): bool
-    {
-        return null !== $this->lockedUntil
-            && $this->lockedUntil < new \DateTimeImmutable();
-    }
-
-    public function getFailedLoginAttempts(): int
-    {
-        return $this->failedLoginAttempts;
-    }
-
-    public function getLockedUntil(): ?\DateTimeImmutable
-    {
-        return $this->lockedUntil;
     }
 }

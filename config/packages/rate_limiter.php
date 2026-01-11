@@ -7,12 +7,6 @@ namespace Symfony\Component\DependencyInjection\Loader\Configurator;
 return App::config([
     'framework' => [
         'rate_limiter' => [
-            // Login rate limiter - 5 attempts per 15 minutes per IP
-            'login' => [
-                'policy' => 'sliding_window',
-                'limit' => 5,
-                'interval' => '15 minutes',
-            ],
             // Registration rate limiter - 3 attempts per hour per IP
             'registration' => [
                 'policy' => 'sliding_window',
