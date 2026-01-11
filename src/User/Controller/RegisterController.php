@@ -5,29 +5,27 @@ declare(strict_types=1);
 namespace App\User\Controller;
 
 use App\User\Command\RegisterUserCommand;
-use App\User\Command\VerifyEmailCommand;
 use App\User\Form\RegistrationType;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\Uid\Uuid;
-use SymfonyCasts\Bundle\VerifyEmail\Exception\VerifyEmailExceptionInterface;
 
-final class RegistrationController extends AbstractController
+#[Route('/register', name: 'app_register', methods: ['GET', 'POST'])]
+final class RegisterController extends AbstractController
 {
     public function __construct(
         private readonly MessageBusInterface $commandBus,
-        #[\Symfony\Component\DependencyInjection\Attribute\Autowire(service: 'limiter.registration')]
+        #[Autowire(service: 'limiter.registration')]
         private readonly RateLimiterFactoryInterface $registrationLimiter,
     ) {
     }
 
-    #[Route('/register', name: 'app_register', methods: ['GET', 'POST'])]
-    public function register(Request $request): Response
+    public function __invoke(Request $request): Response
     {
         $form = $this->createForm(RegistrationType::class);
         $form->handleRequest($request);
@@ -64,46 +62,5 @@ final class RegistrationController extends AbstractController
         return $this->render('user/register.html.twig', [
             'registrationForm' => $form,
         ]);
-    }
-
-    #[Route('/verify-email', name: 'app_verify_email', methods: ['GET'])]
-    public function verify(Request $request): Response
-    {
-        $userId = $request->query->get('id');
-        $token = $request->query->get('token');
-
-        if (!$userId || !$token) {
-            $this->addFlash('error', 'Invalid verification link.');
-
-            return $this->redirectToRoute('app_login');
-        }
-
-        try {
-            // Create and dispatch VerifyEmailCommand
-            $command = new VerifyEmailCommand(
-                userId: Uuid::fromString($userId),
-                signedUrl: $request->getUri(),
-            );
-
-            $this->commandBus->dispatch($command);
-
-            $this->addFlash('success', 'Your email has been verified! You can now log in.');
-
-            return $this->redirectToRoute('app_login');
-        } catch (VerifyEmailExceptionInterface $e) {
-            $this->addFlash('error', $e->getReason());
-
-            return $this->redirectToRoute('app_register');
-        } catch (\Exception $e) {
-            $this->addFlash('error', 'An error occurred during email verification. Please try again.');
-
-            return $this->redirectToRoute('app_register');
-        }
-    }
-
-    #[Route('/verify-email/confirmation', name: 'app_verify_email_confirmation', methods: ['GET'])]
-    public function confirmation(): Response
-    {
-        return $this->render('user/verify_email_confirmation.html.twig');
     }
 }

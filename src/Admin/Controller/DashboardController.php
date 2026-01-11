@@ -12,16 +12,16 @@ use Symfony\Component\Messenger\Stamp\HandledStamp;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
+#[Route('/dashboard', name: 'admin_dashboard')]
 #[IsGranted('ROLE_ADMIN')]
 final class DashboardController extends AbstractController
 {
     public function __construct(
-        private MessageBusInterface $queryBus,
+        private readonly MessageBusInterface $queryBus,
     ) {
     }
 
-    #[Route('/dashboard', name: 'admin_dashboard')]
-    public function index(): Response
+    public function __invoke(): Response
     {
         $envelope = $this->queryBus->dispatch(new GetDashboardStatsQuery());
         $stats = $envelope->last(HandledStamp::class)?->getResult();

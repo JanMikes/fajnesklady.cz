@@ -9,12 +9,12 @@ A modern warehouse management application built with Symfony 7.2 LTS, featuring 
 - **Password Reset**: Secure password reset flow with email verification
 - **Admin Dashboard**: User management interface with role assignment
 - **Clean Architecture**: CQRS pattern with Symfony Messenger
-- **Modern Stack**: Symfony 7.2 LTS, PHP 8.4, PostgreSQL 17, FrankenPHP
+- **Modern Stack**: Symfony 8, PHP 8.5, PostgreSQL 17, FrankenPHP (Worker mode)
 
 ## Technology Stack
 
-- **Framework**: Symfony 7.2 LTS
-- **PHP**: 8.4
+- **Framework**: Symfony 8
+- **PHP**: 8.5
 - **Web Server**: FrankenPHP (with worker mode)
 - **Database**: PostgreSQL 17
 - **Frontend**: Tailwind CSS + DaisyUI (no JS frameworks)
@@ -53,7 +53,7 @@ This will start:
 Dependencies are automatically installed via the Docker entrypoint. If needed, you can manually run:
 
 ```bash
-docker compose exec php composer install
+docker compose exec web composer install
 ```
 
 ### 4. Run Migrations
@@ -61,13 +61,13 @@ docker compose exec php composer install
 Migrations are automatically run via the Docker entrypoint. If needed, you can manually run:
 
 ```bash
-docker compose exec php bin/console doctrine:migrations:migrate --no-interaction
+docker compose exec web bin/console doctrine:migrations:migrate --no-interaction
 ```
 
 ### 5. Load Fixtures (Development Only)
 
 ```bash
-docker compose exec php bin/console doctrine:fixtures:load --no-interaction
+docker compose exec web bin/console doctrine:fixtures:load --no-interaction
 ```
 
 ## Access Points
@@ -92,62 +92,62 @@ docker compose exec php bin/console doctrine:fixtures:load --no-interaction
 
 ```bash
 # Run all unit tests
-docker compose exec php composer test:unit
+docker compose exec web composer test:unit
 
 # Run all tests
-docker compose exec php composer test
+docker compose exec web composer test
 
 # Run with coverage
-docker compose exec php composer test:coverage
+docker compose exec web composer test:coverage
 ```
 
 ### Code Quality
 
 ```bash
 # Check code style
-docker compose exec php composer cs:check
+docker compose exec web composer cs:check
 
 # Fix code style
-docker compose exec php composer cs:fix
+docker compose exec web composer cs:fix
 
 # Run PHPStan (level 8)
-docker compose exec php composer phpstan
+docker compose exec web composer phpstan
 
 # Run all quality checks
-docker compose exec php composer quality
+docker compose exec web composer quality
 ```
 
 ### Database Commands
 
 ```bash
 # Create migration
-docker compose exec php bin/console make:migration
+docker compose exec web bin/console make:migration
 
 # Run migrations
-docker compose exec php bin/console doctrine:migrations:migrate
+docker compose exec web bin/console doctrine:migrations:migrate
 
 # Load fixtures
-docker compose exec php bin/console doctrine:fixtures:load
+docker compose exec web bin/console doctrine:fixtures:load
 
 # Reset database
-docker compose exec php composer db:reset
+docker compose exec web composer db:reset
 ```
 
 ### Tailwind CSS
 
 ```bash
 # Build Tailwind CSS
-docker compose exec php composer tailwind:build
+docker compose exec web composer tailwind:build
 
 # Watch for changes
-docker compose exec php composer tailwind:watch
+docker compose exec web composer tailwind:watch
 ```
 
 ### Accessing the Container
 
 ```bash
 # PHP container shell
-docker compose exec php bash
+docker compose exec web bash
 
 # PostgreSQL shell
 docker compose exec postgres psql -U app -d app
@@ -257,21 +257,21 @@ docker compose up -d
 
 ```bash
 # Reset the database
-docker compose exec php composer db:reset
+docker compose exec web composer db:reset
 ```
 
 ### Cache issues
 
 ```bash
 # Clear cache
-docker compose exec php bin/console cache:clear
+docker compose exec web bin/console cache:clear
 ```
 
 ### Permission issues
 
 ```bash
 # Fix var/ directory permissions
-docker compose exec php chmod -R 777 var/
+docker compose exec web chmod -R 777 var/
 ```
 
 ## Contributing

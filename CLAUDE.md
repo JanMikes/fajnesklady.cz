@@ -8,67 +8,67 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 All commands must be run inside the Docker container:
 ```bash
 # Execute commands inside PHP container
-docker compose exec php <command>
+docker compose exec web <command>
 
 # Access shell
-docker compose exec php bash
+docker compose exec web bash
 ```
 
 ### Testing
 ```bash
 # Run unit tests only
-docker compose exec php composer test:unit
+docker compose exec web composer test:unit
 
 # Run all tests
-docker compose exec php composer test
+docker compose exec web composer test
 
 # Generate coverage report (outputs to var/coverage)
-docker compose exec php composer test:coverage
+docker compose exec web composer test:coverage
 ```
 
 ### Code Quality
 ```bash
 # Check code style (PSR-12 + Symfony standards)
-docker compose exec php composer cs:check
+docker compose exec web composer cs:check
 
 # Auto-fix code style issues
-docker compose exec php composer cs:fix
+docker compose exec web composer cs:fix
 
 # Run PHPStan level 8 static analysis
-docker compose exec php composer phpstan
+docker compose exec web composer phpstan
 
 # Run all quality checks (cs:check + phpstan + test:unit)
-docker compose exec php composer quality
+docker compose exec web composer quality
 ```
 
 ### Database
 ```bash
 # Create a new migration
-docker compose exec php bin/console make:migration
+docker compose exec web bin/console make:migration
 
 # Run migrations
-docker compose exec php bin/console doctrine:migrations:migrate
+docker compose exec web bin/console doctrine:migrations:migrate
 
 # Load fixtures (development only)
-docker compose exec php bin/console doctrine:fixtures:load
+docker compose exec web bin/console doctrine:fixtures:load
 
 # Complete database reset (drop, create, migrate, load fixtures)
-docker compose exec php composer db:reset
+docker compose exec web composer db:reset
 
 # Validate schema consistency
-docker compose exec php bin/console doctrine:schema:validate
+docker compose exec web bin/console doctrine:schema:validate
 ```
 
 ### Frontend Assets
 ```bash
 # Build Tailwind CSS (production)
-docker compose exec php composer tailwind:build
+docker compose exec web composer tailwind:build
 
 # Watch Tailwind changes (development)
-docker compose exec php composer tailwind:watch
+docker compose exec web composer tailwind:watch
 
 # Compile asset map
-docker compose exec php composer assets:compile
+docker compose exec web composer assets:compile
 ```
 
 ## Architecture Overview
@@ -207,6 +207,36 @@ Events are readonly DTOs with `occurredOn` timestamp. Event handlers must be ide
 
 ## Important Conventions
 
+### Single Action Controllers
+**All controllers MUST be single-action (invokable)** using the `__invoke()` method:
+
+```php
+// ✓ CORRECT - Single action controller
+#[Route('/login', name: 'app_login')]
+final class LoginController extends AbstractController
+{
+    public function __invoke(AuthenticationUtils $authenticationUtils): Response
+    {
+        // Controller logic here
+    }
+}
+
+// ✗ WRONG - Multiple actions in one controller
+final class AuthController extends AbstractController
+{
+    public function login(): Response { ... }
+    public function logout(): Response { ... }
+    public function register(): Response { ... }
+}
+```
+
+Key points:
+- Route defined at class level (not method level)
+- One controller = one action = one route
+- Use `final` for controllers extending `AbstractController`
+- Use `final readonly` for standalone controllers without `AbstractController`
+- Controller names should reflect their action (e.g., `LoginController`, `RegisterController`, `UserListController`)
+
 ### Strict Types
 All PHP files MUST declare `declare(strict_types=1);` at the top.
 
@@ -310,27 +340,9 @@ Will test repositories, database operations, and handler integration.
 ### Before Committing
 Always run quality checks:
 ```bash
-docker compose exec php composer quality
+docker compose exec web composer quality
 ```
 This runs: cs:check + phpstan + test:unit
-
-## Database Schema
-
-### Users Table
-Key fields:
-- `id` (UUID) - Primary key
-- `email` (unique) - User email
-- `password` - Bcrypt hashed
-- `name` - User display name
-- `roles` (JSON) - Array of roles
-- `is_verified` (indexed) - Email verification status
-- `failed_login_attempts` - Failed login counter
-- `locked_until` - Account lock expiration
-- `created_at` (indexed) - Registration timestamp
-
-### Performance Indexes
-- `idx_users_is_verified` - Fast filtering by verification status
-- `idx_users_created_at` - Efficient sorting by registration date
 
 ## Fixtures
 
@@ -340,16 +352,6 @@ Development fixtures create three test users:
 - Unverified: `unverified@example.com` / `password`
 
 **NEVER use these in production.**
-
-## Health Check
-
-`/-/health-check/liveness` endpoint returns JSON with:
-- Database connectivity status
-- PHP version
-- Debug mode status
-- HTTP 200 (healthy) or 503 (unhealthy)
-
-Use for Docker health checks and monitoring.
 
 ## Common Pitfalls
 
@@ -370,16 +372,6 @@ $user = $userRepository->findOneBy(['email' => $email]);
 
 // ✓ CORRECT - Type-safe domain method
 $user = $userRepository->findByEmail($email);
-```
-
-### Don't Hash Passwords Yourself
-```php
-// ✗ WRONG - Manual hashing
-$user->changePassword(password_hash($password, PASSWORD_BCRYPT));
-
-// ✓ CORRECT - Use Symfony's UserPasswordHasher
-$hashedPassword = $this->passwordHasher->hashPassword($user, $password);
-$user->changePassword($hashedPassword);
 ```
 
 ### Don't Skip Transactions

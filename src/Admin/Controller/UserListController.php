@@ -10,19 +10,17 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
-use Symfony\Component\Uid\Uuid;
 
+#[Route('/users', name: 'admin_users_list')]
 #[IsGranted('ROLE_ADMIN')]
-#[Route('/users', name: 'admin_users_')]
-final class UserManagementController extends AbstractController
+final class UserListController extends AbstractController
 {
     public function __construct(
-        private UserRepository $userRepository,
+        private readonly UserRepository $userRepository,
     ) {
     }
 
-    #[Route('', name: 'list')]
-    public function list(Request $request): Response
+    public function __invoke(Request $request): Response
     {
         $page = max(1, (int) $request->query->get('page', '1'));
         $limit = 20;
@@ -36,20 +34,6 @@ final class UserManagementController extends AbstractController
             'currentPage' => $page,
             'totalPages' => $totalPages,
             'totalUsers' => $totalUsers,
-        ]);
-    }
-
-    #[Route('/{id}', name: 'view')]
-    public function view(string $id): Response
-    {
-        $user = $this->userRepository->findById(Uuid::fromString($id));
-
-        if (null === $user) {
-            throw $this->createNotFoundException('User not found');
-        }
-
-        return $this->render('admin/user/view.html.twig', [
-            'user' => $user,
         ]);
     }
 }
