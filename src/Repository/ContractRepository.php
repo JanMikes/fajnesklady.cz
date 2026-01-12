@@ -141,4 +141,43 @@ final class ContractRepository
             ->getQuery()
             ->getSingleScalarResult();
     }
+
+    /**
+     * Find contracts that overlap with a given period.
+     * Only considers active contracts (not terminated and not past end date).
+     *
+     * @return Contract[]
+     */
+    public function findOverlappingByStorage(
+        Storage $storage,
+        \DateTimeImmutable $startDate,
+        ?\DateTimeImmutable $endDate,
+        ?Contract $excludeContract = null,
+    ): array {
+        $qb = $this->entityManager->createQueryBuilder()
+            ->select('c')
+            ->from(Contract::class, 'c')
+            ->where('c.storage = :storage')
+            ->andWhere('c.terminatedAt IS NULL')
+            ->setParameter('storage', $storage);
+
+        if (null !== $excludeContract) {
+            $qb->andWhere('c.id != :excludeId')
+                ->setParameter('excludeId', $excludeContract->id);
+        }
+
+        if (null === $endDate) {
+            // Requested period is indefinite - any active contract overlaps
+            $qb->andWhere('c.endDate IS NULL OR c.endDate >= :startDate')
+                ->setParameter('startDate', $startDate);
+        } else {
+            // Standard overlap: startA <= endB AND startB <= endA
+            $qb->andWhere('c.startDate <= :endDate')
+                ->andWhere('c.endDate IS NULL OR c.endDate >= :startDate')
+                ->setParameter('startDate', $startDate)
+                ->setParameter('endDate', $endDate);
+        }
+
+        return $qb->getQuery()->getResult();
+    }
 }

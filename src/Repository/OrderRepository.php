@@ -116,4 +116,48 @@ final class OrderRepository
             ->getQuery()
             ->getSingleScalarResult();
     }
+
+    /**
+     * Find orders that overlap with a given period and block the storage.
+     * Only considers orders in reserving states (reserved, awaiting_payment, paid).
+     *
+     * @return Order[]
+     */
+    public function findOverlappingByStorage(
+        Storage $storage,
+        \DateTimeImmutable $startDate,
+        ?\DateTimeImmutable $endDate,
+        ?Order $excludeOrder = null,
+    ): array {
+        $qb = $this->entityManager->createQueryBuilder()
+            ->select('o')
+            ->from(Order::class, 'o')
+            ->where('o.storage = :storage')
+            ->andWhere('o.status IN (:statuses)')
+            ->setParameter('storage', $storage)
+            ->setParameter('statuses', [
+                OrderStatus::RESERVED,
+                OrderStatus::AWAITING_PAYMENT,
+                OrderStatus::PAID,
+            ]);
+
+        if (null !== $excludeOrder) {
+            $qb->andWhere('o.id != :excludeId')
+                ->setParameter('excludeId', $excludeOrder->id);
+        }
+
+        if (null === $endDate) {
+            // Requested period is indefinite - any order overlaps if it starts before or ends after requested start
+            $qb->andWhere('o.endDate IS NULL OR o.endDate >= :startDate')
+                ->setParameter('startDate', $startDate);
+        } else {
+            // Standard overlap: startA <= endB AND startB <= endA
+            $qb->andWhere('o.startDate <= :endDate')
+                ->andWhere('o.endDate IS NULL OR o.endDate >= :startDate')
+                ->setParameter('startDate', $startDate)
+                ->setParameter('endDate', $endDate);
+        }
+
+        return $qb->getQuery()->getResult();
+    }
 }
