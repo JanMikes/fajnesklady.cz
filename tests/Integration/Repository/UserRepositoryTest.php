@@ -21,7 +21,8 @@ class UserRepositoryTest extends KernelTestCase
 
     public function testSaveUser(): void
     {
-        $user = User::create('test@example.com', 'Test User', 'password123');
+        $now = new \DateTimeImmutable();
+        $user = User::create('test@example.com', 'Test User', 'password123', $now);
 
         $this->repository->save($user);
 
@@ -33,7 +34,8 @@ class UserRepositoryTest extends KernelTestCase
 
     public function testFindById(): void
     {
-        $user = User::create('findbyid@example.com', 'Test User', 'password123');
+        $now = new \DateTimeImmutable();
+        $user = User::create('findbyid@example.com', 'Test User', 'password123', $now);
         $this->repository->save($user);
 
         $foundUser = $this->repository->findById($user->getId());
@@ -53,8 +55,9 @@ class UserRepositoryTest extends KernelTestCase
 
     public function testFindByEmail(): void
     {
+        $now = new \DateTimeImmutable();
         $email = 'findbyemail@example.com';
-        $user = User::create($email, 'Test User', 'password123');
+        $user = User::create($email, 'Test User', 'password123', $now);
         $this->repository->save($user);
 
         $foundUser = $this->repository->findByEmail($email);
@@ -72,12 +75,13 @@ class UserRepositoryTest extends KernelTestCase
 
     public function testFindAll(): void
     {
+        $now = new \DateTimeImmutable();
         $initialCount = count($this->repository->findAll());
 
         // Create multiple users
-        $user1 = User::create('user1@example.com', 'User 1', 'password123');
-        $user2 = User::create('user2@example.com', 'User 2', 'password123');
-        $user3 = User::create('user3@example.com', 'User 3', 'password123');
+        $user1 = User::create('user1@example.com', 'User 1', 'password123', $now);
+        $user2 = User::create('user2@example.com', 'User 2', 'password123', $now);
+        $user3 = User::create('user3@example.com', 'User 3', 'password123', $now);
 
         $this->repository->save($user1);
         $this->repository->save($user2);
@@ -95,11 +99,12 @@ class UserRepositoryTest extends KernelTestCase
 
     public function testFindAllPaginated(): void
     {
+        $now = new \DateTimeImmutable();
         $initialCount = count($this->repository->findAll());
 
         // Create 5 users
         for ($i = 1; $i <= 5; ++$i) {
-            $user = User::create("paginated{$i}@example.com", "User {$i}", 'password123');
+            $user = User::create("paginated{$i}@example.com", "User {$i}", 'password123', $now);
             $this->repository->save($user);
         }
 
@@ -126,14 +131,15 @@ class UserRepositoryTest extends KernelTestCase
 
     public function testFindAllPaginatedOrderedByCreatedAtDesc(): void
     {
+        $now = new \DateTimeImmutable();
         // Get initial users from fixtures (created during bootstrap)
         $fixtureUsers = $this->repository->findAll();
         $fixtureEmails = array_map(fn (User $u) => $u->getEmail(), $fixtureUsers);
 
         // Create 3 new users - these will be more recently created than fixtures
-        $user1 = User::create('order1@example.com', 'User 1', 'password123');
-        $user2 = User::create('order2@example.com', 'User 2', 'password123');
-        $user3 = User::create('order3@example.com', 'User 3', 'password123');
+        $user1 = User::create('order1@example.com', 'User 1', 'password123', $now);
+        $user2 = User::create('order2@example.com', 'User 2', 'password123', $now);
+        $user3 = User::create('order3@example.com', 'User 3', 'password123', $now);
 
         $this->repository->save($user1);
         $this->repository->save($user2);
@@ -157,11 +163,12 @@ class UserRepositoryTest extends KernelTestCase
 
     public function testUpdateUser(): void
     {
-        $user = User::create('update@example.com', 'Test User', 'password123');
+        $now = new \DateTimeImmutable();
+        $user = User::create('update@example.com', 'Test User', 'password123', $now);
         $this->repository->save($user);
 
         // Update user
-        $user->markAsVerified();
+        $user->markAsVerified($now);
         $this->repository->save($user);
 
         // Fetch again and verify update
