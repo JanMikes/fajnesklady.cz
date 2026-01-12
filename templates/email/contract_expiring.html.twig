@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upozornění na blížící se konec smlouvy</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #f59e0b;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 5px 5px 0 0;
+        }
+        .header-urgent {
+            background-color: #ef4444;
+        }
+        .content {
+            background-color: #f9f9f9;
+            padding: 30px;
+            border: 1px solid #ddd;
+            border-top: none;
+        }
+        .button {
+            display: inline-block;
+            background-color: #570df8;
+            color: white !important;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        .button-extend {
+            background-color: #22c55e;
+        }
+        .footer {
+            text-align: center;
+            padding: 20px;
+            font-size: 12px;
+            color: #666;
+        }
+        .contract-details {
+            background-color: white;
+            border: 1px solid #ddd;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .contract-details table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .contract-details td {
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .contract-details td:first-child {
+            font-weight: bold;
+            color: #666;
+            width: 40%;
+        }
+        .contract-details tr:last-child td {
+            border-bottom: none;
+        }
+        .warning-message {
+            background-color: #fef3c7;
+            border: 1px solid #f59e0b;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .urgent-message {
+            background-color: #fee2e2;
+            border: 1px solid #ef4444;
+        }
+        .warning-message strong {
+            color: #92400e;
+        }
+        .urgent-message strong {
+            color: #991b1b;
+        }
+        .countdown {
+            font-size: 48px;
+            font-weight: bold;
+            color: #f59e0b;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .countdown-urgent {
+            color: #ef4444;
+        }
+    </style>
+</head>
+<body>
+    <div class="header{% if daysRemaining <= 1 %} header-urgent{% endif %}">
+        <h1>⏰ Upozornění</h1>
+    </div>
+
+    <div class="content">
+        <h2>Dobrý den, {{ name }}!</h2>
+
+        <div class="warning-message{% if daysRemaining <= 1 %} urgent-message{% endif %}">
+            <strong>
+                {% if daysRemaining == 1 %}
+                    Vaše smlouva končí ZÍTRA!
+                {% else %}
+                    Vaše smlouva končí za {{ daysRemaining }} dní
+                {% endif %}
+            </strong>
+        </div>
+
+        <div class="countdown{% if daysRemaining <= 1 %} countdown-urgent{% endif %}">
+            {% if daysRemaining == 1 %}
+                1 den
+            {% else %}
+                {{ daysRemaining }} dní
+            {% endif %}
+        </div>
+
+        <p>Rádi bychom Vás upozornili, že Vaše smlouva o pronájmu skladu brzy vyprší.</p>
+
+        <div class="contract-details">
+            <table>
+                <tr>
+                    <td>Číslo smlouvy:</td>
+                    <td><strong>{{ contractNumber }}</strong></td>
+                </tr>
+                <tr>
+                    <td>Místo:</td>
+                    <td>{{ placeName }}</td>
+                </tr>
+                <tr>
+                    <td>Adresa:</td>
+                    <td>{{ placeAddress }}</td>
+                </tr>
+                <tr>
+                    <td>Typ skladu:</td>
+                    <td>{{ storageType }}</td>
+                </tr>
+                <tr>
+                    <td>Číslo boxu:</td>
+                    <td>{{ storageNumber }}</td>
+                </tr>
+                <tr>
+                    <td>Datum ukončení:</td>
+                    <td><strong>{{ endDate }}</strong></td>
+                </tr>
+            </table>
+        </div>
+
+        <h3>Co můžete udělat?</h3>
+        <ul>
+            <li><strong>Prodloužit smlouvu</strong> - Pokud chcete pokračovat v pronájmu, navštivte svůj účet a vytvořte novou objednávku</li>
+            <li><strong>Vyklidit sklad</strong> - Prosím, vykliďte sklad do data ukončení smlouvy</li>
+            <li><strong>Kontaktovat nás</strong> - V případě dotazů jsme Vám k dispozici</li>
+        </ul>
+
+        <div style="text-align: center;">
+            <a href="{{ portalUrl }}" class="button button-extend">Zobrazit smlouvu</a>
+        </div>
+
+        <p>Děkujeme za pochopení.</p>
+
+        <p>S pozdravem,<br>
+        <strong>Tým Fajné Sklady</strong></p>
+    </div>
+
+    <div class="footer">
+        <p>Toto je automaticky generovaný email. Prosím neodpovídejte na tuto zprávu.</p>
+        <p>&copy; {{ 'now'|date('Y') }} Fajné Sklady. Všechna práva vyhrazena.</p>
+    </div>
+</body>
+</html>

@@ -23,6 +23,9 @@ return App::config([
         'App\\Event\\SendPasswordResetEmailHandler' => null,
         'App\\Event\\SendVerificationEmailHandler' => null,
         'App\\Event\\SendWelcomeEmailHandler' => null,
+        'App\\Event\\SendOrderConfirmationEmailHandler' => null,
+        'App\\Event\\SendContractReadyEmailHandler' => null,
+        'App\\Event\\SendContractExpiringReminderHandler' => null,
         'App\\Form\\' => [
             'resource' => '../src/Form/*FormType.php',
         ],

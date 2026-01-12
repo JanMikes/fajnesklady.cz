@@ -39,6 +39,15 @@ return App::config([
         'App\\Event\\SendWelcomeEmailHandler' => [
             'public' => true,
         ],
+        'App\\Event\\SendOrderConfirmationEmailHandler' => [
+            'public' => true,
+        ],
+        'App\\Event\\SendContractReadyEmailHandler' => [
+            'public' => true,
+        ],
+        'App\\Event\\SendContractExpiringReminderHandler' => [
+            'public' => true,
+        ],
         'App\\Form\\' => [
             'resource' => '../src/Form/*FormType.php',
             'public' => true,
