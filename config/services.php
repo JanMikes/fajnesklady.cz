@@ -17,10 +17,12 @@ return App::config([
                 '../src/Entity/',
                 '../src/Kernel.php',
                 '../src/Command/*Command.php',
-                '../src/Query/*Query.php',
                 '../src/Query/*Result.php',
                 '../src/Event/*.php',
             ],
+        ],
+        'App\\Identity\\ProvideIdentity' => [
+            'alias' => 'App\\Identity\\RandomIdentityProvider',
         ],
     ],
     'when@test' => [
@@ -41,11 +43,16 @@ return App::config([
                     '../src/Entity/',
                     '../src/Kernel.php',
                     '../src/Command/*Command.php',
-                    '../src/Query/*Query.php',
                     '../src/Query/*Result.php',
                     '../src/Event/*.php',
                 ],
                 'public' => true,
+            ],
+            'App\\Tests\\Support\\PredictableIdentityProvider' => [
+                'tags' => [['name' => 'kernel.reset', 'method' => 'reset']],
+            ],
+            'App\\Identity\\ProvideIdentity' => [
+                'alias' => 'App\\Tests\\Support\\PredictableIdentityProvider',
             ],
         ],
     ],

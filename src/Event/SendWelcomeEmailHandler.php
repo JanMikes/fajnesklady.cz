@@ -38,11 +38,11 @@ final readonly class SendWelcomeEmailHandler
         // Create and send the welcome email
         $email = (new TemplatedEmail())
             ->from(new Address('noreply@fajnesklady.cz', 'Fajné Sklady'))
-            ->to(new Address($user->getEmail(), $user->getName()))
+            ->to(new Address($user->email, $user->name))
             ->subject('Welcome to Fajné Sklady!')
             ->htmlTemplate('email/welcome.html.twig')
             ->context([
-                'name' => $user->getName(),
+                'name' => $user->name,
                 'loginUrl' => $loginUrl,
             ]);
 

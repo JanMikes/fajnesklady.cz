@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\Entity\ResetPasswordRequest;
+use App\Entity\User;
+use App\Identity\ProvideIdentity;
 use Doctrine\ORM\EntityManagerInterface;
 use SymfonyCasts\Bundle\ResetPassword\Model\ResetPasswordRequestInterface;
 use SymfonyCasts\Bundle\ResetPassword\Persistence\Repository\ResetPasswordRequestRepositoryTrait;
@@ -21,9 +23,12 @@ final class ResetPasswordRequestRepository implements ResetPasswordRequestReposi
      */
     private readonly EntityManagerInterface $entityManager;
 
-    public function __construct(EntityManagerInterface $entityManager)
+    private readonly ProvideIdentity $identityProvider;
+
+    public function __construct(EntityManagerInterface $entityManager, ProvideIdentity $identityProvider)
     {
         $this->entityManager = $entityManager;
+        $this->identityProvider = $identityProvider;
     }
 
     public function createResetPasswordRequest(
@@ -32,6 +37,8 @@ final class ResetPasswordRequestRepository implements ResetPasswordRequestReposi
         string $selector,
         string $hashedToken,
     ): ResetPasswordRequestInterface {
-        return new ResetPasswordRequest($user, $expiresAt, $selector, $hashedToken);
+        \assert($user instanceof User);
+
+        return new ResetPasswordRequest($this->identityProvider->next(), $user, $expiresAt, $selector, $hashedToken);
     }
 }

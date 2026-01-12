@@ -1,0 +1,51 @@
+{% extends 'admin/layout.html.twig' %}
+
+{% block title %}Pridat misto - Admin{% endblock %}
+
+{% block content %}
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold text-gray-900">Pridat misto</h1>
+        <a href="{{ path('admin_places_list') }}" class="btn btn-ghost">Zpet na seznam</a>
+    </div>
+
+    <div class="max-w-2xl">
+        <div class="card">
+            <div class="card-body">
+                {{ form_start(form) }}
+                    <div class="mb-4">
+                        <label for="{{ form.name.vars.id }}" class="block text-sm font-semibold text-gray-700 mb-2">Nazev</label>
+                        {{ form_widget(form.name, {'attr': {'class': 'input input-bordered w-full'}}) }}
+                        {{ form_errors(form.name) }}
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="{{ form.address.vars.id }}" class="block text-sm font-semibold text-gray-700 mb-2">Adresa</label>
+                        {{ form_widget(form.address, {'attr': {'class': 'input input-bordered w-full'}}) }}
+                        {{ form_errors(form.address) }}
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="{{ form.description.vars.id }}" class="block text-sm font-semibold text-gray-700 mb-2">Popis (nepovinne)</label>
+                        {{ form_widget(form.description, {'attr': {'class': 'textarea textarea-bordered w-full', 'rows': 4}}) }}
+                        {{ form_errors(form.description) }}
+                    </div>
+
+                    {% if form.ownerId is defined %}
+                        <div class="mb-4">
+                            <label for="{{ form.ownerId.vars.id }}" class="block text-sm font-semibold text-gray-700 mb-2">Vlastnik</label>
+                            {{ form_widget(form.ownerId, {'attr': {'class': 'select select-bordered w-full'}}) }}
+                            {{ form_errors(form.ownerId) }}
+                        </div>
+                    {% endif %}
+
+                    <hr class="my-6 border-t border-gray-200">
+
+                    <div class="flex justify-end gap-2">
+                        <a href="{{ path('admin_places_list') }}" class="btn btn-ghost">Zrusit</a>
+                        <button type="submit" class="btn btn-primary">Vytvorit misto</button>
+                    </div>
+                {{ form_end(form) }}
+            </div>
+        </div>
+    </div>
+{% endblock %}

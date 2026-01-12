@@ -1,0 +1,82 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Controller\Admin;
+
+use App\Command\UpdateStorageTypeCommand;
+use App\Form\StorageTypeType;
+use App\Repository\StorageTypeRepository;
+use App\Security\StorageTypeVoter;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
+use Symfony\Component\Uid\Uuid;
+
+#[Route('/admin/storage-types/{id}/edit', name: 'admin_storage_types_edit')]
+#[IsGranted('ROLE_LANDLORD')]
+final class StorageTypeEditController extends AbstractController
+{
+    public function __construct(
+        private readonly StorageTypeRepository $storageTypeRepository,
+        private readonly MessageBusInterface $commandBus,
+    ) {
+    }
+
+    public function __invoke(Request $request, string $id): Response
+    {
+        $storageType = $this->storageTypeRepository->findById(Uuid::fromString($id));
+
+        if (null === $storageType) {
+            throw $this->createNotFoundException('Typ skladu nenalezen');
+        }
+
+        // Check ownership via voter
+        $this->denyAccessUnlessGranted(StorageTypeVoter::EDIT, $storageType);
+
+        $form = $this->createForm(StorageTypeType::class, [
+            'name' => $storageType->name,
+            'width' => $storageType->width,
+            'height' => $storageType->height,
+            'length' => $storageType->length,
+            'pricePerWeek' => $storageType->getPricePerWeekInCzk(),
+            'pricePerMonth' => $storageType->getPricePerMonthInCzk(),
+            'ownerId' => $storageType->owner->id->toRfc4122(),
+        ]);
+
+        $form->handleRequest($request);
+
+        if ($form->isSubmitted() && $form->isValid()) {
+            /** @var array<string, mixed> $data */
+            $data = $form->getData();
+
+            // Convert CZK to halire (cents)
+            $pricePerWeek = (int) round((float) $data['pricePerWeek'] * 100);
+            $pricePerMonth = (int) round((float) $data['pricePerMonth'] * 100);
+
+            $command = new UpdateStorageTypeCommand(
+                storageTypeId: $storageType->id,
+                name: (string) $data['name'],
+                width: (string) $data['width'],
+                height: (string) $data['height'],
+                length: (string) $data['length'],
+                pricePerWeek: $pricePerWeek,
+                pricePerMonth: $pricePerMonth,
+            );
+
+            $this->commandBus->dispatch($command);
+
+            $this->addFlash('success', 'Typ skladu byl uspesne aktualizovan.');
+
+            return $this->redirectToRoute('admin_storage_types_list');
+        }
+
+        return $this->render('admin/storage_type/edit.html.twig', [
+            'form' => $form,
+            'storageType' => $storageType,
+        ]);
+    }
+}

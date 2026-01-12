@@ -6,80 +6,42 @@ namespace App\Entity;
 
 use App\Enum\UserRole;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Uid\Uuid;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'users')]
-#[ORM\Index(name: 'email_idx', columns: ['email'])]
 class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
-    #[ORM\Id]
-    #[ORM\Column(type: 'uuid', unique: true)]
-    #[ORM\GeneratedValue(strategy: 'CUSTOM')]
-    #[ORM\CustomIdGenerator(class: 'Symfony\Bridge\Doctrine\IdGenerator\UuidGenerator')]
-    private Uuid $id;
-
-    #[ORM\Column(length: 180, unique: true)]
-    private string $email;
-
-    #[ORM\Column]
-    private string $password;
-
-    #[ORM\Column(length: 255)]
-    private string $name;
-
     /**
      * @var array<string>
      */
     #[ORM\Column]
-    private array $roles = [];
+    private array $roles;
 
-    #[ORM\Column(name: 'is_verified')]
+    #[ORM\Column]
     private bool $isVerified = false;
 
-    #[ORM\Column(name: 'created_at')]
-    private \DateTimeImmutable $createdAt;
+    #[ORM\Column]
+    public private(set) \DateTimeImmutable $updatedAt;
 
-    #[ORM\Column(name: 'updated_at')]
-    private \DateTimeImmutable $updatedAt;
-
-    private function __construct(
-        Uuid $id,
-        string $email,
-        string $password,
-        string $name,
-        \DateTimeImmutable $now,
+    public function __construct(
+        #[ORM\Id]
+        #[ORM\Column(type: UuidType::NAME, unique: true)]
+        private(set) Uuid $id,
+        #[ORM\Column(length: 180, unique: true)]
+        private(set) string $email,
+        #[ORM\Column]
+        private string $password,
+        #[ORM\Column(length: 255)]
+        private(set) string $name,
+        #[ORM\Column]
+        private(set) \DateTimeImmutable $createdAt,
     ) {
-        $this->id = $id;
-        $this->email = $email;
-        $this->password = $password;
-        $this->name = $name;
         $this->roles = [UserRole::USER->value];
-        $this->createdAt = $now;
-        $this->updatedAt = $now;
-    }
-
-    public static function create(string $email, string $name, string $password, \DateTimeImmutable $now): self
-    {
-        return new self(
-            id: Uuid::v7(),
-            email: $email,
-            password: $password,
-            name: $name,
-            now: $now,
-        );
-    }
-
-    public function getId(): Uuid
-    {
-        return $this->id;
-    }
-
-    public function getEmail(): string
-    {
-        return $this->email;
+        $this->updatedAt = $this->createdAt;
     }
 
     /**
@@ -101,11 +63,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     {
         $this->password = $hashedPassword;
         $this->updatedAt = $now;
-    }
-
-    public function getName(): string
-    {
-        return $this->name;
     }
 
     /**
@@ -130,13 +87,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         $this->updatedAt = $now;
     }
 
-    public function getCreatedAt(): \DateTimeImmutable
+    public function changeRole(UserRole $role, \DateTimeImmutable $now): void
     {
-        return $this->createdAt;
-    }
-
-    public function getUpdatedAt(): \DateTimeImmutable
-    {
-        return $this->updatedAt;
+        $this->roles = [UserRole::USER->value, $role->value];
+        $this->updatedAt = $now;
     }
 }

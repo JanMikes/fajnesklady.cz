@@ -35,8 +35,8 @@ final readonly class RequestPasswordResetHandler
                 // Dispatch event to send password reset email
                 $this->eventBus->dispatch(
                     new PasswordResetRequested(
-                        userId: $user->getId(),
-                        email: $user->getEmail(),
+                        userId: $user->id,
+                        email: $user->email,
                         resetToken: $resetToken->getToken(),
                         occurredOn: $this->clock->now(),
                     )

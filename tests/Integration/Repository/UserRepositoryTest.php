@@ -6,47 +6,56 @@ namespace App\Tests\Integration\Repository;
 
 use App\Entity\User;
 use App\Repository\UserRepository;
+use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\Persistence\ManagerRegistry;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
+use Symfony\Component\Uid\Uuid;
 
 class UserRepositoryTest extends KernelTestCase
 {
     private UserRepository $repository;
+    private EntityManagerInterface $entityManager;
 
     protected function setUp(): void
     {
         self::bootKernel();
         $container = static::getContainer();
         $this->repository = $container->get(UserRepository::class);
+        /** @var ManagerRegistry $doctrine */
+        $doctrine = $container->get('doctrine');
+        $this->entityManager = $doctrine->getManager();
     }
 
     public function testSaveUser(): void
     {
         $now = new \DateTimeImmutable();
-        $user = User::create('test@example.com', 'Test User', 'password123', $now);
+        $user = new User(Uuid::v7(), 'test@example.com', 'password123', 'Test User', $now);
 
         $this->repository->save($user);
+        $this->entityManager->flush();
 
-        $foundUser = $this->repository->findById($user->getId());
+        $foundUser = $this->repository->findById($user->id);
         $this->assertNotNull($foundUser);
-        $this->assertSame($user->getEmail(), $foundUser->getEmail());
-        $this->assertSame($user->getName(), $foundUser->getName());
+        $this->assertSame($user->email, $foundUser->email);
+        $this->assertSame($user->name, $foundUser->name);
     }
 
     public function testFindById(): void
     {
         $now = new \DateTimeImmutable();
-        $user = User::create('findbyid@example.com', 'Test User', 'password123', $now);
+        $user = new User(Uuid::v7(), 'findbyid@example.com', 'password123', 'Test User', $now);
         $this->repository->save($user);
+        $this->entityManager->flush();
 
-        $foundUser = $this->repository->findById($user->getId());
+        $foundUser = $this->repository->findById($user->id);
 
         $this->assertNotNull($foundUser);
-        $this->assertEquals($user->getId(), $foundUser->getId());
+        $this->assertEquals($user->id, $foundUser->id);
     }
 
     public function testFindByIdReturnsNullForNonexistent(): void
     {
-        $nonexistentId = \Symfony\Component\Uid\Uuid::v7();
+        $nonexistentId = Uuid::v7();
 
         $foundUser = $this->repository->findById($nonexistentId);
 
@@ -57,13 +66,14 @@ class UserRepositoryTest extends KernelTestCase
     {
         $now = new \DateTimeImmutable();
         $email = 'findbyemail@example.com';
-        $user = User::create($email, 'Test User', 'password123', $now);
+        $user = new User(Uuid::v7(), $email, 'password123', 'Test User', $now);
         $this->repository->save($user);
+        $this->entityManager->flush();
 
         $foundUser = $this->repository->findByEmail($email);
 
         $this->assertNotNull($foundUser);
-        $this->assertSame($email, $foundUser->getEmail());
+        $this->assertSame($email, $foundUser->email);
     }
 
     public function testFindByEmailReturnsNullForNonexistent(): void
@@ -79,19 +89,20 @@ class UserRepositoryTest extends KernelTestCase
         $initialCount = count($this->repository->findAll());
 
         // Create multiple users
-        $user1 = User::create('user1@example.com', 'User 1', 'password123', $now);
-        $user2 = User::create('user2@example.com', 'User 2', 'password123', $now);
-        $user3 = User::create('user3@example.com', 'User 3', 'password123', $now);
+        $user1 = new User(Uuid::v7(), 'user1@example.com', 'password123', 'User 1', $now);
+        $user2 = new User(Uuid::v7(), 'user2@example.com', 'password123', 'User 2', $now);
+        $user3 = new User(Uuid::v7(), 'user3@example.com', 'password123', 'User 3', $now);
 
         $this->repository->save($user1);
         $this->repository->save($user2);
         $this->repository->save($user3);
+        $this->entityManager->flush();
 
         $users = $this->repository->findAll();
 
         $this->assertCount($initialCount + 3, $users);
         // Verify all our newly created users are returned
-        $emails = array_map(fn (User $u) => $u->getEmail(), $users);
+        $emails = array_map(fn (User $u) => $u->email, $users);
         $this->assertContains('user1@example.com', $emails);
         $this->assertContains('user2@example.com', $emails);
         $this->assertContains('user3@example.com', $emails);
@@ -104,9 +115,10 @@ class UserRepositoryTest extends KernelTestCase
 
         // Create 5 users
         for ($i = 1; $i <= 5; ++$i) {
-            $user = User::create("paginated{$i}@example.com", "User {$i}", 'password123', $now);
+            $user = new User(Uuid::v7(), "paginated{$i}@example.com", 'password123', "User {$i}", $now);
             $this->repository->save($user);
         }
+        $this->entityManager->flush();
 
         $totalCount = $initialCount + 5;
         $limit = 2;
@@ -120,7 +132,7 @@ class UserRepositoryTest extends KernelTestCase
         $this->assertCount($limit, $page2Users);
 
         // Verify users are different between pages
-        $this->assertNotEquals($page1Users[0]->getId(), $page2Users[0]->getId());
+        $this->assertNotEquals($page1Users[0]->id, $page2Users[0]->id);
 
         // Get last page - calculate expected count
         $lastPage = (int) ceil($totalCount / $limit);
@@ -134,28 +146,29 @@ class UserRepositoryTest extends KernelTestCase
         $now = new \DateTimeImmutable();
         // Get initial users from fixtures (created during bootstrap)
         $fixtureUsers = $this->repository->findAll();
-        $fixtureEmails = array_map(fn (User $u) => $u->getEmail(), $fixtureUsers);
+        $fixtureEmails = array_map(fn (User $u) => $u->email, $fixtureUsers);
 
         // Create 3 new users - these will be more recently created than fixtures
-        $user1 = User::create('order1@example.com', 'User 1', 'password123', $now);
-        $user2 = User::create('order2@example.com', 'User 2', 'password123', $now);
-        $user3 = User::create('order3@example.com', 'User 3', 'password123', $now);
+        $user1 = new User(Uuid::v7(), 'order1@example.com', 'password123', 'User 1', $now);
+        $user2 = new User(Uuid::v7(), 'order2@example.com', 'password123', 'User 2', $now);
+        $user3 = new User(Uuid::v7(), 'order3@example.com', 'password123', 'User 3', $now);
 
         $this->repository->save($user1);
         $this->repository->save($user2);
         $this->repository->save($user3);
+        $this->entityManager->flush();
 
         $users = $this->repository->findAllPaginated(1, 10);
 
         // Newly created users should appear before fixture users
         // First 3 results should be our new users (in some order - timestamps may be identical)
-        $firstThreeEmails = array_map(fn (User $u) => $u->getEmail(), array_slice($users, 0, 3));
+        $firstThreeEmails = array_map(fn (User $u) => $u->email, array_slice($users, 0, 3));
         $this->assertContains('order1@example.com', $firstThreeEmails);
         $this->assertContains('order2@example.com', $firstThreeEmails);
         $this->assertContains('order3@example.com', $firstThreeEmails);
 
         // Remaining users should be the fixture users
-        $remainingEmails = array_map(fn (User $u) => $u->getEmail(), array_slice($users, 3));
+        $remainingEmails = array_map(fn (User $u) => $u->email, array_slice($users, 3));
         foreach ($remainingEmails as $email) {
             $this->assertContains($email, $fixtureEmails);
         }
@@ -164,15 +177,17 @@ class UserRepositoryTest extends KernelTestCase
     public function testUpdateUser(): void
     {
         $now = new \DateTimeImmutable();
-        $user = User::create('update@example.com', 'Test User', 'password123', $now);
+        $user = new User(Uuid::v7(), 'update@example.com', 'password123', 'Test User', $now);
         $this->repository->save($user);
+        $this->entityManager->flush();
 
         // Update user
         $user->markAsVerified($now);
         $this->repository->save($user);
+        $this->entityManager->flush();
 
         // Fetch again and verify update
-        $updatedUser = $this->repository->findById($user->getId());
+        $updatedUser = $this->repository->findById($user->id);
         $this->assertTrue($updatedUser->isVerified());
     }
 }

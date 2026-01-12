@@ -7,6 +7,7 @@ namespace App\Tests\Unit\Entity;
 use App\Entity\User;
 use App\Enum\UserRole;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Uid\Uuid;
 
 class UserTest extends TestCase
 {
@@ -17,28 +18,28 @@ class UserTest extends TestCase
         $password = 'hashedPassword123';
         $now = new \DateTimeImmutable();
 
-        $user = User::create($email, $name, $password, $now);
+        $user = new User(Uuid::v7(), $email, $password, $name, $now);
 
-        $this->assertSame($email, $user->getEmail());
-        $this->assertSame($name, $user->getName());
+        $this->assertSame($email, $user->email);
+        $this->assertSame($name, $user->name);
         $this->assertSame($password, $user->getPassword());
-        $this->assertInstanceOf(\Symfony\Component\Uid\Uuid::class, $user->getId());
+        $this->assertInstanceOf(Uuid::class, $user->id);
         $this->assertFalse($user->isVerified());
-        $this->assertSame($now, $user->getCreatedAt());
-        $this->assertSame($now, $user->getUpdatedAt());
+        $this->assertSame($now, $user->createdAt);
+        $this->assertSame($now, $user->updatedAt);
     }
 
     public function testUserIdentifierIsEmail(): void
     {
         $email = 'test@example.com';
-        $user = User::create($email, 'Test User', 'password123', new \DateTimeImmutable());
+        $user = new User(Uuid::v7(), $email, 'password123', 'Test User', new \DateTimeImmutable());
 
         $this->assertSame($email, $user->getUserIdentifier());
     }
 
     public function testDefaultRoleIsRoleUser(): void
     {
-        $user = User::create('test@example.com', 'Test User', 'password123', new \DateTimeImmutable());
+        $user = new User(Uuid::v7(), 'test@example.com', 'password123', 'Test User', new \DateTimeImmutable());
 
         $roles = $user->getRoles();
 
@@ -50,43 +51,43 @@ class UserTest extends TestCase
     {
         $createdAt = new \DateTimeImmutable('2024-01-01 10:00:00');
         $verifiedAt = new \DateTimeImmutable('2024-01-01 11:00:00');
-        $user = User::create('test@example.com', 'Test User', 'password123', $createdAt);
+        $user = new User(Uuid::v7(), 'test@example.com', 'password123', 'Test User', $createdAt);
 
         $this->assertFalse($user->isVerified());
 
-        $originalUpdatedAt = $user->getUpdatedAt();
+        $originalUpdatedAt = $user->updatedAt;
         $user->markAsVerified($verifiedAt);
 
         $this->assertTrue($user->isVerified());
-        $this->assertGreaterThan($originalUpdatedAt, $user->getUpdatedAt());
-        $this->assertSame($verifiedAt, $user->getUpdatedAt());
+        $this->assertGreaterThan($originalUpdatedAt, $user->updatedAt);
+        $this->assertSame($verifiedAt, $user->updatedAt);
     }
 
     public function testChangePassword(): void
     {
         $createdAt = new \DateTimeImmutable('2024-01-01 10:00:00');
         $changedAt = new \DateTimeImmutable('2024-01-01 11:00:00');
-        $user = User::create('test@example.com', 'Test User', 'oldPassword', $createdAt);
+        $user = new User(Uuid::v7(), 'test@example.com', 'oldPassword', 'Test User', $createdAt);
 
-        $originalUpdatedAt = $user->getUpdatedAt();
+        $originalUpdatedAt = $user->updatedAt;
         $newPassword = 'newHashedPassword';
         $user->changePassword($newPassword, $changedAt);
 
         $this->assertSame($newPassword, $user->getPassword());
-        $this->assertGreaterThan($originalUpdatedAt, $user->getUpdatedAt());
-        $this->assertSame($changedAt, $user->getUpdatedAt());
+        $this->assertGreaterThan($originalUpdatedAt, $user->updatedAt);
+        $this->assertSame($changedAt, $user->updatedAt);
     }
 
     public function testCreatedAtIsImmutable(): void
     {
         $createdAt = new \DateTimeImmutable('2024-01-01 10:00:00');
         $verifiedAt = new \DateTimeImmutable('2024-01-01 11:00:00');
-        $user = User::create('test@example.com', 'Test User', 'password123', $createdAt);
+        $user = new User(Uuid::v7(), 'test@example.com', 'password123', 'Test User', $createdAt);
 
         // Perform operations that update updatedAt
         $user->markAsVerified($verifiedAt);
 
         // CreatedAt should not change
-        $this->assertSame($createdAt, $user->getCreatedAt());
+        $this->assertSame($createdAt, $user->createdAt);
     }
 }

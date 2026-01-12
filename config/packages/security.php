@@ -45,6 +45,8 @@ return App::config([
         ],
         'access_control' => [
             ['path' => '^/-/health-check/liveness', 'roles' => 'PUBLIC_ACCESS'],
+            ['path' => '^/admin/places', 'roles' => 'ROLE_LANDLORD'],
+            ['path' => '^/admin/storage-types', 'roles' => 'ROLE_LANDLORD'],
             ['path' => '^/admin', 'roles' => 'ROLE_ADMIN'],
             ['path' => '^/login', 'roles' => 'PUBLIC_ACCESS'],
             ['path' => '^/register', 'roles' => 'PUBLIC_ACCESS'],
@@ -52,7 +54,8 @@ return App::config([
             ['path' => '^/verify-email', 'roles' => 'PUBLIC_ACCESS'],
         ],
         'role_hierarchy' => [
-            'ROLE_ADMIN' => 'ROLE_USER',
+            'ROLE_LANDLORD' => 'ROLE_USER',
+            'ROLE_ADMIN' => ['ROLE_LANDLORD', 'ROLE_USER'],
         ],
     ],
 ]);

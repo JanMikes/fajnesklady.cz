@@ -83,10 +83,11 @@ This application strictly separates write operations (Commands) from read operat
 - Each command must have exactly ONE handler
 - Examples: `RegisterUserCommand`, `ResetPasswordCommand`
 
-**Query Bus** (`query.bus`):
-- Handles read operations (currently unused - queries not yet extracted)
+**Query Bus** (`query.bus`) via `App\Query\QueryBus`:
+- Handles read operations with type-safe results via PHPStan generics
 - No transaction wrapper (read-only)
 - Validated but no transaction overhead
+- **Always inject `QueryBus` class**, not `MessageBusInterface`
 
 **Event Bus** (`event.bus`):
 - Handles domain events asynchronously
@@ -121,13 +122,73 @@ src/
 
 ### Domain Entity Patterns
 
-**Entities use named constructors** - Never use `new Entity()` directly:
+**Entities use public constructor with ID passed in** - ID is generated externally:
 ```php
-// ✓ CORRECT
-$user = User::create(email: $email, name: $name, password: '');
+// ✓ CORRECT - ID passed from outside
+$place = new Place(
+    id: Uuid::v7(),
+    name: $name,
+    address: $address,
+    ...
+);
 
-// ✗ WRONG
-$user = new User();
+// ✗ WRONG - static named constructors
+$place = Place::create(...);
+```
+
+**Let Doctrine infer names** - Avoid explicit table/column/index names unless necessary:
+```php
+// ✓ CORRECT - implicit naming
+#[ORM\Entity]
+class Place { ... }
+
+#[ORM\Column]
+private string $name;
+
+#[ORM\JoinColumn(nullable: false)]
+private User $owner;
+
+// ✗ WRONG - explicit naming (unless needed)
+#[ORM\Table(name: 'places')]
+#[ORM\Index(name: 'places_owner_idx', columns: ['owner_id'])]
+#[ORM\Column(name: 'owner_id')]
+
+// Exception: Use explicit names for SQL reserved keywords
+#[ORM\Table(name: 'users')]  // 'user' is reserved in PostgreSQL
+class User { ... }
+```
+
+**Let Doctrine infer types from PHP types** - Use Types constants only when needed:
+```php
+// ✓ CORRECT - type inferred from PHP type
+#[ORM\Column]
+private int $price;  // Doctrine infers 'integer'
+
+#[ORM\Column]
+private string $name;  // Doctrine infers 'string'
+
+// Use Types constants only when explicit type differs from PHP type
+use Doctrine\DBAL\Types\Types;
+
+#[ORM\Column(type: Types::TEXT)]  // text != string
+private ?string $description;
+
+#[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 2)]
+private string $width;  // decimal stored as string
+
+#[ORM\Column(type: 'uuid')]  // uuid is custom type
+private Uuid $id;
+```
+
+**Use property hooks (PHP 8.4+) instead of getters**:
+```php
+// ✓ CORRECT - public private(set) with property hook
+public private(set) string $name {
+    get => $this->name;
+}
+
+// ✗ WRONG - explicit getter method
+public function getName(): string { return $this->name; }
 ```
 
 **Entities expose behavior methods, not setters**:
@@ -137,14 +198,9 @@ $user->changePassword($hashedPassword);
 $user->markAsVerified();
 
 // ✗ WRONG
-$user->setPassword($password);  // This method doesn't exist
-$user->setEmailVerified(true);  // This method doesn't exist
+$user->setPassword($password);
+$user->setEmailVerified(true);
 ```
-
-**Doctrine mapping is XML-based** - No annotations in entities:
-- Keeps entities free of framework dependencies
-- Mapping files: `config/doctrine/*.orm.xml`
-- When modifying entities, update corresponding XML mapping
 
 ### Repository Pattern
 **NEVER extend `ServiceEntityRepository`** - Use composition instead of inheritance:
@@ -173,11 +229,117 @@ class UserRepository extends ServiceEntityRepository { ... }
 - Interfaces add unnecessary abstraction when there's only one implementation
 - Symfony's autowiring works perfectly with concrete classes
 
+**NEVER call `EntityManager::flush()` manually** - The `doctrine_transaction` middleware handles it:
+```php
+// ✓ CORRECT - persist/remove only, middleware handles flush
+public function save(User $user): void
+{
+    $this->entityManager->persist($user);
+}
+
+public function delete(User $user): void
+{
+    $this->entityManager->remove($user);
+}
+
+// ✗ WRONG - manual flush (transaction middleware does this)
+public function save(User $user): void
+{
+    $this->entityManager->persist($user);
+    $this->entityManager->flush();  // NEVER do this
+}
+```
+
+All write operations MUST go through Messenger command handlers where the `doctrine_transaction` middleware automatically:
+1. Begins transaction before handler execution
+2. Flushes and commits on success
+3. Rolls back on exception
+
+Exception: DataFixtures run outside Messenger, so they require manual `flush()`.
+
 Repositories provide:
 - Type-safe methods (no generic `find()` or `findBy()`)
 - Performance-optimized queries (COUNT instead of loading entities)
 - Domain-specific query methods (`countVerified()`, `findByEmail()`)
 - EntityManager for complex queries and persistence operations
+
+**NEVER use `getRepository()` or EntityRepository methods** - Always use QueryBuilder:
+```php
+// ✓ CORRECT - QueryBuilder for queries
+public function findByEmail(string $email): ?User
+{
+    return $this->entityManager->createQueryBuilder()
+        ->select('u')
+        ->from(User::class, 'u')
+        ->where('u.email = :email')
+        ->setParameter('email', $email)
+        ->getQuery()
+        ->getOneOrNullResult();
+}
+
+// ✓ CORRECT - EntityManager::find() for ID lookup
+public function findById(Uuid $id): ?User
+{
+    return $this->entityManager->find(User::class, $id);
+}
+
+// ✗ WRONG - Using getRepository()
+return $this->entityManager->getRepository(User::class)->findOneBy(['email' => $email]);
+
+// ✗ WRONG - Using EntityRepository methods
+return $this->entityManager->getRepository(User::class)->findBy(['status' => 'active']);
+```
+
+**Use Query Bus for complex queries** - Custom outputs, aggregations, calculations:
+- Repositories return entities or simple counts
+- For queries with custom DTOs, aggregations, joins, calculations → use Query Bus pattern
+- Query handlers use QueryBuilder or raw SQL for optimized reads
+- **Always use `App\Query\QueryBus`** - provides type-safe results via PHPStan generics
+
+**Query naming convention:**
+- Message: `GetUserStatistics` (no suffix, implements `Query<ResultType>`)
+- Handler: `GetUserStatisticsQuery` (Query suffix, has `#[AsMessageHandler]`)
+- Result: `GetUserStatisticsResult` (Result suffix)
+
+```php
+// Message - implements Query with generic result type
+/**
+ * @implements Query<UserStatisticsResult>
+ */
+final readonly class GetUserStatistics implements Query
+{
+    public function __construct(public Uuid $userId) {}
+}
+
+// Handler - named with Query suffix
+#[AsMessageHandler]
+final readonly class GetUserStatisticsQuery
+{
+    public function __invoke(GetUserStatistics $query): UserStatisticsResult
+    {
+        // Query logic here
+    }
+}
+
+// Result DTO
+final readonly class UserStatisticsResult
+{
+    public function __construct(
+        public int $totalOrders,
+        public string $totalRevenue,
+        public \DateTimeImmutable $lastOrderDate,
+    ) {}
+}
+
+// Usage in controller - inject QueryBus, get typed result
+public function __construct(private readonly QueryBus $queryBus) {}
+
+public function __invoke(): Response
+{
+    $stats = $this->queryBus->handle(new GetUserStatistics($userId));
+    // $stats is typed as UserStatisticsResult
+}
+```
 
 ### Event-Driven Architecture
 Commands dispatch domain events that trigger side effects:
@@ -297,6 +459,16 @@ Registration requires email verification:
 
 **TODO**: Remove `unsafe-inline` from CSP by implementing nonce support.
 
+### User Roles & Permissions
+Symfony role hierarchy:
+- `ROLE_ADMIN`: Full access, inherits all roles
+- `ROLE_LANDLORD`: Warehouse owner/manager, inherits `ROLE_USER`
+- `ROLE_USER`: Base role for tenants renting storage
+
+Czech translations:
+- Pronajímatel = `ROLE_LANDLORD`
+- Nájemce = `ROLE_USER`
+
 ## Testing Strategy
 
 ### Unit Tests
@@ -360,6 +532,17 @@ $user = $userRepository->findByEmail($email);
 
 ### Don't Skip Transactions
 Command handlers automatically run in transactions. Don't manually manage transactions unless you have a specific reason.
+
+### Don't Call flush() Manually
+```php
+// ✗ WRONG - manual flush
+$this->entityManager->persist($entity);
+$this->entityManager->flush();
+
+// ✓ CORRECT - persist only, middleware handles flush
+$this->entityManager->persist($entity);
+```
+The `doctrine_transaction` middleware on the command bus handles flush and transaction management. All write operations must go through Messenger command handlers.
 
 - Always run any command in docker!
 - Always run tests, phpstan, coding standard (static analysis) after doing code changes, to make sure everything works!

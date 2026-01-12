@@ -18,7 +18,6 @@ final class UserRepository
     public function save(User $user): void
     {
         $this->entityManager->persist($user);
-        $this->entityManager->flush();
     }
 
     public function findById(Uuid $id): ?User
@@ -28,7 +27,13 @@ final class UserRepository
 
     public function findByEmail(string $email): ?User
     {
-        return $this->entityManager->getRepository(User::class)->findOneBy(['email' => $email]);
+        return $this->entityManager->createQueryBuilder()
+            ->select('u')
+            ->from(User::class, 'u')
+            ->where('u.email = :email')
+            ->setParameter('email', $email)
+            ->getQuery()
+            ->getOneOrNullResult();
     }
 
     /**
@@ -36,7 +41,13 @@ final class UserRepository
      */
     public function findAll(): array
     {
-        return $this->entityManager->getRepository(User::class)->findBy([], ['createdAt' => 'DESC', 'id' => 'DESC']);
+        return $this->entityManager->createQueryBuilder()
+            ->select('u')
+            ->from(User::class, 'u')
+            ->orderBy('u.createdAt', 'DESC')
+            ->addOrderBy('u.id', 'DESC')
+            ->getQuery()
+            ->getResult();
     }
 
     /**

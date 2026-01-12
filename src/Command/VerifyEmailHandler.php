@@ -33,8 +33,8 @@ final readonly class VerifyEmailHandler
         // Validate token using the legacy method that accepts signed URL
         $this->verifyEmailHelper->validateEmailConfirmation(
             signedUrl: $command->signedUrl,
-            userId: (string) $user->getId(),
-            userEmail: $user->getEmail(),
+            userId: (string) $user->id,
+            userEmail: $user->email,
         );
 
         $now = $this->clock->now();
@@ -47,7 +47,7 @@ final readonly class VerifyEmailHandler
 
         // Dispatch EmailVerified event
         $this->eventBus->dispatch(new EmailVerified(
-            userId: $user->getId(),
+            userId: $user->id,
             occurredOn: $now,
         ));
     }

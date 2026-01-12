@@ -31,19 +31,19 @@ final readonly class SendVerificationEmailHandler
         // Generate verification token/URL
         $signatureComponents = $this->verifyEmailHelper->generateSignature(
             routeName: 'app_verify_email',
-            userId: (string) $user->getId(),
-            userEmail: $user->getEmail(),
+            userId: (string) $user->id,
+            userEmail: $user->email,
             extraParams: [],
         );
 
         // Create email with verification link
         $email = (new TemplatedEmail())
             ->from(new Address('noreply@fajnesklady.cz', 'Fajné Sklady'))
-            ->to(new Address($user->getEmail(), $user->getName()))
+            ->to(new Address($user->email, $user->name))
             ->subject('Please verify your email address')
             ->htmlTemplate('email/verification.html.twig')
             ->context([
-                'name' => $user->getName(),
+                'name' => $user->name,
                 'verificationUrl' => $signatureComponents->getSignedUrl(),
                 'expiresAt' => $signatureComponents->getExpiresAt(),
             ]);
