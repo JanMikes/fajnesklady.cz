@@ -1,11 +1,11 @@
-{% extends 'admin/layout.html.twig' %}
+{% extends 'portal/layout.html.twig' %}
 
 {% block title %}Edit User Role - Admin{% endblock %}
 
 {% block content %}
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-3xl font-bold">Edit User Role</h1>
-        <a href="{{ path('admin_users_view', {id: user.id}) }}" class="btn btn-ghost">Cancel</a>
+        <a href="{{ path('portal_users_view', {id: user.id}) }}" class="btn btn-ghost">Cancel</a>
     </div>
 
     <div class="max-w-2xl">
@@ -46,7 +46,7 @@
                     <hr class="my-6 border-t border-gray-200">
 
                     <div class="flex justify-end gap-2">
-                        <a href="{{ path('admin_users_view', {id: user.id}) }}" class="btn btn-ghost">Cancel</a>
+                        <a href="{{ path('portal_users_view', {id: user.id}) }}" class="btn btn-ghost">Cancel</a>
                         <button type="submit" class="btn btn-primary">Save Changes</button>
                     </div>
                 {{ form_end(form) }}

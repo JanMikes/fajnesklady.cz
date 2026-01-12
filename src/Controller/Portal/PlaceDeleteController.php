@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Controller\Admin;
+namespace App\Controller\Portal;
 
 use App\Command\DeletePlaceCommand;
 use App\Repository\PlaceRepository;
@@ -15,7 +15,7 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Uid\Uuid;
 
-#[Route('/admin/places/{id}/delete', name: 'admin_places_delete', methods: ['POST'])]
+#[Route('/portal/places/{id}/delete', name: 'portal_places_delete', methods: ['POST'])]
 #[IsGranted('ROLE_LANDLORD')]
 final class PlaceDeleteController extends AbstractController
 {
@@ -39,13 +39,13 @@ final class PlaceDeleteController extends AbstractController
         if (!$this->isCsrfTokenValid('delete_place_'.$id, $request->request->getString('_token'))) {
             $this->addFlash('error', 'Neplatny CSRF token.');
 
-            return $this->redirectToRoute('admin_places_list');
+            return $this->redirectToRoute('portal_places_list');
         }
 
         $this->commandBus->dispatch(new DeletePlaceCommand(placeId: $place->id));
 
         $this->addFlash('success', 'Misto bylo uspesne smazano.');
 
-        return $this->redirectToRoute('admin_places_list');
+        return $this->redirectToRoute('portal_places_list');
     }
 }

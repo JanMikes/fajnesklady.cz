@@ -179,8 +179,8 @@
                     {% if app.user %}
                         <div class="pt-4 border-t border-gray-200">
                             <p class="text-sm text-gray-600 mb-2">Přihlášený uživatel:</p>
-                            {% if is_granted('ROLE_ADMIN') %}
-                                <a href="{{ path('admin_dashboard') }}" class="btn btn-primary">Administrace</a>
+                            {% if is_granted('ROLE_USER') %}
+                                <a href="{{ path('portal_dashboard') }}" class="btn btn-primary">Portal</a>
                             {% else %}
                                 <a href="{{ path('app_profile') }}" class="btn btn-primary">Můj profil</a>
                             {% endif %}

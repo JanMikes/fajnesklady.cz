@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Controller\Admin;
+namespace App\Controller\Portal;
 
 use App\Command\UpdateStorageTypeCommand;
 use App\Form\StorageTypeType;
@@ -16,7 +16,7 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Uid\Uuid;
 
-#[Route('/admin/storage-types/{id}/edit', name: 'admin_storage_types_edit')]
+#[Route('/portal/storage-types/{id}/edit', name: 'portal_storage_types_edit')]
 #[IsGranted('ROLE_LANDLORD')]
 final class StorageTypeEditController extends AbstractController
 {
@@ -71,10 +71,10 @@ final class StorageTypeEditController extends AbstractController
 
             $this->addFlash('success', 'Typ skladu byl uspesne aktualizovan.');
 
-            return $this->redirectToRoute('admin_storage_types_list');
+            return $this->redirectToRoute('portal_storage_types_list');
         }
 
-        return $this->render('admin/storage_type/edit.html.twig', [
+        return $this->render('portal/storage_type/edit.html.twig', [
             'form' => $form,
             'storageType' => $storageType,
         ]);

@@ -14,9 +14,9 @@ use Symfony\Component\Security\Core\Authorization\Voter\Voter;
  */
 final class StorageTypeVoter extends Voter
 {
-    public const VIEW = 'STORAGE_TYPE_VIEW';
-    public const EDIT = 'STORAGE_TYPE_EDIT';
-    public const DELETE = 'STORAGE_TYPE_DELETE';
+    public const string VIEW = 'STORAGE_TYPE_VIEW';
+    public const string EDIT = 'STORAGE_TYPE_EDIT';
+    public const string DELETE = 'STORAGE_TYPE_DELETE';
 
     protected function supports(string $attribute, mixed $subject): bool
     {

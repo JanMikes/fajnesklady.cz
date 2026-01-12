@@ -1,11 +1,11 @@
-{% extends 'admin/layout.html.twig' %}
+{% extends 'portal/layout.html.twig' %}
 
 {% block title %}Typy skladu - Admin{% endblock %}
 
 {% block content %}
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-3xl font-bold text-gray-900">Typy skladu</h1>
-        <a href="{{ path('admin_storage_types_create') }}" class="btn btn-primary">
+        <a href="{{ path('portal_storage_types_create') }}" class="btn btn-primary">
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
             </svg>
@@ -44,13 +44,13 @@
                             <td class="text-gray-500 text-sm">{{ storageType.createdAt|date('Y-m-d H:i') }}</td>
                             <td>
                                 <div class="flex items-center gap-2">
-                                    <a href="{{ path('admin_storage_types_edit', {id: storageType.id}) }}" class="inline-flex items-center text-blue-600 hover:text-blue-800 text-sm font-medium">
+                                    <a href="{{ path('portal_storage_types_edit', {id: storageType.id}) }}" class="inline-flex items-center text-blue-600 hover:text-blue-800 text-sm font-medium">
                                         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                         </svg>
                                         Upravit
                                     </a>
-                                    <form action="{{ path('admin_storage_types_delete', {id: storageType.id}) }}" method="post" class="inline" onsubmit="return confirm('Opravdu chcete smazat tento typ skladu?');">
+                                    <form action="{{ path('portal_storage_types_delete', {id: storageType.id}) }}" method="post" class="inline" onsubmit="return confirm('Opravdu chcete smazat tento typ skladu?');">
                                         <input type="hidden" name="_token" value="{{ csrf_token('delete_storage_type_' ~ storageType.id) }}">
                                         <button type="submit" class="inline-flex items-center text-red-600 hover:text-red-800 text-sm font-medium">
                                             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -78,7 +78,7 @@
                 </div>
                 <div class="flex space-x-1">
                     {% if currentPage > 1 %}
-                        <a href="{{ path('admin_storage_types_list', {page: currentPage - 1}) }}" class="px-3 py-1 rounded-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                        <a href="{{ path('portal_storage_types_list', {page: currentPage - 1}) }}" class="px-3 py-1 rounded-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
                             Predchozi
                         </a>
                     {% else %}
@@ -91,7 +91,7 @@
                     {% set endPage = min(totalPages, currentPage + 2) %}
 
                     {% if startPage > 1 %}
-                        <a href="{{ path('admin_storage_types_list', {page: 1}) }}" class="px-3 py-1 rounded-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">1</a>
+                        <a href="{{ path('portal_storage_types_list', {page: 1}) }}" class="px-3 py-1 rounded-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">1</a>
                         {% if startPage > 2 %}
                             <span class="px-3 py-1 text-sm text-gray-400">...</span>
                         {% endif %}
@@ -101,7 +101,7 @@
                         {% if page == currentPage %}
                             <span class="px-3 py-1 rounded-md border border-blue-500 bg-blue-50 text-sm font-medium text-blue-700">{{ page }}</span>
                         {% else %}
-                            <a href="{{ path('admin_storage_types_list', {page: page}) }}" class="px-3 py-1 rounded-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">{{ page }}</a>
+                            <a href="{{ path('portal_storage_types_list', {page: page}) }}" class="px-3 py-1 rounded-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">{{ page }}</a>
                         {% endif %}
                     {% endfor %}
 
@@ -109,11 +109,11 @@
                         {% if endPage < totalPages - 1 %}
                             <span class="px-3 py-1 text-sm text-gray-400">...</span>
                         {% endif %}
-                        <a href="{{ path('admin_storage_types_list', {page: totalPages}) }}" class="px-3 py-1 rounded-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">{{ totalPages }}</a>
+                        <a href="{{ path('portal_storage_types_list', {page: totalPages}) }}" class="px-3 py-1 rounded-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">{{ totalPages }}</a>
                     {% endif %}
 
                     {% if currentPage < totalPages %}
-                        <a href="{{ path('admin_storage_types_list', {page: currentPage + 1}) }}" class="px-3 py-1 rounded-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                        <a href="{{ path('portal_storage_types_list', {page: currentPage + 1}) }}" class="px-3 py-1 rounded-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
                             Dalsi
                         </a>
                     {% else %}

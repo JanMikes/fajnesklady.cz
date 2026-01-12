@@ -1,11 +1,11 @@
-{% extends 'admin/layout.html.twig' %}
+{% extends 'portal/layout.html.twig' %}
 
 {% block title %}Pridat misto - Admin{% endblock %}
 
 {% block content %}
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-3xl font-bold text-gray-900">Pridat misto</h1>
-        <a href="{{ path('admin_places_list') }}" class="btn btn-ghost">Zpet na seznam</a>
+        <a href="{{ path('portal_places_list') }}" class="btn btn-ghost">Zpet na seznam</a>
     </div>
 
     <div class="max-w-2xl">
@@ -41,7 +41,7 @@
                     <hr class="my-6 border-t border-gray-200">
 
                     <div class="flex justify-end gap-2">
-                        <a href="{{ path('admin_places_list') }}" class="btn btn-ghost">Zrusit</a>
+                        <a href="{{ path('portal_places_list') }}" class="btn btn-ghost">Zrusit</a>
                         <button type="submit" class="btn btn-primary">Vytvorit misto</button>
                     </div>
                 {{ form_end(form) }}

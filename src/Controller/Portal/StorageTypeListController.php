@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Controller\Admin;
+namespace App\Controller\Portal;
 
 use App\Entity\User;
 use App\Repository\StorageTypeRepository;
@@ -12,7 +12,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-#[Route('/admin/storage-types', name: 'admin_storage_types_list')]
+#[Route('/portal/storage-types', name: 'portal_storage_types_list')]
 #[IsGranted('ROLE_LANDLORD')]
 final class StorageTypeListController extends AbstractController
 {
@@ -40,7 +40,7 @@ final class StorageTypeListController extends AbstractController
 
         $totalPages = (int) ceil($totalStorageTypes / $limit);
 
-        return $this->render('admin/storage_type/list.html.twig', [
+        return $this->render('portal/storage_type/list.html.twig', [
             'storageTypes' => $storageTypes,
             'currentPage' => $page,
             'totalPages' => $totalPages,

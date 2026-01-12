@@ -1,14 +1,32 @@
-{% extends 'admin/layout.html.twig' %}
+{% extends 'portal/layout.html.twig' %}
 
-{% block title %}Pridat typ skladu - Admin{% endblock %}
+{% block title %}Upravit typ skladu - Admin{% endblock %}
 
 {% block content %}
     <div class="flex justify-between items-center mb-6">
-        <h1 class="text-3xl font-bold text-gray-900">Pridat typ skladu</h1>
-        <a href="{{ path('admin_storage_types_list') }}" class="btn btn-ghost">Zpet na seznam</a>
+        <h1 class="text-3xl font-bold text-gray-900">Upravit typ skladu</h1>
+        <a href="{{ path('portal_storage_types_list') }}" class="btn btn-ghost">Zpet na seznam</a>
     </div>
 
     <div class="max-w-2xl">
+        <div class="card mb-6">
+            <div class="card-body">
+                <div class="flex items-center gap-4">
+                    <div class="flex-shrink-0">
+                        <div class="bg-blue-600 text-white rounded-full w-16 h-16 flex items-center justify-center">
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                            </svg>
+                        </div>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-gray-900">{{ storageType.name }}</h2>
+                        <p class="text-gray-600">{{ storageType.width }} x {{ storageType.height }} x {{ storageType.length }} m ({{ storageType.volume|number_format(2, ',', ' ') }} m3)</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="card">
             <div class="card-body">
                 {{ form_start(form) }}
@@ -55,19 +73,11 @@
                         </div>
                     </div>
 
-                    {% if form.ownerId is defined %}
-                        <div class="mb-4">
-                            <label for="{{ form.ownerId.vars.id }}" class="block text-sm font-semibold text-gray-700 mb-2">Vlastnik</label>
-                            {{ form_widget(form.ownerId, {'attr': {'class': 'select select-bordered w-full'}}) }}
-                            {{ form_errors(form.ownerId) }}
-                        </div>
-                    {% endif %}
-
                     <hr class="my-6 border-t border-gray-200">
 
                     <div class="flex justify-end gap-2">
-                        <a href="{{ path('admin_storage_types_list') }}" class="btn btn-ghost">Zrusit</a>
-                        <button type="submit" class="btn btn-primary">Vytvorit typ skladu</button>
+                        <a href="{{ path('portal_storage_types_list') }}" class="btn btn-ghost">Zrusit</a>
+                        <button type="submit" class="btn btn-primary">Ulozit zmeny</button>
                     </div>
                 {{ form_end(form) }}
             </div>

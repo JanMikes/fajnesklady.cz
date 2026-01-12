@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Controller\Admin;
+namespace App\Controller\Portal;
 
 use App\Command\UpdatePlaceCommand;
 use App\Form\PlaceType;
@@ -16,7 +16,7 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Uid\Uuid;
 
-#[Route('/admin/places/{id}/edit', name: 'admin_places_edit')]
+#[Route('/portal/places/{id}/edit', name: 'portal_places_edit')]
 #[IsGranted('ROLE_LANDLORD')]
 final class PlaceEditController extends AbstractController
 {
@@ -61,10 +61,10 @@ final class PlaceEditController extends AbstractController
 
             $this->addFlash('success', 'Misto bylo uspesne aktualizovano.');
 
-            return $this->redirectToRoute('admin_places_list');
+            return $this->redirectToRoute('portal_places_list');
         }
 
-        return $this->render('admin/place/edit.html.twig', [
+        return $this->render('portal/place/edit.html.twig', [
             'form' => $form,
             'place' => $place,
         ]);

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Symfony\Component\DependencyInjection\Loader\Configurator;
 
+use App\Entity\User;
+
 return App::config([
     'security' => [
         'password_hashers' => [
@@ -12,7 +14,7 @@ return App::config([
         'providers' => [
             'app_user_provider' => [
                 'entity' => [
-                    'class' => 'App\\Entity\\User',
+                    'class' => User::class,
                     'property' => 'email',
                 ],
             ],
@@ -45,9 +47,7 @@ return App::config([
         ],
         'access_control' => [
             ['path' => '^/-/health-check/liveness', 'roles' => 'PUBLIC_ACCESS'],
-            ['path' => '^/admin/places', 'roles' => 'ROLE_LANDLORD'],
-            ['path' => '^/admin/storage-types', 'roles' => 'ROLE_LANDLORD'],
-            ['path' => '^/admin', 'roles' => 'ROLE_ADMIN'],
+            ['path' => '^/portal', 'roles' => 'ROLE_USER'],
             ['path' => '^/login', 'roles' => 'PUBLIC_ACCESS'],
             ['path' => '^/register', 'roles' => 'PUBLIC_ACCESS'],
             ['path' => '^/reset-password', 'roles' => 'PUBLIC_ACCESS'],

@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace App\Controller\Admin;
+namespace App\Controller\Portal;
 
-use App\Command\CreatePlaceCommand;
+use App\Command\CreateStorageTypeCommand;
 use App\Entity\User;
-use App\Form\PlaceType;
+use App\Form\StorageTypeType;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -15,9 +15,9 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Uid\Uuid;
 
-#[Route('/admin/places/create', name: 'admin_places_create')]
+#[Route('/portal/storage-types/create', name: 'portal_storage_types_create')]
 #[IsGranted('ROLE_LANDLORD')]
-final class PlaceCreateController extends AbstractController
+final class StorageTypeCreateController extends AbstractController
 {
     public function __construct(
         private readonly MessageBusInterface $commandBus,
@@ -29,7 +29,7 @@ final class PlaceCreateController extends AbstractController
         /** @var User $user */
         $user = $this->getUser();
 
-        $form = $this->createForm(PlaceType::class);
+        $form = $this->createForm(StorageTypeType::class);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
@@ -41,21 +41,28 @@ final class PlaceCreateController extends AbstractController
                 ? Uuid::fromString((string) $data['ownerId'])
                 : $user->id;
 
-            $command = new CreatePlaceCommand(
+            // Convert CZK to halire (cents)
+            $pricePerWeek = (int) round((float) $data['pricePerWeek'] * 100);
+            $pricePerMonth = (int) round((float) $data['pricePerMonth'] * 100);
+
+            $command = new CreateStorageTypeCommand(
                 name: (string) $data['name'],
-                address: (string) $data['address'],
-                description: isset($data['description']) ? (string) $data['description'] : null,
+                width: (string) $data['width'],
+                height: (string) $data['height'],
+                length: (string) $data['length'],
+                pricePerWeek: $pricePerWeek,
+                pricePerMonth: $pricePerMonth,
                 ownerId: $ownerId,
             );
 
             $this->commandBus->dispatch($command);
 
-            $this->addFlash('success', 'Misto bylo uspesne vytvoreno.');
+            $this->addFlash('success', 'Typ skladu byl uspesne vytvoren.');
 
-            return $this->redirectToRoute('admin_places_list');
+            return $this->redirectToRoute('portal_storage_types_list');
         }
 
-        return $this->render('admin/place/create.html.twig', [
+        return $this->render('portal/storage_type/create.html.twig', [
             'form' => $form,
         ]);
     }

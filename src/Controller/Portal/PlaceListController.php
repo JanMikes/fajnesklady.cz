@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Controller\Admin;
+namespace App\Controller\Portal;
 
 use App\Entity\User;
 use App\Repository\PlaceRepository;
@@ -12,7 +12,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-#[Route('/admin/places', name: 'admin_places_list')]
+#[Route('/portal/places', name: 'portal_places_list')]
 #[IsGranted('ROLE_LANDLORD')]
 final class PlaceListController extends AbstractController
 {
@@ -40,7 +40,7 @@ final class PlaceListController extends AbstractController
 
         $totalPages = (int) ceil($totalPlaces / $limit);
 
-        return $this->render('admin/place/list.html.twig', [
+        return $this->render('portal/place/list.html.twig', [
             'places' => $places,
             'currentPage' => $page,
             'totalPages' => $totalPages,

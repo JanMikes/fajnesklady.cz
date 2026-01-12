@@ -14,9 +14,9 @@ use Symfony\Component\Security\Core\Authorization\Voter\Voter;
  */
 final class PlaceVoter extends Voter
 {
-    public const VIEW = 'PLACE_VIEW';
-    public const EDIT = 'PLACE_EDIT';
-    public const DELETE = 'PLACE_DELETE';
+    public const string VIEW = 'PLACE_VIEW';
+    public const string EDIT = 'PLACE_EDIT';
+    public const string DELETE = 'PLACE_DELETE';
 
     protected function supports(string $attribute, mixed $subject): bool
     {

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Controller\Admin;
+namespace App\Controller\Portal;
 
 use App\Command\DeleteStorageTypeCommand;
 use App\Repository\StorageTypeRepository;
@@ -15,7 +15,7 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Uid\Uuid;
 
-#[Route('/admin/storage-types/{id}/delete', name: 'admin_storage_types_delete', methods: ['POST'])]
+#[Route('/portal/storage-types/{id}/delete', name: 'portal_storage_types_delete', methods: ['POST'])]
 #[IsGranted('ROLE_LANDLORD')]
 final class StorageTypeDeleteController extends AbstractController
 {
@@ -39,13 +39,13 @@ final class StorageTypeDeleteController extends AbstractController
         if (!$this->isCsrfTokenValid('delete_storage_type_'.$id, $request->request->getString('_token'))) {
             $this->addFlash('error', 'Neplatny CSRF token.');
 
-            return $this->redirectToRoute('admin_storage_types_list');
+            return $this->redirectToRoute('portal_storage_types_list');
         }
 
         $this->commandBus->dispatch(new DeleteStorageTypeCommand(storageTypeId: $storageType->id));
 
         $this->addFlash('success', 'Typ skladu byl uspesne smazan.');
 
-        return $this->redirectToRoute('admin_storage_types_list');
+        return $this->redirectToRoute('portal_storage_types_list');
     }
 }

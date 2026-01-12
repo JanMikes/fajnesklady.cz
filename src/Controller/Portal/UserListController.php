@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Controller\Admin;
+namespace App\Controller\Portal;
 
 use App\Repository\UserRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -11,7 +11,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-#[Route('/admin/users', name: 'admin_users_list')]
+#[Route('/portal/users', name: 'portal_users_list')]
 #[IsGranted('ROLE_ADMIN')]
 final class UserListController extends AbstractController
 {
@@ -29,7 +29,7 @@ final class UserListController extends AbstractController
         $totalUsers = $this->userRepository->countTotal();
         $totalPages = (int) ceil($totalUsers / $limit);
 
-        return $this->render('admin/user/list.html.twig', [
+        return $this->render('portal/user/list.html.twig', [
             'users' => $users,
             'currentPage' => $page,
             'totalPages' => $totalPages,

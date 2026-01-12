@@ -1,4 +1,4 @@
-{% extends 'admin/layout.html.twig' %}
+{% extends 'portal/layout.html.twig' %}
 
 {% block title %}Přehled - Admin{% endblock %}
 
@@ -112,7 +112,7 @@
                 </div>
                 <p class="text-gray-600 mb-4">Spravujte uživatelské účty, role a oprávnění</p>
                 <div class="flex justify-end">
-                    <a href="{{ path('admin_users_list') }}" class="btn btn-primary">Zobrazit všechny uživatele</a>
+                    <a href="{{ path('portal_users_list') }}" class="btn btn-primary">Zobrazit všechny uživatele</a>
                 </div>
             </div>
         </div>

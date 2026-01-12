@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Controller\Admin;
+namespace App\Controller\Portal;
 
 use App\Repository\UserRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -11,7 +11,7 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Uid\Uuid;
 
-#[Route('/admin/users/{id}', name: 'admin_users_view')]
+#[Route('/portal/users/{id}', name: 'portal_users_view')]
 #[IsGranted('ROLE_ADMIN')]
 final class UserViewController extends AbstractController
 {
@@ -28,7 +28,7 @@ final class UserViewController extends AbstractController
             throw $this->createNotFoundException('User not found');
         }
 
-        return $this->render('admin/user/view.html.twig', [
+        return $this->render('portal/user/view.html.twig', [
             'user' => $user,
         ]);
     }

@@ -33,3 +33,6 @@ parameters:
         - '#Call to an undefined method Symfony\\Component\\HttpFoundation\\Session\\SessionInterface::getFlashBag\(\)#'
         # Third-party bundle type issues
         - '#Parameter \#1 \$user of class App\\Entity\\ResetPasswordRequest constructor expects App\\Entity\\User, object given#'
+        # Doctrine event args have unresolvable types when mocked
+        - '#Return type of call to method PHPUnit\\Framework\\TestCase::createMock\(\) contains unresolvable type#'
+        - '#PHPDoc tag @var for variable \$args contains unresolvable type#'
