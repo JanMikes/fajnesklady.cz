@@ -58,6 +58,12 @@ return App::config([
             'resource' => '../src/Service/',
             'public' => true,
         ],
+        'App\\Service\\ContractDocumentGenerator' => [
+            'arguments' => [
+                '$contractsDirectory' => '%kernel.project_dir%/var/contracts',
+            ],
+            'public' => true,
+        ],
         'App\\Tests\\Support\\PredictableIdentityProvider' => [
             'tags' => [['name' => 'kernel.reset', 'method' => 'reset']],
         ],

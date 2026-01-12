@@ -115,4 +115,83 @@ class UserTest extends TestCase
         $this->assertSame('+420123456789', $user->phone);
         $this->assertSame($updatedAt, $user->updatedAt);
     }
+
+    public function testUserCanBeCreatedWithoutPassword(): void
+    {
+        $user = new User(
+            id: Uuid::v7(),
+            email: 'passwordless@example.com',
+            password: null,
+            firstName: 'Test',
+            lastName: 'User',
+            createdAt: new \DateTimeImmutable(),
+        );
+
+        $this->assertNull($user->getPassword());
+        $this->assertFalse($user->hasPassword());
+    }
+
+    public function testUserWithPasswordReportsHasPassword(): void
+    {
+        $user = new User(
+            id: Uuid::v7(),
+            email: 'test@example.com',
+            password: 'hashedpassword',
+            firstName: 'Test',
+            lastName: 'User',
+            createdAt: new \DateTimeImmutable(),
+        );
+
+        $this->assertTrue($user->hasPassword());
+    }
+
+    public function testPasswordCanBeSetOnPasswordlessUser(): void
+    {
+        $user = new User(
+            id: Uuid::v7(),
+            email: 'passwordless@example.com',
+            password: null,
+            firstName: 'Test',
+            lastName: 'User',
+            createdAt: new \DateTimeImmutable(),
+        );
+
+        $this->assertFalse($user->hasPassword());
+
+        $user->changePassword('newhashedpassword', new \DateTimeImmutable());
+
+        $this->assertSame('newhashedpassword', $user->getPassword());
+        $this->assertTrue($user->hasPassword());
+    }
+
+    public function testEmptyPasswordIsConsideredNoPassword(): void
+    {
+        $user = new User(
+            id: Uuid::v7(),
+            email: 'test@example.com',
+            password: '',
+            firstName: 'Test',
+            lastName: 'User',
+            createdAt: new \DateTimeImmutable(),
+        );
+
+        $this->assertFalse($user->hasPassword());
+    }
+
+    public function testChangeRole(): void
+    {
+        $user = new User(
+            id: Uuid::v7(),
+            email: 'test@example.com',
+            password: null,
+            firstName: 'Test',
+            lastName: 'User',
+            createdAt: new \DateTimeImmutable(),
+        );
+
+        $user->changeRole(UserRole::LANDLORD, new \DateTimeImmutable());
+
+        $this->assertContains('ROLE_USER', $user->getRoles());
+        $this->assertContains('ROLE_LANDLORD', $user->getRoles());
+    }
 }

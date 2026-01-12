@@ -43,8 +43,8 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, EntityW
         private(set) Uuid $id,
         #[ORM\Column(length: 180, unique: true)]
         private(set) string $email,
-        #[ORM\Column]
-        private string $password,
+        #[ORM\Column(nullable: true)]
+        private ?string $password,
         #[ORM\Column(length: 100)]
         private(set) string $firstName,
         #[ORM\Column(length: 100)]
@@ -74,9 +74,14 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, EntityW
         return $this->email;
     }
 
-    public function getPassword(): string
+    public function getPassword(): ?string
     {
         return $this->password;
+    }
+
+    public function hasPassword(): bool
+    {
+        return null !== $this->password && '' !== $this->password;
     }
 
     public function changePassword(string $hashedPassword, \DateTimeImmutable $now): void

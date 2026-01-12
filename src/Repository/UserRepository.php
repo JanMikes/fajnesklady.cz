@@ -21,10 +21,14 @@ final class UserRepository
         $this->entityManager->persist($user);
     }
 
+    public function find(Uuid $id): ?User
+    {
+        return $this->entityManager->find(User::class, $id);
+    }
+
     public function get(Uuid $id): User
     {
-        return $this->entityManager->find(User::class, $id)
-            ?? throw UserNotFound::withId($id);
+        return $this->find($id) ?? throw UserNotFound::withId($id);
     }
 
     public function findByEmail(string $email): ?User
