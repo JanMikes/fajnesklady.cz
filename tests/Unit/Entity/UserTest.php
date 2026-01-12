@@ -14,14 +14,17 @@ class UserTest extends TestCase
     public function testCreateUser(): void
     {
         $email = 'test@example.com';
-        $name = 'Test User';
+        $firstName = 'Test';
+        $lastName = 'User';
         $password = 'hashedPassword123';
         $now = new \DateTimeImmutable();
 
-        $user = new User(Uuid::v7(), $email, $password, $name, $now);
+        $user = new User(Uuid::v7(), $email, $password, $firstName, $lastName, $now);
 
         $this->assertSame($email, $user->email);
-        $this->assertSame($name, $user->name);
+        $this->assertSame($firstName, $user->firstName);
+        $this->assertSame($lastName, $user->lastName);
+        $this->assertSame('Test User', $user->fullName);
         $this->assertSame($password, $user->getPassword());
         $this->assertInstanceOf(Uuid::class, $user->id);
         $this->assertFalse($user->isVerified());
@@ -32,14 +35,14 @@ class UserTest extends TestCase
     public function testUserIdentifierIsEmail(): void
     {
         $email = 'test@example.com';
-        $user = new User(Uuid::v7(), $email, 'password123', 'Test User', new \DateTimeImmutable());
+        $user = new User(Uuid::v7(), $email, 'password123', 'Test', 'User', new \DateTimeImmutable());
 
         $this->assertSame($email, $user->getUserIdentifier());
     }
 
     public function testDefaultRoleIsRoleUser(): void
     {
-        $user = new User(Uuid::v7(), 'test@example.com', 'password123', 'Test User', new \DateTimeImmutable());
+        $user = new User(Uuid::v7(), 'test@example.com', 'password123', 'Test', 'User', new \DateTimeImmutable());
 
         $roles = $user->getRoles();
 
@@ -51,7 +54,7 @@ class UserTest extends TestCase
     {
         $createdAt = new \DateTimeImmutable('2024-01-01 10:00:00');
         $verifiedAt = new \DateTimeImmutable('2024-01-01 11:00:00');
-        $user = new User(Uuid::v7(), 'test@example.com', 'password123', 'Test User', $createdAt);
+        $user = new User(Uuid::v7(), 'test@example.com', 'password123', 'Test', 'User', $createdAt);
 
         $this->assertFalse($user->isVerified());
 
@@ -67,7 +70,7 @@ class UserTest extends TestCase
     {
         $createdAt = new \DateTimeImmutable('2024-01-01 10:00:00');
         $changedAt = new \DateTimeImmutable('2024-01-01 11:00:00');
-        $user = new User(Uuid::v7(), 'test@example.com', 'oldPassword', 'Test User', $createdAt);
+        $user = new User(Uuid::v7(), 'test@example.com', 'oldPassword', 'Test', 'User', $createdAt);
 
         $originalUpdatedAt = $user->updatedAt;
         $newPassword = 'newHashedPassword';
@@ -82,12 +85,34 @@ class UserTest extends TestCase
     {
         $createdAt = new \DateTimeImmutable('2024-01-01 10:00:00');
         $verifiedAt = new \DateTimeImmutable('2024-01-01 11:00:00');
-        $user = new User(Uuid::v7(), 'test@example.com', 'password123', 'Test User', $createdAt);
+        $user = new User(Uuid::v7(), 'test@example.com', 'password123', 'Test', 'User', $createdAt);
 
         // Perform operations that update updatedAt
         $user->markAsVerified($verifiedAt);
 
         // CreatedAt should not change
         $this->assertSame($createdAt, $user->createdAt);
+    }
+
+    public function testFullNamePropertyHook(): void
+    {
+        $user = new User(Uuid::v7(), 'test@example.com', 'password123', 'Jan', 'Novak', new \DateTimeImmutable());
+
+        $this->assertSame('Jan Novak', $user->fullName);
+    }
+
+    public function testUpdateProfile(): void
+    {
+        $createdAt = new \DateTimeImmutable('2024-01-01 10:00:00');
+        $updatedAt = new \DateTimeImmutable('2024-01-01 11:00:00');
+        $user = new User(Uuid::v7(), 'test@example.com', 'password123', 'Test', 'User', $createdAt);
+
+        $user->updateProfile('New', 'Name', '+420123456789', $updatedAt);
+
+        $this->assertSame('New', $user->firstName);
+        $this->assertSame('Name', $user->lastName);
+        $this->assertSame('New Name', $user->fullName);
+        $this->assertSame('+420123456789', $user->phone);
+        $this->assertSame($updatedAt, $user->updatedAt);
     }
 }

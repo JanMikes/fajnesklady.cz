@@ -11,11 +11,12 @@ final readonly class UpdateStorageTypeCommand
     public function __construct(
         public Uuid $storageTypeId,
         public string $name,
-        public string $width,
-        public string $height,
-        public string $length,
+        public int $width,
+        public int $height,
+        public int $length,
         public int $pricePerWeek,
         public int $pricePerMonth,
+        public ?string $description,
     ) {
     }
 }

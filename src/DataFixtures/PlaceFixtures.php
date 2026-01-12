@@ -33,33 +33,45 @@ final class PlaceFixtures extends Fixture implements DependentFixtureInterface
         $place1 = new Place(
             id: Uuid::v7(),
             name: 'Sklad Praha - Centrum',
-            address: 'Revolucni 1, 110 00 Praha 1',
+            address: 'Revolucni 1',
+            city: 'Praha 1',
+            postalCode: '110 00',
             description: 'Moderni skladovaci prostory v centru Prahy s 24/7 pristupem.',
             owner: $landlord,
             createdAt: $now,
         );
+        $place1->updateLocation('50.0904272', '14.4314139', $now);
         $manager->persist($place1);
+        $this->addReference('place-praha-centrum', $place1);
 
         $place2 = new Place(
             id: Uuid::v7(),
             name: 'Sklad Praha - Jiznimesto',
-            address: 'Roztylska 42, 148 00 Praha 4',
+            address: 'Roztylska 42',
+            city: 'Praha 4',
+            postalCode: '148 00',
             description: 'Skladovaci boxy ruznych velikosti s parkovanim zdarma.',
             owner: $landlord,
             createdAt: $now,
         );
+        $place2->updateLocation('50.0312889', '14.4949583', $now);
         $manager->persist($place2);
+        $this->addReference('place-praha-jih', $place2);
 
         // Place for admin (to test admin can see all)
         $place3 = new Place(
             id: Uuid::v7(),
             name: 'Sklad Brno',
-            address: 'Masarykova 15, 602 00 Brno',
+            address: 'Masarykova 15',
+            city: 'Brno',
+            postalCode: '602 00',
             description: null,
             owner: $admin,
             createdAt: $now,
         );
+        $place3->updateLocation('49.1950602', '16.6068371', $now);
         $manager->persist($place3);
+        $this->addReference('place-brno', $place3);
 
         $manager->flush();
     }

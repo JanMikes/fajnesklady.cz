@@ -24,6 +24,8 @@ final readonly class UpdatePlaceHandler
         $place->updateDetails(
             name: $command->name,
             address: $command->address,
+            city: $command->city,
+            postalCode: $command->postalCode,
             description: $command->description,
             now: $this->clock->now(),
         );

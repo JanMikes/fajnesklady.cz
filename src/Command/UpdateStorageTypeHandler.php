@@ -28,6 +28,7 @@ final readonly class UpdateStorageTypeHandler
             length: $command->length,
             pricePerWeek: $command->pricePerWeek,
             pricePerMonth: $command->pricePerMonth,
+            description: $command->description,
             now: $this->clock->now(),
         );
 

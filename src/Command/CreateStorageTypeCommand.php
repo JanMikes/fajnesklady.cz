@@ -10,12 +10,13 @@ final readonly class CreateStorageTypeCommand
 {
     public function __construct(
         public string $name,
-        public string $width,
-        public string $height,
-        public string $length,
+        public int $width,
+        public int $height,
+        public int $length,
         public int $pricePerWeek,
         public int $pricePerMonth,
-        public Uuid $ownerId,
+        public ?string $description,
+        public Uuid $placeId,
     ) {
     }
 }

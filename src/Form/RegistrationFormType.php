@@ -28,10 +28,18 @@ class RegistrationFormType extends AbstractType
             ],
         ]);
 
-        $builder->add('name', TextType::class, [
-            'label' => 'Full Name',
+        $builder->add('firstName', TextType::class, [
+            'label' => 'First Name',
             'attr' => [
-                'placeholder' => 'John Doe',
+                'placeholder' => 'Jan',
+                'class' => 'input input-bordered w-full',
+            ],
+        ]);
+
+        $builder->add('lastName', TextType::class, [
+            'label' => 'Last Name',
+            'attr' => [
+                'placeholder' => 'Novak',
                 'class' => 'input input-bordered w-full',
             ],
         ]);

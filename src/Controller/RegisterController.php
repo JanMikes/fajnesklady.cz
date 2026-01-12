@@ -45,7 +45,8 @@ final class RegisterController extends AbstractController
                 $command = new RegisterUserCommand(
                     email: $formData->email,
                     password: $formData->password,
-                    name: $formData->name,
+                    firstName: $formData->firstName,
+                    lastName: $formData->lastName,
                 );
 
                 $this->commandBus->dispatch($command);

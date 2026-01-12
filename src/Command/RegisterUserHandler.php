@@ -37,7 +37,8 @@ final readonly class RegisterUserHandler
             id: $this->identityProvider->next(),
             email: $command->email,
             password: '', // Will be hashed below
-            name: $command->name,
+            firstName: $command->firstName,
+            lastName: $command->lastName,
             createdAt: $now,
         );
 

@@ -30,6 +30,13 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, EntityW
     #[ORM\Column]
     public private(set) \DateTimeImmutable $updatedAt;
 
+    #[ORM\Column(length: 20, nullable: true)]
+    public private(set) ?string $phone = null;
+
+    public string $fullName {
+        get => trim($this->firstName.' '.$this->lastName);
+    }
+
     public function __construct(
         #[ORM\Id]
         #[ORM\Column(type: UuidType::NAME, unique: true)]
@@ -38,8 +45,10 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, EntityW
         private(set) string $email,
         #[ORM\Column]
         private string $password,
-        #[ORM\Column(length: 255)]
-        private(set) string $name,
+        #[ORM\Column(length: 100)]
+        private(set) string $firstName,
+        #[ORM\Column(length: 100)]
+        private(set) string $lastName,
         #[ORM\Column]
         private(set) \DateTimeImmutable $createdAt,
     ) {
@@ -49,7 +58,8 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, EntityW
         $this->recordThat(new UserRegistered(
             userId: $this->id,
             email: $this->email,
-            name: $this->name,
+            firstName: $this->firstName,
+            lastName: $this->lastName,
             occurredOn: $this->createdAt,
         ));
     }
@@ -105,6 +115,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, EntityW
     public function changeRole(UserRole $role, \DateTimeImmutable $now): void
     {
         $this->roles = [UserRole::USER->value, $role->value];
+        $this->updatedAt = $now;
+    }
+
+    public function updateProfile(
+        string $firstName,
+        string $lastName,
+        ?string $phone,
+        \DateTimeImmutable $now,
+    ): void {
+        $this->firstName = $firstName;
+        $this->lastName = $lastName;
+        $this->phone = $phone;
         $this->updatedAt = $now;
     }
 }

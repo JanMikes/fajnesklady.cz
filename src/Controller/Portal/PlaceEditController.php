@@ -43,6 +43,8 @@ final class PlaceEditController extends AbstractController
                 placeId: $place->id,
                 name: $formData->name,
                 address: $formData->address,
+                city: $formData->city,
+                postalCode: $formData->postalCode,
                 description: $formData->description,
             );
 

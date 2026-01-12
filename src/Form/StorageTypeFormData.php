@@ -13,17 +13,20 @@ final class StorageTypeFormData
     #[Assert\Length(max: 255, maxMessage: 'Nazev nemuze byt delsi nez {{ limit }} znaku')]
     public string $name = '';
 
-    #[Assert\NotBlank(message: 'Zadejte sirku')]
+    /** Width in centimeters */
+    #[Assert\NotNull(message: 'Zadejte sirku')]
     #[Assert\Positive(message: 'Sirka musi byt kladne cislo')]
-    public ?string $width = null;
+    public ?int $width = null;
 
-    #[Assert\NotBlank(message: 'Zadejte vysku')]
+    /** Height in centimeters */
+    #[Assert\NotNull(message: 'Zadejte vysku')]
     #[Assert\Positive(message: 'Vyska musi byt kladne cislo')]
-    public ?string $height = null;
+    public ?int $height = null;
 
-    #[Assert\NotBlank(message: 'Zadejte delku')]
+    /** Length in centimeters */
+    #[Assert\NotNull(message: 'Zadejte delku')]
     #[Assert\Positive(message: 'Delka musi byt kladne cislo')]
-    public ?string $length = null;
+    public ?int $length = null;
 
     /** Price in CZK (will be converted to halire in controller) */
     #[Assert\NotNull(message: 'Zadejte cenu za tyden')]
@@ -35,7 +38,9 @@ final class StorageTypeFormData
     #[Assert\PositiveOrZero(message: 'Cena za mesic musi byt nula nebo kladna')]
     public ?float $pricePerMonth = null;
 
-    public ?string $ownerId = null;
+    public ?string $description = null;
+
+    public ?string $placeId = null;
 
     public static function fromStorageType(StorageType $storageType): self
     {
@@ -46,7 +51,8 @@ final class StorageTypeFormData
         $formData->length = $storageType->length;
         $formData->pricePerWeek = $storageType->getPricePerWeekInCzk();
         $formData->pricePerMonth = $storageType->getPricePerMonthInCzk();
-        $formData->ownerId = $storageType->owner->id->toRfc4122();
+        $formData->description = $storageType->description;
+        $formData->placeId = $storageType->place->id->toRfc4122();
 
         return $formData;
     }

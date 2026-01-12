@@ -11,6 +11,8 @@ final readonly class CreatePlaceCommand
     public function __construct(
         public string $name,
         public string $address,
+        public string $city,
+        public string $postalCode,
         public ?string $description,
         public Uuid $ownerId,
     ) {

@@ -30,20 +30,21 @@ class UserRepositoryTest extends KernelTestCase
     public function testSaveUser(): void
     {
         $now = new \DateTimeImmutable();
-        $user = new User(Uuid::v7(), 'test@example.com', 'password123', 'Test User', $now);
+        $user = new User(Uuid::v7(), 'test@example.com', 'password123', 'Test', 'User', $now);
 
         $this->repository->save($user);
         $this->entityManager->flush();
 
         $foundUser = $this->repository->get($user->id);
         $this->assertSame($user->email, $foundUser->email);
-        $this->assertSame($user->name, $foundUser->name);
+        $this->assertSame($user->firstName, $foundUser->firstName);
+        $this->assertSame($user->lastName, $foundUser->lastName);
     }
 
     public function testGet(): void
     {
         $now = new \DateTimeImmutable();
-        $user = new User(Uuid::v7(), 'findbyid@example.com', 'password123', 'Test User', $now);
+        $user = new User(Uuid::v7(), 'findbyid@example.com', 'password123', 'Test', 'User', $now);
         $this->repository->save($user);
         $this->entityManager->flush();
 
@@ -65,7 +66,7 @@ class UserRepositoryTest extends KernelTestCase
     {
         $now = new \DateTimeImmutable();
         $email = 'findbyemail@example.com';
-        $user = new User(Uuid::v7(), $email, 'password123', 'Test User', $now);
+        $user = new User(Uuid::v7(), $email, 'password123', 'Test', 'User', $now);
         $this->repository->save($user);
         $this->entityManager->flush();
 
@@ -88,9 +89,9 @@ class UserRepositoryTest extends KernelTestCase
         $initialCount = count($this->repository->findAll());
 
         // Create multiple users
-        $user1 = new User(Uuid::v7(), 'user1@example.com', 'password123', 'User 1', $now);
-        $user2 = new User(Uuid::v7(), 'user2@example.com', 'password123', 'User 2', $now);
-        $user3 = new User(Uuid::v7(), 'user3@example.com', 'password123', 'User 3', $now);
+        $user1 = new User(Uuid::v7(), 'user1@example.com', 'password123', 'User', 'One', $now);
+        $user2 = new User(Uuid::v7(), 'user2@example.com', 'password123', 'User', 'Two', $now);
+        $user3 = new User(Uuid::v7(), 'user3@example.com', 'password123', 'User', 'Three', $now);
 
         $this->repository->save($user1);
         $this->repository->save($user2);
@@ -114,7 +115,7 @@ class UserRepositoryTest extends KernelTestCase
 
         // Create 5 users
         for ($i = 1; $i <= 5; ++$i) {
-            $user = new User(Uuid::v7(), "paginated{$i}@example.com", 'password123', "User {$i}", $now);
+            $user = new User(Uuid::v7(), "paginated{$i}@example.com", 'password123', 'User', (string) $i, $now);
             $this->repository->save($user);
         }
         $this->entityManager->flush();
@@ -148,9 +149,9 @@ class UserRepositoryTest extends KernelTestCase
         $fixtureEmails = array_map(fn (User $u) => $u->email, $fixtureUsers);
 
         // Create 3 new users - these will be more recently created than fixtures
-        $user1 = new User(Uuid::v7(), 'order1@example.com', 'password123', 'User 1', $now);
-        $user2 = new User(Uuid::v7(), 'order2@example.com', 'password123', 'User 2', $now);
-        $user3 = new User(Uuid::v7(), 'order3@example.com', 'password123', 'User 3', $now);
+        $user1 = new User(Uuid::v7(), 'order1@example.com', 'password123', 'User', 'One', $now);
+        $user2 = new User(Uuid::v7(), 'order2@example.com', 'password123', 'User', 'Two', $now);
+        $user3 = new User(Uuid::v7(), 'order3@example.com', 'password123', 'User', 'Three', $now);
 
         $this->repository->save($user1);
         $this->repository->save($user2);
@@ -176,7 +177,7 @@ class UserRepositoryTest extends KernelTestCase
     public function testUpdateUser(): void
     {
         $now = new \DateTimeImmutable();
-        $user = new User(Uuid::v7(), 'update@example.com', 'password123', 'Test User', $now);
+        $user = new User(Uuid::v7(), 'update@example.com', 'password123', 'Test', 'User', $now);
         $this->repository->save($user);
         $this->entityManager->flush();
 

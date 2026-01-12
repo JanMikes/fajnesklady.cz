@@ -23,7 +23,7 @@ class PlaceVoterTest extends TestCase
 
     private function createUser(string $email = 'user@example.com'): User
     {
-        return new User(Uuid::v7(), $email, 'password', 'Test User', new \DateTimeImmutable());
+        return new User(Uuid::v7(), $email, 'password', 'Test', 'User', new \DateTimeImmutable());
     }
 
     private function createPlace(User $owner): Place
@@ -32,6 +32,8 @@ class PlaceVoterTest extends TestCase
             id: Uuid::v7(),
             name: 'Test Place',
             address: 'Test Address',
+            city: 'Praha',
+            postalCode: '110 00',
             description: null,
             owner: $owner,
             createdAt: new \DateTimeImmutable(),

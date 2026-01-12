@@ -38,7 +38,23 @@ class PlaceFormType extends AbstractType
         $builder->add('address', TextType::class, [
             'label' => 'Adresa',
             'attr' => [
-                'placeholder' => 'Ulice, Mesto, PSC',
+                'placeholder' => 'Ulice a cislo popisne',
+                'class' => 'input input-bordered w-full',
+            ],
+        ]);
+
+        $builder->add('city', TextType::class, [
+            'label' => 'Mesto',
+            'attr' => [
+                'placeholder' => 'Praha',
+                'class' => 'input input-bordered w-full',
+            ],
+        ]);
+
+        $builder->add('postalCode', TextType::class, [
+            'label' => 'PSC',
+            'attr' => [
+                'placeholder' => '110 00',
                 'class' => 'input input-bordered w-full',
             ],
         ]);
@@ -84,7 +100,7 @@ class PlaceFormType extends AbstractType
             $roles = $user->getRoles();
             if (in_array(UserRole::LANDLORD->value, $roles, true)
                 || in_array(UserRole::ADMIN->value, $roles, true)) {
-                $choices[$user->name.' ('.$user->email.')'] = $user->id->toRfc4122();
+                $choices[$user->fullName.' ('.$user->email.')'] = $user->id->toRfc4122();
             }
         }
 

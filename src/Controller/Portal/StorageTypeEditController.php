@@ -46,11 +46,12 @@ final class StorageTypeEditController extends AbstractController
             $command = new UpdateStorageTypeCommand(
                 storageTypeId: $storageType->id,
                 name: $formData->name,
-                width: (string) $formData->width,
-                height: (string) $formData->height,
-                length: (string) $formData->length,
+                width: $formData->width ?? 0,
+                height: $formData->height ?? 0,
+                length: $formData->length ?? 0,
                 pricePerWeek: $pricePerWeek,
                 pricePerMonth: $pricePerMonth,
+                description: $formData->description,
             );
 
             $this->commandBus->dispatch($command);

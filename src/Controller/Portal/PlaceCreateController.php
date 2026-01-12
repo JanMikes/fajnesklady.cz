@@ -45,6 +45,8 @@ final class PlaceCreateController extends AbstractController
             $command = new CreatePlaceCommand(
                 name: $formData->name,
                 address: $formData->address,
+                city: $formData->city,
+                postalCode: $formData->postalCode,
                 description: $formData->description,
                 ownerId: $ownerId,
             );

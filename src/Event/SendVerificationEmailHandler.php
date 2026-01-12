@@ -36,11 +36,11 @@ final readonly class SendVerificationEmailHandler
         // Create email with verification link
         $email = (new TemplatedEmail())
             ->from(new Address('noreply@fajnesklady.cz', 'Fajné Sklady'))
-            ->to(new Address($user->email, $user->name))
+            ->to(new Address($user->email, $user->fullName))
             ->subject('Please verify your email address')
             ->htmlTemplate('email/verification.html.twig')
             ->context([
-                'name' => $user->name,
+                'name' => $user->fullName,
                 'verificationUrl' => $signatureComponents->getSignedUrl(),
                 'expiresAt' => $signatureComponents->getExpiresAt(),
             ]);

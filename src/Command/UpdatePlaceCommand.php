@@ -12,6 +12,8 @@ final readonly class UpdatePlaceCommand
         public Uuid $placeId,
         public string $name,
         public string $address,
+        public string $city,
+        public string $postalCode,
         public ?string $description,
     ) {
     }

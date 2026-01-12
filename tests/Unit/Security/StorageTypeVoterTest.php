@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Security;
 
+use App\Entity\Place;
 use App\Entity\StorageType;
 use App\Entity\User;
 use App\Service\Security\StorageTypeVoter;
@@ -23,20 +24,36 @@ class StorageTypeVoterTest extends TestCase
 
     private function createUser(string $email = 'user@example.com'): User
     {
-        return new User(Uuid::v7(), $email, 'password', 'Test User', new \DateTimeImmutable());
+        return new User(Uuid::v7(), $email, 'password', 'Test', 'User', new \DateTimeImmutable());
+    }
+
+    private function createPlace(User $owner): Place
+    {
+        return new Place(
+            id: Uuid::v7(),
+            name: 'Test Place',
+            address: 'Test Address',
+            city: 'Praha',
+            postalCode: '110 00',
+            description: null,
+            owner: $owner,
+            createdAt: new \DateTimeImmutable(),
+        );
     }
 
     private function createStorageType(User $owner): StorageType
     {
+        $place = $this->createPlace($owner);
+
         return new StorageType(
             id: Uuid::v7(),
             name: 'Test Storage Type',
-            width: '1.0',
-            height: '1.0',
-            length: '1.0',
+            width: 100,
+            height: 100,
+            length: 100,
             pricePerWeek: 10000,
             pricePerMonth: 30000,
-            owner: $owner,
+            place: $place,
             createdAt: new \DateTimeImmutable(),
         );
     }

@@ -28,8 +28,9 @@ final class UserFixtures extends Fixture
         $user = new User(
             id: Uuid::v7(),
             email: 'user@example.com',
-            password: '', // Will be hashed below
-            name: 'Regular User',
+            password: '',
+            firstName: 'Jan',
+            lastName: 'Novak',
             createdAt: $now,
         );
         $user->changePassword($this->passwordHasher->hashPassword($user, 'password'), $now);
@@ -41,8 +42,9 @@ final class UserFixtures extends Fixture
         $unverified = new User(
             id: Uuid::v7(),
             email: 'unverified@example.com',
-            password: '', // Will be hashed below
-            name: 'Unverified User',
+            password: '',
+            firstName: 'Petr',
+            lastName: 'Svoboda',
             createdAt: $now,
         );
         $unverified->changePassword($this->passwordHasher->hashPassword($unverified, 'password'), $now);
@@ -53,13 +55,15 @@ final class UserFixtures extends Fixture
         $landlord = new User(
             id: Uuid::v7(),
             email: 'landlord@example.com',
-            password: '', // Will be hashed below
-            name: 'Landlord User',
+            password: '',
+            firstName: 'Marie',
+            lastName: 'Skladova',
             createdAt: $now,
         );
         $landlord->changePassword($this->passwordHasher->hashPassword($landlord, 'password'), $now);
         $landlord->markAsVerified($now);
         $landlord->changeRole(UserRole::LANDLORD, $now);
+        $landlord->updateProfile('Marie', 'Skladova', '+420777123456', $now);
         $manager->persist($landlord);
         $this->addReference('user-landlord', $landlord);
 
@@ -67,8 +71,9 @@ final class UserFixtures extends Fixture
         $admin = new User(
             id: Uuid::v7(),
             email: 'admin@example.com',
-            password: '', // Will be hashed below
-            name: 'Admin User',
+            password: '',
+            firstName: 'Admin',
+            lastName: 'System',
             createdAt: $now,
         );
         $admin->changePassword($this->passwordHasher->hashPassword($admin, 'password'), $now);

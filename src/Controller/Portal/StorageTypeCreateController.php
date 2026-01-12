@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Controller\Portal;
 
 use App\Command\CreateStorageTypeCommand;
-use App\Entity\User;
 use App\Form\StorageTypeFormData;
 use App\Form\StorageTypeFormType;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -27,9 +26,6 @@ final class StorageTypeCreateController extends AbstractController
 
     public function __invoke(Request $request): Response
     {
-        /** @var User $user */
-        $user = $this->getUser();
-
         $form = $this->createForm(StorageTypeFormType::class);
         $form->handleRequest($request);
 
@@ -37,10 +33,11 @@ final class StorageTypeCreateController extends AbstractController
             /** @var StorageTypeFormData $formData */
             $formData = $form->getData();
 
-            // If not admin, owner is always current user
-            $ownerId = $this->isGranted('ROLE_ADMIN') && null !== $formData->ownerId
-                ? Uuid::fromString($formData->ownerId)
-                : $user->id;
+            // placeId must be provided - either from admin form or from the user's default place
+            if (null === $formData->placeId) {
+                throw new \InvalidArgumentException('Place ID must be provided');
+            }
+            $placeId = Uuid::fromString($formData->placeId);
 
             // Convert CZK to halire (cents)
             $pricePerWeek = (int) round(($formData->pricePerWeek ?? 0.0) * 100);
@@ -48,12 +45,13 @@ final class StorageTypeCreateController extends AbstractController
 
             $command = new CreateStorageTypeCommand(
                 name: $formData->name,
-                width: (string) $formData->width,
-                height: (string) $formData->height,
-                length: (string) $formData->length,
+                width: $formData->width ?? 0,
+                height: $formData->height ?? 0,
+                length: $formData->length ?? 0,
                 pricePerWeek: $pricePerWeek,
                 pricePerMonth: $pricePerMonth,
-                ownerId: $ownerId,
+                description: $formData->description,
+                placeId: $placeId,
             );
 
             $this->commandBus->dispatch($command);

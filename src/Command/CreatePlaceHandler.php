@@ -30,6 +30,8 @@ final readonly class CreatePlaceHandler
             id: $this->identityProvider->next(),
             name: $command->name,
             address: $command->address,
+            city: $command->city,
+            postalCode: $command->postalCode,
             description: $command->description,
             owner: $owner,
             createdAt: $this->clock->now(),
