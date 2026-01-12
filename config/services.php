@@ -13,6 +13,9 @@ return App::config([
         'App\\Command\\' => [
             'resource' => '../src/Command/*Handler.php',
         ],
+        'App\\Console\\' => [
+            'resource' => '../src/Console/',
+        ],
         'App\\Controller\\' => [
             'resource' => '../src/Controller/',
         ],

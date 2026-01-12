@@ -19,6 +19,10 @@ return App::config([
             'resource' => '../src/Command/*Handler.php',
             'public' => true,
         ],
+        'App\\Console\\' => [
+            'resource' => '../src/Console/',
+            'public' => true,
+        ],
         'App\\Controller\\' => [
             'resource' => '../src/Controller/',
             'public' => true,
