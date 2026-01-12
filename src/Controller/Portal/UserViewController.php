@@ -22,11 +22,7 @@ final class UserViewController extends AbstractController
 
     public function __invoke(string $id): Response
     {
-        $user = $this->userRepository->findById(Uuid::fromString($id));
-
-        if (null === $user) {
-            throw $this->createNotFoundException('User not found');
-        }
+        $user = $this->userRepository->get(Uuid::fromString($id));
 
         return $this->render('portal/user/view.html.twig', [
             'user' => $user,

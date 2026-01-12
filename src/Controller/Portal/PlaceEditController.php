@@ -5,9 +5,10 @@ declare(strict_types=1);
 namespace App\Controller\Portal;
 
 use App\Command\UpdatePlaceCommand;
-use App\Form\PlaceType;
+use App\Form\PlaceFormData;
+use App\Form\PlaceFormType;
 use App\Repository\PlaceRepository;
-use App\Security\PlaceVoter;
+use App\Service\Security\PlaceVoter;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -28,33 +29,21 @@ final class PlaceEditController extends AbstractController
 
     public function __invoke(Request $request, string $id): Response
     {
-        $place = $this->placeRepository->findById(Uuid::fromString($id));
-
-        if (null === $place) {
-            throw $this->createNotFoundException('Misto nenalezeno');
-        }
+        $place = $this->placeRepository->get(Uuid::fromString($id));
 
         // Check ownership via voter
         $this->denyAccessUnlessGranted(PlaceVoter::EDIT, $place);
 
-        $form = $this->createForm(PlaceType::class, [
-            'name' => $place->name,
-            'address' => $place->address,
-            'description' => $place->description,
-            'ownerId' => $place->owner->id->toRfc4122(),
-        ]);
-
+        $formData = PlaceFormData::fromPlace($place);
+        $form = $this->createForm(PlaceFormType::class, $formData);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            /** @var array<string, mixed> $data */
-            $data = $form->getData();
-
             $command = new UpdatePlaceCommand(
                 placeId: $place->id,
-                name: (string) $data['name'],
-                address: (string) $data['address'],
-                description: isset($data['description']) ? (string) $data['description'] : null,
+                name: $formData->name,
+                address: $formData->address,
+                description: $formData->description,
             );
 
             $this->commandBus->dispatch($command);

@@ -6,7 +6,7 @@ namespace App\Controller\Portal;
 
 use App\Command\DeleteStorageTypeCommand;
 use App\Repository\StorageTypeRepository;
-use App\Security\StorageTypeVoter;
+use App\Service\Security\StorageTypeVoter;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -27,11 +27,7 @@ final class StorageTypeDeleteController extends AbstractController
 
     public function __invoke(Request $request, string $id): Response
     {
-        $storageType = $this->storageTypeRepository->findById(Uuid::fromString($id));
-
-        if (null === $storageType) {
-            throw $this->createNotFoundException('Typ skladu nenalezen');
-        }
+        $storageType = $this->storageTypeRepository->get(Uuid::fromString($id));
 
         $this->denyAccessUnlessGranted(StorageTypeVoter::DELETE, $storageType);
 

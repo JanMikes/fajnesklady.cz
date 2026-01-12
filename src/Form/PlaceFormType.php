@@ -13,13 +13,11 @@ use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 use Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface;
-use Symfony\Component\Validator\Constraints\Length;
-use Symfony\Component\Validator\Constraints\NotBlank;
 
 /**
- * @extends AbstractType<array<string, mixed>>
+ * @extends AbstractType<PlaceFormData>
  */
-class PlaceType extends AbstractType
+class PlaceFormType extends AbstractType
 {
     public function __construct(
         private readonly UserRepository $userRepository,
@@ -29,47 +27,37 @@ class PlaceType extends AbstractType
 
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
-        $builder
-            ->add('name', TextType::class, [
-                'label' => 'Nazev',
-                'constraints' => [
-                    new NotBlank(message: 'Zadejte nazev'),
-                    new Length(max: 255, maxMessage: 'Nazev nemuze byt delsi nez {{ limit }} znaku'),
-                ],
-                'attr' => [
-                    'placeholder' => 'Nazev mista',
-                    'class' => 'input input-bordered w-full',
-                ],
-            ])
-            ->add('address', TextType::class, [
-                'label' => 'Adresa',
-                'constraints' => [
-                    new NotBlank(message: 'Zadejte adresu'),
-                    new Length(max: 500, maxMessage: 'Adresa nemuze byt delsi nez {{ limit }} znaku'),
-                ],
-                'attr' => [
-                    'placeholder' => 'Ulice, Mesto, PSC',
-                    'class' => 'input input-bordered w-full',
-                ],
-            ])
-            ->add('description', TextareaType::class, [
-                'label' => 'Popis',
-                'required' => false,
-                'attr' => [
-                    'placeholder' => 'Volitelny popis mista',
-                    'class' => 'textarea textarea-bordered w-full',
-                    'rows' => 4,
-                ],
-            ]);
+        $builder->add('name', TextType::class, [
+            'label' => 'Nazev',
+            'attr' => [
+                'placeholder' => 'Nazev mista',
+                'class' => 'input input-bordered w-full',
+            ],
+        ]);
+
+        $builder->add('address', TextType::class, [
+            'label' => 'Adresa',
+            'attr' => [
+                'placeholder' => 'Ulice, Mesto, PSC',
+                'class' => 'input input-bordered w-full',
+            ],
+        ]);
+
+        $builder->add('description', TextareaType::class, [
+            'label' => 'Popis',
+            'required' => false,
+            'attr' => [
+                'placeholder' => 'Volitelny popis mista',
+                'class' => 'textarea textarea-bordered w-full',
+                'rows' => 4,
+            ],
+        ]);
 
         // Only show owner selector for admins
         if ($this->authorizationChecker->isGranted('ROLE_ADMIN')) {
             $builder->add('ownerId', ChoiceType::class, [
                 'label' => 'Vlastnik',
                 'choices' => $this->getOwnerChoices(),
-                'constraints' => [
-                    new NotBlank(message: 'Vyberte vlastnika'),
-                ],
                 'attr' => [
                     'class' => 'select select-bordered w-full',
                 ],
@@ -79,7 +67,9 @@ class PlaceType extends AbstractType
 
     public function configureOptions(OptionsResolver $resolver): void
     {
-        $resolver->setDefaults([]);
+        $resolver->setDefaults([
+            'data_class' => PlaceFormData::class,
+        ]);
     }
 
     /**

@@ -23,10 +23,7 @@ final readonly class SendVerificationEmailHandler
 
     public function __invoke(UserRegistered $event): void
     {
-        $user = $this->userRepository->findById($event->userId);
-        if (null === $user) {
-            return;
-        }
+        $user = $this->userRepository->get($event->userId);
 
         // Generate verification token/URL
         $signatureComponents = $this->verifyEmailHelper->generateSignature(

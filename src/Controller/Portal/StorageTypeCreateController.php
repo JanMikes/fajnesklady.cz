@@ -6,7 +6,8 @@ namespace App\Controller\Portal;
 
 use App\Command\CreateStorageTypeCommand;
 use App\Entity\User;
-use App\Form\StorageTypeType;
+use App\Form\StorageTypeFormData;
+use App\Form\StorageTypeFormType;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -29,27 +30,27 @@ final class StorageTypeCreateController extends AbstractController
         /** @var User $user */
         $user = $this->getUser();
 
-        $form = $this->createForm(StorageTypeType::class);
+        $form = $this->createForm(StorageTypeFormType::class);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            /** @var array<string, mixed> $data */
-            $data = $form->getData();
+            /** @var StorageTypeFormData $formData */
+            $formData = $form->getData();
 
             // If not admin, owner is always current user
-            $ownerId = $this->isGranted('ROLE_ADMIN') && isset($data['ownerId'])
-                ? Uuid::fromString((string) $data['ownerId'])
+            $ownerId = $this->isGranted('ROLE_ADMIN') && null !== $formData->ownerId
+                ? Uuid::fromString($formData->ownerId)
                 : $user->id;
 
             // Convert CZK to halire (cents)
-            $pricePerWeek = (int) round((float) $data['pricePerWeek'] * 100);
-            $pricePerMonth = (int) round((float) $data['pricePerMonth'] * 100);
+            $pricePerWeek = (int) round(($formData->pricePerWeek ?? 0.0) * 100);
+            $pricePerMonth = (int) round(($formData->pricePerMonth ?? 0.0) * 100);
 
             $command = new CreateStorageTypeCommand(
-                name: (string) $data['name'],
-                width: (string) $data['width'],
-                height: (string) $data['height'],
-                length: (string) $data['length'],
+                name: $formData->name,
+                width: (string) $formData->width,
+                height: (string) $formData->height,
+                length: (string) $formData->length,
                 pricePerWeek: $pricePerWeek,
                 pricePerMonth: $pricePerMonth,
                 ownerId: $ownerId,

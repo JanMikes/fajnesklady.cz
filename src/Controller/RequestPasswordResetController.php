@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Command\RequestPasswordResetCommand;
-use App\Form\RequestPasswordResetType;
+use App\Form\RequestPasswordResetFormData;
+use App\Form\RequestPasswordResetFormType;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\Request;
@@ -27,8 +28,7 @@ final class RequestPasswordResetController extends AbstractController
 
     public function __invoke(Request $request): Response
     {
-        $command = new RequestPasswordResetCommand(email: '');
-        $form = $this->createForm(RequestPasswordResetType::class, $command);
+        $form = $this->createForm(RequestPasswordResetFormType::class);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
@@ -37,6 +37,11 @@ final class RequestPasswordResetController extends AbstractController
             if (false === $limiter->consume(1)->isAccepted()) {
                 throw new TooManyRequestsHttpException(null, 'Too many password reset attempts. Please try again later.');
             }
+
+            /** @var RequestPasswordResetFormData $formData */
+            $formData = $form->getData();
+
+            $command = new RequestPasswordResetCommand(email: $formData->email);
             $this->commandBus->dispatch($command);
 
             // Always show success message (security: don't reveal if email exists)

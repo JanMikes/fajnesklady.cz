@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\Entity\User;
+use App\Exception\UserNotFound;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -20,9 +21,10 @@ final class UserRepository
         $this->entityManager->persist($user);
     }
 
-    public function findById(Uuid $id): ?User
+    public function get(Uuid $id): User
     {
-        return $this->entityManager->find(User::class, $id);
+        return $this->entityManager->find(User::class, $id)
+            ?? throw UserNotFound::withId($id);
     }
 
     public function findByEmail(string $email): ?User

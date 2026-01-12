@@ -10,50 +10,34 @@ return App::config([
             'autowire' => true,
             'autoconfigure' => true,
         ],
-        'App\\' => [
-            'resource' => '../src/',
-            'exclude' => [
-                '../src/DependencyInjection/',
-                '../src/Entity/',
-                '../src/Kernel.php',
-                '../src/Command/*Command.php',
-                '../src/Query/*Result.php',
-                '../src/Event/*.php',
-            ],
+        'App\\Command\\' => [
+            'resource' => '../src/Command/*Handler.php',
         ],
-        'App\\Identity\\ProvideIdentity' => [
-            'alias' => 'App\\Identity\\RandomIdentityProvider',
+        'App\\Controller\\' => [
+            'resource' => '../src/Controller/',
         ],
-    ],
-    'when@test' => [
-        'services' => [
-            '_defaults' => [
-                'autowire' => true,
-                'autoconfigure' => true,
-                'public' => true,
-            ],
-            'test.service_container' => [
-                'alias' => 'service_container',
-                'public' => true,
-            ],
-            'App\\' => [
-                'resource' => '../src/',
-                'exclude' => [
-                    '../src/DependencyInjection/',
-                    '../src/Entity/',
-                    '../src/Kernel.php',
-                    '../src/Command/*Command.php',
-                    '../src/Query/*Result.php',
-                    '../src/Event/*.php',
-                ],
-                'public' => true,
-            ],
-            'App\\Tests\\Support\\PredictableIdentityProvider' => [
-                'tags' => [['name' => 'kernel.reset', 'method' => 'reset']],
-            ],
-            'App\\Identity\\ProvideIdentity' => [
-                'alias' => 'App\\Tests\\Support\\PredictableIdentityProvider',
-            ],
+        'App\\DataFixtures\\' => [
+            'resource' => '../src/DataFixtures/',
+        ],
+        'App\\Event\\DomainEventsSubscriber' => null,
+        'App\\Event\\SendPasswordResetEmailHandler' => null,
+        'App\\Event\\SendVerificationEmailHandler' => null,
+        'App\\Event\\SendWelcomeEmailHandler' => null,
+        'App\\Form\\' => [
+            'resource' => '../src/Form/*FormType.php',
+        ],
+        'App\\Query\\' => [
+            'resource' => '../src/Query/*Query.php',
+        ],
+        'App\\Query\\QueryBus' => null,
+        'App\\Repository\\' => [
+            'resource' => '../src/Repository/',
+        ],
+        'App\\Service\\' => [
+            'resource' => '../src/Service/',
+        ],
+        'App\\Service\\Identity\\ProvideIdentity' => [
+            'alias' => 'App\\Service\\Identity\\RandomIdentityProvider',
         ],
     ],
 ]);

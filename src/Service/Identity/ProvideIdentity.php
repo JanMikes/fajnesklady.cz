@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Identity;
+namespace App\Service\Identity;
 
 use Symfony\Component\Uid\Uuid;
 

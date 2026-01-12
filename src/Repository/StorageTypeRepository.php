@@ -6,6 +6,7 @@ namespace App\Repository;
 
 use App\Entity\StorageType;
 use App\Entity\User;
+use App\Exception\StorageTypeNotFound;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -26,9 +27,10 @@ final class StorageTypeRepository
         $this->entityManager->remove($storageType);
     }
 
-    public function findById(Uuid $id): ?StorageType
+    public function get(Uuid $id): StorageType
     {
-        return $this->entityManager->find(StorageType::class, $id);
+        return $this->entityManager->find(StorageType::class, $id)
+            ?? throw StorageTypeNotFound::withId($id);
     }
 
     /**

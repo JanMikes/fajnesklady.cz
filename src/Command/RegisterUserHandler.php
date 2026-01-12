@@ -5,13 +5,11 @@ declare(strict_types=1);
 namespace App\Command;
 
 use App\Entity\User;
-use App\Event\UserRegistered;
-use App\Exception\UserAlreadyExistsException;
-use App\Identity\ProvideIdentity;
+use App\Exception\UserAlreadyExists;
 use App\Repository\UserRepository;
+use App\Service\Identity\ProvideIdentity;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
-use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 #[AsMessageHandler]
@@ -20,7 +18,6 @@ final readonly class RegisterUserHandler
     public function __construct(
         private UserRepository $userRepository,
         private UserPasswordHasherInterface $passwordHasher,
-        private MessageBusInterface $eventBus,
         private ClockInterface $clock,
         private ProvideIdentity $identityProvider,
     ) {
@@ -31,12 +28,11 @@ final readonly class RegisterUserHandler
         // Check email uniqueness
         $existingUser = $this->userRepository->findByEmail($command->email);
         if (null !== $existingUser) {
-            throw UserAlreadyExistsException::withEmail($command->email);
+            throw UserAlreadyExists::withEmail($command->email);
         }
 
         $now = $this->clock->now();
 
-        // Create new User entity
         $user = new User(
             id: $this->identityProvider->next(),
             email: $command->email,
@@ -45,19 +41,9 @@ final readonly class RegisterUserHandler
             createdAt: $now,
         );
 
-        // Hash password
         $hashedPassword = $this->passwordHasher->hashPassword($user, $command->password);
         $user->changePassword($hashedPassword, $now);
 
-        // Save user
         $this->userRepository->save($user);
-
-        // Dispatch UserRegistered event
-        $this->eventBus->dispatch(new UserRegistered(
-            userId: $user->id,
-            email: $user->email,
-            name: $user->name,
-            occurredOn: $now,
-        ));
     }
 }

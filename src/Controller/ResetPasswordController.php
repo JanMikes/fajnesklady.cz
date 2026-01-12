@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Command\ResetPasswordCommand;
-use App\Form\ResetPasswordType;
+use App\Form\ResetPasswordFormData;
+use App\Form\ResetPasswordFormType;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -23,15 +24,16 @@ final class ResetPasswordController extends AbstractController
 
     public function __invoke(Request $request, string $token): Response
     {
-        $form = $this->createForm(ResetPasswordType::class);
+        $form = $this->createForm(ResetPasswordFormType::class);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            $newPassword = $form->get('newPassword')->getData();
+            /** @var ResetPasswordFormData $formData */
+            $formData = $form->getData();
 
             $command = new ResetPasswordCommand(
                 token: $token,
-                newPassword: $newPassword,
+                newPassword: $formData->newPassword,
             );
 
             try {

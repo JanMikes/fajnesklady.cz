@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Exception;
 
-class UnverifiedUserException extends \RuntimeException
+use Symfony\Component\HttpKernel\Attribute\WithHttpStatus;
+
+#[WithHttpStatus(403)]
+final class UnverifiedUser extends \RuntimeException
 {
     public static function forEmail(string $email): self
     {

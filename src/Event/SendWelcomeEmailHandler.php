@@ -23,10 +23,7 @@ final readonly class SendWelcomeEmailHandler
 
     public function __invoke(EmailVerified $event): void
     {
-        $user = $this->userRepository->findById($event->userId);
-        if (null === $user) {
-            return;
-        }
+        $user = $this->userRepository->get($event->userId);
 
         // Generate the login URL
         $loginUrl = $this->urlGenerator->generate(

@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Command;
 
-use App\Entity\StorageType;
-use App\Exception\StorageTypeNotFoundException;
 use App\Repository\StorageTypeRepository;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -19,12 +17,9 @@ final readonly class UpdateStorageTypeHandler
     ) {
     }
 
-    public function __invoke(UpdateStorageTypeCommand $command): StorageType
+    public function __invoke(UpdateStorageTypeCommand $command): void
     {
-        $storageType = $this->storageTypeRepository->findById($command->storageTypeId);
-        if (null === $storageType) {
-            throw StorageTypeNotFoundException::withId($command->storageTypeId);
-        }
+        $storageType = $this->storageTypeRepository->get($command->storageTypeId);
 
         $storageType->updateDetails(
             name: $command->name,
@@ -37,7 +32,5 @@ final readonly class UpdateStorageTypeHandler
         );
 
         $this->storageTypeRepository->save($storageType);
-
-        return $storageType;
     }
 }

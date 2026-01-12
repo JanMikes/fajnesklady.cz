@@ -6,7 +6,7 @@ namespace App\Tests\Unit\Security;
 
 use App\Entity\StorageType;
 use App\Entity\User;
-use App\Security\StorageTypeVoter;
+use App\Service\Security\StorageTypeVoter;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Authorization\Voter\VoterInterface;

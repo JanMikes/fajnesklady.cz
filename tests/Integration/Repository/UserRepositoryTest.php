@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Integration\Repository;
 
 use App\Entity\User;
+use App\Exception\UserNotFound;
 use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ManagerRegistry;
@@ -34,32 +35,30 @@ class UserRepositoryTest extends KernelTestCase
         $this->repository->save($user);
         $this->entityManager->flush();
 
-        $foundUser = $this->repository->findById($user->id);
-        $this->assertNotNull($foundUser);
+        $foundUser = $this->repository->get($user->id);
         $this->assertSame($user->email, $foundUser->email);
         $this->assertSame($user->name, $foundUser->name);
     }
 
-    public function testFindById(): void
+    public function testGet(): void
     {
         $now = new \DateTimeImmutable();
         $user = new User(Uuid::v7(), 'findbyid@example.com', 'password123', 'Test User', $now);
         $this->repository->save($user);
         $this->entityManager->flush();
 
-        $foundUser = $this->repository->findById($user->id);
+        $foundUser = $this->repository->get($user->id);
 
-        $this->assertNotNull($foundUser);
         $this->assertEquals($user->id, $foundUser->id);
     }
 
-    public function testFindByIdReturnsNullForNonexistent(): void
+    public function testGetThrowsForNonexistent(): void
     {
         $nonexistentId = Uuid::v7();
 
-        $foundUser = $this->repository->findById($nonexistentId);
+        $this->expectException(UserNotFound::class);
 
-        $this->assertNull($foundUser);
+        $this->repository->get($nonexistentId);
     }
 
     public function testFindByEmail(): void
@@ -187,7 +186,7 @@ class UserRepositoryTest extends KernelTestCase
         $this->entityManager->flush();
 
         // Fetch again and verify update
-        $updatedUser = $this->repository->findById($user->id);
+        $updatedUser = $this->repository->get($user->id);
         $this->assertTrue($updatedUser->isVerified());
     }
 }

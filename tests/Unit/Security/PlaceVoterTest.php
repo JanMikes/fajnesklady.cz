@@ -6,7 +6,7 @@ namespace App\Tests\Unit\Security;
 
 use App\Entity\Place;
 use App\Entity\User;
-use App\Security\PlaceVoter;
+use App\Service\Security\PlaceVoter;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Authorization\Voter\VoterInterface;

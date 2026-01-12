@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Command;
 
-use App\Exception\StorageTypeNotFoundException;
 use App\Repository\StorageTypeRepository;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
@@ -18,10 +17,7 @@ final readonly class DeleteStorageTypeHandler
 
     public function __invoke(DeleteStorageTypeCommand $command): void
     {
-        $storageType = $this->storageTypeRepository->findById($command->storageTypeId);
-        if (null === $storageType) {
-            throw StorageTypeNotFoundException::withId($command->storageTypeId);
-        }
+        $storageType = $this->storageTypeRepository->get($command->storageTypeId);
 
         $this->storageTypeRepository->delete($storageType);
     }

@@ -6,7 +6,8 @@ namespace App\Controller\Portal;
 
 use App\Command\CreatePlaceCommand;
 use App\Entity\User;
-use App\Form\PlaceType;
+use App\Form\PlaceFormData;
+use App\Form\PlaceFormType;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -29,22 +30,22 @@ final class PlaceCreateController extends AbstractController
         /** @var User $user */
         $user = $this->getUser();
 
-        $form = $this->createForm(PlaceType::class);
+        $form = $this->createForm(PlaceFormType::class);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            /** @var array<string, mixed> $data */
-            $data = $form->getData();
+            /** @var PlaceFormData $formData */
+            $formData = $form->getData();
 
             // If not admin, owner is always current user
-            $ownerId = $this->isGranted('ROLE_ADMIN') && isset($data['ownerId'])
-                ? Uuid::fromString((string) $data['ownerId'])
+            $ownerId = $this->isGranted('ROLE_ADMIN') && null !== $formData->ownerId
+                ? Uuid::fromString($formData->ownerId)
                 : $user->id;
 
             $command = new CreatePlaceCommand(
-                name: (string) $data['name'],
-                address: (string) $data['address'],
-                description: isset($data['description']) ? (string) $data['description'] : null,
+                name: $formData->name,
+                address: $formData->address,
+                description: $formData->description,
                 ownerId: $ownerId,
             );
 

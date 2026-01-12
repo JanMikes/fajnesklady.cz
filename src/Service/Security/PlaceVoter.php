@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Security;
+namespace App\Service\Security;
 
 use App\Entity\Place;
 use App\Entity\User;

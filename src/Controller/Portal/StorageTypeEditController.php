@@ -5,9 +5,10 @@ declare(strict_types=1);
 namespace App\Controller\Portal;
 
 use App\Command\UpdateStorageTypeCommand;
-use App\Form\StorageTypeType;
+use App\Form\StorageTypeFormData;
+use App\Form\StorageTypeFormType;
 use App\Repository\StorageTypeRepository;
-use App\Security\StorageTypeVoter;
+use App\Service\Security\StorageTypeVoter;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -28,41 +29,26 @@ final class StorageTypeEditController extends AbstractController
 
     public function __invoke(Request $request, string $id): Response
     {
-        $storageType = $this->storageTypeRepository->findById(Uuid::fromString($id));
-
-        if (null === $storageType) {
-            throw $this->createNotFoundException('Typ skladu nenalezen');
-        }
+        $storageType = $this->storageTypeRepository->get(Uuid::fromString($id));
 
         // Check ownership via voter
         $this->denyAccessUnlessGranted(StorageTypeVoter::EDIT, $storageType);
 
-        $form = $this->createForm(StorageTypeType::class, [
-            'name' => $storageType->name,
-            'width' => $storageType->width,
-            'height' => $storageType->height,
-            'length' => $storageType->length,
-            'pricePerWeek' => $storageType->getPricePerWeekInCzk(),
-            'pricePerMonth' => $storageType->getPricePerMonthInCzk(),
-            'ownerId' => $storageType->owner->id->toRfc4122(),
-        ]);
-
+        $formData = StorageTypeFormData::fromStorageType($storageType);
+        $form = $this->createForm(StorageTypeFormType::class, $formData);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            /** @var array<string, mixed> $data */
-            $data = $form->getData();
-
             // Convert CZK to halire (cents)
-            $pricePerWeek = (int) round((float) $data['pricePerWeek'] * 100);
-            $pricePerMonth = (int) round((float) $data['pricePerMonth'] * 100);
+            $pricePerWeek = (int) round(($formData->pricePerWeek ?? 0.0) * 100);
+            $pricePerMonth = (int) round(($formData->pricePerMonth ?? 0.0) * 100);
 
             $command = new UpdateStorageTypeCommand(
                 storageTypeId: $storageType->id,
-                name: (string) $data['name'],
-                width: (string) $data['width'],
-                height: (string) $data['height'],
-                length: (string) $data['length'],
+                name: $formData->name,
+                width: (string) $formData->width,
+                height: (string) $formData->height,
+                length: (string) $formData->length,
                 pricePerWeek: $pricePerWeek,
                 pricePerMonth: $pricePerMonth,
             );

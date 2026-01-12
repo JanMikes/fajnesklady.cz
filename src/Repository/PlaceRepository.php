@@ -6,6 +6,7 @@ namespace App\Repository;
 
 use App\Entity\Place;
 use App\Entity\User;
+use App\Exception\PlaceNotFound;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -26,9 +27,10 @@ final class PlaceRepository
         $this->entityManager->remove($place);
     }
 
-    public function findById(Uuid $id): ?Place
+    public function get(Uuid $id): Place
     {
-        return $this->entityManager->find(Place::class, $id);
+        return $this->entityManager->find(Place::class, $id)
+            ?? throw PlaceNotFound::withId($id);
     }
 
     /**

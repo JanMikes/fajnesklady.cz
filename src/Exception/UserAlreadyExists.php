@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Exception;
 
-class UserAlreadyExistsException extends \DomainException
+use Symfony\Component\HttpKernel\Attribute\WithHttpStatus;
+
+#[WithHttpStatus(409)]
+final class UserAlreadyExists extends \DomainException
 {
     public static function withEmail(string $email): self
     {

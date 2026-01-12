@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Command;
 
-use App\Entity\Place;
-use App\Exception\PlaceNotFoundException;
 use App\Repository\PlaceRepository;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -19,12 +17,9 @@ final readonly class UpdatePlaceHandler
     ) {
     }
 
-    public function __invoke(UpdatePlaceCommand $command): Place
+    public function __invoke(UpdatePlaceCommand $command): void
     {
-        $place = $this->placeRepository->findById($command->placeId);
-        if (null === $place) {
-            throw PlaceNotFoundException::withId($command->placeId);
-        }
+        $place = $this->placeRepository->get($command->placeId);
 
         $place->updateDetails(
             name: $command->name,
@@ -34,7 +29,5 @@ final readonly class UpdatePlaceHandler
         );
 
         $this->placeRepository->save($place);
-
-        return $place;
     }
 }

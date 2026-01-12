@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Enum\UserRole;
+use App\Event\EmailVerified;
+use App\Event\UserRegistered;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
@@ -13,8 +15,9 @@ use Symfony\Component\Uid\Uuid;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'users')]
-class User implements UserInterface, PasswordAuthenticatedUserInterface
+class User implements UserInterface, PasswordAuthenticatedUserInterface, EntityWithEvents
 {
+    use HasEvents;
     /**
      * @var array<string>
      */
@@ -42,6 +45,13 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     ) {
         $this->roles = [UserRole::USER->value];
         $this->updatedAt = $this->createdAt;
+
+        $this->recordThat(new UserRegistered(
+            userId: $this->id,
+            email: $this->email,
+            name: $this->name,
+            occurredOn: $this->createdAt,
+        ));
     }
 
     /**
@@ -85,6 +95,11 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     {
         $this->isVerified = true;
         $this->updatedAt = $now;
+
+        $this->recordThat(new EmailVerified(
+            userId: $this->id,
+            occurredOn: $now,
+        ));
     }
 
     public function changeRole(UserRole $role, \DateTimeImmutable $now): void

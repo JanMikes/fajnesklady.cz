@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Command\RegisterUserCommand;
-use App\Form\RegistrationType;
+use App\Form\RegistrationFormData;
+use App\Form\RegistrationFormType;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\Request;
@@ -27,7 +28,7 @@ final class RegisterController extends AbstractController
 
     public function __invoke(Request $request): Response
     {
-        $form = $this->createForm(RegistrationType::class);
+        $form = $this->createForm(RegistrationFormType::class);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
@@ -36,19 +37,19 @@ final class RegisterController extends AbstractController
             if (false === $limiter->consume(1)->isAccepted()) {
                 throw new TooManyRequestsHttpException(null, 'Too many registration attempts. Please try again later.');
             }
-            $data = $form->getData();
+
+            /** @var RegistrationFormData $formData */
+            $formData = $form->getData();
 
             try {
-                // Create and dispatch RegisterUserCommand
                 $command = new RegisterUserCommand(
-                    email: $data['email'],
-                    password: $data['password'],
-                    name: $data['name'],
+                    email: $formData->email,
+                    password: $formData->password,
+                    name: $formData->name,
                 );
 
                 $this->commandBus->dispatch($command);
 
-                // Add flash message and redirect
                 $this->addFlash('success', 'Registration successful! Please check your email to verify your account.');
 
                 return $this->redirectToRoute('app_verify_email_confirmation');

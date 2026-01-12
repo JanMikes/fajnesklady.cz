@@ -6,7 +6,7 @@ namespace App\Repository;
 
 use App\Entity\ResetPasswordRequest;
 use App\Entity\User;
-use App\Identity\ProvideIdentity;
+use App\Service\Identity\ProvideIdentity;
 use Doctrine\ORM\EntityManagerInterface;
 use SymfonyCasts\Bundle\ResetPassword\Model\ResetPasswordRequestInterface;
 use SymfonyCasts\Bundle\ResetPassword\Persistence\Repository\ResetPasswordRequestRepositoryTrait;

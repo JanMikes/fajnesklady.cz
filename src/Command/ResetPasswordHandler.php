@@ -41,10 +41,8 @@ final readonly class ResetPasswordHandler
         // Update the user's password
         $user->changePassword($hashedPassword, $this->clock->now());
 
-        // Save the user
         $this->userRepository->save($user);
 
-        // Remove the reset password request
         $this->resetPasswordHelper->removeResetRequest($command->token);
     }
 }

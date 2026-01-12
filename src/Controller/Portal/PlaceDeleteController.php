@@ -6,7 +6,7 @@ namespace App\Controller\Portal;
 
 use App\Command\DeletePlaceCommand;
 use App\Repository\PlaceRepository;
-use App\Security\PlaceVoter;
+use App\Service\Security\PlaceVoter;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -27,11 +27,7 @@ final class PlaceDeleteController extends AbstractController
 
     public function __invoke(Request $request, string $id): Response
     {
-        $place = $this->placeRepository->findById(Uuid::fromString($id));
-
-        if (null === $place) {
-            throw $this->createNotFoundException('Misto nenalezeno');
-        }
+        $place = $this->placeRepository->get(Uuid::fromString($id));
 
         $this->denyAccessUnlessGranted(PlaceVoter::DELETE, $place);
 

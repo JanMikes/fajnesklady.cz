@@ -5,10 +5,9 @@ declare(strict_types=1);
 namespace App\Command;
 
 use App\Entity\StorageType;
-use App\Exception\UserNotFoundException;
-use App\Identity\ProvideIdentity;
 use App\Repository\StorageTypeRepository;
 use App\Repository\UserRepository;
+use App\Service\Identity\ProvideIdentity;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
@@ -25,10 +24,7 @@ final readonly class CreateStorageTypeHandler
 
     public function __invoke(CreateStorageTypeCommand $command): StorageType
     {
-        $owner = $this->userRepository->findById($command->ownerId);
-        if (null === $owner) {
-            throw UserNotFoundException::withId($command->ownerId);
-        }
+        $owner = $this->userRepository->get($command->ownerId);
 
         $storageType = new StorageType(
             id: $this->identityProvider->next(),
