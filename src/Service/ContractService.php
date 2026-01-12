@@ -1,0 +1,139 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Service;
+
+use App\Entity\Contract;
+use App\Entity\Order;
+use App\Repository\ContractRepository;
+
+/**
+ * Service for managing contract lifecycle.
+ *
+ * Handles: creation from order, termination, expiration tracking.
+ */
+final readonly class ContractService
+{
+    public function __construct(
+        private ContractRepository $contractRepository,
+        private ContractDocumentGenerator $documentGenerator,
+        private AuditLogger $auditLogger,
+    ) {
+    }
+
+    /**
+     * Generate and attach document to a contract.
+     */
+    public function generateDocument(Contract $contract, \DateTimeImmutable $now = new \DateTimeImmutable()): void
+    {
+        $place = $contract->storage->getPlace();
+
+        if (null === $place->contractTemplatePath) {
+            throw new \DomainException('Place does not have a contract template configured.');
+        }
+
+        $documentPath = $this->documentGenerator->generate($contract, $place->contractTemplatePath);
+        $contract->attachDocument($documentPath, $now);
+    }
+
+    /**
+     * Sign a contract.
+     */
+    public function signContract(Contract $contract, \DateTimeImmutable $now = new \DateTimeImmutable()): void
+    {
+        if ($contract->isSigned()) {
+            throw new \DomainException('Contract is already signed.');
+        }
+
+        $contract->sign($now);
+        $this->auditLogger->logContractSigned($contract);
+    }
+
+    /**
+     * Terminate a contract (for unlimited rentals or early termination).
+     */
+    public function terminateContract(Contract $contract, \DateTimeImmutable $now = new \DateTimeImmutable()): void
+    {
+        if ($contract->isTerminated()) {
+            throw new \DomainException('Contract is already terminated.');
+        }
+
+        $contract->terminate($now);
+        $this->auditLogger->logContractTerminated($contract);
+        $this->auditLogger->logStorageReleased($contract->storage, 'Contract terminated');
+    }
+
+    /**
+     * Get contract for an order.
+     */
+    public function getContractForOrder(Order $order): ?Contract
+    {
+        return $this->contractRepository->findByOrder($order);
+    }
+
+    /**
+     * Find contracts expiring within specified days.
+     *
+     * @return Contract[]
+     */
+    public function findExpiringContracts(int $days, \DateTimeImmutable $now = new \DateTimeImmutable()): array
+    {
+        return $this->contractRepository->findExpiringWithinDays($days, $now);
+    }
+
+    /**
+     * Find contracts expiring in exactly N days (for reminder emails).
+     *
+     * @return Contract[]
+     */
+    public function findContractsExpiringOnDay(int $daysFromNow, \DateTimeImmutable $now = new \DateTimeImmutable()): array
+    {
+        $targetDate = $now->modify("+{$daysFromNow} days")->setTime(0, 0, 0);
+        $nextDay = $targetDate->modify('+1 day');
+
+        $contracts = $this->contractRepository->findExpiringWithinDays($daysFromNow, $now);
+
+        // Filter to only contracts expiring on the exact target date
+        return array_filter($contracts, function (Contract $contract) use ($targetDate, $nextDay) {
+            if (null === $contract->endDate) {
+                return false;
+            }
+            $endDate = $contract->endDate->setTime(0, 0, 0);
+
+            return $endDate >= $targetDate && $endDate < $nextDay;
+        });
+    }
+
+    /**
+     * Check if contract can be terminated.
+     */
+    public function canTerminate(Contract $contract): bool
+    {
+        return !$contract->isTerminated();
+    }
+
+    /**
+     * Get days remaining until contract expires.
+     */
+    public function getDaysRemaining(Contract $contract, \DateTimeImmutable $now = new \DateTimeImmutable()): ?int
+    {
+        if (null === $contract->endDate) {
+            return null; // Unlimited contract
+        }
+
+        if ($contract->isTerminated()) {
+            return null;
+        }
+
+        $diff = $now->diff($contract->endDate);
+
+        if ($diff->invert) {
+            return 0; // Already expired
+        }
+
+        // Days is false only when using DateTimeImmutable::diff with relative DateInterval
+        // For absolute date diffs, it's always an int
+        return (int) $diff->days;
+    }
+}

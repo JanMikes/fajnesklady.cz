@@ -39,5 +39,10 @@ return App::config([
         'App\\Service\\Identity\\ProvideIdentity' => [
             'alias' => 'App\\Service\\Identity\\RandomIdentityProvider',
         ],
+        'App\\Service\\ContractDocumentGenerator' => [
+            'arguments' => [
+                '$contractsDirectory' => '%kernel.project_dir%/var/contracts',
+            ],
+        ],
     ],
 ]);
