@@ -8,6 +8,7 @@ use App\Enum\OrderStatus;
 use App\Enum\PaymentFrequency;
 use App\Enum\RentalType;
 use App\Event\OrderCancelled;
+use App\Event\OrderCompleted;
 use App\Event\OrderCreated;
 use App\Event\OrderExpired;
 use App\Event\OrderPaid;
@@ -89,10 +90,16 @@ class Order implements EntityWithEvents
         ));
     }
 
-    public function complete(\DateTimeImmutable $now): void
+    public function complete(Uuid $contractId, \DateTimeImmutable $now): void
     {
         $this->status = OrderStatus::COMPLETED;
         $this->storage->occupy($now);
+
+        $this->recordThat(new OrderCompleted(
+            orderId: $this->id,
+            contractId: $contractId,
+            occurredOn: $now,
+        ));
     }
 
     public function cancel(\DateTimeImmutable $now): void
@@ -131,6 +138,11 @@ class Order implements EntityWithEvents
     public function canBeCancelled(): bool
     {
         return !$this->status->isTerminal();
+    }
+
+    public function canBeCompleted(): bool
+    {
+        return OrderStatus::PAID === $this->status;
     }
 
     public function isUnlimited(): bool

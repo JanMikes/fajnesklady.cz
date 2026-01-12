@@ -16,6 +16,7 @@ use App\Enum\RentalType;
 use App\Exception\NoStorageAvailable;
 use App\Service\StorageAssignment;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\Persistence\ManagerRegistry;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Uid\Uuid;
 
@@ -29,7 +30,9 @@ class StorageAssignmentTest extends KernelTestCase
         self::bootKernel();
         $container = static::getContainer();
         $this->storageAssignment = $container->get(StorageAssignment::class);
-        $this->entityManager = $container->get(EntityManagerInterface::class);
+        /** @var ManagerRegistry $doctrine */
+        $doctrine = $container->get('doctrine');
+        $this->entityManager = $doctrine->getManager();
     }
 
     private function createUser(string $email): User

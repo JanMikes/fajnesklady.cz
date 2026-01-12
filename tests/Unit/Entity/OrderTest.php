@@ -13,6 +13,7 @@ use App\Enum\OrderStatus;
 use App\Enum\PaymentFrequency;
 use App\Enum\RentalType;
 use App\Event\OrderCancelled;
+use App\Event\OrderCompleted;
 use App\Event\OrderCreated;
 use App\Event\OrderExpired;
 use App\Event\OrderPaid;
@@ -209,12 +210,20 @@ class OrderTest extends TestCase
     {
         $order = $this->createOrder();
         $now = new \DateTimeImmutable();
+        $contractId = Uuid::v7();
+        $order->popEvents(); // Clear created event
 
-        $order->complete($now);
+        $order->complete($contractId, $now);
 
         $this->assertSame(OrderStatus::COMPLETED, $order->status);
         $this->assertFalse($order->canBePaid());
         $this->assertFalse($order->canBeCancelled());
+
+        $events = $order->popEvents();
+        $this->assertCount(1, $events);
+        $this->assertInstanceOf(OrderCompleted::class, $events[0]);
+        $this->assertTrue($order->id->equals($events[0]->orderId));
+        $this->assertTrue($contractId->equals($events[0]->contractId));
     }
 
     public function testCompleteOccupiesStorage(): void
@@ -222,7 +231,7 @@ class OrderTest extends TestCase
         $order = $this->createOrder();
         $now = new \DateTimeImmutable();
 
-        $order->complete($now);
+        $order->complete(Uuid::v7(), $now);
 
         $this->assertTrue($order->storage->isOccupied());
     }
@@ -326,7 +335,7 @@ class OrderTest extends TestCase
     {
         $createdAt = new \DateTimeImmutable('2024-01-01 10:00:00');
         $order = $this->createOrder(createdAt: $createdAt);
-        $order->complete(new \DateTimeImmutable('2024-01-02'));
+        $order->complete(Uuid::v7(), new \DateTimeImmutable('2024-01-02'));
 
         $afterExpiry = new \DateTimeImmutable('2024-01-09 10:00:00');
 
@@ -367,7 +376,7 @@ class OrderTest extends TestCase
     public function testCannotBePaidWhenCompleted(): void
     {
         $order = $this->createOrder();
-        $order->complete(new \DateTimeImmutable());
+        $order->complete(Uuid::v7(), new \DateTimeImmutable());
 
         $this->assertFalse($order->canBePaid());
     }
@@ -407,7 +416,7 @@ class OrderTest extends TestCase
     public function testCannotBeCancelledInTerminalState(): void
     {
         $order1 = $this->createOrder();
-        $order1->complete(new \DateTimeImmutable());
+        $order1->complete(Uuid::v7(), new \DateTimeImmutable());
         $this->assertFalse($order1->canBeCancelled());
 
         $order2 = $this->createOrder();
@@ -463,12 +472,13 @@ class OrderTest extends TestCase
         $this->assertSame(OrderStatus::PAID, $order->status);
         $this->assertNotNull($order->paidAt);
 
-        $order->complete(new \DateTimeImmutable());
+        $order->complete(Uuid::v7(), new \DateTimeImmutable());
         $this->assertSame(OrderStatus::COMPLETED, $order->status);
         $this->assertTrue($order->storage->isOccupied());
 
         $events = $order->popEvents();
-        $this->assertCount(1, $events);
+        $this->assertCount(2, $events);
         $this->assertInstanceOf(OrderPaid::class, $events[0]);
+        $this->assertInstanceOf(OrderCompleted::class, $events[1]);
     }
 }
