@@ -9,6 +9,7 @@ return App::config([
         '_defaults' => [
             'autowire' => true,
             'autoconfigure' => true,
+            'public' => true,
         ],
         'App\\Command\\' => [
             'resource' => '../src/Command/*Handler.php',
@@ -37,7 +38,6 @@ return App::config([
         ],
         'App\\Service\\' => [
             'resource' => '../src/Service/',
-            'exclude' => '../src/Service/AresResult.php',
         ],
         'App\\Service\\Identity\\ProvideIdentity' => [
             'alias' => 'App\\Service\\Identity\\RandomIdentityProvider',

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Value\AresResult;
 use h4kuna\Ares\Ares;
 use h4kuna\Ares\AresFactory;
 use h4kuna\Ares\Exception\IdentificationNumberNotFoundException;
@@ -33,9 +34,7 @@ final class AresService implements AresLookup
                 city: $data->city_post ?? $data->city ?? '',
                 postalCode: $data->zip ?? '',
             );
-        } catch (IdentificationNumberNotFoundException) {
-            return null;
-        } catch (ServerResponseException) {
+        } catch (IdentificationNumberNotFoundException|ServerResponseException) {
             return null;
         }
     }

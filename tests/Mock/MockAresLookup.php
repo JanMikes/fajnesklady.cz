@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Mock;
 
 use App\Service\AresLookup;
-use App\Service\AresResult;
+use App\Value\AresResult;
 
 final class MockAresLookup implements AresLookup
 {
