@@ -1,7 +1,7 @@
 import { Controller } from '@hotwired/stimulus';
 
 export default class extends Controller {
-    static targets = ['canvas', 'info'];
+    static targets = ['canvas', 'tooltip'];
     static values = {
         mapImage: String,
         storages: Array,
@@ -11,6 +11,7 @@ export default class extends Controller {
     connect() {
         this.hoveredStorage = null;
         this.scale = 1;
+        this.mousePos = { x: 0, y: 0 };
 
         this.initializeCanvas();
         this.loadMapImage();
@@ -70,12 +71,13 @@ export default class extends Controller {
 
     onMouseMove(e) {
         const pos = this.getMousePos(e);
+        this.mousePos = pos;
         const storage = this.getStorageAtPosition(pos);
 
         if (storage !== this.hoveredStorage) {
             this.hoveredStorage = storage;
             this.render();
-            this.updateInfo(storage);
+            this.updateTooltip(storage);
         }
 
         this.canvasTarget.style.cursor = storage ? 'pointer' : 'default';
@@ -84,7 +86,7 @@ export default class extends Controller {
     onMouseLeave() {
         this.hoveredStorage = null;
         this.render();
-        this.updateInfo(null);
+        this.hideTooltip();
     }
 
     onClick(e) {
@@ -114,32 +116,68 @@ export default class extends Controller {
         return null;
     }
 
-    updateInfo(storage) {
-        if (!this.hasInfoTarget) return;
+    updateTooltip(storage) {
+        if (!this.hasTooltipTarget) return;
 
         if (storage) {
             const statusText = this.getStatusText(storage.status);
             const statusClass = this.getStatusClass(storage.status);
 
-            this.infoTarget.innerHTML = `
-                <div class="flex items-center justify-between">
-                    <div>
-                        <span class="font-bold">${storage.number}</span>
-                        <span class="text-gray-600 mx-2">|</span>
-                        <span>${storage.storageTypeName}</span>
-                        <span class="text-gray-600 mx-2">|</span>
-                        <span class="text-gray-500">${storage.dimensions}</span>
+            this.tooltipTarget.innerHTML = `
+                <div class="space-y-1">
+                    <div class="flex items-center gap-2">
+                        <span class="font-bold text-gray-900">${storage.number}</span>
+                        <span class="badge ${statusClass} text-xs">${statusText}</span>
                     </div>
-                    <div class="flex items-center gap-4">
-                        <span class="font-semibold text-blue-600">${storage.pricePerMonth.toLocaleString('cs-CZ')} Kč/měsíc</span>
-                        <span class="badge ${statusClass}">${statusText}</span>
-                    </div>
+                    <div class="text-gray-600">${storage.storageTypeName}</div>
+                    <div class="text-gray-500 text-xs">${storage.dimensions}</div>
+                    <div class="font-semibold text-blue-600 pt-1">${storage.pricePerMonth.toLocaleString('cs-CZ')} Kč/měsíc</div>
                 </div>
             `;
-            this.infoTarget.classList.remove('hidden');
+
+            // Position tooltip relative to the storage unit
+            const coords = storage.coordinates;
+            const containerRect = this.element.getBoundingClientRect();
+            const canvasRect = this.canvasTarget.getBoundingClientRect();
+            const canvasOffsetTop = canvasRect.top - containerRect.top;
+
+            // Show tooltip first to get its dimensions
+            this.tooltipTarget.classList.remove('hidden');
+            const tooltipRect = this.tooltipTarget.getBoundingClientRect();
+
+            // Default position: to the right of the storage unit
+            let left = coords.x + coords.width + 10;
+            let top = canvasOffsetTop + coords.y;
+
+            // If tooltip would overflow right, position to the left of the storage
+            if (left + tooltipRect.width > containerRect.width - 10) {
+                left = coords.x - tooltipRect.width - 10;
+            }
+
+            // If tooltip would overflow left, center it above/below the storage
+            if (left < 10) {
+                left = coords.x + (coords.width - tooltipRect.width) / 2;
+                left = Math.max(10, Math.min(left, containerRect.width - tooltipRect.width - 10));
+            }
+
+            // If tooltip would overflow bottom, move it up
+            if (top + tooltipRect.height > canvasRect.bottom - containerRect.top - 10) {
+                top = canvasOffsetTop + coords.y + coords.height - tooltipRect.height;
+            }
+
+            // Ensure top is not negative
+            top = Math.max(canvasOffsetTop + 10, top);
+
+            this.tooltipTarget.style.left = `${left}px`;
+            this.tooltipTarget.style.top = `${top}px`;
         } else {
-            this.infoTarget.classList.add('hidden');
+            this.hideTooltip();
         }
+    }
+
+    hideTooltip() {
+        if (!this.hasTooltipTarget) return;
+        this.tooltipTarget.classList.add('hidden');
     }
 
     getStatusText(status) {

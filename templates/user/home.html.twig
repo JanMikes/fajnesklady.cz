@@ -55,17 +55,6 @@
             </div>
         </div>
 
-        {# Navigation dots #}
-        <div class="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-3 z-20">
-            {% for image in heroImages %}
-            <button class="hero-dot {% if loop.first %}active{% endif %}"
-                    data-hero-slider-target="dot"
-                    data-action="click->hero-slider#goToSlide"
-                    data-index="{{ loop.index0 }}"
-                    aria-label="Slide {{ loop.index }}"></button>
-            {% endfor %}
-        </div>
-
         {# Scroll indicator #}
         <div class="absolute bottom-20 left-1/2 -translate-x-1/2 z-20 hidden md:block">
             <a href="#jak-to-funguje" class="flex flex-col items-center text-white/60 hover:text-white/90 transition-colors">
@@ -78,12 +67,13 @@
     </div>
 {% endblock %}
 
+{% block main_class %}pt-24 min-h-screen{% endblock %}
+
 {% block content %}
     {# How it works section #}
     <section id="jak-to-funguje" class="section-gradient-light">
         <div class="py-20 max-w-6xl mx-auto px-4">
             <div class="text-center mb-16">
-                <span class="inline-block px-4 py-1 rounded-full text-sm font-medium bg-accent/10 text-accent mb-4">Jednoduchý proces</span>
                 <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Jak to funguje?</h2>
                 <p class="text-gray-600 max-w-2xl mx-auto text-lg">Pronájem kontejneru zvládnete ve 3 jednoduchých krocích</p>
             </div>
@@ -136,9 +126,8 @@
     </section>
 
     {# Map Section #}
-    <section id="pobocky" class="py-20">
+    <section id="pobocky" class="pt-20 pb-0">
         <div class="text-center mb-12 px-4">
-            <span class="inline-block px-4 py-1 rounded-full text-sm font-medium bg-accent/10 text-accent mb-4">Lokace</span>
             <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Naše pobočky</h2>
             <p class="text-gray-600 max-w-2xl mx-auto text-lg">Najděte nejbližší pobočku a zjistěte dostupnost kontejnerů</p>
         </div>
@@ -146,7 +135,7 @@
         <div
             data-controller="map"
             data-map-places-value="{{ placesData|json_encode|e('html_attr') }}"
-            class="map-container shadow-xl overflow-hidden"
+            class="map-container"
             style="height: 500px; width: 100%;">
         </div>
     </section>
@@ -156,7 +145,6 @@
     <section class="section-gradient-light">
         <div class="py-20 max-w-6xl mx-auto px-4">
             <div class="text-center mb-12">
-                <span class="inline-block px-4 py-1 rounded-full text-sm font-medium bg-accent/10 text-accent mb-4">Ceník</span>
                 <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Přehled poboček a cen</h2>
                 <p class="text-gray-600 max-w-2xl mx-auto text-lg">Porovnejte ceny a dostupnost kontejnerů na všech pobočkách</p>
             </div>
@@ -221,13 +209,13 @@
 
     {# Benefits Section #}
     <section class="py-20">
-        <div class="text-center mb-16">
-            <span class="inline-block px-4 py-1 rounded-full text-sm font-medium bg-accent/10 text-accent mb-4">Výhody</span>
-            <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Proč si vybrat Fajné Sklady?</h2>
-            <p class="text-gray-600 max-w-2xl mx-auto text-lg">Nabízíme bezpečné a flexibilní skladování za transparentní ceny</p>
-        </div>
+        <div class="max-w-6xl mx-auto px-4">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Proč si vybrat Fajné Sklady?</h2>
+                <p class="text-gray-600 max-w-2xl mx-auto text-lg">Nabízíme bezpečné a flexibilní skladování za transparentní ceny</p>
+            </div>
 
-        <div class="grid md:grid-cols-3 gap-8">
+            <div class="grid md:grid-cols-3 gap-8">
             {# Security #}
             <div class="group">
                 <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all h-full border border-gray-100 hover:border-accent/20">
@@ -322,6 +310,7 @@
                         </li>
                     </ul>
                 </div>
+            </div>
             </div>
         </div>
     </section>
