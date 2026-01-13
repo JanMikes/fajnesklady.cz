@@ -61,5 +61,8 @@ return App::config([
             'resource' => '../src/Twig/',
             'exclude' => ['../src/Twig/Components/'],
         ],
+        'App\\Twig\\Components\\' => [
+            'resource' => '../src/Twig/Components/',
+        ],
     ],
 ]);

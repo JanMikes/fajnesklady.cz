@@ -112,7 +112,7 @@ class ControllerAccessTest extends WebTestCase
 
     public function testProfileRequiresAuthentication(): void
     {
-        $this->client->request('GET', '/profile');
+        $this->client->request('GET', '/portal/profile');
 
         $this->assertResponseRedirects('/login');
     }
@@ -123,7 +123,7 @@ class ControllerAccessTest extends WebTestCase
         $user = $this->findUserByEmail('user@example.com');
         $this->login($user);
 
-        $this->client->request('GET', '/profile');
+        $this->client->request('GET', '/portal/profile');
 
         $this->assertResponseIsSuccessful();
     }

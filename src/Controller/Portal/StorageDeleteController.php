@@ -11,6 +11,7 @@ use App\Service\Security\StorageVoter;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Messenger\Exception\HandlerFailedException;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
@@ -39,8 +40,13 @@ final class StorageDeleteController extends AbstractController
             $command = new DeleteStorageCommand(storageId: $storage->id);
             $this->commandBus->dispatch($command);
             $this->addFlash('success', 'Sklad byl úspěšně smazán.');
-        } catch (StorageCannotBeDeleted $e) {
-            $this->addFlash('error', $e->getMessage());
+        } catch (HandlerFailedException $e) {
+            $nested = $e->getPrevious();
+            if ($nested instanceof StorageCannotBeDeleted) {
+                $this->addFlash('error', $nested->getMessage());
+            } else {
+                throw $e;
+            }
         }
 
         return $this->redirectToRoute('portal_storages_list', [

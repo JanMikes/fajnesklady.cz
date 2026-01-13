@@ -11,6 +11,7 @@ use App\Service\Security\StorageVoter;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Messenger\Exception\HandlerFailedException;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
@@ -39,8 +40,13 @@ final class StorageApiDeleteController extends AbstractController
         try {
             $command = new DeleteStorageCommand(storageId: $storage->id);
             $this->commandBus->dispatch($command);
-        } catch (StorageCannotBeDeleted $e) {
-            return new JsonResponse(['message' => $e->getMessage()], Response::HTTP_CONFLICT);
+        } catch (HandlerFailedException $e) {
+            $nested = $e->getPrevious();
+            if ($nested instanceof StorageCannotBeDeleted) {
+                return new JsonResponse(['message' => $nested->getMessage()], Response::HTTP_CONFLICT);
+            }
+
+            throw $e;
         }
 
         return new JsonResponse(null, Response::HTTP_NO_CONTENT);

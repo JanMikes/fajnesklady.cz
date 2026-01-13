@@ -1,113 +1,139 @@
-{% extends 'user/layout.html.twig' %}
+{% extends 'portal/layout.html.twig' %}
 
-{% block title %}Profil - {{ parent() }}{% endblock %}
+{% block title %}Nastavení{% endblock %}
 
 {% block content %}
-    <div class="max-w-2xl mx-auto">
-        <h1 class="text-3xl font-bold mb-6 text-gray-900">Váš profil</h1>
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold text-gray-900">Nastavení účtu</h1>
+    </div>
 
+    <div class="max-w-2xl">
         <div class="card">
             <div class="card-body">
-                <div class="flex items-center gap-4 mb-6">
-                    <div class="flex-shrink-0">
-                        <div class="bg-primary text-white rounded-full w-24 h-24 flex items-center justify-center">
-                            <span class="text-3xl font-semibold">{{ app.user.fullName|first|upper }}</span>
+                <div class="flex justify-between items-start mb-6">
+                    <div class="flex items-center gap-4">
+                        <div class="flex-shrink-0">
+                            <div class="bg-primary text-white rounded-full w-16 h-16 flex items-center justify-center">
+                                <span class="text-2xl font-semibold">{{ app.user.fullName|first|upper }}</span>
+                            </div>
+                        </div>
+                        <div>
+                            <h2 class="text-xl font-bold text-gray-900">{{ app.user.fullName }}</h2>
+                            <p class="text-gray-600">{{ app.user.email }}</p>
                         </div>
                     </div>
-                    <div>
-                        <h2 class="text-2xl font-bold text-gray-900">{{ app.user.fullName }}</h2>
-                        <p class="text-gray-600">{{ app.user.email }}</p>
-                    </div>
-                </div>
-
-                <div class="flex gap-2 mb-6">
-                    <a href="{{ path('app_profile_edit') }}" class="btn btn-primary btn-sm">
-                        Upravit profil
-                    </a>
-                    <a href="{{ path('app_profile_change_password') }}" class="btn btn-secondary btn-sm">
-                        Změnit heslo
+                    <a href="{{ path('portal_profile_edit') }}" class="btn btn-primary btn-sm">
+                        Upravit
                     </a>
                 </div>
 
                 <hr class="my-6 border-t border-gray-200">
 
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">Email</label>
-                        <input type="text" value="{{ app.user.email }}" class="form-input bg-gray-50" readonly />
+                <dl class="space-y-4">
+                    <div class="grid grid-cols-3 gap-4">
+                        <dt class="text-sm font-semibold text-gray-500">Email</dt>
+                        <dd class="col-span-2 text-gray-900">{{ app.user.email }}</dd>
                     </div>
 
-                    <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">Jméno</label>
-                        <input type="text" value="{{ app.user.fullName }}" class="form-input bg-gray-50" readonly />
+                    <div class="grid grid-cols-3 gap-4">
+                        <dt class="text-sm font-semibold text-gray-500">Jméno</dt>
+                        <dd class="col-span-2 text-gray-900">{{ app.user.fullName }}</dd>
                     </div>
 
-                    <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">Telefon</label>
-                        <input type="text" value="{{ app.user.phone ?? '-' }}" class="form-input bg-gray-50" readonly />
+                    <div class="grid grid-cols-3 gap-4">
+                        <dt class="text-sm font-semibold text-gray-500">Telefon</dt>
+                        <dd class="col-span-2 text-gray-900">{{ app.user.phone ?? '—' }}</dd>
                     </div>
 
-                    <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">Stav účtu</label>
-                        <div class="flex gap-2">
+                    <div class="grid grid-cols-3 gap-4">
+                        <dt class="text-sm font-semibold text-gray-500">Stav účtu</dt>
+                        <dd class="col-span-2">
                             {% if app.user.isVerified %}
-                                <div class="badge badge-success gap-2">
+                                <span class="badge badge-success gap-1">
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-4 h-4 stroke-current">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                     </svg>
                                     Ověřený
-                                </div>
+                                </span>
                             {% else %}
-                                <div class="badge badge-warning gap-2">
+                                <span class="badge badge-warning gap-1">
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-4 h-4 stroke-current">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
                                     </svg>
                                     Neověřený
-                                </div>
+                                </span>
                             {% endif %}
-                        </div>
+                        </dd>
                     </div>
 
-                    <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">Role</label>
-                        <div class="flex flex-wrap gap-2">
+                    <div class="grid grid-cols-3 gap-4">
+                        <dt class="text-sm font-semibold text-gray-500">Role</dt>
+                        <dd class="col-span-2 flex flex-wrap gap-1">
                             {% for role in app.user.roles %}
-                                <div class="badge badge-primary">{{ role }}</div>
+                                <span class="badge badge-outline">{{ role }}</span>
                             {% endfor %}
-                        </div>
+                        </dd>
                     </div>
 
-                    <div>
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">Členem od</label>
-                        <input type="text" value="{{ app.user.createdAt|date('d.m.Y') }}" class="form-input bg-gray-50" readonly />
+                    <div class="grid grid-cols-3 gap-4">
+                        <dt class="text-sm font-semibold text-gray-500">Členem od</dt>
+                        <dd class="col-span-2 text-gray-900">{{ app.user.createdAt|date('d.m.Y') }}</dd>
                     </div>
-                </div>
+                </dl>
             </div>
         </div>
 
         <div class="card mt-6">
             <div class="card-body">
                 <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-xl font-semibold">Fakturační údaje</h3>
-                    <a href="{{ path('app_profile_billing') }}" class="btn btn-sm btn-ghost">
+                    <h3 class="text-lg font-semibold text-gray-900">Fakturační údaje</h3>
+                    <a href="{{ path('portal_profile_billing') }}" class="btn btn-sm btn-ghost">
                         {{ app.user.hasBillingInfo ? 'Upravit' : 'Vyplnit' }}
                     </a>
                 </div>
 
                 {% if app.user.hasBillingInfo %}
-                    <div class="space-y-2">
-                        <p><strong>{{ app.user.companyName }}</strong></p>
-                        <p>IČO: {{ app.user.companyId }}</p>
+                    <dl class="space-y-2">
+                        <div class="grid grid-cols-3 gap-4">
+                            <dt class="text-sm font-semibold text-gray-500">Firma</dt>
+                            <dd class="col-span-2 text-gray-900">{{ app.user.companyName }}</dd>
+                        </div>
+                        <div class="grid grid-cols-3 gap-4">
+                            <dt class="text-sm font-semibold text-gray-500">IČO</dt>
+                            <dd class="col-span-2 text-gray-900">{{ app.user.companyId }}</dd>
+                        </div>
                         {% if app.user.companyVatId %}
-                            <p>DIČ: {{ app.user.companyVatId }}</p>
+                            <div class="grid grid-cols-3 gap-4">
+                                <dt class="text-sm font-semibold text-gray-500">DIČ</dt>
+                                <dd class="col-span-2 text-gray-900">{{ app.user.companyVatId }}</dd>
+                            </div>
                         {% endif %}
-                        <p>{{ app.user.billingStreet }}</p>
-                        <p>{{ app.user.billingPostalCode }} {{ app.user.billingCity }}</p>
-                    </div>
+                        <div class="grid grid-cols-3 gap-4">
+                            <dt class="text-sm font-semibold text-gray-500">Adresa</dt>
+                            <dd class="col-span-2 text-gray-900">
+                                {{ app.user.billingStreet }}<br>
+                                {{ app.user.billingPostalCode }} {{ app.user.billingCity }}
+                            </dd>
+                        </div>
+                    </dl>
                 {% else %}
                     <p class="text-gray-500">Fakturační údaje nejsou vyplněny.</p>
-                    <p class="text-sm text-gray-400">Pro vytvoření objednávky je nutné vyplnit fakturační údaje.</p>
+                    <p class="text-sm text-gray-400 mt-1">Pro vytvoření objednávky je nutné vyplnit fakturační údaje.</p>
                 {% endif %}
+            </div>
+        </div>
+
+        <div class="card mt-6">
+            <div class="card-body">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900">Změna hesla</h3>
+                        <p class="text-sm text-gray-500 mt-1">Upravte své přihlašovací heslo</p>
+                    </div>
+                    <a href="{{ path('portal_profile_change_password') }}" class="btn btn-sm btn-ghost">
+                        Změnit heslo
+                    </a>
+                </div>
             </div>
         </div>
     </div>

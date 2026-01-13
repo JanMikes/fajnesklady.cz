@@ -16,7 +16,7 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-#[Route('/profile/edit', name: 'app_profile_edit')]
+#[Route('/portal/profile/edit', name: 'portal_profile_edit')]
 #[IsGranted('ROLE_USER')]
 final class ProfileEditController extends AbstractController
 {
@@ -41,7 +41,7 @@ final class ProfileEditController extends AbstractController
 
             $this->addFlash('success', 'Profil byl úspěšně aktualizován.');
 
-            return $this->redirectToRoute('app_profile');
+            return $this->redirectToRoute('portal_profile');
         }
 
         return $this->render('user/profile_edit.html.twig', [

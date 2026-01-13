@@ -16,7 +16,7 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-#[Route('/profile/billing', name: 'app_profile_billing')]
+#[Route('/portal/profile/billing', name: 'portal_profile_billing')]
 #[IsGranted('ROLE_USER')]
 final class BillingInfoController extends AbstractController
 {
@@ -44,12 +44,11 @@ final class BillingInfoController extends AbstractController
 
             $this->addFlash('success', 'Fakturační údaje byly úspěšně uloženy.');
 
-            return $this->redirectToRoute('app_profile');
+            return $this->redirectToRoute('portal_profile');
         }
 
         return $this->render('user/billing_info.html.twig', [
-            'form' => $form,
-            'user' => $user,
+            'form' => $form->createView(),
         ]);
     }
 }

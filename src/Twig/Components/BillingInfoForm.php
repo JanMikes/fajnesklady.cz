@@ -23,9 +23,6 @@ final class BillingInfoForm extends AbstractController
     use ComponentWithFormTrait;
 
     #[LiveProp]
-    public ?User $user = null;
-
-    #[LiveProp]
     public ?string $aresError = null;
 
     #[LiveProp]
@@ -41,8 +38,9 @@ final class BillingInfoForm extends AbstractController
      */
     protected function instantiateForm(): FormInterface
     {
-        $initialData = null !== $this->user
-            ? BillingInfoFormData::fromUser($this->user)
+        $user = $this->getUser();
+        $initialData = $user instanceof User
+            ? BillingInfoFormData::fromUser($user)
             : new BillingInfoFormData();
 
         return $this->createForm(BillingInfoFormType::class, $initialData);

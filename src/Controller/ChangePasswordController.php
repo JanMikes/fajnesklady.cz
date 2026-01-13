@@ -12,12 +12,13 @@ use App\Form\ChangePasswordFormType;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Messenger\Exception\HandlerFailedException;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-#[Route('/profile/change-password', name: 'app_profile_change_password')]
+#[Route('/portal/profile/change-password', name: 'portal_profile_change_password')]
 #[IsGranted('ROLE_USER')]
 final class ChangePasswordController extends AbstractController
 {
@@ -42,9 +43,20 @@ final class ChangePasswordController extends AbstractController
 
                 $this->addFlash('success', 'Heslo bylo úspěšně změněno.');
 
-                return $this->redirectToRoute('app_profile');
-            } catch (InvalidCurrentPassword) {
-                $this->addFlash('error', 'Aktuální heslo není správné.');
+                return $this->redirectToRoute('portal_profile');
+            } catch (HandlerFailedException $e) {
+                // Unwrap the exception from Messenger
+                foreach ($e->getWrappedExceptions() as $wrappedException) {
+                    if ($wrappedException instanceof InvalidCurrentPassword) {
+                        $this->addFlash('error', 'Aktuální heslo není správné.');
+
+                        return $this->render('user/change_password.html.twig', [
+                            'form' => $form,
+                        ]);
+                    }
+                }
+
+                throw $e;
             }
         }
 
