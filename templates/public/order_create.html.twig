@@ -1,0 +1,151 @@
+{% extends 'user/layout.html.twig' %}
+
+{% block title %}Objednávka - {{ storageType.name }} - Fajné Sklady{% endblock %}
+
+{% block content %}
+    {# Breadcrumb #}
+    <nav class="mb-6">
+        <ol class="flex items-center space-x-2 text-sm text-gray-600">
+            <li><a href="{{ path('app_home') }}" class="hover:text-blue-600">Domů</a></li>
+            <li><span class="mx-2">/</span></li>
+            <li><a href="{{ path('public_place_detail', {id: place.id}) }}" class="hover:text-blue-600">{{ place.name }}</a></li>
+            <li><span class="mx-2">/</span></li>
+            <li class="text-gray-900 font-medium">Objednávka</li>
+        </ol>
+    </nav>
+
+    <div class="grid lg:grid-cols-3 gap-8">
+        {# Order Form #}
+        <div class="lg:col-span-2">
+            <div class="card">
+                <div class="card-body">
+                    <h1 class="text-2xl font-bold text-gray-900 mb-6">Vytvořit objednávku</h1>
+
+                    {{ form_start(form, {attr: {class: 'space-y-6', 'x-data': '{rentalType: "' ~ (form.vars.data.rentalType ? form.vars.data.rentalType.value : 'limited') ~ '"}'}}) }}
+
+                        {# Contact Information #}
+                        <fieldset class="border border-gray-200 rounded-lg p-4">
+                            <legend class="text-lg font-semibold text-gray-900 px-2">Kontaktní údaje</legend>
+
+                            <div class="grid md:grid-cols-2 gap-4 mt-4">
+                                <div>
+                                    {{ form_row(form.firstName) }}
+                                </div>
+                                <div>
+                                    {{ form_row(form.lastName) }}
+                                </div>
+                            </div>
+
+                            <div class="grid md:grid-cols-2 gap-4 mt-4">
+                                <div>
+                                    {{ form_row(form.email) }}
+                                </div>
+                                <div>
+                                    {{ form_row(form.phone) }}
+                                </div>
+                            </div>
+                        </fieldset>
+
+                        {# Rental Type #}
+                        <fieldset class="border border-gray-200 rounded-lg p-4">
+                            <legend class="text-lg font-semibold text-gray-900 px-2">Typ pronájmu</legend>
+
+                            <div class="mt-4" x-on:change="rentalType = $event.target.value">
+                                {{ form_widget(form.rentalType) }}
+                            </div>
+
+                            <div class="mt-4 p-4 bg-blue-50 rounded-lg" x-show="rentalType === 'unlimited'">
+                                <p class="text-sm text-blue-700 mb-3">
+                                    Pronájem na dobu neurčitou s možností ukončení kdykoliv.
+                                </p>
+                                {{ form_row(form.paymentFrequency) }}
+                            </div>
+                        </fieldset>
+
+                        {# Dates #}
+                        <fieldset class="border border-gray-200 rounded-lg p-4">
+                            <legend class="text-lg font-semibold text-gray-900 px-2">Období pronájmu</legend>
+
+                            <div class="grid md:grid-cols-2 gap-4 mt-4">
+                                <div>
+                                    {{ form_row(form.startDate) }}
+                                    <p class="text-sm text-gray-500 mt-1">
+                                        Nejdříve možné: {{ minStartDate|date('d.m.Y') }}
+                                    </p>
+                                </div>
+                                <div x-show="rentalType === 'limited'">
+                                    {{ form_row(form.endDate) }}
+                                </div>
+                            </div>
+                        </fieldset>
+
+                        {# Submit #}
+                        <div class="flex items-center justify-between pt-4">
+                            <a href="{{ path('public_place_detail', {id: place.id}) }}" class="text-gray-600 hover:text-gray-900">
+                                &larr; Zpět
+                            </a>
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                Pokračovat k platbě
+                            </button>
+                        </div>
+
+                    {{ form_end(form) }}
+                </div>
+            </div>
+        </div>
+
+        {# Order Summary Sidebar #}
+        <div class="lg:col-span-1">
+            <div class="card sticky top-4">
+                <div class="card-body">
+                    <h2 class="text-lg font-bold text-gray-900 mb-4">Shrnutí</h2>
+
+                    <div class="space-y-3 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Pobočka</span>
+                            <span class="font-medium">{{ place.name }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Typ jednotky</span>
+                            <span class="font-medium">{{ storageType.name }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Rozměry</span>
+                            <span class="font-medium">{{ storageType.dimensionsInMeters }}</span>
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <div class="space-y-2">
+                        <h3 class="font-semibold text-gray-900">Ceník</h3>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600">Týdenní sazba</span>
+                            <span class="font-medium">{{ weeklyPrice|number_format(0, ',', ' ') }} Kč</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600">Měsíční sazba</span>
+                            <span class="font-medium">{{ monthlyPrice|number_format(0, ',', ' ') }} Kč</span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2">
+                            Pronájem kratší než 4 týdny se účtuje týdenní sazbou,
+                            delší pronájem měsíční sazbou (výhodnější).
+                        </p>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <div class="bg-blue-50 -mx-4 -mb-4 p-4 rounded-b-lg">
+                        <p class="text-sm text-blue-700">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Skladová jednotka bude přiřazena automaticky po vytvoření objednávky.
+                            Máte 7 dní na dokončení platby.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Repository;
 
+use App\Entity\Place;
 use App\Entity\StorageType;
 use App\Entity\User;
 use App\Exception\StorageTypeNotFound;
@@ -118,5 +119,42 @@ final class StorageTypeRepository
         )->fetchOne();
 
         return (int) $result;
+    }
+
+    /**
+     * @return StorageType[]
+     */
+    public function findByPlace(Place $place): array
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('st')
+            ->from(StorageType::class, 'st')
+            ->where('st.place = :place')
+            ->setParameter('place', $place)
+            ->orderBy('st.pricePerMonth', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * @return StorageType[]
+     */
+    public function findActiveByPlace(Place $place): array
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('st')
+            ->from(StorageType::class, 'st')
+            ->where('st.place = :place')
+            ->andWhere('st.isActive = :active')
+            ->setParameter('place', $place)
+            ->setParameter('active', true)
+            ->orderBy('st.pricePerMonth', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    public function find(Uuid $id): ?StorageType
+    {
+        return $this->entityManager->find(StorageType::class, $id);
     }
 }

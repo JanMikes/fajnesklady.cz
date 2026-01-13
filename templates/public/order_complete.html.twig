@@ -1,0 +1,158 @@
+{% extends 'user/layout.html.twig' %}
+
+{% block title %}Objednávka dokončena - Fajné Sklady{% endblock %}
+
+{% block content %}
+    <div class="max-w-2xl mx-auto">
+        {# Success Header #}
+        <div class="text-center mb-8">
+            <div class="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+            </div>
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">Objednávka dokončena!</h1>
+            <p class="text-gray-600">Děkujeme za Vaši objednávku. Skladová jednotka je připravena k užívání.</p>
+        </div>
+
+        {# Contract Details #}
+        <div class="card mb-6">
+            <div class="card-body">
+                <h2 class="text-xl font-bold text-gray-900 mb-4">Detail smlouvy</h2>
+
+                <div class="space-y-3 text-sm">
+                    {% if contract %}
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Číslo smlouvy</span>
+                        <span class="font-mono font-medium">{{ contract.id|string|slice(0, 8)|upper }}</span>
+                    </div>
+                    {% endif %}
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Pobočka</span>
+                        <span class="font-medium">{{ place.name }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Adresa</span>
+                        <span class="font-medium">{{ place.address }}, {{ place.postalCode }} {{ place.city }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Skladová jednotka</span>
+                        <span class="font-medium">{{ storageType.name }} - {{ storage.number }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Rozměry</span>
+                        <span class="font-medium">{{ storageType.dimensionsInMeters }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Datum začátku</span>
+                        <span class="font-medium">{{ order.startDate|date('d.m.Y') }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Datum konce</span>
+                        <span class="font-medium">
+                            {% if order.endDate %}
+                                {{ order.endDate|date('d.m.Y') }}
+                            {% else %}
+                                Na dobu neurčitou
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Zaplaceno</span>
+                        <span class="font-medium text-green-600">{{ order.totalPriceInCzk|number_format(2, ',', ' ') }} Kč</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# What's Next #}
+        <div class="card mb-6">
+            <div class="card-body">
+                <h2 class="text-xl font-bold text-gray-900 mb-4">Co dál?</h2>
+
+                <div class="space-y-4">
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+                            <span class="text-blue-600 font-bold text-sm">1</span>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-gray-900">Navštivte pobočku</h3>
+                            <p class="text-sm text-gray-600">
+                                Přijďte na adresu {{ place.address }}, {{ place.city }} a vyzvedněte si klíč
+                                od skladové jednotky.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+                            <span class="text-blue-600 font-bold text-sm">2</span>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-gray-900">Připravte si vlastní zámek</h3>
+                            <p class="text-sm text-gray-600">
+                                Pro zabezpečení své skladové jednotky si přineste vlastní visací zámek.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+                            <span class="text-blue-600 font-bold text-sm">3</span>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-gray-900">Přístup 24/7</h3>
+                            <p class="text-sm text-gray-600">
+                                Ke skladové jednotce máte přístup kdykoliv. Dostanete vlastní ovladač k bráně.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# Contact Information #}
+        <div class="bg-blue-50 rounded-lg p-4 mb-6">
+            <h3 class="font-semibold text-gray-900 mb-2">Potřebujete pomoc?</h3>
+            <p class="text-sm text-gray-600 mb-3">
+                V případě dotazů nás neváhejte kontaktovat:
+            </p>
+            <div class="flex flex-col sm:flex-row gap-4 text-sm">
+                <a href="tel:+420605522566" class="text-blue-600 hover:underline">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                    </svg>
+                    +420 605 522 566
+                </a>
+                <a href="tel:+420728377180" class="text-blue-600 hover:underline">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                    </svg>
+                    +420 728 377 180
+                </a>
+            </div>
+        </div>
+
+        {# Action Buttons #}
+        <div class="flex flex-col sm:flex-row gap-4">
+            {% if place.latitude and place.longitude %}
+            <a href="https://maps.google.com/?q={{ place.latitude }},{{ place.longitude }}"
+               target="_blank"
+               class="btn btn-secondary flex-1 justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                </svg>
+                Navigovat na pobočku
+            </a>
+            {% endif %}
+            <a href="{{ path('app_home') }}" class="btn btn-primary flex-1 justify-center">
+                Zpět na hlavní stránku
+            </a>
+        </div>
+
+        {# Email Notice #}
+        <p class="text-center text-sm text-gray-500 mt-6">
+            Potvrzení objednávky bylo odesláno na Váš e-mail.
+        </p>
+    </div>
+{% endblock %}

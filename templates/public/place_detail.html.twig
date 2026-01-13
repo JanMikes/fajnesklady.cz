@@ -1,0 +1,134 @@
+{% extends 'user/layout.html.twig' %}
+
+{% block title %}{{ place.name }} - Fajné Sklady{% endblock %}
+
+{% block content %}
+    {# Breadcrumb #}
+    <nav class="mb-6">
+        <ol class="flex items-center space-x-2 text-sm text-gray-600">
+            <li><a href="{{ path('app_home') }}" class="hover:text-blue-600">Domů</a></li>
+            <li><span class="mx-2">/</span></li>
+            <li class="text-gray-900 font-medium">{{ place.name }}</li>
+        </ol>
+    </nav>
+
+    {# Place Header #}
+    <div class="card mb-8">
+        <div class="card-body">
+            <div class="md:flex md:justify-between md:items-start">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900 mb-2">{{ place.name }}</h1>
+                    <p class="text-gray-600 mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        {{ place.address }}, {{ place.postalCode }} {{ place.city }}
+                    </p>
+                    {% if place.description %}
+                        <p class="text-gray-700">{{ place.description }}</p>
+                    {% endif %}
+                </div>
+
+                {% if place.latitude and place.longitude %}
+                <div class="mt-4 md:mt-0">
+                    <a href="https://maps.google.com/?q={{ place.latitude }},{{ place.longitude }}"
+                       target="_blank"
+                       class="btn btn-secondary">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                        </svg>
+                        Navigovat
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    {# Storage Types #}
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">Dostupné skladové jednotky</h2>
+
+    {% if storageTypes|length == 0 %}
+        <div class="card">
+            <div class="card-body text-center py-12">
+                <p class="text-gray-600">Na této pobočce aktuálně nejsou žádné dostupné skladové jednotky.</p>
+            </div>
+        </div>
+    {% else %}
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+            {% for storageType in storageTypes %}
+                {% set availableCount = availability[storageType.id|string] ?? 0 %}
+                <div class="card hover:shadow-lg transition-shadow {% if availableCount == 0 %}opacity-75{% endif %}">
+                    <div class="card-body">
+                        <h3 class="text-xl font-bold text-gray-900 mb-2">{{ storageType.name }}</h3>
+
+                        <div class="text-sm text-gray-600 mb-3">
+                            <div class="flex items-center gap-2 mb-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                                </svg>
+                                {{ storageType.dimensionsInMeters }}
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                </svg>
+                                {{ storageType.volumeInCubicMeters|number_format(1) }} m&sup3;
+                            </div>
+                        </div>
+
+                        {% if storageType.description %}
+                            <p class="text-gray-600 text-sm mb-4">{{ storageType.description }}</p>
+                        {% endif %}
+
+                        <div class="border-t pt-4 mt-4">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-gray-600">Týdenní sazba</span>
+                                <span class="font-semibold">{{ storageType.pricePerWeekInCzk|number_format(0, ',', ' ') }} Kč</span>
+                            </div>
+                            <div class="flex justify-between items-center mb-4">
+                                <span class="text-gray-600">Měsíční sazba</span>
+                                <span class="font-semibold text-blue-600">{{ storageType.pricePerMonthInCzk|number_format(0, ',', ' ') }} Kč</span>
+                            </div>
+
+                            <div class="flex justify-between items-center mb-4">
+                                <span class="text-sm {% if availableCount > 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                                    {% if availableCount > 0 %}
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                        {{ availableCount }} volných
+                                    {% else %}
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                        Obsazeno
+                                    {% endif %}
+                                </span>
+                            </div>
+
+                            {% if availableCount > 0 %}
+                                <a href="{{ path('public_order_create', {storageTypeId: storageType.id}) }}"
+                                   class="btn btn-primary w-full">
+                                    Objednat
+                                </a>
+                            {% else %}
+                                <button disabled class="btn btn-secondary w-full opacity-50 cursor-not-allowed">
+                                    Nedostupné
+                                </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    {# Back Link #}
+    <div class="mt-8">
+        <a href="{{ path('app_home') }}" class="text-blue-600 hover:text-blue-700">
+            &larr; Zpět na seznam poboček
+        </a>
+    </div>
+{% endblock %}

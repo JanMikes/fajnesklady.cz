@@ -119,4 +119,24 @@ final class PlaceRepository
 
         return (int) $result;
     }
+
+    /**
+     * @return Place[]
+     */
+    public function findAllActive(): array
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('p')
+            ->from(Place::class, 'p')
+            ->where('p.isActive = :active')
+            ->setParameter('active', true)
+            ->orderBy('p.name', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    public function find(Uuid $id): ?Place
+    {
+        return $this->entityManager->find(Place::class, $id);
+    }
 }

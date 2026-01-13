@@ -26,9 +26,32 @@
         <p class="text-gray-600 mb-6">Najděte nejbližší pobočku a zjistěte dostupnost kontejnerů</p>
         <div
             data-controller="map"
+            data-map-places-value="{{ places|map(p => {
+                id: p.id|string,
+                name: p.name,
+                address: p.address,
+                city: p.city,
+                latitude: p.latitude,
+                longitude: p.longitude,
+                url: path('public_place_detail', {id: p.id})
+            })|json_encode|e('html_attr') }}"
             class="map-container rounded-lg shadow-lg"
             style="height: 500px; width: 100%;">
         </div>
+
+        {% if places|length > 0 %}
+        <div class="mt-6 grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {% for place in places %}
+            <a href="{{ path('public_place_detail', {id: place.id}) }}" class="card hover:shadow-lg transition-shadow">
+                <div class="card-body">
+                    <h3 class="text-xl font-bold text-gray-900 mb-1">{{ place.name }}</h3>
+                    <p class="text-gray-600 text-sm">{{ place.address }}, {{ place.city }}</p>
+                    <span class="text-blue-600 text-sm mt-2 inline-block">Zobrazit detail &rarr;</span>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+        {% endif %}
     </div>
 
     {# Container Sizes Section #}

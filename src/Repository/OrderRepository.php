@@ -24,10 +24,14 @@ final class OrderRepository
         $this->entityManager->persist($order);
     }
 
+    public function find(Uuid $id): ?Order
+    {
+        return $this->entityManager->find(Order::class, $id);
+    }
+
     public function get(Uuid $id): Order
     {
-        return $this->entityManager->find(Order::class, $id)
-            ?? throw OrderNotFound::withId($id);
+        return $this->find($id) ?? throw OrderNotFound::withId($id);
     }
 
     /**
