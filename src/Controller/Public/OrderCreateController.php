@@ -65,6 +65,7 @@ final class OrderCreateController extends AbstractController
                     firstName: $formData->firstName,
                     lastName: $formData->lastName,
                     phone: $formData->phone,
+                    plainPassword: $formData->plainPassword,
                 ));
 
                 $handledStamp = $envelope->last(HandledStamp::class);

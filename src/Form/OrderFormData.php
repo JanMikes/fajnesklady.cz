@@ -27,6 +27,8 @@ final class OrderFormData
     #[Assert\Length(max: 20, maxMessage: 'Telefon může mít maximálně {{ limit }} znaků.')]
     public ?string $phone = null;
 
+    public ?string $plainPassword = null;
+
     #[Assert\NotBlank(message: 'Zadejte název firmy.')]
     #[Assert\Length(max: 255, maxMessage: 'Název firmy může mít maximálně {{ limit }} znaků.')]
     public ?string $companyName = null;
@@ -61,6 +63,20 @@ final class OrderFormData
     public ?\DateTimeImmutable $startDate = null;
 
     public ?\DateTimeImmutable $endDate = null;
+
+    #[Assert\Callback]
+    public function validatePassword(ExecutionContextInterface $context): void
+    {
+        if (null === $this->plainPassword || '' === $this->plainPassword) {
+            return;
+        }
+
+        if (strlen($this->plainPassword) < 8) {
+            $context->buildViolation('Heslo musí mít alespoň 8 znaků.')
+                ->atPath('plainPassword')
+                ->addViolation();
+        }
+    }
 
     #[Assert\Callback]
     public function validateDates(ExecutionContextInterface $context): void

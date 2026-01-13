@@ -10,10 +10,14 @@ export default class extends Controller {
     }
 
     // Configuration constants
-    HANDLE_SIZE = 10;           // Visual size of resize handles
-    HANDLE_HIT_AREA = 16;       // Hit detection area (larger for easier clicking)
-    ROTATION_HANDLE_RADIUS = 10;
-    ROTATION_HANDLE_DISTANCE = 30;
+    HANDLE_SIZE = 14;           // Visual size of resize handles
+    HANDLE_HIT_AREA = 24;       // Hit detection area (larger for easier clicking)
+    ROTATION_HANDLE_RADIUS = 14;
+    ROTATION_HANDLE_DISTANCE = 40;
+    ROTATION_HANDLE_HIT_AREA = 12; // Additional hit area around rotation handle
+
+    // Custom rotate cursor (SVG encoded as data URL)
+    ROTATE_CURSOR = 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'24\' height=\'24\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%23000\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3E%3Cpath d=\'M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8\'/%3E%3Cpath d=\'M21 3v5h-5\'/%3E%3C/svg%3E") 12 12, pointer';
 
     connect() {
         this.selectedStorage = null;
@@ -111,6 +115,13 @@ export default class extends Controller {
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
                 return;
             }
+
+            // Block deletion of occupied or reserved storages
+            if (this.selectedStorage.status === 'occupied' ||
+                this.selectedStorage.status === 'reserved') {
+                return;
+            }
+
             e.preventDefault();
             this.deleteStorage();
         }
@@ -170,10 +181,15 @@ export default class extends Controller {
             this.selectedStorage.coordinates.x = Math.max(0, pos.x - this.dragOffset.x);
             this.selectedStorage.coordinates.y = Math.max(0, pos.y - this.dragOffset.y);
             this.selectedStorage.modified = true;
+            this.canvasTarget.style.cursor = 'move';
             this.render();
         } else if (this.isResizing && this.selectedStorage) {
             this.resizeStorage(pos);
             this.selectedStorage.modified = true;
+            // Keep the resize cursor during resize operation
+            if (this.resizeHandle) {
+                this.canvasTarget.style.cursor = this.resizeHandle.cursor;
+            }
             this.render();
         } else if (this.isRotating && this.selectedStorage) {
             // Calculate rotation angle from center of storage to mouse position
@@ -183,8 +199,10 @@ export default class extends Controller {
             const angle = Math.atan2(pos.y - centerY, pos.x - centerX) * 180 / Math.PI + 90;
             coords.rotation = Math.round(angle);
             this.selectedStorage.modified = true;
+            this.canvasTarget.style.cursor = this.ROTATE_CURSOR;
             this.render();
         } else if (this.isCreating && this.creationStart) {
+            this.canvasTarget.style.cursor = 'crosshair';
             this.render();
             // Draw creation rectangle
             const width = pos.x - this.creationStart.x;
@@ -195,11 +213,11 @@ export default class extends Controller {
             this.ctx.strokeRect(this.creationStart.x, this.creationStart.y, width, height);
             this.ctx.setLineDash([]);
         } else {
-            // Update cursor
+            // Update cursor based on what's under the mouse
             if (this.selectedStorage) {
                 const rotHandle = this.getRotationHandle(pos, this.selectedStorage);
                 if (rotHandle) {
-                    this.canvasTarget.style.cursor = 'grab';
+                    this.canvasTarget.style.cursor = this.ROTATE_CURSOR;
                     return;
                 }
                 const handle = this.getResizeHandle(pos, this.selectedStorage);
@@ -358,7 +376,7 @@ export default class extends Controller {
         const dy = pos.y - handleY;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
-        if (distance <= handleRadius + 4) { // +4 for easier clicking
+        if (distance <= handleRadius + this.ROTATION_HANDLE_HIT_AREA) {
             return { x: handleX, y: handleY, radius: handleRadius };
         }
         return null;
@@ -437,6 +455,7 @@ export default class extends Controller {
         this.selectedStorage = storage;
         this.showForm();
         this.render();
+        this.renderStorageList();
     }
 
     deselectStorage() {
@@ -456,6 +475,22 @@ export default class extends Controller {
             this.deleteBtnTarget.classList.add('hidden');
         } else {
             this.deleteBtnTarget.classList.remove('hidden');
+
+            // Disable delete for occupied or reserved storages
+            const isOccupied = this.selectedStorage.status === 'occupied';
+            const isReserved = this.selectedStorage.status === 'reserved';
+
+            if (isOccupied || isReserved) {
+                this.deleteBtnTarget.disabled = true;
+                this.deleteBtnTarget.classList.add('btn-disabled');
+                this.deleteBtnTarget.title = isOccupied
+                    ? 'Nelze smazat obsazený sklad'
+                    : 'Nelze smazat sklad s aktivní rezervací';
+            } else {
+                this.deleteBtnTarget.disabled = false;
+                this.deleteBtnTarget.classList.remove('btn-disabled');
+                this.deleteBtnTarget.title = '';
+            }
         }
     }
 
@@ -715,7 +750,7 @@ export default class extends Controller {
         if (!this.hasStorageListTarget) return;
 
         let html = '<ul class="divide-y divide-gray-200">';
-        this.storages.forEach(storage => {
+        this.storages.forEach((storage, index) => {
             const storageType = this.storageTypesValue.find(t => t.id === storage.storageTypeId);
             const typeName = storageType ? storageType.name : 'Nepřiřazen';
             const isSelected = storage === this.selectedStorage;
@@ -723,7 +758,7 @@ export default class extends Controller {
             html += `
                 <li class="p-2 cursor-pointer hover:bg-gray-50 ${isSelected ? 'bg-blue-50' : ''}"
                     data-action="click->storage-canvas#onStorageListClick"
-                    data-storage-id="${storage.id || 'new'}">
+                    data-storage-index="${index}">
                     <div class="flex items-center justify-between">
                         <span class="font-medium">${storage.number || '?'}</span>
                         <span class="text-sm text-gray-500">${typeName}</span>
@@ -744,10 +779,8 @@ export default class extends Controller {
         const li = e.target.closest('li');
         if (!li) return;
 
-        const storageId = li.dataset.storageId;
-        const storage = this.storages.find(s =>
-            (s.id && s.id === storageId) || (!s.id && storageId === 'new')
-        );
+        const index = parseInt(li.dataset.storageIndex, 10);
+        const storage = this.storages[index];
 
         if (storage) {
             this.selectStorage(storage);

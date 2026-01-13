@@ -15,6 +15,7 @@ final readonly class GetOrCreateUserByEmailCommand
         public string $firstName,
         public string $lastName,
         public ?string $phone = null,
+        public ?string $plainPassword = null,
     ) {
     }
 }

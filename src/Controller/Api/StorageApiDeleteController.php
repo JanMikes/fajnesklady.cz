@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller\Api;
 
 use App\Command\DeleteStorageCommand;
+use App\Exception\StorageCannotBeDeleted;
 use App\Repository\StorageRepository;
 use App\Service\Security\StorageVoter;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -35,16 +36,12 @@ final class StorageApiDeleteController extends AbstractController
             return new JsonResponse(['message' => 'Sklad nepatří k tomuto místu'], Response::HTTP_BAD_REQUEST);
         }
 
-        // Check if storage has active orders/contracts
-        if ($storage->isOccupied() || $storage->isReserved()) {
-            return new JsonResponse(
-                ['message' => 'Nelze smazat sklad s aktivní rezervací nebo objednávkou'],
-                Response::HTTP_CONFLICT
-            );
+        try {
+            $command = new DeleteStorageCommand(storageId: $storage->id);
+            $this->commandBus->dispatch($command);
+        } catch (StorageCannotBeDeleted $e) {
+            return new JsonResponse(['message' => $e->getMessage()], Response::HTTP_CONFLICT);
         }
-
-        $command = new DeleteStorageCommand(storageId: $storage->id);
-        $this->commandBus->dispatch($command);
 
         return new JsonResponse(null, Response::HTTP_NO_CONTENT);
     }

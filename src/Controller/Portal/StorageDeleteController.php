@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller\Portal;
 
 use App\Command\DeleteStorageCommand;
+use App\Exception\StorageCannotBeDeleted;
 use App\Repository\StorageRepository;
 use App\Service\Security\StorageVoter;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -34,10 +35,13 @@ final class StorageDeleteController extends AbstractController
 
         $storageTypeId = $storage->storageType->id->toRfc4122();
 
-        $command = new DeleteStorageCommand(storageId: $storage->id);
-        $this->commandBus->dispatch($command);
-
-        $this->addFlash('success', 'Sklad byl úspěšně smazán.');
+        try {
+            $command = new DeleteStorageCommand(storageId: $storage->id);
+            $this->commandBus->dispatch($command);
+            $this->addFlash('success', 'Sklad byl úspěšně smazán.');
+        } catch (StorageCannotBeDeleted $e) {
+            $this->addFlash('error', $e->getMessage());
+        }
 
         return $this->redirectToRoute('portal_storages_list', [
             'storage_type' => $storageTypeId,

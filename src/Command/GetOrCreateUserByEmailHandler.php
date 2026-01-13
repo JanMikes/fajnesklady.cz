@@ -9,6 +9,7 @@ use App\Repository\UserRepository;
 use App\Service\Identity\ProvideIdentity;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
+use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 #[AsMessageHandler]
 final readonly class GetOrCreateUserByEmailHandler
@@ -17,6 +18,7 @@ final readonly class GetOrCreateUserByEmailHandler
         private UserRepository $userRepository,
         private ClockInterface $clock,
         private ProvideIdentity $identityProvider,
+        private UserPasswordHasherInterface $passwordHasher,
     ) {
     }
 
@@ -45,6 +47,13 @@ final readonly class GetOrCreateUserByEmailHandler
 
         if (null !== $command->phone) {
             $user->updateProfile($command->firstName, $command->lastName, $command->phone, $now);
+        }
+
+        // If password provided, hash it and auto-verify the user
+        if (null !== $command->plainPassword && '' !== $command->plainPassword) {
+            $hashedPassword = $this->passwordHasher->hashPassword($user, $command->plainPassword);
+            $user->changePassword($hashedPassword, $now);
+            $user->markAsVerified($now);
         }
 
         $this->userRepository->save($user);

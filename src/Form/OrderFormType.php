@@ -10,6 +10,7 @@ use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\DateType;
 use Symfony\Component\Form\Extension\Core\Type\EmailType;
 use Symfony\Component\Form\Extension\Core\Type\EnumType;
+use Symfony\Component\Form\Extension\Core\Type\PasswordType;
 use Symfony\Component\Form\Extension\Core\Type\TelType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
@@ -51,6 +52,15 @@ final class OrderFormType extends AbstractType
                     'placeholder' => '+420 123 456 789',
                     'autocomplete' => 'tel',
                 ],
+            ])
+            ->add('plainPassword', PasswordType::class, [
+                'label' => 'Heslo (nepovinné)',
+                'required' => false,
+                'attr' => [
+                    'placeholder' => 'Zadejte heslo pro vytvoření účtu',
+                    'autocomplete' => 'new-password',
+                ],
+                'help' => 'Pokud zadáte heslo, bude vytvořen účet pro správu vašich objednávek.',
             ])
             ->add('companyId', TextType::class, [
                 'label' => 'IČO',

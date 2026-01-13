@@ -49,6 +49,12 @@
                                     {{ form_row(form.phone) }}
                                 </div>
                             </div>
+
+                            {% if not app.user %}
+                                <div class="mt-4">
+                                    {{ form_row(form.plainPassword) }}
+                                </div>
+                            {% endif %}
                         </div>
 
                         {# Rental Type #}
