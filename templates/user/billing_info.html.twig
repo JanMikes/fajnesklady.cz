@@ -1,0 +1,18 @@
+{% extends 'user/layout.html.twig' %}
+
+{% block title %}Fakturační údaje - {{ parent() }}{% endblock %}
+
+{% block content %}
+    <div class="max-w-2xl mx-auto">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-bold">Fakturační údaje</h1>
+            <a href="{{ path('app_profile') }}" class="btn btn-ghost">Zpět na profil</a>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                {{ component('BillingInfoForm', { user: user }) }}
+            </div>
+        </div>
+    </div>
+{% endblock %}

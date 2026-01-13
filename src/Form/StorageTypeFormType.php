@@ -7,6 +7,7 @@ namespace App\Form;
 use App\Repository\PlaceRepository;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
+use Symfony\Component\Form\Extension\Core\Type\FileType;
 use Symfony\Component\Form\Extension\Core\Type\IntegerType;
 use Symfony\Component\Form\Extension\Core\Type\NumberType;
 use Symfony\Component\Form\Extension\Core\Type\TextareaType;
@@ -36,26 +37,55 @@ class StorageTypeFormType extends AbstractType
             ],
         ]);
 
-        $builder->add('width', IntegerType::class, [
-            'label' => 'Sirka (cm)',
+        // Inner dimensions (required)
+        $builder->add('innerWidth', IntegerType::class, [
+            'label' => 'Vnitrni sirka (cm)',
             'attr' => [
                 'placeholder' => '200',
                 'class' => 'input input-bordered w-full',
             ],
         ]);
 
-        $builder->add('height', IntegerType::class, [
-            'label' => 'Vyska (cm)',
+        $builder->add('innerHeight', IntegerType::class, [
+            'label' => 'Vnitrni vyska (cm)',
             'attr' => [
                 'placeholder' => '250',
                 'class' => 'input input-bordered w-full',
             ],
         ]);
 
-        $builder->add('length', IntegerType::class, [
-            'label' => 'Delka (cm)',
+        $builder->add('innerLength', IntegerType::class, [
+            'label' => 'Vnitrni delka (cm)',
             'attr' => [
                 'placeholder' => '300',
+                'class' => 'input input-bordered w-full',
+            ],
+        ]);
+
+        // Outer dimensions (optional)
+        $builder->add('outerWidth', IntegerType::class, [
+            'label' => 'Vnejsi sirka (cm)',
+            'required' => false,
+            'attr' => [
+                'placeholder' => '210',
+                'class' => 'input input-bordered w-full',
+            ],
+        ]);
+
+        $builder->add('outerHeight', IntegerType::class, [
+            'label' => 'Vnejsi vyska (cm)',
+            'required' => false,
+            'attr' => [
+                'placeholder' => '260',
+                'class' => 'input input-bordered w-full',
+            ],
+        ]);
+
+        $builder->add('outerLength', IntegerType::class, [
+            'label' => 'Vnejsi delka (cm)',
+            'required' => false,
+            'attr' => [
+                'placeholder' => '310',
                 'class' => 'input input-bordered w-full',
             ],
         ]);
@@ -88,6 +118,17 @@ class StorageTypeFormType extends AbstractType
                 'class' => 'textarea textarea-bordered w-full',
                 'rows' => 3,
             ],
+        ]);
+
+        $builder->add('photos', FileType::class, [
+            'label' => 'Fotografie',
+            'required' => false,
+            'multiple' => true,
+            'attr' => [
+                'accept' => 'image/jpeg,image/png,image/webp',
+                'class' => 'file-input file-input-bordered w-full',
+            ],
+            'help' => 'Nahrajte fotografie skladu (JPEG, PNG, WebP, max 5 MB kazda)',
         ]);
 
         // Only show place selector for admins

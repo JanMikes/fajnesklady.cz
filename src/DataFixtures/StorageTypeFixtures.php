@@ -35,10 +35,10 @@ final class StorageTypeFixtures extends Fixture implements DependentFixtureInter
         // Storage types for Praha Centrum
         $smallBox = new StorageType(
             id: Uuid::v7(),
-            name: 'Maly box',
-            width: 100,   // 1m in cm
-            height: 100,
-            length: 100,
+            name: 'Malý box',
+            innerWidth: 100,   // 1m in cm
+            innerHeight: 100,
+            innerLength: 100,
             pricePerWeek: 15000,   // 150 CZK
             pricePerMonth: 50000,  // 500 CZK
             place: $placePrahaCentrum,
@@ -49,28 +49,34 @@ final class StorageTypeFixtures extends Fixture implements DependentFixtureInter
 
         $mediumBox = new StorageType(
             id: Uuid::v7(),
-            name: 'Stredni box',
-            width: 200,   // 2m in cm
-            height: 200,
-            length: 200,
+            name: 'Střední box',
+            innerWidth: 200,   // 2m in cm
+            innerHeight: 200,
+            innerLength: 200,
             pricePerWeek: 35000,   // 350 CZK
             pricePerMonth: 120000, // 1200 CZK
             place: $placePrahaCentrum,
             createdAt: $now,
+            outerWidth: 210,
+            outerHeight: 210,
+            outerLength: 210,
         );
         $manager->persist($mediumBox);
         $this->addReference('storage-type-medium', $mediumBox);
 
         $largeBox = new StorageType(
             id: Uuid::v7(),
-            name: 'Velky box',
-            width: 300,   // 3m in cm
-            height: 250,
-            length: 400,
+            name: 'Velký box',
+            innerWidth: 300,   // 3m in cm
+            innerHeight: 250,
+            innerLength: 400,
             pricePerWeek: 80000,   // 800 CZK
             pricePerMonth: 280000, // 2800 CZK
             place: $placePrahaCentrum,
             createdAt: $now,
+            outerWidth: 320,
+            outerHeight: 270,
+            outerLength: 420,
         );
         $manager->persist($largeBox);
         $this->addReference('storage-type-large', $largeBox);
@@ -78,10 +84,10 @@ final class StorageTypeFixtures extends Fixture implements DependentFixtureInter
         // Storage types for Praha Jih
         $smallBoxJih = new StorageType(
             id: Uuid::v7(),
-            name: 'Maly box',
-            width: 100,
-            height: 100,
-            length: 100,
+            name: 'Malý box',
+            innerWidth: 100,
+            innerHeight: 100,
+            innerLength: 100,
             pricePerWeek: 12000,   // 120 CZK (cheaper)
             pricePerMonth: 40000,  // 400 CZK
             place: $placePrahaJih,
@@ -92,10 +98,10 @@ final class StorageTypeFixtures extends Fixture implements DependentFixtureInter
 
         $mediumBoxJih = new StorageType(
             id: Uuid::v7(),
-            name: 'Stredni box',
-            width: 200,
-            height: 200,
-            length: 200,
+            name: 'Střední box',
+            innerWidth: 200,
+            innerHeight: 200,
+            innerLength: 200,
             pricePerWeek: 30000,   // 300 CZK
             pricePerMonth: 100000, // 1000 CZK
             place: $placePrahaJih,
@@ -108,13 +114,16 @@ final class StorageTypeFixtures extends Fixture implements DependentFixtureInter
         $premiumBox = new StorageType(
             id: Uuid::v7(),
             name: 'Premium box',
-            width: 500,   // 5m in cm
-            height: 300,
-            length: 600,
+            innerWidth: 500,   // 5m in cm
+            innerHeight: 300,
+            innerLength: 600,
             pricePerWeek: 150000,  // 1500 CZK
             pricePerMonth: 500000, // 5000 CZK
             place: $placeBrno,
             createdAt: $now,
+            outerWidth: 520,
+            outerHeight: 320,
+            outerLength: 620,
         );
         $manager->persist($premiumBox);
         $this->addReference('storage-type-premium', $premiumBox);

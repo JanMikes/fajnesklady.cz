@@ -44,9 +44,9 @@ class StorageVoterTest extends TestCase
         $storageType = new StorageType(
             id: Uuid::v7(),
             name: 'Test Storage Type',
-            width: 100,
-            height: 200,
-            length: 150,
+            innerWidth: 100,
+            innerHeight: 200,
+            innerLength: 150,
             pricePerWeek: 10000,
             pricePerMonth: 35000,
             place: $place,

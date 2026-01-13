@@ -1,6 +1,6 @@
 {% extends 'user/layout.html.twig' %}
 
-{% block title %}Fajne Sklady - Bezpečné uskladnění vašich věcí v kontejnerech{% endblock %}
+{% block title %}Fajné Sklady - Bezpečné uskladnění vašich věcí v kontejnerech{% endblock %}
 
 {% block stylesheets %}
     {{ parent() }}
@@ -9,166 +9,321 @@
           crossorigin=""/>
 {% endblock %}
 
-{% block content %}
-    {# Hero Section #}
-    <div class="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-lg py-16 px-6 mb-8 text-white text-center">
-        <h1 class="text-5xl font-bold mb-4">Fajne Sklady</h1>
-        <p class="text-xl mb-6">Bezpečné uskladnění vašich věcí v kontejnerech</p>
-        <div class="flex gap-4 justify-center flex-wrap">
-            <a href="#pobocky" class="btn bg-white text-blue-600 hover:bg-gray-100">Naše pobočky</a>
-            <a href="#kontakt" class="btn bg-transparent border-2 border-white text-white hover:bg-white hover:text-blue-600">Kontakt</a>
-        </div>
-    </div>
+{% set heroImages = [
+    '1644589657.jpg',
+    '1644589677.jpg',
+    '1644589691.jpg',
+    '1644589704.jpg',
+    '1644589713.jpg',
+    '1644589722.jpg',
+    '1644589731.jpg'
+] %}
 
-    {# Map Section #}
-    <div id="pobocky" class="mb-8">
-        <h2 class="text-3xl font-bold text-gray-900 mb-4">Naše pobočky</h2>
-        <p class="text-gray-600 mb-6">Najděte nejbližší pobočku a zjistěte dostupnost kontejnerů</p>
-        <div
-            data-controller="map"
-            data-map-places-value="{{ places|map(p => {
-                id: p.id.toRfc4122(),
-                name: p.name,
-                address: p.address,
-                city: p.city,
-                latitude: p.latitude,
-                longitude: p.longitude,
-                url: path('public_place_detail', {id: p.id})
-            })|json_encode|e('html_attr') }}"
-            class="map-container rounded-lg shadow-lg"
-            style="height: 500px; width: 100%;">
+{% block hero %}
+    {# Full-screen Hero with Image Slider #}
+    <div class="hero-container" data-controller="hero-slider" data-hero-slider-interval-value="6000">
+        {# Background slides #}
+        {% for image in heroImages %}
+        <div class="hero-slide {% if loop.first %}active{% endif %}" data-hero-slider-target="slide">
+            <div class="hero-slide-image" style="background-image: url('{{ asset('images/hero/' ~ image) }}')"></div>
+            <div class="hero-gradient"></div>
+        </div>
+        {% endfor %}
+
+        {# Content overlay #}
+        <div class="hero-content pt-16">
+            <img src="{{ asset('images/logo-white.svg') }}" alt="Fajné Sklady" class="h-16 md:h-24 mb-6 drop-shadow-lg">
+            <h1 class="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 max-w-4xl leading-tight drop-shadow-lg">
+                Bezpečné uskladnění<br class="hidden md:block"> vašich věcí
+            </h1>
+            <p class="text-lg md:text-xl mb-10 text-white/90 max-w-2xl leading-relaxed">
+                Kontejnerové sklady s přístupem 24/7, kompletním zabezpečením a flexibilním pronájmem
+            </p>
+            <div class="flex gap-4 flex-wrap justify-center">
+                <a href="#pobocky" class="btn btn-primary btn-lg shadow-lg">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    </svg>
+                    Najít pobočku
+                </a>
+                <a href="#jak-to-funguje" class="btn-hero-secondary">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Jak to funguje?
+                </a>
+            </div>
         </div>
 
-        {% if places|length > 0 %}
-        <div class="mt-6 grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {% for place in places %}
-            <a href="{{ path('public_place_detail', {id: place.id}) }}" class="card hover:shadow-lg transition-shadow">
-                <div class="card-body">
-                    <h3 class="text-xl font-bold text-gray-900 mb-1">{{ place.name }}</h3>
-                    <p class="text-gray-600 text-sm">{{ place.address }}, {{ place.city }}</p>
-                    <span class="text-blue-600 text-sm mt-2 inline-block">Zobrazit detail &rarr;</span>
-                </div>
-            </a>
+        {# Navigation dots #}
+        <div class="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-3 z-20">
+            {% for image in heroImages %}
+            <button class="hero-dot {% if loop.first %}active{% endif %}"
+                    data-hero-slider-target="dot"
+                    data-action="click->hero-slider#goToSlide"
+                    data-index="{{ loop.index0 }}"
+                    aria-label="Slide {{ loop.index }}"></button>
             {% endfor %}
         </div>
-        {% endif %}
+
+        {# Scroll indicator #}
+        <div class="absolute bottom-20 left-1/2 -translate-x-1/2 z-20 hidden md:block">
+            <a href="#jak-to-funguje" class="flex flex-col items-center text-white/60 hover:text-white/90 transition-colors">
+                <span class="text-xs uppercase tracking-widest mb-2">Více</span>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                </svg>
+            </a>
+        </div>
     </div>
+{% endblock %}
+
+{% block content %}
+    {# How it works section #}
+    <section id="jak-to-funguje" class="section-gradient-light">
+        <div class="py-20 max-w-6xl mx-auto px-4">
+            <div class="text-center mb-16">
+                <span class="inline-block px-4 py-1 rounded-full text-sm font-medium bg-accent/10 text-accent mb-4">Jednoduchý proces</span>
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Jak to funguje?</h2>
+                <p class="text-gray-600 max-w-2xl mx-auto text-lg">Pronájem kontejneru zvládnete ve 3 jednoduchých krocích</p>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-8 lg:gap-12">
+                {# Step 1 #}
+                <div class="relative">
+                    <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-shadow h-full border border-gray-100">
+                        <div class="w-16 h-16 rounded-2xl bg-accent text-white flex items-center justify-center mb-6">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                        </div>
+                        <div class="absolute -top-3 -right-3 w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold text-lg shadow-lg">1</div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">Vyberte pobočku</h3>
+                        <p class="text-gray-600 leading-relaxed">Prohlédněte si naše pobočky na interaktivní mapě a vyberte tu, která je vám nejblíže.</p>
+                    </div>
+                </div>
+
+                {# Step 2 #}
+                <div class="relative">
+                    <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-shadow h-full border border-gray-100">
+                        <div class="w-16 h-16 rounded-2xl bg-accent text-white flex items-center justify-center mb-6">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+                            </svg>
+                        </div>
+                        <div class="absolute -top-3 -right-3 w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold text-lg shadow-lg">2</div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">Zvolte velikost</h3>
+                        <p class="text-gray-600 leading-relaxed">Vyberte kontejner podle vašich potřeb - nabízíme různé velikosti od malých po velké.</p>
+                    </div>
+                </div>
+
+                {# Step 3 #}
+                <div class="relative">
+                    <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-shadow h-full border border-gray-100">
+                        <div class="w-16 h-16 rounded-2xl bg-accent text-white flex items-center justify-center mb-6">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <div class="absolute -top-3 -right-3 w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold text-lg shadow-lg">3</div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">Objednejte online</h3>
+                        <p class="text-gray-600 leading-relaxed">Dokončete objednávku online a ihned získáte přístupové údaje ke svému kontejneru.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    {# Map Section #}
+    <section id="pobocky" class="py-20">
+        <div class="text-center mb-12 px-4">
+            <span class="inline-block px-4 py-1 rounded-full text-sm font-medium bg-accent/10 text-accent mb-4">Lokace</span>
+            <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Naše pobočky</h2>
+            <p class="text-gray-600 max-w-2xl mx-auto text-lg">Najděte nejbližší pobočku a zjistěte dostupnost kontejnerů</p>
+        </div>
+
+        <div
+            data-controller="map"
+            data-map-places-value="{{ placesData|json_encode|e('html_attr') }}"
+            class="map-container shadow-xl overflow-hidden"
+            style="height: 500px; width: 100%;">
+        </div>
+    </section>
+
+    {# Places Table #}
+    {% if placesWithStorageTypes|length > 0 %}
+    <section class="section-gradient-light">
+        <div class="py-20 max-w-6xl mx-auto px-4">
+            <div class="text-center mb-12">
+                <span class="inline-block px-4 py-1 rounded-full text-sm font-medium bg-accent/10 text-accent mb-4">Ceník</span>
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Přehled poboček a cen</h2>
+                <p class="text-gray-600 max-w-2xl mx-auto text-lg">Porovnejte ceny a dostupnost kontejnerů na všech pobočkách</p>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-primary text-white">
+                            <tr>
+                                <th class="px-6 py-4 text-left text-sm font-semibold">Pobočka</th>
+                                <th class="px-6 py-4 text-left text-sm font-semibold">Adresa</th>
+                                <th class="px-6 py-4 text-left text-sm font-semibold">Typy skladů</th>
+                                <th class="px-6 py-4 text-left text-sm font-semibold">Ceny od</th>
+                                <th class="px-6 py-4 text-right text-sm font-semibold"></th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            {% for item in placesWithStorageTypes %}
+                            <tr class="hover:bg-gray-50 transition-colors">
+                                <td class="px-6 py-5">
+                                    <span class="font-semibold text-gray-900">{{ item.place.name }}</span>
+                                </td>
+                                <td class="px-6 py-5 text-gray-600">
+                                    {{ item.place.address }}, {{ item.place.city }}
+                                </td>
+                                <td class="px-6 py-5">
+                                    {% if item.storageTypes|length > 0 %}
+                                        <div class="flex flex-wrap gap-1">
+                                            {% for type in item.storageTypes %}
+                                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">{{ type.name }}</span>
+                                            {% endfor %}
+                                        </div>
+                                    {% else %}
+                                        <span class="text-gray-400">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-5">
+                                    {% if item.lowestPrice %}
+                                        <span class="text-accent font-bold text-lg">{{ item.lowestPrice|number_format(0, ',', ' ') }} Kč</span>
+                                        <span class="text-gray-500 text-sm">/měsíc</span>
+                                    {% else %}
+                                        <span class="text-gray-400">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-5 text-right">
+                                    <a href="{{ path('public_place_detail', {id: item.place.id}) }}" class="btn btn-primary btn-sm">
+                                        Zobrazit
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                        </svg>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+    {% endif %}
 
     {# Benefits Section #}
-    <div class="mb-8">
-        <h2 class="text-3xl font-bold text-gray-900 mb-4">Proč si vybrat Fajne Sklady?</h2>
+    <section class="py-20">
+        <div class="text-center mb-16">
+            <span class="inline-block px-4 py-1 rounded-full text-sm font-medium bg-accent/10 text-accent mb-4">Výhody</span>
+            <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Proč si vybrat Fajné Sklady?</h2>
+            <p class="text-gray-600 max-w-2xl mx-auto text-lg">Nabízíme bezpečné a flexibilní skladování za transparentní ceny</p>
+        </div>
 
-        <div class="grid md:grid-cols-3 gap-6">
+        <div class="grid md:grid-cols-3 gap-8">
             {# Security #}
-            <div class="card">
-                <div class="card-body">
-                    <div class="flex items-center gap-3 mb-3">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                        </svg>
+            <div class="group">
+                <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all h-full border border-gray-100 hover:border-accent/20">
+                    <div class="flex items-center gap-4 mb-6">
+                        <div class="w-12 h-12 rounded-xl bg-accent/10 text-accent flex items-center justify-center flex-shrink-0 group-hover:bg-accent group-hover:text-white transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                            </svg>
+                        </div>
                         <h3 class="text-xl font-bold text-gray-900">Zabezpečení 24/7</h3>
                     </div>
-                    <ul class="text-gray-600 space-y-2">
-                        <li>• Kamerový systém non-stop</li>
-                        <li>• Pohybová čidla v areálu</li>
-                        <li>• Pojištění proti katastrofě a krádeži</li>
-                        <li>• Individuální klíče ke kontejneru</li>
+                    <ul class="space-y-3 text-gray-600">
+                        <li class="flex items-start gap-3">
+                            <svg class="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                            <span>Kamerový systém non-stop</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <svg class="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                            <span>Pohybová čidla v areálu</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <svg class="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                            <span>Pojištění proti krádeži</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <svg class="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                            <span>Individuální klíče</span>
+                        </li>
                     </ul>
                 </div>
             </div>
 
             {# Access #}
-            <div class="card">
-                <div class="card-body">
-                    <div class="flex items-center gap-3 mb-3">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
+            <div class="group">
+                <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all h-full border border-gray-100 hover:border-accent/20">
+                    <div class="flex items-center gap-4 mb-6">
+                        <div class="w-12 h-12 rounded-xl bg-accent/10 text-accent flex items-center justify-center flex-shrink-0 group-hover:bg-accent group-hover:text-white transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
                         <h3 class="text-xl font-bold text-gray-900">Přístup kdykoliv</h3>
                     </div>
-                    <ul class="text-gray-600 space-y-2">
-                        <li>• Přístup 24 hodin denně, 7 dní v týdnu</li>
-                        <li>• Vlastní ovladač k bráně</li>
-                        <li>• Žádné omezení návštěv</li>
-                        <li>• Rychlé nakládání/vykládání</li>
+                    <ul class="space-y-3 text-gray-600">
+                        <li class="flex items-start gap-3">
+                            <svg class="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                            <span>24 hodin denně, 7 dní v týdnu</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <svg class="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                            <span>Vlastní ovladač k bráně</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <svg class="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                            <span>Žádné omezení návštěv</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <svg class="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                            <span>Rychlé nakládání/vykládání</span>
+                        </li>
                     </ul>
                 </div>
             </div>
 
             {# Flexibility #}
-            <div class="card">
-                <div class="card-body">
-                    <div class="flex items-center gap-3 mb-3">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                        </svg>
+            <div class="group">
+                <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all h-full border border-gray-100 hover:border-accent/20">
+                    <div class="flex items-center gap-4 mb-6">
+                        <div class="w-12 h-12 rounded-xl bg-accent/10 text-accent flex items-center justify-center flex-shrink-0 group-hover:bg-accent group-hover:text-white transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                            </svg>
+                        </div>
                         <h3 class="text-xl font-bold text-gray-900">Flexibilní pronájem</h3>
                     </div>
-                    <ul class="text-gray-600 space-y-2">
-                        <li>• Týdenní, měsíční i delší doba</li>
-                        <li>• Bez dlouhodobých závazků</li>
-                        <li>• Snadné rozšíření prostoru</li>
-                        <li>• Transparentní ceny</li>
+                    <ul class="space-y-3 text-gray-600">
+                        <li class="flex items-start gap-3">
+                            <svg class="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                            <span>Týdenní nebo měsíční pronájem</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <svg class="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                            <span>Bez dlouhodobých závazků</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <svg class="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                            <span>Snadné rozšíření prostoru</span>
+                        </li>
+                        <li class="flex items-start gap-3">
+                            <svg class="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                            <span>Transparentní ceny</span>
+                        </li>
                     </ul>
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 
-    {# Contact Section #}
-    <div id="kontakt" class="card bg-gradient-to-br from-gray-50 to-blue-50">
-        <div class="card-body">
-            <h2 class="text-3xl font-bold text-gray-900 mb-6">Kontaktujte nás</h2>
-
-            <div class="grid md:grid-cols-2 gap-8">
-                <div>
-                    <h3 class="font-semibold text-gray-900 mb-3">Dicasa s.r.o.</h3>
-                    <div class="space-y-3 text-gray-700">
-                        <div class="flex items-center gap-3">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                            </svg>
-                            <div>
-                                <a href="tel:+420605522566" class="text-blue-600 hover:underline">+420 605 522 566</a><br>
-                                <a href="tel:+420728377180" class="text-blue-600 hover:underline">+420 728 377 180</a>
-                            </div>
-                        </div>
-
-                        <div class="flex items-center gap-3">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                            <div>
-                                Collo Louky 1557<br>
-                                738 01 Frýdek-Místek
-                            </div>
-                        </div>
-
-                        <div class="flex items-center gap-3">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
-                            </svg>
-                            <a href="https://instagram.com/fajnesklady.cz" target="_blank" class="text-blue-600 hover:underline">@fajnesklady.cz</a>
-                        </div>
-                    </div>
-                </div>
-
-                <div>
-                    <h3 class="font-semibold text-gray-900 mb-3">Hlavní pobočka</h3>
-                    <p class="text-gray-600 mb-4">Nachází se v areálu bývalého motokárového okruhu v lokalitě Collo Louky.</p>
-                    {% if app.user %}
-                        <div class="pt-4 border-t border-gray-200">
-                            <p class="text-sm text-gray-600 mb-2">Přihlášený uživatel:</p>
-                            {% if is_granted('ROLE_USER') %}
-                                <a href="{{ path('portal_dashboard') }}" class="btn btn-primary">Portal</a>
-                            {% else %}
-                                <a href="{{ path('app_profile') }}" class="btn btn-primary">Můj profil</a>
-                            {% endif %}
-                        </div>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-    </div>
 {% endblock %}

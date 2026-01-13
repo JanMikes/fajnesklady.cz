@@ -1,0 +1,96 @@
+<div {{ attributes }}>
+    {{ form_start(form) }}
+        <div class="space-y-4">
+            <div class="flex gap-2 items-end">
+                <div class="flex-1">
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">IČO</label>
+                    {{ form_widget(form.companyId, {
+                        attr: {
+                            'data-model': 'on(change)|companyId',
+                            'class': 'input input-bordered w-full',
+                            'placeholder': '12345678'
+                        }
+                    }) }}
+                    {{ form_errors(form.companyId) }}
+                </div>
+                <button
+                    type="button"
+                    data-action="live#action"
+                    data-live-action-param="loadFromAres"
+                    class="btn btn-secondary"
+                    data-loading="addClass(loading)"
+                >
+                    Načíst z ARES
+                </button>
+            </div>
+
+            {% if aresError %}
+                <div class="alert alert-warning">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <span>{{ aresError }}</span>
+                </div>
+            {% endif %}
+
+            {% if aresSuccess %}
+                <div class="alert alert-success">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>{{ aresSuccess }}</span>
+                </div>
+            {% endif %}
+
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Název firmy</label>
+                {{ form_widget(form.companyName, {
+                    attr: {'class': 'input input-bordered w-full', 'placeholder': 'Firma s.r.o.'}
+                }) }}
+                {{ form_errors(form.companyName) }}
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">DIČ</label>
+                {{ form_widget(form.companyVatId, {
+                    attr: {'class': 'input input-bordered w-full', 'placeholder': 'CZ12345678'}
+                }) }}
+                {{ form_errors(form.companyVatId) }}
+            </div>
+
+            <hr class="my-4 border-t border-gray-200">
+            <h3 class="text-lg font-semibold">Fakturační adresa</h3>
+
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">Ulice a číslo popisné</label>
+                {{ form_widget(form.billingStreet, {
+                    attr: {'class': 'input input-bordered w-full', 'placeholder': 'Hlavní 123'}
+                }) }}
+                {{ form_errors(form.billingStreet) }}
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Město</label>
+                    {{ form_widget(form.billingCity, {
+                        attr: {'class': 'input input-bordered w-full', 'placeholder': 'Praha'}
+                    }) }}
+                    {{ form_errors(form.billingCity) }}
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">PSČ</label>
+                    {{ form_widget(form.billingPostalCode, {
+                        attr: {'class': 'input input-bordered w-full', 'placeholder': '110 00'}
+                    }) }}
+                    {{ form_errors(form.billingPostalCode) }}
+                </div>
+            </div>
+        </div>
+
+        <div class="flex justify-end gap-2 mt-6">
+            <a href="{{ path('app_profile') }}" class="btn btn-ghost">Zrušit</a>
+            <button type="submit" class="btn btn-primary">Uložit fakturační údaje</button>
+        </div>
+    {{ form_end(form) }}
+</div>

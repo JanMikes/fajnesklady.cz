@@ -4,13 +4,16 @@ declare(strict_types=1);
 
 namespace App\Controller\Portal;
 
+use App\Command\AddStorageTypePhotoCommand;
 use App\Command\CreateStorageTypeCommand;
+use App\Entity\StorageType;
 use App\Form\StorageTypeFormData;
 use App\Form\StorageTypeFormType;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Component\Messenger\Stamp\HandledStamp;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Uid\Uuid;
@@ -45,16 +48,29 @@ final class StorageTypeCreateController extends AbstractController
 
             $command = new CreateStorageTypeCommand(
                 name: $formData->name,
-                width: $formData->width ?? 0,
-                height: $formData->height ?? 0,
-                length: $formData->length ?? 0,
+                innerWidth: $formData->innerWidth ?? 0,
+                innerHeight: $formData->innerHeight ?? 0,
+                innerLength: $formData->innerLength ?? 0,
+                outerWidth: $formData->outerWidth,
+                outerHeight: $formData->outerHeight,
+                outerLength: $formData->outerLength,
                 pricePerWeek: $pricePerWeek,
                 pricePerMonth: $pricePerMonth,
                 description: $formData->description,
                 placeId: $placeId,
             );
 
-            $this->commandBus->dispatch($command);
+            $envelope = $this->commandBus->dispatch($command);
+            /** @var StorageType $storageType */
+            $storageType = $envelope->last(HandledStamp::class)?->getResult();
+
+            // Handle photo uploads
+            foreach ($formData->photos as $uploadedFile) {
+                $this->commandBus->dispatch(new AddStorageTypePhotoCommand(
+                    storageTypeId: $storageType->id,
+                    file: $uploadedFile,
+                ));
+            }
 
             $this->addFlash('success', 'Typ skladu byl úspěšně vytvořen.');
 

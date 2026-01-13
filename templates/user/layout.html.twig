@@ -3,7 +3,9 @@
 {% block body %}
     {% include 'components/navbar.html.twig' %}
 
-    <main class="container mx-auto px-4 py-8 min-h-screen">
+    {% block hero %}{% endblock %}
+
+    <main class="{% block main_class %}container mx-auto px-4 py-8 pt-24{% endblock %} min-h-screen">
         {% include 'components/flash_messages.html.twig' %}
 
         {% block content %}{% endblock %}

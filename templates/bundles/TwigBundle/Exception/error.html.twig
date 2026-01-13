@@ -1,24 +1,24 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Error - Fajné Sklady{% endblock %}
+{% block title %}Chyba - Fajné Sklady{% endblock %}
 
 {% block body %}
 <div class="min-h-screen flex items-center justify-center px-4 bg-gray-50">
     <div class="card w-full max-w-md">
         <div class="card-body text-center">
             <div class="text-6xl mb-4">⚠️</div>
-            <h1 class="text-3xl font-bold text-gray-900 mb-2">Oops! Something went wrong</h1>
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">Něco se pokazilo</h1>
             <p class="text-gray-600 mb-6">
-                We're sorry, but an error occurred while processing your request.
-                Our team has been notified and will look into it.
+                Omlouváme se, ale při zpracování vašeho požadavku došlo k chybě.
+                Náš tým byl informován a problém prověří.
             </p>
 
             <div class="flex justify-center gap-2">
                 <a href="{{ path('app_home') }}" class="btn btn-primary">
-                    Go to Homepage
+                    Zpět na úvodní stránku
                 </a>
                 <button onclick="history.back()" class="btn btn-ghost">
-                    Go Back
+                    Zpět
                 </button>
             </div>
         </div>

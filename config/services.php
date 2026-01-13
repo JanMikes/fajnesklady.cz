@@ -37,9 +37,13 @@ return App::config([
         ],
         'App\\Service\\' => [
             'resource' => '../src/Service/',
+            'exclude' => '../src/Service/AresResult.php',
         ],
         'App\\Service\\Identity\\ProvideIdentity' => [
             'alias' => 'App\\Service\\Identity\\RandomIdentityProvider',
+        ],
+        'App\\Service\\AresLookup' => [
+            'alias' => 'App\\Service\\AresService',
         ],
         'App\\Service\\ContractDocumentGenerator' => [
             'arguments' => [
@@ -47,6 +51,11 @@ return App::config([
             ],
         ],
         'App\\Service\\PlaceFileUploader' => [
+            'arguments' => [
+                '$uploadsDirectory' => '%kernel.project_dir%/public/uploads',
+            ],
+        ],
+        'App\\Service\\StorageTypePhotoUploader' => [
             'arguments' => [
                 '$uploadsDirectory' => '%kernel.project_dir%/public/uploads',
             ],

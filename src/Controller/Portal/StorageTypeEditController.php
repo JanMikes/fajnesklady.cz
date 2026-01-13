@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller\Portal;
 
+use App\Command\AddStorageTypePhotoCommand;
 use App\Command\UpdateStorageTypeCommand;
 use App\Form\StorageTypeFormData;
 use App\Form\StorageTypeFormType;
@@ -46,15 +47,26 @@ final class StorageTypeEditController extends AbstractController
             $command = new UpdateStorageTypeCommand(
                 storageTypeId: $storageType->id,
                 name: $formData->name,
-                width: $formData->width ?? 0,
-                height: $formData->height ?? 0,
-                length: $formData->length ?? 0,
+                innerWidth: $formData->innerWidth ?? 0,
+                innerHeight: $formData->innerHeight ?? 0,
+                innerLength: $formData->innerLength ?? 0,
+                outerWidth: $formData->outerWidth,
+                outerHeight: $formData->outerHeight,
+                outerLength: $formData->outerLength,
                 pricePerWeek: $pricePerWeek,
                 pricePerMonth: $pricePerMonth,
                 description: $formData->description,
             );
 
             $this->commandBus->dispatch($command);
+
+            // Handle photo uploads
+            foreach ($formData->photos as $uploadedFile) {
+                $this->commandBus->dispatch(new AddStorageTypePhotoCommand(
+                    storageTypeId: $storageType->id,
+                    file: $uploadedFile,
+                ));
+            }
 
             $this->addFlash('success', 'Typ skladu byl úspěšně aktualizován.');
 

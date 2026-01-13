@@ -33,6 +33,24 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, EntityW
     #[ORM\Column(length: 20, nullable: true)]
     public private(set) ?string $phone = null;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    public private(set) ?string $companyName = null;
+
+    #[ORM\Column(length: 8, nullable: true)]
+    public private(set) ?string $companyId = null;
+
+    #[ORM\Column(length: 14, nullable: true)]
+    public private(set) ?string $companyVatId = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    public private(set) ?string $billingStreet = null;
+
+    #[ORM\Column(length: 100, nullable: true)]
+    public private(set) ?string $billingCity = null;
+
+    #[ORM\Column(length: 10, nullable: true)]
+    public private(set) ?string $billingPostalCode = null;
+
     public string $fullName {
         get => trim($this->firstName.' '.$this->lastName);
     }
@@ -133,5 +151,37 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, EntityW
         $this->lastName = $lastName;
         $this->phone = $phone;
         $this->updatedAt = $now;
+    }
+
+    public function updateBillingInfo(
+        ?string $companyName,
+        ?string $companyId,
+        ?string $companyVatId,
+        ?string $billingStreet,
+        ?string $billingCity,
+        ?string $billingPostalCode,
+        \DateTimeImmutable $now,
+    ): void {
+        $this->companyName = $companyName;
+        $this->companyId = $companyId;
+        $this->companyVatId = $companyVatId;
+        $this->billingStreet = $billingStreet;
+        $this->billingCity = $billingCity;
+        $this->billingPostalCode = $billingPostalCode;
+        $this->updatedAt = $now;
+    }
+
+    public function hasBillingInfo(): bool
+    {
+        return null !== $this->companyName
+            && '' !== $this->companyName
+            && null !== $this->companyId
+            && '' !== $this->companyId
+            && null !== $this->billingStreet
+            && '' !== $this->billingStreet
+            && null !== $this->billingCity
+            && '' !== $this->billingCity
+            && null !== $this->billingPostalCode
+            && '' !== $this->billingPostalCode;
     }
 }

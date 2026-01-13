@@ -52,6 +52,45 @@ final class OrderFormType extends AbstractType
                     'autocomplete' => 'tel',
                 ],
             ])
+            ->add('companyId', TextType::class, [
+                'label' => 'IČO',
+                'attr' => [
+                    'placeholder' => '12345678',
+                    'maxlength' => 8,
+                ],
+            ])
+            ->add('companyName', TextType::class, [
+                'label' => 'Název firmy',
+                'attr' => [
+                    'placeholder' => 'Firma s.r.o.',
+                ],
+            ])
+            ->add('companyVatId', TextType::class, [
+                'label' => 'DIČ',
+                'required' => false,
+                'attr' => [
+                    'placeholder' => 'CZ12345678',
+                ],
+            ])
+            ->add('billingStreet', TextType::class, [
+                'label' => 'Ulice a číslo popisné',
+                'attr' => [
+                    'placeholder' => 'Hlavní 123',
+                ],
+            ])
+            ->add('billingCity', TextType::class, [
+                'label' => 'Město',
+                'attr' => [
+                    'placeholder' => 'Praha',
+                ],
+            ])
+            ->add('billingPostalCode', TextType::class, [
+                'label' => 'PSČ',
+                'attr' => [
+                    'placeholder' => '110 00',
+                    'maxlength' => 10,
+                ],
+            ])
             ->add('rentalType', EnumType::class, [
                 'class' => RentalType::class,
                 'label' => 'Typ pronájmu',

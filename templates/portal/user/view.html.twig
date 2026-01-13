@@ -1,16 +1,16 @@
 {% extends 'portal/layout.html.twig' %}
 
-{% block title %}View User - Admin{% endblock %}
+{% block title %}Detail uživatele - Admin{% endblock %}
 
 {% block content %}
     <div class="flex justify-between items-center mb-6">
-        <h1 class="text-3xl font-bold">User Details</h1>
+        <h1 class="text-3xl font-bold">Detail uživatele</h1>
         <div class="flex gap-2">
             {% if user.id != app.user.id %}
-                <a href="{{ path('portal_dashboard', {'_switch_user': user.email}) }}" class="btn btn-secondary">Impersonate</a>
+                <a href="{{ path('portal_dashboard', {'_switch_user': user.email}) }}" class="btn btn-secondary">Přihlásit se jako</a>
             {% endif %}
-            <a href="{{ path('portal_users_edit', {id: user.id}) }}" class="btn btn-primary">Edit Role</a>
-            <a href="{{ path('portal_users_list') }}" class="btn btn-ghost">Back to List</a>
+            <a href="{{ path('portal_users_edit', {id: user.id}) }}" class="btn btn-primary">Upravit roli</a>
+            <a href="{{ path('portal_users_list') }}" class="btn btn-ghost">Zpět na seznam</a>
         </div>
     </div>
 
@@ -32,7 +32,7 @@
 
             <div class="grid md:grid-cols-2 gap-6">
                 <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">User ID</label>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">ID uživatele</label>
                     <div class="text-sm font-mono bg-gray-50 p-2 rounded border border-gray-200">{{ user.id }}</div>
                 </div>
 
@@ -42,31 +42,31 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">Name</label>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Jméno</label>
                     <div class="text-sm text-gray-900">{{ user.fullName }}</div>
                 </div>
 
                 <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">Verification Status</label>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Stav ověření</label>
                     {% if user.isVerified %}
                         <div class="badge badge-success gap-2">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-4 h-4 stroke-current">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                             </svg>
-                            Verified
+                            Ověřený
                         </div>
                     {% else %}
                         <div class="badge badge-warning gap-2">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-4 h-4 stroke-current">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
                             </svg>
-                            Not Verified
+                            Neověřený
                         </div>
                     {% endif %}
                 </div>
 
                 <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">Roles</label>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Role</label>
                     <div class="flex flex-wrap gap-2">
                         {% for role in user.roles %}
                             {% if role == 'ROLE_ADMIN' %}
@@ -79,13 +79,13 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">Member Since</label>
-                    <div class="text-sm text-gray-900">{{ user.createdAt|date('F j, Y \\a\\t g:i A') }}</div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Členem od</label>
+                    <div class="text-sm text-gray-900">{{ user.createdAt|date('d.m.Y H:i') }}</div>
                 </div>
 
                 <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">Last Updated</label>
-                    <div class="text-sm text-gray-900">{{ user.updatedAt|date('F j, Y \\a\\t g:i A') }}</div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Poslední aktualizace</label>
+                    <div class="text-sm text-gray-900">{{ user.updatedAt|date('d.m.Y H:i') }}</div>
                 </div>
             </div>
         </div>

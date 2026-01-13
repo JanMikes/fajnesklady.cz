@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller\Public;
 
 use App\Command\GetOrCreateUserByEmailCommand;
+use App\Entity\User;
 use App\Form\OrderFormData;
 use App\Form\OrderFormType;
 use App\Repository\StorageTypeRepository;
@@ -45,7 +46,12 @@ final class OrderCreateController extends AbstractController
             throw new NotFoundHttpException('Pobočka není aktivní.');
         }
 
-        $formData = new OrderFormData();
+        $user = $this->getUser();
+        if ($user instanceof User) {
+            $formData = OrderFormData::fromUser($user);
+        } else {
+            $formData = new OrderFormData();
+        }
         $formData->startDate = $this->calculateMinStartDate($place->daysInAdvance);
 
         $form = $this->createForm(OrderFormType::class, $formData);

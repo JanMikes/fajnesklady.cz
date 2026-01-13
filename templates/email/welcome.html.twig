@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Welcome to Fajné Sklady</title>
+    <title>Vítejte ve Fajné Sklady</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -70,38 +70,38 @@
 </head>
 <body>
     <div class="header">
-        <h1>Welcome to Fajné Sklady!</h1>
+        <h1>Vítejte ve Fajné Sklady!</h1>
     </div>
 
     <div class="content">
-        <h2>Hello {{ name }}!</h2>
+        <h2>Dobrý den, {{ name }}!</h2>
 
-        <p>Your email address has been successfully verified. Welcome to the Fajné Sklady community!</p>
+        <p>Vaše e-mailová adresa byla úspěšně ověřena. Vítejte v komunitě Fajné Sklady!</p>
 
-        <p>You can now access all the features of your account. Here's what you can do:</p>
+        <p>Nyní máte přístup ke všem funkcím vašeho účtu. Co můžete dělat:</p>
 
         <div class="features">
             <ul>
-                <li>Access your personal profile</li>
-                <li>Manage your account settings</li>
-                <li>Explore all available features</li>
-                <li>Get support when you need it</li>
+                <li>Přístup k osobnímu profilu</li>
+                <li>Správa nastavení účtu</li>
+                <li>Prohlížení dostupných skladů</li>
+                <li>Rezervace a pronájem skladových prostor</li>
             </ul>
         </div>
 
         <div style="text-align: center;">
-            <a href="{{ loginUrl }}" class="button">Log In to Your Account</a>
+            <a href="{{ loginUrl }}" class="button">Přihlásit se do účtu</a>
         </div>
 
-        <p>If you have any questions or need help getting started, don't hesitate to reach out to our support team.</p>
+        <p>Pokud máte jakékoli dotazy nebo potřebujete pomoc, neváhejte nás kontaktovat.</p>
 
-        <p>Thank you for joining us!<br>
-        <strong>The Fajné Sklady Team</strong></p>
+        <p>Děkujeme za registraci!<br>
+        <strong>Tým Fajné Sklady</strong></p>
     </div>
 
     <div class="footer">
-        <p>This is an automated email. Please do not reply to this message.</p>
-        <p>&copy; {{ 'now'|date('Y') }} Fajné Sklady. All rights reserved.</p>
+        <p>Toto je automaticky generovaný e-mail. Prosím neodpovídejte na tuto zprávu.</p>
+        <p>&copy; {{ 'now'|date('Y') }} Fajné Sklady. Všechna práva vyhrazena.</p>
     </div>
 </body>
 </html>

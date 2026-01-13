@@ -96,18 +96,33 @@
                     <div class="card-body">
                         <h3 class="text-xl font-bold text-gray-900 mb-2">{{ storageType.name }}</h3>
 
+                        {# Photo thumbnail #}
+                        {% if storageType.hasPhotos %}
+                            <div class="mb-3">
+                                <img src="{{ asset('uploads/' ~ storageType.photos[0].path) }}"
+                                     alt="{{ storageType.name }}"
+                                     class="w-full h-32 object-cover rounded-lg">
+                            </div>
+                        {% endif %}
+
                         <div class="text-sm text-gray-600 mb-3">
                             <div class="flex items-center gap-2 mb-1">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
                                 </svg>
-                                {{ storageType.dimensionsInMeters }}
+                                {{ storageType.innerDimensionsInMeters }}
+                            </div>
+                            <div class="flex items-center gap-2 mb-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1V5z" />
+                                </svg>
+                                {{ storageType.floorAreaInSquareMeters|number_format(1, ',', ' ') }} m&sup2;
                             </div>
                             <div class="flex items-center gap-2">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                                 </svg>
-                                {{ storageType.volumeInCubicMeters|number_format(1) }} m&sup3;
+                                {{ storageType.volumeInCubicMeters|number_format(1, ',', ' ') }} m&sup3;
                             </div>
                         </div>
 

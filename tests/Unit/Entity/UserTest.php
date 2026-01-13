@@ -194,4 +194,173 @@ class UserTest extends TestCase
         $this->assertContains('ROLE_USER', $user->getRoles());
         $this->assertContains('ROLE_LANDLORD', $user->getRoles());
     }
+
+    public function testUpdateBillingInfo(): void
+    {
+        $createdAt = new \DateTimeImmutable('2024-01-01 10:00:00');
+        $updatedAt = new \DateTimeImmutable('2024-01-15 10:00:00');
+        $user = new User(Uuid::v7(), 'test@example.com', 'password123', 'Test', 'User', $createdAt);
+
+        $user->updateBillingInfo(
+            'Test Company s.r.o.',
+            '12345678',
+            'CZ12345678',
+            'Hlavní 123',
+            'Praha',
+            '110 00',
+            $updatedAt,
+        );
+
+        $this->assertSame('Test Company s.r.o.', $user->companyName);
+        $this->assertSame('12345678', $user->companyId);
+        $this->assertSame('CZ12345678', $user->companyVatId);
+        $this->assertSame('Hlavní 123', $user->billingStreet);
+        $this->assertSame('Praha', $user->billingCity);
+        $this->assertSame('110 00', $user->billingPostalCode);
+        $this->assertSame($updatedAt, $user->updatedAt);
+    }
+
+    public function testHasBillingInfoReturnsTrueWhenComplete(): void
+    {
+        $user = new User(Uuid::v7(), 'test@example.com', 'password123', 'Test', 'User', new \DateTimeImmutable());
+
+        $user->updateBillingInfo(
+            'Company',
+            '12345678',
+            'CZ12345678',
+            'Street 1',
+            'City',
+            '12345',
+            new \DateTimeImmutable(),
+        );
+
+        $this->assertTrue($user->hasBillingInfo());
+    }
+
+    public function testHasBillingInfoReturnsFalseWhenMissingCompanyName(): void
+    {
+        $user = new User(Uuid::v7(), 'test@example.com', 'password123', 'Test', 'User', new \DateTimeImmutable());
+
+        $user->updateBillingInfo(
+            null,
+            '12345678',
+            'CZ12345678',
+            'Street 1',
+            'City',
+            '12345',
+            new \DateTimeImmutable(),
+        );
+
+        $this->assertFalse($user->hasBillingInfo());
+    }
+
+    public function testHasBillingInfoReturnsFalseWhenMissingCompanyId(): void
+    {
+        $user = new User(Uuid::v7(), 'test@example.com', 'password123', 'Test', 'User', new \DateTimeImmutable());
+
+        $user->updateBillingInfo(
+            'Company',
+            null,
+            'CZ12345678',
+            'Street 1',
+            'City',
+            '12345',
+            new \DateTimeImmutable(),
+        );
+
+        $this->assertFalse($user->hasBillingInfo());
+    }
+
+    public function testHasBillingInfoReturnsFalseWhenMissingStreet(): void
+    {
+        $user = new User(Uuid::v7(), 'test@example.com', 'password123', 'Test', 'User', new \DateTimeImmutable());
+
+        $user->updateBillingInfo(
+            'Company',
+            '12345678',
+            'CZ12345678',
+            null,
+            'City',
+            '12345',
+            new \DateTimeImmutable(),
+        );
+
+        $this->assertFalse($user->hasBillingInfo());
+    }
+
+    public function testHasBillingInfoReturnsFalseWhenMissingCity(): void
+    {
+        $user = new User(Uuid::v7(), 'test@example.com', 'password123', 'Test', 'User', new \DateTimeImmutable());
+
+        $user->updateBillingInfo(
+            'Company',
+            '12345678',
+            'CZ12345678',
+            'Street 1',
+            null,
+            '12345',
+            new \DateTimeImmutable(),
+        );
+
+        $this->assertFalse($user->hasBillingInfo());
+    }
+
+    public function testHasBillingInfoReturnsFalseWhenMissingPostalCode(): void
+    {
+        $user = new User(Uuid::v7(), 'test@example.com', 'password123', 'Test', 'User', new \DateTimeImmutable());
+
+        $user->updateBillingInfo(
+            'Company',
+            '12345678',
+            'CZ12345678',
+            'Street 1',
+            'City',
+            null,
+            new \DateTimeImmutable(),
+        );
+
+        $this->assertFalse($user->hasBillingInfo());
+    }
+
+    public function testHasBillingInfoReturnsTrueWithoutVatId(): void
+    {
+        $user = new User(Uuid::v7(), 'test@example.com', 'password123', 'Test', 'User', new \DateTimeImmutable());
+
+        // VAT ID is optional, so billing info should still be complete without it
+        $user->updateBillingInfo(
+            'Company',
+            '12345678',
+            null,
+            'Street 1',
+            'City',
+            '12345',
+            new \DateTimeImmutable(),
+        );
+
+        $this->assertTrue($user->hasBillingInfo());
+    }
+
+    public function testHasBillingInfoReturnsFalseWhenEmpty(): void
+    {
+        $user = new User(Uuid::v7(), 'test@example.com', 'password123', 'Test', 'User', new \DateTimeImmutable());
+
+        $this->assertFalse($user->hasBillingInfo());
+    }
+
+    public function testHasBillingInfoReturnsFalseWhenCompanyNameIsEmptyString(): void
+    {
+        $user = new User(Uuid::v7(), 'test@example.com', 'password123', 'Test', 'User', new \DateTimeImmutable());
+
+        $user->updateBillingInfo(
+            '',
+            '12345678',
+            'CZ12345678',
+            'Street 1',
+            'City',
+            '12345',
+            new \DateTimeImmutable(),
+        );
+
+        $this->assertFalse($user->hasBillingInfo());
+    }
 }

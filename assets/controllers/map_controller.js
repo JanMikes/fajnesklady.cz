@@ -3,9 +3,10 @@ import L from 'leaflet';
 
 export default class extends Controller {
     static values = {
+        places: { type: Array, default: [] },
         center: { type: Array, default: [49.5, 17.5] }, // Czech Republic center
         zoom: { type: Number, default: 7 }
-    }
+    };
 
     connect() {
         this.initializeMap();
@@ -30,81 +31,114 @@ export default class extends Controller {
     }
 
     addStorageLocations() {
-        const locations = [
-            {
-                name: 'Fajne Sklady Frýdek-Místek',
-                coords: [49.6852, 18.3482],
-                address: 'Collo Louky 1557, 738 01 Frýdek-Místek',
-                containers: [
-                    { name: 'Fajně malý', size: '6.6m² (3m × 2.2m × 2.2m)', price: 'od 60 Kč/den' },
-                    { name: 'Fajny', size: '8.8m² (4m × 2.2m × 2.2m)', price: 'od 76 Kč/den' },
-                    { name: 'Nejfajnovější', size: '13.2m² (6m × 2.2m × 2.2m)', price: 'od 126 Kč/den' }
-                ]
-            },
-            {
-                name: 'Fajne Sklady Praha',
-                coords: [50.0755, 14.4378],
-                address: 'Průmyslová 123, 100 00 Praha 10',
-                containers: [
-                    { name: 'Fajně malý', size: '6.6m²', price: 'od 65 Kč/den' },
-                    { name: 'Fajny', size: '8.8m²', price: 'od 80 Kč/den' },
-                    { name: 'Nejfajnovější', size: '13.2m²', price: 'od 130 Kč/den' }
-                ]
-            },
-            {
-                name: 'Fajne Sklady Brno',
-                coords: [49.1951, 16.6068],
-                address: 'Skladová 45, 602 00 Brno',
-                containers: [
-                    { name: 'Fajně malý', size: '6.6m²', price: 'od 62 Kč/den' },
-                    { name: 'Fajny', size: '8.8m²', price: 'od 78 Kč/den' },
-                    { name: 'Nejfajnovější', size: '13.2m²', price: 'od 128 Kč/den' }
-                ]
-            },
-            {
-                name: 'Fajne Sklady Ostrava',
-                coords: [49.8209, 18.2625],
-                address: 'Logistická 78, 702 00 Ostrava',
-                containers: [
-                    { name: 'Fajně malý', size: '6.6m²', price: 'od 60 Kč/den' },
-                    { name: 'Fajny', size: '8.8m²', price: 'od 75 Kč/den' },
-                    { name: 'Nejfajnovější', size: '13.2m²', price: 'od 125 Kč/den' }
-                ]
-            }
-        ];
+        const places = this.placesValue;
 
-        locations.forEach(location => {
-            const marker = L.marker(location.coords).addTo(this.map);
+        if (!places || places.length === 0) {
+            return;
+        }
 
-            const popupContent = this.createPopupContent(location);
-            marker.bindPopup(popupContent);
+        const bounds = L.latLngBounds();
+        let hasValidCoordinates = false;
+
+        // Create custom icon
+        const customIcon = L.divIcon({
+            className: 'custom-map-marker',
+            html: `<div style="
+                width: 32px;
+                height: 32px;
+                background-color: #d23233;
+                border: 3px solid white;
+                border-radius: 50%;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            "></div>`,
+            iconSize: [32, 32],
+            iconAnchor: [16, 16],
+            popupAnchor: [0, -16]
         });
+
+        places.forEach(place => {
+            // Skip places without coordinates
+            if (!place.latitude || !place.longitude) {
+                return;
+            }
+
+            const coords = [parseFloat(place.latitude), parseFloat(place.longitude)];
+            const marker = L.marker(coords, { icon: customIcon }).addTo(this.map);
+
+            const popupContent = this.createPopupContent(place);
+            marker.bindPopup(popupContent, {
+                maxWidth: 300,
+                minWidth: 250
+            });
+
+            bounds.extend(coords);
+            hasValidCoordinates = true;
+        });
+
+        // Fit map to show all markers
+        if (hasValidCoordinates && bounds.isValid()) {
+            this.map.fitBounds(bounds, {
+                padding: [50, 50],
+                maxZoom: 12
+            });
+        }
     }
 
-    createPopupContent(location) {
+    createPopupContent(place) {
         let html = `
             <div class="storage-popup">
-                <h3 class="font-bold text-lg mb-2">${location.name}</h3>
-                <p class="text-sm text-gray-600 mb-3">${location.address}</p>
-                <div class="mb-2">
-                    <h4 class="font-semibold text-sm mb-1">Dostupné kontejnery:</h4>
+                <h3 class="font-bold text-lg mb-1">${this.escapeHtml(place.name)}</h3>
+                <p class="text-sm text-gray-600 mb-3">${this.escapeHtml(place.address)}, ${this.escapeHtml(place.city)}</p>
         `;
 
-        location.containers.forEach(container => {
+        if (place.storageTypes && place.storageTypes.length > 0) {
             html += `
-                <div class="text-sm mb-1">
-                    <span class="font-medium">${container.name}</span> - ${container.size}
-                    <br>
-                    <span class="text-blue-600">${container.price}</span>
+                <div class="mb-3">
+                    <h4 class="font-semibold text-sm mb-2 text-gray-700">Dostupné kontejnery:</h4>
+                    <div class="space-y-2">
+            `;
+
+            place.storageTypes.forEach(type => {
+                html += `
+                    <div class="flex justify-between items-center text-sm border-b border-gray-100 pb-1">
+                        <div>
+                            <span class="font-medium">${this.escapeHtml(type.name)}</span>
+                            <span class="text-xs text-gray-500 block">${this.escapeHtml(type.dimensions)}</span>
+                        </div>
+                        <span style="color: #d23233;" class="font-semibold whitespace-nowrap">${this.formatPrice(type.pricePerMonth)} Kč/měs</span>
+                    </div>
+                `;
+            });
+
+            html += `
+                    </div>
                 </div>
             `;
-        });
+        }
 
         html += `
-                </div>
+                <a href="${this.escapeHtml(place.url)}"
+                   class="inline-block w-full text-center px-4 py-2 text-sm font-medium rounded"
+                   style="background-color: white; color: #d23233; border: 1px solid #d23233;">
+                    Zobrazit detail
+                </a>
             </div>
         `;
 
         return html;
+    }
+
+    escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    formatPrice(price) {
+        return new Intl.NumberFormat('cs-CZ', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+        }).format(price);
     }
 }

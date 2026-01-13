@@ -42,6 +42,7 @@ return App::config([
         ],
         'App\\Service\\' => [
             'resource' => '../src/Service/',
+            'exclude' => '../src/Service/AresResult.php',
         ],
         // Services with constructor arguments (must re-specify after resource override)
         'App\\Service\\ContractDocumentGenerator' => [
@@ -54,12 +55,27 @@ return App::config([
                 '$uploadsDirectory' => '%kernel.project_dir%/public/uploads',
             ],
         ],
+        'App\\Service\\StorageTypePhotoUploader' => [
+            'arguments' => [
+                '$uploadsDirectory' => '%kernel.project_dir%/public/uploads',
+            ],
+        ],
         // Test-specific overrides
         'App\\Tests\\Support\\PredictableIdentityProvider' => [
             'tags' => [['name' => 'kernel.reset', 'method' => 'reset']],
         ],
         'App\\Service\\Identity\\ProvideIdentity' => [
             'alias' => 'App\\Tests\\Support\\PredictableIdentityProvider',
+        ],
+        'App\\Tests\\Mock\\MockAresLookup' => [
+            'tags' => [['name' => 'kernel.reset', 'method' => 'reset']],
+        ],
+        'App\\Service\\AresLookup' => [
+            'alias' => 'App\\Tests\\Mock\\MockAresLookup',
+        ],
+        'Symfony\\Component\\PasswordHasher\\Hasher\\UserPasswordHasherInterface' => [
+            'alias' => 'security.user_password_hasher',
+            'public' => true,
         ],
     ],
 ]);

@@ -1,11 +1,20 @@
 @import "tailwindcss";
 
+/* Fajne Sklady Design System v2.0 */
+
 /* Alpine.js cloak - prevents flash of unstyled content */
 [x-cloak] {
     display: none !important;
 }
 
-/* Custom Design System - Blue/Indigo Modern SaaS Theme */
+/* Brand Colors */
+:root {
+    --color-primary: #091c2a;
+    --color-accent: #d23233;
+    --color-accent-hover: #b82829;
+}
+
+/* Custom Design System - Fajne Sklady Brand Theme */
 
 /* Reusable button component */
 .btn {
@@ -13,7 +22,16 @@
 }
 
 .btn-primary {
-    @apply bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500;
+    @apply text-white;
+    background-color: var(--color-accent);
+}
+
+.btn-primary:hover {
+    background-color: var(--color-accent-hover);
+}
+
+.btn-primary:focus {
+    --tw-ring-color: var(--color-accent);
 }
 
 .btn-secondary {
@@ -51,7 +69,12 @@
 }
 
 .form-input {
-    @apply block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm;
+    @apply block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none sm:text-sm;
+    --tw-ring-color: var(--color-accent);
+}
+
+.form-input:focus {
+    border-color: var(--color-accent);
 }
 
 /* Select element styling */
@@ -82,7 +105,8 @@ select.form-input {
 }
 
 .badge-primary {
-    @apply bg-blue-100 text-blue-800;
+    background-color: rgba(210, 50, 51, 0.1);
+    color: var(--color-accent);
 }
 
 .badge-success {
@@ -124,7 +148,12 @@ select.form-input {
 
 /* Link styles */
 .link {
-    @apply text-blue-600 hover:text-blue-800 hover:underline transition-colors duration-150;
+    @apply hover:underline transition-colors duration-150;
+    color: var(--color-accent);
+}
+
+.link:hover {
+    color: var(--color-accent-hover);
 }
 
 /* Table styles */
@@ -189,7 +218,8 @@ select.form-input {
 }
 
 .flatpickr-months {
-    @apply bg-blue-600 rounded-t-lg;
+    @apply rounded-t-lg text-white;
+    background-color: var(--color-primary);
 }
 
 .flatpickr-months .flatpickr-month {
@@ -197,7 +227,8 @@ select.form-input {
 }
 
 .flatpickr-current-month .flatpickr-monthDropdown-months {
-    @apply bg-blue-600 text-white;
+    @apply text-white;
+    background-color: var(--color-primary);
 }
 
 .flatpickr-current-month input.cur-year {
@@ -211,12 +242,12 @@ select.form-input {
 
 .flatpickr-months .flatpickr-prev-month:hover,
 .flatpickr-months .flatpickr-next-month:hover {
-    @apply text-blue-200;
+    @apply text-gray-300;
 }
 
 .flatpickr-months .flatpickr-prev-month:hover svg,
 .flatpickr-months .flatpickr-next-month:hover svg {
-    @apply fill-blue-200;
+    @apply fill-gray-300;
 }
 
 .flatpickr-weekdays {
@@ -232,22 +263,132 @@ span.flatpickr-weekday {
 }
 
 .flatpickr-day:hover {
-    @apply bg-blue-100 border-blue-100;
+    background-color: rgba(210, 50, 51, 0.1);
+    border-color: rgba(210, 50, 51, 0.1);
 }
 
 .flatpickr-day.selected,
 .flatpickr-day.selected:hover {
-    @apply bg-blue-600 border-blue-600 text-white;
+    @apply text-white;
+    background-color: var(--color-accent);
+    border-color: var(--color-accent);
 }
 
 .flatpickr-day.today {
-    @apply border-blue-400;
+    border-color: var(--color-accent);
 }
 
 .flatpickr-day.today:hover {
-    @apply bg-blue-100 border-blue-100;
+    background-color: rgba(210, 50, 51, 0.1);
+    border-color: rgba(210, 50, 51, 0.1);
 }
 
 .flatpickr-day.disabled {
     @apply text-gray-300;
+}
+
+/* Hero Slider */
+.hero-container {
+    @apply relative overflow-hidden;
+    height: 100vh;
+    min-height: 600px;
+}
+
+.hero-slide {
+    @apply absolute inset-0;
+    opacity: 0;
+    transition: opacity 1.5s ease-in-out;
+    z-index: 1;
+}
+
+.hero-slide.active {
+    opacity: 1;
+}
+
+.hero-slide-image {
+    @apply absolute inset-0 bg-cover bg-center;
+    transform: scale(1.05);
+    transition: transform 8s ease-out;
+}
+
+.hero-slide.active .hero-slide-image {
+    transform: scale(1);
+}
+
+.hero-gradient {
+    @apply absolute inset-0;
+    background: linear-gradient(
+        135deg,
+        rgba(9, 28, 42, 0.92) 0%,
+        rgba(9, 28, 42, 0.75) 40%,
+        rgba(210, 50, 51, 0.3) 100%
+    );
+}
+
+.hero-content {
+    @apply relative flex flex-col items-center justify-center h-full text-white text-center px-4;
+    z-index: 10;
+}
+
+/* Hero navigation dots */
+.hero-dot {
+    @apply w-3 h-3 rounded-full transition-all duration-300 cursor-pointer;
+    background-color: rgba(255, 255, 255, 0.4);
+}
+
+.hero-dot:hover {
+    background-color: rgba(255, 255, 255, 0.7);
+}
+
+.hero-dot.active {
+    @apply w-8;
+    background-color: #fff;
+}
+
+/* Hero CTA buttons */
+.btn-hero-secondary {
+    @apply inline-flex items-center justify-center px-6 py-3 text-base font-medium rounded-md transition-all duration-200;
+    background-color: rgba(255, 255, 255, 0.15);
+    color: #fff;
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    backdrop-filter: blur(4px);
+}
+
+.btn-hero-secondary:hover {
+    background-color: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.6);
+}
+
+/* Section backgrounds */
+.section-gradient-light {
+    background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+}
+
+.section-gradient-dark {
+    background: linear-gradient(180deg, #091c2a 0%, #0f2d40 100%);
+}
+
+/* Custom Leaflet marker */
+.custom-marker {
+    background-color: var(--color-accent);
+    border: 3px solid white;
+    border-radius: 50%;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Text color utilities */
+.text-accent {
+    color: var(--color-accent);
+}
+
+.text-primary {
+    color: var(--color-primary);
+}
+
+.bg-primary {
+    background-color: var(--color-primary);
+}
+
+.bg-accent {
+    background-color: var(--color-accent);
 }

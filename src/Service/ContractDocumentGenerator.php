@@ -13,6 +13,7 @@ use PhpOffice\PhpWord\TemplateProcessor;
  *
  * Replaces placeholders in the template with contract data:
  * - {{TENANT_NAME}}, {{TENANT_EMAIL}}, {{TENANT_PHONE}}
+ * - {{TENANT_COMPANY}}, {{TENANT_ICO}}, {{TENANT_DIC}}, {{TENANT_BILLING_ADDRESS}}
  * - {{STORAGE_NUMBER}}, {{STORAGE_TYPE}}, {{STORAGE_DIMENSIONS}}
  * - {{PLACE_NAME}}, {{PLACE_ADDRESS}}
  * - {{START_DATE}}, {{END_DATE}} (or "Na dobu neurčitou" for unlimited)
@@ -74,6 +75,12 @@ final readonly class ContractDocumentGenerator
         $processor->setValue('TENANT_EMAIL', $user->email);
         $processor->setValue('TENANT_PHONE', $user->phone ?? '-');
 
+        // Tenant billing information
+        $processor->setValue('TENANT_COMPANY', $user->companyName ?? '-');
+        $processor->setValue('TENANT_ICO', $user->companyId ?? '-');
+        $processor->setValue('TENANT_DIC', $user->companyVatId ?? '-');
+        $processor->setValue('TENANT_BILLING_ADDRESS', $this->formatBillingAddress($user));
+
         // Storage information
         $processor->setValue('STORAGE_NUMBER', $storage->number);
         $processor->setValue('STORAGE_TYPE', $storageType->name);
@@ -101,9 +108,9 @@ final readonly class ContractDocumentGenerator
         // Dimensions are stored in centimeters, display in cm
         return sprintf(
             '%d × %d × %d cm',
-            $storageType->width,
-            $storageType->height,
-            $storageType->length,
+            $storageType->innerWidth,
+            $storageType->innerHeight,
+            $storageType->innerLength,
         );
     }
 
@@ -114,6 +121,20 @@ final readonly class ContractDocumentGenerator
             $place->address,
             $place->postalCode,
             $place->city,
+        );
+    }
+
+    private function formatBillingAddress(\App\Entity\User $user): string
+    {
+        if (null === $user->billingStreet || null === $user->billingCity || null === $user->billingPostalCode) {
+            return '-';
+        }
+
+        return sprintf(
+            '%s, %s %s',
+            $user->billingStreet,
+            $user->billingPostalCode,
+            $user->billingCity,
         );
     }
 

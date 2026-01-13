@@ -11,30 +11,53 @@
     <div class="max-w-2xl">
         <div class="card">
             <div class="card-body">
-                {{ form_start(form) }}
+                {{ form_start(form, {'attr': {'enctype': 'multipart/form-data'}}) }}
                     <div class="mb-4">
                         <label for="{{ form.name.vars.id }}" class="block text-sm font-semibold text-gray-700 mb-2">Název</label>
                         {{ form_widget(form.name, {'attr': {'class': 'input input-bordered w-full'}}) }}
                         {{ form_errors(form.name) }}
                     </div>
 
+                    {# Inner dimensions (required) #}
                     <div class="mb-4">
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">Rozměry (v metrech)</label>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Vnitřní rozměry (cm)</label>
                         <div class="grid grid-cols-3 gap-4">
                             <div>
-                                <label for="{{ form.width.vars.id }}" class="block text-xs text-gray-500 mb-1">Šířka</label>
-                                {{ form_widget(form.width, {'attr': {'class': 'input input-bordered w-full', 'placeholder': '0.00'}}) }}
-                                {{ form_errors(form.width) }}
+                                <label for="{{ form.innerWidth.vars.id }}" class="block text-xs text-gray-500 mb-1">Šířka</label>
+                                {{ form_widget(form.innerWidth, {'attr': {'class': 'input input-bordered w-full', 'placeholder': '200'}}) }}
+                                {{ form_errors(form.innerWidth) }}
                             </div>
                             <div>
-                                <label for="{{ form.height.vars.id }}" class="block text-xs text-gray-500 mb-1">Výška</label>
-                                {{ form_widget(form.height, {'attr': {'class': 'input input-bordered w-full', 'placeholder': '0.00'}}) }}
-                                {{ form_errors(form.height) }}
+                                <label for="{{ form.innerHeight.vars.id }}" class="block text-xs text-gray-500 mb-1">Výška</label>
+                                {{ form_widget(form.innerHeight, {'attr': {'class': 'input input-bordered w-full', 'placeholder': '250'}}) }}
+                                {{ form_errors(form.innerHeight) }}
                             </div>
                             <div>
-                                <label for="{{ form.length.vars.id }}" class="block text-xs text-gray-500 mb-1">Délka</label>
-                                {{ form_widget(form.length, {'attr': {'class': 'input input-bordered w-full', 'placeholder': '0.00'}}) }}
-                                {{ form_errors(form.length) }}
+                                <label for="{{ form.innerLength.vars.id }}" class="block text-xs text-gray-500 mb-1">Délka</label>
+                                {{ form_widget(form.innerLength, {'attr': {'class': 'input input-bordered w-full', 'placeholder': '300'}}) }}
+                                {{ form_errors(form.innerLength) }}
+                            </div>
+                        </div>
+                    </div>
+
+                    {# Outer dimensions (optional) #}
+                    <div class="mb-4">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Vnější rozměry (cm) - volitelné</label>
+                        <div class="grid grid-cols-3 gap-4">
+                            <div>
+                                <label for="{{ form.outerWidth.vars.id }}" class="block text-xs text-gray-500 mb-1">Šířka</label>
+                                {{ form_widget(form.outerWidth, {'attr': {'class': 'input input-bordered w-full', 'placeholder': '210'}}) }}
+                                {{ form_errors(form.outerWidth) }}
+                            </div>
+                            <div>
+                                <label for="{{ form.outerHeight.vars.id }}" class="block text-xs text-gray-500 mb-1">Výška</label>
+                                {{ form_widget(form.outerHeight, {'attr': {'class': 'input input-bordered w-full', 'placeholder': '260'}}) }}
+                                {{ form_errors(form.outerHeight) }}
+                            </div>
+                            <div>
+                                <label for="{{ form.outerLength.vars.id }}" class="block text-xs text-gray-500 mb-1">Délka</label>
+                                {{ form_widget(form.outerLength, {'attr': {'class': 'input input-bordered w-full', 'placeholder': '310'}}) }}
+                                {{ form_errors(form.outerLength) }}
                             </div>
                         </div>
                     </div>
@@ -55,11 +78,24 @@
                         </div>
                     </div>
 
-                    {% if form.ownerId is defined %}
+                    <div class="mb-4">
+                        <label for="{{ form.description.vars.id }}" class="block text-sm font-semibold text-gray-700 mb-2">Popis</label>
+                        {{ form_widget(form.description, {'attr': {'class': 'textarea textarea-bordered w-full', 'rows': 3}}) }}
+                        {{ form_errors(form.description) }}
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="{{ form.photos.vars.id }}" class="block text-sm font-semibold text-gray-700 mb-2">Fotografie</label>
+                        {{ form_widget(form.photos, {'attr': {'class': 'file-input file-input-bordered w-full'}}) }}
+                        <p class="text-xs text-gray-500 mt-1">Nahrajte fotografie skladu (JPEG, PNG, WebP, max 5 MB každá)</p>
+                        {{ form_errors(form.photos) }}
+                    </div>
+
+                    {% if form.placeId is defined %}
                         <div class="mb-4">
-                            <label for="{{ form.ownerId.vars.id }}" class="block text-sm font-semibold text-gray-700 mb-2">Vlastník</label>
-                            {{ form_widget(form.ownerId, {'attr': {'class': 'select select-bordered w-full'}}) }}
-                            {{ form_errors(form.ownerId) }}
+                            <label for="{{ form.placeId.vars.id }}" class="block text-sm font-semibold text-gray-700 mb-2">Místo</label>
+                            {{ form_widget(form.placeId, {'attr': {'class': 'select select-bordered w-full'}}) }}
+                            {{ form_errors(form.placeId) }}
                         </div>
                     {% endif %}
 

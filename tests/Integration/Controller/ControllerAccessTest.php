@@ -664,9 +664,9 @@ class ControllerAccessTest extends WebTestCase
         $storageType = new StorageType(
             id: Uuid::v7(),
             name: $name,
-            width: 100,
-            height: 100,
-            length: 100,
+            innerWidth: 100,
+            innerHeight: 100,
+            innerLength: 100,
             pricePerWeek: 10000,
             pricePerMonth: 35000,
             place: $place,

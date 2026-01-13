@@ -40,9 +40,9 @@ class StorageTypeTest extends TestCase
         $storageType = new StorageType(
             id: Uuid::v7(),
             name: 'Small Box',
-            width: 150,
-            height: 200,
-            length: 250,
+            innerWidth: 150,
+            innerHeight: 200,
+            innerLength: 250,
             pricePerWeek: 15000,
             pricePerMonth: 50000,
             place: $place,
@@ -51,9 +51,9 @@ class StorageTypeTest extends TestCase
 
         $this->assertInstanceOf(Uuid::class, $storageType->id);
         $this->assertSame('Small Box', $storageType->name);
-        $this->assertSame(150, $storageType->width);
-        $this->assertSame(200, $storageType->height);
-        $this->assertSame(250, $storageType->length);
+        $this->assertSame(150, $storageType->innerWidth);
+        $this->assertSame(200, $storageType->innerHeight);
+        $this->assertSame(250, $storageType->innerLength);
         $this->assertSame(15000, $storageType->pricePerWeek);
         $this->assertSame(50000, $storageType->pricePerMonth);
         $this->assertSame($place, $storageType->place);
@@ -69,9 +69,9 @@ class StorageTypeTest extends TestCase
         $storageType = new StorageType(
             id: Uuid::v7(),
             name: 'Test',
-            width: 100,
-            height: 100,
-            length: 100,
+            innerWidth: 100,
+            innerHeight: 100,
+            innerLength: 100,
             pricePerWeek: 15000,
             pricePerMonth: 50000,
             place: $place,
@@ -89,9 +89,9 @@ class StorageTypeTest extends TestCase
         $storageType = new StorageType(
             id: Uuid::v7(),
             name: 'Test',
-            width: 100,
-            height: 100,
-            length: 100,
+            innerWidth: 100,
+            innerHeight: 100,
+            innerLength: 100,
             pricePerWeek: 15000,
             pricePerMonth: 50000,
             place: $place,
@@ -110,9 +110,9 @@ class StorageTypeTest extends TestCase
         $storageType = new StorageType(
             id: Uuid::v7(),
             name: 'Test',
-            width: 200,
-            height: 300,
-            length: 400,
+            innerWidth: 200,
+            innerHeight: 300,
+            innerLength: 400,
             pricePerWeek: 15000,
             pricePerMonth: 50000,
             place: $place,
@@ -122,27 +122,28 @@ class StorageTypeTest extends TestCase
         $this->assertSame(24.0, $storageType->getVolumeInCubicMeters());
     }
 
-    public function testGetDimensions(): void
+    public function testGetFloorAreaInSquareMeters(): void
     {
         $owner = $this->createUser();
         $place = $this->createPlace($owner);
 
+        // 200cm x 400cm = 2m x 4m = 8 m²
         $storageType = new StorageType(
             id: Uuid::v7(),
             name: 'Test',
-            width: 200,
-            height: 300,
-            length: 400,
+            innerWidth: 200,
+            innerHeight: 300,
+            innerLength: 400,
             pricePerWeek: 15000,
             pricePerMonth: 50000,
             place: $place,
             createdAt: new \DateTimeImmutable(),
         );
 
-        $this->assertSame('200 x 300 x 400 cm', $storageType->getDimensions());
+        $this->assertSame(8.0, $storageType->getFloorAreaInSquareMeters());
     }
 
-    public function testGetDimensionsInMeters(): void
+    public function testGetInnerDimensionsInMeters(): void
     {
         $owner = $this->createUser();
         $place = $this->createPlace($owner);
@@ -150,16 +151,57 @@ class StorageTypeTest extends TestCase
         $storageType = new StorageType(
             id: Uuid::v7(),
             name: 'Test',
-            width: 200,
-            height: 300,
-            length: 400,
+            innerWidth: 200,
+            innerHeight: 300,
+            innerLength: 400,
             pricePerWeek: 15000,
             pricePerMonth: 50000,
             place: $place,
             createdAt: new \DateTimeImmutable(),
         );
 
-        $this->assertSame('2.00 x 3.00 x 4.00 m', $storageType->getDimensionsInMeters());
+        $this->assertSame('2.00 x 3.00 x 4.00 m', $storageType->getInnerDimensionsInMeters());
+    }
+
+    public function testOuterDimensions(): void
+    {
+        $owner = $this->createUser();
+        $place = $this->createPlace($owner);
+
+        // Without outer dimensions
+        $storageType = new StorageType(
+            id: Uuid::v7(),
+            name: 'Test',
+            innerWidth: 200,
+            innerHeight: 300,
+            innerLength: 400,
+            pricePerWeek: 15000,
+            pricePerMonth: 50000,
+            place: $place,
+            createdAt: new \DateTimeImmutable(),
+        );
+
+        $this->assertFalse($storageType->hasOuterDimensions());
+        $this->assertNull($storageType->getOuterDimensionsInMeters());
+
+        // With outer dimensions
+        $storageTypeWithOuter = new StorageType(
+            id: Uuid::v7(),
+            name: 'Test',
+            innerWidth: 200,
+            innerHeight: 300,
+            innerLength: 400,
+            pricePerWeek: 15000,
+            pricePerMonth: 50000,
+            place: $place,
+            createdAt: new \DateTimeImmutable(),
+            outerWidth: 220,
+            outerHeight: 320,
+            outerLength: 420,
+        );
+
+        $this->assertTrue($storageTypeWithOuter->hasOuterDimensions());
+        $this->assertSame('2.20 x 3.20 x 4.20 m', $storageTypeWithOuter->getOuterDimensionsInMeters());
     }
 
     public function testUpdateDetails(): void
@@ -172,9 +214,9 @@ class StorageTypeTest extends TestCase
         $storageType = new StorageType(
             id: Uuid::v7(),
             name: 'Original',
-            width: 100,
-            height: 100,
-            length: 100,
+            innerWidth: 100,
+            innerHeight: 100,
+            innerLength: 100,
             pricePerWeek: 10000,
             pricePerMonth: 30000,
             place: $place,
@@ -183,9 +225,12 @@ class StorageTypeTest extends TestCase
 
         $storageType->updateDetails(
             name: 'Updated',
-            width: 200,
-            height: 200,
-            length: 200,
+            innerWidth: 200,
+            innerHeight: 200,
+            innerLength: 200,
+            outerWidth: 220,
+            outerHeight: 220,
+            outerLength: 220,
             pricePerWeek: 20000,
             pricePerMonth: 60000,
             description: 'Test description',
@@ -193,9 +238,12 @@ class StorageTypeTest extends TestCase
         );
 
         $this->assertSame('Updated', $storageType->name);
-        $this->assertSame(200, $storageType->width);
-        $this->assertSame(200, $storageType->height);
-        $this->assertSame(200, $storageType->length);
+        $this->assertSame(200, $storageType->innerWidth);
+        $this->assertSame(200, $storageType->innerHeight);
+        $this->assertSame(200, $storageType->innerLength);
+        $this->assertSame(220, $storageType->outerWidth);
+        $this->assertSame(220, $storageType->outerHeight);
+        $this->assertSame(220, $storageType->outerLength);
         $this->assertSame(20000, $storageType->pricePerWeek);
         $this->assertSame(60000, $storageType->pricePerMonth);
         $this->assertSame('Test description', $storageType->description);
@@ -212,9 +260,9 @@ class StorageTypeTest extends TestCase
         $storageType = new StorageType(
             id: Uuid::v7(),
             name: 'Test',
-            width: 100,
-            height: 100,
-            length: 100,
+            innerWidth: 100,
+            innerHeight: 100,
+            innerLength: 100,
             pricePerWeek: 10000,
             pricePerMonth: 30000,
             place: $place,
@@ -234,9 +282,9 @@ class StorageTypeTest extends TestCase
         $storageType = new StorageType(
             id: Uuid::v7(),
             name: 'Test',
-            width: 100,
-            height: 100,
-            length: 100,
+            innerWidth: 100,
+            innerHeight: 100,
+            innerLength: 100,
             pricePerWeek: 10000,
             pricePerMonth: 30000,
             place: $place,
@@ -256,9 +304,9 @@ class StorageTypeTest extends TestCase
         $storageType = new StorageType(
             id: Uuid::v7(),
             name: 'Test',
-            width: 100,
-            height: 100,
-            length: 100,
+            innerWidth: 100,
+            innerHeight: 100,
+            innerLength: 100,
             pricePerWeek: 10000,
             pricePerMonth: 30000,
             place: $place,
@@ -279,9 +327,9 @@ class StorageTypeTest extends TestCase
         $storageType = new StorageType(
             id: Uuid::v7(),
             name: 'Test',
-            width: 100,
-            height: 100,
-            length: 100,
+            innerWidth: 100,
+            innerHeight: 100,
+            innerLength: 100,
             pricePerWeek: 10000,
             pricePerMonth: 30000,
             place: $place,
@@ -290,9 +338,12 @@ class StorageTypeTest extends TestCase
 
         $storageType->updateDetails(
             name: 'Updated',
-            width: 100,
-            height: 100,
-            length: 100,
+            innerWidth: 100,
+            innerHeight: 100,
+            innerLength: 100,
+            outerWidth: null,
+            outerHeight: null,
+            outerLength: null,
             pricePerWeek: 10000,
             pricePerMonth: 30000,
             description: null,
@@ -311,9 +362,9 @@ class StorageTypeTest extends TestCase
         $storageType = new StorageType(
             id: Uuid::v7(),
             name: 'Test',
-            width: 100,
-            height: 100,
-            length: 100,
+            innerWidth: 100,
+            innerHeight: 100,
+            innerLength: 100,
             pricePerWeek: 10000,
             pricePerMonth: 30000,
             place: $place,

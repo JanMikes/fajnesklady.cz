@@ -29,27 +29,28 @@ final readonly class CreateStorageTypeHandler
         $storageType = new StorageType(
             id: $this->identityProvider->next(),
             name: $command->name,
-            width: $command->width,
-            height: $command->height,
-            length: $command->length,
+            innerWidth: $command->innerWidth,
+            innerHeight: $command->innerHeight,
+            innerLength: $command->innerLength,
             pricePerWeek: $command->pricePerWeek,
             pricePerMonth: $command->pricePerMonth,
             place: $place,
             createdAt: $this->clock->now(),
         );
 
-        if (null !== $command->description) {
-            $storageType->updateDetails(
-                name: $command->name,
-                width: $command->width,
-                height: $command->height,
-                length: $command->length,
-                pricePerWeek: $command->pricePerWeek,
-                pricePerMonth: $command->pricePerMonth,
-                description: $command->description,
-                now: $this->clock->now(),
-            );
-        }
+        $storageType->updateDetails(
+            name: $command->name,
+            innerWidth: $command->innerWidth,
+            innerHeight: $command->innerHeight,
+            innerLength: $command->innerLength,
+            outerWidth: $command->outerWidth,
+            outerHeight: $command->outerHeight,
+            outerLength: $command->outerLength,
+            pricePerWeek: $command->pricePerWeek,
+            pricePerMonth: $command->pricePerMonth,
+            description: $command->description,
+            now: $this->clock->now(),
+        );
 
         $this->storageTypeRepository->save($storageType);
 

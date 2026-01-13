@@ -31,7 +31,7 @@ return App::config([
                     'login_path' => 'app_login',
                     'check_path' => 'app_login',
                     'enable_csrf' => true,
-                    'default_target_path' => 'app_home',
+                    'default_target_path' => 'portal_dashboard',
                 ],
                 'logout' => [
                     'path' => 'app_logout',

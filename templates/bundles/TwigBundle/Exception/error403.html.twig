@@ -1,33 +1,33 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Access Denied - Fajné Sklady{% endblock %}
+{% block title %}Přístup odepřen - Fajné Sklady{% endblock %}
 
 {% block body %}
 <div class="min-h-screen flex items-center justify-center px-4 bg-gray-50">
     <div class="card w-full max-w-md">
         <div class="card-body text-center">
             <div class="text-6xl mb-4">🚫</div>
-            <h1 class="text-3xl font-bold text-gray-900 mb-2">403 - Access Denied</h1>
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">403 - Přístup odepřen</h1>
             <p class="text-gray-600 mb-6">
-                You don't have permission to access this page.
+                Nemáte oprávnění k přístupu na tuto stránku.
                 {% if is_granted('ROLE_USER') %}
-                    This area might be restricted to administrators only.
+                    Tato oblast je pravděpodobně přístupná pouze administrátorům.
                 {% else %}
-                    Please log in to access this content.
+                    Pro přístup k tomuto obsahu se prosím přihlaste.
                 {% endif %}
             </p>
 
             <div class="flex justify-center gap-2 flex-wrap">
                 <a href="{{ path('app_home') }}" class="btn btn-primary">
-                    Go to Homepage
+                    Zpět na úvodní stránku
                 </a>
                 {% if not is_granted('ROLE_USER') %}
                 <a href="{{ path('app_login') }}" class="btn btn-secondary">
-                    Login
+                    Přihlásit se
                 </a>
                 {% endif %}
                 <button onclick="history.back()" class="btn btn-ghost">
-                    Go Back
+                    Zpět
                 </button>
             </div>
         </div>

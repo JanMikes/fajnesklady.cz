@@ -23,9 +23,12 @@ final readonly class UpdateStorageTypeHandler
 
         $storageType->updateDetails(
             name: $command->name,
-            width: $command->width,
-            height: $command->height,
-            length: $command->length,
+            innerWidth: $command->innerWidth,
+            innerHeight: $command->innerHeight,
+            innerLength: $command->innerLength,
+            outerWidth: $command->outerWidth,
+            outerHeight: $command->outerHeight,
+            outerLength: $command->outerLength,
             pricePerWeek: $command->pricePerWeek,
             pricePerMonth: $command->pricePerMonth,
             description: $command->description,

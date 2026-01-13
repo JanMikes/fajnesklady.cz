@@ -122,6 +122,44 @@
                     <h2 class="text-lg font-bold">Shrnutí objednávky</h2>
                 </div>
                 <div class="card-body">
+                    {# Photo gallery #}
+                    {% if storageType.hasPhotos %}
+                        <div class="mb-4" x-data="{ activePhoto: 0 }">
+                            <div class="relative">
+                                {% for photo in storageType.photos %}
+                                    <img src="{{ asset('uploads/' ~ photo.path) }}"
+                                         alt="{{ storageType.name }}"
+                                         class="w-full h-48 object-cover rounded-lg"
+                                         x-show="activePhoto === {{ loop.index0 }}"
+                                         x-cloak>
+                                {% endfor %}
+                                {% if storageType.photos|length > 1 %}
+                                    <button class="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white rounded-full p-1.5 shadow"
+                                            x-on:click="activePhoto = (activePhoto - 1 + {{ storageType.photos|length }}) % {{ storageType.photos|length }}">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                                        </svg>
+                                    </button>
+                                    <button class="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white rounded-full p-1.5 shadow"
+                                            x-on:click="activePhoto = (activePhoto + 1) % {{ storageType.photos|length }}">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                        </svg>
+                                    </button>
+                                {% endif %}
+                            </div>
+                            {% if storageType.photos|length > 1 %}
+                                <div class="flex justify-center gap-1 mt-2">
+                                    {% for photo in storageType.photos %}
+                                        <button class="w-2 h-2 rounded-full transition-colors"
+                                                :class="activePhoto === {{ loop.index0 }} ? 'bg-blue-600' : 'bg-gray-300'"
+                                                x-on:click="activePhoto = {{ loop.index0 }}"></button>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+
                     <div class="space-y-3 text-sm">
                         <div class="flex justify-between">
                             <span class="text-gray-600">Pobočka</span>
@@ -133,7 +171,15 @@
                         </div>
                         <div class="flex justify-between">
                             <span class="text-gray-600">Rozměry</span>
-                            <span class="font-medium text-gray-900">{{ storageType.dimensionsInMeters }}</span>
+                            <span class="font-medium text-gray-900">{{ storageType.innerDimensionsInMeters }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Plocha</span>
+                            <span class="font-medium text-gray-900">{{ storageType.floorAreaInSquareMeters|number_format(1, ',', ' ') }} m&sup2;</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Objem</span>
+                            <span class="font-medium text-gray-900">{{ storageType.volumeInCubicMeters|number_format(1, ',', ' ') }} m&sup3;</span>
                         </div>
                     </div>
 
