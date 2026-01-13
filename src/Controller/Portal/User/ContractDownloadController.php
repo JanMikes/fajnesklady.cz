@@ -7,6 +7,7 @@ namespace App\Controller\Portal\User;
 use App\Entity\User;
 use App\Repository\ContractRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
@@ -21,6 +22,7 @@ final class ContractDownloadController extends AbstractController
 {
     public function __construct(
         private readonly ContractRepository $contractRepository,
+        #[Autowire('%kernel.project_dir%')]
         private readonly string $projectDir,
     ) {
     }

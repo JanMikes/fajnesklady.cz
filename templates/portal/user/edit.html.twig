@@ -14,11 +14,11 @@
                 <div class="flex items-center gap-4">
                     <div class="flex-shrink-0">
                         <div class="bg-gray-600 text-white rounded-full w-16 h-16 flex items-center justify-center">
-                            <span class="text-xl font-semibold">{{ user.name|first|upper }}</span>
+                            <span class="text-xl font-semibold">{{ user.fullName|first|upper }}</span>
                         </div>
                     </div>
                     <div>
-                        <h2 class="text-xl font-bold text-gray-900">{{ user.name }}</h2>
+                        <h2 class="text-xl font-bold text-gray-900">{{ user.fullName }}</h2>
                         <p class="text-gray-600">{{ user.email }}</p>
                     </div>
                 </div>

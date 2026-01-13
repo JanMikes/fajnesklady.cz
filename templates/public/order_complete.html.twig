@@ -24,7 +24,7 @@
                     {% if contract %}
                     <div class="flex justify-between">
                         <span class="text-gray-600">Číslo smlouvy</span>
-                        <span class="font-mono font-medium">{{ contract.id|string|slice(0, 8)|upper }}</span>
+                        <span class="font-mono font-medium">{{ contract.id|slice(0, 8)|upper }}</span>
                     </div>
                     {% endif %}
                     <div class="flex justify-between">

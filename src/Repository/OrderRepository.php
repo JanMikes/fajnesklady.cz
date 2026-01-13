@@ -214,7 +214,7 @@ final class OrderRepository
     public function sumRevenueByLandlord(User $landlord): int
     {
         $result = $this->entityManager->createQueryBuilder()
-            ->select('SUM(o.totalPriceInHalere)')
+            ->select('SUM(o.totalPrice)')
             ->from(Order::class, 'o')
             ->join('o.storage', 's')
             ->join('s.storageType', 'st')

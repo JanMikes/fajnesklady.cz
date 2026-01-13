@@ -35,7 +35,7 @@
                             <td class="text-gray-500">{{ place.address }}</td>
                             <td class="text-gray-500 max-w-xs truncate">{{ place.description|default('-') }}</td>
                             {% if is_granted('ROLE_ADMIN') %}
-                                <td class="text-gray-500">{{ place.owner.name }}</td>
+                                <td class="text-gray-500">{{ place.owner.fullName }}</td>
                             {% endif %}
                             <td class="text-gray-500 text-sm">{{ place.createdAt|date('Y-m-d H:i') }}</td>
                             <td>

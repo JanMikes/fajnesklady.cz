@@ -22,7 +22,7 @@
                     <div class="relative" x-data="{ open: false }">
                         <button @click="open = !open" @click.away="open = false" type="button" class="flex items-center space-x-2 text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 rounded-full">
                             <div class="h-8 w-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-medium">
-                                {{ app.user.name|first|upper }}
+                                {{ app.user.fullName|first|upper }}
                             </div>
                         </button>
                         <div x-show="open" class="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 z-50">
@@ -58,11 +58,11 @@
                 <div class="flex items-center px-4">
                     <div class="flex-shrink-0">
                         <div class="h-10 w-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-medium">
-                            {{ app.user.name|first|upper }}
+                            {{ app.user.fullName|first|upper }}
                         </div>
                     </div>
                     <div class="ml-3">
-                        <div class="text-base font-medium text-gray-800">{{ app.user.name }}</div>
+                        <div class="text-base font-medium text-gray-800">{{ app.user.fullName }}</div>
                         <div class="text-sm font-medium text-gray-500">{{ app.user.email }}</div>
                     </div>
                 </div>

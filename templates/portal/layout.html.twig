@@ -21,10 +21,10 @@
             {# User info #}
             <div class="flex items-center px-4 py-3 bg-gray-900 border-b border-gray-700">
                 <div class="flex-shrink-0 h-10 w-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-medium">
-                    {{ app.user.name|first|upper }}
+                    {{ app.user.fullName|first|upper }}
                 </div>
                 <div class="ml-3 flex-1 min-w-0">
-                    <p class="text-sm font-medium text-white truncate">{{ app.user.name }}</p>
+                    <p class="text-sm font-medium text-white truncate">{{ app.user.fullName }}</p>
                     <p class="text-xs text-gray-400 truncate">{{ app.user.email }}</p>
                 </div>
             </div>
@@ -186,10 +186,10 @@
 
             <div class="flex items-center px-4 py-3 bg-gray-900 border-b border-gray-700">
                 <div class="flex-shrink-0 h-10 w-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-medium">
-                    {{ app.user.name|first|upper }}
+                    {{ app.user.fullName|first|upper }}
                 </div>
                 <div class="ml-3">
-                    <p class="text-sm font-medium text-white">{{ app.user.name }}</p>
+                    <p class="text-sm font-medium text-white">{{ app.user.fullName }}</p>
                     <p class="text-xs text-gray-400">{{ app.user.email }}</p>
                 </div>
             </div>
@@ -326,7 +326,7 @@
                 </button>
                 <span class="text-lg font-semibold text-gray-900">Portál</span>
                 <div class="h-8 w-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-medium">
-                    {{ app.user.name|first|upper }}
+                    {{ app.user.fullName|first|upper }}
                 </div>
             </div>
         </div>

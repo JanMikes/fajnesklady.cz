@@ -27,7 +27,7 @@
         <div
             data-controller="map"
             data-map-places-value="{{ places|map(p => {
-                id: p.id|string,
+                id: p.id.toRfc4122(),
                 name: p.name,
                 address: p.address,
                 city: p.city,

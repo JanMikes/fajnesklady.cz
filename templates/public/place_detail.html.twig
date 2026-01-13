@@ -91,7 +91,7 @@
     {% else %}
         <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
             {% for storageType in storageTypes %}
-                {% set availableCount = availability[storageType.id|string] ?? 0 %}
+                {% set availableCount = availability[storageType.id.toRfc4122()] ?? 0 %}
                 <div class="card hover:shadow-lg transition-shadow {% if availableCount == 0 %}opacity-75{% endif %}" data-storage-type-id="{{ storageType.id }}">
                     <div class="card-body">
                         <h3 class="text-xl font-bold text-gray-900 mb-2">{{ storageType.name }}</h3>

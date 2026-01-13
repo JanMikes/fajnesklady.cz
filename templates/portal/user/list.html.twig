@@ -26,9 +26,9 @@
                             <td>
                                 <div class="flex items-center space-x-3">
                                     <div class="flex-shrink-0 h-10 w-10 rounded-full bg-gray-600 text-white flex items-center justify-center font-medium text-sm">
-                                        {{ user.name|first|upper }}
+                                        {{ user.fullName|first|upper }}
                                     </div>
-                                    <div class="font-medium text-gray-900">{{ user.name }}</div>
+                                    <div class="font-medium text-gray-900">{{ user.fullName }}</div>
                                 </div>
                             </td>
                             <td class="text-gray-500">{{ user.email }}</td>

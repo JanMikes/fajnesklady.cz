@@ -104,7 +104,7 @@ final class PlaceRepository
     public function countTotal(): int
     {
         $connection = $this->entityManager->getConnection();
-        $result = $connection->executeQuery('SELECT COUNT(id) FROM places')->fetchOne();
+        $result = $connection->executeQuery('SELECT COUNT(id) FROM place')->fetchOne();
 
         return (int) $result;
     }
@@ -113,7 +113,7 @@ final class PlaceRepository
     {
         $connection = $this->entityManager->getConnection();
         $result = $connection->executeQuery(
-            'SELECT COUNT(id) FROM places WHERE owner_id = :ownerId',
+            'SELECT COUNT(id) FROM place WHERE owner_id = :ownerId',
             ['ownerId' => $owner->id->toRfc4122()]
         )->fetchOne();
 

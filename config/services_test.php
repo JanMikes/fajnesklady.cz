@@ -13,70 +13,48 @@ return App::config([
         ],
         'test.service_container' => [
             'alias' => 'service_container',
-            'public' => true,
         ],
+        // Re-register all namespaces to inherit public: true from _defaults
         'App\\Command\\' => [
             'resource' => '../src/Command/*Handler.php',
-            'public' => true,
         ],
         'App\\Console\\' => [
             'resource' => '../src/Console/',
-            'public' => true,
         ],
         'App\\Controller\\' => [
             'resource' => '../src/Controller/',
-            'public' => true,
         ],
         'App\\DataFixtures\\' => [
             'resource' => '../src/DataFixtures/',
-            'public' => true,
         ],
-        'App\\Event\\DomainEventsSubscriber' => [
-            'public' => true,
-        ],
-        'App\\Event\\SendPasswordResetEmailHandler' => [
-            'public' => true,
-        ],
-        'App\\Event\\SendVerificationEmailHandler' => [
-            'public' => true,
-        ],
-        'App\\Event\\SendWelcomeEmailHandler' => [
-            'public' => true,
-        ],
-        'App\\Event\\SendOrderConfirmationEmailHandler' => [
-            'public' => true,
-        ],
-        'App\\Event\\SendContractReadyEmailHandler' => [
-            'public' => true,
-        ],
-        'App\\Event\\SendContractExpiringReminderHandler' => [
-            'public' => true,
+        'App\\Event\\' => [
+            'resource' => '../src/Event/*{Handler,Subscriber}.php',
         ],
         'App\\Form\\' => [
             'resource' => '../src/Form/*FormType.php',
-            'public' => true,
         ],
         'App\\Query\\' => [
             'resource' => '../src/Query/*Query.php',
-            'public' => true,
         ],
-        'App\\Query\\QueryBus' => [
-            'public' => true,
-        ],
+        'App\\Query\\QueryBus' => null,
         'App\\Repository\\' => [
             'resource' => '../src/Repository/',
-            'public' => true,
         ],
         'App\\Service\\' => [
             'resource' => '../src/Service/',
-            'public' => true,
         ],
+        // Services with constructor arguments (must re-specify after resource override)
         'App\\Service\\ContractDocumentGenerator' => [
             'arguments' => [
                 '$contractsDirectory' => '%kernel.project_dir%/var/contracts',
             ],
-            'public' => true,
         ],
+        'App\\Service\\PlaceFileUploader' => [
+            'arguments' => [
+                '$uploadsDirectory' => '%kernel.project_dir%/public/uploads',
+            ],
+        ],
+        // Test-specific overrides
         'App\\Tests\\Support\\PredictableIdentityProvider' => [
             'tags' => [['name' => 'kernel.reset', 'method' => 'reset']],
         ],
