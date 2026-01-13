@@ -1,0 +1,147 @@
+{% extends 'portal/layout.html.twig' %}
+
+{% block title %}Editor skladu - {{ place.name }}{% endblock %}
+
+{% block content %}
+    <div class="mb-6">
+        <a href="{{ path('portal_places_list') }}" class="inline-flex items-center text-gray-600 hover:text-gray-900">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Zpet na mista
+        </a>
+    </div>
+
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">Editor skladu</h1>
+            <p class="text-gray-600">{{ place.name }} - {{ place.address }}</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6"
+         data-controller="storage-canvas"
+         data-storage-canvas-map-image-value="{{ place.mapImagePath ? asset('uploads/places/' ~ place.mapImagePath) : '' }}"
+         data-storage-canvas-storages-value="{{ storagesJson|e('html_attr') }}"
+         data-storage-canvas-storage-types-value="{{ storageTypesJson|e('html_attr') }}"
+         data-storage-canvas-api-url-value="{{ path('api_storages_create', {placeId: place.id}) }}"
+         data-storage-canvas-csrf-token-value="{{ csrf_token('storage-api') }}">
+
+        {# Canvas area #}
+        <div class="lg:col-span-3">
+            <div class="card">
+                <div class="card-header bg-gray-50 px-4 py-3 border-b">
+                    <div class="flex items-center justify-between">
+                        <h2 class="font-semibold text-gray-900">Platno</h2>
+                        <div class="text-sm text-gray-500">
+                            Kliknete a tahnete pro vytvoreni skladu. Dvojklik pro upravu.
+                        </div>
+                    </div>
+                </div>
+                <div class="p-4">
+                    {% if not place.mapImagePath %}
+                        <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+                            <div class="flex items-center gap-2">
+                                <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                                <span class="text-amber-800">Nahrajte obrazek mapy v nastaveni mista pro lepsi vizualizaci.</span>
+                            </div>
+                        </div>
+                    {% endif %}
+                    <canvas data-storage-canvas-target="canvas" class="border border-gray-300 rounded-lg w-full cursor-crosshair"></canvas>
+                </div>
+            </div>
+
+            {# Legend #}
+            <div class="card mt-4">
+                <div class="card-body p-4">
+                    <h3 class="font-semibold text-gray-900 mb-3">Legenda</h3>
+                    <div class="flex flex-wrap gap-4">
+                        <div class="flex items-center gap-2">
+                            <div class="w-4 h-4 rounded bg-green-500"></div>
+                            <span class="text-sm text-gray-600">Dostupny</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <div class="w-4 h-4 rounded bg-yellow-500"></div>
+                            <span class="text-sm text-gray-600">Rezervovany</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <div class="w-4 h-4 rounded bg-red-500"></div>
+                            <span class="text-sm text-gray-600">Obsazeny</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <div class="w-4 h-4 rounded bg-gray-500"></div>
+                            <span class="text-sm text-gray-600">Nedostupny</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# Sidebar #}
+        <div class="lg:col-span-1" data-storage-canvas-target="sidebar">
+            {# Storage list #}
+            <div class="card mb-4">
+                <div class="card-header bg-gray-50 px-4 py-3 border-b">
+                    <h2 class="font-semibold text-gray-900">Sklady</h2>
+                </div>
+                <div data-storage-canvas-target="storageList" class="max-h-64 overflow-y-auto">
+                    {# Populated by JS #}
+                </div>
+            </div>
+
+            {# Edit form #}
+            <div class="card hidden" data-storage-canvas-target="form">
+                <div class="card-header bg-gray-50 px-4 py-3 border-b">
+                    <h2 class="font-semibold text-gray-900">Upravit sklad</h2>
+                </div>
+                <div class="card-body p-4">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Cislo skladu</label>
+                            <input type="text" data-storage-canvas-target="numberInput" class="input input-bordered w-full" placeholder="napr. A1">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Typ skladu</label>
+                            <select data-storage-canvas-target="typeSelect" class="select select-bordered w-full">
+                                {% for type in storageTypes %}
+                                    <option value="{{ type.id }}">{{ type.name }} ({{ type.getDimensionsInMeters() }})</option>
+                                {% else %}
+                                    <option value="">Zadne typy</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="flex gap-2 pt-2">
+                            <button type="button" data-storage-canvas-target="saveBtn" class="btn btn-primary btn-sm flex-1">
+                                Ulozit
+                            </button>
+                            <button type="button" data-storage-canvas-target="cancelBtn" class="btn btn-ghost btn-sm">
+                                Zrusit
+                            </button>
+                        </div>
+                        <div class="pt-2 border-t">
+                            <button type="button" data-storage-canvas-target="deleteBtn" class="btn btn-error btn-sm w-full">
+                                Smazat sklad
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {# Help #}
+            <div class="card">
+                <div class="card-header bg-gray-50 px-4 py-3 border-b">
+                    <h2 class="font-semibold text-gray-900">Napoveda</h2>
+                </div>
+                <div class="card-body p-4 text-sm text-gray-600 space-y-2">
+                    <p><strong>Vytvoreni:</strong> Kliknete a tahnete na platne</p>
+                    <p><strong>Presun:</strong> Kliknete a tahnete existujici sklad</p>
+                    <p><strong>Zmena velikosti:</strong> Tahnete za roh vybraneho skladu</p>
+                    <p><strong>Uprava:</strong> Dvojklik na sklad</p>
+                    <p><strong>Tip:</strong> Nezapomente ulozit zmeny!</p>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
