@@ -48,4 +48,19 @@ class UserRoleTest extends TestCase
         $this->assertContains('ROLE_LANDLORD', $values);
         $this->assertContains('ROLE_ADMIN', $values);
     }
+
+    public function testLabelReturnsCorrectLabelForUser(): void
+    {
+        $this->assertSame('Uživatel', UserRole::USER->label());
+    }
+
+    public function testLabelReturnsCorrectLabelForLandlord(): void
+    {
+        $this->assertSame('Pronajímatel', UserRole::LANDLORD->label());
+    }
+
+    public function testLabelReturnsCorrectLabelForAdmin(): void
+    {
+        $this->assertSame('Administrátor', UserRole::ADMIN->label());
+    }
 }

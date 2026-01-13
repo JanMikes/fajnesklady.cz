@@ -22,11 +22,7 @@ final class UserRoleFormType extends AbstractType
                 'class' => UserRole::class,
                 'label' => 'Role',
                 'expanded' => true,
-                'choice_label' => static fn (UserRole $role): string => match ($role) {
-                    UserRole::USER => 'User (Tenant)',
-                    UserRole::LANDLORD => 'Landlord (Property Owner)',
-                    UserRole::ADMIN => 'Administrator',
-                },
+                'choice_label' => static fn (UserRole $role): string => $role->label(),
             ]);
     }
 

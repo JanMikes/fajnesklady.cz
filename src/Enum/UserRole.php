@@ -27,4 +27,16 @@ enum UserRole: string
     {
         return null !== self::tryFrom($value);
     }
+
+    /**
+     * Get human-readable label for the role.
+     */
+    public function label(): string
+    {
+        return match ($this) {
+            self::USER => 'Uživatel',
+            self::LANDLORD => 'Pronajímatel',
+            self::ADMIN => 'Administrátor',
+        };
+    }
 }

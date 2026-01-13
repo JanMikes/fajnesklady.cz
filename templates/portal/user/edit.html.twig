@@ -1,10 +1,10 @@
 {% extends 'portal/layout.html.twig' %}
 
-{% block title %}Upravit roli uživatele - Admin{% endblock %}
+{% block title %}Upravit uživatele - Admin{% endblock %}
 
 {% block content %}
     <div class="flex justify-between items-center mb-6">
-        <h1 class="text-3xl font-bold">Upravit roli uživatele</h1>
+        <h1 class="text-3xl font-bold">Upravit uživatele</h1>
         <a href="{{ path('portal_users_view', {id: user.id}) }}" class="btn btn-ghost">Zrušit</a>
     </div>
 
@@ -28,8 +28,65 @@
         <div class="card">
             <div class="card-body">
                 {{ form_start(form) }}
+                    <h3 class="text-lg font-semibold mb-4">Osobní údaje</h3>
+                    <div class="grid md:grid-cols-2 gap-4 mb-6">
+                        <div>
+                            {{ form_label(form.firstName) }}
+                            {{ form_widget(form.firstName) }}
+                            {{ form_errors(form.firstName) }}
+                        </div>
+                        <div>
+                            {{ form_label(form.lastName) }}
+                            {{ form_widget(form.lastName) }}
+                            {{ form_errors(form.lastName) }}
+                        </div>
+                        <div class="md:col-span-2">
+                            {{ form_label(form.phone) }}
+                            {{ form_widget(form.phone) }}
+                            {{ form_errors(form.phone) }}
+                        </div>
+                    </div>
+
+                    <hr class="my-6 border-t border-gray-200">
+
+                    <h3 class="text-lg font-semibold mb-4">Fakturační údaje</h3>
+                    <div class="grid md:grid-cols-2 gap-4 mb-6">
+                        <div>
+                            {{ form_label(form.companyName) }}
+                            {{ form_widget(form.companyName) }}
+                            {{ form_errors(form.companyName) }}
+                        </div>
+                        <div>
+                            {{ form_label(form.companyId) }}
+                            {{ form_widget(form.companyId) }}
+                            {{ form_errors(form.companyId) }}
+                        </div>
+                        <div class="md:col-span-2">
+                            {{ form_label(form.companyVatId) }}
+                            {{ form_widget(form.companyVatId) }}
+                            {{ form_errors(form.companyVatId) }}
+                        </div>
+                        <div class="md:col-span-2">
+                            {{ form_label(form.billingStreet) }}
+                            {{ form_widget(form.billingStreet) }}
+                            {{ form_errors(form.billingStreet) }}
+                        </div>
+                        <div>
+                            {{ form_label(form.billingCity) }}
+                            {{ form_widget(form.billingCity) }}
+                            {{ form_errors(form.billingCity) }}
+                        </div>
+                        <div>
+                            {{ form_label(form.billingPostalCode) }}
+                            {{ form_widget(form.billingPostalCode) }}
+                            {{ form_errors(form.billingPostalCode) }}
+                        </div>
+                    </div>
+
+                    <hr class="my-6 border-t border-gray-200">
+
+                    <h3 class="text-lg font-semibold mb-4">Role</h3>
                     <div class="mb-6">
-                        <label class="block text-sm font-semibold text-gray-700 mb-3">{{ form_label(form.role) }}</label>
                         <div class="space-y-2">
                             {% for choice in form.role %}
                                 <div class="flex items-center">

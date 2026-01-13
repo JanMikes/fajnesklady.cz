@@ -9,7 +9,12 @@
             {% if user.id != app.user.id %}
                 <a href="{{ path('portal_dashboard', {'_switch_user': user.email}) }}" class="btn btn-secondary">Přihlásit se jako</a>
             {% endif %}
-            <a href="{{ path('portal_users_edit', {id: user.id}) }}" class="btn btn-primary">Upravit roli</a>
+            {% if not user.isVerified %}
+                <form action="{{ path('portal_users_verify', {id: user.id}) }}" method="post" class="inline">
+                    <button type="submit" class="btn btn-success">Ověřit uživatele</button>
+                </form>
+            {% endif %}
+            <a href="{{ path('portal_users_edit', {id: user.id}) }}" class="btn btn-primary">Upravit</a>
             <a href="{{ path('portal_users_list') }}" class="btn btn-ghost">Zpět na seznam</a>
         </div>
     </div>
@@ -70,9 +75,9 @@
                     <div class="flex flex-wrap gap-2">
                         {% for role in user.roles %}
                             {% if role == 'ROLE_ADMIN' %}
-                                <div class="badge badge-primary">{{ role }}</div>
+                                <div class="badge badge-primary">{{ role|role_label }}</div>
                             {% else %}
-                                <div class="badge badge-secondary">{{ role }}</div>
+                                <div class="badge badge-secondary">{{ role|role_label }}</div>
                             {% endif %}
                         {% endfor %}
                     </div>

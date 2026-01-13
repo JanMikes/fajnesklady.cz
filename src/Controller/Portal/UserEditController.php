@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Controller\Portal;
 
-use App\Command\ChangeUserRoleCommand;
-use App\Form\UserRoleFormData;
-use App\Form\UserRoleFormType;
+use App\Command\AdminUpdateUserCommand;
+use App\Form\AdminUserFormData;
+use App\Form\AdminUserFormType;
 use App\Repository\UserRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -30,17 +30,26 @@ final class UserEditController extends AbstractController
     {
         $user = $this->userRepository->get(Uuid::fromString($id));
 
-        $formData = UserRoleFormData::fromUser($user);
-        $form = $this->createForm(UserRoleFormType::class, $formData);
+        $formData = AdminUserFormData::fromUser($user);
+        $form = $this->createForm(AdminUserFormType::class, $formData);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            $this->commandBus->dispatch(new ChangeUserRoleCommand(
+            $this->commandBus->dispatch(new AdminUpdateUserCommand(
                 userId: $user->id,
+                firstName: $formData->firstName,
+                lastName: $formData->lastName,
+                phone: $formData->phone,
+                companyName: $formData->companyName,
+                companyId: $formData->companyId,
+                companyVatId: $formData->companyVatId,
+                billingStreet: $formData->billingStreet,
+                billingCity: $formData->billingCity,
+                billingPostalCode: $formData->billingPostalCode,
                 role: $formData->role,
             ));
 
-            $this->addFlash('success', 'Role uživatele byla aktualizována.');
+            $this->addFlash('success', 'Údaje uživatele byly aktualizovány.');
 
             return $this->redirectToRoute('portal_users_view', ['id' => $id]);
         }

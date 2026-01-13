@@ -546,6 +546,73 @@ class ControllerAccessTest extends WebTestCase
         $this->assertResponseStatusCodeSame(403);
     }
 
+    public function testUserEditAccessibleByAdmin(): void
+    {
+        $admin = $this->createUser('user-edit-admin@example.com', UserRole::ADMIN);
+        $targetUser = $this->createUser('target-user-for-admin@example.com', UserRole::USER);
+        $this->login($admin);
+
+        $this->client->request('GET', '/portal/users/'.$targetUser->id->toRfc4122().'/edit');
+
+        $this->assertResponseIsSuccessful();
+    }
+
+    public function testUserVerifyRequiresAdminRole(): void
+    {
+        $landlord = $this->createUser('user-verify-landlord@example.com', UserRole::LANDLORD);
+        $targetUser = $this->createUnverifiedUser('unverified-for-verify@example.com');
+        $this->login($landlord);
+
+        $this->client->request('POST', '/portal/users/'.$targetUser->id->toRfc4122().'/verify');
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    public function testUserVerifyInaccessibleByRegularUser(): void
+    {
+        $user = $this->createUser('user-verify-user@example.com', UserRole::USER);
+        $targetUser = $this->createUnverifiedUser('unverified-for-user@example.com');
+        $this->login($user);
+
+        $this->client->request('POST', '/portal/users/'.$targetUser->id->toRfc4122().'/verify');
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    public function testUserVerifyAccessibleByAdmin(): void
+    {
+        $admin = $this->createUser('user-verify-admin@example.com', UserRole::ADMIN);
+        $targetUser = $this->createUnverifiedUser('unverified-for-admin@example.com');
+        $this->login($admin);
+
+        $this->client->request('POST', '/portal/users/'.$targetUser->id->toRfc4122().'/verify');
+
+        // Should redirect after successful verify
+        $this->assertResponseRedirects('/portal/users/'.$targetUser->id->toRfc4122());
+    }
+
+    public function testUserViewRequiresAdminRole(): void
+    {
+        $landlord = $this->createUser('user-view-landlord@example.com', UserRole::LANDLORD);
+        $targetUser = $this->createUser('target-view-user@example.com', UserRole::USER);
+        $this->login($landlord);
+
+        $this->client->request('GET', '/portal/users/'.$targetUser->id->toRfc4122());
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    public function testUserViewAccessibleByAdmin(): void
+    {
+        $admin = $this->createUser('user-view-admin@example.com', UserRole::ADMIN);
+        $targetUser = $this->createUser('target-view-for-admin@example.com', UserRole::USER);
+        $this->login($admin);
+
+        $this->client->request('GET', '/portal/users/'.$targetUser->id->toRfc4122());
+
+        $this->assertResponseIsSuccessful();
+    }
+
     // ===========================================
     // STORAGE CANVAS
     // ===========================================
@@ -657,6 +724,24 @@ class ControllerAccessTest extends WebTestCase
         if (UserRole::USER !== $role) {
             $user->changeRole($role, $now);
         }
+
+        $this->entityManager->persist($user);
+        $this->entityManager->flush();
+
+        return $user;
+    }
+
+    private function createUnverifiedUser(string $email): User
+    {
+        $now = new \DateTimeImmutable();
+        $user = new User(
+            id: Uuid::v7(),
+            email: $email,
+            password: 'hashed_password',
+            firstName: 'Unverified',
+            lastName: 'User',
+            createdAt: $now,
+        );
 
         $this->entityManager->persist($user);
         $this->entityManager->flush();
