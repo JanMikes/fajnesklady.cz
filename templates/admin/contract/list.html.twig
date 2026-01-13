@@ -27,7 +27,7 @@
                         <tr>
                             <td class="font-mono text-sm">{{ contract.id|slice(0, 8) }}...</td>
                             <td>
-                                <a href="{{ path('portal_users_view', {id: contract.user.id}) }}" class="text-blue-600 hover:text-blue-800">
+                                <a href="{{ path('portal_users_view', {id: contract.user.id}) }}" class="link">
                                     {{ contract.user.fullName }}
                                 </a>
                                 <div class="text-xs text-gray-500">{{ contract.user.email }}</div>
@@ -53,7 +53,7 @@
                             </td>
                             <td class="text-gray-500 text-sm">{{ contract.createdAt|date('d.m.Y H:i') }}</td>
                             <td>
-                                <a href="{{ path('portal_user_contract_detail', {id: contract.id}) }}" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                                <a href="{{ path('portal_user_contract_detail', {id: contract.id}) }}" class="link text-sm font-medium">
                                     Zobrazit
                                 </a>
                             </td>

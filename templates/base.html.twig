@@ -36,7 +36,7 @@
             {% block importmap %}{{ importmap('app') }}{% endblock %}
         {% endblock %}
     </head>
-    <body class="min-h-screen bg-gray-50" x-data="{ mobileMenuOpen: false }">
+    <body class="min-h-screen bg-gray-50" x-data="{ mobileMenuOpen: false }" data-turbo="false">
         {% block body %}{% endblock %}
     </body>
 </html>

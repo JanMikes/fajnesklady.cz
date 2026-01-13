@@ -36,7 +36,7 @@
 
         {% for page in startPage..endPage %}
             {% if page == currentPage %}
-                <span class="px-3 py-1 rounded-md border border-blue-500 bg-blue-50 text-sm font-medium text-blue-700">{{ page }}</span>
+                <span class="px-3 py-1 rounded-md border border-accent bg-accent/10 text-sm font-medium text-accent">{{ page }}</span>
             {% else %}
                 <a href="{{ path(route, routeParams|merge({page: page})) }}" class="px-3 py-1 rounded-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">{{ page }}</a>
             {% endif %}

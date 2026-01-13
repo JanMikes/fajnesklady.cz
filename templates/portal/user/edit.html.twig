@@ -34,7 +34,7 @@
                             {% for choice in form.role %}
                                 <div class="flex items-center">
                                     <label class="flex items-center cursor-pointer gap-3">
-                                        {{ form_widget(choice, {'attr': {'class': 'h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300'}}) }}
+                                        {{ form_widget(choice, {'attr': {'class': 'h-4 w-4 text-accent focus:ring-accent border-gray-300'}}) }}
                                         <span class="text-sm text-gray-700">{{ choice.vars.label }}</span>
                                     </label>
                                 </div>

@@ -92,7 +92,7 @@
 {# Checkbox widget #}
 {% block checkbox_widget -%}
     {% set attr = attr|merge({
-        class: (attr.class|default('') ~ ' h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded' ~ (errors|length ? ' border-red-300' : ''))|trim
+        class: (attr.class|default('') ~ ' h-4 w-4 text-accent focus:ring-accent border-gray-300 rounded' ~ (errors|length ? ' border-red-300' : ''))|trim
     }) -%}
     <input type="checkbox" {{ block('widget_attributes') }}{% if value is defined %} value="{{ value }}"{% endif %}{% if checked %} checked="checked"{% endif %} />
 {%- endblock checkbox_widget %}
@@ -123,7 +123,7 @@
 {# Radio widget #}
 {% block radio_widget -%}
     {% set attr = attr|merge({
-        class: (attr.class|default('') ~ ' h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300' ~ (errors|length ? ' border-red-300' : ''))|trim
+        class: (attr.class|default('') ~ ' h-4 w-4 text-accent focus:ring-accent border-gray-300' ~ (errors|length ? ' border-red-300' : ''))|trim
     }) -%}
     <input type="radio" {{ block('widget_attributes') }}{% if value is defined %} value="{{ value }}"{% endif %}{% if checked %} checked="checked"{% endif %} />
 {%- endblock radio_widget %}

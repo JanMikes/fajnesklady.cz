@@ -13,14 +13,9 @@
     {# Sidebar - Always visible on desktop, overlay on mobile #}
     <aside class="hidden lg:flex lg:flex-shrink-0">
         <div class="flex flex-col w-64 bg-gray-800">
-            {# Sidebar header #}
-            <div class="flex items-center h-16 flex-shrink-0 px-4 bg-gray-900">
-                <a href="{{ path('portal_dashboard') }}" class="text-white font-bold text-lg">Portál</a>
-            </div>
-
             {# User info #}
             <div class="flex items-center px-4 py-3 bg-gray-900 border-b border-gray-700">
-                <div class="flex-shrink-0 h-10 w-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-medium">
+                <div class="flex-shrink-0 h-10 w-10 rounded-full bg-accent text-white flex items-center justify-center font-medium">
                     {{ app.user.fullName|first|upper }}
                 </div>
                 <div class="ml-3 flex-1 min-w-0">
@@ -180,12 +175,8 @@
             </div>
 
             {# Mobile sidebar content (same as desktop) #}
-            <div class="flex items-center h-16 flex-shrink-0 px-4 bg-gray-900">
-                <a href="{{ path('portal_dashboard') }}" class="text-white font-bold text-lg">Portál</a>
-            </div>
-
             <div class="flex items-center px-4 py-3 bg-gray-900 border-b border-gray-700">
-                <div class="flex-shrink-0 h-10 w-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-medium">
+                <div class="flex-shrink-0 h-10 w-10 rounded-full bg-accent text-white flex items-center justify-center font-medium">
                     {{ app.user.fullName|first|upper }}
                 </div>
                 <div class="ml-3">
@@ -324,8 +315,8 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                     </svg>
                 </button>
-                <span class="text-lg font-semibold text-gray-900">Portál</span>
-                <div class="h-8 w-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-medium">
+
+                <div class="h-8 w-8 rounded-full bg-primary text-white flex items-center justify-center text-sm font-medium">
                     {{ app.user.fullName|first|upper }}
                 </div>
             </div>

@@ -290,6 +290,17 @@ Available: `UserAlreadyExists`, `UserNotFound`, `PlaceNotFound`, `StorageTypeNot
 - All entity IDs: UUID v7 via `ProvideIdentity` interface
 - ID generation: Production uses `RandomIdentityProvider`, tests use `PredictableIdentityProvider`
 
+## Frontend
+
+### Turbo
+
+Hotwire Turbo is installed but **disabled globally** via `data-turbo="false"` on `<body>` in `base.html.twig`. To enable Turbo on specific elements, add `data-turbo="true"`:
+
+```twig
+<form data-turbo="true">...</form>
+<a href="..." data-turbo="true">Link</a>
+```
+
 ## Testing
 
 - `tests/Unit/` - Domain logic (no database, fast)

@@ -25,7 +25,7 @@
                 </div>
             </div>
             <div class="bg-gray-50 px-5 py-3">
-                <a href="{{ path('portal_places_list') }}" class="text-sm font-medium text-blue-600 hover:text-blue-900">Zobrazit místa</a>
+                <a href="{{ path('portal_places_list') }}" class="link text-sm font-medium">Zobrazit místa</a>
             </div>
         </div>
 
@@ -90,7 +90,7 @@
                 </div>
             </div>
             <div class="bg-gray-50 px-5 py-3">
-                <a href="{{ path('portal_landlord_orders') }}" class="text-sm font-medium text-blue-600 hover:text-blue-900">Zobrazit objednávky</a>
+                <a href="{{ path('portal_landlord_orders') }}" class="link text-sm font-medium">Zobrazit objednávky</a>
             </div>
         </div>
     </div>
@@ -144,7 +144,7 @@
             <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
                 <div class="flex justify-between items-center">
                     <h3 class="text-lg font-medium text-gray-900">Poslední objednávky</h3>
-                    <a href="{{ path('portal_landlord_orders') }}" class="text-sm text-blue-600 hover:text-blue-900">Zobrazit vše</a>
+                    <a href="{{ path('portal_landlord_orders') }}" class="link text-sm">Zobrazit vše</a>
                 </div>
             </div>
             {% if recentOrders|length > 0 %}
@@ -167,7 +167,7 @@
                                     {% set statusClass = {
                                         'created': 'bg-gray-100 text-gray-800',
                                         'reserved': 'bg-yellow-100 text-yellow-800',
-                                        'awaiting_payment': 'bg-blue-100 text-blue-800',
+                                        'awaiting_payment': 'bg-amber-100 text-amber-800',
                                         'paid': 'bg-green-100 text-green-800',
                                         'completed': 'bg-green-100 text-green-800',
                                         'cancelled': 'bg-red-100 text-red-800',

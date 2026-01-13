@@ -68,12 +68,12 @@
                             <td class="font-mono text-xs">{{ log.entityId|slice(0, 8) }}...</td>
                             <td>
                                 {% set eventClass = {
-                                    'order.created': 'bg-blue-100 text-blue-800',
+                                    'order.created': 'bg-accent/10 text-accent',
                                     'order.paid': 'bg-green-100 text-green-800',
                                     'order.completed': 'bg-green-100 text-green-800',
                                     'order.cancelled': 'bg-red-100 text-red-800',
                                     'order.expired': 'bg-red-100 text-red-800',
-                                    'contract.created': 'bg-blue-100 text-blue-800',
+                                    'contract.created': 'bg-accent/10 text-accent',
                                     'contract.signed': 'bg-green-100 text-green-800',
                                     'contract.terminated': 'bg-red-100 text-red-800',
                                     'storage.reserved': 'bg-yellow-100 text-yellow-800',
@@ -86,7 +86,7 @@
                             </td>
                             <td>
                                 {% if log.user %}
-                                    <a href="{{ path('portal_users_view', {id: log.user.id}) }}" class="text-blue-600 hover:text-blue-800">
+                                    <a href="{{ path('portal_users_view', {id: log.user.id}) }}" class="link">
                                         {{ log.user.email }}
                                     </a>
                                 {% else %}
@@ -97,7 +97,7 @@
                             <td>
                                 {% if log.payload %}
                                     <button type="button"
-                                            class="text-blue-600 hover:text-blue-800 text-xs"
+                                            class="link text-xs"
                                             onclick="alert(JSON.stringify({{ log.payload|json_encode }}, null, 2))">
                                         Zobrazit JSON
                                     </button>

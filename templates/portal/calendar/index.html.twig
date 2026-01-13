@@ -88,9 +88,9 @@
                         {% set dayData = calendarData[dateKey] ?? null %}
                         {% set isToday = dateKey == 'now'|date('Y-m-d') %}
 
-                        <div class="h-24 border rounded p-2 {{ isToday ? 'border-blue-500 border-2' : 'border-gray-200' }} hover:bg-gray-50">
+                        <div class="h-24 border rounded p-2 {{ isToday ? 'border-accent border-2' : 'border-gray-200' }} hover:bg-gray-50">
                             <div class="flex justify-between items-start mb-1">
-                                <span class="text-sm font-semibold {{ isToday ? 'text-blue-600' : 'text-gray-700' }}">{{ day }}</span>
+                                <span class="text-sm font-semibold {{ isToday ? 'text-accent' : 'text-gray-700' }}">{{ day }}</span>
                                 {% if dayData %}
                                     {% set occupancyPercent = dayData.total > 0 ? ((dayData.occupied + dayData.unavailable) / dayData.total * 100)|round : 0 %}
                                     <span class="text-xs px-1.5 py-0.5 rounded {{ occupancyPercent == 100 ? 'bg-red-100 text-red-700' : (occupancyPercent > 50 ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700') }}">
