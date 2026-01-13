@@ -76,7 +76,7 @@
                                 </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {{ (order.totalPriceInHalere / 100)|number_format(2, ',', ' ') }} Kč
+                                {{ (order.totalPrice / 100)|number_format(2, ',', ' ') }} Kč
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 {% set statusClass = {

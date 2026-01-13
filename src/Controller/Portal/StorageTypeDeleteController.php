@@ -31,13 +31,6 @@ final class StorageTypeDeleteController extends AbstractController
 
         $this->denyAccessUnlessGranted(StorageTypeVoter::DELETE, $storageType);
 
-        // CSRF protection
-        if (!$this->isCsrfTokenValid('delete_storage_type_'.$id, $request->request->getString('_token'))) {
-            $this->addFlash('error', 'Neplatný CSRF token.');
-
-            return $this->redirectToRoute('portal_storage_types_list');
-        }
-
         $this->commandBus->dispatch(new DeleteStorageTypeCommand(storageTypeId: $storageType->id));
 
         $this->addFlash('success', 'Typ skladu byl úspěšně smazán.');

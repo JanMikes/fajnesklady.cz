@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Controller\Portal;
 
-use App\Entity\User;
 use App\Repository\ContractRepository;
 use App\Repository\OrderRepository;
+use App\Service\Security\OrderVoter;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -25,20 +25,12 @@ final class LandlordOrderDetailController extends AbstractController
 
     public function __invoke(string $id): Response
     {
-        /** @var User $landlord */
-        $landlord = $this->getUser();
-
         $order = $this->orderRepository->get(Uuid::fromString($id));
+        $this->denyAccessUnlessGranted(OrderVoter::VIEW, $order);
 
-        // Check if this order belongs to landlord's storage
         $storage = $order->storage;
-        $place = $storage->storageType->place;
-
-        if (!$place->owner->id->equals($landlord->id)) {
-            throw $this->createAccessDeniedException('You do not have access to this order.');
-        }
-
         $storageType = $storage->storageType;
+        $place = $storageType->place;
         $contract = $this->contractRepository->findByOrder($order);
 
         return $this->render('portal/landlord/order/detail.html.twig', [

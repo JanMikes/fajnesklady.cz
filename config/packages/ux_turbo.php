@@ -6,8 +6,6 @@ namespace Symfony\Component\DependencyInjection\Loader\Configurator;
 
 return App::config([
     'framework' => [
-        'csrf_protection' => [
-            'check_header' => true,
-        ],
+        // CSRF disabled globally
     ],
 ]);

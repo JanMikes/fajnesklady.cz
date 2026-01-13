@@ -162,7 +162,7 @@
                                 </div>
                                 <div class="text-right">
                                     <p class="text-sm font-medium text-gray-900">
-                                        {{ (order.totalPriceInHalere / 100)|number_format(0, ',', ' ') }} Kč
+                                        {{ (order.totalPrice / 100)|number_format(0, ',', ' ') }} Kč
                                     </p>
                                     {% set statusClass = {
                                         'created': 'bg-gray-100 text-gray-800',

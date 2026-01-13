@@ -57,5 +57,9 @@ return App::config([
                 '$uploadsDirectory' => '%kernel.project_dir%/public/uploads',
             ],
         ],
+        'App\\Twig\\' => [
+            'resource' => '../src/Twig/',
+            'exclude' => ['../src/Twig/Components/'],
+        ],
     ],
 ]);

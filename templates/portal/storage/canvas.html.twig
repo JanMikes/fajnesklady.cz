@@ -21,11 +21,10 @@
 
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-6"
          data-controller="storage-canvas"
-         data-storage-canvas-map-image-value="{{ place.mapImagePath ? asset('uploads/places/' ~ place.mapImagePath) : '' }}"
+         data-storage-canvas-map-image-value="{{ place.mapImagePath ? asset('uploads/' ~ place.mapImagePath) : '' }}"
          data-storage-canvas-storages-value="{{ storagesJson|e('html_attr') }}"
          data-storage-canvas-storage-types-value="{{ storageTypesJson|e('html_attr') }}"
-         data-storage-canvas-api-url-value="{{ path('api_storages_create', {placeId: place.id}) }}"
-         data-storage-canvas-csrf-token-value="{{ csrf_token('storage-api') }}">
+         data-storage-canvas-api-url-value="{{ path('api_storages_create', {placeId: place.id}) }}">
 
         {# Canvas area #}
         <div class="lg:col-span-3">

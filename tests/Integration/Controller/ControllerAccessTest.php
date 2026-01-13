@@ -439,6 +439,33 @@ class ControllerAccessTest extends WebTestCase
         $this->assertResponseStatusCodeSame(403);
     }
 
+    public function testAdminCanAccessAnyLandlordOrderDetail(): void
+    {
+        $landlord = $this->createUser('admin-lo-landlord@example.com', UserRole::LANDLORD);
+        $admin = $this->createUser('admin-lo-admin@example.com', UserRole::ADMIN);
+        $user = $this->createUser('admin-lo-user@example.com', UserRole::USER);
+
+        $place = $this->createPlace($landlord, 'Admin LO Place');
+        $storageType = $this->createStorageType($place, 'Admin LO Type');
+        $storage = $this->createStorage($storageType, 'ALO1');
+        $order = $this->createOrder($storage, $user);
+
+        $this->login($admin);
+        $this->client->request('GET', '/portal/landlord/orders/'.$order->id->toRfc4122());
+
+        $this->assertResponseIsSuccessful();
+    }
+
+    public function testAdminCanAccessLandlordOrderList(): void
+    {
+        $admin = $this->createUser('admin-lo-list@example.com', UserRole::ADMIN);
+        $this->login($admin);
+
+        $this->client->request('GET', '/portal/landlord/orders');
+
+        $this->assertResponseIsSuccessful();
+    }
+
     // ===========================================
     // ADMIN PAGES - Admin role required
     // ===========================================
@@ -575,8 +602,7 @@ class ControllerAccessTest extends WebTestCase
 
     public function testUnavailabilityListAccessibleByLandlord(): void
     {
-        $landlord = $this->createUser('unavail-landlord@example.com', UserRole::LANDLORD);
-        $this->login($landlord);
+        $this->login($this->getFixtureLandlord());
 
         $this->client->request('GET', '/portal/unavailabilities');
 

@@ -32,16 +32,6 @@ final class StorageDeleteController extends AbstractController
         // Check ownership via voter
         $this->denyAccessUnlessGranted(StorageVoter::DELETE, $storage);
 
-        // Verify CSRF token
-        $token = $request->request->get('_token');
-        if (!$this->isCsrfTokenValid('delete-storage-'.$id, is_string($token) ? $token : null)) {
-            $this->addFlash('error', 'Neplatný CSRF token.');
-
-            return $this->redirectToRoute('portal_storages_list', [
-                'storage_type' => $storage->storageType->id->toRfc4122(),
-            ]);
-        }
-
         $storageTypeId = $storage->storageType->id->toRfc4122();
 
         $command = new DeleteStorageCommand(storageId: $storage->id);

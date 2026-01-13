@@ -6,9 +6,14 @@ export default class extends Controller {
         mapImage: String,
         storages: Array,
         storageTypes: Array,
-        apiUrl: String,
-        csrfToken: String
+        apiUrl: String
     }
+
+    // Configuration constants
+    HANDLE_SIZE = 10;           // Visual size of resize handles
+    HANDLE_HIT_AREA = 16;       // Hit detection area (larger for easier clicking)
+    ROTATION_HANDLE_RADIUS = 10;
+    ROTATION_HANDLE_DISTANCE = 30;
 
     connect() {
         this.selectedStorage = null;
@@ -21,6 +26,7 @@ export default class extends Controller {
         this.creationStart = null;
         this.storages = [...this.storagesValue];
         this.scale = 1;
+        this.imageOffset = { x: 0, y: 0 };
 
         this.initializeCanvas();
         this.loadMapImage();
@@ -37,8 +43,14 @@ export default class extends Controller {
     loadMapImage() {
         if (this.mapImageValue) {
             this.mapImg = new Image();
+            this.mapImg.crossOrigin = 'anonymous';
             this.mapImg.onload = () => {
                 this.fitImageToCanvas();
+                this.render();
+            };
+            this.mapImg.onerror = (e) => {
+                console.error('Failed to load map image:', this.mapImageValue, e);
+                this.mapImg = null;
                 this.render();
             };
             this.mapImg.src = this.mapImageValue;
@@ -251,12 +263,41 @@ export default class extends Controller {
         }
     }
 
+    // Transform a point from canvas coordinates to storage's local coordinates (accounting for rotation)
+    transformPointToLocal(pos, storage) {
+        const coords = storage.coordinates;
+        const centerX = coords.x + coords.width / 2;
+        const centerY = coords.y + coords.height / 2;
+        const rotation = (coords.rotation || 0) * Math.PI / 180;
+
+        // Translate point to origin (center of storage)
+        const dx = pos.x - centerX;
+        const dy = pos.y - centerY;
+
+        // Rotate point in opposite direction
+        const cos = Math.cos(-rotation);
+        const sin = Math.sin(-rotation);
+        const localX = dx * cos - dy * sin;
+        const localY = dx * sin + dy * cos;
+
+        return { x: localX, y: localY };
+    }
+
+    // Check if a point (in local coordinates) is inside a storage's bounds
+    isPointInStorage(localPos, storage) {
+        const coords = storage.coordinates;
+        const halfWidth = coords.width / 2;
+        const halfHeight = coords.height / 2;
+
+        return localPos.x >= -halfWidth && localPos.x <= halfWidth &&
+               localPos.y >= -halfHeight && localPos.y <= halfHeight;
+    }
+
     getStorageAtPosition(pos) {
         for (let i = this.storages.length - 1; i >= 0; i--) {
             const s = this.storages[i];
-            const coords = s.coordinates;
-            if (pos.x >= coords.x && pos.x <= coords.x + coords.width &&
-                pos.y >= coords.y && pos.y <= coords.y + coords.height) {
+            const localPos = this.transformPointToLocal(pos, s);
+            if (this.isPointInStorage(localPos, s)) {
                 return s;
             }
         }
@@ -265,17 +306,27 @@ export default class extends Controller {
 
     getResizeHandle(pos, storage) {
         const coords = storage.coordinates;
-        const handleSize = 12;
+        const hitArea = this.HANDLE_HIT_AREA;
+        const halfWidth = coords.width / 2;
+        const halfHeight = coords.height / 2;
+
+        // Transform mouse position to storage's local coordinate system
+        const localPos = this.transformPointToLocal(pos, storage);
+
+        // Define handles in local coordinates (relative to center)
         const handles = [
-            { name: 'nw', x: coords.x, y: coords.y, cursor: 'nwse-resize' },
-            { name: 'ne', x: coords.x + coords.width - handleSize, y: coords.y, cursor: 'nesw-resize' },
-            { name: 'sw', x: coords.x, y: coords.y + coords.height - handleSize, cursor: 'nesw-resize' },
-            { name: 'se', x: coords.x + coords.width - handleSize, y: coords.y + coords.height - handleSize, cursor: 'nwse-resize' }
+            { name: 'nw', localX: -halfWidth, localY: -halfHeight, cursor: 'nwse-resize' },
+            { name: 'ne', localX: halfWidth, localY: -halfHeight, cursor: 'nesw-resize' },
+            { name: 'sw', localX: -halfWidth, localY: halfHeight, cursor: 'nesw-resize' },
+            { name: 'se', localX: halfWidth, localY: halfHeight, cursor: 'nwse-resize' }
         ];
 
         for (const handle of handles) {
-            if (pos.x >= handle.x && pos.x <= handle.x + handleSize &&
-                pos.y >= handle.y && pos.y <= handle.y + handleSize) {
+            const dx = localPos.x - handle.localX;
+            const dy = localPos.y - handle.localY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance <= hitArea) {
                 return handle;
             }
         }
@@ -284,23 +335,30 @@ export default class extends Controller {
 
     getRotationHandle(pos, storage) {
         const coords = storage.coordinates;
-        const handleRadius = 8;
-        const handleDistance = 25; // Distance above the storage
+        const handleRadius = this.ROTATION_HANDLE_RADIUS;
+        const handleDistance = this.ROTATION_HANDLE_DISTANCE;
+        const rotation = (coords.rotation || 0) * Math.PI / 180;
 
         // Calculate center of storage
         const centerX = coords.x + coords.width / 2;
-        const centerY = coords.y;
+        const centerY = coords.y + coords.height / 2;
 
-        // Rotation handle is above the center top of the storage
-        const handleX = centerX;
-        const handleY = centerY - handleDistance;
+        // Rotation handle position in local coords (above the top center)
+        const localHandleX = 0;
+        const localHandleY = -coords.height / 2 - handleDistance;
+
+        // Transform to canvas coordinates (apply rotation)
+        const cos = Math.cos(rotation);
+        const sin = Math.sin(rotation);
+        const handleX = centerX + localHandleX * cos - localHandleY * sin;
+        const handleY = centerY + localHandleX * sin + localHandleY * cos;
 
         // Check if mouse is within the circular handle
         const dx = pos.x - handleX;
         const dy = pos.y - handleY;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
-        if (distance <= handleRadius) {
+        if (distance <= handleRadius + 4) { // +4 for easier clicking
             return { x: handleX, y: handleY, radius: handleRadius };
         }
         return null;
@@ -312,46 +370,67 @@ export default class extends Controller {
         const coords = this.selectedStorage.coordinates;
         const minSize = 30;
 
+        // Transform mouse position to local coordinates
+        const localPos = this.transformPointToLocal(pos, this.selectedStorage);
+        const halfWidth = coords.width / 2;
+        const halfHeight = coords.height / 2;
+
+        // Calculate center position
+        const centerX = coords.x + halfWidth;
+        const centerY = coords.y + halfHeight;
+
+        let newWidth = coords.width;
+        let newHeight = coords.height;
+        let newCenterX = centerX;
+        let newCenterY = centerY;
+
         switch (this.resizeHandle.name) {
-            case 'se': // Southeast - standard resize
-                coords.width = Math.max(minSize, pos.x - coords.x);
-                coords.height = Math.max(minSize, pos.y - coords.y);
+            case 'se': // Southeast - resize from bottom-right
+                newWidth = Math.max(minSize, halfWidth + localPos.x);
+                newHeight = Math.max(minSize, halfHeight + localPos.y);
+                // Adjust center to keep opposite corner fixed
+                newCenterX = centerX + (newWidth - coords.width) / 2;
+                newCenterY = centerY + (newHeight - coords.height) / 2;
                 break;
             case 'nw': // Northwest - resize from top-left
-                const newWidthNW = coords.width + (coords.x - pos.x);
-                const newHeightNW = coords.height + (coords.y - pos.y);
-                if (newWidthNW >= minSize) {
-                    coords.x = pos.x;
-                    coords.width = newWidthNW;
-                }
-                if (newHeightNW >= minSize) {
-                    coords.y = pos.y;
-                    coords.height = newHeightNW;
-                }
+                newWidth = Math.max(minSize, halfWidth - localPos.x);
+                newHeight = Math.max(minSize, halfHeight - localPos.y);
+                // Adjust center to keep opposite corner fixed
+                newCenterX = centerX - (newWidth - coords.width) / 2;
+                newCenterY = centerY - (newHeight - coords.height) / 2;
                 break;
             case 'ne': // Northeast - resize from top-right
-                const newWidthNE = pos.x - coords.x;
-                const newHeightNE = coords.height + (coords.y - pos.y);
-                if (newWidthNE >= minSize) {
-                    coords.width = newWidthNE;
-                }
-                if (newHeightNE >= minSize) {
-                    coords.y = pos.y;
-                    coords.height = newHeightNE;
-                }
+                newWidth = Math.max(minSize, halfWidth + localPos.x);
+                newHeight = Math.max(minSize, halfHeight - localPos.y);
+                // Adjust center
+                newCenterX = centerX + (newWidth - coords.width) / 2;
+                newCenterY = centerY - (newHeight - coords.height) / 2;
                 break;
             case 'sw': // Southwest - resize from bottom-left
-                const newWidthSW = coords.width + (coords.x - pos.x);
-                const newHeightSW = pos.y - coords.y;
-                if (newWidthSW >= minSize) {
-                    coords.x = pos.x;
-                    coords.width = newWidthSW;
-                }
-                if (newHeightSW >= minSize) {
-                    coords.height = newHeightSW;
-                }
+                newWidth = Math.max(minSize, halfWidth - localPos.x);
+                newHeight = Math.max(minSize, halfHeight + localPos.y);
+                // Adjust center
+                newCenterX = centerX - (newWidth - coords.width) / 2;
+                newCenterY = centerY + (newHeight - coords.height) / 2;
                 break;
         }
+
+        // Apply rotation to center offset to get correct position shift
+        const rotation = (coords.rotation || 0) * Math.PI / 180;
+        const cos = Math.cos(rotation);
+        const sin = Math.sin(rotation);
+
+        // Calculate the offset in world coordinates
+        const localDx = newCenterX - centerX;
+        const localDy = newCenterY - centerY;
+        const worldDx = localDx * cos - localDy * sin;
+        const worldDy = localDx * sin + localDy * cos;
+
+        // Update coordinates
+        coords.width = newWidth;
+        coords.height = newHeight;
+        coords.x = centerX + worldDx - newWidth / 2;
+        coords.y = centerY + worldDy - newHeight / 2;
     }
 
     selectStorage(storage) {
@@ -425,8 +504,7 @@ export default class extends Controller {
             const response = await fetch(url, {
                 method: method,
                 headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-Token': this.csrfTokenValue
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(data)
             });
@@ -467,10 +545,7 @@ export default class extends Controller {
 
         try {
             const response = await fetch(`${this.apiUrlValue}/${this.selectedStorage.id}`, {
-                method: 'DELETE',
-                headers: {
-                    'X-CSRF-Token': this.csrfTokenValue
-                }
+                method: 'DELETE'
             });
 
             if (!response.ok) {
@@ -553,6 +628,9 @@ export default class extends Controller {
     drawStorage(storage) {
         const coords = storage.coordinates;
         const isSelected = storage === this.selectedStorage;
+        const rotation = (coords.rotation || 0) * Math.PI / 180;
+        const centerX = coords.x + coords.width / 2;
+        const centerY = coords.y + coords.height / 2;
 
         // Get storage type color
         const storageType = this.storageTypesValue.find(t => t.id === storage.storageTypeId);
@@ -560,8 +638,8 @@ export default class extends Controller {
 
         // Save context for rotation
         this.ctx.save();
-        this.ctx.translate(coords.x + coords.width / 2, coords.y + coords.height / 2);
-        this.ctx.rotate((coords.rotation || 0) * Math.PI / 180);
+        this.ctx.translate(centerX, centerY);
+        this.ctx.rotate(rotation);
 
         // Draw rectangle
         this.ctx.fillStyle = color + '80'; // 50% opacity
@@ -578,48 +656,52 @@ export default class extends Controller {
         this.ctx.textBaseline = 'middle';
         this.ctx.fillText(storage.number || '?', 0, 0);
 
-        this.ctx.restore();
-
-        // Draw resize handles if selected
+        // Draw resize handles if selected (inside the rotated context so they rotate with the storage)
         if (isSelected) {
-            const handleSize = 12;
-            this.ctx.fillStyle = '#2563eb';
-            // NW handle
-            this.ctx.fillRect(coords.x, coords.y, handleSize, handleSize);
-            // NE handle
-            this.ctx.fillRect(coords.x + coords.width - handleSize, coords.y, handleSize, handleSize);
-            // SW handle
-            this.ctx.fillRect(coords.x, coords.y + coords.height - handleSize, handleSize, handleSize);
-            // SE handle
-            this.ctx.fillRect(coords.x + coords.width - handleSize, coords.y + coords.height - handleSize, handleSize, handleSize);
+            const handleSize = this.HANDLE_SIZE;
+            const halfSize = handleSize / 2;
+            const halfWidth = coords.width / 2;
+            const halfHeight = coords.height / 2;
 
-            // Draw rotation handle
-            const handleRadius = 8;
-            const handleDistance = 25;
-            const centerX = coords.x + coords.width / 2;
-            const handleY = coords.y - handleDistance;
+            this.ctx.fillStyle = '#2563eb';
+
+            // NW handle (top-left)
+            this.ctx.fillRect(-halfWidth - halfSize, -halfHeight - halfSize, handleSize, handleSize);
+            // NE handle (top-right)
+            this.ctx.fillRect(halfWidth - halfSize, -halfHeight - halfSize, handleSize, handleSize);
+            // SW handle (bottom-left)
+            this.ctx.fillRect(-halfWidth - halfSize, halfHeight - halfSize, handleSize, handleSize);
+            // SE handle (bottom-right)
+            this.ctx.fillRect(halfWidth - halfSize, halfHeight - halfSize, handleSize, handleSize);
+
+            // Draw rotation handle (in local coordinates, above the storage)
+            const handleRadius = this.ROTATION_HANDLE_RADIUS;
+            const handleDistance = this.ROTATION_HANDLE_DISTANCE;
+            const rotHandleY = -halfHeight - handleDistance;
 
             // Draw line connecting to storage
             this.ctx.strokeStyle = '#2563eb';
             this.ctx.lineWidth = 2;
             this.ctx.beginPath();
-            this.ctx.moveTo(centerX, coords.y);
-            this.ctx.lineTo(centerX, handleY);
+            this.ctx.moveTo(0, -halfHeight);
+            this.ctx.lineTo(0, rotHandleY);
             this.ctx.stroke();
 
             // Draw rotation handle circle
             this.ctx.fillStyle = '#2563eb';
             this.ctx.beginPath();
-            this.ctx.arc(centerX, handleY, handleRadius, 0, Math.PI * 2);
+            this.ctx.arc(0, rotHandleY, handleRadius, 0, Math.PI * 2);
             this.ctx.fill();
 
             // Draw rotation icon inside the circle
             this.ctx.strokeStyle = '#ffffff';
             this.ctx.lineWidth = 2;
             this.ctx.beginPath();
-            this.ctx.arc(centerX, handleY, 4, -Math.PI * 0.7, Math.PI * 0.3);
+            this.ctx.arc(0, rotHandleY, 5, -Math.PI * 0.7, Math.PI * 0.3);
             this.ctx.stroke();
         }
+
+        this.ctx.restore();
     }
 
     getStorageColor(storage, storageType) {
@@ -635,7 +717,7 @@ export default class extends Controller {
         let html = '<ul class="divide-y divide-gray-200">';
         this.storages.forEach(storage => {
             const storageType = this.storageTypesValue.find(t => t.id === storage.storageTypeId);
-            const typeName = storageType ? storageType.name : 'Neprirazen';
+            const typeName = storageType ? storageType.name : 'Nepřiřazen';
             const isSelected = storage === this.selectedStorage;
 
             html += `

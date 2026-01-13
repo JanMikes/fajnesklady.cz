@@ -1,14 +1,6 @@
 {% extends 'base.html.twig' %}
 
 {% block body %}
-{% if is_granted('ROLE_PREVIOUS_ADMIN') %}
-<div class="bg-amber-500 text-amber-900 px-4 py-2 text-sm font-medium flex items-center justify-between">
-    <span>You are impersonating <strong>{{ app.user.email }}</strong></span>
-    <a href="{{ path('portal_dashboard', {'_switch_user': '_exit'}) }}" class="bg-amber-700 hover:bg-amber-800 text-white px-3 py-1 rounded text-xs font-semibold">
-        Exit Impersonation
-    </a>
-</div>
-{% endif %}
 <div class="min-h-screen flex" x-data="{ sidebarOpen: false }">
     {# Sidebar - Always visible on desktop, overlay on mobile #}
     <aside class="hidden lg:flex lg:flex-shrink-0">
@@ -23,6 +15,15 @@
                     <p class="text-xs text-gray-400 truncate">{{ app.user.email }}</p>
                 </div>
             </div>
+
+            {% if is_granted('IS_IMPERSONATOR') %}
+            <a href="{{ path('portal_dashboard', {'_switch_user': '_exit'}) }}" class="flex items-center gap-2 px-4 py-2 bg-amber-500/10 border-b border-amber-500/20 text-amber-400 hover:bg-amber-500/20 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 15l-3-3m0 0l3-3m-3 3h8M3 12a9 9 0 1118 0 9 9 0 01-18 0z" />
+                </svg>
+                <span class="text-xs font-medium truncate">Přihlásit zpět jako admin</span>
+            </a>
+            {% endif %}
 
             {# Navigation #}
             <div class="flex-1 flex flex-col overflow-y-auto">
@@ -184,6 +185,15 @@
                     <p class="text-xs text-gray-400">{{ app.user.email }}</p>
                 </div>
             </div>
+
+            {% if is_granted('IS_IMPERSONATOR') %}
+            <a href="{{ path('portal_dashboard', {'_switch_user': '_exit'}) }}" class="flex items-center gap-2 px-4 py-2 bg-amber-500/10 border-b border-amber-500/20 text-amber-400 hover:bg-amber-500/20 transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 15l-3-3m0 0l3-3m-3 3h8M3 12a9 9 0 1118 0 9 9 0 01-18 0z" />
+                </svg>
+                <span class="text-xs font-medium truncate">Přihlásit zpět jako admin</span>
+            </a>
+            {% endif %}
 
             <div class="flex-1 h-0 overflow-y-auto">
                 <nav class="px-2 py-4 space-y-1">

@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace App\Controller\Public;
 
+use App\Command\CreateOrderCommand;
 use App\Command\GetOrCreateUserByEmailCommand;
+use App\Entity\Order;
 use App\Entity\User;
 use App\Form\OrderFormData;
 use App\Form\OrderFormType;
 use App\Repository\StorageTypeRepository;
-use App\Service\OrderService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -25,7 +26,6 @@ final class OrderCreateController extends AbstractController
     public function __construct(
         private readonly StorageTypeRepository $storageTypeRepository,
         private readonly MessageBusInterface $commandBus,
-        private readonly OrderService $orderService,
     ) {
     }
 
@@ -80,14 +80,21 @@ final class OrderCreateController extends AbstractController
                 }
 
                 // Create order
-                $order = $this->orderService->createOrder(
+                $orderEnvelope = $this->commandBus->dispatch(new CreateOrderCommand(
                     user: $user,
                     storageType: $storageType,
                     rentalType: $formData->rentalType,
                     startDate: $formData->startDate,
                     endDate: $formData->endDate,
                     paymentFrequency: $formData->paymentFrequency,
-                );
+                ));
+
+                $orderHandledStamp = $orderEnvelope->last(HandledStamp::class);
+                $order = $orderHandledStamp?->getResult();
+
+                if (!$order instanceof Order) {
+                    throw new \RuntimeException('Failed to create order.');
+                }
 
                 $this->addFlash('success', 'Objednávka byla vytvořena. Pokračujte k platbě.');
 

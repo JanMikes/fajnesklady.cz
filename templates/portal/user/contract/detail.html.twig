@@ -183,7 +183,6 @@
             </p>
             <div class="mt-4">
                 <form action="{{ path('portal_user_contract_terminate', {id: contract.id}) }}" method="post" onsubmit="return confirm('Opravdu chcete ukončit tuto smlouvu? Tato akce je nevratná.');">
-                    <input type="hidden" name="_token" value="{{ csrf_token('terminate-contract-' ~ contract.id) }}">
                     <button type="submit" class="inline-flex items-center px-4 py-2 border border-red-300 shadow-sm text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50">
                         <svg class="h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />

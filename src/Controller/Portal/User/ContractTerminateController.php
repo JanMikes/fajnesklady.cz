@@ -57,13 +57,6 @@ final class ContractTerminateController extends AbstractController
             return $this->redirectToRoute('portal_user_contract_detail', ['id' => $id]);
         }
 
-        // Verify CSRF token
-        if (!$this->isCsrfTokenValid('terminate-contract-'.$id, $request->request->getString('_token'))) {
-            $this->addFlash('error', 'Neplatný bezpečnostní token. Zkuste to znovu.');
-
-            return $this->redirectToRoute('portal_user_contract_detail', ['id' => $id]);
-        }
-
         $this->contractService->terminateContract($contract);
 
         $this->addFlash('success', 'Smlouva byla úspěšně ukončena.');

@@ -6,6 +6,7 @@ namespace App\Controller\Portal;
 
 use App\Entity\User;
 use App\Repository\StorageUnavailabilityRepository;
+use Psr\Clock\ClockInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -17,6 +18,7 @@ final class StorageUnavailabilityListController extends AbstractController
 {
     public function __construct(
         private readonly StorageUnavailabilityRepository $unavailabilityRepository,
+        private readonly ClockInterface $clock,
     ) {
     }
 
@@ -33,6 +35,7 @@ final class StorageUnavailabilityListController extends AbstractController
 
         return $this->render('portal/unavailability/list.html.twig', [
             'unavailabilities' => $unavailabilities,
+            'today' => $this->clock->now(),
         ]);
     }
 }
