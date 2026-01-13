@@ -55,12 +55,6 @@ final class PlaceCreateController extends AbstractController
                 $mapImagePath = $this->fileUploader->uploadMapImage($formData->mapImage, $placeId);
             }
 
-            // Handle contract template upload
-            $contractTemplatePath = null;
-            if (null !== $formData->contractTemplate) {
-                $contractTemplatePath = $this->fileUploader->uploadContractTemplate($formData->contractTemplate, $placeId);
-            }
-
             $command = new CreatePlaceCommand(
                 placeId: $placeId,
                 name: $formData->name,
@@ -70,7 +64,6 @@ final class PlaceCreateController extends AbstractController
                 description: $formData->description,
                 ownerId: $ownerId,
                 mapImagePath: $mapImagePath,
-                contractTemplatePath: $contractTemplatePath,
             );
 
             $this->commandBus->dispatch($command);

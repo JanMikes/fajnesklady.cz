@@ -155,7 +155,7 @@ class ProfileControllerTest extends WebTestCase
 
         // Should show error flash for invalid current password
         $this->assertResponseIsSuccessful();
-        $this->assertSelectorExists('.alert-error');
+        $this->assertSelectorExists('[data-flash-type="error"]');
     }
 
     // ===========================================

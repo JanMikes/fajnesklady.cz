@@ -29,11 +29,11 @@ final class OrderFormData
 
     public ?string $plainPassword = null;
 
-    #[Assert\NotBlank(message: 'Zadejte název firmy.')]
+    public bool $invoiceToCompany = false;
+
     #[Assert\Length(max: 255, maxMessage: 'Název firmy může mít maximálně {{ limit }} znaků.')]
     public ?string $companyName = null;
 
-    #[Assert\NotBlank(message: 'Zadejte IČO.')]
     #[Assert\Length(exactly: 8, exactMessage: 'IČO musí mít přesně {{ limit }} číslic.')]
     #[Assert\Regex(pattern: '/^\d{8}$/', message: 'IČO musí obsahovat pouze číslice.')]
     public ?string $companyId = null;
@@ -42,15 +42,12 @@ final class OrderFormData
     #[Assert\Regex(pattern: '/^(CZ\d{8,10})?$/', message: 'DIČ musí být ve formátu CZxxxxxxxx.')]
     public ?string $companyVatId = null;
 
-    #[Assert\NotBlank(message: 'Zadejte fakturační ulici.')]
     #[Assert\Length(max: 255, maxMessage: 'Ulice může mít maximálně {{ limit }} znaků.')]
     public ?string $billingStreet = null;
 
-    #[Assert\NotBlank(message: 'Zadejte fakturační město.')]
     #[Assert\Length(max: 100, maxMessage: 'Město může mít maximálně {{ limit }} znaků.')]
     public ?string $billingCity = null;
 
-    #[Assert\NotBlank(message: 'Zadejte fakturační PSČ.')]
     #[Assert\Length(max: 10, maxMessage: 'PSČ může mít maximálně {{ limit }} znaků.')]
     public ?string $billingPostalCode = null;
 
@@ -74,6 +71,44 @@ final class OrderFormData
         if (strlen($this->plainPassword) < 8) {
             $context->buildViolation('Heslo musí mít alespoň 8 znaků.')
                 ->atPath('plainPassword')
+                ->addViolation();
+        }
+    }
+
+    #[Assert\Callback]
+    public function validateCompanyInfo(ExecutionContextInterface $context): void
+    {
+        if (!$this->invoiceToCompany) {
+            return;
+        }
+
+        if (null === $this->companyId || '' === $this->companyId) {
+            $context->buildViolation('Zadejte IČO.')
+                ->atPath('companyId')
+                ->addViolation();
+        }
+
+        if (null === $this->companyName || '' === $this->companyName) {
+            $context->buildViolation('Zadejte název firmy.')
+                ->atPath('companyName')
+                ->addViolation();
+        }
+
+        if (null === $this->billingStreet || '' === $this->billingStreet) {
+            $context->buildViolation('Zadejte fakturační ulici.')
+                ->atPath('billingStreet')
+                ->addViolation();
+        }
+
+        if (null === $this->billingCity || '' === $this->billingCity) {
+            $context->buildViolation('Zadejte fakturační město.')
+                ->atPath('billingCity')
+                ->addViolation();
+        }
+
+        if (null === $this->billingPostalCode || '' === $this->billingPostalCode) {
+            $context->buildViolation('Zadejte fakturační PSČ.')
+                ->atPath('billingPostalCode')
                 ->addViolation();
         }
     }
@@ -123,6 +158,7 @@ final class OrderFormData
         $formData->billingStreet = $user->billingStreet;
         $formData->billingCity = $user->billingCity;
         $formData->billingPostalCode = $user->billingPostalCode;
+        $formData->invoiceToCompany = null !== $user->companyId && '' !== $user->companyId;
 
         return $formData;
     }

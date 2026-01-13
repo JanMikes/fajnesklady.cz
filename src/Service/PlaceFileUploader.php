@@ -19,11 +19,6 @@ final class PlaceFileUploader
         return $this->uploadFile($file, $placeId, 'maps');
     }
 
-    public function uploadContractTemplate(UploadedFile $file, Uuid $placeId): string
-    {
-        return $this->uploadFile($file, $placeId, 'templates');
-    }
-
     public function deleteFile(?string $path): void
     {
         if (null === $path) {

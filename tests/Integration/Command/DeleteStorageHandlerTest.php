@@ -111,7 +111,7 @@ class DeleteStorageHandlerTest extends KernelTestCase
         // Convert ref like 'storage-small-a1' to 'A1'
         $matches = [];
         if (preg_match('/-([a-z])(\d+)$/', $ref, $matches)) {
-            return strtoupper($matches[1]) . $matches[2];
+            return strtoupper($matches[1]).$matches[2];
         }
 
         throw new \InvalidArgumentException("Cannot parse storage number from reference: {$ref}");

@@ -24,9 +24,6 @@ class Place
     #[ORM\Column(length: 500, nullable: true)]
     public private(set) ?string $mapImagePath = null;
 
-    #[ORM\Column(length: 500, nullable: true)]
-    public private(set) ?string $contractTemplatePath = null;
-
     #[ORM\Column]
     public private(set) int $daysInAdvance = 0;
 
@@ -88,12 +85,6 @@ class Place
         $this->updatedAt = $now;
     }
 
-    public function updateContractTemplate(?string $contractTemplatePath, \DateTimeImmutable $now): void
-    {
-        $this->contractTemplatePath = $contractTemplatePath;
-        $this->updatedAt = $now;
-    }
-
     public function updateDaysInAdvance(int $daysInAdvance, \DateTimeImmutable $now): void
     {
         $this->daysInAdvance = $daysInAdvance;
@@ -115,10 +106,5 @@ class Place
     public function isOwnedBy(User $user): bool
     {
         return $this->owner->id->equals($user->id);
-    }
-
-    public function hasContractTemplate(): bool
-    {
-        return null !== $this->contractTemplatePath;
     }
 }

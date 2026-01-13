@@ -40,10 +40,6 @@ final readonly class CreatePlaceHandler
             $place->updateMapImage($command->mapImagePath, $now);
         }
 
-        if (null !== $command->contractTemplatePath) {
-            $place->updateContractTemplate($command->contractTemplatePath, $now);
-        }
-
         $this->placeRepository->save($place);
 
         return $place;

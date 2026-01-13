@@ -37,16 +37,7 @@ final class PlaceFormData
     )]
     public ?UploadedFile $mapImage = null;
 
-    #[Assert\File(
-        maxSize: '10M',
-        mimeTypes: ['application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
-        mimeTypesMessage: 'Nahrajte dokument ve formatu DOCX',
-    )]
-    public ?UploadedFile $contractTemplate = null;
-
     public ?string $currentMapImagePath = null;
-
-    public ?string $currentContractTemplatePath = null;
 
     public static function fromPlace(Place $place): self
     {
@@ -58,7 +49,6 @@ final class PlaceFormData
         $formData->description = $place->description;
         $formData->ownerId = $place->owner->id->toRfc4122();
         $formData->currentMapImagePath = $place->mapImagePath;
-        $formData->currentContractTemplatePath = $place->contractTemplatePath;
 
         return $formData;
     }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service\Security;
 
 use App\Entity\User;
+use App\Enum\UserRole;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\RequestStack;
@@ -34,8 +35,17 @@ class LoginSubscriber implements EventSubscriberInterface
             return;
         }
 
-        // Check if email is verified
         if (!$user->isVerified()) {
+            // Check if user is a landlord awaiting admin verification
+            if (in_array(UserRole::LANDLORD->value, $user->getRoles(), true)) {
+                $event->setResponse(
+                    new RedirectResponse($this->urlGenerator->generate('app_landlord_awaiting_verification'))
+                );
+
+                return;
+            }
+
+            // Regular user needs email verification
             $request = $this->requestStack->getCurrentRequest();
             if (null !== $request && $request->hasSession()) {
                 $session = $request->getSession();

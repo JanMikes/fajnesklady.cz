@@ -47,6 +47,11 @@ return App::config([
                 '$contractsDirectory' => '%kernel.project_dir%/var/contracts',
             ],
         ],
+        'App\\Service\\ContractService' => [
+            'arguments' => [
+                '$contractTemplatePath' => '%kernel.project_dir%/templates/documents/contract_template.docx',
+            ],
+        ],
         'App\\Service\\PlaceFileUploader' => [
             'arguments' => [
                 '$uploadsDirectory' => '%kernel.project_dir%/public/uploads',

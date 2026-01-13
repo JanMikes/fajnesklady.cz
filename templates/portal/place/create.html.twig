@@ -62,13 +62,6 @@
                         {{ form_errors(form.mapImage) }}
                     </div>
 
-                    <div class="mb-4">
-                        <label for="{{ form.contractTemplate.vars.id }}" class="block text-sm font-semibold text-gray-700 mb-2">Šablona smlouvy</label>
-                        {{ form_widget(form.contractTemplate, {'attr': {'class': 'file-input file-input-bordered w-full'}}) }}
-                        <p class="mt-1 text-sm text-gray-500">Šablona smlouvy ve formatu DOCX (max 10 MB)</p>
-                        {{ form_errors(form.contractTemplate) }}
-                    </div>
-
                     <hr class="my-6 border-t border-gray-200">
 
                     <div class="flex justify-end gap-2">

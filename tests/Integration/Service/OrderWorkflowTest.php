@@ -4,11 +4,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Service;
 
-use App\DataFixtures\StorageFixtures;
-use App\DataFixtures\StorageTypeFixtures;
 use App\DataFixtures\UserFixtures;
 use App\Entity\Order;
-use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\OrderStatus;

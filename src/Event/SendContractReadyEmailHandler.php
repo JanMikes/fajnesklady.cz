@@ -52,6 +52,14 @@ final readonly class SendContractReadyEmailHandler
                 'portalUrl' => $portalUrl,
             ]);
 
+        // Attach the contract document if available
+        if ($contract->hasDocument() && null !== $contract->documentPath && file_exists($contract->documentPath)) {
+            $email->attachFromPath(
+                $contract->documentPath,
+                sprintf('smlouva_%s.docx', $this->formatContractNumber($contract)),
+            );
+        }
+
         $this->mailer->send($email);
     }
 

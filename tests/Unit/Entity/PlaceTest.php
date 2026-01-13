@@ -186,7 +186,6 @@ class PlaceTest extends TestCase
         $this->assertNull($place->latitude);
         $this->assertNull($place->longitude);
         $this->assertNull($place->mapImagePath);
-        $this->assertNull($place->contractTemplatePath);
     }
 
     public function testActivateDeactivate(): void

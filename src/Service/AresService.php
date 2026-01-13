@@ -5,36 +5,31 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Value\AresResult;
-use h4kuna\Ares\Ares;
-use h4kuna\Ares\AresFactory;
-use h4kuna\Ares\Exception\IdentificationNumberNotFoundException;
-use h4kuna\Ares\Exception\ServerResponseException;
+use App\Value\AresSubject;
+use Symfony\Contracts\HttpClient\HttpClientInterface;
 
-final class AresService implements AresLookup
+final readonly class AresService implements AresLookup
 {
-    private Ares $ares;
+    private const string ARES_API_URL = 'https://ares.gov.cz/ekonomicke-subjekty-v-be/rest/ekonomicke-subjekty/';
 
-    public function __construct()
-    {
-        $this->ares = (new AresFactory())->create();
+    public function __construct(
+        private HttpClientInterface $httpClient,
+    ) {
     }
 
     public function loadByCompanyId(string $companyId): ?AresResult
     {
         try {
-            $data = $this->ares->loadBasic($companyId);
+            $response = $this->httpClient->request('GET', self::ARES_API_URL.$companyId);
 
-            $street = trim(sprintf('%s %s', $data->street ?? '', $data->house_number ?? ''));
+            if (200 !== $response->getStatusCode()) {
+                return null;
+            }
 
-            return new AresResult(
-                companyName: $data->company ?? '',
-                companyId: $data->in,
-                companyVatId: $data->tin,
-                street: $street,
-                city: $data->city_post ?? $data->city ?? '',
-                postalCode: $data->zip ?? '',
-            );
-        } catch (IdentificationNumberNotFoundException|ServerResponseException) {
+            $subject = AresSubject::fromArray($response->toArray());
+
+            return $subject->toResult();
+        } catch (\Throwable) {
             return null;
         }
     }

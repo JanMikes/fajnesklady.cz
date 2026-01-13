@@ -17,7 +17,6 @@ final readonly class CreatePlaceCommand
         public ?string $description,
         public Uuid $ownerId,
         public ?string $mapImagePath = null,
-        public ?string $contractTemplatePath = null,
     ) {
     }
 }

@@ -41,7 +41,7 @@ class StorageDeleteControllerTest extends WebTestCase
         $storage = $this->findStorageByNumber('B3');
         $placeId = $storage->getPlace()->id->toRfc4122();
 
-        $this->client->request('DELETE', '/api/places/' . $placeId . '/storages/' . $storage->id->toRfc4122());
+        $this->client->request('DELETE', '/api/places/'.$placeId.'/storages/'.$storage->id->toRfc4122());
 
         $this->assertResponseStatusCodeSame(409);
 
@@ -59,7 +59,7 @@ class StorageDeleteControllerTest extends WebTestCase
         $storage = $this->findStorageByNumber('B1');
         $placeId = $storage->getPlace()->id->toRfc4122();
 
-        $this->client->request('DELETE', '/api/places/' . $placeId . '/storages/' . $storage->id->toRfc4122());
+        $this->client->request('DELETE', '/api/places/'.$placeId.'/storages/'.$storage->id->toRfc4122());
 
         $this->assertResponseStatusCodeSame(409);
 
@@ -78,7 +78,7 @@ class StorageDeleteControllerTest extends WebTestCase
         $placeId = $storage->getPlace()->id->toRfc4122();
         $storageId = $storage->id->toRfc4122();
 
-        $this->client->request('DELETE', '/api/places/' . $placeId . '/storages/' . $storageId);
+        $this->client->request('DELETE', '/api/places/'.$placeId.'/storages/'.$storageId);
 
         $this->assertResponseStatusCodeSame(204);
 
@@ -100,13 +100,13 @@ class StorageDeleteControllerTest extends WebTestCase
         // Storage B3 is OCCUPIED
         $storage = $this->findStorageByNumber('B3');
 
-        $this->client->request('POST', '/portal/storages/' . $storage->id->toRfc4122() . '/delete');
+        $this->client->request('POST', '/portal/storages/'.$storage->id->toRfc4122().'/delete');
 
         $this->assertResponseRedirects();
 
         // Follow redirect and check for error flash
         $this->client->followRedirect();
-        $this->assertSelectorExists('.alert-error, .flash-error, [data-flash-type="error"]');
+        $this->assertSelectorExists('[data-flash-type="error"]');
     }
 
     public function testPortalDeleteRedirectsWithErrorForReservedStorage(): void
@@ -117,13 +117,13 @@ class StorageDeleteControllerTest extends WebTestCase
         // Storage B1 is RESERVED
         $storage = $this->findStorageByNumber('B1');
 
-        $this->client->request('POST', '/portal/storages/' . $storage->id->toRfc4122() . '/delete');
+        $this->client->request('POST', '/portal/storages/'.$storage->id->toRfc4122().'/delete');
 
         $this->assertResponseRedirects();
 
         // Follow redirect and check for error flash
         $this->client->followRedirect();
-        $this->assertSelectorExists('.alert-error, .flash-error, [data-flash-type="error"]');
+        $this->assertSelectorExists('[data-flash-type="error"]');
     }
 
     public function testPortalDeleteSucceedsForAvailableStorage(): void
@@ -135,7 +135,7 @@ class StorageDeleteControllerTest extends WebTestCase
         $storage = $this->findStorageByNumber('A2');
         $storageId = $storage->id;
 
-        $this->client->request('POST', '/portal/storages/' . $storage->id->toRfc4122() . '/delete');
+        $this->client->request('POST', '/portal/storages/'.$storage->id->toRfc4122().'/delete');
 
         $this->assertResponseRedirects();
 

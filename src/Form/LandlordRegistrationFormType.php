@@ -4,23 +4,20 @@ declare(strict_types=1);
 
 namespace App\Form;
 
-use App\Enum\PaymentFrequency;
-use App\Enum\RentalType;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
-use Symfony\Component\Form\Extension\Core\Type\DateType;
 use Symfony\Component\Form\Extension\Core\Type\EmailType;
-use Symfony\Component\Form\Extension\Core\Type\EnumType;
 use Symfony\Component\Form\Extension\Core\Type\PasswordType;
+use Symfony\Component\Form\Extension\Core\Type\RepeatedType;
 use Symfony\Component\Form\Extension\Core\Type\TelType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
 /**
- * @extends AbstractType<OrderFormData>
+ * @extends AbstractType<LandlordRegistrationFormData>
  */
-final class OrderFormType extends AbstractType
+final class LandlordRegistrationFormType extends AbstractType
 {
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
@@ -54,22 +51,26 @@ final class OrderFormType extends AbstractType
                     'autocomplete' => 'tel',
                 ],
             ])
-            ->add('plainPassword', PasswordType::class, [
-                'label' => 'Heslo (nepovinné)',
-                'required' => false,
-                'attr' => [
-                    'placeholder' => 'Zadejte heslo pro vytvoření účtu',
-                    'autocomplete' => 'new-password',
+            ->add('password', RepeatedType::class, [
+                'type' => PasswordType::class,
+                'first_options' => [
+                    'label' => 'Heslo',
+                    'attr' => [
+                        'placeholder' => 'Zadejte heslo',
+                        'autocomplete' => 'new-password',
+                    ],
                 ],
-                'help' => 'Pokud zadáte heslo, bude vytvořen účet pro správu vašich objednávek.',
-            ])
-            ->add('invoiceToCompany', CheckboxType::class, [
-                'label' => 'Fakturovat na společnost',
-                'required' => false,
+                'second_options' => [
+                    'label' => 'Heslo znovu',
+                    'attr' => [
+                        'placeholder' => 'Zopakujte heslo',
+                        'autocomplete' => 'new-password',
+                    ],
+                ],
+                'invalid_message' => 'Hesla se musí shodovat.',
             ])
             ->add('companyId', TextType::class, [
                 'label' => 'IČO',
-                'required' => false,
                 'attr' => [
                     'placeholder' => '12345678',
                     'maxlength' => 8,
@@ -77,7 +78,6 @@ final class OrderFormType extends AbstractType
             ])
             ->add('companyName', TextType::class, [
                 'label' => 'Název firmy',
-                'required' => false,
                 'attr' => [
                     'placeholder' => 'Firma s.r.o.',
                 ],
@@ -91,70 +91,32 @@ final class OrderFormType extends AbstractType
             ])
             ->add('billingStreet', TextType::class, [
                 'label' => 'Ulice a číslo popisné',
-                'required' => false,
                 'attr' => [
                     'placeholder' => 'Hlavní 123',
                 ],
             ])
             ->add('billingCity', TextType::class, [
                 'label' => 'Město',
-                'required' => false,
                 'attr' => [
                     'placeholder' => 'Praha',
                 ],
             ])
             ->add('billingPostalCode', TextType::class, [
                 'label' => 'PSČ',
-                'required' => false,
                 'attr' => [
                     'placeholder' => '110 00',
                     'maxlength' => 10,
                 ],
             ])
-            ->add('rentalType', EnumType::class, [
-                'class' => RentalType::class,
-                'label' => 'Typ pronájmu',
-                'expanded' => true,
-                'choice_label' => fn (RentalType $type) => match ($type) {
-                    RentalType::LIMITED => 'Na dobu určitou',
-                    RentalType::UNLIMITED => 'Na dobu neurčitou',
-                },
-            ])
-            ->add('paymentFrequency', EnumType::class, [
-                'class' => PaymentFrequency::class,
-                'label' => 'Frekvence plateb',
-                'required' => false,
-                'placeholder' => false,
-                'choice_label' => fn (PaymentFrequency $freq) => match ($freq) {
-                    PaymentFrequency::MONTHLY => 'Měsíčně',
-                    PaymentFrequency::YEARLY => 'Ročně',
-                },
-            ])
-            ->add('startDate', DateType::class, [
-                'label' => 'Datum začátku',
-                'widget' => 'single_text',
-                'input' => 'datetime_immutable',
-                'attr' => [
-                    'data-controller' => 'datepicker',
-                    'data-datepicker-min-date-value' => (new \DateTimeImmutable('tomorrow'))->format('Y-m-d'),
-                ],
-            ])
-            ->add('endDate', DateType::class, [
-                'label' => 'Datum konce',
-                'widget' => 'single_text',
-                'required' => false,
-                'input' => 'datetime_immutable',
-                'attr' => [
-                    'data-controller' => 'datepicker',
-                    'data-datepicker-min-date-value' => (new \DateTimeImmutable('tomorrow'))->format('Y-m-d'),
-                ],
+            ->add('agreeTerms', CheckboxType::class, [
+                'label' => 'Souhlasím s obchodními podmínkami',
             ]);
     }
 
     public function configureOptions(OptionsResolver $resolver): void
     {
         $resolver->setDefaults([
-            'data_class' => OrderFormData::class,
+            'data_class' => LandlordRegistrationFormData::class,
         ]);
     }
 }

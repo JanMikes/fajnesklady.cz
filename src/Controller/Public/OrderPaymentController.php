@@ -4,13 +4,15 @@ declare(strict_types=1);
 
 namespace App\Controller\Public;
 
+use App\Command\CancelOrderCommand;
+use App\Command\ConfirmOrderPaymentCommand;
 use App\Enum\OrderStatus;
 use App\Repository\OrderRepository;
-use App\Service\OrderService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Uid\Uuid;
 
@@ -19,7 +21,7 @@ final class OrderPaymentController extends AbstractController
 {
     public function __construct(
         private readonly OrderRepository $orderRepository,
-        private readonly OrderService $orderService,
+        private readonly MessageBusInterface $commandBus,
     ) {
     }
 
@@ -52,7 +54,7 @@ final class OrderPaymentController extends AbstractController
 
             if ('pay' === $action) {
                 try {
-                    $this->orderService->confirmPayment($order);
+                    $this->commandBus->dispatch(new ConfirmOrderPaymentCommand($order));
                     $this->addFlash('success', 'Platba byla úspěšně přijata.');
 
                     return $this->redirectToRoute('public_order_accept', ['id' => $order->id]);
@@ -61,7 +63,7 @@ final class OrderPaymentController extends AbstractController
                 }
             } elseif ('cancel' === $action) {
                 try {
-                    $this->orderService->cancelOrder($order);
+                    $this->commandBus->dispatch(new CancelOrderCommand($order));
                     $this->addFlash('info', 'Objednávka byla zrušena.');
 
                     return $this->redirectToRoute('app_home');

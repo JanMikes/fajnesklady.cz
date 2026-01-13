@@ -54,6 +54,8 @@ return App::config([
             ['path' => '^/portal', 'roles' => 'ROLE_USER'],
             ['path' => '^/login', 'roles' => 'PUBLIC_ACCESS'],
             ['path' => '^/register', 'roles' => 'PUBLIC_ACCESS'],
+            ['path' => '^/registrace-pronajimatele', 'roles' => 'PUBLIC_ACCESS'],
+            ['path' => '^/pronajimatel/cekani-na-overeni', 'roles' => 'IS_AUTHENTICATED_REMEMBERED'],
             ['path' => '^/reset-password', 'roles' => 'PUBLIC_ACCESS'],
             ['path' => '^/verify-email', 'roles' => 'PUBLIC_ACCESS'],
         ],

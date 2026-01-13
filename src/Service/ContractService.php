@@ -19,22 +19,21 @@ final readonly class ContractService
         private ContractRepository $contractRepository,
         private ContractDocumentGenerator $documentGenerator,
         private AuditLogger $auditLogger,
+        private string $contractTemplatePath,
     ) {
     }
 
     /**
      * Generate and attach document to a contract.
+     *
+     * @return string Path to the generated document
      */
-    public function generateDocument(Contract $contract, \DateTimeImmutable $now = new \DateTimeImmutable()): void
+    public function generateDocument(Contract $contract, \DateTimeImmutable $now = new \DateTimeImmutable()): string
     {
-        $place = $contract->storage->getPlace();
-
-        if (null === $place->contractTemplatePath) {
-            throw new \DomainException('Place does not have a contract template configured.');
-        }
-
-        $documentPath = $this->documentGenerator->generate($contract, $place->contractTemplatePath);
+        $documentPath = $this->documentGenerator->generate($contract, $this->contractTemplatePath);
         $contract->attachDocument($documentPath, $now);
+
+        return $documentPath;
     }
 
     /**

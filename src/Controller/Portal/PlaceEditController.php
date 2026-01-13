@@ -48,13 +48,6 @@ final class PlaceEditController extends AbstractController
                 $mapImagePath = $this->fileUploader->uploadMapImage($formData->mapImage, $place->id);
             }
 
-            // Handle contract template upload
-            $contractTemplatePath = null;
-            if (null !== $formData->contractTemplate) {
-                $this->fileUploader->deleteFile($place->contractTemplatePath);
-                $contractTemplatePath = $this->fileUploader->uploadContractTemplate($formData->contractTemplate, $place->id);
-            }
-
             $command = new UpdatePlaceCommand(
                 placeId: $place->id,
                 name: $formData->name,
@@ -63,7 +56,6 @@ final class PlaceEditController extends AbstractController
                 postalCode: $formData->postalCode,
                 description: $formData->description,
                 mapImagePath: $mapImagePath,
-                contractTemplatePath: $contractTemplatePath,
             );
 
             $this->commandBus->dispatch($command);

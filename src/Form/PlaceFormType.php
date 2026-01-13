@@ -80,16 +80,6 @@ class PlaceFormType extends AbstractType
             'help' => 'Obrazek mapy skladu (JPEG, PNG, WebP, max 5 MB)',
         ]);
 
-        $builder->add('contractTemplate', FileType::class, [
-            'label' => 'Sablona smlouvy',
-            'required' => false,
-            'attr' => [
-                'accept' => '.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                'class' => 'file-input file-input-bordered w-full',
-            ],
-            'help' => 'Sablona smlouvy ve formatu DOCX (max 10 MB)',
-        ]);
-
         // Only show owner selector for admins
         if ($this->authorizationChecker->isGranted('ROLE_ADMIN')) {
             $builder->add('ownerId', ChoiceType::class, [
