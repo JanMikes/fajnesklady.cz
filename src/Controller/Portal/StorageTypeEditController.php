@@ -56,7 +56,7 @@ final class StorageTypeEditController extends AbstractController
 
             $this->commandBus->dispatch($command);
 
-            $this->addFlash('success', 'Typ skladu byl uspesne aktualizovan.');
+            $this->addFlash('success', 'Typ skladu byl úspěšně aktualizován.');
 
             return $this->redirectToRoute('portal_storage_types_list');
         }

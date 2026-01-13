@@ -34,8 +34,8 @@ final class StorageDeleteController extends AbstractController
 
         // Verify CSRF token
         $token = $request->request->get('_token');
-        if (!$this->isCsrfTokenValid('delete-storage-' . $id, is_string($token) ? $token : null)) {
-            $this->addFlash('error', 'Neplatny CSRF token.');
+        if (!$this->isCsrfTokenValid('delete-storage-'.$id, is_string($token) ? $token : null)) {
+            $this->addFlash('error', 'Neplatný CSRF token.');
 
             return $this->redirectToRoute('portal_storages_list', [
                 'storage_type' => $storage->storageType->id->toRfc4122(),
@@ -47,7 +47,7 @@ final class StorageDeleteController extends AbstractController
         $command = new DeleteStorageCommand(storageId: $storage->id);
         $this->commandBus->dispatch($command);
 
-        $this->addFlash('success', 'Sklad byl uspesne smazan.');
+        $this->addFlash('success', 'Sklad byl úspěšně smazán.');
 
         return $this->redirectToRoute('portal_storages_list', [
             'storage_type' => $storageTypeId,

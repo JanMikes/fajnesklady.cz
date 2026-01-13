@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Controller\Portal;
 
+use App\Command\ChangeUserRoleCommand;
 use App\Form\UserRoleFormData;
 use App\Form\UserRoleFormType;
 use App\Repository\UserRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Uid\Uuid;
@@ -20,6 +22,7 @@ final class UserEditController extends AbstractController
 {
     public function __construct(
         private readonly UserRepository $userRepository,
+        private readonly MessageBusInterface $commandBus,
     ) {
     }
 
@@ -32,10 +35,12 @@ final class UserEditController extends AbstractController
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            $user->changeRole($formData->role, new \DateTimeImmutable());
-            $this->userRepository->save($user);
+            $this->commandBus->dispatch(new ChangeUserRoleCommand(
+                userId: $user->id,
+                role: $formData->role,
+            ));
 
-            $this->addFlash('success', 'User role has been updated.');
+            $this->addFlash('success', 'Role uživatele byla aktualizována.');
 
             return $this->redirectToRoute('portal_users_view', ['id' => $id]);
         }

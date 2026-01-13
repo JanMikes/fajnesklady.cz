@@ -106,7 +106,7 @@ class StorageUnavailabilityFormType extends AbstractType
         foreach ($places as $place) {
             $storages = $this->storageRepository->findByPlace($place);
             foreach ($storages as $storage) {
-                $label = $place->name . ' - ' . $storage->storageType->name . ' - ' . $storage->number;
+                $label = $place->name.' - '.$storage->storageType->name.' - '.$storage->number;
                 $choices[$label] = $storage->id->toRfc4122();
             }
         }

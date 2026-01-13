@@ -42,31 +42,31 @@ final class ContractTerminateController extends AbstractController
         $user = $this->getUser();
 
         if (!$contract->user->id->equals($user->id)) {
-            throw new AccessDeniedHttpException('Nemate pristup k teto smlouve.');
+            throw new AccessDeniedHttpException('Nemáte přístup k této smlouvě.');
         }
 
         if (!$contract->isUnlimited()) {
-            $this->addFlash('error', 'Smlouvu na dobu urcitou nelze predcasne ukoncit.');
+            $this->addFlash('error', 'Smlouvu na dobu určitou nelze předčasně ukončit.');
 
             return $this->redirectToRoute('portal_user_contract_detail', ['id' => $id]);
         }
 
         if (!$this->contractService->canTerminate($contract)) {
-            $this->addFlash('error', 'Tuto smlouvu nelze ukoncit.');
+            $this->addFlash('error', 'Tuto smlouvu nelze ukončit.');
 
             return $this->redirectToRoute('portal_user_contract_detail', ['id' => $id]);
         }
 
         // Verify CSRF token
-        if (!$this->isCsrfTokenValid('terminate-contract-' . $id, $request->request->getString('_token'))) {
-            $this->addFlash('error', 'Neplatny bezpecnostni token. Zkuste to znovu.');
+        if (!$this->isCsrfTokenValid('terminate-contract-'.$id, $request->request->getString('_token'))) {
+            $this->addFlash('error', 'Neplatný bezpečnostní token. Zkuste to znovu.');
 
             return $this->redirectToRoute('portal_user_contract_detail', ['id' => $id]);
         }
 
         $this->contractService->terminateContract($contract);
 
-        $this->addFlash('success', 'Smlouva byla uspesne ukoncena.');
+        $this->addFlash('success', 'Smlouva byla úspěšně ukončena.');
 
         return $this->redirectToRoute('portal_user_contracts');
     }

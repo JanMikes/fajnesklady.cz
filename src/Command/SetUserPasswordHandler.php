@@ -30,5 +30,6 @@ final readonly class SetUserPasswordHandler
 
         $hashedPassword = $this->passwordHasher->hashPassword($user, $command->plainPassword);
         $user->changePassword($hashedPassword, $this->clock->now());
+        $this->userRepository->save($user);
     }
 }

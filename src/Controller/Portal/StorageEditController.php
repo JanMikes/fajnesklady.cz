@@ -47,7 +47,7 @@ final class StorageEditController extends AbstractController
 
             $this->commandBus->dispatch($command);
 
-            $this->addFlash('success', 'Sklad byl uspesne aktualizovan.');
+            $this->addFlash('success', 'Sklad byl úspěšně aktualizován.');
 
             return $this->redirectToRoute('portal_storages_list', [
                 'storage_type' => $storage->storageType->id->toRfc4122(),

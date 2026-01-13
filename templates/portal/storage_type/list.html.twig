@@ -35,11 +35,11 @@
                         <tr>
                             <td class="font-medium text-gray-900">{{ storageType.name }}</td>
                             <td class="text-gray-500">{{ storageType.width }} x {{ storageType.height }} x {{ storageType.length }}</td>
-                            <td class="text-gray-500">{{ storageType.volume|number_format(2, ',', ' ') }}</td>
+                            <td class="text-gray-500">{{ storageType.volumeInCubicMeters|number_format(2, ',', ' ') }}</td>
                             <td class="text-gray-900 font-medium">{{ storageType.pricePerWeekInCzk|number_format(0, ',', ' ') }} Kc</td>
                             <td class="text-gray-900 font-medium">{{ storageType.pricePerMonthInCzk|number_format(0, ',', ' ') }} Kc</td>
                             {% if is_granted('ROLE_ADMIN') %}
-                                <td class="text-gray-500">{{ storageType.owner.fullName }}</td>
+                                <td class="text-gray-500">{{ storageType.place.owner.fullName }}</td>
                             {% endif %}
                             <td class="text-gray-500 text-sm">{{ storageType.createdAt|date('Y-m-d H:i') }}</td>
                             <td>

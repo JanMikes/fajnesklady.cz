@@ -56,7 +56,7 @@ final class StorageTypeCreateController extends AbstractController
 
             $this->commandBus->dispatch($command);
 
-            $this->addFlash('success', 'Typ skladu byl uspesne vytvoren.');
+            $this->addFlash('success', 'Typ skladu byl úspěšně vytvořen.');
 
             return $this->redirectToRoute('portal_storage_types_list');
         }

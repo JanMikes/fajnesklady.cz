@@ -38,7 +38,7 @@ final readonly class SendOrderConfirmationEmailHandler
         $email = (new TemplatedEmail())
             ->from(new Address('noreply@fajnesklady.cz', 'Fajné Sklady'))
             ->to(new Address($user->email, $user->fullName))
-            ->subject('Potvrzení objednávky - ' . $place->name)
+            ->subject('Potvrzení objednávky - '.$place->name)
             ->htmlTemplate('email/order_confirmation.html.twig')
             ->context([
                 'name' => $user->fullName,
@@ -49,7 +49,7 @@ final readonly class SendOrderConfirmationEmailHandler
                 'storageNumber' => $storage->number,
                 'startDate' => $order->startDate->format('d.m.Y'),
                 'endDate' => $order->endDate?->format('d.m.Y') ?? 'Na dobu neurčitou',
-                'totalPrice' => number_format($order->getTotalPriceInCzk(), 2, ',', ' ') . ' Kč',
+                'totalPrice' => number_format($order->getTotalPriceInCzk(), 2, ',', ' ').' Kč',
                 'expiresAt' => $order->expiresAt->format('d.m.Y H:i'),
                 'portalUrl' => $portalUrl,
             ]);

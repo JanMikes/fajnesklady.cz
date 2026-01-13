@@ -33,14 +33,14 @@ final class PlaceDeleteController extends AbstractController
 
         // CSRF protection
         if (!$this->isCsrfTokenValid('delete_place_'.$id, $request->request->getString('_token'))) {
-            $this->addFlash('error', 'Neplatny CSRF token.');
+            $this->addFlash('error', 'Neplatný CSRF token.');
 
             return $this->redirectToRoute('portal_places_list');
         }
 
         $this->commandBus->dispatch(new DeletePlaceCommand(placeId: $place->id));
 
-        $this->addFlash('success', 'Misto bylo uspesne smazano.');
+        $this->addFlash('success', 'Místo bylo úspěšně smazáno.');
 
         return $this->redirectToRoute('portal_places_list');
     }

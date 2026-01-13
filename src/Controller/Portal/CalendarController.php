@@ -114,9 +114,10 @@ final class CalendarController extends AbstractController
                         // Check orders
                         if (isset($ordersByStorage[$storageId])) {
                             foreach ($ordersByStorage[$storageId] as $order) {
-                                if ($order->startDate <= $currentDate &&
-                                    (null === $order->endDate || $order->endDate >= $currentDate)) {
+                                if ($order->startDate <= $currentDate
+                                    && (null === $order->endDate || $order->endDate >= $currentDate)) {
                                     $isOccupied = true;
+
                                     break;
                                 }
                             }
@@ -125,20 +126,21 @@ final class CalendarController extends AbstractController
                         // Check manual unavailabilities
                         if (!$isOccupied && isset($unavailabilitiesByStorage[$storageId])) {
                             foreach ($unavailabilitiesByStorage[$storageId] as $unavail) {
-                                if ($unavail->startDate <= $currentDate &&
-                                    (null === $unavail->endDate || $unavail->endDate >= $currentDate)) {
+                                if ($unavail->startDate <= $currentDate
+                                    && (null === $unavail->endDate || $unavail->endDate >= $currentDate)) {
                                     $isUnavailable = true;
+
                                     break;
                                 }
                             }
                         }
 
                         if ($isOccupied) {
-                            $occupied++;
+                            ++$occupied;
                         } elseif ($isUnavailable) {
-                            $unavailable++;
+                            ++$unavailable;
                         } else {
-                            $available++;
+                            ++$available;
                         }
                     }
 
@@ -159,14 +161,14 @@ final class CalendarController extends AbstractController
         $prevYear = $year;
         if ($prevMonth < 1) {
             $prevMonth = 12;
-            $prevYear--;
+            --$prevYear;
         }
 
         $nextMonth = $month + 1;
         $nextYear = $year;
         if ($nextMonth > 12) {
             $nextMonth = 1;
-            $nextYear++;
+            ++$nextYear;
         }
 
         return $this->render('portal/calendar/index.html.twig', [

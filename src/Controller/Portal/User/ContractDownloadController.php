@@ -43,23 +43,26 @@ final class ContractDownloadController extends AbstractController
         $user = $this->getUser();
 
         if (!$contract->user->id->equals($user->id)) {
-            throw new AccessDeniedHttpException('Nemate pristup k teto smlouve.');
+            throw new AccessDeniedHttpException('Nemáte přístup k této smlouvě.');
         }
 
         if (!$contract->hasDocument()) {
-            throw new NotFoundHttpException('Dokument smlouvy neni k dispozici.');
+            throw new NotFoundHttpException('Dokument smlouvy není k dispozici.');
         }
 
-        $filePath = $this->projectDir . '/var/contracts/' . $contract->documentPath;
+        $contractsDir = $this->projectDir.'/var/contracts';
+        $filePath = $contractsDir.'/'.$contract->documentPath;
+        $realPath = realpath($filePath);
 
-        if (!file_exists($filePath)) {
+        // Validate path to prevent directory traversal
+        if (false === $realPath || !str_starts_with($realPath, realpath($contractsDir).'/')) {
             throw new NotFoundHttpException('Dokument smlouvy nebyl nalezen.');
         }
 
-        $response = new BinaryFileResponse($filePath);
+        $response = new BinaryFileResponse($realPath);
         $response->setContentDisposition(
             ResponseHeaderBag::DISPOSITION_ATTACHMENT,
-            'smlouva-' . $contract->id->toBase32() . '.docx'
+            'smlouva-'.$contract->id->toBase32().'.docx'
         );
 
         return $response;

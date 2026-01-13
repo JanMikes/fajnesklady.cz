@@ -93,7 +93,8 @@ final class StorageTypeRepository
         return $this->entityManager->createQueryBuilder()
             ->select('s')
             ->from(StorageType::class, 's')
-            ->where('s.owner = :owner')
+            ->join('s.place', 'p')
+            ->where('p.owner = :owner')
             ->setParameter('owner', $owner)
             ->orderBy('s.createdAt', 'DESC')
             ->addOrderBy('s.id', 'DESC')
@@ -105,19 +106,25 @@ final class StorageTypeRepository
 
     public function countTotal(): int
     {
-        $connection = $this->entityManager->getConnection();
-        $result = $connection->executeQuery('SELECT COUNT(id) FROM storage_types')->fetchOne();
+        $result = $this->entityManager->createQueryBuilder()
+            ->select('COUNT(s.id)')
+            ->from(StorageType::class, 's')
+            ->getQuery()
+            ->getSingleScalarResult();
 
         return (int) $result;
     }
 
     public function countByOwner(User $owner): int
     {
-        $connection = $this->entityManager->getConnection();
-        $result = $connection->executeQuery(
-            'SELECT COUNT(id) FROM storage_types WHERE owner_id = :ownerId',
-            ['ownerId' => $owner->id->toRfc4122()]
-        )->fetchOne();
+        $result = $this->entityManager->createQueryBuilder()
+            ->select('COUNT(s.id)')
+            ->from(StorageType::class, 's')
+            ->join('s.place', 'p')
+            ->where('p.owner = :owner')
+            ->setParameter('owner', $owner)
+            ->getQuery()
+            ->getSingleScalarResult();
 
         return (int) $result;
     }

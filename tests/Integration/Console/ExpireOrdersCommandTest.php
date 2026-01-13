@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Console;
 
-use App\Console\ExpireOrdersCommand;
 use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;

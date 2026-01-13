@@ -54,7 +54,7 @@ final class PlaceDetailController extends AbstractController
         }
 
         // Prepare storage data for the map
-        $storagesData = array_map(fn($s) => [
+        $storagesData = array_map(fn ($s) => [
             'id' => $s->id->toRfc4122(),
             'number' => $s->number,
             'storageTypeId' => $s->storageType->id->toRfc4122(),
@@ -65,7 +65,7 @@ final class PlaceDetailController extends AbstractController
             'pricePerMonth' => $s->storageType->getPricePerMonthInCzk(),
         ], $storages);
 
-        $storageTypesData = array_map(fn($t) => [
+        $storageTypesData = array_map(fn ($t) => [
             'id' => $t->id->toRfc4122(),
             'name' => $t->name,
             'dimensions' => $t->getDimensionsInMeters(),

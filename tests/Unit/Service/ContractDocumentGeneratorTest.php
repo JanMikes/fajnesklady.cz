@@ -10,7 +10,6 @@ use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
-use App\Enum\PaymentFrequency;
 use App\Enum\RentalType;
 use App\Service\ContractDocumentGenerator;
 use PHPUnit\Framework\TestCase;
@@ -23,7 +22,7 @@ class ContractDocumentGeneratorTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->tempDir = sys_get_temp_dir() . '/contract_test_' . uniqid();
+        $this->tempDir = sys_get_temp_dir().'/contract_test_'.uniqid();
         mkdir($this->tempDir, 0755, true);
         $this->generator = new ContractDocumentGenerator($this->tempDir);
     }
@@ -41,7 +40,7 @@ class ContractDocumentGeneratorTest extends TestCase
         }
         $files = array_diff(scandir($dir), ['.', '..']);
         foreach ($files as $file) {
-            $path = $dir . '/' . $file;
+            $path = $dir.'/'.$file;
             is_dir($path) ? $this->removeDirectory($path) : unlink($path);
         }
         rmdir($dir);
@@ -133,7 +132,7 @@ class ContractDocumentGeneratorTest extends TestCase
 
     private function createTestTemplate(): string
     {
-        $templatePath = $this->tempDir . '/template.docx';
+        $templatePath = $this->tempDir.'/template.docx';
 
         // Create a simple DOCX template using PhpWord
         $phpWord = new \PhpOffice\PhpWord\PhpWord();
@@ -206,7 +205,7 @@ class ContractDocumentGeneratorTest extends TestCase
         $contract = $this->createContract($order);
 
         // Use a nested directory that doesn't exist
-        $nestedDir = $this->tempDir . '/nested/contracts';
+        $nestedDir = $this->tempDir.'/nested/contracts';
         $generator = new ContractDocumentGenerator($nestedDir);
 
         $templatePath = $this->createTestTemplate();

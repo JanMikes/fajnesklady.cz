@@ -28,6 +28,8 @@ final readonly class UpdateStorageHandler
             now: $this->clock->now(),
         );
 
+        $this->storageRepository->save($storage);
+
         return $storage;
     }
 }

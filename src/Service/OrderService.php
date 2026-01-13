@@ -69,7 +69,7 @@ final readonly class OrderService
             startDate: $startDate,
             endDate: $endDate,
             totalPrice: $totalPrice,
-            expiresAt: $now->modify('+' . self::RESERVATION_DAYS . ' days'),
+            expiresAt: $now->modify('+'.self::RESERVATION_DAYS.' days'),
             createdAt: $now,
         );
 

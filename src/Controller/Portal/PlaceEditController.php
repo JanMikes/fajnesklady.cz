@@ -72,7 +72,7 @@ final class PlaceEditController extends AbstractController
 
             $this->commandBus->dispatch($command);
 
-            $this->addFlash('success', 'Misto bylo uspesne aktualizovano.');
+            $this->addFlash('success', 'Místo bylo úspěšně aktualizováno.');
 
             return $this->redirectToRoute('portal_places_list');
         }

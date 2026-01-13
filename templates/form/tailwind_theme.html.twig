@@ -128,6 +128,20 @@
     <input type="radio" {{ block('widget_attributes') }}{% if value is defined %} value="{{ value }}"{% endif %}{% if checked %} checked="checked"{% endif %} />
 {%- endblock radio_widget %}
 
+{# Expanded choice widget (radio buttons or checkboxes in a group) #}
+{% block choice_widget_expanded -%}
+    <div {{ block('widget_container_attributes') }} class="space-y-3">
+        {%- for child in form %}
+            <div class="flex items-center">
+                {{- form_widget(child) -}}
+                <label for="{{ child.vars.id }}" class="ml-3 text-sm text-gray-700 cursor-pointer">
+                    {{- child.vars.label is not same as(false) ? (translation_domain is same as(false) ? child.vars.label : child.vars.label|trans({}, translation_domain)) -}}
+                </label>
+            </div>
+        {% endfor -%}
+    </div>
+{%- endblock choice_widget_expanded %}
+
 {# Form errors #}
 {% block form_errors -%}
     {% if errors|length > 0 -%}

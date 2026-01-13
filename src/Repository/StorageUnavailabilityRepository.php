@@ -6,6 +6,7 @@ namespace App\Repository;
 
 use App\Entity\Storage;
 use App\Entity\StorageUnavailability;
+use App\Exception\StorageUnavailabilityNotFound;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -157,12 +158,6 @@ final class StorageUnavailabilityRepository
 
     public function get(Uuid $id): StorageUnavailability
     {
-        $unavailability = $this->find($id);
-
-        if (null === $unavailability) {
-            throw new \RuntimeException(sprintf('StorageUnavailability with ID "%s" not found.', $id));
-        }
-
-        return $unavailability;
+        return $this->find($id) ?? throw StorageUnavailabilityNotFound::withId($id);
     }
 }

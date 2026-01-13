@@ -45,7 +45,7 @@ final class StorageCreateController extends AbstractController
 
             $this->commandBus->dispatch($command);
 
-            $this->addFlash('success', 'Sklad byl uspesne vytvoren.');
+            $this->addFlash('success', 'Sklad byl úspěšně vytvořen.');
 
             return $this->redirectToRoute('portal_storages_list', [
                 'storage_type' => $formData->storageTypeId,

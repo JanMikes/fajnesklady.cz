@@ -35,8 +35,8 @@ final readonly class SendContractExpiringReminderHandler
             UrlGeneratorInterface::ABSOLUTE_URL
         );
 
-        $subject = $event->daysRemaining === 1
-            ? 'Zítra končí Vaše smlouva - ' . $place->name
+        $subject = 1 === $event->daysRemaining
+            ? 'Zítra končí Vaše smlouva - '.$place->name
             : sprintf('Vaše smlouva končí za %d dní - %s', $event->daysRemaining, $place->name);
 
         $email = (new TemplatedEmail())

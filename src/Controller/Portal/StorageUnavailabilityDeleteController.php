@@ -40,8 +40,8 @@ final class StorageUnavailabilityDeleteController extends AbstractController
 
         // Verify CSRF token
         $token = $request->request->get('_token');
-        if (!$this->isCsrfTokenValid('delete-unavailability-' . $id, is_string($token) ? $token : null)) {
-            $this->addFlash('error', 'Neplatny CSRF token.');
+        if (!$this->isCsrfTokenValid('delete-unavailability-'.$id, is_string($token) ? $token : null)) {
+            $this->addFlash('error', 'Neplatný CSRF token.');
 
             return $this->redirectToRoute('portal_unavailabilities_list');
         }
@@ -49,7 +49,7 @@ final class StorageUnavailabilityDeleteController extends AbstractController
         $command = new DeleteStorageUnavailabilityCommand(unavailabilityId: $unavailability->id);
         $this->commandBus->dispatch($command);
 
-        $this->addFlash('success', 'Blokovani skladu bylo uspesne smazano.');
+        $this->addFlash('success', 'Blokování skladu bylo úspěšně smazáno.');
 
         return $this->redirectToRoute('portal_unavailabilities_list');
     }

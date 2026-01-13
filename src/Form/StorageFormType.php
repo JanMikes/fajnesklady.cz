@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Form;
 
-use App\Entity\Place;
 use App\Entity\User;
 use App\Repository\PlaceRepository;
 use App\Repository\StorageTypeRepository;

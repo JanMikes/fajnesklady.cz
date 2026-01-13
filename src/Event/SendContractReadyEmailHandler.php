@@ -38,7 +38,7 @@ final readonly class SendContractReadyEmailHandler
         $email = (new TemplatedEmail())
             ->from(new Address('noreply@fajnesklady.cz', 'Fajné Sklady'))
             ->to(new Address($user->email, $user->fullName))
-            ->subject('Smlouva připravena - ' . $place->name)
+            ->subject('Smlouva připravena - '.$place->name)
             ->htmlTemplate('email/contract_ready.html.twig')
             ->context([
                 'name' => $user->fullName,

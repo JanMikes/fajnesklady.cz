@@ -41,7 +41,7 @@ final class ContractDetailController extends AbstractController
         $user = $this->getUser();
 
         if (!$contract->user->id->equals($user->id)) {
-            throw new AccessDeniedHttpException('Nemate pristup k teto smlouve.');
+            throw new AccessDeniedHttpException('Nemáte přístup k této smlouvě.');
         }
 
         $now = new \DateTimeImmutable();

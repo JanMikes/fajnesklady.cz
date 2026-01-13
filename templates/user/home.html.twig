@@ -15,13 +15,13 @@
         <h1 class="text-5xl font-bold mb-4">Fajne Sklady</h1>
         <p class="text-xl mb-6">Bezpečné uskladnění vašich věcí v kontejnerech</p>
         <div class="flex gap-4 justify-center flex-wrap">
-            <a href="#kontejnery" class="btn bg-white text-blue-600 hover:bg-gray-100">Vybrat si velikost</a>
+            <a href="#pobocky" class="btn bg-white text-blue-600 hover:bg-gray-100">Naše pobočky</a>
             <a href="#kontakt" class="btn bg-transparent border-2 border-white text-white hover:bg-white hover:text-blue-600">Kontakt</a>
         </div>
     </div>
 
     {# Map Section #}
-    <div class="mb-8">
+    <div id="pobocky" class="mb-8">
         <h2 class="text-3xl font-bold text-gray-900 mb-4">Naše pobočky</h2>
         <p class="text-gray-600 mb-6">Najděte nejbližší pobočku a zjistěte dostupnost kontejnerů</p>
         <div
@@ -52,48 +52,6 @@
             {% endfor %}
         </div>
         {% endif %}
-    </div>
-
-    {# Container Sizes Section #}
-    <div id="kontejnery" class="mb-8">
-        <h2 class="text-3xl font-bold text-gray-900 mb-4">Velikosti kontejnerů</h2>
-        <p class="text-gray-600 mb-6">Vyberte si kontejner podle vašich potřeb</p>
-
-        <div class="grid md:grid-cols-3 gap-6">
-            {# Small Container #}
-            <div class="card hover:shadow-xl transition-shadow">
-                <div class="card-body">
-                    <h3 class="text-2xl font-bold text-gray-900 mb-2">Fajně malý</h3>
-                    <div class="text-sm text-gray-600 mb-4">6.6m² (3m × 2.2m × 2.2m)</div>
-                    <div class="text-3xl font-bold text-blue-600 mb-4">od 60 Kč/den</div>
-                    <p class="text-gray-600 mb-4">Ideální pro sezónní věci, zimní pneumatiky nebo zahradní nábytek</p>
-                    <a href="#kontakt" class="btn btn-primary w-full">Poptat</a>
-                </div>
-            </div>
-
-            {# Medium Container #}
-            <div class="card hover:shadow-xl transition-shadow border-2 border-blue-600">
-                <div class="card-body">
-                    <div class="badge badge-primary mb-2">Nejoblíbenější</div>
-                    <h3 class="text-2xl font-bold text-gray-900 mb-2">Fajny</h3>
-                    <div class="text-sm text-gray-600 mb-4">8.8m² (4m × 2.2m × 2.2m)</div>
-                    <div class="text-3xl font-bold text-blue-600 mb-4">od 76 Kč/den</div>
-                    <p class="text-gray-600 mb-4">Perfektní při stěhování nebo pro firemní skladování zboží</p>
-                    <a href="#kontakt" class="btn btn-primary w-full">Poptat</a>
-                </div>
-            </div>
-
-            {# Large Container #}
-            <div class="card hover:shadow-xl transition-shadow">
-                <div class="card-body">
-                    <h3 class="text-2xl font-bold text-gray-900 mb-2">Nejfajnovější</h3>
-                    <div class="text-sm text-gray-600 mb-4">13.2m² (6m × 2.2m × 2.2m)</div>
-                    <div class="text-3xl font-bold text-blue-600 mb-4">od 126 Kč/den</div>
-                    <p class="text-gray-600 mb-4">Nejvíce prostoru pro rozsáhlé skladování nebo firemní potřeby</p>
-                    <a href="#kontakt" class="btn btn-primary w-full">Poptat</a>
-                </div>
-            </div>
-        </div>
     </div>
 
     {# Benefits Section #}

@@ -48,7 +48,7 @@ final class StorageUnavailabilityCreateController extends AbstractController
 
             $this->commandBus->dispatch($command);
 
-            $this->addFlash('success', 'Blokovani skladu bylo uspesne vytvoreno.');
+            $this->addFlash('success', 'Blokování skladu bylo úspěšně vytvořeno.');
 
             return $this->redirectToRoute('portal_unavailabilities_list');
         }

@@ -47,7 +47,7 @@ final readonly class ContractDocumentGenerator
 
         // Generate unique filename
         $filename = $this->generateFilename($contract);
-        $outputPath = $this->contractsDirectory . '/' . $filename;
+        $outputPath = $this->contractsDirectory.'/'.$filename;
 
         // Ensure directory exists
         $directory = dirname($outputPath);
@@ -138,7 +138,7 @@ final readonly class ContractDocumentGenerator
     {
         $priceInCzk = $priceInHalire / 100;
 
-        return number_format($priceInCzk, 2, ',', ' ') . ' Kč';
+        return number_format($priceInCzk, 2, ',', ' ').' Kč';
     }
 
     private function formatContractNumber(Contract $contract): string

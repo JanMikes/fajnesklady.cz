@@ -53,7 +53,7 @@ final class PlaceCreateController extends AbstractController
 
             $this->commandBus->dispatch($command);
 
-            $this->addFlash('success', 'Misto bylo uspesne vytvoreno.');
+            $this->addFlash('success', 'Místo bylo úspěšně vytvořeno.');
 
             return $this->redirectToRoute('portal_places_list');
         }

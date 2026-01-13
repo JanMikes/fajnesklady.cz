@@ -101,7 +101,7 @@ class ControllerAccessTest extends WebTestCase
         $landlord = $this->createUser('place-landlord@example.com', UserRole::LANDLORD);
         $place = $this->createPlace($landlord, 'Test Place');
 
-        $this->client->request('GET', '/pobocka/' . $place->id->toRfc4122());
+        $this->client->request('GET', '/pobocka/'.$place->id->toRfc4122());
 
         $this->assertResponseIsSuccessful();
     }
@@ -138,7 +138,7 @@ class ControllerAccessTest extends WebTestCase
     #[DataProvider('dashboardRolesProvider')]
     public function testDashboardIsAccessibleByAllRoles(UserRole $role): void
     {
-        $user = $this->createUser('dashboard-' . $role->value . '@example.com', $role);
+        $user = $this->createUser('dashboard-'.$role->value.'@example.com', $role);
         $this->login($user);
 
         $this->client->request('GET', '/portal/dashboard');
@@ -230,7 +230,7 @@ class ControllerAccessTest extends WebTestCase
         $order = $this->createOrder($storage, $owner);
 
         $this->login($otherUser);
-        $this->client->request('GET', '/portal/objednavky/' . $order->id->toRfc4122());
+        $this->client->request('GET', '/portal/objednavky/'.$order->id->toRfc4122());
 
         $this->assertResponseStatusCodeSame(403);
     }
@@ -247,7 +247,7 @@ class ControllerAccessTest extends WebTestCase
         $contract = $this->createContract($storage, $owner);
 
         $this->login($otherUser);
-        $this->client->request('GET', '/portal/smlouvy/' . $contract->id->toRfc4122());
+        $this->client->request('GET', '/portal/smlouvy/'.$contract->id->toRfc4122());
 
         $this->assertResponseStatusCodeSame(403);
     }
@@ -294,7 +294,7 @@ class ControllerAccessTest extends WebTestCase
         $place = $this->createPlace($landlord1, 'Landlord 1 Place');
 
         $this->login($landlord2);
-        $this->client->request('GET', '/portal/places/' . $place->id->toRfc4122() . '/edit');
+        $this->client->request('GET', '/portal/places/'.$place->id->toRfc4122().'/edit');
 
         $this->assertResponseStatusCodeSame(403);
     }
@@ -305,7 +305,7 @@ class ControllerAccessTest extends WebTestCase
         $place = $this->createPlace($landlord, 'Own Place');
 
         $this->login($landlord);
-        $this->client->request('GET', '/portal/places/' . $place->id->toRfc4122() . '/edit');
+        $this->client->request('GET', '/portal/places/'.$place->id->toRfc4122().'/edit');
 
         $this->assertResponseIsSuccessful();
     }
@@ -317,7 +317,7 @@ class ControllerAccessTest extends WebTestCase
         $place = $this->createPlace($landlord, 'Admin Edit Place');
 
         $this->login($admin);
-        $this->client->request('GET', '/portal/places/' . $place->id->toRfc4122() . '/edit');
+        $this->client->request('GET', '/portal/places/'.$place->id->toRfc4122().'/edit');
 
         $this->assertResponseIsSuccessful();
     }
@@ -330,6 +330,33 @@ class ControllerAccessTest extends WebTestCase
         $this->client->request('GET', '/portal/storage-types');
 
         $this->assertResponseStatusCodeSame(403);
+    }
+
+    public function testStorageTypeListRendersForLandlord(): void
+    {
+        $landlord = $this->createUser('st-list-landlord@example.com', UserRole::LANDLORD);
+        $place = $this->createPlace($landlord, 'ST List Place');
+        $this->createStorageType($place, 'Test Storage Type');
+
+        $this->login($landlord);
+        $this->client->request('GET', '/portal/storage-types');
+
+        $this->assertResponseIsSuccessful();
+        $this->assertSelectorTextContains('td', 'Test Storage Type');
+    }
+
+    public function testStorageTypeListRendersForAdmin(): void
+    {
+        $landlord = $this->createUser('st-list-owner@example.com', UserRole::LANDLORD);
+        $admin = $this->createUser('st-list-admin@example.com', UserRole::ADMIN);
+        $place = $this->createPlace($landlord, 'Admin ST Place');
+        $this->createStorageType($place, 'Admin View Type');
+
+        $this->login($admin);
+        $this->client->request('GET', '/portal/storage-types');
+
+        $this->assertResponseIsSuccessful();
+        $this->assertSelectorTextContains('td', 'Admin View Type');
     }
 
     public function testStorageListRequiresLandlordRole(): void
@@ -351,7 +378,7 @@ class ControllerAccessTest extends WebTestCase
         $storageType = $this->createStorageType($place, 'ST Type');
 
         $this->login($landlord2);
-        $this->client->request('GET', '/portal/storage-types/' . $storageType->id->toRfc4122() . '/edit');
+        $this->client->request('GET', '/portal/storage-types/'.$storageType->id->toRfc4122().'/edit');
 
         $this->assertResponseStatusCodeSame(403);
     }
@@ -366,7 +393,7 @@ class ControllerAccessTest extends WebTestCase
         $storage = $this->createStorage($storageType, 'S1');
 
         $this->login($landlord2);
-        $this->client->request('GET', '/portal/storages/' . $storage->id->toRfc4122() . '/edit');
+        $this->client->request('GET', '/portal/storages/'.$storage->id->toRfc4122().'/edit');
 
         $this->assertResponseStatusCodeSame(403);
     }
@@ -407,7 +434,7 @@ class ControllerAccessTest extends WebTestCase
         $order = $this->createOrder($storage, $user);
 
         $this->login($landlord2);
-        $this->client->request('GET', '/portal/landlord/orders/' . $order->id->toRfc4122());
+        $this->client->request('GET', '/portal/landlord/orders/'.$order->id->toRfc4122());
 
         $this->assertResponseStatusCodeSame(403);
     }
@@ -487,7 +514,7 @@ class ControllerAccessTest extends WebTestCase
         $targetUser = $this->createUser('target-user@example.com', UserRole::USER);
         $this->login($landlord);
 
-        $this->client->request('GET', '/portal/users/' . $targetUser->id->toRfc4122() . '/edit');
+        $this->client->request('GET', '/portal/users/'.$targetUser->id->toRfc4122().'/edit');
 
         $this->assertResponseStatusCodeSame(403);
     }
@@ -504,7 +531,7 @@ class ControllerAccessTest extends WebTestCase
         $user = $this->createUser('canvas-user@example.com', UserRole::USER);
         $this->login($user);
 
-        $this->client->request('GET', '/portal/places/' . $place->id->toRfc4122() . '/canvas');
+        $this->client->request('GET', '/portal/places/'.$place->id->toRfc4122().'/canvas');
 
         $this->assertResponseStatusCodeSame(403);
     }
@@ -515,7 +542,7 @@ class ControllerAccessTest extends WebTestCase
         $place = $this->createPlace($landlord, 'Own Canvas Place');
 
         $this->login($landlord);
-        $this->client->request('GET', '/portal/places/' . $place->id->toRfc4122() . '/canvas');
+        $this->client->request('GET', '/portal/places/'.$place->id->toRfc4122().'/canvas');
 
         $this->assertResponseIsSuccessful();
     }
@@ -527,7 +554,7 @@ class ControllerAccessTest extends WebTestCase
         $place = $this->createPlace($landlord1, 'Other Canvas Place');
 
         $this->login($landlord2);
-        $this->client->request('GET', '/portal/places/' . $place->id->toRfc4122() . '/canvas');
+        $this->client->request('GET', '/portal/places/'.$place->id->toRfc4122().'/canvas');
 
         $this->assertResponseStatusCodeSame(403);
     }
@@ -601,7 +628,7 @@ class ControllerAccessTest extends WebTestCase
         );
         $user->markAsVerified($now);
 
-        if ($role !== UserRole::USER) {
+        if (UserRole::USER !== $role) {
             $user->changeRole($role, $now);
         }
 

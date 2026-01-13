@@ -33,7 +33,7 @@ class ContractVoterTest extends TestCase
     {
         $user = new User(
             Uuid::v7(),
-            'test' . uniqid() . '@example.com',
+            'test'.uniqid().'@example.com',
             'password',
             'Test',
             'User',

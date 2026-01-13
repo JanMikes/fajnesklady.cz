@@ -33,14 +33,14 @@ final class StorageTypeDeleteController extends AbstractController
 
         // CSRF protection
         if (!$this->isCsrfTokenValid('delete_storage_type_'.$id, $request->request->getString('_token'))) {
-            $this->addFlash('error', 'Neplatny CSRF token.');
+            $this->addFlash('error', 'Neplatný CSRF token.');
 
             return $this->redirectToRoute('portal_storage_types_list');
         }
 
         $this->commandBus->dispatch(new DeleteStorageTypeCommand(storageTypeId: $storageType->id));
 
-        $this->addFlash('success', 'Typ skladu byl uspesne smazan.');
+        $this->addFlash('success', 'Typ skladu byl úspěšně smazán.');
 
         return $this->redirectToRoute('portal_storage_types_list');
     }

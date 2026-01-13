@@ -21,13 +21,18 @@
                 <div class="card-body">
                     <h1 class="text-2xl font-bold text-gray-900 mb-6">Vytvořit objednávku</h1>
 
-                    {{ form_start(form, {attr: {class: 'space-y-6', 'x-data': '{rentalType: "' ~ (form.vars.data.rentalType ? form.vars.data.rentalType.value : 'limited') ~ '"}'}}) }}
+                    {{ form_start(form, {attr: {class: 'space-y-8', 'x-data': '{rentalType: "' ~ (form.vars.data.rentalType ? form.vars.data.rentalType.value : 'limited') ~ '"}'}}) }}
 
                         {# Contact Information #}
-                        <fieldset class="border border-gray-200 rounded-lg p-4">
-                            <legend class="text-lg font-semibold text-gray-900 px-2">Kontaktní údaje</legend>
+                        <div class="bg-gray-50 rounded-lg p-6">
+                            <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                </svg>
+                                Kontaktní údaje
+                            </h2>
 
-                            <div class="grid md:grid-cols-2 gap-4 mt-4">
+                            <div class="grid md:grid-cols-2 gap-4">
                                 <div>
                                     {{ form_row(form.firstName) }}
                                 </div>
@@ -36,7 +41,7 @@
                                 </div>
                             </div>
 
-                            <div class="grid md:grid-cols-2 gap-4 mt-4">
+                            <div class="grid md:grid-cols-2 gap-4">
                                 <div>
                                     {{ form_row(form.email) }}
                                 </div>
@@ -44,29 +49,42 @@
                                     {{ form_row(form.phone) }}
                                 </div>
                             </div>
-                        </fieldset>
+                        </div>
 
                         {# Rental Type #}
-                        <fieldset class="border border-gray-200 rounded-lg p-4">
-                            <legend class="text-lg font-semibold text-gray-900 px-2">Typ pronájmu</legend>
+                        <div class="bg-gray-50 rounded-lg p-6">
+                            <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                Typ pronájmu
+                            </h2>
 
-                            <div class="mt-4" x-on:change="rentalType = $event.target.value">
+                            <div x-on:change="rentalType = $event.target.value">
                                 {{ form_widget(form.rentalType) }}
                             </div>
 
-                            <div class="mt-4 p-4 bg-blue-50 rounded-lg" x-show="rentalType === 'unlimited'">
-                                <p class="text-sm text-blue-700 mb-3">
+                            <div class="mt-4 p-4 bg-blue-100 border border-blue-200 rounded-lg" x-show="rentalType === 'unlimited'" x-cloak>
+                                <p class="text-sm text-blue-800 mb-3">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
                                     Pronájem na dobu neurčitou s možností ukončení kdykoliv.
                                 </p>
                                 {{ form_row(form.paymentFrequency) }}
                             </div>
-                        </fieldset>
+                        </div>
 
                         {# Dates #}
-                        <fieldset class="border border-gray-200 rounded-lg p-4">
-                            <legend class="text-lg font-semibold text-gray-900 px-2">Období pronájmu</legend>
+                        <div class="bg-gray-50 rounded-lg p-6">
+                            <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                Období pronájmu
+                            </h2>
 
-                            <div class="grid md:grid-cols-2 gap-4 mt-4">
+                            <div class="grid md:grid-cols-2 gap-4">
                                 <div>
                                     {{ form_row(form.startDate) }}
                                     <p class="text-sm text-gray-500 mt-1">
@@ -77,15 +95,21 @@
                                     {{ form_row(form.endDate) }}
                                 </div>
                             </div>
-                        </fieldset>
+                        </div>
 
                         {# Submit #}
-                        <div class="flex items-center justify-between pt-4">
-                            <a href="{{ path('public_place_detail', {id: place.id}) }}" class="text-gray-600 hover:text-gray-900">
-                                &larr; Zpět
+                        <div class="flex items-center justify-between pt-2 border-t border-gray-200">
+                            <a href="{{ path('public_place_detail', {id: place.id}) }}" class="inline-flex items-center text-gray-600 hover:text-gray-900">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                                </svg>
+                                Zpět na výběr
                             </a>
                             <button type="submit" class="btn btn-primary btn-lg">
                                 Pokračovat k platbě
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                                </svg>
                             </button>
                         </div>
 
@@ -97,21 +121,22 @@
         {# Order Summary Sidebar #}
         <div class="lg:col-span-1">
             <div class="card sticky top-4">
+                <div class="bg-blue-600 text-white p-4">
+                    <h2 class="text-lg font-bold">Shrnutí objednávky</h2>
+                </div>
                 <div class="card-body">
-                    <h2 class="text-lg font-bold text-gray-900 mb-4">Shrnutí</h2>
-
                     <div class="space-y-3 text-sm">
                         <div class="flex justify-between">
                             <span class="text-gray-600">Pobočka</span>
-                            <span class="font-medium">{{ place.name }}</span>
+                            <span class="font-medium text-gray-900">{{ place.name }}</span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-gray-600">Typ jednotky</span>
-                            <span class="font-medium">{{ storageType.name }}</span>
+                            <span class="font-medium text-gray-900">{{ storageType.name }}</span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-gray-600">Rozměry</span>
-                            <span class="font-medium">{{ storageType.dimensionsInMeters }}</span>
+                            <span class="font-medium text-gray-900">{{ storageType.dimensionsInMeters }}</span>
                         </div>
                     </div>
 
@@ -121,13 +146,13 @@
                         <h3 class="font-semibold text-gray-900">Ceník</h3>
                         <div class="flex justify-between text-sm">
                             <span class="text-gray-600">Týdenní sazba</span>
-                            <span class="font-medium">{{ weeklyPrice|number_format(0, ',', ' ') }} Kč</span>
+                            <span class="font-semibold text-gray-900">{{ weeklyPrice|number_format(0, ',', ' ') }} Kč</span>
                         </div>
                         <div class="flex justify-between text-sm">
                             <span class="text-gray-600">Měsíční sazba</span>
-                            <span class="font-medium">{{ monthlyPrice|number_format(0, ',', ' ') }} Kč</span>
+                            <span class="font-semibold text-blue-600">{{ monthlyPrice|number_format(0, ',', ' ') }} Kč</span>
                         </div>
-                        <p class="text-xs text-gray-500 mt-2">
+                        <p class="text-xs text-gray-500 mt-2 bg-gray-50 p-2 rounded">
                             Pronájem kratší než 4 týdny se účtuje týdenní sazbou,
                             delší pronájem měsíční sazbou (výhodnější).
                         </p>
@@ -135,13 +160,15 @@
 
                     <hr class="my-4">
 
-                    <div class="bg-blue-50 -mx-4 -mb-4 p-4 rounded-b-lg">
-                        <p class="text-sm text-blue-700">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <div class="bg-amber-50 border border-amber-200 p-3 rounded-lg">
+                        <p class="text-sm text-amber-800 flex items-start">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
-                            Skladová jednotka bude přiřazena automaticky po vytvoření objednávky.
-                            Máte 7 dní na dokončení platby.
+                            <span>
+                                Skladová jednotka bude přiřazena automaticky po vytvoření objednávky.
+                                Máte <strong>7 dní</strong> na dokončení platby.
+                            </span>
                         </p>
                     </div>
                 </div>

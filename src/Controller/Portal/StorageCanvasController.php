@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Controller\Portal;
 
-use App\Entity\User;
 use App\Repository\PlaceRepository;
 use App\Repository\StorageRepository;
 use App\Repository\StorageTypeRepository;
@@ -37,7 +36,7 @@ final class StorageCanvasController extends AbstractController
         $storageTypes = $this->storageTypeRepository->findByPlace($place);
 
         // Prepare storage data for JavaScript
-        $storagesData = array_map(fn($s) => [
+        $storagesData = array_map(fn ($s) => [
             'id' => $s->id->toRfc4122(),
             'number' => $s->number,
             'storageTypeId' => $s->storageType->id->toRfc4122(),
@@ -45,7 +44,7 @@ final class StorageCanvasController extends AbstractController
             'status' => $s->status->value,
         ], $storages);
 
-        $storageTypesData = array_map(fn($t) => [
+        $storageTypesData = array_map(fn ($t) => [
             'id' => $t->id->toRfc4122(),
             'name' => $t->name,
             'dimensions' => $t->getDimensionsInMeters(),

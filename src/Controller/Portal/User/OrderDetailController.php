@@ -28,20 +28,20 @@ final class OrderDetailController extends AbstractController
     public function __invoke(string $id): Response
     {
         if (!Uuid::isValid($id)) {
-            throw new NotFoundHttpException('Objednavka nenalezena.');
+            throw new NotFoundHttpException('Objednávka nenalezena.');
         }
 
         $order = $this->orderRepository->find(Uuid::fromString($id));
 
         if (null === $order) {
-            throw new NotFoundHttpException('Objednavka nenalezena.');
+            throw new NotFoundHttpException('Objednávka nenalezena.');
         }
 
         /** @var User $user */
         $user = $this->getUser();
 
         if (!$order->user->id->equals($user->id)) {
-            throw new AccessDeniedHttpException('Nemate pristup k teto objednavce.');
+            throw new AccessDeniedHttpException('Nemáte přístup k této objednávce.');
         }
 
         $contract = $this->contractRepository->findByOrder($order);
