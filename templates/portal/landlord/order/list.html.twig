@@ -1,10 +1,10 @@
 {% extends 'portal/layout.html.twig' %}
 
-{% block title %}Objednavky - Portal{% endblock %}
+{% block title %}Objednávky - Portal{% endblock %}
 
 {% block content %}
     <div class="flex items-center justify-between mb-8">
-        <h1 class="text-3xl font-bold text-gray-900">Objednavky</h1>
+        <h1 class="text-3xl font-bold text-gray-900">Objednávky</h1>
     </div>
 
     {% if orders|length > 0 %}
@@ -13,13 +13,13 @@
                 <thead class="bg-gray-50">
                     <tr>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Zakaznik
+                            Zákazník
                         </th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Sklad
                         </th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Obdobi
+                            Období
                         </th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Cena
@@ -28,7 +28,7 @@
                             Stav
                         </th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Vytvoreno
+                            Vytvořeno
                         </th>
                         <th scope="col" class="relative px-6 py-3">
                             <span class="sr-only">Akce</span>
@@ -71,12 +71,12 @@
                                     {% if order.endDate %}
                                         - {{ order.endDate|date('d.m.Y') }}
                                     {% else %}
-                                        Na dobu neurcitou
+                                        Na dobu neurčitou
                                     {% endif %}
                                 </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {{ (order.totalPriceInHalere / 100)|number_format(2, ',', ' ') }} Kc
+                                {{ (order.totalPriceInHalere / 100)|number_format(2, ',', ' ') }} Kč
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 {% set statusClass = {
@@ -89,13 +89,13 @@
                                     'expired': 'bg-gray-100 text-gray-800'
                                 } %}
                                 {% set statusLabel = {
-                                    'created': 'Vytvoreno',
-                                    'reserved': 'Rezervovano',
-                                    'awaiting_payment': 'Ceka na platbu',
+                                    'created': 'Vytvořeno',
+                                    'reserved': 'Rezervováno',
+                                    'awaiting_payment': 'Čeká na platbu',
                                     'paid': 'Zaplaceno',
-                                    'completed': 'Dokonceno',
-                                    'cancelled': 'Zruseno',
-                                    'expired': 'Expirovano'
+                                    'completed': 'Dokončeno',
+                                    'cancelled': 'Zrušeno',
+                                    'expired': 'Expirováno'
                                 } %}
                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ statusClass[order.status.value] ?? 'bg-gray-100 text-gray-800' }}">
                                     {{ statusLabel[order.status.value] ?? order.status.value }}
@@ -120,9 +120,9 @@
                 <svg class="mx-auto h-8 w-8 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                 </svg>
-                <h3 class="mt-2 text-sm font-medium text-gray-900">Zadne objednavky</h3>
+                <h3 class="mt-2 text-sm font-medium text-gray-900">Žádné objednávky</h3>
                 <p class="mt-1 text-sm text-gray-500">
-                    Zatim nemate zadne objednavky na vase sklady.
+                    Zatím nemáte žádné objednávky na vaše sklady.
                 </p>
             </div>
         </div>

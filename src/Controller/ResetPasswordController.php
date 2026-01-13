@@ -39,11 +39,11 @@ final class ResetPasswordController extends AbstractController
             try {
                 $this->commandBus->dispatch($command);
 
-                $this->addFlash('success', 'Your password has been successfully reset. You can now log in with your new password.');
+                $this->addFlash('success', 'Vaše heslo bylo úspěšně obnoveno. Nyní se můžete přihlásit s novým heslem.');
 
                 return $this->redirectToRoute('app_login');
             } catch (ResetPasswordExceptionInterface $e) {
-                $this->addFlash('error', 'There was a problem validating your reset request. The link may have expired or is invalid.');
+                $this->addFlash('error', 'Při ověřování požadavku na obnovení hesla došlo k chybě. Odkaz mohl vypršet nebo je neplatný.');
 
                 return $this->redirectToRoute('app_request_password_reset');
             }

@@ -1,10 +1,10 @@
 {% extends 'portal/layout.html.twig' %}
 
-{% block title %}All Orders - Admin{% endblock %}
+{% block title %}Všechny objednávky - Admin{% endblock %}
 
 {% block content %}
     <div class="flex justify-between items-center mb-6">
-        <h1 class="text-3xl font-bold text-gray-900">All Orders (Admin View)</h1>
+        <h1 class="text-3xl font-bold text-gray-900">Všechny objednávky (Admin)</h1>
     </div>
 
     <div class="card">
@@ -12,15 +12,15 @@
             <table class="table table-zebra">
                 <thead>
                     <tr>
-                        <th>Order ID</th>
-                        <th>Customer</th>
-                        <th>Storage</th>
-                        <th>Place</th>
-                        <th>Period</th>
-                        <th>Price</th>
-                        <th>Status</th>
-                        <th>Created</th>
-                        <th>Actions</th>
+                        <th>ID objednávky</th>
+                        <th>Zákazník</th>
+                        <th>Sklad</th>
+                        <th>Pobočka</th>
+                        <th>Období</th>
+                        <th>Cena</th>
+                        <th>Stav</th>
+                        <th>Vytvořeno</th>
+                        <th>Akce</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -36,14 +36,14 @@
                             <td class="text-gray-900">{{ order.storage.number }}</td>
                             <td class="text-gray-500">{{ order.storage.storageType.place.name }}</td>
                             <td class="text-sm">
-                                {{ order.startDate|date('Y-m-d') }}
+                                {{ order.startDate|date('d.m.Y') }}
                                 {% if order.endDate %}
-                                    - {{ order.endDate|date('Y-m-d') }}
+                                    - {{ order.endDate|date('d.m.Y') }}
                                 {% else %}
-                                    <span class="text-gray-500">(unlimited)</span>
+                                    <span class="text-gray-500">(na dobu neurčitou)</span>
                                 {% endif %}
                             </td>
-                            <td class="font-medium">{{ (order.totalPriceInHalere / 100)|number_format(0, ',', ' ') }} Kc</td>
+                            <td class="font-medium">{{ (order.totalPriceInHalere / 100)|number_format(0, ',', ' ') }} Kč</td>
                             <td>
                                 {% set statusClass = {
                                     'created': 'badge-ghost',
@@ -54,20 +54,29 @@
                                     'cancelled': 'badge-error',
                                     'expired': 'badge-error'
                                 } %}
+                                {% set statusLabel = {
+                                    'created': 'Vytvořeno',
+                                    'reserved': 'Rezervováno',
+                                    'awaiting_payment': 'Čeká na platbu',
+                                    'paid': 'Zaplaceno',
+                                    'completed': 'Dokončeno',
+                                    'cancelled': 'Zrušeno',
+                                    'expired': 'Expirováno'
+                                } %}
                                 <span class="badge {{ statusClass[order.status.value] ?? 'badge-ghost' }}">
-                                    {{ order.status.value }}
+                                    {{ statusLabel[order.status.value] ?? order.status.value }}
                                 </span>
                             </td>
-                            <td class="text-gray-500 text-sm">{{ order.createdAt|date('Y-m-d H:i') }}</td>
+                            <td class="text-gray-500 text-sm">{{ order.createdAt|date('d.m.Y H:i') }}</td>
                             <td>
                                 <a href="{{ path('portal_landlord_order_detail', {orderId: order.id}) }}" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
-                                    View
+                                    Zobrazit
                                 </a>
                             </td>
                         </tr>
                     {% else %}
                         <tr>
-                            <td colspan="9" class="text-center text-gray-500 py-8">No orders found</td>
+                            <td colspan="9" class="text-center text-gray-500 py-8">Žádné objednávky nenalezeny</td>
                         </tr>
                     {% endfor %}
                 </tbody>

@@ -1,21 +1,21 @@
 {% extends 'portal/layout.html.twig' %}
 
-{% block title %}Detail objednavky - Portal{% endblock %}
+{% block title %}Detail objednávky - Portal{% endblock %}
 
 {% block content %}
     {# Breadcrumb #}
     <nav class="mb-6">
         <ol class="flex items-center space-x-2 text-sm text-gray-600">
-            <li><a href="{{ path('portal_dashboard') }}" class="hover:text-blue-600">Prehled</a></li>
+            <li><a href="{{ path('portal_dashboard') }}" class="hover:text-blue-600">Přehled</a></li>
             <li><span class="mx-2">/</span></li>
-            <li><a href="{{ path('portal_user_orders') }}" class="hover:text-blue-600">Objednavky</a></li>
+            <li><a href="{{ path('portal_user_orders') }}" class="hover:text-blue-600">Objednávky</a></li>
             <li><span class="mx-2">/</span></li>
             <li class="text-gray-900 font-medium">Detail</li>
         </ol>
     </nav>
 
     <div class="flex items-center justify-between mb-8">
-        <h1 class="text-3xl font-bold text-gray-900">Detail objednavky</h1>
+        <h1 class="text-3xl font-bold text-gray-900">Detail objednávky</h1>
         {% set statusClass = {
             'created': 'bg-gray-100 text-gray-800',
             'reserved': 'bg-yellow-100 text-yellow-800',
@@ -26,13 +26,13 @@
             'expired': 'bg-gray-100 text-gray-800'
         } %}
         {% set statusLabel = {
-            'created': 'Vytvoreno',
-            'reserved': 'Rezervovano',
-            'awaiting_payment': 'Ceka na platbu',
+            'created': 'Vytvořeno',
+            'reserved': 'Rezervováno',
+            'awaiting_payment': 'Čeká na platbu',
             'paid': 'Zaplaceno',
-            'completed': 'Dokonceno',
-            'cancelled': 'Zruseno',
-            'expired': 'Expirovano'
+            'completed': 'Dokončeno',
+            'cancelled': 'Zrušeno',
+            'expired': 'Expirováno'
         } %}
         <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium {{ statusClass[order.status.value] ?? 'bg-gray-100 text-gray-800' }}">
             {{ statusLabel[order.status.value] ?? order.status.value }}
@@ -48,21 +48,21 @@
             <div class="px-4 py-5 sm:p-6">
                 <dl class="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
                     <div>
-                        <dt class="text-sm font-medium text-gray-500">Cislo objednavky</dt>
+                        <dt class="text-sm font-medium text-gray-500">Číslo objednávky</dt>
                         <dd class="mt-1 text-sm text-gray-900 font-mono">{{ order.id|slice(0, 8)|upper }}</dd>
                     </div>
                     <div>
-                        <dt class="text-sm font-medium text-gray-500">Typ pronajmu</dt>
+                        <dt class="text-sm font-medium text-gray-500">Typ pronájmu</dt>
                         <dd class="mt-1 text-sm text-gray-900">
                             {% if order.rentalType.value == 'limited' %}
-                                Na dobu urcitou
+                                Na dobu určitou
                             {% else %}
-                                Na dobu neurcitou
+                                Na dobu neurčitou
                             {% endif %}
                         </dd>
                     </div>
                     <div>
-                        <dt class="text-sm font-medium text-gray-500">Datum zacatku</dt>
+                        <dt class="text-sm font-medium text-gray-500">Datum začátku</dt>
                         <dd class="mt-1 text-sm text-gray-900">{{ order.startDate|date('d.m.Y') }}</dd>
                     </div>
                     <div>
@@ -71,16 +71,16 @@
                             {% if order.endDate %}
                                 {{ order.endDate|date('d.m.Y') }}
                             {% else %}
-                                Na dobu neurcitou
+                                Na dobu neurčitou
                             {% endif %}
                         </dd>
                     </div>
                     <div>
-                        <dt class="text-sm font-medium text-gray-500">Celkova cena</dt>
-                        <dd class="mt-1 text-sm text-gray-900 font-semibold">{{ (order.totalPriceInHalere / 100)|number_format(2, ',', ' ') }} Kc</dd>
+                        <dt class="text-sm font-medium text-gray-500">Celková cena</dt>
+                        <dd class="mt-1 text-sm text-gray-900 font-semibold">{{ (order.totalPriceInHalere / 100)|number_format(2, ',', ' ') }} Kč</dd>
                     </div>
                     <div>
-                        <dt class="text-sm font-medium text-gray-500">Vytvoreno</dt>
+                        <dt class="text-sm font-medium text-gray-500">Vytvořeno</dt>
                         <dd class="mt-1 text-sm text-gray-900">{{ order.createdAt|date('d.m.Y H:i') }}</dd>
                     </div>
                     {% if order.paidAt %}
@@ -102,7 +102,7 @@
         {# Storage Details #}
         <div class="bg-white shadow overflow-hidden sm:rounded-lg">
             <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
-                <h3 class="text-lg font-medium text-gray-900">Skladova jednotka</h3>
+                <h3 class="text-lg font-medium text-gray-900">Skladová jednotka</h3>
             </div>
             <div class="px-4 py-5 sm:p-6">
                 <dl class="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
@@ -111,15 +111,15 @@
                         <dd class="mt-1 text-sm text-gray-900">{{ storageType.name }}</dd>
                     </div>
                     <div>
-                        <dt class="text-sm font-medium text-gray-500">Cislo jednotky</dt>
+                        <dt class="text-sm font-medium text-gray-500">Číslo jednotky</dt>
                         <dd class="mt-1 text-sm text-gray-900 font-semibold">{{ storage.number }}</dd>
                     </div>
                     <div>
-                        <dt class="text-sm font-medium text-gray-500">Rozmery</dt>
+                        <dt class="text-sm font-medium text-gray-500">Rozměry</dt>
                         <dd class="mt-1 text-sm text-gray-900">{{ storageType.dimensionsInMeters }}</dd>
                     </div>
                     <div>
-                        <dt class="text-sm font-medium text-gray-500">Pobocka</dt>
+                        <dt class="text-sm font-medium text-gray-500">Pobočka</dt>
                         <dd class="mt-1 text-sm text-gray-900">{{ place.name }}</dd>
                     </div>
                     <div class="sm:col-span-2">
@@ -139,7 +139,7 @@
                 <div>
                     <h3 class="text-lg font-medium text-gray-900">Smlouva</h3>
                     <p class="mt-1 text-sm text-gray-500">
-                        Smlouva byla vytvorena {{ contract.createdAt|date('d.m.Y') }}
+                        Smlouva byla vytvořena {{ contract.createdAt|date('d.m.Y') }}
                     </p>
                 </div>
                 <a href="{{ path('portal_user_contract_detail', {id: contract.id}) }}" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
@@ -153,12 +153,12 @@
     {# Actions #}
     <div class="mt-6 flex justify-between">
         <a href="{{ path('portal_user_orders') }}" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-            &larr; Zpet na objednavky
+            &larr; Zpět na objednávky
         </a>
 
         {% if order.status.value == 'reserved' or order.status.value == 'awaiting_payment' %}
         <a href="{{ path('public_order_payment', {id: order.id}) }}" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
-            Pokracovat k platbe
+            Pokračovat k platbě
         </a>
         {% endif %}
     </div>

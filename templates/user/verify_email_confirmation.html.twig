@@ -1,6 +1,6 @@
 {% extends 'user/layout.html.twig' %}
 
-{% block title %}Verify Your Email - {{ parent() }}{% endblock %}
+{% block title %}Ověřte svůj email - {{ parent() }}{% endblock %}
 
 {% block content %}
     <div class="flex justify-center">
@@ -12,33 +12,33 @@
                     </svg>
                 </div>
 
-                <h2 class="card-title text-2xl font-bold justify-center mb-4">Check Your Email!</h2>
+                <h2 class="card-title text-2xl font-bold justify-center mb-4">Zkontrolujte svůj email!</h2>
 
                 <div class="alert alert-success mb-4">
-                    <span>Registration successful!</span>
+                    <span>Registrace proběhla úspěšně!</span>
                 </div>
 
                 <p class="text-lg mb-4">
-                    We've sent a verification link to your email address.
+                    Na vaši e-mailovou adresu jsme odeslali ověřovací odkaz.
                 </p>
 
                 <p class="text-base-content/70 mb-4">
-                    Please click the link in the email to verify your account and complete the registration process.
+                    Klikněte prosím na odkaz v emailu pro ověření účtu a dokončení registrace.
                 </p>
 
                 <div class="divider"></div>
 
                 <div class="text-sm text-base-content/60">
-                    <p>Didn't receive the email?</p>
+                    <p>Neobdrželi jste email?</p>
                     <ul class="list-disc list-inside mt-2">
-                        <li>Check your spam folder</li>
-                        <li>Make sure you entered the correct email address</li>
-                        <li>The link expires in 1 hour</li>
+                        <li>Zkontrolujte složku spam</li>
+                        <li>Ujistěte se, že jste zadali správnou e-mailovou adresu</li>
+                        <li>Platnost odkazu je 1 hodina</li>
                     </ul>
                 </div>
 
                 <div class="card-actions justify-center mt-6">
-                    <a href="{{ path('app_home') }}" class="btn btn-outline">Back to Home</a>
+                    <a href="{{ path('app_home') }}" class="btn btn-outline">Zpět na úvodní stránku</a>
                 </div>
             </div>
         </div>

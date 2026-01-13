@@ -76,7 +76,8 @@ final class OrderFormType extends AbstractType
                 'widget' => 'single_text',
                 'input' => 'datetime_immutable',
                 'attr' => [
-                    'min' => (new \DateTimeImmutable('tomorrow'))->format('Y-m-d'),
+                    'data-controller' => 'datepicker',
+                    'data-datepicker-min-date-value' => (new \DateTimeImmutable('tomorrow'))->format('Y-m-d'),
                 ],
             ])
             ->add('endDate', DateType::class, [
@@ -84,6 +85,10 @@ final class OrderFormType extends AbstractType
                 'widget' => 'single_text',
                 'required' => false,
                 'input' => 'datetime_immutable',
+                'attr' => [
+                    'data-controller' => 'datepicker',
+                    'data-datepicker-min-date-value' => (new \DateTimeImmutable('tomorrow'))->format('Y-m-d'),
+                ],
             ]);
     }
 

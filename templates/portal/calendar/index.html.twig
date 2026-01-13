@@ -1,10 +1,10 @@
 {% extends 'portal/layout.html.twig' %}
 
-{% block title %}Kalendar obsazenosti{% endblock %}
+{% block title %}Kalendář obsazenosti{% endblock %}
 
 {% block content %}
     <div class="flex justify-between items-center mb-6">
-        <h1 class="text-3xl font-bold text-gray-900">Kalendar obsazenosti</h1>
+        <h1 class="text-3xl font-bold text-gray-900">Kalendář obsazenosti</h1>
     </div>
 
     <div class="card mb-6">
@@ -39,7 +39,7 @@
                         </a>
                         <div class="text-center">
                             <h2 class="text-xl font-semibold text-gray-900">{{ monthName }} {{ year }}</h2>
-                            <p class="text-sm text-gray-500">{{ selectedStorageType.name }} - {{ storages|length }} skladu</p>
+                            <p class="text-sm text-gray-500">{{ selectedStorageType.name }} - {{ storages|length }} skladů</p>
                         </div>
                         <a href="{{ path('portal_calendar', {storage_type: selectedStorageType.id, year: nextYear, month: nextMonth}) }}" class="btn btn-ghost btn-sm">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -49,13 +49,13 @@
                     </div>
                     <div class="flex items-center gap-4 text-sm">
                         <span class="flex items-center gap-1">
-                            <span class="w-3 h-3 rounded-full bg-green-500"></span> Dostupne
+                            <span class="w-3 h-3 rounded-full bg-green-500"></span> Dostupné
                         </span>
                         <span class="flex items-center gap-1">
-                            <span class="w-3 h-3 rounded-full bg-red-500"></span> Obsazene
+                            <span class="w-3 h-3 rounded-full bg-red-500"></span> Obsazené
                         </span>
                         <span class="flex items-center gap-1">
-                            <span class="w-3 h-3 rounded-full bg-gray-400"></span> Nedostupne
+                            <span class="w-3 h-3 rounded-full bg-gray-400"></span> Nedostupné
                         </span>
                     </div>
                 </div>
@@ -65,8 +65,8 @@
                     <div class="text-sm font-semibold text-gray-500 py-2">Po</div>
                     <div class="text-sm font-semibold text-gray-500 py-2">Ut</div>
                     <div class="text-sm font-semibold text-gray-500 py-2">St</div>
-                    <div class="text-sm font-semibold text-gray-500 py-2">Ct</div>
-                    <div class="text-sm font-semibold text-gray-500 py-2">Pa</div>
+                    <div class="text-sm font-semibold text-gray-500 py-2">Čt</div>
+                    <div class="text-sm font-semibold text-gray-500 py-2">Pá</div>
                     <div class="text-sm font-semibold text-gray-500 py-2">So</div>
                     <div class="text-sm font-semibold text-gray-500 py-2">Ne</div>
                 </div>
@@ -103,19 +103,19 @@
                                     {% if dayData.available > 0 %}
                                         <div class="flex items-center gap-1">
                                             <span class="w-2 h-2 rounded-full bg-green-500"></span>
-                                            <span class="text-green-700">{{ dayData.available }} volnych</span>
+                                            <span class="text-green-700">{{ dayData.available }} volných</span>
                                         </div>
                                     {% endif %}
                                     {% if dayData.occupied > 0 %}
                                         <div class="flex items-center gap-1">
                                             <span class="w-2 h-2 rounded-full bg-red-500"></span>
-                                            <span class="text-red-700">{{ dayData.occupied }} obsazenych</span>
+                                            <span class="text-red-700">{{ dayData.occupied }} obsazených</span>
                                         </div>
                                     {% endif %}
                                     {% if dayData.unavailable > 0 %}
                                         <div class="flex items-center gap-1">
                                             <span class="w-2 h-2 rounded-full bg-gray-400"></span>
-                                            <span class="text-gray-600">{{ dayData.unavailable }} blokovanych</span>
+                                            <span class="text-gray-600">{{ dayData.unavailable }} blokovaných</span>
                                         </div>
                                     {% endif %}
                                 </div>
@@ -137,15 +137,15 @@
         {# Storage list below calendar #}
         <div class="card mt-6">
             <div class="card-header bg-gray-50 px-6 py-4 border-b">
-                <h3 class="text-lg font-semibold text-gray-900">Prehled skladu</h3>
+                <h3 class="text-lg font-semibold text-gray-900">Přehled skladů</h3>
             </div>
             <div class="overflow-x-auto">
                 <table class="table table-zebra">
                     <thead>
                         <tr>
-                            <th>Cislo</th>
+                            <th>Číslo</th>
                             <th>Stav</th>
-                            <th>Aktualni stav</th>
+                            <th>Aktuální stav</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -154,24 +154,24 @@
                                 <td class="font-medium text-gray-900">{{ storage.number }}</td>
                                 <td>
                                     {% if storage.status.value == 'available' %}
-                                        <span class="badge badge-success">Dostupny</span>
+                                        <span class="badge badge-success">Dostupný</span>
                                     {% elseif storage.status.value == 'reserved' %}
-                                        <span class="badge badge-warning">Rezervovany</span>
+                                        <span class="badge badge-warning">Rezervovaný</span>
                                     {% elseif storage.status.value == 'occupied' %}
-                                        <span class="badge badge-error">Obsazeny</span>
+                                        <span class="badge badge-error">Obsazený</span>
                                     {% else %}
-                                        <span class="badge badge-ghost">Nedostupny</span>
+                                        <span class="badge badge-ghost">Nedostupný</span>
                                     {% endif %}
                                 </td>
                                 <td class="text-gray-500">
                                     {% if storage.isAvailable() %}
-                                        Volny k pronajmu
+                                        Volný k pronájmu
                                     {% elseif storage.isReserved() %}
-                                        Ceka na platbu
+                                        Čeká na platbu
                                     {% elseif storage.isOccupied() %}
-                                        Pronajaty
+                                        Pronajatý
                                     {% else %}
-                                        Rucne blokovany
+                                        Ručně blokovaný
                                     {% endif %}
                                 </td>
                             </tr>
@@ -187,7 +187,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
                 <h3 class="mt-4 text-lg font-medium text-gray-900">Vyberte typ skladu</h3>
-                <p class="mt-2 text-sm text-gray-500">Pro zobrazeni kalendare obsazenosti vyberte typ skladu z nabidky vyse.</p>
+                <p class="mt-2 text-sm text-gray-500">Pro zobrazení kalendáře obsazenosti vyberte typ skladu z nabídky výše.</p>
             </div>
         </div>
     {% endif %}

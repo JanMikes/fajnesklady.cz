@@ -1,15 +1,15 @@
 {% extends 'portal/layout.html.twig' %}
 
-{% block title %}Mista - Admin{% endblock %}
+{% block title %}Místa - Admin{% endblock %}
 
 {% block content %}
     <div class="flex justify-between items-center mb-6">
-        <h1 class="text-3xl font-bold text-gray-900">Mista</h1>
+        <h1 class="text-3xl font-bold text-gray-900">Místa</h1>
         <a href="{{ path('portal_places_create') }}" class="btn btn-primary">
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
             </svg>
-            Pridat misto
+            Přidat místo
         </a>
     </div>
 
@@ -18,13 +18,13 @@
             <table class="table table-zebra">
                 <thead>
                     <tr>
-                        <th>Nazev</th>
+                        <th>Název</th>
                         <th>Adresa</th>
                         <th>Popis</th>
                         {% if is_granted('ROLE_ADMIN') %}
-                            <th>Vlastnik</th>
+                            <th>Vlastník</th>
                         {% endif %}
-                        <th>Vytvoreno</th>
+                        <th>Vytvořeno</th>
                         <th>Akce</th>
                     </tr>
                 </thead>
@@ -52,7 +52,7 @@
                                         </svg>
                                         Upravit
                                     </a>
-                                    <form action="{{ path('portal_places_delete', {id: place.id}) }}" method="post" class="inline" onsubmit="return confirm('Opravdu chcete smazat toto misto?');">
+                                    <form action="{{ path('portal_places_delete', {id: place.id}) }}" method="post" class="inline" onsubmit="return confirm('Opravdu chcete smazat toto místo?');">
                                         <input type="hidden" name="_token" value="{{ csrf_token('delete_place_' ~ place.id) }}">
                                         <button type="submit" class="inline-flex items-center text-red-600 hover:text-red-800 text-sm font-medium">
                                             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -66,7 +66,7 @@
                         </tr>
                     {% else %}
                         <tr>
-                            <td colspan="{{ is_granted('ROLE_ADMIN') ? 6 : 5 }}" class="text-center text-gray-500 py-8">Zadna mista nebyla nalezena</td>
+                            <td colspan="{{ is_granted('ROLE_ADMIN') ? 6 : 5 }}" class="text-center text-gray-500 py-8">Žádná místa nebyla nalezena</td>
                         </tr>
                     {% endfor %}
                 </tbody>
@@ -76,16 +76,16 @@
         {% if totalPages > 1 %}
             <div class="flex justify-between items-center mt-4 px-6 py-4 border-t border-gray-200">
                 <div class="text-sm text-gray-500">
-                    Strana {{ currentPage }} z {{ totalPages }} (celkem {{ totalPlaces }} mist)
+                    Strana {{ currentPage }} z {{ totalPages }} (celkem {{ totalPlaces }} míst)
                 </div>
                 <div class="flex space-x-1">
                     {% if currentPage > 1 %}
                         <a href="{{ path('portal_places_list', {page: currentPage - 1}) }}" class="px-3 py-1 rounded-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
-                            Predchozi
+                            Předchozí
                         </a>
                     {% else %}
                         <span class="px-3 py-1 rounded-md border border-gray-300 bg-gray-100 text-sm font-medium text-gray-400 cursor-not-allowed">
-                            Predchozi
+                            Předchozí
                         </span>
                     {% endif %}
 
@@ -116,11 +116,11 @@
 
                     {% if currentPage < totalPages %}
                         <a href="{{ path('portal_places_list', {page: currentPage + 1}) }}" class="px-3 py-1 rounded-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
-                            Dalsi
+                            Další
                         </a>
                     {% else %}
                         <span class="px-3 py-1 rounded-md border border-gray-300 bg-gray-100 text-sm font-medium text-gray-400 cursor-not-allowed">
-                            Dalsi
+                            Další
                         </span>
                     {% endif %}
                 </div>

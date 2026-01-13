@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 /**
  * Returns the importmap for this application.
  *
@@ -33,5 +31,15 @@ return [
     'leaflet/dist/leaflet.min.css' => [
         'version' => '1.9.4',
         'type' => 'css',
+    ],
+    'flatpickr' => [
+        'version' => '4.6.13',
+    ],
+    'flatpickr/dist/flatpickr.min.css' => [
+        'version' => '4.6.13',
+        'type' => 'css',
+    ],
+    'flatpickr/dist/l10n/cs.js' => [
+        'version' => '4.6.13',
     ],
 ];

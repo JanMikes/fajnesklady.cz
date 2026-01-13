@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Verify Your Email</title>
+    <title>Ověřte svůj email</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -57,35 +57,35 @@
     </div>
 
     <div class="content">
-        <h2>Hello {{ name }}!</h2>
+        <h2>Dobrý den, {{ name }}!</h2>
 
-        <p>Thank you for registering with Fajné Sklady. To complete your registration, please verify your email address by clicking the button below:</p>
+        <p>Děkujeme za registraci na Fajné Sklady. Pro dokončení registrace prosím ověřte svou e-mailovou adresu kliknutím na tlačítko níže:</p>
 
         <div style="text-align: center;">
-            <a href="{{ verificationUrl }}" class="button">Verify Email Address</a>
+            <a href="{{ verificationUrl }}" class="button">Ověřit e-mailovou adresu</a>
         </div>
 
-        <p>Or copy and paste this link into your browser:</p>
+        <p>Nebo zkopírujte a vložte tento odkaz do prohlížeče:</p>
         <p style="word-break: break-all; color: #570df8;">{{ verificationUrl }}</p>
 
         <div class="warning">
-            <strong>Security Notice:</strong>
+            <strong>Bezpečnostní upozornění:</strong>
             <ul>
-                <li>This link will expire on {{ expiresAt|date('F j, Y') }} at {{ expiresAt|date('g:i A') }}</li>
-                <li>If you didn't create an account, please ignore this email</li>
-                <li>Never share this link with anyone</li>
+                <li>Platnost tohoto odkazu vyprší {{ expiresAt|date('j.n.Y') }} v {{ expiresAt|date('H:i') }}</li>
+                <li>Pokud jste si účet nezakládali, tento email prosím ignorujte</li>
+                <li>Tento odkaz s nikým nesdílejte</li>
             </ul>
         </div>
 
-        <p>Once verified, you'll be able to log in and start using your account.</p>
+        <p>Po ověření se budete moci přihlásit a začít používat svůj účet.</p>
 
-        <p>Welcome aboard!<br>
-        <strong>The Fajné Sklady Team</strong></p>
+        <p>Vítejte!<br>
+        <strong>Tým Fajné Sklady</strong></p>
     </div>
 
     <div class="footer">
-        <p>This is an automated email. Please do not reply to this message.</p>
-        <p>&copy; {{ 'now'|date('Y') }} Fajné Sklady. All rights reserved.</p>
+        <p>Toto je automaticky generovaný email. Prosím neodpovídejte na tuto zprávu.</p>
+        <p>&copy; {{ 'now'|date('Y') }} Fajné Sklady. Všechna práva vyhrazena.</p>
     </div>
 </body>
 </html>

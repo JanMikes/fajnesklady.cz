@@ -1,10 +1,10 @@
 {% extends 'portal/layout.html.twig' %}
 
-{% block title %}All Contracts - Admin{% endblock %}
+{% block title %}Všechny smlouvy - Admin{% endblock %}
 
 {% block content %}
     <div class="flex justify-between items-center mb-6">
-        <h1 class="text-3xl font-bold text-gray-900">All Contracts (Admin View)</h1>
+        <h1 class="text-3xl font-bold text-gray-900">Všechny smlouvy (Admin)</h1>
     </div>
 
     <div class="card">
@@ -12,14 +12,14 @@
             <table class="table table-zebra">
                 <thead>
                     <tr>
-                        <th>Contract ID</th>
-                        <th>Tenant</th>
-                        <th>Storage</th>
-                        <th>Place</th>
-                        <th>Period</th>
-                        <th>Status</th>
-                        <th>Created</th>
-                        <th>Actions</th>
+                        <th>ID smlouvy</th>
+                        <th>Nájemce</th>
+                        <th>Sklad</th>
+                        <th>Pobočka</th>
+                        <th>Období</th>
+                        <th>Stav</th>
+                        <th>Vytvořeno</th>
+                        <th>Akce</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -35,32 +35,32 @@
                             <td class="text-gray-900">{{ contract.storage.number }}</td>
                             <td class="text-gray-500">{{ contract.storage.storageType.place.name }}</td>
                             <td class="text-sm">
-                                {{ contract.startDate|date('Y-m-d') }}
+                                {{ contract.startDate|date('d.m.Y') }}
                                 {% if contract.endDate %}
-                                    - {{ contract.endDate|date('Y-m-d') }}
+                                    - {{ contract.endDate|date('d.m.Y') }}
                                 {% else %}
-                                    <span class="text-gray-500">(unlimited)</span>
+                                    <span class="text-gray-500">(na dobu neurčitou)</span>
                                 {% endif %}
                             </td>
                             <td>
                                 {% if contract.terminatedAt %}
-                                    <span class="badge badge-error">Terminated</span>
+                                    <span class="badge badge-error">Ukončeno</span>
                                 {% elseif contract.signedAt %}
-                                    <span class="badge badge-success">Active</span>
+                                    <span class="badge badge-success">Aktivní</span>
                                 {% else %}
-                                    <span class="badge badge-warning">Pending Signature</span>
+                                    <span class="badge badge-warning">Čeká na podpis</span>
                                 {% endif %}
                             </td>
-                            <td class="text-gray-500 text-sm">{{ contract.createdAt|date('Y-m-d H:i') }}</td>
+                            <td class="text-gray-500 text-sm">{{ contract.createdAt|date('d.m.Y H:i') }}</td>
                             <td>
                                 <a href="{{ path('portal_user_contract_detail', {id: contract.id}) }}" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
-                                    View
+                                    Zobrazit
                                 </a>
                             </td>
                         </tr>
                     {% else %}
                         <tr>
-                            <td colspan="8" class="text-center text-gray-500 py-8">No contracts found</td>
+                            <td colspan="8" class="text-center text-gray-500 py-8">Žádné smlouvy nenalezeny</td>
                         </tr>
                     {% endfor %}
                 </tbody>

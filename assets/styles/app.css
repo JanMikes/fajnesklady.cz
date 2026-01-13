@@ -51,7 +51,17 @@
 }
 
 .form-input {
-    @apply block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm;
+    @apply block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm;
+}
+
+/* Select element styling */
+select.form-input {
+    @apply pr-10 cursor-pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.5rem center;
+    background-repeat: no-repeat;
+    background-size: 1.5em 1.5em;
 }
 
 .form-input-error {
@@ -171,4 +181,73 @@
 
 .storage-popup p {
     @apply text-sm text-gray-600 mb-3;
+}
+
+/* Flatpickr customizations to match design system */
+.flatpickr-calendar {
+    @apply shadow-lg rounded-lg border border-gray-200;
+}
+
+.flatpickr-months {
+    @apply bg-blue-600 rounded-t-lg;
+}
+
+.flatpickr-months .flatpickr-month {
+    @apply text-white;
+}
+
+.flatpickr-current-month .flatpickr-monthDropdown-months {
+    @apply bg-blue-600 text-white;
+}
+
+.flatpickr-current-month input.cur-year {
+    @apply text-white;
+}
+
+.flatpickr-months .flatpickr-prev-month,
+.flatpickr-months .flatpickr-next-month {
+    @apply text-white fill-white;
+}
+
+.flatpickr-months .flatpickr-prev-month:hover,
+.flatpickr-months .flatpickr-next-month:hover {
+    @apply text-blue-200;
+}
+
+.flatpickr-months .flatpickr-prev-month:hover svg,
+.flatpickr-months .flatpickr-next-month:hover svg {
+    @apply fill-blue-200;
+}
+
+.flatpickr-weekdays {
+    @apply bg-gray-50;
+}
+
+span.flatpickr-weekday {
+    @apply text-gray-600 font-medium;
+}
+
+.flatpickr-day {
+    @apply rounded-md;
+}
+
+.flatpickr-day:hover {
+    @apply bg-blue-100 border-blue-100;
+}
+
+.flatpickr-day.selected,
+.flatpickr-day.selected:hover {
+    @apply bg-blue-600 border-blue-600 text-white;
+}
+
+.flatpickr-day.today {
+    @apply border-blue-400;
+}
+
+.flatpickr-day.today:hover {
+    @apply bg-blue-100 border-blue-100;
+}
+
+.flatpickr-day.disabled {
+    @apply text-gray-300;
 }

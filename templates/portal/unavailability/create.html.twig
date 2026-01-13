@@ -1,6 +1,6 @@
 {% extends 'portal/layout.html.twig' %}
 
-{% block title %}Pridat blokovani skladu{% endblock %}
+{% block title %}Přidat blokování skladu{% endblock %}
 
 {% block content %}
     <div class="mb-6">
@@ -8,14 +8,14 @@
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
-            Zpet na seznam
+            Zpět na seznam
         </a>
     </div>
 
     <div class="card max-w-2xl">
         <div class="card-header bg-gray-50 px-6 py-4 border-b">
-            <h1 class="text-xl font-semibold text-gray-900">Pridat blokovani skladu</h1>
-            <p class="text-sm text-gray-500 mt-1">Zablokujte sklad na urcite obdobi (napr. z duvodu udrzby, renovace nebo rezervace).</p>
+            <h1 class="text-xl font-semibold text-gray-900">Přidat blokování skladu</h1>
+            <p class="text-sm text-gray-500 mt-1">Zablokujte sklad na určité období (např. z důvodu údržby, renovace nebo rezervace).</p>
         </div>
         <div class="card-body">
             {{ form_start(form, {'attr': {'class': 'space-y-6'}}) }}
@@ -54,9 +54,9 @@
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                         </svg>
-                        Ulozit blokovani
+                        Uložit blokování
                     </button>
-                    <a href="{{ path('portal_unavailabilities_list') }}" class="btn btn-ghost">Zrusit</a>
+                    <a href="{{ path('portal_unavailabilities_list') }}" class="btn btn-ghost">Zrušit</a>
                 </div>
             {{ form_end(form) }}
         </div>

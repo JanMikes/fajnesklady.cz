@@ -35,7 +35,7 @@ final class RegisterController extends AbstractController
             // Check rate limit
             $limiter = $this->registrationLimiter->create($request->getClientIp() ?? 'unknown');
             if (false === $limiter->consume(1)->isAccepted()) {
-                throw new TooManyRequestsHttpException(null, 'Too many registration attempts. Please try again later.');
+                throw new TooManyRequestsHttpException(null, 'Příliš mnoho pokusů o registraci. Zkuste to prosím později.');
             }
 
             /** @var RegistrationFormData $formData */
@@ -51,13 +51,13 @@ final class RegisterController extends AbstractController
 
                 $this->commandBus->dispatch($command);
 
-                $this->addFlash('success', 'Registration successful! Please check your email to verify your account.');
+                $this->addFlash('success', 'Registrace proběhla úspěšně! Zkontrolujte prosím svůj email pro ověření účtu.');
 
                 return $this->redirectToRoute('app_verify_email_confirmation');
             } catch (\DomainException $e) {
                 $this->addFlash('error', $e->getMessage());
             } catch (\Exception $e) {
-                $this->addFlash('error', 'An error occurred during registration. Please try again.');
+                $this->addFlash('error', 'Při registraci došlo k chybě. Zkuste to prosím znovu.');
             }
         }
 

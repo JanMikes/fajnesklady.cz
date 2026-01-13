@@ -35,7 +35,7 @@ final class RequestPasswordResetController extends AbstractController
             // Check rate limit
             $limiter = $this->passwordResetLimiter->create($request->getClientIp() ?? 'unknown');
             if (false === $limiter->consume(1)->isAccepted()) {
-                throw new TooManyRequestsHttpException(null, 'Too many password reset attempts. Please try again later.');
+                throw new TooManyRequestsHttpException(null, 'Příliš mnoho pokusů o obnovení hesla. Zkuste to prosím později.');
             }
 
             /** @var RequestPasswordResetFormData $formData */
@@ -45,7 +45,7 @@ final class RequestPasswordResetController extends AbstractController
             $this->commandBus->dispatch($command);
 
             // Always show success message (security: don't reveal if email exists)
-            $this->addFlash('success', 'If an account exists with this email, you will receive a password reset link.');
+            $this->addFlash('success', 'Pokud účet s tímto emailem existuje, obdržíte odkaz pro obnovení hesla.');
 
             return $this->redirectToRoute('app_login');
         }

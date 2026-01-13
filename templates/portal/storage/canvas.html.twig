@@ -8,7 +8,7 @@
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
-            Zpet na mista
+            Zpět na místa
         </a>
     </div>
 
@@ -32,9 +32,9 @@
             <div class="card">
                 <div class="card-header bg-gray-50 px-4 py-3 border-b">
                     <div class="flex items-center justify-between">
-                        <h2 class="font-semibold text-gray-900">Platno</h2>
+                        <h2 class="font-semibold text-gray-900">Plátno</h2>
                         <div class="text-sm text-gray-500">
-                            Kliknete a tahnete pro vytvoreni skladu. Dvojklik pro upravu.
+                            Klikněte a táhněte pro vytvoření skladu. Dvojklik pro úpravu.
                         </div>
                     </div>
                 </div>
@@ -45,7 +45,7 @@
                                 <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                                 </svg>
-                                <span class="text-amber-800">Nahrajte obrazek mapy v nastaveni mista pro lepsi vizualizaci.</span>
+                                <span class="text-amber-800">Nahrajte obrázek mapy v nastavení místa pro lepší vizualizaci.</span>
                             </div>
                         </div>
                     {% endif %}
@@ -60,19 +60,19 @@
                     <div class="flex flex-wrap gap-4">
                         <div class="flex items-center gap-2">
                             <div class="w-4 h-4 rounded bg-green-500"></div>
-                            <span class="text-sm text-gray-600">Dostupny</span>
+                            <span class="text-sm text-gray-600">Dostupný</span>
                         </div>
                         <div class="flex items-center gap-2">
                             <div class="w-4 h-4 rounded bg-yellow-500"></div>
-                            <span class="text-sm text-gray-600">Rezervovany</span>
+                            <span class="text-sm text-gray-600">Rezervovaný</span>
                         </div>
                         <div class="flex items-center gap-2">
                             <div class="w-4 h-4 rounded bg-red-500"></div>
-                            <span class="text-sm text-gray-600">Obsazeny</span>
+                            <span class="text-sm text-gray-600">Obsazený</span>
                         </div>
                         <div class="flex items-center gap-2">
                             <div class="w-4 h-4 rounded bg-gray-500"></div>
-                            <span class="text-sm text-gray-600">Nedostupny</span>
+                            <span class="text-sm text-gray-600">Nedostupný</span>
                         </div>
                     </div>
                 </div>
@@ -99,8 +99,8 @@
                 <div class="card-body p-4">
                     <div class="space-y-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Cislo skladu</label>
-                            <input type="text" data-storage-canvas-target="numberInput" class="input input-bordered w-full" placeholder="napr. A1">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Číslo skladu</label>
+                            <input type="text" data-storage-canvas-target="numberInput" class="input input-bordered w-full" placeholder="např. A1">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Typ skladu</label>
@@ -108,16 +108,16 @@
                                 {% for type in storageTypes %}
                                     <option value="{{ type.id }}">{{ type.name }} ({{ type.getDimensionsInMeters() }})</option>
                                 {% else %}
-                                    <option value="">Zadne typy</option>
+                                    <option value="">Žádné typy</option>
                                 {% endfor %}
                             </select>
                         </div>
                         <div class="flex gap-2 pt-2">
                             <button type="button" data-storage-canvas-target="saveBtn" class="btn btn-primary btn-sm flex-1">
-                                Ulozit
+                                Uložit
                             </button>
                             <button type="button" data-storage-canvas-target="cancelBtn" class="btn btn-ghost btn-sm">
-                                Zrusit
+                                Zrušit
                             </button>
                         </div>
                         <div class="pt-2 border-t">
@@ -132,14 +132,14 @@
             {# Help #}
             <div class="card">
                 <div class="card-header bg-gray-50 px-4 py-3 border-b">
-                    <h2 class="font-semibold text-gray-900">Napoveda</h2>
+                    <h2 class="font-semibold text-gray-900">Nápověda</h2>
                 </div>
                 <div class="card-body p-4 text-sm text-gray-600 space-y-2">
-                    <p><strong>Vytvoreni:</strong> Kliknete a tahnete na platne</p>
-                    <p><strong>Presun:</strong> Kliknete a tahnete existujici sklad</p>
-                    <p><strong>Zmena velikosti:</strong> Tahnete za roh vybraneho skladu</p>
-                    <p><strong>Uprava:</strong> Dvojklik na sklad</p>
-                    <p><strong>Tip:</strong> Nezapomente ulozit zmeny!</p>
+                    <p><strong>Vytvoření:</strong> Klikněte a táhněte na plátně</p>
+                    <p><strong>Přesun:</strong> Klikněte a táhněte existující sklad</p>
+                    <p><strong>Změna velikosti:</strong> Táhněte za roh vybraného skladu</p>
+                    <p><strong>Úprava:</strong> Dvojklik na sklad</p>
+                    <p><strong>Tip:</strong> Nezapomeňte uložit změny!</p>
                 </div>
             </div>
         </div>

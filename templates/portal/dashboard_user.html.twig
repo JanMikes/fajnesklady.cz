@@ -1,9 +1,9 @@
 {% extends 'portal/layout.html.twig' %}
 
-{% block title %}Prehled - Portal{% endblock %}
+{% block title %}Přehled - Portal{% endblock %}
 
 {% block content %}
-    <h1 class="text-3xl font-bold text-gray-900 mb-8">Vitejte v portalu</h1>
+    <h1 class="text-3xl font-bold text-gray-900 mb-8">Vítejte v portálu</h1>
 
     {# Quick Stats #}
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -17,7 +17,7 @@
                     </div>
                     <div class="ml-5 w-0 flex-1">
                         <dl>
-                            <dt class="text-sm font-medium text-gray-500 truncate">Aktivni smlouvy</dt>
+                            <dt class="text-sm font-medium text-gray-500 truncate">Aktivní smlouvy</dt>
                             <dd class="text-lg font-medium text-gray-900">{{ activeContracts|length }}</dd>
                         </dl>
                     </div>
@@ -35,7 +35,7 @@
                     </div>
                     <div class="ml-5 w-0 flex-1">
                         <dl>
-                            <dt class="text-sm font-medium text-gray-500 truncate">Pronajate sklady</dt>
+                            <dt class="text-sm font-medium text-gray-500 truncate">Pronajaté sklady</dt>
                             <dd class="text-lg font-medium text-gray-900">{{ activeContracts|length }}</dd>
                         </dl>
                     </div>
@@ -53,7 +53,7 @@
                     </div>
                     <div class="ml-5 w-0 flex-1">
                         <dl>
-                            <dt class="text-sm font-medium text-gray-500 truncate">Posledni objednavky</dt>
+                            <dt class="text-sm font-medium text-gray-500 truncate">Poslední objednávky</dt>
                             <dd class="text-lg font-medium text-gray-900">{{ recentOrders|length }}</dd>
                         </dl>
                     </div>
@@ -65,9 +65,9 @@
     {# Active Contracts Section #}
     <div class="mb-8">
         <div class="flex items-center justify-between mb-4">
-            <h2 class="text-xl font-bold text-gray-900">Aktivni smlouvy</h2>
+            <h2 class="text-xl font-bold text-gray-900">Aktivní smlouvy</h2>
             <a href="{{ path('portal_user_contracts') }}" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
-                Zobrazit vse &rarr;
+                Zobrazit vše &rarr;
             </a>
         </div>
 
@@ -100,7 +100,7 @@
                                                     do {{ contract.endDate|date('d.m.Y') }}
                                                 {% else %}
                                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                                        Na dobu neurcitou
+                                                        Na dobu neurčitou
                                                     </span>
                                                 {% endif %}
                                             </p>
@@ -121,9 +121,9 @@
                     <svg class="mx-auto h-8 w-8 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                     </svg>
-                    <h3 class="mt-2 text-sm font-medium text-gray-900">Zadne aktivni smlouvy</h3>
+                    <h3 class="mt-2 text-sm font-medium text-gray-900">Žádné aktivní smlouvy</h3>
                     <p class="mt-1 text-sm text-gray-500">
-                        Prozatim nemate zadnou aktivni smlouvu na pronajem skladu.
+                        Prozatím nemáte žádnou aktivní smlouvu na pronájem skladu.
                     </p>
                     <div class="mt-6">
                         <a href="{{ path('app_home') }}" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
@@ -138,9 +138,9 @@
     {# Recent Orders Section #}
     <div>
         <div class="flex items-center justify-between mb-4">
-            <h2 class="text-xl font-bold text-gray-900">Posledni objednavky</h2>
+            <h2 class="text-xl font-bold text-gray-900">Poslední objednávky</h2>
             <a href="{{ path('portal_user_orders') }}" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
-                Zobrazit vse &rarr;
+                Zobrazit vše &rarr;
             </a>
         </div>
 
@@ -178,19 +178,19 @@
                                                 'expired': 'bg-gray-100 text-gray-800'
                                             } %}
                                             {% set statusLabel = {
-                                                'created': 'Vytvoreno',
-                                                'reserved': 'Rezervovano',
-                                                'awaiting_payment': 'Ceka na platbu',
+                                                'created': 'Vytvořeno',
+                                                'reserved': 'Rezervováno',
+                                                'awaiting_payment': 'Čeká na platbu',
                                                 'paid': 'Zaplaceno',
-                                                'completed': 'Dokonceno',
-                                                'cancelled': 'Zruseno',
-                                                'expired': 'Expirovano'
+                                                'completed': 'Dokončeno',
+                                                'cancelled': 'Zrušeno',
+                                                'expired': 'Expirováno'
                                             } %}
                                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ statusClass[order.status.value] ?? 'bg-gray-100 text-gray-800' }}">
                                                 {{ statusLabel[order.status.value] ?? order.status.value }}
                                             </span>
                                             <p class="text-sm text-gray-900 mt-1">
-                                                {{ (order.totalPriceInHalere / 100)|number_format(2, ',', ' ') }} Kc
+                                                {{ (order.totalPriceInHalere / 100)|number_format(2, ',', ' ') }} Kč
                                             </p>
                                         </div>
                                     </div>
@@ -206,9 +206,9 @@
                     <svg class="mx-auto h-8 w-8 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                     </svg>
-                    <h3 class="mt-2 text-sm font-medium text-gray-900">Zadne objednavky</h3>
+                    <h3 class="mt-2 text-sm font-medium text-gray-900">Žádné objednávky</h3>
                     <p class="mt-1 text-sm text-gray-500">
-                        Prozatim nemate zadne objednavky.
+                        Prozatím nemáte žádné objednávky.
                     </p>
                 </div>
             </div>

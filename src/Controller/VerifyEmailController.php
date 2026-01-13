@@ -27,7 +27,7 @@ final class VerifyEmailController extends AbstractController
         $token = $request->query->get('token');
 
         if (!$userId || !$token) {
-            $this->addFlash('error', 'Invalid verification link.');
+            $this->addFlash('error', 'Neplatný ověřovací odkaz.');
 
             return $this->redirectToRoute('app_login');
         }
@@ -41,7 +41,7 @@ final class VerifyEmailController extends AbstractController
 
             $this->commandBus->dispatch($command);
 
-            $this->addFlash('success', 'Your email has been verified! You can now log in.');
+            $this->addFlash('success', 'Váš email byl ověřen! Nyní se můžete přihlásit.');
 
             return $this->redirectToRoute('app_login');
         } catch (VerifyEmailExceptionInterface $e) {
@@ -49,7 +49,7 @@ final class VerifyEmailController extends AbstractController
 
             return $this->redirectToRoute('app_register');
         } catch (\Exception $e) {
-            $this->addFlash('error', 'An error occurred during email verification. Please try again.');
+            $this->addFlash('error', 'Při ověřování emailu došlo k chybě. Zkuste to prosím znovu.');
 
             return $this->redirectToRoute('app_register');
         }

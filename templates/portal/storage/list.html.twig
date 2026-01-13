@@ -9,7 +9,7 @@
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
             </svg>
-            Pridat sklad
+            Přidat sklad
         </a>
     </div>
 
@@ -39,19 +39,19 @@
                         <h2 class="text-lg font-semibold text-gray-900">{{ selectedStorageType.name }}</h2>
                         <p class="text-sm text-gray-500">{{ selectedStorageType.place.name }} - {{ selectedStorageType.dimensionsInMeters }}</p>
                     </div>
-                    <span class="badge badge-primary">{{ storages|length }} skladu</span>
+                    <span class="badge badge-primary">{{ storages|length }} skladů</span>
                 </div>
             </div>
             <div class="overflow-x-auto">
                 <table class="table table-zebra">
                     <thead>
                         <tr>
-                            <th>Cislo</th>
+                            <th>Číslo</th>
                             <th>Pozice (X, Y)</th>
                             <th>Velikost</th>
                             <th>Rotace</th>
                             <th>Stav</th>
-                            <th>Vytvoreno</th>
+                            <th>Vytvořeno</th>
                             <th>Akce</th>
                         </tr>
                     </thead>
@@ -64,13 +64,13 @@
                                 <td class="text-gray-500">{{ storage.coordinates.rotation }}deg</td>
                                 <td>
                                     {% if storage.status.value == 'available' %}
-                                        <span class="badge badge-success">Dostupny</span>
+                                        <span class="badge badge-success">Dostupný</span>
                                     {% elseif storage.status.value == 'reserved' %}
-                                        <span class="badge badge-warning">Rezervovany</span>
+                                        <span class="badge badge-warning">Rezervovaný</span>
                                     {% elseif storage.status.value == 'occupied' %}
-                                        <span class="badge badge-error">Obsazeny</span>
+                                        <span class="badge badge-error">Obsazený</span>
                                     {% else %}
-                                        <span class="badge badge-ghost">Nedostupny</span>
+                                        <span class="badge badge-ghost">Nedostupný</span>
                                     {% endif %}
                                 </td>
                                 <td class="text-gray-500 text-sm">{{ storage.createdAt|date('Y-m-d H:i') }}</td>
@@ -96,7 +96,7 @@
                             </tr>
                         {% else %}
                             <tr>
-                                <td colspan="7" class="text-center text-gray-500 py-8">Zadne sklady nebyly nalezeny pro tento typ</td>
+                                <td colspan="7" class="text-center text-gray-500 py-8">Žádné sklady nebyly nalezeny pro tento typ</td>
                             </tr>
                         {% endfor %}
                     </tbody>
@@ -110,7 +110,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                 </svg>
                 <h3 class="mt-4 text-lg font-medium text-gray-900">Vyberte typ skladu</h3>
-                <p class="mt-2 text-sm text-gray-500">Pro zobrazeni skladu vyberte typ skladu z nabidky vyse.</p>
+                <p class="mt-2 text-sm text-gray-500">Pro zobrazení skladů vyberte typ skladu z nabídky výše.</p>
             </div>
         </div>
     {% endif %}

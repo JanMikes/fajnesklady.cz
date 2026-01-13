@@ -87,9 +87,6 @@
                             <div class="grid md:grid-cols-2 gap-4">
                                 <div>
                                     {{ form_row(form.startDate) }}
-                                    <p class="text-sm text-gray-500 mt-1">
-                                        Nejdříve možné: {{ minStartDate|date('d.m.Y') }}
-                                    </p>
                                 </div>
                                 <div x-show="rentalType === 'limited'">
                                     {{ form_row(form.endDate) }}
