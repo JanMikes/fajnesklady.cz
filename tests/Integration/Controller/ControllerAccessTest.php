@@ -288,10 +288,10 @@ class ControllerAccessTest extends WebTestCase
 
     public function testLandlordCannotAccessOtherLandlordPlace(): void
     {
-        $landlord1 = $this->createUser('landlord1@example.com', UserRole::LANDLORD);
-        $landlord2 = $this->createUser('landlord2@example.com', UserRole::LANDLORD);
-
-        $place = $this->createPlace($landlord1, 'Landlord 1 Place');
+        // Use fixture data - landlord owns Praha places, landlord2 cannot access them
+        $landlord = $this->entityManager->getRepository(User::class)->findOneBy(['email' => 'landlord@example.com']);
+        $landlord2 = $this->entityManager->getRepository(User::class)->findOneBy(['email' => 'landlord2@example.com']);
+        $place = $this->entityManager->getRepository(Place::class)->findOneBy(['owner' => $landlord]);
 
         $this->login($landlord2);
         $this->client->request('GET', '/portal/places/'.$place->id->toRfc4122().'/edit');

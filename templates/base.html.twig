@@ -4,7 +4,30 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>{% block title %}Fajné Sklady{% endblock %}</title>
-        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%221.2em%22 font-size=%2296%22>⚫️</text><text y=%221.3em%22 x=%220.2em%22 font-size=%2276%22 fill=%22%23fff%22>sf</text></svg>">
+        <meta name="description" content="{% block meta_description %}Pronájem skladových prostor v Ostravě. Bezpečné a dostupné sklady pro firmy i jednotlivce.{% endblock %}">
+
+        <!-- Open Graph / Facebook -->
+        <meta property="og:type" content="website">
+        <meta property="og:url" content="{{ app.request.uri }}">
+        <meta property="og:title" content="{% block og_title %}Fajné Sklady{% endblock %}">
+        <meta property="og:description" content="{% block og_description %}Pronájem skladových prostor v Ostravě. Bezpečné a dostupné sklady pro firmy i jednotlivce.{% endblock %}">
+        <meta property="og:image" content="{{ absolute_url(asset('images/og-image.jpg')) }}">
+        <meta property="og:image:width" content="1920">
+        <meta property="og:image:height" content="896">
+
+        <!-- Twitter -->
+        <meta name="twitter:card" content="summary_large_image">
+        <meta name="twitter:title" content="{% block twitter_title %}Fajné Sklady{% endblock %}">
+        <meta name="twitter:description" content="{% block twitter_description %}Pronájem skladových prostor v Ostravě. Bezpečné a dostupné sklady pro firmy i jednotlivce.{% endblock %}">
+        <meta name="twitter:image" content="{{ absolute_url(asset('images/og-image.jpg')) }}">
+
+        <!-- Favicons -->
+        <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}">
+        <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('images/icons/favicon-32x32.png') }}">
+        <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('images/icons/favicon-16x16.png') }}">
+        <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('images/icons/apple-touch-icon.png') }}">
+        <link rel="manifest" href="{{ asset('site.webmanifest') }}">
+        <meta name="theme-color" content="#1f2937">
         {% block stylesheets %}
             <link rel="stylesheet" href="{{ asset('styles/app.css') }}">
         {% endblock %}

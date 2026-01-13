@@ -43,7 +43,7 @@
                                     <span class="text-gray-500">(na dobu neurčitou)</span>
                                 {% endif %}
                             </td>
-                            <td class="font-medium">{{ (order.totalPriceInHalere / 100)|number_format(0, ',', ' ') }} Kč</td>
+                            <td class="font-medium">{{ (order.totalPrice / 100)|number_format(0, ',', ' ') }} Kč</td>
                             <td>
                                 {% set statusClass = {
                                     'created': 'badge-ghost',
@@ -69,7 +69,7 @@
                             </td>
                             <td class="text-gray-500 text-sm">{{ order.createdAt|date('d.m.Y H:i') }}</td>
                             <td>
-                                <a href="{{ path('portal_landlord_order_detail', {orderId: order.id}) }}" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                                <a href="{{ path('portal_landlord_order_detail', {id: order.id}) }}" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
                                     Zobrazit
                                 </a>
                             </td>

@@ -31,5 +31,10 @@ return App::config([
             'alias' => 'security.user_password_hasher',
             'public' => true,
         ],
+        // Mock clock for deterministic time in tests
+        'Psr\\Clock\\ClockInterface' => [
+            'class' => 'Symfony\\Component\\Clock\\MockClock',
+            'arguments' => ['2025-06-15 12:00:00 UTC'],
+        ],
     ],
 ]);

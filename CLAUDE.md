@@ -294,11 +294,16 @@ Available: `UserAlreadyExists`, `UserNotFound`, `PlaceNotFound`, `StorageTypeNot
 
 - `tests/Unit/` - Domain logic (no database, fast)
 - `tests/Integration/` - Repository/controller tests (uses DAMA DoctrineTestBundle)
+- **MockClock**: Tests use fixed time `2025-06-15 12:00:00 UTC` - never use `new \DateTimeImmutable()`
+- **Fixtures**: Prefer using fixture data over creating test data dynamically. See [.claude/FIXTURES.md](.claude/FIXTURES.md) for reference constants and available test data
 
 ## Fixtures (Development Only)
 
 - Admin: `admin@example.com` / `password`
 - User: `user@example.com` / `password`
+- Tenant: `tenant@example.com` / `password`
+- Landlord: `landlord@example.com` / `password`
+- Landlord2: `landlord2@example.com` / `password`
 - Unverified: `unverified@example.com` / `password`
 
 ## Role Hierarchy

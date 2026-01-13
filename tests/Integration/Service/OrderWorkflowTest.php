@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Service;
 
-use App\Entity\Place;
+use App\DataFixtures\StorageFixtures;
+use App\DataFixtures\StorageTypeFixtures;
+use App\DataFixtures\UserFixtures;
+use App\Entity\Order;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
@@ -14,13 +17,14 @@ use App\Enum\StorageStatus;
 use App\Service\OrderService;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ManagerRegistry;
+use Psr\Clock\ClockInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
-use Symfony\Component\Uid\Uuid;
 
 class OrderWorkflowTest extends KernelTestCase
 {
     private OrderService $orderService;
     private EntityManagerInterface $entityManager;
+    private ClockInterface $clock;
 
     protected function setUp(): void
     {
@@ -30,76 +34,19 @@ class OrderWorkflowTest extends KernelTestCase
         /** @var ManagerRegistry $doctrine */
         $doctrine = $container->get('doctrine');
         $this->entityManager = $doctrine->getManager();
-    }
-
-    private function createUser(string $email): User
-    {
-        $user = new User(Uuid::v7(), $email, 'password', 'Test', 'User', new \DateTimeImmutable());
-        $this->entityManager->persist($user);
-
-        return $user;
-    }
-
-    private function createPlace(User $owner): Place
-    {
-        $place = new Place(
-            id: Uuid::v7(),
-            name: 'Test Place',
-            address: 'Test Address',
-            city: 'Praha',
-            postalCode: '110 00',
-            description: null,
-            owner: $owner,
-            createdAt: new \DateTimeImmutable(),
-        );
-        $this->entityManager->persist($place);
-
-        return $place;
-    }
-
-    private function createStorageType(Place $place): StorageType
-    {
-        $storageType = new StorageType(
-            id: Uuid::v7(),
-            name: 'Test Type',
-            innerWidth: 100,
-            innerHeight: 100,
-            innerLength: 100,
-            pricePerWeek: 10000,
-            pricePerMonth: 35000,
-            place: $place,
-            createdAt: new \DateTimeImmutable(),
-        );
-        $this->entityManager->persist($storageType);
-
-        return $storageType;
-    }
-
-    private function createStorage(StorageType $storageType, string $number): Storage
-    {
-        $storage = new Storage(
-            id: Uuid::v7(),
-            number: $number,
-            coordinates: ['x' => 0, 'y' => 0, 'width' => 100, 'height' => 100, 'rotation' => 0],
-            storageType: $storageType,
-            createdAt: new \DateTimeImmutable(),
-        );
-        $this->entityManager->persist($storage);
-
-        return $storage;
+        $this->clock = $container->get(ClockInterface::class);
     }
 
     public function testOrderCreationReservesStorage(): void
     {
-        $owner = $this->createUser('owner@test.com');
-        $tenant = $this->createUser('tenant@test.com');
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $this->createStorage($storageType, 'A1');
-        $this->entityManager->flush();
+        /** @var User $tenant */
+        $tenant = $this->entityManager->getRepository(User::class)->findOneBy(['email' => UserFixtures::TENANT_EMAIL]);
+        /** @var StorageType $storageType */
+        $storageType = $this->entityManager->getRepository(StorageType::class)->findOneBy(['name' => 'Maly box']);
 
-        $startDate = new \DateTimeImmutable('+1 day');
-        $endDate = new \DateTimeImmutable('+30 days');
+        $now = $this->clock->now();
+        $startDate = $now->modify('+1 day');
+        $endDate = $now->modify('+30 days');
 
         $order = $this->orderService->createOrder(
             $tenant,
@@ -115,16 +62,14 @@ class OrderWorkflowTest extends KernelTestCase
 
     public function testOrderExpiresAfterSevenDays(): void
     {
-        $owner = $this->createUser('owner@test.com');
-        $tenant = $this->createUser('tenant@test.com');
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $this->createStorage($storageType, 'A1');
-        $this->entityManager->flush();
+        /** @var User $tenant */
+        $tenant = $this->entityManager->getRepository(User::class)->findOneBy(['email' => UserFixtures::TENANT_EMAIL]);
+        /** @var StorageType $storageType */
+        $storageType = $this->entityManager->getRepository(StorageType::class)->findOneBy(['name' => 'Maly box']);
 
-        $now = new \DateTimeImmutable();
-        $startDate = new \DateTimeImmutable('+1 day');
-        $endDate = new \DateTimeImmutable('+30 days');
+        $now = $this->clock->now();
+        $startDate = $now->modify('+1 day');
+        $endDate = $now->modify('+30 days');
 
         $order = $this->orderService->createOrder(
             $tenant,
@@ -151,19 +96,20 @@ class OrderWorkflowTest extends KernelTestCase
 
     public function testExpireOverdueOrdersBatch(): void
     {
-        $owner = $this->createUser('owner@test.com');
-        $tenant = $this->createUser('tenant@test.com');
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $this->createStorage($storageType, 'A1');
-        $this->createStorage($storageType, 'A2');
-        $this->entityManager->flush();
+        /** @var User $tenant */
+        $tenant = $this->entityManager->getRepository(User::class)->findOneBy(['email' => UserFixtures::TENANT_EMAIL]);
+        /** @var StorageType $storageType */
+        $storageType = $this->entityManager->getRepository(StorageType::class)->findOneBy(['name' => 'Maly box']);
 
-        $now = new \DateTimeImmutable();
-        $startDate = new \DateTimeImmutable('+1 day');
-        $endDate = new \DateTimeImmutable('+30 days');
+        $now = $this->clock->now();
+        $pastDate = $now->modify('-10 days');
+        $startDate = $now->modify('+1 day');
+        $endDate = $now->modify('+30 days');
 
-        // Create two orders
+        // Count expirable orders before creating new ones
+        $expirableOrdersBefore = $this->countExpirableOrders($now);
+
+        // Create two orders that are already expired (created 10 days ago)
         $order1 = $this->orderService->createOrder(
             $tenant,
             $storageType,
@@ -171,7 +117,7 @@ class OrderWorkflowTest extends KernelTestCase
             $startDate,
             $endDate,
             null,
-            $now,
+            $pastDate,
         );
 
         $order2 = $this->orderService->createOrder(
@@ -181,31 +127,30 @@ class OrderWorkflowTest extends KernelTestCase
             $startDate,
             $endDate,
             null,
-            $now,
+            $pastDate,
         );
 
         $this->entityManager->flush();
 
         // Expire all overdue orders
-        $expireTime = $now->modify('+8 days');
-        $count = $this->orderService->expireOverdueOrders($expireTime);
+        $count = $this->orderService->expireOverdueOrders($now);
 
-        $this->assertSame(2, $count);
+        // Should expire at least our 2 new orders plus any fixture orders
+        $this->assertSame($expirableOrdersBefore + 2, $count);
         $this->assertSame(OrderStatus::EXPIRED, $order1->status);
         $this->assertSame(OrderStatus::EXPIRED, $order2->status);
     }
 
     public function testCancelledOrderReleasesStorage(): void
     {
-        $owner = $this->createUser('owner@test.com');
-        $tenant = $this->createUser('tenant@test.com');
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $this->createStorage($storageType, 'A1');
-        $this->entityManager->flush();
+        /** @var User $tenant */
+        $tenant = $this->entityManager->getRepository(User::class)->findOneBy(['email' => UserFixtures::TENANT_EMAIL]);
+        /** @var StorageType $storageType */
+        $storageType = $this->entityManager->getRepository(StorageType::class)->findOneBy(['name' => 'Maly box']);
 
-        $startDate = new \DateTimeImmutable('+1 day');
-        $endDate = new \DateTimeImmutable('+30 days');
+        $now = $this->clock->now();
+        $startDate = $now->modify('+1 day');
+        $endDate = $now->modify('+30 days');
 
         $order = $this->orderService->createOrder(
             $tenant,
@@ -226,15 +171,14 @@ class OrderWorkflowTest extends KernelTestCase
 
     public function testCompletedOrderCreatesContractAndOccupiesStorage(): void
     {
-        $owner = $this->createUser('owner@test.com');
-        $tenant = $this->createUser('tenant@test.com');
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $this->createStorage($storageType, 'A1');
-        $this->entityManager->flush();
+        /** @var User $tenant */
+        $tenant = $this->entityManager->getRepository(User::class)->findOneBy(['email' => UserFixtures::TENANT_EMAIL]);
+        /** @var StorageType $storageType */
+        $storageType = $this->entityManager->getRepository(StorageType::class)->findOneBy(['name' => 'Maly box']);
 
-        $startDate = new \DateTimeImmutable('+1 day');
-        $endDate = new \DateTimeImmutable('+30 days');
+        $now = $this->clock->now();
+        $startDate = $now->modify('+1 day');
+        $endDate = $now->modify('+30 days');
 
         $order = $this->orderService->createOrder(
             $tenant,
@@ -269,15 +213,14 @@ class OrderWorkflowTest extends KernelTestCase
 
     public function testCannotCompleteOrderWithoutPayment(): void
     {
-        $owner = $this->createUser('owner@test.com');
-        $tenant = $this->createUser('tenant@test.com');
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $this->createStorage($storageType, 'A1');
-        $this->entityManager->flush();
+        /** @var User $tenant */
+        $tenant = $this->entityManager->getRepository(User::class)->findOneBy(['email' => UserFixtures::TENANT_EMAIL]);
+        /** @var StorageType $storageType */
+        $storageType = $this->entityManager->getRepository(StorageType::class)->findOneBy(['name' => 'Maly box']);
 
-        $startDate = new \DateTimeImmutable('+1 day');
-        $endDate = new \DateTimeImmutable('+30 days');
+        $now = $this->clock->now();
+        $startDate = $now->modify('+1 day');
+        $endDate = $now->modify('+30 days');
 
         $order = $this->orderService->createOrder(
             $tenant,
@@ -295,15 +238,14 @@ class OrderWorkflowTest extends KernelTestCase
 
     public function testCannotCancelCompletedOrder(): void
     {
-        $owner = $this->createUser('owner@test.com');
-        $tenant = $this->createUser('tenant@test.com');
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $this->createStorage($storageType, 'A1');
-        $this->entityManager->flush();
+        /** @var User $tenant */
+        $tenant = $this->entityManager->getRepository(User::class)->findOneBy(['email' => UserFixtures::TENANT_EMAIL]);
+        /** @var StorageType $storageType */
+        $storageType = $this->entityManager->getRepository(StorageType::class)->findOneBy(['name' => 'Maly box']);
 
-        $startDate = new \DateTimeImmutable('+1 day');
-        $endDate = new \DateTimeImmutable('+30 days');
+        $now = $this->clock->now();
+        $startDate = $now->modify('+1 day');
+        $endDate = $now->modify('+30 days');
 
         $order = $this->orderService->createOrder(
             $tenant,
@@ -325,15 +267,14 @@ class OrderWorkflowTest extends KernelTestCase
 
     public function testCannotPayCancelledOrder(): void
     {
-        $owner = $this->createUser('owner@test.com');
-        $tenant = $this->createUser('tenant@test.com');
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $this->createStorage($storageType, 'A1');
-        $this->entityManager->flush();
+        /** @var User $tenant */
+        $tenant = $this->entityManager->getRepository(User::class)->findOneBy(['email' => UserFixtures::TENANT_EMAIL]);
+        /** @var StorageType $storageType */
+        $storageType = $this->entityManager->getRepository(StorageType::class)->findOneBy(['name' => 'Maly box']);
 
-        $startDate = new \DateTimeImmutable('+1 day');
-        $endDate = new \DateTimeImmutable('+30 days');
+        $now = $this->clock->now();
+        $startDate = $now->modify('+1 day');
+        $endDate = $now->modify('+30 days');
 
         $order = $this->orderService->createOrder(
             $tenant,
@@ -354,14 +295,13 @@ class OrderWorkflowTest extends KernelTestCase
 
     public function testUnlimitedRentalOrderCreation(): void
     {
-        $owner = $this->createUser('owner@test.com');
-        $tenant = $this->createUser('tenant@test.com');
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $this->createStorage($storageType, 'A1');
-        $this->entityManager->flush();
+        /** @var User $tenant */
+        $tenant = $this->entityManager->getRepository(User::class)->findOneBy(['email' => UserFixtures::TENANT_EMAIL]);
+        /** @var StorageType $storageType */
+        $storageType = $this->entityManager->getRepository(StorageType::class)->findOneBy(['name' => 'Maly box']);
 
-        $startDate = new \DateTimeImmutable('+1 day');
+        $now = $this->clock->now();
+        $startDate = $now->modify('+1 day');
 
         $order = $this->orderService->createOrder(
             $tenant,
@@ -373,19 +313,18 @@ class OrderWorkflowTest extends KernelTestCase
 
         $this->assertTrue($order->isUnlimited());
         $this->assertNull($order->endDate);
-        $this->assertSame(35000, $order->totalPrice); // Monthly price
+        // Maly box has pricePerMonth = 500 CZK = 50000 halere
+        $this->assertSame(50000, $order->totalPrice);
     }
 
     public function testPriceCalculationForLimitedRental(): void
     {
-        $owner = $this->createUser('owner@test.com');
-        $tenant = $this->createUser('tenant@test.com');
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $this->createStorage($storageType, 'A1');
-        $this->entityManager->flush();
+        /** @var User $tenant */
+        $tenant = $this->entityManager->getRepository(User::class)->findOneBy(['email' => UserFixtures::TENANT_EMAIL]);
+        /** @var StorageType $storageType */
+        $storageType = $this->entityManager->getRepository(StorageType::class)->findOneBy(['name' => 'Maly box']);
 
-        // 7 days = 1 week = 10000
+        // 7 days = 1 week
         $order = $this->orderService->createOrder(
             $tenant,
             $storageType,
@@ -394,6 +333,22 @@ class OrderWorkflowTest extends KernelTestCase
             new \DateTimeImmutable('2024-01-08'),
         );
 
-        $this->assertSame(10000, $order->totalPrice);
+        // Maly box has pricePerWeek = 150 CZK = 15000 halere
+        $this->assertSame(15000, $order->totalPrice);
+    }
+
+    private function countExpirableOrders(\DateTimeImmutable $now): int
+    {
+        return (int) $this->entityManager->createQueryBuilder()
+            ->select('COUNT(o.id)')
+            ->from(Order::class, 'o')
+            ->where('o.expiresAt < :now')
+            ->andWhere('o.status NOT IN (:terminalStatuses)')
+            ->andWhere('o.status != :paidStatus')
+            ->setParameter('now', $now)
+            ->setParameter('terminalStatuses', [OrderStatus::COMPLETED, OrderStatus::CANCELLED, OrderStatus::EXPIRED])
+            ->setParameter('paidStatus', OrderStatus::PAID)
+            ->getQuery()
+            ->getSingleScalarResult();
     }
 }

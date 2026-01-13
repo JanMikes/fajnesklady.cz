@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Tests\Integration\Query;
 
 use App\Entity\User;
-use App\Enum\UserRole;
 use App\Query\GetDashboardStats;
 use App\Query\GetDashboardStatsQuery;
 use App\Repository\UserRepository;

@@ -94,25 +94,22 @@ class PlaceRepositoryTest extends KernelTestCase
 
     public function testFindByOwnerReturnsOnlyOwnedPlaces(): void
     {
-        $owner1 = $this->createUser('landlord1@example.com');
-        $owner2 = $this->createUser('landlord2@example.com');
+        // Use fixture data - landlord owns Praha places, landlord2 owns Ostrava
+        $landlord = $this->entityManager->getRepository(User::class)->findOneBy(['email' => 'landlord@example.com']);
+        $landlord2 = $this->entityManager->getRepository(User::class)->findOneBy(['email' => 'landlord2@example.com']);
 
-        $place1 = $this->createPlace($owner1, 'Owner1 Place A');
-        $place2 = $this->createPlace($owner1, 'Owner1 Place B');
-        $place3 = $this->createPlace($owner2, 'Owner2 Place');
+        $landlordPlaces = $this->repository->findByOwner($landlord);
+        $landlord2Places = $this->repository->findByOwner($landlord2);
 
-        $this->entityManager->flush();
+        // Landlord has 2 places (Praha Centrum and Praha Jih)
+        $this->assertCount(2, $landlordPlaces);
+        // Landlord2 has 1 place (Ostrava)
+        $this->assertCount(1, $landlord2Places);
 
-        $owner1Places = $this->repository->findByOwner($owner1);
-        $owner2Places = $this->repository->findByOwner($owner2);
-
-        $this->assertCount(2, $owner1Places);
-        $this->assertCount(1, $owner2Places);
-
-        $owner1Names = array_map(fn (Place $p) => $p->name, $owner1Places);
-        $this->assertContains('Owner1 Place A', $owner1Names);
-        $this->assertContains('Owner1 Place B', $owner1Names);
-        $this->assertSame('Owner2 Place', $owner2Places[0]->name);
+        $landlordNames = array_map(fn (Place $p) => $p->name, $landlordPlaces);
+        $this->assertContains('Sklad Praha - Centrum', $landlordNames);
+        $this->assertContains('Sklad Praha - Jiznimesto', $landlordNames);
+        $this->assertSame('Sklad Ostrava', $landlord2Places[0]->name);
     }
 
     public function testFindAllActiveExcludesInactive(): void

@@ -14,6 +14,21 @@ use Symfony\Component\Uid\Uuid;
 
 final class StorageTypeFixtures extends Fixture implements DependentFixtureInterface
 {
+    // Reference constants - Praha Centrum
+    public const REF_SMALL_CENTRUM = 'storage-type-small-centrum';
+    public const REF_MEDIUM_CENTRUM = 'storage-type-medium-centrum';
+    public const REF_LARGE_CENTRUM = 'storage-type-large-centrum';
+
+    // Reference constants - Praha Jih
+    public const REF_SMALL_JIH = 'storage-type-small-jih';
+    public const REF_MEDIUM_JIH = 'storage-type-medium-jih';
+
+    // Reference constants - Brno
+    public const REF_PREMIUM_BRNO = 'storage-type-premium-brno';
+
+    // Reference constants - Ostrava
+    public const REF_STANDARD_OSTRAVA = 'storage-type-standard-ostrava';
+
     public function __construct(
         private ClockInterface $clock,
     ) {
@@ -24,18 +39,21 @@ final class StorageTypeFixtures extends Fixture implements DependentFixtureInter
         $now = $this->clock->now();
 
         /** @var Place $placePrahaCentrum */
-        $placePrahaCentrum = $this->getReference('place-praha-centrum', Place::class);
+        $placePrahaCentrum = $this->getReference(PlaceFixtures::REF_PRAHA_CENTRUM, Place::class);
 
         /** @var Place $placePrahaJih */
-        $placePrahaJih = $this->getReference('place-praha-jih', Place::class);
+        $placePrahaJih = $this->getReference(PlaceFixtures::REF_PRAHA_JIH, Place::class);
 
         /** @var Place $placeBrno */
-        $placeBrno = $this->getReference('place-brno', Place::class);
+        $placeBrno = $this->getReference(PlaceFixtures::REF_BRNO, Place::class);
+
+        /** @var Place $placeOstrava */
+        $placeOstrava = $this->getReference(PlaceFixtures::REF_OSTRAVA, Place::class);
 
         // Storage types for Praha Centrum
         $smallBox = new StorageType(
             id: Uuid::v7(),
-            name: 'Malý box',
+            name: 'Maly box',
             innerWidth: 100,   // 1m in cm
             innerHeight: 100,
             innerLength: 100,
@@ -45,11 +63,11 @@ final class StorageTypeFixtures extends Fixture implements DependentFixtureInter
             createdAt: $now,
         );
         $manager->persist($smallBox);
-        $this->addReference('storage-type-small', $smallBox);
+        $this->addReference(self::REF_SMALL_CENTRUM, $smallBox);
 
         $mediumBox = new StorageType(
             id: Uuid::v7(),
-            name: 'Střední box',
+            name: 'Stredni box',
             innerWidth: 200,   // 2m in cm
             innerHeight: 200,
             innerLength: 200,
@@ -62,11 +80,11 @@ final class StorageTypeFixtures extends Fixture implements DependentFixtureInter
             outerLength: 210,
         );
         $manager->persist($mediumBox);
-        $this->addReference('storage-type-medium', $mediumBox);
+        $this->addReference(self::REF_MEDIUM_CENTRUM, $mediumBox);
 
         $largeBox = new StorageType(
             id: Uuid::v7(),
-            name: 'Velký box',
+            name: 'Velky box',
             innerWidth: 300,   // 3m in cm
             innerHeight: 250,
             innerLength: 400,
@@ -79,12 +97,12 @@ final class StorageTypeFixtures extends Fixture implements DependentFixtureInter
             outerLength: 420,
         );
         $manager->persist($largeBox);
-        $this->addReference('storage-type-large', $largeBox);
+        $this->addReference(self::REF_LARGE_CENTRUM, $largeBox);
 
         // Storage types for Praha Jih
         $smallBoxJih = new StorageType(
             id: Uuid::v7(),
-            name: 'Malý box',
+            name: 'Maly box',
             innerWidth: 100,
             innerHeight: 100,
             innerLength: 100,
@@ -94,11 +112,11 @@ final class StorageTypeFixtures extends Fixture implements DependentFixtureInter
             createdAt: $now,
         );
         $manager->persist($smallBoxJih);
-        $this->addReference('storage-type-small-jih', $smallBoxJih);
+        $this->addReference(self::REF_SMALL_JIH, $smallBoxJih);
 
         $mediumBoxJih = new StorageType(
             id: Uuid::v7(),
-            name: 'Střední box',
+            name: 'Stredni box',
             innerWidth: 200,
             innerHeight: 200,
             innerLength: 200,
@@ -108,7 +126,7 @@ final class StorageTypeFixtures extends Fixture implements DependentFixtureInter
             createdAt: $now,
         );
         $manager->persist($mediumBoxJih);
-        $this->addReference('storage-type-medium-jih', $mediumBoxJih);
+        $this->addReference(self::REF_MEDIUM_JIH, $mediumBoxJih);
 
         // Storage type for Brno
         $premiumBox = new StorageType(
@@ -126,7 +144,22 @@ final class StorageTypeFixtures extends Fixture implements DependentFixtureInter
             outerLength: 620,
         );
         $manager->persist($premiumBox);
-        $this->addReference('storage-type-premium', $premiumBox);
+        $this->addReference(self::REF_PREMIUM_BRNO, $premiumBox);
+
+        // Storage type for Ostrava (landlord2)
+        $standardOstrava = new StorageType(
+            id: Uuid::v7(),
+            name: 'Standardni box',
+            innerWidth: 150,
+            innerHeight: 150,
+            innerLength: 150,
+            pricePerWeek: 20000,   // 200 CZK
+            pricePerMonth: 70000,  // 700 CZK
+            place: $placeOstrava,
+            createdAt: $now,
+        );
+        $manager->persist($standardOstrava);
+        $this->addReference(self::REF_STANDARD_OSTRAVA, $standardOstrava);
 
         $manager->flush();
     }
