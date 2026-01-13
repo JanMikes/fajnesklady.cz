@@ -10,7 +10,7 @@ use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorage;
 return App::config([
     'services' => [
         'App\\DataFixtures\\' => [
-            'resource' => '../../../src/DataFixtures/',
+            'resource' => '../../../fixtures/',
         ],
         'security.untracked_token_storage' => [
             'class' => TokenStorage::class,

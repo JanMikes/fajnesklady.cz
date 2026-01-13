@@ -7,7 +7,7 @@ namespace Symfony\Component\DependencyInjection\Loader\Configurator;
 return App::config([
     'services' => [
         'App\\DataFixtures\\' => [
-            'resource' => '../../../src/DataFixtures/',
+            'resource' => '../../../fixtures/',
         ],
     ],
 ]);
