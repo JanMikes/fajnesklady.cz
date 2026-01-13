@@ -1,0 +1,207 @@
+{% extends 'portal/layout.html.twig' %}
+
+{% block title %}Detail objednavky - Portal{% endblock %}
+
+{% block content %}
+    {# Breadcrumb #}
+    <nav class="mb-6">
+        <ol class="flex items-center space-x-2 text-sm text-gray-600">
+            <li><a href="{{ path('portal_dashboard') }}" class="hover:text-blue-600">Prehled</a></li>
+            <li><span class="mx-2">/</span></li>
+            <li><a href="{{ path('portal_landlord_orders') }}" class="hover:text-blue-600">Objednavky</a></li>
+            <li><span class="mx-2">/</span></li>
+            <li class="text-gray-900 font-medium">Detail</li>
+        </ol>
+    </nav>
+
+    <div class="flex items-center justify-between mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">Detail objednavky</h1>
+        {% set statusClass = {
+            'created': 'bg-gray-100 text-gray-800',
+            'reserved': 'bg-yellow-100 text-yellow-800',
+            'awaiting_payment': 'bg-blue-100 text-blue-800',
+            'paid': 'bg-green-100 text-green-800',
+            'completed': 'bg-green-100 text-green-800',
+            'cancelled': 'bg-red-100 text-red-800',
+            'expired': 'bg-gray-100 text-gray-800'
+        } %}
+        {% set statusLabel = {
+            'created': 'Vytvoreno',
+            'reserved': 'Rezervovano',
+            'awaiting_payment': 'Ceka na platbu',
+            'paid': 'Zaplaceno',
+            'completed': 'Dokonceno',
+            'cancelled': 'Zruseno',
+            'expired': 'Expirovano'
+        } %}
+        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium {{ statusClass[order.status.value] ?? 'bg-gray-100 text-gray-800' }}">
+            {{ statusLabel[order.status.value] ?? order.status.value }}
+        </span>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {# Customer Details #}
+        <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">Zakaznik</h3>
+            </div>
+            <div class="px-4 py-5 sm:p-6">
+                <dl class="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Jmeno</dt>
+                        <dd class="mt-1 text-sm text-gray-900">{{ order.user.fullName }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Email</dt>
+                        <dd class="mt-1 text-sm text-gray-900">
+                            <a href="mailto:{{ order.user.email }}" class="text-blue-600 hover:text-blue-900">
+                                {{ order.user.email }}
+                            </a>
+                        </dd>
+                    </div>
+                    {% if order.user.phone %}
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Telefon</dt>
+                        <dd class="mt-1 text-sm text-gray-900">
+                            <a href="tel:{{ order.user.phone }}" class="text-blue-600 hover:text-blue-900">
+                                {{ order.user.phone }}
+                            </a>
+                        </dd>
+                    </div>
+                    {% endif %}
+                </dl>
+            </div>
+        </div>
+
+        {# Order Details #}
+        <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">Informace o objednavce</h3>
+            </div>
+            <div class="px-4 py-5 sm:p-6">
+                <dl class="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Cislo objednavky</dt>
+                        <dd class="mt-1 text-sm text-gray-900 font-mono">{{ order.id|string|slice(0, 8)|upper }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Typ pronajmu</dt>
+                        <dd class="mt-1 text-sm text-gray-900">
+                            {% if order.rentalType.value == 'limited' %}
+                                Na dobu urcitou
+                            {% else %}
+                                Na dobu neurcitou
+                            {% endif %}
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Datum zacatku</dt>
+                        <dd class="mt-1 text-sm text-gray-900">{{ order.startDate|date('d.m.Y') }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Datum konce</dt>
+                        <dd class="mt-1 text-sm text-gray-900">
+                            {% if order.endDate %}
+                                {{ order.endDate|date('d.m.Y') }}
+                            {% else %}
+                                Na dobu neurcitou
+                            {% endif %}
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Celkova cena</dt>
+                        <dd class="mt-1 text-sm text-gray-900 font-semibold">{{ (order.totalPriceInHalere / 100)|number_format(2, ',', ' ') }} Kc</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Vytvoreno</dt>
+                        <dd class="mt-1 text-sm text-gray-900">{{ order.createdAt|date('d.m.Y H:i') }}</dd>
+                    </div>
+                    {% if order.paidAt %}
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Zaplaceno</dt>
+                        <dd class="mt-1 text-sm text-gray-900">{{ order.paidAt|date('d.m.Y H:i') }}</dd>
+                    </div>
+                    {% endif %}
+                    {% if order.expiresAt %}
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Expirace</dt>
+                        <dd class="mt-1 text-sm text-gray-900">{{ order.expiresAt|date('d.m.Y H:i') }}</dd>
+                    </div>
+                    {% endif %}
+                </dl>
+            </div>
+        </div>
+    </div>
+
+    {# Storage Details #}
+    <div class="mt-6 bg-white shadow overflow-hidden sm:rounded-lg">
+        <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+            <h3 class="text-lg font-medium text-gray-900">Skladova jednotka</h3>
+        </div>
+        <div class="px-4 py-5 sm:p-6">
+            <dl class="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div>
+                    <dt class="text-sm font-medium text-gray-500">Typ skladu</dt>
+                    <dd class="mt-1 text-sm text-gray-900">{{ storageType.name }}</dd>
+                </div>
+                <div>
+                    <dt class="text-sm font-medium text-gray-500">Cislo jednotky</dt>
+                    <dd class="mt-1 text-sm text-gray-900 font-semibold">{{ storage.number }}</dd>
+                </div>
+                <div>
+                    <dt class="text-sm font-medium text-gray-500">Rozmery</dt>
+                    <dd class="mt-1 text-sm text-gray-900">{{ storageType.dimensionsInMeters }}</dd>
+                </div>
+                <div>
+                    <dt class="text-sm font-medium text-gray-500">Pobocka</dt>
+                    <dd class="mt-1 text-sm text-gray-900">{{ place.name }}</dd>
+                </div>
+                <div class="sm:col-span-2 lg:col-span-4">
+                    <dt class="text-sm font-medium text-gray-500">Adresa</dt>
+                    <dd class="mt-1 text-sm text-gray-900">{{ place.address }}, {{ place.postalCode }} {{ place.city }}</dd>
+                </div>
+            </dl>
+        </div>
+    </div>
+
+    {# Contract Link #}
+    {% if contract %}
+    <div class="mt-6 bg-white shadow overflow-hidden sm:rounded-lg">
+        <div class="px-4 py-5 sm:p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-medium text-gray-900">Smlouva</h3>
+                    <p class="mt-1 text-sm text-gray-500">
+                        Smlouva byla vytvorena {{ contract.createdAt|date('d.m.Y') }}
+                        {% if contract.signedAt %}
+                            a podepsana {{ contract.signedAt|date('d.m.Y') }}
+                        {% endif %}
+                    </p>
+                </div>
+                {% set now = "now"|date("U") %}
+                {% set isContractActive = contract.terminatedAt is null and (contract.endDate is null or contract.endDate|date("U") >= now) %}
+                {% if contract.terminatedAt %}
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
+                        Ukonceno {{ contract.terminatedAt|date('d.m.Y') }}
+                    </span>
+                {% elseif isContractActive %}
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                        Aktivni
+                    </span>
+                {% else %}
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
+                        Ukonceno
+                    </span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {# Actions #}
+    <div class="mt-6">
+        <a href="{{ path('portal_landlord_orders') }}" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+            &larr; Zpet na objednavky
+        </a>
+    </div>
+{% endblock %}

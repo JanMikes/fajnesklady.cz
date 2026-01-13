@@ -95,4 +95,74 @@ final class StorageUnavailabilityRepository
 
         return $qb->getQuery()->getResult();
     }
+
+    /**
+     * Find unavailability records for a storage type that overlap with a date range.
+     *
+     * @return StorageUnavailability[]
+     */
+    public function findByStorageTypeInDateRange(
+        \App\Entity\StorageType $storageType,
+        \DateTimeImmutable $startDate,
+        \DateTimeImmutable $endDate,
+    ): array {
+        return $this->entityManager->createQueryBuilder()
+            ->select('su')
+            ->from(StorageUnavailability::class, 'su')
+            ->join('su.storage', 's')
+            ->where('s.storageType = :storageType')
+            ->andWhere('su.startDate <= :endDate')
+            ->andWhere('su.endDate IS NULL OR su.endDate >= :startDate')
+            ->setParameter('storageType', $storageType)
+            ->setParameter('startDate', $startDate)
+            ->setParameter('endDate', $endDate)
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Find all unavailability records for storages owned by a user.
+     *
+     * @return StorageUnavailability[]
+     */
+    public function findByOwner(\App\Entity\User $owner): array
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('su')
+            ->from(StorageUnavailability::class, 'su')
+            ->join('su.storage', 's')
+            ->join('s.storageType', 'st')
+            ->join('st.place', 'p')
+            ->where('p.owner = :owner')
+            ->setParameter('owner', $owner)
+            ->orderBy('su.startDate', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Find all unavailability records.
+     *
+     * @return StorageUnavailability[]
+     */
+    public function findAll(): array
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('su')
+            ->from(StorageUnavailability::class, 'su')
+            ->orderBy('su.startDate', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    public function get(Uuid $id): StorageUnavailability
+    {
+        $unavailability = $this->find($id);
+
+        if (null === $unavailability) {
+            throw new \RuntimeException(sprintf('StorageUnavailability with ID "%s" not found.', $id));
+        }
+
+        return $unavailability;
+    }
 }

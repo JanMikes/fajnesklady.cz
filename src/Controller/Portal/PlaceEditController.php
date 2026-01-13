@@ -8,6 +8,7 @@ use App\Command\UpdatePlaceCommand;
 use App\Form\PlaceFormData;
 use App\Form\PlaceFormType;
 use App\Repository\PlaceRepository;
+use App\Service\PlaceFileUploader;
 use App\Service\Security\PlaceVoter;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -24,6 +25,7 @@ final class PlaceEditController extends AbstractController
     public function __construct(
         private readonly PlaceRepository $placeRepository,
         private readonly MessageBusInterface $commandBus,
+        private readonly PlaceFileUploader $fileUploader,
     ) {
     }
 
@@ -39,6 +41,26 @@ final class PlaceEditController extends AbstractController
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
+            $now = new \DateTimeImmutable();
+
+            // Handle map image upload
+            if (null !== $formData->mapImage) {
+                // Delete old file
+                $this->fileUploader->deleteFile($place->mapImagePath);
+                // Upload new file
+                $mapImagePath = $this->fileUploader->uploadMapImage($formData->mapImage, $place->id);
+                $place->updateMapImage($mapImagePath, $now);
+            }
+
+            // Handle contract template upload
+            if (null !== $formData->contractTemplate) {
+                // Delete old file
+                $this->fileUploader->deleteFile($place->contractTemplatePath);
+                // Upload new file
+                $contractTemplatePath = $this->fileUploader->uploadContractTemplate($formData->contractTemplate, $place->id);
+                $place->updateContractTemplate($contractTemplatePath, $now);
+            }
+
             $command = new UpdatePlaceCommand(
                 placeId: $place->id,
                 name: $formData->name,

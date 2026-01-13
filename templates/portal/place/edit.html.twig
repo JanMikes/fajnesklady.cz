@@ -22,7 +22,7 @@
                     </div>
                     <div>
                         <h2 class="text-xl font-bold text-gray-900">{{ place.name }}</h2>
-                        <p class="text-gray-600">{{ place.address }}</p>
+                        <p class="text-gray-600">{{ place.address }}, {{ place.postalCode }} {{ place.city }}</p>
                     </div>
                 </div>
             </div>
@@ -30,7 +30,7 @@
 
         <div class="card">
             <div class="card-body">
-                {{ form_start(form) }}
+                {{ form_start(form, {'attr': {'enctype': 'multipart/form-data'}}) }}
                     <div class="mb-4">
                         <label for="{{ form.name.vars.id }}" class="block text-sm font-semibold text-gray-700 mb-2">Nazev</label>
                         {{ form_widget(form.name, {'attr': {'class': 'input input-bordered w-full'}}) }}
@@ -43,11 +43,78 @@
                         {{ form_errors(form.address) }}
                     </div>
 
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label for="{{ form.city.vars.id }}" class="block text-sm font-semibold text-gray-700 mb-2">Mesto</label>
+                            {{ form_widget(form.city, {'attr': {'class': 'input input-bordered w-full'}}) }}
+                            {{ form_errors(form.city) }}
+                        </div>
+                        <div>
+                            <label for="{{ form.postalCode.vars.id }}" class="block text-sm font-semibold text-gray-700 mb-2">PSC</label>
+                            {{ form_widget(form.postalCode, {'attr': {'class': 'input input-bordered w-full'}}) }}
+                            {{ form_errors(form.postalCode) }}
+                        </div>
+                    </div>
+
                     <div class="mb-4">
                         <label for="{{ form.description.vars.id }}" class="block text-sm font-semibold text-gray-700 mb-2">Popis (nepovinne)</label>
                         {{ form_widget(form.description, {'attr': {'class': 'textarea textarea-bordered w-full', 'rows': 4}}) }}
                         {{ form_errors(form.description) }}
                     </div>
+
+                    <hr class="my-6 border-t border-gray-200">
+
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Soubory</h3>
+
+                    <div class="mb-4">
+                        <label for="{{ form.mapImage.vars.id }}" class="block text-sm font-semibold text-gray-700 mb-2">Mapa skladu</label>
+                        {% if form.vars.data.currentMapImagePath %}
+                            <div class="mb-2 p-3 bg-gray-50 rounded-lg flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <svg class="h-5 w-5 text-green-500 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <span class="text-sm text-gray-700">Nahrano</span>
+                                </div>
+                                <a href="/uploads/{{ form.vars.data.currentMapImagePath }}" target="_blank" class="text-sm text-blue-600 hover:text-blue-800">
+                                    Zobrazit
+                                </a>
+                            </div>
+                        {% endif %}
+                        {{ form_widget(form.mapImage, {'attr': {'class': 'file-input file-input-bordered w-full'}}) }}
+                        <p class="mt-1 text-sm text-gray-500">Obrazek mapy skladu (JPEG, PNG, WebP, max 5 MB)</p>
+                        {{ form_errors(form.mapImage) }}
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="{{ form.contractTemplate.vars.id }}" class="block text-sm font-semibold text-gray-700 mb-2">Sablona smlouvy</label>
+                        {% if form.vars.data.currentContractTemplatePath %}
+                            <div class="mb-2 p-3 bg-gray-50 rounded-lg flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <svg class="h-5 w-5 text-green-500 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <span class="text-sm text-gray-700">Nahrano</span>
+                                </div>
+                                <a href="/uploads/{{ form.vars.data.currentContractTemplatePath }}" target="_blank" class="text-sm text-blue-600 hover:text-blue-800">
+                                    Stahnout
+                                </a>
+                            </div>
+                        {% endif %}
+                        {{ form_widget(form.contractTemplate, {'attr': {'class': 'file-input file-input-bordered w-full'}}) }}
+                        <p class="mt-1 text-sm text-gray-500">Sablona smlouvy ve formatu DOCX (max 10 MB)</p>
+                        {{ form_errors(form.contractTemplate) }}
+                    </div>
+
+                    {% if form.ownerId is defined %}
+                    <hr class="my-6 border-t border-gray-200">
+
+                    <div class="mb-4">
+                        <label for="{{ form.ownerId.vars.id }}" class="block text-sm font-semibold text-gray-700 mb-2">Vlastnik</label>
+                        {{ form_widget(form.ownerId, {'attr': {'class': 'select select-bordered w-full'}}) }}
+                        {{ form_errors(form.ownerId) }}
+                    </div>
+                    {% endif %}
 
                     <hr class="my-6 border-t border-gray-200">
 

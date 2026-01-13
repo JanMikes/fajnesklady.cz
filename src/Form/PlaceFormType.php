@@ -8,6 +8,7 @@ use App\Enum\UserRole;
 use App\Repository\UserRepository;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
+use Symfony\Component\Form\Extension\Core\Type\FileType;
 use Symfony\Component\Form\Extension\Core\Type\TextareaType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
@@ -67,6 +68,26 @@ class PlaceFormType extends AbstractType
                 'class' => 'textarea textarea-bordered w-full',
                 'rows' => 4,
             ],
+        ]);
+
+        $builder->add('mapImage', FileType::class, [
+            'label' => 'Mapa skladu',
+            'required' => false,
+            'attr' => [
+                'accept' => 'image/jpeg,image/png,image/webp',
+                'class' => 'file-input file-input-bordered w-full',
+            ],
+            'help' => 'Obrazek mapy skladu (JPEG, PNG, WebP, max 5 MB)',
+        ]);
+
+        $builder->add('contractTemplate', FileType::class, [
+            'label' => 'Sablona smlouvy',
+            'required' => false,
+            'attr' => [
+                'accept' => '.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'class' => 'file-input file-input-bordered w-full',
+            ],
+            'help' => 'Sablona smlouvy ve formatu DOCX (max 10 MB)',
         ]);
 
         // Only show owner selector for admins

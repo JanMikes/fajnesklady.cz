@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Form;
 
 use App\Entity\Place;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\Validator\Constraints as Assert;
 
 final class PlaceFormData
@@ -29,6 +30,24 @@ final class PlaceFormData
 
     public ?string $ownerId = null;
 
+    #[Assert\Image(
+        maxSize: '5M',
+        mimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
+        mimeTypesMessage: 'Nahrajte obrazek ve formatu JPEG, PNG nebo WebP',
+    )]
+    public ?UploadedFile $mapImage = null;
+
+    #[Assert\File(
+        maxSize: '10M',
+        mimeTypes: ['application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+        mimeTypesMessage: 'Nahrajte dokument ve formatu DOCX',
+    )]
+    public ?UploadedFile $contractTemplate = null;
+
+    public ?string $currentMapImagePath = null;
+
+    public ?string $currentContractTemplatePath = null;
+
     public static function fromPlace(Place $place): self
     {
         $formData = new self();
@@ -38,6 +57,8 @@ final class PlaceFormData
         $formData->postalCode = $place->postalCode;
         $formData->description = $place->description;
         $formData->ownerId = $place->owner->id->toRfc4122();
+        $formData->currentMapImagePath = $place->mapImagePath;
+        $formData->currentContractTemplatePath = $place->contractTemplatePath;
 
         return $formData;
     }

@@ -164,4 +164,100 @@ final class OrderRepository
 
         return $qb->getQuery()->getResult();
     }
+
+    /**
+     * Find orders for storages owned by a landlord.
+     *
+     * @return Order[]
+     */
+    public function findByLandlord(User $landlord, int $limit = 0): array
+    {
+        $qb = $this->entityManager->createQueryBuilder()
+            ->select('o')
+            ->from(Order::class, 'o')
+            ->join('o.storage', 's')
+            ->join('s.storageType', 'st')
+            ->join('st.place', 'p')
+            ->where('p.owner = :landlord')
+            ->setParameter('landlord', $landlord)
+            ->orderBy('o.createdAt', 'DESC');
+
+        if ($limit > 0) {
+            $qb->setMaxResults($limit);
+        }
+
+        return $qb->getQuery()->getResult();
+    }
+
+    /**
+     * Count paid orders for storages owned by a landlord.
+     */
+    public function countPaidByLandlord(User $landlord): int
+    {
+        return (int) $this->entityManager->createQueryBuilder()
+            ->select('COUNT(o.id)')
+            ->from(Order::class, 'o')
+            ->join('o.storage', 's')
+            ->join('s.storageType', 'st')
+            ->join('st.place', 'p')
+            ->where('p.owner = :landlord')
+            ->andWhere('o.status IN (:paidStatuses)')
+            ->setParameter('landlord', $landlord)
+            ->setParameter('paidStatuses', [OrderStatus::PAID, OrderStatus::COMPLETED])
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    /**
+     * Sum total revenue (in haléře) from paid orders for storages owned by a landlord.
+     */
+    public function sumRevenueByLandlord(User $landlord): int
+    {
+        $result = $this->entityManager->createQueryBuilder()
+            ->select('SUM(o.totalPriceInHalere)')
+            ->from(Order::class, 'o')
+            ->join('o.storage', 's')
+            ->join('s.storageType', 'st')
+            ->join('st.place', 'p')
+            ->where('p.owner = :landlord')
+            ->andWhere('o.status IN (:paidStatuses)')
+            ->setParameter('landlord', $landlord)
+            ->setParameter('paidStatuses', [OrderStatus::PAID, OrderStatus::COMPLETED])
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return (int) ($result ?? 0);
+    }
+
+    /**
+     * Find active orders (reserved, awaiting_payment, paid, completed) for a storage type
+     * that overlap with a given date range.
+     *
+     * @return Order[]
+     */
+    public function findActiveByStorageTypeInDateRange(
+        \App\Entity\StorageType $storageType,
+        \DateTimeImmutable $startDate,
+        \DateTimeImmutable $endDate,
+    ): array {
+        return $this->entityManager->createQueryBuilder()
+            ->select('o')
+            ->from(Order::class, 'o')
+            ->join('o.storage', 's')
+            ->where('s.storageType = :storageType')
+            ->andWhere('o.status IN (:statuses)')
+            ->andWhere('o.startDate <= :endDate')
+            ->andWhere('o.endDate IS NULL OR o.endDate >= :startDate')
+            ->setParameter('storageType', $storageType)
+            ->setParameter('statuses', [
+                OrderStatus::RESERVED,
+                OrderStatus::AWAITING_PAYMENT,
+                OrderStatus::PAID,
+                OrderStatus::COMPLETED,
+            ])
+            ->setParameter('startDate', $startDate)
+            ->setParameter('endDate', $endDate)
+            ->getQuery()
+            ->getResult();
+    }
 }

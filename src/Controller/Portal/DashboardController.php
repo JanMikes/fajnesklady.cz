@@ -9,6 +9,8 @@ use App\Query\GetDashboardStats;
 use App\Query\QueryBus;
 use App\Repository\ContractRepository;
 use App\Repository\OrderRepository;
+use App\Repository\PlaceRepository;
+use App\Repository\StorageRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -22,6 +24,8 @@ final class DashboardController extends AbstractController
         private readonly QueryBus $queryBus,
         private readonly OrderRepository $orderRepository,
         private readonly ContractRepository $contractRepository,
+        private readonly PlaceRepository $placeRepository,
+        private readonly StorageRepository $storageRepository,
     ) {
     }
 
@@ -37,7 +41,27 @@ final class DashboardController extends AbstractController
         }
 
         if ($this->isGranted('ROLE_LANDLORD')) {
-            return $this->render('portal/dashboard_landlord.html.twig');
+            /** @var User $landlord */
+            $landlord = $this->getUser();
+
+            $placesCount = $this->placeRepository->countByOwner($landlord);
+            $totalStorages = $this->storageRepository->countByOwner($landlord);
+            $occupiedStorages = $this->storageRepository->countOccupiedByOwner($landlord);
+            $availableStorages = $this->storageRepository->countAvailableByOwner($landlord);
+            $totalRevenue = $this->orderRepository->sumRevenueByLandlord($landlord);
+            $recentOrders = $this->orderRepository->findByLandlord($landlord, 5);
+
+            $occupancyRate = $totalStorages > 0 ? ($occupiedStorages / $totalStorages) * 100 : 0;
+
+            return $this->render('portal/dashboard_landlord.html.twig', [
+                'placesCount' => $placesCount,
+                'totalStorages' => $totalStorages,
+                'occupiedStorages' => $occupiedStorages,
+                'availableStorages' => $availableStorages,
+                'occupancyRate' => $occupancyRate,
+                'totalRevenue' => $totalRevenue,
+                'recentOrders' => $recentOrders,
+            ]);
         }
 
         /** @var User $user */

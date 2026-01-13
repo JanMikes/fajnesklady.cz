@@ -1,0 +1,81 @@
+{% extends 'portal/layout.html.twig' %}
+
+{% block title %}Pridat blokovani skladu{% endblock %}
+
+{% block content %}
+    <div class="mb-6">
+        <a href="{{ path('portal_unavailabilities_list') }}" class="inline-flex items-center text-gray-600 hover:text-gray-900">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Zpet na seznam
+        </a>
+    </div>
+
+    <div class="card max-w-2xl">
+        <div class="card-header bg-gray-50 px-6 py-4 border-b">
+            <h1 class="text-xl font-semibold text-gray-900">Pridat blokovani skladu</h1>
+            <p class="text-sm text-gray-500 mt-1">Zablokujte sklad na urcite obdobi (napr. z duvodu udrzby, renovace nebo rezervace).</p>
+        </div>
+        <div class="card-body">
+            {{ form_start(form, {'attr': {'class': 'space-y-6'}}) }}
+                <div>
+                    {{ form_label(form.storageId) }}
+                    {{ form_widget(form.storageId) }}
+                    {{ form_errors(form.storageId) }}
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        {{ form_label(form.startDate) }}
+                        {{ form_widget(form.startDate) }}
+                        {{ form_errors(form.startDate) }}
+                    </div>
+                    <div>
+                        {{ form_label(form.endDate) }}
+                        {{ form_widget(form.endDate) }}
+                        {{ form_errors(form.endDate) }}
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    {{ form_widget(form.indefinite) }}
+                    {{ form_label(form.indefinite, null, {'label_attr': {'class': 'cursor-pointer select-none'}}) }}
+                </div>
+
+                <div>
+                    {{ form_label(form.reason) }}
+                    {{ form_widget(form.reason) }}
+                    {{ form_errors(form.reason) }}
+                </div>
+
+                <div class="flex items-center gap-4 pt-4">
+                    <button type="submit" class="btn btn-primary">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                        Ulozit blokovani
+                    </button>
+                    <a href="{{ path('portal_unavailabilities_list') }}" class="btn btn-ghost">Zrusit</a>
+                </div>
+            {{ form_end(form) }}
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const indefiniteCheckbox = document.getElementById('{{ form.indefinite.vars.id }}');
+            const endDateField = document.getElementById('{{ form.endDate.vars.id }}');
+
+            function toggleEndDate() {
+                endDateField.disabled = indefiniteCheckbox.checked;
+                if (indefiniteCheckbox.checked) {
+                    endDateField.value = '';
+                }
+            }
+
+            indefiniteCheckbox.addEventListener('change', toggleEndDate);
+            toggleEndDate();
+        });
+    </script>
+{% endblock %}

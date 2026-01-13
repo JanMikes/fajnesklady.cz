@@ -7,6 +7,7 @@ namespace App\Repository;
 use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
+use App\Entity\User;
 use App\Enum\StorageStatus;
 use App\Exception\StorageNotFound;
 use Doctrine\ORM\EntityManagerInterface;
@@ -102,6 +103,49 @@ final class StorageRepository
             ->where('s.storageType = :storageType')
             ->andWhere('s.status = :status')
             ->setParameter('storageType', $storageType)
+            ->setParameter('status', StorageStatus::AVAILABLE)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    public function countByOwner(User $owner): int
+    {
+        return (int) $this->entityManager->createQueryBuilder()
+            ->select('COUNT(s.id)')
+            ->from(Storage::class, 's')
+            ->join('s.storageType', 'st')
+            ->join('st.place', 'p')
+            ->where('p.owner = :owner')
+            ->setParameter('owner', $owner)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    public function countOccupiedByOwner(User $owner): int
+    {
+        return (int) $this->entityManager->createQueryBuilder()
+            ->select('COUNT(s.id)')
+            ->from(Storage::class, 's')
+            ->join('s.storageType', 'st')
+            ->join('st.place', 'p')
+            ->where('p.owner = :owner')
+            ->andWhere('s.status = :status')
+            ->setParameter('owner', $owner)
+            ->setParameter('status', StorageStatus::OCCUPIED)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    public function countAvailableByOwner(User $owner): int
+    {
+        return (int) $this->entityManager->createQueryBuilder()
+            ->select('COUNT(s.id)')
+            ->from(Storage::class, 's')
+            ->join('s.storageType', 'st')
+            ->join('st.place', 'p')
+            ->where('p.owner = :owner')
+            ->andWhere('s.status = :status')
+            ->setParameter('owner', $owner)
             ->setParameter('status', StorageStatus::AVAILABLE)
             ->getQuery()
             ->getSingleScalarResult();

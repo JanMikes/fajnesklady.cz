@@ -50,5 +50,10 @@ return App::config([
                 '$contractsDirectory' => '%kernel.project_dir%/var/contracts',
             ],
         ],
+        'App\\Service\\PlaceFileUploader' => [
+            'arguments' => [
+                '$uploadsDirectory' => '%kernel.project_dir%/public/uploads',
+            ],
+        ],
     ],
 ]);
