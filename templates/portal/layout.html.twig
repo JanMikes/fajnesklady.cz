@@ -41,7 +41,25 @@
                         Uživatelé
                     </a>
                     {% endif %}
+
+                    {# User menu items - visible to all users #}
+                    <a href="{{ path('portal_user_orders') }}" class="{% if app.request.attributes.get('_route') starts with 'portal_user_order' %}bg-gray-900 text-white{% else %}text-gray-300 hover:bg-gray-700 hover:text-white{% endif %} group flex items-center px-3 py-2 text-sm font-medium rounded-md">
+                        <svg class="mr-3 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        </svg>
+                        Objednávky
+                    </a>
+                    <a href="{{ path('portal_user_contracts') }}" class="{% if app.request.attributes.get('_route') starts with 'portal_user_contract' %}bg-gray-900 text-white{% else %}text-gray-300 hover:bg-gray-700 hover:text-white{% endif %} group flex items-center px-3 py-2 text-sm font-medium rounded-md">
+                        <svg class="mr-3 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Smlouvy
+                    </a>
+
                     {% if is_granted('ROLE_LANDLORD') %}
+                    <div class="px-3 py-2 mt-4">
+                        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Správa</p>
+                    </div>
                     <a href="{{ path('portal_places_list') }}" class="{% if app.request.attributes.get('_route') starts with 'portal_places' %}bg-gray-900 text-white{% else %}text-gray-300 hover:bg-gray-700 hover:text-white{% endif %} group flex items-center px-3 py-2 text-sm font-medium rounded-md">
                         <svg class="mr-3 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -134,7 +152,25 @@
                         Uživatelé
                     </a>
                     {% endif %}
+
+                    {# User menu items - visible to all users #}
+                    <a href="{{ path('portal_user_orders') }}" class="{% if app.request.attributes.get('_route') starts with 'portal_user_order' %}bg-gray-900 text-white{% else %}text-gray-300 hover:bg-gray-700 hover:text-white{% endif %} group flex items-center px-3 py-2 text-sm font-medium rounded-md">
+                        <svg class="mr-3 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        </svg>
+                        Objednávky
+                    </a>
+                    <a href="{{ path('portal_user_contracts') }}" class="{% if app.request.attributes.get('_route') starts with 'portal_user_contract' %}bg-gray-900 text-white{% else %}text-gray-300 hover:bg-gray-700 hover:text-white{% endif %} group flex items-center px-3 py-2 text-sm font-medium rounded-md">
+                        <svg class="mr-3 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Smlouvy
+                    </a>
+
                     {% if is_granted('ROLE_LANDLORD') %}
+                    <div class="px-3 py-2 mt-4">
+                        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Správa</p>
+                    </div>
                     <a href="{{ path('portal_places_list') }}" class="{% if app.request.attributes.get('_route') starts with 'portal_places' %}bg-gray-900 text-white{% else %}text-gray-300 hover:bg-gray-700 hover:text-white{% endif %} group flex items-center px-3 py-2 text-sm font-medium rounded-md">
                         <svg class="mr-3 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />

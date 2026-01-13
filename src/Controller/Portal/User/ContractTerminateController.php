@@ -1,0 +1,73 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Controller\Portal\User;
+
+use App\Entity\User;
+use App\Repository\ContractRepository;
+use App\Service\ContractService;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
+use Symfony\Component\Uid\Uuid;
+
+#[Route('/portal/smlouvy/{id}/ukoncit', name: 'portal_user_contract_terminate', methods: ['POST'])]
+#[IsGranted('ROLE_USER')]
+final class ContractTerminateController extends AbstractController
+{
+    public function __construct(
+        private readonly ContractRepository $contractRepository,
+        private readonly ContractService $contractService,
+    ) {
+    }
+
+    public function __invoke(string $id, Request $request): Response
+    {
+        if (!Uuid::isValid($id)) {
+            throw new NotFoundHttpException('Smlouva nenalezena.');
+        }
+
+        try {
+            $contract = $this->contractRepository->get(Uuid::fromString($id));
+        } catch (\Exception) {
+            throw new NotFoundHttpException('Smlouva nenalezena.');
+        }
+
+        /** @var User $user */
+        $user = $this->getUser();
+
+        if (!$contract->user->id->equals($user->id)) {
+            throw new AccessDeniedHttpException('Nemate pristup k teto smlouve.');
+        }
+
+        if (!$contract->isUnlimited()) {
+            $this->addFlash('error', 'Smlouvu na dobu urcitou nelze predcasne ukoncit.');
+
+            return $this->redirectToRoute('portal_user_contract_detail', ['id' => $id]);
+        }
+
+        if (!$this->contractService->canTerminate($contract)) {
+            $this->addFlash('error', 'Tuto smlouvu nelze ukoncit.');
+
+            return $this->redirectToRoute('portal_user_contract_detail', ['id' => $id]);
+        }
+
+        // Verify CSRF token
+        if (!$this->isCsrfTokenValid('terminate-contract-' . $id, $request->request->getString('_token'))) {
+            $this->addFlash('error', 'Neplatny bezpecnostni token. Zkuste to znovu.');
+
+            return $this->redirectToRoute('portal_user_contract_detail', ['id' => $id]);
+        }
+
+        $this->contractService->terminateContract($contract);
+
+        $this->addFlash('success', 'Smlouva byla uspesne ukoncena.');
+
+        return $this->redirectToRoute('portal_user_contracts');
+    }
+}

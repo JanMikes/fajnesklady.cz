@@ -1,0 +1,124 @@
+{% extends 'portal/layout.html.twig' %}
+
+{% block title %}Moje objednavky - Portal{% endblock %}
+
+{% block content %}
+    <div class="flex items-center justify-between mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">Moje objednavky</h1>
+    </div>
+
+    {% if orders|length > 0 %}
+        <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Sklad
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Obdobi
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Cena
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Stav
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Vytvoreno
+                        </th>
+                        <th scope="col" class="relative px-6 py-3">
+                            <span class="sr-only">Akce</span>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for order in orders %}
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center">
+                                    <div class="flex-shrink-0 h-10 w-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                                        <svg class="h-6 w-6 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                        </svg>
+                                    </div>
+                                    <div class="ml-4">
+                                        <div class="text-sm font-medium text-gray-900">
+                                            {{ order.storage.storageType.name }}
+                                        </div>
+                                        <div class="text-sm text-gray-500">
+                                            {{ order.storage.number }} - {{ order.storage.getPlace().name }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-900">
+                                    {{ order.startDate|date('d.m.Y') }}
+                                </div>
+                                <div class="text-sm text-gray-500">
+                                    {% if order.endDate %}
+                                        - {{ order.endDate|date('d.m.Y') }}
+                                    {% else %}
+                                        Na dobu neurcitou
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {{ (order.totalPriceInHalere / 100)|number_format(2, ',', ' ') }} Kc
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                {% set statusClass = {
+                                    'created': 'bg-gray-100 text-gray-800',
+                                    'reserved': 'bg-yellow-100 text-yellow-800',
+                                    'awaiting_payment': 'bg-blue-100 text-blue-800',
+                                    'paid': 'bg-green-100 text-green-800',
+                                    'completed': 'bg-green-100 text-green-800',
+                                    'cancelled': 'bg-red-100 text-red-800',
+                                    'expired': 'bg-gray-100 text-gray-800'
+                                } %}
+                                {% set statusLabel = {
+                                    'created': 'Vytvoreno',
+                                    'reserved': 'Rezervovano',
+                                    'awaiting_payment': 'Ceka na platbu',
+                                    'paid': 'Zaplaceno',
+                                    'completed': 'Dokonceno',
+                                    'cancelled': 'Zruseno',
+                                    'expired': 'Expirovano'
+                                } %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ statusClass[order.status.value] ?? 'bg-gray-100 text-gray-800' }}">
+                                    {{ statusLabel[order.status.value] ?? order.status.value }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{ order.createdAt|date('d.m.Y H:i') }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <a href="{{ path('portal_user_order_detail', {id: order.id}) }}" class="text-blue-600 hover:text-blue-900">
+                                    Detail
+                                </a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="bg-white overflow-hidden shadow rounded-lg">
+            <div class="p-6 text-center">
+                <svg class="mx-auto h-12 w-12 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                <h3 class="mt-2 text-sm font-medium text-gray-900">Zadne objednavky</h3>
+                <p class="mt-1 text-sm text-gray-500">
+                    Prozatim nemate zadne objednavky.
+                </p>
+                <div class="mt-6">
+                    <a href="{{ path('app_home') }}" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                        Pronajmout sklad
+                    </a>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+{% endblock %}

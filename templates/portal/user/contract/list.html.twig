@@ -1,0 +1,116 @@
+{% extends 'portal/layout.html.twig' %}
+
+{% block title %}Moje smlouvy - Portal{% endblock %}
+
+{% block content %}
+    <div class="flex items-center justify-between mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">Moje smlouvy</h1>
+    </div>
+
+    {% if contracts|length > 0 %}
+        <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Sklad
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Obdobi
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Stav
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Podepsano
+                        </th>
+                        <th scope="col" class="relative px-6 py-3">
+                            <span class="sr-only">Akce</span>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for contract in contracts %}
+                        {% set now = "now"|date("U") %}
+                        {% set isActive = contract.terminatedAt is null and (contract.endDate is null or contract.endDate|date("U") >= now) %}
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center">
+                                    <div class="flex-shrink-0 h-10 w-10 {{ isActive ? 'bg-green-100' : 'bg-gray-100' }} rounded-lg flex items-center justify-center">
+                                        <svg class="h-6 w-6 {{ isActive ? 'text-green-600' : 'text-gray-600' }}" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                    </div>
+                                    <div class="ml-4">
+                                        <div class="text-sm font-medium text-gray-900">
+                                            {{ contract.storage.storageType.name }}
+                                        </div>
+                                        <div class="text-sm text-gray-500">
+                                            {{ contract.storage.number }} - {{ contract.storage.getPlace().name }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-900">
+                                    {{ contract.startDate|date('d.m.Y') }}
+                                </div>
+                                <div class="text-sm text-gray-500">
+                                    {% if contract.endDate %}
+                                        - {{ contract.endDate|date('d.m.Y') }}
+                                    {% else %}
+                                        Na dobu neurcitou
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                {% if contract.terminatedAt %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                        Ukonceno
+                                    </span>
+                                {% elseif isActive %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                        Aktivni
+                                    </span>
+                                {% else %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                        Ukonceno
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {% if contract.signedAt %}
+                                    {{ contract.signedAt|date('d.m.Y H:i') }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <a href="{{ path('portal_user_contract_detail', {id: contract.id}) }}" class="text-blue-600 hover:text-blue-900">
+                                    Detail
+                                </a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="bg-white overflow-hidden shadow rounded-lg">
+            <div class="p-6 text-center">
+                <svg class="mx-auto h-12 w-12 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <h3 class="mt-2 text-sm font-medium text-gray-900">Zadne smlouvy</h3>
+                <p class="mt-1 text-sm text-gray-500">
+                    Prozatim nemate zadne smlouvy.
+                </p>
+                <div class="mt-6">
+                    <a href="{{ path('app_home') }}" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                        Pronajmout sklad
+                    </a>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+{% endblock %}

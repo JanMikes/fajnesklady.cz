@@ -1,0 +1,205 @@
+{% extends 'portal/layout.html.twig' %}
+
+{% block title %}Detail smlouvy - Portal{% endblock %}
+
+{% block content %}
+    {# Breadcrumb #}
+    <nav class="mb-6">
+        <ol class="flex items-center space-x-2 text-sm text-gray-600">
+            <li><a href="{{ path('portal_dashboard') }}" class="hover:text-blue-600">Prehled</a></li>
+            <li><span class="mx-2">/</span></li>
+            <li><a href="{{ path('portal_user_contracts') }}" class="hover:text-blue-600">Smlouvy</a></li>
+            <li><span class="mx-2">/</span></li>
+            <li class="text-gray-900 font-medium">Detail</li>
+        </ol>
+    </nav>
+
+    <div class="flex items-center justify-between mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">Detail smlouvy</h1>
+        {% set now = "now"|date("U") %}
+        {% set isActive = contract.terminatedAt is null and (contract.endDate is null or contract.endDate|date("U") >= now) %}
+        {% if contract.terminatedAt %}
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
+                Ukonceno {{ contract.terminatedAt|date('d.m.Y') }}
+            </span>
+        {% elseif isActive %}
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                Aktivni
+            </span>
+        {% else %}
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
+                Ukonceno
+            </span>
+        {% endif %}
+    </div>
+
+    {# Expiration Warning #}
+    {% if daysRemaining is not null and daysRemaining <= 7 and daysRemaining > 0 %}
+    <div class="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+        <div class="flex">
+            <svg class="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+            </svg>
+            <div class="ml-3">
+                <h3 class="text-sm font-medium text-yellow-800">Smlouva brzy konci</h3>
+                <p class="mt-1 text-sm text-yellow-700">
+                    Tato smlouva konci za {{ daysRemaining }} {{ daysRemaining == 1 ? 'den' : (daysRemaining < 5 ? 'dny' : 'dni') }}.
+                    Pokud chcete pokracovat v pronajmu, kontaktujte nas.
+                </p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {# Contract Details #}
+        <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">Informace o smlouve</h3>
+            </div>
+            <div class="px-4 py-5 sm:p-6">
+                <dl class="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Cislo smlouvy</dt>
+                        <dd class="mt-1 text-sm text-gray-900 font-mono">{{ contract.id|string|slice(0, 8)|upper }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Typ pronajmu</dt>
+                        <dd class="mt-1 text-sm text-gray-900">
+                            {% if contract.rentalType.value == 'limited' %}
+                                Na dobu urcitou
+                            {% else %}
+                                Na dobu neurcitou
+                            {% endif %}
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Datum zacatku</dt>
+                        <dd class="mt-1 text-sm text-gray-900">{{ contract.startDate|date('d.m.Y') }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Datum konce</dt>
+                        <dd class="mt-1 text-sm text-gray-900">
+                            {% if contract.endDate %}
+                                {{ contract.endDate|date('d.m.Y') }}
+                                {% if daysRemaining is not null %}
+                                    <span class="text-gray-500">({{ daysRemaining }} {{ daysRemaining == 1 ? 'den' : (daysRemaining < 5 ? 'dny' : 'dni') }})</span>
+                                {% endif %}
+                            {% else %}
+                                Na dobu neurcitou
+                            {% endif %}
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Vytvoreno</dt>
+                        <dd class="mt-1 text-sm text-gray-900">{{ contract.createdAt|date('d.m.Y H:i') }}</dd>
+                    </div>
+                    {% if contract.signedAt %}
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Podepsano</dt>
+                        <dd class="mt-1 text-sm text-gray-900">{{ contract.signedAt|date('d.m.Y H:i') }}</dd>
+                    </div>
+                    {% endif %}
+                </dl>
+            </div>
+        </div>
+
+        {# Storage Details #}
+        <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">Skladova jednotka</h3>
+            </div>
+            <div class="px-4 py-5 sm:p-6">
+                <dl class="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Typ skladu</dt>
+                        <dd class="mt-1 text-sm text-gray-900">{{ storageType.name }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Cislo jednotky</dt>
+                        <dd class="mt-1 text-sm text-gray-900 font-semibold">{{ storage.number }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Rozmery</dt>
+                        <dd class="mt-1 text-sm text-gray-900">{{ storageType.dimensionsInMeters }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">Pobocka</dt>
+                        <dd class="mt-1 text-sm text-gray-900">{{ place.name }}</dd>
+                    </div>
+                    <div class="sm:col-span-2">
+                        <dt class="text-sm font-medium text-gray-500">Adresa</dt>
+                        <dd class="mt-1 text-sm text-gray-900">{{ place.address }}, {{ place.postalCode }} {{ place.city }}</dd>
+                    </div>
+                </dl>
+
+                {% if place.latitude and place.longitude %}
+                <div class="mt-4">
+                    <a href="https://maps.google.com/?q={{ place.latitude }},{{ place.longitude }}" target="_blank" class="inline-flex items-center text-sm text-blue-600 hover:text-blue-800">
+                        <svg class="h-4 w-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        Zobrazit na mape
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    {# Document Download #}
+    {% if contract.hasDocument() %}
+    <div class="mt-6 bg-white shadow overflow-hidden sm:rounded-lg">
+        <div class="px-4 py-5 sm:p-6">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center">
+                    <svg class="h-10 w-10 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <div class="ml-4">
+                        <h3 class="text-lg font-medium text-gray-900">Dokument smlouvy</h3>
+                        <p class="text-sm text-gray-500">Stahnete si kopii sve smlouvy</p>
+                    </div>
+                </div>
+                <a href="{{ path('portal_user_contract_download', {id: contract.id}) }}" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                    <svg class="h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Stahnout
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {# Termination Section for Unlimited Contracts #}
+    {% if canTerminate %}
+    <div class="mt-6 bg-white shadow overflow-hidden sm:rounded-lg border border-red-200">
+        <div class="px-4 py-5 sm:p-6">
+            <h3 class="text-lg font-medium text-red-900">Ukoncit smlouvu</h3>
+            <p class="mt-1 text-sm text-gray-600">
+                Smlouvu na dobu neurcitou muzete kdykoliv ukoncit. Po ukonceni bude skladova jednotka uvolnena.
+            </p>
+            <div class="mt-4">
+                <form action="{{ path('portal_user_contract_terminate', {id: contract.id}) }}" method="post" onsubmit="return confirm('Opravdu chcete ukoncit tuto smlouvu? Tato akce je nevratna.');">
+                    <input type="hidden" name="_token" value="{{ csrf_token('terminate-contract-' ~ contract.id) }}">
+                    <button type="submit" class="inline-flex items-center px-4 py-2 border border-red-300 shadow-sm text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50">
+                        <svg class="h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        Ukoncit smlouvu
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {# Actions #}
+    <div class="mt-6">
+        <a href="{{ path('portal_user_contracts') }}" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+            &larr; Zpet na smlouvy
+        </a>
+    </div>
+{% endblock %}
