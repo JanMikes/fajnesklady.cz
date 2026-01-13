@@ -7,7 +7,6 @@ namespace App\Command;
 use App\Entity\Place;
 use App\Repository\PlaceRepository;
 use App\Repository\UserRepository;
-use App\Service\Identity\ProvideIdentity;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
@@ -18,24 +17,32 @@ final readonly class CreatePlaceHandler
         private PlaceRepository $placeRepository,
         private UserRepository $userRepository,
         private ClockInterface $clock,
-        private ProvideIdentity $identityProvider,
     ) {
     }
 
     public function __invoke(CreatePlaceCommand $command): Place
     {
         $owner = $this->userRepository->get($command->ownerId);
+        $now = $this->clock->now();
 
         $place = new Place(
-            id: $this->identityProvider->next(),
+            id: $command->placeId,
             name: $command->name,
             address: $command->address,
             city: $command->city,
             postalCode: $command->postalCode,
             description: $command->description,
             owner: $owner,
-            createdAt: $this->clock->now(),
+            createdAt: $now,
         );
+
+        if (null !== $command->mapImagePath) {
+            $place->updateMapImage($command->mapImagePath, $now);
+        }
+
+        if (null !== $command->contractTemplatePath) {
+            $place->updateContractTemplate($command->contractTemplatePath, $now);
+        }
 
         $this->placeRepository->save($place);
 

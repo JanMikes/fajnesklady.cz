@@ -8,6 +8,8 @@ use App\Command\CreatePlaceCommand;
 use App\Entity\User;
 use App\Form\PlaceFormData;
 use App\Form\PlaceFormType;
+use App\Service\Identity\ProvideIdentity;
+use App\Service\PlaceFileUploader;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -22,6 +24,8 @@ final class PlaceCreateController extends AbstractController
 {
     public function __construct(
         private readonly MessageBusInterface $commandBus,
+        private readonly ProvideIdentity $identityProvider,
+        private readonly PlaceFileUploader $fileUploader,
     ) {
     }
 
@@ -37,18 +41,36 @@ final class PlaceCreateController extends AbstractController
             /** @var PlaceFormData $formData */
             $formData = $form->getData();
 
+            // Generate place ID upfront for file uploads
+            $placeId = $this->identityProvider->next();
+
             // If not admin, owner is always current user
             $ownerId = $this->isGranted('ROLE_ADMIN') && null !== $formData->ownerId
                 ? Uuid::fromString($formData->ownerId)
                 : $user->id;
 
+            // Handle map image upload
+            $mapImagePath = null;
+            if (null !== $formData->mapImage) {
+                $mapImagePath = $this->fileUploader->uploadMapImage($formData->mapImage, $placeId);
+            }
+
+            // Handle contract template upload
+            $contractTemplatePath = null;
+            if (null !== $formData->contractTemplate) {
+                $contractTemplatePath = $this->fileUploader->uploadContractTemplate($formData->contractTemplate, $placeId);
+            }
+
             $command = new CreatePlaceCommand(
+                placeId: $placeId,
                 name: $formData->name,
                 address: $formData->address,
                 city: $formData->city,
                 postalCode: $formData->postalCode,
                 description: $formData->description,
                 ownerId: $ownerId,
+                mapImagePath: $mapImagePath,
+                contractTemplatePath: $contractTemplatePath,
             );
 
             $this->commandBus->dispatch($command);

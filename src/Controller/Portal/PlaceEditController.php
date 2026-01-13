@@ -41,24 +41,18 @@ final class PlaceEditController extends AbstractController
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            $now = new \DateTimeImmutable();
-
             // Handle map image upload
+            $mapImagePath = null;
             if (null !== $formData->mapImage) {
-                // Delete old file
                 $this->fileUploader->deleteFile($place->mapImagePath);
-                // Upload new file
                 $mapImagePath = $this->fileUploader->uploadMapImage($formData->mapImage, $place->id);
-                $place->updateMapImage($mapImagePath, $now);
             }
 
             // Handle contract template upload
+            $contractTemplatePath = null;
             if (null !== $formData->contractTemplate) {
-                // Delete old file
                 $this->fileUploader->deleteFile($place->contractTemplatePath);
-                // Upload new file
                 $contractTemplatePath = $this->fileUploader->uploadContractTemplate($formData->contractTemplate, $place->id);
-                $place->updateContractTemplate($contractTemplatePath, $now);
             }
 
             $command = new UpdatePlaceCommand(
@@ -68,6 +62,8 @@ final class PlaceEditController extends AbstractController
                 city: $formData->city,
                 postalCode: $formData->postalCode,
                 description: $formData->description,
+                mapImagePath: $mapImagePath,
+                contractTemplatePath: $contractTemplatePath,
             );
 
             $this->commandBus->dispatch($command);

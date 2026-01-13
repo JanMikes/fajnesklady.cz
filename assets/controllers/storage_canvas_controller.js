@@ -14,6 +14,7 @@ export default class extends Controller {
         this.selectedStorage = null;
         this.isDragging = false;
         this.isResizing = false;
+        this.isRotating = false;
         this.isCreating = false;
         this.dragOffset = { x: 0, y: 0 };
         this.resizeHandle = null;
@@ -70,6 +71,10 @@ export default class extends Controller {
         this.canvasTarget.addEventListener('mouseup', this.onMouseUp.bind(this));
         this.canvasTarget.addEventListener('dblclick', this.onDoubleClick.bind(this));
 
+        // Keyboard shortcuts
+        this.boundKeyDown = this.onKeyDown.bind(this);
+        document.addEventListener('keydown', this.boundKeyDown);
+
         if (this.hasSaveBtnTarget) {
             this.saveBtnTarget.addEventListener('click', this.saveStorage.bind(this));
         }
@@ -78,6 +83,24 @@ export default class extends Controller {
         }
         if (this.hasCancelBtnTarget) {
             this.cancelBtnTarget.addEventListener('click', this.cancelEdit.bind(this));
+        }
+    }
+
+    disconnect() {
+        if (this.boundKeyDown) {
+            document.removeEventListener('keydown', this.boundKeyDown);
+        }
+    }
+
+    onKeyDown(e) {
+        // Delete selected storage with Delete or Backspace key
+        if ((e.key === 'Delete' || e.key === 'Backspace') && this.selectedStorage) {
+            // Don't trigger if user is typing in an input
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                return;
+            }
+            e.preventDefault();
+            this.deleteStorage();
         }
     }
 
@@ -91,6 +114,15 @@ export default class extends Controller {
 
     onMouseDown(e) {
         const pos = this.getMousePos(e);
+
+        // Check if clicking on rotation handle
+        if (this.selectedStorage) {
+            const rotHandle = this.getRotationHandle(pos, this.selectedStorage);
+            if (rotHandle) {
+                this.isRotating = true;
+                return;
+            }
+        }
 
         // Check if clicking on resize handle
         if (this.selectedStorage) {
@@ -131,6 +163,15 @@ export default class extends Controller {
             this.resizeStorage(pos);
             this.selectedStorage.modified = true;
             this.render();
+        } else if (this.isRotating && this.selectedStorage) {
+            // Calculate rotation angle from center of storage to mouse position
+            const coords = this.selectedStorage.coordinates;
+            const centerX = coords.x + coords.width / 2;
+            const centerY = coords.y + coords.height / 2;
+            const angle = Math.atan2(pos.y - centerY, pos.x - centerX) * 180 / Math.PI + 90;
+            coords.rotation = Math.round(angle);
+            this.selectedStorage.modified = true;
+            this.render();
         } else if (this.isCreating && this.creationStart) {
             this.render();
             // Draw creation rectangle
@@ -143,13 +184,21 @@ export default class extends Controller {
             this.ctx.setLineDash([]);
         } else {
             // Update cursor
+            if (this.selectedStorage) {
+                const rotHandle = this.getRotationHandle(pos, this.selectedStorage);
+                if (rotHandle) {
+                    this.canvasTarget.style.cursor = 'grab';
+                    return;
+                }
+                const handle = this.getResizeHandle(pos, this.selectedStorage);
+                if (handle) {
+                    this.canvasTarget.style.cursor = handle.cursor;
+                    return;
+                }
+            }
             const storage = this.getStorageAtPosition(pos);
             if (storage) {
-                if (this.selectedStorage && this.getResizeHandle(pos, this.selectedStorage)) {
-                    this.canvasTarget.style.cursor = 'nwse-resize';
-                } else {
-                    this.canvasTarget.style.cursor = 'move';
-                }
+                this.canvasTarget.style.cursor = 'move';
             } else {
                 this.canvasTarget.style.cursor = 'crosshair';
             }
@@ -186,6 +235,7 @@ export default class extends Controller {
 
         this.isDragging = false;
         this.isResizing = false;
+        this.isRotating = false;
         this.isCreating = false;
         this.creationStart = null;
         this.resizeHandle = null;
@@ -215,9 +265,12 @@ export default class extends Controller {
 
     getResizeHandle(pos, storage) {
         const coords = storage.coordinates;
-        const handleSize = 10;
+        const handleSize = 12;
         const handles = [
-            { name: 'se', x: coords.x + coords.width - handleSize, y: coords.y + coords.height - handleSize }
+            { name: 'nw', x: coords.x, y: coords.y, cursor: 'nwse-resize' },
+            { name: 'ne', x: coords.x + coords.width - handleSize, y: coords.y, cursor: 'nesw-resize' },
+            { name: 'sw', x: coords.x, y: coords.y + coords.height - handleSize, cursor: 'nesw-resize' },
+            { name: 'se', x: coords.x + coords.width - handleSize, y: coords.y + coords.height - handleSize, cursor: 'nwse-resize' }
         ];
 
         for (const handle of handles) {
@@ -229,12 +282,76 @@ export default class extends Controller {
         return null;
     }
 
+    getRotationHandle(pos, storage) {
+        const coords = storage.coordinates;
+        const handleRadius = 8;
+        const handleDistance = 25; // Distance above the storage
+
+        // Calculate center of storage
+        const centerX = coords.x + coords.width / 2;
+        const centerY = coords.y;
+
+        // Rotation handle is above the center top of the storage
+        const handleX = centerX;
+        const handleY = centerY - handleDistance;
+
+        // Check if mouse is within the circular handle
+        const dx = pos.x - handleX;
+        const dy = pos.y - handleY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance <= handleRadius) {
+            return { x: handleX, y: handleY, radius: handleRadius };
+        }
+        return null;
+    }
+
     resizeStorage(pos) {
-        if (!this.selectedStorage) return;
+        if (!this.selectedStorage || !this.resizeHandle) return;
 
         const coords = this.selectedStorage.coordinates;
-        coords.width = Math.max(30, pos.x - coords.x);
-        coords.height = Math.max(30, pos.y - coords.y);
+        const minSize = 30;
+
+        switch (this.resizeHandle.name) {
+            case 'se': // Southeast - standard resize
+                coords.width = Math.max(minSize, pos.x - coords.x);
+                coords.height = Math.max(minSize, pos.y - coords.y);
+                break;
+            case 'nw': // Northwest - resize from top-left
+                const newWidthNW = coords.width + (coords.x - pos.x);
+                const newHeightNW = coords.height + (coords.y - pos.y);
+                if (newWidthNW >= minSize) {
+                    coords.x = pos.x;
+                    coords.width = newWidthNW;
+                }
+                if (newHeightNW >= minSize) {
+                    coords.y = pos.y;
+                    coords.height = newHeightNW;
+                }
+                break;
+            case 'ne': // Northeast - resize from top-right
+                const newWidthNE = pos.x - coords.x;
+                const newHeightNE = coords.height + (coords.y - pos.y);
+                if (newWidthNE >= minSize) {
+                    coords.width = newWidthNE;
+                }
+                if (newHeightNE >= minSize) {
+                    coords.y = pos.y;
+                    coords.height = newHeightNE;
+                }
+                break;
+            case 'sw': // Southwest - resize from bottom-left
+                const newWidthSW = coords.width + (coords.x - pos.x);
+                const newHeightSW = pos.y - coords.y;
+                if (newWidthSW >= minSize) {
+                    coords.x = pos.x;
+                    coords.width = newWidthSW;
+                }
+                if (newHeightSW >= minSize) {
+                    coords.height = newHeightSW;
+                }
+                break;
+        }
     }
 
     selectStorage(storage) {
@@ -463,16 +580,45 @@ export default class extends Controller {
 
         this.ctx.restore();
 
-        // Draw resize handle if selected
+        // Draw resize handles if selected
         if (isSelected) {
-            const handleSize = 10;
+            const handleSize = 12;
             this.ctx.fillStyle = '#2563eb';
-            this.ctx.fillRect(
-                coords.x + coords.width - handleSize,
-                coords.y + coords.height - handleSize,
-                handleSize,
-                handleSize
-            );
+            // NW handle
+            this.ctx.fillRect(coords.x, coords.y, handleSize, handleSize);
+            // NE handle
+            this.ctx.fillRect(coords.x + coords.width - handleSize, coords.y, handleSize, handleSize);
+            // SW handle
+            this.ctx.fillRect(coords.x, coords.y + coords.height - handleSize, handleSize, handleSize);
+            // SE handle
+            this.ctx.fillRect(coords.x + coords.width - handleSize, coords.y + coords.height - handleSize, handleSize, handleSize);
+
+            // Draw rotation handle
+            const handleRadius = 8;
+            const handleDistance = 25;
+            const centerX = coords.x + coords.width / 2;
+            const handleY = coords.y - handleDistance;
+
+            // Draw line connecting to storage
+            this.ctx.strokeStyle = '#2563eb';
+            this.ctx.lineWidth = 2;
+            this.ctx.beginPath();
+            this.ctx.moveTo(centerX, coords.y);
+            this.ctx.lineTo(centerX, handleY);
+            this.ctx.stroke();
+
+            // Draw rotation handle circle
+            this.ctx.fillStyle = '#2563eb';
+            this.ctx.beginPath();
+            this.ctx.arc(centerX, handleY, handleRadius, 0, Math.PI * 2);
+            this.ctx.fill();
+
+            // Draw rotation icon inside the circle
+            this.ctx.strokeStyle = '#ffffff';
+            this.ctx.lineWidth = 2;
+            this.ctx.beginPath();
+            this.ctx.arc(centerX, handleY, 4, -Math.PI * 0.7, Math.PI * 0.3);
+            this.ctx.stroke();
         }
     }
 

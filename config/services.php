@@ -20,9 +20,6 @@ return App::config([
         'App\\Controller\\' => [
             'resource' => '../src/Controller/',
         ],
-        'App\\DataFixtures\\' => [
-            'resource' => '../src/DataFixtures/',
-        ],
         'App\\Event\\' => [
             'resource' => '../src/Event/*{Handler,Subscriber}.php',
         ],

@@ -20,6 +20,7 @@ final readonly class UpdatePlaceHandler
     public function __invoke(UpdatePlaceCommand $command): void
     {
         $place = $this->placeRepository->get($command->placeId);
+        $now = $this->clock->now();
 
         $place->updateDetails(
             name: $command->name,
@@ -27,8 +28,16 @@ final readonly class UpdatePlaceHandler
             city: $command->city,
             postalCode: $command->postalCode,
             description: $command->description,
-            now: $this->clock->now(),
+            now: $now,
         );
+
+        if (null !== $command->mapImagePath) {
+            $place->updateMapImage($command->mapImagePath, $now);
+        }
+
+        if (null !== $command->contractTemplatePath) {
+            $place->updateContractTemplate($command->contractTemplatePath, $now);
+        }
 
         $this->placeRepository->save($place);
     }

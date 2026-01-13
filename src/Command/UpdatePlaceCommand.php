@@ -15,6 +15,8 @@ final readonly class UpdatePlaceCommand
         public string $city,
         public string $postalCode,
         public ?string $description,
+        public ?string $mapImagePath = null,
+        public ?string $contractTemplatePath = null,
     ) {
     }
 }

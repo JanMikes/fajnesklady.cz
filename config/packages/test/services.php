@@ -9,6 +9,9 @@ use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorage;
 
 return App::config([
     'services' => [
+        'App\\DataFixtures\\' => [
+            'resource' => '../../../src/DataFixtures/',
+        ],
         'security.untracked_token_storage' => [
             'class' => TokenStorage::class,
             'public' => true,
