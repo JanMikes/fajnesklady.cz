@@ -43,6 +43,10 @@ return App::config([
                     'path' => '/',
                     'always_remember_me' => false,
                 ],
+                'switch_user' => [
+                    'role' => 'ROLE_ADMIN',
+                    'parameter' => '_switch_user',
+                ],
             ],
         ],
         'access_control' => [

@@ -180,4 +180,30 @@ final class ContractRepository
 
         return $qb->getQuery()->getResult();
     }
+
+    /**
+     * @return Contract[]
+     */
+    public function findAllPaginated(int $page, int $limit): array
+    {
+        $offset = ($page - 1) * $limit;
+
+        return $this->entityManager->createQueryBuilder()
+            ->select('c')
+            ->from(Contract::class, 'c')
+            ->orderBy('c.createdAt', 'DESC')
+            ->setFirstResult($offset)
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+    }
+
+    public function countTotal(): int
+    {
+        return (int) $this->entityManager->createQueryBuilder()
+            ->select('COUNT(c.id)')
+            ->from(Contract::class, 'c')
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
 }

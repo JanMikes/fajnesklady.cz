@@ -260,4 +260,30 @@ final class OrderRepository
             ->getQuery()
             ->getResult();
     }
+
+    /**
+     * @return Order[]
+     */
+    public function findAllPaginated(int $page, int $limit): array
+    {
+        $offset = ($page - 1) * $limit;
+
+        return $this->entityManager->createQueryBuilder()
+            ->select('o')
+            ->from(Order::class, 'o')
+            ->orderBy('o.createdAt', 'DESC')
+            ->setFirstResult($offset)
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+    }
+
+    public function countTotal(): int
+    {
+        return (int) $this->entityManager->createQueryBuilder()
+            ->select('COUNT(o.id)')
+            ->from(Order::class, 'o')
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
 }

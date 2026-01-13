@@ -1,0 +1,62 @@
+{# Pagination component
+   Required variables:
+   - currentPage: Current page number
+   - totalPages: Total number of pages
+   - route: Route name for pagination links
+   Optional variables:
+   - routeParams: Additional route parameters to preserve
+#}
+
+{% set routeParams = routeParams ?? {} %}
+
+<div class="flex justify-between items-center mt-4 px-6 py-4 border-t border-gray-200">
+    <div class="text-sm text-gray-500">
+        Page {{ currentPage }} of {{ totalPages }}
+    </div>
+    <div class="flex space-x-1">
+        {% if currentPage > 1 %}
+            <a href="{{ path(route, routeParams|merge({page: currentPage - 1})) }}" class="px-3 py-1 rounded-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                Previous
+            </a>
+        {% else %}
+            <span class="px-3 py-1 rounded-md border border-gray-300 bg-gray-100 text-sm font-medium text-gray-400 cursor-not-allowed">
+                Previous
+            </span>
+        {% endif %}
+
+        {% set startPage = max(1, currentPage - 2) %}
+        {% set endPage = min(totalPages, currentPage + 2) %}
+
+        {% if startPage > 1 %}
+            <a href="{{ path(route, routeParams|merge({page: 1})) }}" class="px-3 py-1 rounded-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">1</a>
+            {% if startPage > 2 %}
+                <span class="px-3 py-1 text-sm text-gray-400">...</span>
+            {% endif %}
+        {% endif %}
+
+        {% for page in startPage..endPage %}
+            {% if page == currentPage %}
+                <span class="px-3 py-1 rounded-md border border-blue-500 bg-blue-50 text-sm font-medium text-blue-700">{{ page }}</span>
+            {% else %}
+                <a href="{{ path(route, routeParams|merge({page: page})) }}" class="px-3 py-1 rounded-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">{{ page }}</a>
+            {% endif %}
+        {% endfor %}
+
+        {% if endPage < totalPages %}
+            {% if endPage < totalPages - 1 %}
+                <span class="px-3 py-1 text-sm text-gray-400">...</span>
+            {% endif %}
+            <a href="{{ path(route, routeParams|merge({page: totalPages})) }}" class="px-3 py-1 rounded-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">{{ totalPages }}</a>
+        {% endif %}
+
+        {% if currentPage < totalPages %}
+            <a href="{{ path(route, routeParams|merge({page: currentPage + 1})) }}" class="px-3 py-1 rounded-md border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                Next
+            </a>
+        {% else %}
+            <span class="px-3 py-1 rounded-md border border-gray-300 bg-gray-100 text-sm font-medium text-gray-400 cursor-not-allowed">
+                Next
+            </span>
+        {% endif %}
+    </div>
+</div>

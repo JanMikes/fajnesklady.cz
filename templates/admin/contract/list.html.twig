@@ -1,0 +1,78 @@
+{% extends 'portal/layout.html.twig' %}
+
+{% block title %}All Contracts - Admin{% endblock %}
+
+{% block content %}
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold text-gray-900">All Contracts (Admin View)</h1>
+    </div>
+
+    <div class="card">
+        <div class="overflow-x-auto">
+            <table class="table table-zebra">
+                <thead>
+                    <tr>
+                        <th>Contract ID</th>
+                        <th>Tenant</th>
+                        <th>Storage</th>
+                        <th>Place</th>
+                        <th>Period</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for contract in contracts %}
+                        <tr>
+                            <td class="font-mono text-sm">{{ contract.id|slice(0, 8) }}...</td>
+                            <td>
+                                <a href="{{ path('portal_users_view', {id: contract.user.id}) }}" class="text-blue-600 hover:text-blue-800">
+                                    {{ contract.user.fullName }}
+                                </a>
+                                <div class="text-xs text-gray-500">{{ contract.user.email }}</div>
+                            </td>
+                            <td class="text-gray-900">{{ contract.storage.number }}</td>
+                            <td class="text-gray-500">{{ contract.storage.storageType.place.name }}</td>
+                            <td class="text-sm">
+                                {{ contract.startDate|date('Y-m-d') }}
+                                {% if contract.endDate %}
+                                    - {{ contract.endDate|date('Y-m-d') }}
+                                {% else %}
+                                    <span class="text-gray-500">(unlimited)</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if contract.terminatedAt %}
+                                    <span class="badge badge-error">Terminated</span>
+                                {% elseif contract.signedAt %}
+                                    <span class="badge badge-success">Active</span>
+                                {% else %}
+                                    <span class="badge badge-warning">Pending Signature</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-gray-500 text-sm">{{ contract.createdAt|date('Y-m-d H:i') }}</td>
+                            <td>
+                                <a href="{{ path('portal_user_contract_detail', {id: contract.id}) }}" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                                    View
+                                </a>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="8" class="text-center text-gray-500 py-8">No contracts found</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if totalPages > 1 %}
+            {% include 'components/pagination.html.twig' with {
+                currentPage: currentPage,
+                totalPages: totalPages,
+                route: 'admin_contracts_list'
+            } %}
+        {% endif %}
+    </div>
+{% endblock %}

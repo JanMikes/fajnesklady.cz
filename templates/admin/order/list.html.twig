@@ -1,0 +1,85 @@
+{% extends 'portal/layout.html.twig' %}
+
+{% block title %}All Orders - Admin{% endblock %}
+
+{% block content %}
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold text-gray-900">All Orders (Admin View)</h1>
+    </div>
+
+    <div class="card">
+        <div class="overflow-x-auto">
+            <table class="table table-zebra">
+                <thead>
+                    <tr>
+                        <th>Order ID</th>
+                        <th>Customer</th>
+                        <th>Storage</th>
+                        <th>Place</th>
+                        <th>Period</th>
+                        <th>Price</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in orders %}
+                        <tr>
+                            <td class="font-mono text-sm">{{ order.id|slice(0, 8) }}...</td>
+                            <td>
+                                <a href="{{ path('portal_users_view', {id: order.user.id}) }}" class="text-blue-600 hover:text-blue-800">
+                                    {{ order.user.fullName }}
+                                </a>
+                                <div class="text-xs text-gray-500">{{ order.user.email }}</div>
+                            </td>
+                            <td class="text-gray-900">{{ order.storage.number }}</td>
+                            <td class="text-gray-500">{{ order.storage.storageType.place.name }}</td>
+                            <td class="text-sm">
+                                {{ order.startDate|date('Y-m-d') }}
+                                {% if order.endDate %}
+                                    - {{ order.endDate|date('Y-m-d') }}
+                                {% else %}
+                                    <span class="text-gray-500">(unlimited)</span>
+                                {% endif %}
+                            </td>
+                            <td class="font-medium">{{ (order.totalPriceInHalere / 100)|number_format(0, ',', ' ') }} Kc</td>
+                            <td>
+                                {% set statusClass = {
+                                    'created': 'badge-ghost',
+                                    'reserved': 'badge-info',
+                                    'awaiting_payment': 'badge-warning',
+                                    'paid': 'badge-success',
+                                    'completed': 'badge-success',
+                                    'cancelled': 'badge-error',
+                                    'expired': 'badge-error'
+                                } %}
+                                <span class="badge {{ statusClass[order.status.value] ?? 'badge-ghost' }}">
+                                    {{ order.status.value }}
+                                </span>
+                            </td>
+                            <td class="text-gray-500 text-sm">{{ order.createdAt|date('Y-m-d H:i') }}</td>
+                            <td>
+                                <a href="{{ path('portal_landlord_order_detail', {orderId: order.id}) }}" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                                    View
+                                </a>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="9" class="text-center text-gray-500 py-8">No orders found</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if totalPages > 1 %}
+            {% include 'components/pagination.html.twig' with {
+                currentPage: currentPage,
+                totalPages: totalPages,
+                route: 'admin_orders_list'
+            } %}
+        {% endif %}
+    </div>
+{% endblock %}

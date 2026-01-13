@@ -6,6 +6,9 @@
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-3xl font-bold">User Details</h1>
         <div class="flex gap-2">
+            {% if user.id != app.user.id %}
+                <a href="{{ path('portal_dashboard', {'_switch_user': user.email}) }}" class="btn btn-secondary">Impersonate</a>
+            {% endif %}
             <a href="{{ path('portal_users_edit', {id: user.id}) }}" class="btn btn-primary">Edit Role</a>
             <a href="{{ path('portal_users_list') }}" class="btn btn-ghost">Back to List</a>
         </div>
