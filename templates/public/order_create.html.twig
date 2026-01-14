@@ -23,39 +23,7 @@
 
                     {{ form_start(form, {attr: {class: 'space-y-8', 'x-data': '{
                         rentalType: "' ~ (form.vars.data.rentalType ? form.vars.data.rentalType.value : 'limited') ~ '",
-                        invoiceToCompany: ' ~ (form.vars.data.invoiceToCompany ? 'true' : 'false') ~ ',
-                        aresLoading: false,
-                        aresError: null,
-                        aresSuccess: null,
-                        async loadFromAres() {
-                            const ico = document.querySelector("[name=\\"order_form[companyId]\\"]").value;
-                            if (!ico || !ico.match(/^\\d{8}$/)) {
-                                this.aresError = "IČO musí mít přesně 8 číslic.";
-                                this.aresSuccess = null;
-                                return;
-                            }
-                            this.aresLoading = true;
-                            this.aresError = null;
-                            this.aresSuccess = null;
-                            try {
-                                const res = await fetch("/api/ares/" + ico);
-                                const data = await res.json();
-                                if (data.error) {
-                                    this.aresError = data.error;
-                                    return;
-                                }
-                                document.querySelector("[name=\\"order_form[companyName]\\"]").value = data.companyName || "";
-                                document.querySelector("[name=\\"order_form[companyVatId]\\"]").value = data.companyVatId || "";
-                                document.querySelector("[name=\\"order_form[billingStreet]\\"]").value = data.billingStreet || "";
-                                document.querySelector("[name=\\"order_form[billingCity]\\"]").value = data.billingCity || "";
-                                document.querySelector("[name=\\"order_form[billingPostalCode]\\"]").value = data.billingPostalCode || "";
-                                this.aresSuccess = "Údaje byly úspěšně načteny z ARES.";
-                            } catch (e) {
-                                this.aresError = "Nepodařilo se načíst údaje z ARES.";
-                            } finally {
-                                this.aresLoading = false;
-                            }
-                        }
+                        invoiceToCompany: ' ~ (form.vars.data.invoiceToCompany ? 'true' : 'false') ~ '
                     }'}}) }}
 
                         {# Contact Information #}
@@ -110,36 +78,9 @@
                                 </label>
                             </div>
 
-                            <div x-show="invoiceToCompany" x-cloak class="space-y-4" :class="{'opacity-50': aresLoading}">
-                                {# IČO with ARES lookup button #}
+                            <div x-show="invoiceToCompany" x-cloak class="space-y-4">
                                 <div>
-                                    <label class="block text-sm font-semibold text-gray-700 mb-2">{{ form.companyId.vars.label }}</label>
-                                    <div class="flex gap-2">
-                                        {{ form_widget(form.companyId, {attr: {class: 'input input-bordered flex-1'}}) }}
-                                        <button type="button"
-                                                @click="loadFromAres()"
-                                                class="btn btn-secondary"
-                                                :disabled="aresLoading">
-                                            <span x-show="!aresLoading">Vyhledat v ARES</span>
-                                            <span x-show="aresLoading" class="loading loading-spinner loading-sm"></span>
-                                        </button>
-                                    </div>
-                                    {{ form_errors(form.companyId) }}
-                                </div>
-
-                                {# ARES feedback messages #}
-                                <div x-show="aresError" x-cloak class="alert alert-warning flex items-center gap-2">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-5 w-5" fill="none" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                    </svg>
-                                    <span x-text="aresError"></span>
-                                </div>
-
-                                <div x-show="aresSuccess" x-cloak class="alert alert-success flex items-center gap-2">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-5 w-5" fill="none" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                    <span x-text="aresSuccess"></span>
+                                    {{ form_row(form.companyId) }}
                                 </div>
 
                                 {# Company name and VAT ID #}
