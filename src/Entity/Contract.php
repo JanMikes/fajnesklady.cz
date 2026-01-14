@@ -22,6 +22,21 @@ class Contract
     #[ORM\Column(nullable: true)]
     public private(set) ?\DateTimeImmutable $terminatedAt = null;
 
+    #[ORM\Column(nullable: true)]
+    public private(set) ?int $goPayParentPaymentId = null;
+
+    #[ORM\Column(nullable: true)]
+    public private(set) ?\DateTimeImmutable $nextBillingDate = null;
+
+    #[ORM\Column(nullable: true)]
+    public private(set) ?\DateTimeImmutable $lastBilledAt = null;
+
+    #[ORM\Column(options: ['default' => 0])]
+    public private(set) int $failedBillingAttempts = 0;
+
+    #[ORM\Column(nullable: true)]
+    public private(set) ?\DateTimeImmutable $lastBillingFailedAt = null;
+
     public function __construct(
         #[ORM\Id]
         #[ORM\Column(type: UuidType::NAME, unique: true)]
@@ -93,5 +108,64 @@ class Contract
     public function hasDocument(): bool
     {
         return null !== $this->documentPath;
+    }
+
+    public function setRecurringPayment(int $parentPaymentId, \DateTimeImmutable $nextBillingDate): void
+    {
+        $this->goPayParentPaymentId = $parentPaymentId;
+        $this->nextBillingDate = $nextBillingDate;
+    }
+
+    public function recordBillingCharge(\DateTimeImmutable $chargedAt, \DateTimeImmutable $nextBillingDate): void
+    {
+        $this->lastBilledAt = $chargedAt;
+        $this->nextBillingDate = $nextBillingDate;
+        $this->failedBillingAttempts = 0;
+        $this->lastBillingFailedAt = null;
+    }
+
+    public function recordFailedBillingAttempt(\DateTimeImmutable $failedAt): void
+    {
+        ++$this->failedBillingAttempts;
+        $this->lastBillingFailedAt = $failedAt;
+    }
+
+    public function cancelRecurringPayment(): void
+    {
+        $this->goPayParentPaymentId = null;
+        $this->nextBillingDate = null;
+    }
+
+    public function hasActiveRecurringPayment(): bool
+    {
+        return null !== $this->goPayParentPaymentId && !$this->isTerminated();
+    }
+
+    public function isDueBilling(\DateTimeImmutable $now): bool
+    {
+        return $this->hasActiveRecurringPayment()
+            && null !== $this->nextBillingDate
+            && $now >= $this->nextBillingDate
+            && 0 === $this->failedBillingAttempts;
+    }
+
+    public function needsRetry(\DateTimeImmutable $now): bool
+    {
+        if (!$this->hasActiveRecurringPayment()) {
+            return false;
+        }
+
+        if (1 !== $this->failedBillingAttempts) {
+            return false;
+        }
+
+        if (null === $this->lastBillingFailedAt) {
+            return false;
+        }
+
+        // Retry after 3 days
+        $retryDate = $this->lastBillingFailedAt->modify('+3 days');
+
+        return $now >= $retryDate;
     }
 }

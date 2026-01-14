@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Platba se nepodarila</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: {% if isFirstAttempt %}#f59e0b{% else %}#ef4444{% endif %};
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 5px 5px 0 0;
+        }
+        .content {
+            background-color: #f9f9f9;
+            padding: 30px;
+            border: 1px solid #ddd;
+            border-top: none;
+        }
+        .footer {
+            text-align: center;
+            padding: 20px;
+            font-size: 12px;
+            color: #666;
+        }
+        .warning-box {
+            background-color: {% if isFirstAttempt %}#fef3c7{% else %}#fee2e2{% endif %};
+            border: 1px solid {% if isFirstAttempt %}#f59e0b{% else %}#ef4444{% endif %};
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .storage-details {
+            background-color: white;
+            border: 1px solid #ddd;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .storage-details table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .storage-details td {
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .storage-details td:first-child {
+            font-weight: bold;
+            color: #666;
+            width: 40%;
+        }
+        .storage-details tr:last-child td {
+            border-bottom: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>{% if isFirstAttempt %}Platba se nepodarila{% else %}Druha neuspesna platba{% endif %}</h1>
+    </div>
+
+    <div class="content">
+        <h2>{{ name }},</h2>
+
+        {% if isFirstAttempt %}
+            <div class="warning-box">
+                <p><strong>Upozorneni:</strong> Pravidelna platba za Vas skladovy box se nepodarila.</p>
+                <p>Platbu se automaticky pokusime opakovat za 3 dny. Prosim, zkontrolujte, ze mate na uctu dostatek prostredku.</p>
+            </div>
+        {% else %}
+            <div class="warning-box">
+                <p><strong>Dulezite:</strong> Druhy pokus o platbu za Vas skladovy box selhal.</p>
+                <p>Pravidelna platba byla zrusena. Pro obnoveni pronajmu nas prosim kontaktujte.</p>
+            </div>
+        {% endif %}
+
+        <div class="storage-details">
+            <table>
+                <tr>
+                    <td>Misto:</td>
+                    <td>{{ placeName }}</td>
+                </tr>
+                <tr>
+                    <td>Typ skladu:</td>
+                    <td>{{ storageType }}</td>
+                </tr>
+                <tr>
+                    <td>Cislo boxu:</td>
+                    <td>{{ storageNumber }}</td>
+                </tr>
+            </table>
+        </div>
+
+        <p>Pokud mate dotazy, nevahjete nas kontaktovat.</p>
+
+        <p>S pozdravem,<br>
+        <strong>Tym Fajne Sklady</strong></p>
+    </div>
+
+    <div class="footer">
+        <p>Toto je automaticky generovany email. Prosim neodpovidejte na tuto zpravu.</p>
+        <p>&copy; {{ 'now'|date('Y') }} Fajne Sklady. Vsechna prava vyhrazena.</p>
+    </div>
+</body>
+</html>

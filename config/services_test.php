@@ -33,6 +33,12 @@ return App::config([
         'App\\Service\\Fakturoid\\FakturoidClient' => [
             'alias' => 'App\\Tests\\Mock\\MockFakturoidClient',
         ],
+        'App\\Tests\\Mock\\MockGoPayClient' => [
+            'tags' => [['name' => 'kernel.reset', 'method' => 'reset']],
+        ],
+        'App\\Service\\GoPay\\GoPayClient' => [
+            'alias' => 'App\\Tests\\Mock\\MockGoPayClient',
+        ],
         'Symfony\\Component\\PasswordHasher\\Hasher\\UserPasswordHasherInterface' => [
             'alias' => 'security.user_password_hasher',
             'public' => true,

@@ -32,6 +32,12 @@ class Order implements EntityWithEvents
     #[ORM\Column(nullable: true)]
     public private(set) ?\DateTimeImmutable $cancelledAt = null;
 
+    #[ORM\Column(nullable: true)]
+    public private(set) ?int $goPayPaymentId = null;
+
+    #[ORM\Column(nullable: true)]
+    public private(set) ?int $goPayParentPaymentId = null;
+
     public function __construct(
         #[ORM\Id]
         #[ORM\Column(type: UuidType::NAME, unique: true)]
@@ -153,5 +159,20 @@ class Order implements EntityWithEvents
     public function getTotalPriceInCzk(): float
     {
         return $this->totalPrice / 100;
+    }
+
+    public function setGoPayPaymentId(int $paymentId): void
+    {
+        $this->goPayPaymentId = $paymentId;
+    }
+
+    public function setGoPayParentPaymentId(int $parentPaymentId): void
+    {
+        $this->goPayParentPaymentId = $parentPaymentId;
+    }
+
+    public function hasRecurringPaymentSetup(): bool
+    {
+        return null !== $this->goPayParentPaymentId;
     }
 }

@@ -1,12 +1,12 @@
 {% extends 'user/layout.html.twig' %}
 
-{% block title %}Platba objednávky - Fajné Sklady{% endblock %}
+{% block title %}Platba objednavky - Fajne Sklady{% endblock %}
 
 {% block content %}
     {# Breadcrumb #}
     <nav class="mb-6">
         <ol class="flex items-center space-x-2 text-sm text-gray-600">
-            <li><a href="{{ path('app_home') }}" class="hover:text-accent">Domů</a></li>
+            <li><a href="{{ path('app_home') }}" class="hover:text-accent">Domu</a></li>
             <li><span class="mx-2">/</span></li>
             <li><a href="{{ path('public_place_detail', {id: place.id}) }}" class="hover:text-accent">{{ place.name }}</a></li>
             <li><span class="mx-2">/</span></li>
@@ -17,19 +17,19 @@
     <div class="max-w-2xl mx-auto">
         <div class="card">
             <div class="card-body">
-                <h1 class="text-2xl font-bold text-gray-900 mb-6">Platba objednávky</h1>
+                <h1 class="text-2xl font-bold text-gray-900 mb-6">Platba objednavky</h1>
 
                 {# Order Summary #}
                 <div class="bg-gray-50 rounded-lg p-4 mb-6">
-                    <h2 class="font-semibold text-gray-900 mb-3">Shrnutí objednávky</h2>
+                    <h2 class="font-semibold text-gray-900 mb-3">Shrnuti objednavky</h2>
 
                     <div class="space-y-2 text-sm">
                         <div class="flex justify-between">
-                            <span class="text-gray-600">Číslo objednávky</span>
+                            <span class="text-gray-600">Cislo objednavky</span>
                             <span class="font-mono font-medium">{{ order.id|slice(0, 8)|upper }}</span>
                         </div>
                         <div class="flex justify-between">
-                            <span class="text-gray-600">Pobočka</span>
+                            <span class="text-gray-600">Pobocka</span>
                             <span class="font-medium">{{ place.name }}</span>
                         </div>
                         <div class="flex justify-between">
@@ -37,11 +37,11 @@
                             <span class="font-medium">{{ storageType.name }}</span>
                         </div>
                         <div class="flex justify-between">
-                            <span class="text-gray-600">Skladová jednotka</span>
+                            <span class="text-gray-600">Skladova jednotka</span>
                             <span class="font-medium">{{ storage.number }}</span>
                         </div>
                         <div class="flex justify-between">
-                            <span class="text-gray-600">Datum začátku</span>
+                            <span class="text-gray-600">Datum zacatku</span>
                             <span class="font-medium">{{ order.startDate|date('d.m.Y') }}</span>
                         </div>
                         <div class="flex justify-between">
@@ -50,7 +50,10 @@
                                 {% if order.endDate %}
                                     {{ order.endDate|date('d.m.Y') }}
                                 {% else %}
-                                    Na dobu neurčitou
+                                    Na dobu neurcitou
+                                    {% if order.paymentFrequency %}
+                                        ({{ order.paymentFrequency.value == 'monthly' ? 'mesicni' : 'rocni' }} platba)
+                                    {% endif %}
                                 {% endif %}
                             </span>
                         </div>
@@ -59,8 +62,8 @@
                     <hr class="my-4">
 
                     <div class="flex justify-between text-lg">
-                        <span class="font-semibold text-gray-900">Celková cena</span>
-                        <span class="font-bold text-accent">{{ order.totalPriceInCzk|number_format(2, ',', ' ') }} Kč</span>
+                        <span class="font-semibold text-gray-900">Celkova cena</span>
+                        <span class="font-bold text-accent">{{ order.totalPriceInCzk|number_format(2, ',', ' ') }} Kc</span>
                     </div>
                 </div>
 
@@ -72,52 +75,144 @@
                         </svg>
                         <div>
                             <p class="text-sm text-yellow-800">
-                                <strong>Objednávka vyprší {{ order.expiresAt|date('d.m.Y H:i') }}</strong>
+                                <strong>Objednavka vyprsi {{ order.expiresAt|date('d.m.Y H:i') }}</strong>
                             </p>
                             <p class="text-sm text-yellow-700 mt-1">
-                                Pokud nebude do tohoto data provedena platba, objednávka bude automaticky zrušena
-                                a skladová jednotka uvolněna.
+                                Pokud nebude do tohoto data provedena platba, objednavka bude automaticky zrusena
+                                a skladova jednotka uvolnena.
                             </p>
                         </div>
                     </div>
                 </div>
 
-                {# Payment Simulation Notice #}
+                {# Payment Info #}
                 <div class="bg-accent/5 border border-accent/20 rounded-lg p-4 mb-6">
                     <div class="flex items-start">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-accent mt-0.5 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                         </svg>
                         <p class="text-sm text-gray-700">
-                            <strong>Simulace platby</strong><br>
-                            V produkčním prostředí by zde byla integrace s platební bránou.
-                            Pro účely testování klikněte na "Zaplatit" pro simulaci úspěšné platby.
+                            <strong>Bezpecna platba</strong><br>
+                            Platba je zpracovana pomoci platebni brany GoPay. Vase udaje jsou v bezpeci.
                         </p>
                     </div>
                 </div>
 
+                {# GoPay Inline Gateway Container #}
+                <div id="gopay-gateway-container" class="hidden mb-6">
+                    <div class="border border-gray-200 rounded-lg overflow-hidden">
+                        <div id="gopay-inline-form"></div>
+                    </div>
+                </div>
+
+                {# Error Message Container #}
+                <div id="payment-error" class="hidden bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+                    <div class="flex items-start">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-600 mt-0.5 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <p class="text-sm text-red-800" id="payment-error-text"></p>
+                    </div>
+                </div>
+
+                {# Loading State #}
+                <div id="payment-loading" class="hidden text-center py-6 mb-6">
+                    <div class="inline-flex items-center">
+                        <svg class="animate-spin h-5 w-5 text-accent mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span class="text-gray-600">Pripravuji platebni branu...</span>
+                    </div>
+                </div>
+
                 {# Action Buttons #}
-                <div class="flex flex-col sm:flex-row gap-4">
-                    <form method="post" class="flex-1">
-                        <input type="hidden" name="action" value="pay">
-                        <button type="submit" class="btn btn-primary btn-lg w-full">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                            </svg>
-                            Zaplatit {{ order.totalPriceInCzk|number_format(2, ',', ' ') }} Kč
-                        </button>
-                    </form>
+                <div class="flex flex-col sm:flex-row gap-4" id="payment-actions">
+                    <button type="button" id="pay-button" class="btn btn-primary btn-lg flex-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                        </svg>
+                        Zaplatit {{ order.totalPriceInCzk|number_format(2, ',', ' ') }} Kc
+                    </button>
 
                     <form method="post" class="flex-1 sm:flex-initial">
                         <input type="hidden" name="action" value="cancel">
                         <button type="submit"
                                 class="btn btn-secondary w-full"
-                                onclick="return confirm('Opravdu chcete zrušit tuto objednávku?')">
-                            Zrušit objednávku
+                                onclick="return confirm('Opravdu chcete zrusit tuto objednavku?')">
+                            Zrusit objednavku
                         </button>
                     </form>
                 </div>
             </div>
         </div>
     </div>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script src="{{ goPayEmbedJs }}" async></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const payButton = document.getElementById('pay-button');
+            const loadingEl = document.getElementById('payment-loading');
+            const errorEl = document.getElementById('payment-error');
+            const errorTextEl = document.getElementById('payment-error-text');
+            const gatewayContainer = document.getElementById('gopay-gateway-container');
+            const actionsEl = document.getElementById('payment-actions');
+
+            function showError(message) {
+                errorTextEl.textContent = message;
+                errorEl.classList.remove('hidden');
+                loadingEl.classList.add('hidden');
+                actionsEl.classList.remove('hidden');
+            }
+
+            function hideError() {
+                errorEl.classList.add('hidden');
+            }
+
+            payButton.addEventListener('click', async function() {
+                hideError();
+                loadingEl.classList.remove('hidden');
+                actionsEl.classList.add('hidden');
+
+                try {
+                    const response = await fetch('{{ path('public_payment_initiate', {id: order.id}) }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        showError(data.error || 'Doslo k chybe pri vytvareni platby.');
+                        return;
+                    }
+
+                    loadingEl.classList.add('hidden');
+
+                    // Check if GoPay SDK is loaded
+                    if (typeof _gopay === 'undefined') {
+                        showError('Platebni brana se nacita. Zkuste to prosim znovu za moment.');
+                        actionsEl.classList.remove('hidden');
+                        return;
+                    }
+
+                    // Open inline gateway
+                    _gopay.checkout({
+                        gatewayUrl: data.gwUrl,
+                        inline: true
+                    });
+
+                } catch (error) {
+                    console.error('Payment error:', error);
+                    showError('Doslo k chybe pri komunikaci se serverem. Zkuste to prosim znovu.');
+                }
+            });
+        });
+    </script>
 {% endblock %}

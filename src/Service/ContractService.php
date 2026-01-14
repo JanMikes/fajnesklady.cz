@@ -7,6 +7,7 @@ namespace App\Service;
 use App\Entity\Contract;
 use App\Entity\Order;
 use App\Repository\ContractRepository;
+use App\Service\GoPay\GoPayClient;
 
 /**
  * Service for managing contract lifecycle.
@@ -19,6 +20,7 @@ final readonly class ContractService
         private ContractRepository $contractRepository,
         private ContractDocumentGenerator $documentGenerator,
         private AuditLogger $auditLogger,
+        private GoPayClient $goPayClient,
         private string $contractTemplatePath,
     ) {
     }
@@ -56,6 +58,14 @@ final readonly class ContractService
     {
         if ($contract->isTerminated()) {
             throw new \DomainException('Contract is already terminated.');
+        }
+
+        // Cancel recurring payment in GoPay if active
+        if ($contract->hasActiveRecurringPayment()) {
+            /** @var int $parentPaymentId */
+            $parentPaymentId = $contract->goPayParentPaymentId;
+            $this->goPayClient->voidRecurrence($parentPaymentId);
+            $contract->cancelRecurringPayment();
         }
 
         $contract->terminate($now);

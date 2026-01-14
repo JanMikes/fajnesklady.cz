@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Controller;
 
-use App\DataFixtures\OrderFixtures;
 use App\DataFixtures\UserFixtures;
 use App\Entity\Order;
 use App\Entity\User;
 use App\Enum\OrderStatus;
+use App\Tests\Mock\MockGoPayClient;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -17,12 +17,18 @@ class OrderPaymentControllerTest extends WebTestCase
 {
     private KernelBrowser $client;
     private EntityManagerInterface $entityManager;
+    private MockGoPayClient $goPayClient;
 
     protected function setUp(): void
     {
         parent::setUp();
         $this->client = static::createClient();
         $this->entityManager = static::getContainer()->get('doctrine')->getManager();
+
+        /** @var MockGoPayClient $goPayClient */
+        $goPayClient = static::getContainer()->get(MockGoPayClient::class);
+        $this->goPayClient = $goPayClient;
+        $this->goPayClient->reset();
     }
 
     protected function tearDown(): void
@@ -31,42 +37,111 @@ class OrderPaymentControllerTest extends WebTestCase
         static::ensureKernelShutdown();
     }
 
-    public function testPaymentConfirmationRedirectsToAcceptPageWithPaidStatus(): void
+    public function testPaymentPageShowsOrderDetails(): void
     {
-        // Get the reserved order from fixtures
         $order = $this->findOrderByStatus(OrderStatus::RESERVED);
         $orderId = $order->id->toRfc4122();
 
-        // No login required for public payment page
+        $crawler = $this->client->request('GET', '/objednavka/'.$orderId.'/platba');
 
-        // Submit payment
-        $this->client->request('POST', '/objednavka/'.$orderId.'/platba', [
-            'action' => 'pay',
+        $this->assertResponseIsSuccessful();
+        $this->assertSelectorTextContains('h1', 'Platba objednavky');
+        $this->assertSelectorExists('#pay-button');
+    }
+
+    public function testPaymentInitiateReturnsGatewayUrl(): void
+    {
+        $order = $this->findOrderByStatus(OrderStatus::RESERVED);
+        $orderId = $order->id->toRfc4122();
+
+        $this->client->request('POST', '/objednavka/'.$orderId.'/platba/iniciovat', [], [], [
+            'HTTP_X-Requested-With' => 'XMLHttpRequest',
+            'CONTENT_TYPE' => 'application/json',
         ]);
 
-        // Should redirect to accept page
-        $this->assertResponseRedirects('/objednavka/'.$orderId.'/prijmout');
+        $this->assertResponseIsSuccessful();
+        $response = json_decode($this->client->getResponse()->getContent(), true);
 
-        // Clear entity manager to get fresh data from DB
+        $this->assertArrayHasKey('paymentId', $response);
+        $this->assertArrayHasKey('gwUrl', $response);
+        $this->assertNotEmpty($response['gwUrl']);
+
+        // Verify order status changed
         $this->entityManager->clear();
-
-        // Verify order is now PAID
         $updatedOrder = $this->entityManager->find(Order::class, $order->id);
-        $this->assertSame(OrderStatus::PAID, $updatedOrder->status, 'Order should be in PAID status after payment confirmation');
+        $this->assertSame(OrderStatus::AWAITING_PAYMENT, $updatedOrder->status);
+    }
 
-        // Follow redirect and verify no error flash is shown
-        $crawler = $this->client->followRedirect();
+    public function testPaymentWebhookConfirmsPayment(): void
+    {
+        $order = $this->findOrderByStatus(OrderStatus::RESERVED);
+        $orderId = $order->id->toRfc4122();
 
-        // Should be on accept page (not redirected to home with error)
-        $this->assertStringContainsString('/objednavka/'.$orderId.'/prijmout', $this->client->getRequest()->getUri());
+        // First initiate payment
+        $this->client->request('POST', '/objednavka/'.$orderId.'/platba/iniciovat', [], [], [
+            'HTTP_X-Requested-With' => 'XMLHttpRequest',
+            'CONTENT_TYPE' => 'application/json',
+        ]);
 
-        // Should NOT show the error message "Tuto objednávku nelze dokončit"
-        $this->assertSelectorTextNotContains('body', 'Tuto objednávku nelze dokončit');
+        $response = json_decode($this->client->getResponse()->getContent(), true);
+        $paymentId = $response['paymentId'];
+
+        // Simulate GoPay confirming payment
+        $this->goPayClient->simulatePaymentPaid($paymentId);
+
+        // Call webhook
+        $this->client->request('GET', '/webhook/gopay', ['id' => $paymentId]);
+
+        $this->assertResponseIsSuccessful();
+
+        // Verify order is now paid
+        $this->entityManager->clear();
+        $updatedOrder = $this->entityManager->find(Order::class, $order->id);
+        $this->assertSame(OrderStatus::PAID, $updatedOrder->status);
+    }
+
+    public function testPaymentReturnRedirectsToAcceptOnSuccess(): void
+    {
+        $order = $this->findOrderByStatus(OrderStatus::RESERVED);
+        $orderId = $order->id->toRfc4122();
+
+        // First initiate and complete payment
+        $this->client->request('POST', '/objednavka/'.$orderId.'/platba/iniciovat', [], [], [
+            'HTTP_X-Requested-With' => 'XMLHttpRequest',
+            'CONTENT_TYPE' => 'application/json',
+        ]);
+
+        $response = json_decode($this->client->getResponse()->getContent(), true);
+        $paymentId = $response['paymentId'];
+
+        // Simulate successful payment
+        $this->goPayClient->simulatePaymentPaid($paymentId);
+
+        // Visit return URL
+        $this->client->request('GET', '/objednavka/'.$orderId.'/platba/navrat');
+
+        $this->assertResponseRedirects('/objednavka/'.$orderId.'/prijmout');
+    }
+
+    public function testPaymentReturnRedirectsToPaymentOnPending(): void
+    {
+        $order = $this->findOrderByStatus(OrderStatus::RESERVED);
+        $orderId = $order->id->toRfc4122();
+
+        // Initiate payment but don't complete it
+        $this->client->request('POST', '/objednavka/'.$orderId.'/platba/iniciovat', [], [], [
+            'HTTP_X-Requested-With' => 'XMLHttpRequest',
+            'CONTENT_TYPE' => 'application/json',
+        ]);
+
+        // Visit return URL (payment still pending)
+        $this->client->request('GET', '/objednavka/'.$orderId.'/platba/navrat');
+
+        $this->assertResponseRedirects('/objednavka/'.$orderId.'/platba');
     }
 
     public function testPaymentCancellationRedirectsToHomeAndCancelsOrder(): void
     {
-        // Get the reserved order from fixtures
         $order = $this->findOrderByStatus(OrderStatus::RESERVED);
         $orderId = $order->id->toRfc4122();
 
@@ -117,7 +192,7 @@ class OrderPaymentControllerTest extends WebTestCase
 
         // Follow redirect and check for error flash
         $this->client->followRedirect();
-        $this->assertSelectorTextContains('[data-flash-type="error"]', 'Tuto objednávku nelze dokončit');
+        $this->assertSelectorTextContains('[data-flash-type="error"]', 'Tuto objednavku nelze dokoncit');
     }
 
     public function testOrderCompletionFromAcceptPage(): void

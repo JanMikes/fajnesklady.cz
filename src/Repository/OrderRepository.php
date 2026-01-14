@@ -286,4 +286,15 @@ class OrderRepository
             ->getQuery()
             ->getSingleScalarResult();
     }
+
+    public function findByGoPayPaymentId(int $paymentId): ?Order
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('o')
+            ->from(Order::class, 'o')
+            ->where('o.goPayPaymentId = :paymentId')
+            ->setParameter('paymentId', $paymentId)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
 }

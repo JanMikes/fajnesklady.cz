@@ -206,4 +206,57 @@ class ContractRepository
             ->getQuery()
             ->getSingleScalarResult();
     }
+
+    /**
+     * Find contracts that are due for recurring billing.
+     *
+     * @return Contract[]
+     */
+    public function findDueForBilling(\DateTimeImmutable $now): array
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('c')
+            ->from(Contract::class, 'c')
+            ->where('c.goPayParentPaymentId IS NOT NULL')
+            ->andWhere('c.terminatedAt IS NULL')
+            ->andWhere('c.nextBillingDate IS NOT NULL')
+            ->andWhere('c.nextBillingDate <= :now')
+            ->andWhere('c.failedBillingAttempts = 0')
+            ->setParameter('now', $now)
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Find contracts that need retry after failed billing (3 days later).
+     *
+     * @return Contract[]
+     */
+    public function findNeedingRetry(\DateTimeImmutable $now): array
+    {
+        $retryAfter = $now->modify('-3 days');
+
+        return $this->entityManager->createQueryBuilder()
+            ->select('c')
+            ->from(Contract::class, 'c')
+            ->where('c.goPayParentPaymentId IS NOT NULL')
+            ->andWhere('c.terminatedAt IS NULL')
+            ->andWhere('c.failedBillingAttempts = 1')
+            ->andWhere('c.lastBillingFailedAt IS NOT NULL')
+            ->andWhere('c.lastBillingFailedAt <= :retryAfter')
+            ->setParameter('retryAfter', $retryAfter)
+            ->getQuery()
+            ->getResult();
+    }
+
+    public function findByGoPayParentPaymentId(int $parentPaymentId): ?Contract
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('c')
+            ->from(Contract::class, 'c')
+            ->where('c.goPayParentPaymentId = :paymentId')
+            ->setParameter('paymentId', $parentPaymentId)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
 }

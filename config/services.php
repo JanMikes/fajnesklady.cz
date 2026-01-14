@@ -91,5 +91,24 @@ return App::config([
         'App\\Twig\\Components\\' => [
             'resource' => '../src/Twig/Components/',
         ],
+        // GoPay payment gateway
+        'gopay.psr18_client' => [
+            'class' => 'Symfony\\Component\\HttpClient\\Psr18Client',
+        ],
+        'GoPay\\Payments' => [
+            'factory' => ['GoPay\\Api', 'payments'],
+            'arguments' => [
+                [[
+                    'goid' => '%env(GOPAY_GOID)%',
+                    'clientId' => '%env(GOPAY_CLIENT_ID)%',
+                    'clientSecret' => '%env(GOPAY_CLIENT_SECRET)%',
+                    'gatewayUrl' => '%env(GOPAY_GATEWAY_URL)%',
+                    'language' => \GoPay\Definition\Language::CZECH,
+                ]],
+            ],
+        ],
+        'App\\Service\\GoPay\\GoPayClient' => [
+            'alias' => 'App\\Service\\GoPay\\GoPayApiClient',
+        ],
     ],
 ]);
