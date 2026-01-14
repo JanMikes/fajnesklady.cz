@@ -7,7 +7,7 @@ namespace App\Repository;
 use App\Entity\AuditLog;
 use Doctrine\ORM\EntityManagerInterface;
 
-final class AuditLogRepository
+class AuditLogRepository
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,

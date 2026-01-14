@@ -42,6 +42,28 @@ return App::config([
         'App\\Service\\AresLookup' => [
             'alias' => 'App\\Service\\AresService',
         ],
+        'App\\Service\\Fakturoid\\FakturoidClient' => [
+            'alias' => 'App\\Service\\Fakturoid\\FakturoidApiClient',
+        ],
+        'App\\Service\\InvoicingService' => [
+            'arguments' => [
+                '$invoicesDirectory' => '%kernel.project_dir%/var/invoices',
+            ],
+        ],
+        'fakturoid.psr18_client' => [
+            'class' => 'Symfony\\Component\\HttpClient\\Psr18Client',
+        ],
+        'Fakturoid\\FakturoidManager' => [
+            'arguments' => [
+                '$client' => '@fakturoid.psr18_client',
+                '$clientId' => '%env(FAKTUROID_CLIENT_ID)%',
+                '$clientSecret' => '%env(FAKTUROID_CLIENT_SECRET)%',
+                '$accountSlug' => '%env(FAKTUROID_ACCOUNT_SLUG)%',
+            ],
+            'calls' => [
+                ['authClientCredentials', []],
+            ],
+        ],
         'App\\Service\\ContractDocumentGenerator' => [
             'arguments' => [
                 '$contractsDirectory' => '%kernel.project_dir%/var/contracts',

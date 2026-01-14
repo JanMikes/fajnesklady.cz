@@ -12,7 +12,7 @@ use App\Exception\ContractNotFound;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 
-final class ContractRepository
+class ContractRepository
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,

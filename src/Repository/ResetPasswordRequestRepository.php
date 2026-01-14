@@ -12,7 +12,7 @@ use SymfonyCasts\Bundle\ResetPassword\Model\ResetPasswordRequestInterface;
 use SymfonyCasts\Bundle\ResetPassword\Persistence\Repository\ResetPasswordRequestRepositoryTrait;
 use SymfonyCasts\Bundle\ResetPassword\Persistence\ResetPasswordRequestRepositoryInterface;
 
-final class ResetPasswordRequestRepository implements ResetPasswordRequestRepositoryInterface
+class ResetPasswordRequestRepository implements ResetPasswordRequestRepositoryInterface
 {
     use ResetPasswordRequestRepositoryTrait;
 

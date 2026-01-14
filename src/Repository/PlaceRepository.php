@@ -10,7 +10,7 @@ use App\Exception\PlaceNotFound;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 
-final class PlaceRepository
+class PlaceRepository
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,

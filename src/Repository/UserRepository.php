@@ -9,7 +9,7 @@ use App\Exception\UserNotFound;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 
-final class UserRepository
+class UserRepository
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,

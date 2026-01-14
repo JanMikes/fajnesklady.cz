@@ -27,6 +27,12 @@ return App::config([
         'App\\Service\\AresLookup' => [
             'alias' => 'App\\Tests\\Mock\\MockAresLookup',
         ],
+        'App\\Tests\\Mock\\MockFakturoidClient' => [
+            'tags' => [['name' => 'kernel.reset', 'method' => 'reset']],
+        ],
+        'App\\Service\\Fakturoid\\FakturoidClient' => [
+            'alias' => 'App\\Tests\\Mock\\MockFakturoidClient',
+        ],
         'Symfony\\Component\\PasswordHasher\\Hasher\\UserPasswordHasherInterface' => [
             'alias' => 'security.user_password_hasher',
             'public' => true,

@@ -51,6 +51,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, EntityW
     #[ORM\Column(length: 10, nullable: true)]
     public private(set) ?string $billingPostalCode = null;
 
+    #[ORM\Column(nullable: true)]
+    public private(set) ?int $fakturoidSubjectId = null;
+
     public string $fullName {
         get => trim($this->firstName.' '.$this->lastName);
     }
@@ -183,5 +186,16 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, EntityW
             && '' !== $this->billingCity
             && null !== $this->billingPostalCode
             && '' !== $this->billingPostalCode;
+    }
+
+    public function setFakturoidSubjectId(int $subjectId, \DateTimeImmutable $now): void
+    {
+        $this->fakturoidSubjectId = $subjectId;
+        $this->updatedAt = $now;
+    }
+
+    public function hasFakturoidSubject(): bool
+    {
+        return null !== $this->fakturoidSubjectId;
     }
 }

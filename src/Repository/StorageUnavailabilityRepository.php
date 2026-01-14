@@ -10,7 +10,7 @@ use App\Exception\StorageUnavailabilityNotFound;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 
-final class StorageUnavailabilityRepository
+class StorageUnavailabilityRepository
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,

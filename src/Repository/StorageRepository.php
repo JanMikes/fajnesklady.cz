@@ -13,7 +13,7 @@ use App\Exception\StorageNotFound;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 
-final class StorageRepository
+class StorageRepository
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,

@@ -12,7 +12,7 @@ use App\Exception\OrderNotFound;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 
-final class OrderRepository
+class OrderRepository
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,

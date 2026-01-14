@@ -11,7 +11,7 @@ use App\Exception\StorageTypeNotFound;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 
-final class StorageTypeRepository
+class StorageTypeRepository
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,

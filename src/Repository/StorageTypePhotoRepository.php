@@ -8,7 +8,7 @@ use App\Entity\StorageTypePhoto;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 
-final class StorageTypePhotoRepository
+class StorageTypePhotoRepository
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
