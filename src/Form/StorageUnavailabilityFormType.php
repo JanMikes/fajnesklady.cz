@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Form;
 
 use App\Entity\User;
-use App\Repository\PlaceRepository;
 use App\Repository\StorageRepository;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
@@ -23,7 +22,6 @@ use Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface;
 class StorageUnavailabilityFormType extends AbstractType
 {
     public function __construct(
-        private readonly PlaceRepository $placeRepository,
         private readonly StorageRepository $storageRepository,
         private readonly TokenStorageInterface $tokenStorage,
         private readonly AuthorizationCheckerInterface $authorizationChecker,
@@ -95,20 +93,17 @@ class StorageUnavailabilityFormType extends AbstractType
             return [];
         }
 
-        // Admins can see all storages
+        // Admins can see all storages, landlords only see their own
         if ($this->authorizationChecker->isGranted('ROLE_ADMIN')) {
-            $places = $this->placeRepository->findAll();
+            $storages = $this->storageRepository->findAll();
         } else {
-            $places = $this->placeRepository->findByOwner($user);
+            $storages = $this->storageRepository->findByOwner($user);
         }
 
         $choices = [];
-        foreach ($places as $place) {
-            $storages = $this->storageRepository->findByPlace($place);
-            foreach ($storages as $storage) {
-                $label = $place->name.' - '.$storage->storageType->name.' - '.$storage->number;
-                $choices[$label] = $storage->id->toRfc4122();
-            }
+        foreach ($storages as $storage) {
+            $label = $storage->place->name.' - '.$storage->storageType->name.' - '.$storage->number;
+            $choices[$label] = $storage->id->toRfc4122();
         }
 
         return $choices;

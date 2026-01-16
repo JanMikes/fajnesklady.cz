@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Security;
 
-use App\Entity\Place;
 use App\Entity\StorageType;
 use App\Entity\User;
 use App\Service\Security\StorageTypeVoter;
@@ -27,33 +26,16 @@ class StorageTypeVoterTest extends TestCase
         return new User(Uuid::v7(), $email, 'password', 'Test', 'User', new \DateTimeImmutable());
     }
 
-    private function createPlace(User $owner): Place
+    private function createStorageType(): StorageType
     {
-        return new Place(
-            id: Uuid::v7(),
-            name: 'Test Place',
-            address: 'Test Address',
-            city: 'Praha',
-            postalCode: '110 00',
-            description: null,
-            owner: $owner,
-            createdAt: new \DateTimeImmutable(),
-        );
-    }
-
-    private function createStorageType(User $owner): StorageType
-    {
-        $place = $this->createPlace($owner);
-
         return new StorageType(
             id: Uuid::v7(),
             name: 'Test Storage Type',
             innerWidth: 100,
             innerHeight: 100,
             innerLength: 100,
-            pricePerWeek: 10000,
-            pricePerMonth: 30000,
-            place: $place,
+            defaultPricePerWeek: 10000,
+            defaultPricePerMonth: 30000,
             createdAt: new \DateTimeImmutable(),
         );
     }
@@ -76,135 +58,83 @@ class StorageTypeVoterTest extends TestCase
         $rolesProperty->setValue($user, $roles);
     }
 
-    public function testAdminCanViewAnyStorageType(): void
+    public function testAdminCanViewStorageType(): void
     {
-        $owner = $this->createUser('owner@example.com');
         $admin = $this->createUser('admin@example.com');
-
         $this->setUserRoles($admin, ['ROLE_USER', 'ROLE_ADMIN']);
 
-        $storageType = $this->createStorageType($owner);
+        $storageType = $this->createStorageType();
 
         $result = $this->voter->vote($this->createToken($admin), $storageType, [StorageTypeVoter::VIEW]);
 
         $this->assertSame(VoterInterface::ACCESS_GRANTED, $result);
     }
 
-    public function testAdminCanEditAnyStorageType(): void
+    public function testAdminCanEditStorageType(): void
     {
-        $owner = $this->createUser('owner@example.com');
         $admin = $this->createUser('admin@example.com');
-
         $this->setUserRoles($admin, ['ROLE_USER', 'ROLE_ADMIN']);
 
-        $storageType = $this->createStorageType($owner);
+        $storageType = $this->createStorageType();
 
         $result = $this->voter->vote($this->createToken($admin), $storageType, [StorageTypeVoter::EDIT]);
 
         $this->assertSame(VoterInterface::ACCESS_GRANTED, $result);
     }
 
-    public function testAdminCanDeleteAnyStorageType(): void
+    public function testAdminCanDeleteStorageType(): void
     {
-        $owner = $this->createUser('owner@example.com');
         $admin = $this->createUser('admin@example.com');
-
         $this->setUserRoles($admin, ['ROLE_USER', 'ROLE_ADMIN']);
 
-        $storageType = $this->createStorageType($owner);
+        $storageType = $this->createStorageType();
 
         $result = $this->voter->vote($this->createToken($admin), $storageType, [StorageTypeVoter::DELETE]);
 
         $this->assertSame(VoterInterface::ACCESS_GRANTED, $result);
     }
 
-    public function testLandlordCanViewOwnStorageType(): void
+    public function testLandlordCanViewStorageType(): void
     {
         $landlord = $this->createUser('landlord@example.com');
-
         $this->setUserRoles($landlord, ['ROLE_USER', 'ROLE_LANDLORD']);
 
-        $storageType = $this->createStorageType($landlord);
+        $storageType = $this->createStorageType();
 
         $result = $this->voter->vote($this->createToken($landlord), $storageType, [StorageTypeVoter::VIEW]);
 
         $this->assertSame(VoterInterface::ACCESS_GRANTED, $result);
     }
 
-    public function testLandlordCanEditOwnStorageType(): void
+    public function testLandlordCannotEditStorageType(): void
     {
         $landlord = $this->createUser('landlord@example.com');
-
         $this->setUserRoles($landlord, ['ROLE_USER', 'ROLE_LANDLORD']);
 
-        $storageType = $this->createStorageType($landlord);
+        $storageType = $this->createStorageType();
 
         $result = $this->voter->vote($this->createToken($landlord), $storageType, [StorageTypeVoter::EDIT]);
 
-        $this->assertSame(VoterInterface::ACCESS_GRANTED, $result);
+        $this->assertSame(VoterInterface::ACCESS_DENIED, $result);
     }
 
-    public function testLandlordCanDeleteOwnStorageType(): void
+    public function testLandlordCannotDeleteStorageType(): void
     {
         $landlord = $this->createUser('landlord@example.com');
-
         $this->setUserRoles($landlord, ['ROLE_USER', 'ROLE_LANDLORD']);
 
-        $storageType = $this->createStorageType($landlord);
+        $storageType = $this->createStorageType();
 
         $result = $this->voter->vote($this->createToken($landlord), $storageType, [StorageTypeVoter::DELETE]);
-
-        $this->assertSame(VoterInterface::ACCESS_GRANTED, $result);
-    }
-
-    public function testLandlordCannotViewOtherLandlordStorageType(): void
-    {
-        $owner = $this->createUser('owner@example.com');
-        $otherLandlord = $this->createUser('other@example.com');
-
-        $this->setUserRoles($otherLandlord, ['ROLE_USER', 'ROLE_LANDLORD']);
-
-        $storageType = $this->createStorageType($owner);
-
-        $result = $this->voter->vote($this->createToken($otherLandlord), $storageType, [StorageTypeVoter::VIEW]);
-
-        $this->assertSame(VoterInterface::ACCESS_DENIED, $result);
-    }
-
-    public function testLandlordCannotEditOtherLandlordStorageType(): void
-    {
-        $owner = $this->createUser('owner@example.com');
-        $otherLandlord = $this->createUser('other@example.com');
-
-        $this->setUserRoles($otherLandlord, ['ROLE_USER', 'ROLE_LANDLORD']);
-
-        $storageType = $this->createStorageType($owner);
-
-        $result = $this->voter->vote($this->createToken($otherLandlord), $storageType, [StorageTypeVoter::EDIT]);
-
-        $this->assertSame(VoterInterface::ACCESS_DENIED, $result);
-    }
-
-    public function testLandlordCannotDeleteOtherLandlordStorageType(): void
-    {
-        $owner = $this->createUser('owner@example.com');
-        $otherLandlord = $this->createUser('other@example.com');
-
-        $this->setUserRoles($otherLandlord, ['ROLE_USER', 'ROLE_LANDLORD']);
-
-        $storageType = $this->createStorageType($owner);
-
-        $result = $this->voter->vote($this->createToken($otherLandlord), $storageType, [StorageTypeVoter::DELETE]);
 
         $this->assertSame(VoterInterface::ACCESS_DENIED, $result);
     }
 
     public function testRegularUserCannotAccessStorageType(): void
     {
-        $owner = $this->createUser('owner@example.com');
         $regularUser = $this->createUser('user@example.com');
 
-        $storageType = $this->createStorageType($owner);
+        $storageType = $this->createStorageType();
 
         $result = $this->voter->vote($this->createToken($regularUser), $storageType, [StorageTypeVoter::VIEW]);
 
@@ -213,8 +143,7 @@ class StorageTypeVoterTest extends TestCase
 
     public function testAnonymousUserCannotAccessStorageType(): void
     {
-        $owner = $this->createUser('owner@example.com');
-        $storageType = $this->createStorageType($owner);
+        $storageType = $this->createStorageType();
 
         $result = $this->voter->vote($this->createToken(null), $storageType, [StorageTypeVoter::VIEW]);
 
@@ -223,10 +152,10 @@ class StorageTypeVoterTest extends TestCase
 
     public function testAbstainsForUnsupportedAttribute(): void
     {
-        $owner = $this->createUser('owner@example.com');
-        $storageType = $this->createStorageType($owner);
+        $user = $this->createUser();
+        $storageType = $this->createStorageType();
 
-        $result = $this->voter->vote($this->createToken($owner), $storageType, ['UNSUPPORTED_ATTRIBUTE']);
+        $result = $this->voter->vote($this->createToken($user), $storageType, ['UNSUPPORTED_ATTRIBUTE']);
 
         $this->assertSame(VoterInterface::ACCESS_ABSTAIN, $result);
     }

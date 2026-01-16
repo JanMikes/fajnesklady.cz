@@ -15,7 +15,6 @@ final readonly class CreatePlaceCommand
         public string $city,
         public string $postalCode,
         public ?string $description,
-        public Uuid $ownerId,
         public ?string $mapImagePath = null,
     ) {
     }

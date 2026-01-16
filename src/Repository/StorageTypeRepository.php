@@ -15,8 +15,7 @@ class StorageTypeRepository
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
-    ) {
-    }
+    ) {}
 
     public function save(StorageType $storageType): void
     {
@@ -34,6 +33,11 @@ class StorageTypeRepository
             ?? throw StorageTypeNotFound::withId($id);
     }
 
+    public function find(Uuid $id): ?StorageType
+    {
+        return $this->entityManager->find(StorageType::class, $id);
+    }
+
     /**
      * @return StorageType[]
      */
@@ -42,8 +46,7 @@ class StorageTypeRepository
         return $this->entityManager->createQueryBuilder()
             ->select('s')
             ->from(StorageType::class, 's')
-            ->orderBy('s.createdAt', 'DESC')
-            ->addOrderBy('s.id', 'DESC')
+            ->orderBy('s.name', 'ASC')
             ->getQuery()
             ->getResult();
     }
@@ -51,18 +54,72 @@ class StorageTypeRepository
     /**
      * @return StorageType[]
      */
-    public function findByOwner(User $owner): array
+    public function findAllActive(): array
     {
         return $this->entityManager->createQueryBuilder()
             ->select('s')
             ->from(StorageType::class, 's')
-            ->join('s.place', 'p')
-            ->where('p.owner = :owner')
-            ->setParameter('owner', $owner)
-            ->orderBy('s.createdAt', 'DESC')
-            ->addOrderBy('s.id', 'DESC')
+            ->where('s.isActive = :active')
+            ->setParameter('active', true)
+            ->orderBy('s.name', 'ASC')
             ->getQuery()
             ->getResult();
+    }
+
+    /**
+     * Find active storage types that have storages at a given place.
+     *
+     * @return StorageType[]
+     */
+    public function findActiveByPlace(Place $place): array
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('DISTINCT st')
+            ->from(StorageType::class, 'st')
+            ->innerJoin('App\Entity\Storage', 's', 'WITH', 's.storageType = st')
+            ->where('st.isActive = :active')
+            ->andWhere('s.place = :place')
+            ->setParameter('active', true)
+            ->setParameter('place', $place)
+            ->orderBy('st.name', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Find storage types that have storages owned by the given user.
+     *
+     * @return StorageType[]
+     */
+    public function findByOwner(User $owner): array
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('DISTINCT st')
+            ->from(StorageType::class, 'st')
+            ->innerJoin('App\Entity\Storage', 's', 'WITH', 's.storageType = st')
+            ->where('s.owner = :owner')
+            ->setParameter('owner', $owner)
+            ->orderBy('st.name', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Check if the given user owns any storages of this storage type.
+     */
+    public function isOwnedBy(StorageType $storageType, User $user): bool
+    {
+        $count = (int) $this->entityManager->createQueryBuilder()
+            ->select('COUNT(s.id)')
+            ->from('App\Entity\Storage', 's')
+            ->where('s.storageType = :storageType')
+            ->andWhere('s.owner = :owner')
+            ->setParameter('storageType', $storageType)
+            ->setParameter('owner', $user)
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return $count > 0;
     }
 
     /**
@@ -83,27 +140,6 @@ class StorageTypeRepository
             ->getResult();
     }
 
-    /**
-     * @return StorageType[]
-     */
-    public function findByOwnerPaginated(User $owner, int $page, int $limit): array
-    {
-        $offset = ($page - 1) * $limit;
-
-        return $this->entityManager->createQueryBuilder()
-            ->select('s')
-            ->from(StorageType::class, 's')
-            ->join('s.place', 'p')
-            ->where('p.owner = :owner')
-            ->setParameter('owner', $owner)
-            ->orderBy('s.createdAt', 'DESC')
-            ->addOrderBy('s.id', 'DESC')
-            ->setFirstResult($offset)
-            ->setMaxResults($limit)
-            ->getQuery()
-            ->getResult();
-    }
-
     public function countTotal(): int
     {
         $result = $this->entityManager->createQueryBuilder()
@@ -115,54 +151,21 @@ class StorageTypeRepository
         return (int) $result;
     }
 
-    public function countByOwner(User $owner): int
-    {
-        $result = $this->entityManager->createQueryBuilder()
-            ->select('COUNT(s.id)')
-            ->from(StorageType::class, 's')
-            ->join('s.place', 'p')
-            ->where('p.owner = :owner')
-            ->setParameter('owner', $owner)
-            ->getQuery()
-            ->getSingleScalarResult();
-
-        return (int) $result;
-    }
-
     /**
+     * Find storage types that have storages at a given place.
+     *
      * @return StorageType[]
      */
     public function findByPlace(Place $place): array
     {
         return $this->entityManager->createQueryBuilder()
-            ->select('st')
+            ->select('DISTINCT st')
             ->from(StorageType::class, 'st')
-            ->where('st.place = :place')
+            ->innerJoin('App\Entity\Storage', 's', 'WITH', 's.storageType = st')
+            ->where('s.place = :place')
             ->setParameter('place', $place)
-            ->orderBy('st.pricePerMonth', 'ASC')
+            ->orderBy('st.name', 'ASC')
             ->getQuery()
             ->getResult();
-    }
-
-    /**
-     * @return StorageType[]
-     */
-    public function findActiveByPlace(Place $place): array
-    {
-        return $this->entityManager->createQueryBuilder()
-            ->select('st')
-            ->from(StorageType::class, 'st')
-            ->where('st.place = :place')
-            ->andWhere('st.isActive = :active')
-            ->setParameter('place', $place)
-            ->setParameter('active', true)
-            ->orderBy('st.pricePerMonth', 'ASC')
-            ->getQuery()
-            ->getResult();
-    }
-
-    public function find(Uuid $id): ?StorageType
-    {
-        return $this->entityManager->find(StorageType::class, $id);
     }
 }

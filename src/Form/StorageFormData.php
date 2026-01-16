@@ -16,6 +16,9 @@ final class StorageFormData
     #[Assert\NotBlank(message: 'Vyberte typ skladu')]
     public ?string $storageTypeId = null;
 
+    #[Assert\NotBlank(message: 'Vyberte misto')]
+    public ?string $placeId = null;
+
     #[Assert\Range(min: 0, minMessage: 'Pozice X musi byt kladna')]
     public int $coordinateX = 0;
 
@@ -36,6 +39,7 @@ final class StorageFormData
         $formData = new self();
         $formData->number = $storage->number;
         $formData->storageTypeId = $storage->storageType->id->toRfc4122();
+        $formData->placeId = $storage->place->id->toRfc4122();
         $formData->coordinateX = $storage->coordinates['x'];
         $formData->coordinateY = $storage->coordinates['y'];
         $formData->coordinateWidth = $storage->coordinates['width'];

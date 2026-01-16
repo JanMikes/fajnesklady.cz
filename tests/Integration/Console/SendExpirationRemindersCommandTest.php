@@ -44,7 +44,7 @@ class SendExpirationRemindersCommandTest extends KernelTestCase
         return $user;
     }
 
-    private function createPlace(User $owner): Place
+    private function createPlace(): Place
     {
         $place = new Place(
             id: Uuid::v7(),
@@ -53,7 +53,6 @@ class SendExpirationRemindersCommandTest extends KernelTestCase
             city: 'Praha',
             postalCode: '110 00',
             description: null,
-            owner: $owner,
             createdAt: new \DateTimeImmutable(),
         );
         $this->entityManager->persist($place);
@@ -61,7 +60,7 @@ class SendExpirationRemindersCommandTest extends KernelTestCase
         return $place;
     }
 
-    private function createStorageType(Place $place): StorageType
+    private function createStorageType(): StorageType
     {
         $storageType = new StorageType(
             id: Uuid::v7(),
@@ -69,9 +68,8 @@ class SendExpirationRemindersCommandTest extends KernelTestCase
             innerWidth: 100,
             innerHeight: 100,
             innerLength: 100,
-            pricePerWeek: 10000,
-            pricePerMonth: 35000,
-            place: $place,
+            defaultPricePerWeek: 10000,
+            defaultPricePerMonth: 35000,
             createdAt: new \DateTimeImmutable(),
         );
         $this->entityManager->persist($storageType);
@@ -79,13 +77,14 @@ class SendExpirationRemindersCommandTest extends KernelTestCase
         return $storageType;
     }
 
-    private function createStorage(StorageType $storageType, string $number): Storage
+    private function createStorage(StorageType $storageType, Place $place, string $number): Storage
     {
         $storage = new Storage(
             id: Uuid::v7(),
             number: $number,
             coordinates: ['x' => 0, 'y' => 0, 'width' => 100, 'height' => 100, 'rotation' => 0],
             storageType: $storageType,
+            place: $place,
             createdAt: new \DateTimeImmutable(),
         );
         $this->entityManager->persist($storage);
@@ -109,12 +108,14 @@ class SendExpirationRemindersCommandTest extends KernelTestCase
             createdAt: $now->modify('-30 days'),
         );
         $order->reserve($now);
-        $order->markPaid($now);
 
-        // Set status to COMPLETED directly via reflection (for test setup)
+        // Set status and paidAt directly via reflection to avoid triggering OrderPaid event
+        // (which would cause invoice creation with predictable IDs that conflict with fixtures)
         $reflection = new \ReflectionClass($order);
-        $property = $reflection->getProperty('status');
-        $property->setValue($order, OrderStatus::COMPLETED);
+        $statusProperty = $reflection->getProperty('status');
+        $statusProperty->setValue($order, OrderStatus::COMPLETED);
+        $paidAtProperty = $reflection->getProperty('paidAt');
+        $paidAtProperty->setValue($order, $now);
 
         $this->entityManager->persist($order);
 
@@ -140,12 +141,11 @@ class SendExpirationRemindersCommandTest extends KernelTestCase
 
     public function testSendsRemindersForContractsExpiringSoon(): void
     {
-        $owner = $this->createUser('owner-reminder@test.com');
         $tenant = $this->createUser('tenant-reminder@test.com');
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $storage1 = $this->createStorage($storageType, 'REM1');
-        $storage2 = $this->createStorage($storageType, 'REM2');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage1 = $this->createStorage($storageType, $place, 'REM1');
+        $storage2 = $this->createStorage($storageType, $place, 'REM2');
 
         // Contract expiring in 7 days
         $sevenDaysFromNow = (new \DateTimeImmutable())->modify('+7 days')->setTime(12, 0, 0);
@@ -174,11 +174,10 @@ class SendExpirationRemindersCommandTest extends KernelTestCase
     public function testNoRemindersWhenNoContractsExpiringSoon(): void
     {
         // Create contract that expires in 30 days (not 7 or 1)
-        $owner = $this->createUser('owner-noreminder@test.com');
         $tenant = $this->createUser('tenant-noreminder@test.com');
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $storage = $this->createStorage($storageType, 'NOREM1');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage = $this->createStorage($storageType, $place, 'NOREM1');
 
         $thirtyDaysFromNow = (new \DateTimeImmutable())->modify('+30 days')->setTime(12, 0, 0);
         $order = $this->createCompletedOrder($tenant, $storage, $thirtyDaysFromNow);
@@ -197,11 +196,10 @@ class SendExpirationRemindersCommandTest extends KernelTestCase
 
     public function testSkipsUnlimitedContracts(): void
     {
-        $owner = $this->createUser('owner-unlimited@test.com');
         $tenant = $this->createUser('tenant-unlimited@test.com');
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $storage = $this->createStorage($storageType, 'UNLIM1');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage = $this->createStorage($storageType, $place, 'UNLIM1');
 
         // Create order with no end date (unlimited)
         $now = new \DateTimeImmutable();
@@ -218,11 +216,13 @@ class SendExpirationRemindersCommandTest extends KernelTestCase
             createdAt: $now->modify('-30 days'),
         );
         $order->reserve($now);
-        $order->markPaid($now);
 
+        // Set status and paidAt directly via reflection to avoid triggering OrderPaid event
         $reflection = new \ReflectionClass($order);
-        $property = $reflection->getProperty('status');
-        $property->setValue($order, OrderStatus::COMPLETED);
+        $statusProperty = $reflection->getProperty('status');
+        $statusProperty->setValue($order, OrderStatus::COMPLETED);
+        $paidAtProperty = $reflection->getProperty('paidAt');
+        $paidAtProperty->setValue($order, $now);
 
         $this->entityManager->persist($order);
 

@@ -37,10 +37,15 @@ final class StorageCreateController extends AbstractController
                 throw new \InvalidArgumentException('Storage type ID must be provided');
             }
 
+            if (null === $formData->placeId) {
+                throw new \InvalidArgumentException('Place ID must be provided');
+            }
+
             $command = new CreateStorageCommand(
                 number: $formData->number,
                 coordinates: $formData->getCoordinates(),
                 storageTypeId: Uuid::fromString($formData->storageTypeId),
+                placeId: Uuid::fromString($formData->placeId),
             );
 
             $this->commandBus->dispatch($command);

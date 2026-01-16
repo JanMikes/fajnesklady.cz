@@ -53,7 +53,7 @@ final class HomeController extends AbstractController
                         'id' => $type->id->toRfc4122(),
                         'name' => $type->name,
                         'dimensions' => $type->getDimensions(),
-                        'pricePerMonth' => $type->getPricePerMonthInCzk(),
+                        'pricePerMonth' => $type->getDefaultPricePerMonthInCzk(),
                     ],
                     $storageTypes
                 ),
@@ -77,7 +77,7 @@ final class HomeController extends AbstractController
         }
 
         $prices = array_map(
-            fn (StorageType $type) => $type->getPricePerMonthInCzk(),
+            fn (StorageType $type) => $type->getDefaultPricePerMonthInCzk(),
             $storageTypes
         );
 

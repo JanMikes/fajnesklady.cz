@@ -43,7 +43,7 @@ final class OrderCompleteController extends AbstractController
 
         $storage = $order->storage;
         $storageType = $storage->storageType;
-        $place = $storageType->place;
+        $place = $storage->getPlace();
 
         // Get the contract
         $contract = $this->contractRepository->findByOrder($order);

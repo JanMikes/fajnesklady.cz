@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oznámení o dostupnosti skladů</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #6366f1;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 5px 5px 0 0;
+        }
+        .content {
+            background-color: #f9f9f9;
+            padding: 30px;
+            border: 1px solid #ddd;
+            border-top: none;
+        }
+        .footer {
+            text-align: center;
+            padding: 20px;
+            font-size: 12px;
+            color: #666;
+        }
+        .summary-box {
+            background-color: #e0e7ff;
+            border: 1px solid #6366f1;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .summary-box .count {
+            font-size: 36px;
+            font-weight: bold;
+            color: #4338ca;
+        }
+        .location-info {
+            background-color: white;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .users-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background-color: white;
+        }
+        .users-table th {
+            background-color: #6366f1;
+            color: white;
+            padding: 12px 8px;
+            text-align: left;
+            font-size: 13px;
+        }
+        .users-table td {
+            padding: 10px 8px;
+            border-bottom: 1px solid #eee;
+            font-size: 13px;
+        }
+        .users-table tr:last-child td {
+            border-bottom: none;
+        }
+        .users-table tr:hover {
+            background-color: #f5f5f5;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Oznámení o dostupnosti skladů</h1>
+    </div>
+
+    <div class="content">
+        <h2>Dobrý den, {{ adminName }}!</h2>
+
+        <p>Informujeme Vás, že byl vytvořen nový pronájem a následující uživatelé byli upozorněni na omezenou dostupnost jejich typu skladu.</p>
+
+        <div class="summary-box">
+            <div class="count">{{ notificationCount }}</div>
+            <div>uživatelů upozorněno</div>
+        </div>
+
+        <div class="location-info">
+            <strong>Místo:</strong> {{ placeName }}<br>
+            <strong>Adresa:</strong> {{ placeAddress }}<br>
+            <strong>Typ skladu:</strong> {{ storageTypeName }}
+        </div>
+
+        <h3>Seznam upozorněných uživatelů</h3>
+
+        <table class="users-table">
+            <thead>
+                <tr>
+                    <th>Jméno</th>
+                    <th>Email</th>
+                    <th>Box</th>
+                    <th>Konec smlouvy</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in notifiedUsers %}
+                <tr>
+                    <td>{{ user.userName }}</td>
+                    <td>{{ user.userEmail }}</td>
+                    <td>{{ user.storageNumber }}</td>
+                    <td>{{ user.contractEndDate }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <p>Tito uživatelé byli informováni o tom, že jejich typ skladu je žádaný a že by měli zvážit prodloužení pronájmu.</p>
+
+        <p>S pozdravem,<br>
+        <strong>Systém Fajné Sklady</strong></p>
+    </div>
+
+    <div class="footer">
+        <p>Toto je automaticky generovaný email pro administrátory.</p>
+        <p>&copy; {{ 'now'|date('Y') }} Fajné Sklady. Všechna práva vyhrazena.</p>
+    </div>
+</body>
+</html>

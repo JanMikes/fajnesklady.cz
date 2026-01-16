@@ -80,15 +80,6 @@ class IssueInvoiceOnPaymentHandlerTest extends TestCase
 
     private function createOrder(Uuid $orderId): Order
     {
-        $owner = new User(
-            Uuid::v7(),
-            'owner@example.com',
-            'password',
-            'Owner',
-            'User',
-            new \DateTimeImmutable(),
-        );
-
         $place = new Place(
             id: Uuid::v7(),
             name: 'Test Warehouse',
@@ -96,7 +87,6 @@ class IssueInvoiceOnPaymentHandlerTest extends TestCase
             city: 'Praha',
             postalCode: '110 00',
             description: null,
-            owner: $owner,
             createdAt: new \DateTimeImmutable(),
         );
 
@@ -106,9 +96,8 @@ class IssueInvoiceOnPaymentHandlerTest extends TestCase
             innerWidth: 100,
             innerHeight: 200,
             innerLength: 150,
-            pricePerWeek: 10000,
-            pricePerMonth: 35000,
-            place: $place,
+            defaultPricePerWeek: 10000,
+            defaultPricePerMonth: 35000,
             createdAt: new \DateTimeImmutable(),
         );
 
@@ -117,6 +106,7 @@ class IssueInvoiceOnPaymentHandlerTest extends TestCase
             number: 'A1',
             coordinates: ['x' => 0, 'y' => 0, 'width' => 100, 'height' => 100, 'rotation' => 0],
             storageType: $storageType,
+            place: $place,
             createdAt: new \DateTimeImmutable(),
         );
 

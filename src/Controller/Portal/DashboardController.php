@@ -44,7 +44,7 @@ final class DashboardController extends AbstractController
             /** @var User $landlord */
             $landlord = $this->getUser();
 
-            $placesCount = $this->placeRepository->countByOwner($landlord);
+            $placesCount = $this->placeRepository->countPlacesWithStoragesByOwner($landlord);
             $totalStorages = $this->storageRepository->countByOwner($landlord);
             $occupiedStorages = $this->storageRepository->countOccupiedByOwner($landlord);
             $availableStorages = $this->storageRepository->countAvailableByOwner($landlord);

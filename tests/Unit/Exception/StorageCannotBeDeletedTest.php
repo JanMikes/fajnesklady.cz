@@ -7,7 +7,6 @@ namespace App\Tests\Unit\Exception;
 use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
-use App\Entity\User;
 use App\Exception\StorageCannotBeDeleted;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
@@ -38,15 +37,6 @@ class StorageCannotBeDeletedTest extends TestCase
     {
         $now = new \DateTimeImmutable();
 
-        $owner = new User(
-            Uuid::v7(),
-            'owner@example.com',
-            'password',
-            'Test',
-            'User',
-            $now,
-        );
-
         $place = new Place(
             id: Uuid::v7(),
             name: 'Test Place',
@@ -54,7 +44,6 @@ class StorageCannotBeDeletedTest extends TestCase
             city: 'Praha',
             postalCode: '110 00',
             description: null,
-            owner: $owner,
             createdAt: $now,
         );
 
@@ -64,9 +53,8 @@ class StorageCannotBeDeletedTest extends TestCase
             innerWidth: 100,
             innerHeight: 200,
             innerLength: 150,
-            pricePerWeek: 10000,
-            pricePerMonth: 35000,
-            place: $place,
+            defaultPricePerWeek: 10000,
+            defaultPricePerMonth: 35000,
             createdAt: $now,
         );
 
@@ -75,6 +63,7 @@ class StorageCannotBeDeletedTest extends TestCase
             number: $number,
             coordinates: ['x' => 0, 'y' => 0, 'width' => 100, 'height' => 100, 'rotation' => 0],
             storageType: $storageType,
+            place: $place,
             createdAt: $now,
         );
     }

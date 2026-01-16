@@ -6,6 +6,7 @@ namespace App\Tests\Integration\Service;
 
 use App\DataFixtures\UserFixtures;
 use App\Entity\Order;
+use App\Entity\Place;
 use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\OrderStatus;
@@ -36,10 +37,7 @@ class OrderWorkflowTest extends KernelTestCase
 
     public function testOrderCreationReservesStorage(): void
     {
-        /** @var User $tenant */
-        $tenant = $this->entityManager->getRepository(User::class)->findOneBy(['email' => UserFixtures::TENANT_EMAIL]);
-        /** @var StorageType $storageType */
-        $storageType = $this->entityManager->getRepository(StorageType::class)->findOneBy(['name' => 'Maly box']);
+        [$tenant, $storageType, $place] = $this->getFixtures();
 
         $now = $this->clock->now();
         $startDate = $now->modify('+1 day');
@@ -48,6 +46,7 @@ class OrderWorkflowTest extends KernelTestCase
         $order = $this->orderService->createOrder(
             $tenant,
             $storageType,
+            $place,
             RentalType::LIMITED,
             $startDate,
             $endDate,
@@ -59,10 +58,7 @@ class OrderWorkflowTest extends KernelTestCase
 
     public function testOrderExpiresAfterSevenDays(): void
     {
-        /** @var User $tenant */
-        $tenant = $this->entityManager->getRepository(User::class)->findOneBy(['email' => UserFixtures::TENANT_EMAIL]);
-        /** @var StorageType $storageType */
-        $storageType = $this->entityManager->getRepository(StorageType::class)->findOneBy(['name' => 'Maly box']);
+        [$tenant, $storageType, $place] = $this->getFixtures();
 
         $now = $this->clock->now();
         $startDate = $now->modify('+1 day');
@@ -71,6 +67,7 @@ class OrderWorkflowTest extends KernelTestCase
         $order = $this->orderService->createOrder(
             $tenant,
             $storageType,
+            $place,
             RentalType::LIMITED,
             $startDate,
             $endDate,
@@ -93,10 +90,7 @@ class OrderWorkflowTest extends KernelTestCase
 
     public function testExpireOverdueOrdersBatch(): void
     {
-        /** @var User $tenant */
-        $tenant = $this->entityManager->getRepository(User::class)->findOneBy(['email' => UserFixtures::TENANT_EMAIL]);
-        /** @var StorageType $storageType */
-        $storageType = $this->entityManager->getRepository(StorageType::class)->findOneBy(['name' => 'Maly box']);
+        [$tenant, $storageType, $place] = $this->getFixtures();
 
         $now = $this->clock->now();
         $pastDate = $now->modify('-10 days');
@@ -110,6 +104,7 @@ class OrderWorkflowTest extends KernelTestCase
         $order1 = $this->orderService->createOrder(
             $tenant,
             $storageType,
+            $place,
             RentalType::LIMITED,
             $startDate,
             $endDate,
@@ -120,6 +115,7 @@ class OrderWorkflowTest extends KernelTestCase
         $order2 = $this->orderService->createOrder(
             $tenant,
             $storageType,
+            $place,
             RentalType::LIMITED,
             $startDate,
             $endDate,
@@ -140,10 +136,7 @@ class OrderWorkflowTest extends KernelTestCase
 
     public function testCancelledOrderReleasesStorage(): void
     {
-        /** @var User $tenant */
-        $tenant = $this->entityManager->getRepository(User::class)->findOneBy(['email' => UserFixtures::TENANT_EMAIL]);
-        /** @var StorageType $storageType */
-        $storageType = $this->entityManager->getRepository(StorageType::class)->findOneBy(['name' => 'Maly box']);
+        [$tenant, $storageType, $place] = $this->getFixtures();
 
         $now = $this->clock->now();
         $startDate = $now->modify('+1 day');
@@ -152,6 +145,7 @@ class OrderWorkflowTest extends KernelTestCase
         $order = $this->orderService->createOrder(
             $tenant,
             $storageType,
+            $place,
             RentalType::LIMITED,
             $startDate,
             $endDate,
@@ -168,10 +162,7 @@ class OrderWorkflowTest extends KernelTestCase
 
     public function testCompletedOrderCreatesContractAndOccupiesStorage(): void
     {
-        /** @var User $tenant */
-        $tenant = $this->entityManager->getRepository(User::class)->findOneBy(['email' => UserFixtures::TENANT_EMAIL]);
-        /** @var StorageType $storageType */
-        $storageType = $this->entityManager->getRepository(StorageType::class)->findOneBy(['name' => 'Maly box']);
+        [$tenant, $storageType, $place] = $this->getFixtures();
 
         $now = $this->clock->now();
         $startDate = $now->modify('+1 day');
@@ -180,6 +171,7 @@ class OrderWorkflowTest extends KernelTestCase
         $order = $this->orderService->createOrder(
             $tenant,
             $storageType,
+            $place,
             RentalType::LIMITED,
             $startDate,
             $endDate,
@@ -210,10 +202,7 @@ class OrderWorkflowTest extends KernelTestCase
 
     public function testCannotCompleteOrderWithoutPayment(): void
     {
-        /** @var User $tenant */
-        $tenant = $this->entityManager->getRepository(User::class)->findOneBy(['email' => UserFixtures::TENANT_EMAIL]);
-        /** @var StorageType $storageType */
-        $storageType = $this->entityManager->getRepository(StorageType::class)->findOneBy(['name' => 'Maly box']);
+        [$tenant, $storageType, $place] = $this->getFixtures();
 
         $now = $this->clock->now();
         $startDate = $now->modify('+1 day');
@@ -222,6 +211,7 @@ class OrderWorkflowTest extends KernelTestCase
         $order = $this->orderService->createOrder(
             $tenant,
             $storageType,
+            $place,
             RentalType::LIMITED,
             $startDate,
             $endDate,
@@ -235,10 +225,7 @@ class OrderWorkflowTest extends KernelTestCase
 
     public function testCannotCancelCompletedOrder(): void
     {
-        /** @var User $tenant */
-        $tenant = $this->entityManager->getRepository(User::class)->findOneBy(['email' => UserFixtures::TENANT_EMAIL]);
-        /** @var StorageType $storageType */
-        $storageType = $this->entityManager->getRepository(StorageType::class)->findOneBy(['name' => 'Maly box']);
+        [$tenant, $storageType, $place] = $this->getFixtures();
 
         $now = $this->clock->now();
         $startDate = $now->modify('+1 day');
@@ -247,6 +234,7 @@ class OrderWorkflowTest extends KernelTestCase
         $order = $this->orderService->createOrder(
             $tenant,
             $storageType,
+            $place,
             RentalType::LIMITED,
             $startDate,
             $endDate,
@@ -264,10 +252,7 @@ class OrderWorkflowTest extends KernelTestCase
 
     public function testCannotPayCancelledOrder(): void
     {
-        /** @var User $tenant */
-        $tenant = $this->entityManager->getRepository(User::class)->findOneBy(['email' => UserFixtures::TENANT_EMAIL]);
-        /** @var StorageType $storageType */
-        $storageType = $this->entityManager->getRepository(StorageType::class)->findOneBy(['name' => 'Maly box']);
+        [$tenant, $storageType, $place] = $this->getFixtures();
 
         $now = $this->clock->now();
         $startDate = $now->modify('+1 day');
@@ -276,6 +261,7 @@ class OrderWorkflowTest extends KernelTestCase
         $order = $this->orderService->createOrder(
             $tenant,
             $storageType,
+            $place,
             RentalType::LIMITED,
             $startDate,
             $endDate,
@@ -292,10 +278,7 @@ class OrderWorkflowTest extends KernelTestCase
 
     public function testUnlimitedRentalOrderCreation(): void
     {
-        /** @var User $tenant */
-        $tenant = $this->entityManager->getRepository(User::class)->findOneBy(['email' => UserFixtures::TENANT_EMAIL]);
-        /** @var StorageType $storageType */
-        $storageType = $this->entityManager->getRepository(StorageType::class)->findOneBy(['name' => 'Maly box']);
+        [$tenant, $storageType, $place] = $this->getFixtures();
 
         $now = $this->clock->now();
         $startDate = $now->modify('+1 day');
@@ -303,6 +286,7 @@ class OrderWorkflowTest extends KernelTestCase
         $order = $this->orderService->createOrder(
             $tenant,
             $storageType,
+            $place,
             RentalType::UNLIMITED,
             $startDate,
             null, // No end date for unlimited
@@ -316,15 +300,13 @@ class OrderWorkflowTest extends KernelTestCase
 
     public function testPriceCalculationForLimitedRental(): void
     {
-        /** @var User $tenant */
-        $tenant = $this->entityManager->getRepository(User::class)->findOneBy(['email' => UserFixtures::TENANT_EMAIL]);
-        /** @var StorageType $storageType */
-        $storageType = $this->entityManager->getRepository(StorageType::class)->findOneBy(['name' => 'Maly box']);
+        [$tenant, $storageType, $place] = $this->getFixtures();
 
         // 7 days = 1 week
         $order = $this->orderService->createOrder(
             $tenant,
             $storageType,
+            $place,
             RentalType::LIMITED,
             new \DateTimeImmutable('2024-01-01'),
             new \DateTimeImmutable('2024-01-08'),
@@ -347,5 +329,20 @@ class OrderWorkflowTest extends KernelTestCase
             ->setParameter('paidStatus', OrderStatus::PAID)
             ->getQuery()
             ->getSingleScalarResult();
+    }
+
+    /**
+     * @return array{User, StorageType, Place}
+     */
+    private function getFixtures(): array
+    {
+        /** @var User $tenant */
+        $tenant = $this->entityManager->getRepository(User::class)->findOneBy(['email' => UserFixtures::TENANT_EMAIL]);
+        /** @var StorageType $storageType */
+        $storageType = $this->entityManager->getRepository(StorageType::class)->findOneBy(['name' => 'Maly box']);
+        /** @var Place $place */
+        $place = $this->entityManager->getRepository(Place::class)->findOneBy(['name' => 'Sklad Praha - Centrum']);
+
+        return [$tenant, $storageType, $place];
     }
 }

@@ -27,7 +27,7 @@ final readonly class PriceCalculator
     ): int {
         // For unlimited rentals, return first period price (monthly or yearly based on frequency)
         if (null === $endDate) {
-            return $storageType->pricePerMonth;
+            return $storageType->defaultPricePerMonth;
         }
 
         $days = $this->calculateDays($startDate, $endDate);
@@ -37,10 +37,10 @@ final readonly class PriceCalculator
         }
 
         if ($days < self::WEEKLY_THRESHOLD_DAYS) {
-            return $this->calculateWeeklyPrice($storageType->pricePerWeek, $days);
+            return $this->calculateWeeklyPrice($storageType->defaultPricePerWeek, $days);
         }
 
-        return $this->calculateMonthlyPrice($storageType->pricePerMonth, $days);
+        return $this->calculateMonthlyPrice($storageType->defaultPricePerMonth, $days);
     }
 
     /**
@@ -108,9 +108,9 @@ final readonly class PriceCalculator
                 'rate_type' => 'monthly',
                 'full_periods' => 1,
                 'remaining_days' => 0,
-                'period_price' => $storageType->pricePerMonth,
+                'period_price' => $storageType->defaultPricePerMonth,
                 'remaining_price' => 0,
-                'total_price' => $storageType->pricePerMonth,
+                'total_price' => $storageType->defaultPricePerMonth,
             ];
         }
 
@@ -119,7 +119,7 @@ final readonly class PriceCalculator
         if ($days < self::WEEKLY_THRESHOLD_DAYS) {
             $fullWeeks = intdiv($days, self::DAYS_PER_WEEK);
             $remainingDays = $days % self::DAYS_PER_WEEK;
-            $weeklyRate = $storageType->pricePerWeek;
+            $weeklyRate = $storageType->defaultPricePerWeek;
             $periodPrice = $fullWeeks * $weeklyRate;
             $dailyRate = $weeklyRate / self::DAYS_PER_WEEK;
             $remainingPrice = (int) round($remainingDays * $dailyRate);
@@ -137,7 +137,7 @@ final readonly class PriceCalculator
 
         $fullMonths = intdiv($days, self::DAYS_PER_MONTH);
         $remainingDays = $days % self::DAYS_PER_MONTH;
-        $monthlyRate = $storageType->pricePerMonth;
+        $monthlyRate = $storageType->defaultPricePerMonth;
         $periodPrice = $fullMonths * $monthlyRate;
         $dailyRate = $monthlyRate / self::DAYS_PER_MONTH;
         $remainingPrice = (int) round($remainingDays * $dailyRate);

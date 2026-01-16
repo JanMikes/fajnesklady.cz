@@ -34,7 +34,7 @@
                                 <div class="text-xs text-gray-500">{{ order.user.email }}</div>
                             </td>
                             <td class="text-gray-900">{{ order.storage.number }}</td>
-                            <td class="text-gray-500">{{ order.storage.storageType.place.name }}</td>
+                            <td class="text-gray-500">{{ order.storage.place.name }}</td>
                             <td class="text-sm">
                                 {{ order.startDate|date('d.m.Y') }}
                                 {% if order.endDate %}

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\Entity\User;
+use App\Enum\UserRole;
 use App\Exception\UserNotFound;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
@@ -104,5 +105,32 @@ class UserRepository
         )->fetchOne();
 
         return (int) $result;
+    }
+
+    /**
+     * Find all users with a specific role.
+     *
+     * @return User[]
+     */
+    public function findByRole(UserRole $role): array
+    {
+        $connection = $this->entityManager->getConnection();
+        $ids = $connection->executeQuery(
+            'SELECT id FROM users WHERE roles::jsonb @> :role::jsonb',
+            ['role' => json_encode([$role->value])],
+            ['role' => \Doctrine\DBAL\Types\Types::STRING]
+        )->fetchFirstColumn();
+
+        if (0 === count($ids)) {
+            return [];
+        }
+
+        return $this->entityManager->createQueryBuilder()
+            ->select('u')
+            ->from(User::class, 'u')
+            ->where('u.id IN (:ids)')
+            ->setParameter('ids', $ids)
+            ->getQuery()
+            ->getResult();
     }
 }

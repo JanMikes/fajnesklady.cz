@@ -39,9 +39,19 @@ class StorageFormType extends AbstractType
             ],
         ]);
 
+        $builder->add('placeId', ChoiceType::class, [
+            'label' => 'Misto',
+            'choices' => $this->getPlaceChoices(),
+            'placeholder' => '-- Vyberte misto --',
+            'attr' => [
+                'class' => 'select select-bordered w-full',
+            ],
+        ]);
+
         $builder->add('storageTypeId', ChoiceType::class, [
             'label' => 'Typ skladu',
             'choices' => $this->getStorageTypeChoices(),
+            'placeholder' => '-- Vyberte typ skladu --',
             'attr' => [
                 'class' => 'select select-bordered w-full',
             ],
@@ -99,7 +109,7 @@ class StorageFormType extends AbstractType
     /**
      * @return array<string, string>
      */
-    private function getStorageTypeChoices(): array
+    private function getPlaceChoices(): array
     {
         $token = $this->tokenStorage->getToken();
         $user = $token?->getUser();
@@ -108,7 +118,7 @@ class StorageFormType extends AbstractType
             return [];
         }
 
-        // Admins can see all storage types
+        // Admins can see all places
         if ($this->authorizationChecker->isGranted('ROLE_ADMIN')) {
             $places = $this->placeRepository->findAll();
         } else {
@@ -117,11 +127,24 @@ class StorageFormType extends AbstractType
 
         $choices = [];
         foreach ($places as $place) {
-            $storageTypes = $this->storageTypeRepository->findByPlace($place);
-            foreach ($storageTypes as $storageType) {
-                $label = $place->name.' - '.$storageType->name.' ('.$storageType->getDimensionsInMeters().')';
-                $choices[$label] = $storageType->id->toRfc4122();
-            }
+            $choices[$place->name.' ('.$place->city.')'] = $place->id->toRfc4122();
+        }
+
+        return $choices;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function getStorageTypeChoices(): array
+    {
+        // Storage types are now global, show all available
+        $storageTypes = $this->storageTypeRepository->findAllActive();
+
+        $choices = [];
+        foreach ($storageTypes as $storageType) {
+            $label = $storageType->name.' ('.$storageType->getDimensionsInMeters().')';
+            $choices[$label] = $storageType->id->toRfc4122();
         }
 
         return $choices;

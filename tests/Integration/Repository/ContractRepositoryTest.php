@@ -42,7 +42,7 @@ class ContractRepositoryTest extends KernelTestCase
         return $user;
     }
 
-    private function createPlace(User $owner): Place
+    private function createPlace(): Place
     {
         $place = new Place(
             id: Uuid::v7(),
@@ -51,7 +51,6 @@ class ContractRepositoryTest extends KernelTestCase
             city: 'Praha',
             postalCode: '110 00',
             description: null,
-            owner: $owner,
             createdAt: new \DateTimeImmutable(),
         );
         $this->entityManager->persist($place);
@@ -59,7 +58,7 @@ class ContractRepositoryTest extends KernelTestCase
         return $place;
     }
 
-    private function createStorageType(Place $place): StorageType
+    private function createStorageType(): StorageType
     {
         $storageType = new StorageType(
             id: Uuid::v7(),
@@ -67,9 +66,8 @@ class ContractRepositoryTest extends KernelTestCase
             innerWidth: 100,
             innerHeight: 100,
             innerLength: 100,
-            pricePerWeek: 10000,
-            pricePerMonth: 35000,
-            place: $place,
+            defaultPricePerWeek: 10000,
+            defaultPricePerMonth: 35000,
             createdAt: new \DateTimeImmutable(),
         );
         $this->entityManager->persist($storageType);
@@ -77,13 +75,14 @@ class ContractRepositoryTest extends KernelTestCase
         return $storageType;
     }
 
-    private function createStorage(StorageType $storageType, string $number): Storage
+    private function createStorage(StorageType $storageType, Place $place, string $number): Storage
     {
         $storage = new Storage(
             id: Uuid::v7(),
             number: $number,
             coordinates: ['x' => 0, 'y' => 0, 'width' => 100, 'height' => 100, 'rotation' => 0],
             storageType: $storageType,
+            place: $place,
             createdAt: new \DateTimeImmutable(),
         );
         $this->entityManager->persist($storage);
@@ -143,11 +142,10 @@ class ContractRepositoryTest extends KernelTestCase
 
     public function testFindOverlappingDetectsOverlappingLimitedPeriods(): void
     {
-        $owner = $this->createUser('landlord-c-overlap1@test.com');
         $tenant = $this->createUser('tenant-c-overlap1@test.com');
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $storage = $this->createStorage($storageType, 'COL1');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage = $this->createStorage($storageType, $place, 'COL1');
 
         $order = $this->createOrder($tenant, $storage, new \DateTimeImmutable('2024-01-10'), new \DateTimeImmutable('2024-01-20'));
 
@@ -174,11 +172,10 @@ class ContractRepositoryTest extends KernelTestCase
 
     public function testFindOverlappingHandlesIndefinitePeriod(): void
     {
-        $owner = $this->createUser('landlord-c-unlimited@test.com');
         $tenant = $this->createUser('tenant-c-unlimited@test.com');
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $storage = $this->createStorage($storageType, 'CUNL');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage = $this->createStorage($storageType, $place, 'CUNL');
 
         $order = $this->createOrder($tenant, $storage, new \DateTimeImmutable('2024-01-01'), null);
 
@@ -204,11 +201,10 @@ class ContractRepositoryTest extends KernelTestCase
 
     public function testFindOverlappingExcludesTerminatedContracts(): void
     {
-        $owner = $this->createUser('landlord-c-term@test.com');
         $tenant = $this->createUser('tenant-c-term@test.com');
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $storage = $this->createStorage($storageType, 'CTRM');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage = $this->createStorage($storageType, $place, 'CTRM');
 
         $order = $this->createOrder($tenant, $storage, new \DateTimeImmutable('2024-01-10'), new \DateTimeImmutable('2024-01-20'));
 
@@ -235,13 +231,12 @@ class ContractRepositoryTest extends KernelTestCase
 
     public function testFindExpiringWithinDaysReturnsCorrectContracts(): void
     {
-        $owner = $this->createUser('landlord-c-exp@test.com');
         $tenant = $this->createUser('tenant-c-exp@test.com');
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $storage1 = $this->createStorage($storageType, 'CEXP1');
-        $storage2 = $this->createStorage($storageType, 'CEXP2');
-        $storage3 = $this->createStorage($storageType, 'CEXP3');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage1 = $this->createStorage($storageType, $place, 'CEXP1');
+        $storage2 = $this->createStorage($storageType, $place, 'CEXP2');
+        $storage3 = $this->createStorage($storageType, $place, 'CEXP3');
 
         $now = new \DateTimeImmutable('2024-06-15');
 
@@ -287,12 +282,11 @@ class ContractRepositoryTest extends KernelTestCase
 
     public function testFindActiveByUserExcludesTerminated(): void
     {
-        $owner = $this->createUser('landlord-c-active@test.com');
         $tenant = $this->createUser('tenant-c-active@test.com');
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $storage1 = $this->createStorage($storageType, 'CACT1');
-        $storage2 = $this->createStorage($storageType, 'CACT2');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage1 = $this->createStorage($storageType, $place, 'CACT1');
+        $storage2 = $this->createStorage($storageType, $place, 'CACT2');
 
         $now = new \DateTimeImmutable('2024-06-15');
 
@@ -328,11 +322,10 @@ class ContractRepositoryTest extends KernelTestCase
 
     public function testFindActiveByStorageFiltersCorrectly(): void
     {
-        $owner = $this->createUser('landlord-c-storage@test.com');
         $tenant = $this->createUser('tenant-c-storage@test.com');
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $storage = $this->createStorage($storageType, 'CSTR');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage = $this->createStorage($storageType, $place, 'CSTR');
 
         $now = new \DateTimeImmutable('2024-06-15');
 

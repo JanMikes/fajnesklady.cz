@@ -22,7 +22,7 @@
                         <option value="">-- Vyberte typ skladu --</option>
                         {% for storageType in storageTypes %}
                             <option value="{{ storageType.id }}" {{ selectedStorageType and selectedStorageType.id.equals(storageType.id) ? 'selected' : '' }}>
-                                {{ storageType.place.name }} - {{ storageType.name }} ({{ storageType.dimensionsInMeters }})
+                                {{ storageType.name }} ({{ storageType.dimensionsInMeters }})
                             </option>
                         {% endfor %}
                     </select>
@@ -37,7 +37,7 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <h2 class="text-lg font-semibold text-gray-900">{{ selectedStorageType.name }}</h2>
-                        <p class="text-sm text-gray-500">{{ selectedStorageType.place.name }} - {{ selectedStorageType.dimensionsInMeters }}</p>
+                        <p class="text-sm text-gray-500">{{ selectedStorageType.dimensionsInMeters }}</p>
                     </div>
                     <span class="badge badge-primary">{{ storages|length }} skladů</span>
                 </div>

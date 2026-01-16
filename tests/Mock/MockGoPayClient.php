@@ -41,6 +41,7 @@ final class MockGoPayClient implements GoPayClient
     {
         if ($this->shouldFailNextRecurrence) {
             $this->shouldFailNextRecurrence = false;
+
             throw new GoPayException('Simulated recurrence failure', 500);
         }
 
@@ -90,13 +91,14 @@ final class MockGoPayClient implements GoPayClient
     {
         if ($this->shouldFailNextPayment) {
             $this->shouldFailNextPayment = false;
+
             throw new GoPayException('Simulated payment failure', 500);
         }
 
         $paymentId = $this->nextPaymentId++;
         $payment = new GoPayPayment(
             id: $paymentId,
-            gwUrl: 'https://mock.gopay.test/gw/' . $paymentId,
+            gwUrl: 'https://mock.gopay.test/gw/'.$paymentId,
             state: 'CREATED',
         );
 

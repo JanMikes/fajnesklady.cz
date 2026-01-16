@@ -71,7 +71,7 @@ final class OrderPaymentController extends AbstractController
 
         $storage = $order->storage;
         $storageType = $storage->storageType;
-        $place = $storageType->place;
+        $place = $storage->getPlace();
 
         return $this->render('public/order_payment.html.twig', [
             'order' => $order,

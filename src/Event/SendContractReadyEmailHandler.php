@@ -27,7 +27,7 @@ final readonly class SendContractReadyEmailHandler
         $user = $contract->user;
         $storage = $contract->storage;
         $storageType = $storage->storageType;
-        $place = $storageType->place;
+        $place = $storage->getPlace();
 
         $portalUrl = $this->urlGenerator->generate(
             'portal_dashboard',

@@ -17,8 +17,8 @@ final readonly class UpdateStorageTypeCommand
         public ?int $outerWidth,
         public ?int $outerHeight,
         public ?int $outerLength,
-        public int $pricePerWeek,
-        public int $pricePerMonth,
+        public int $defaultPricePerWeek,
+        public int $defaultPricePerMonth,
         public ?string $description,
     ) {
     }

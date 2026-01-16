@@ -27,7 +27,7 @@ final readonly class SendOrderConfirmationEmailHandler
         $user = $order->user;
         $storage = $order->storage;
         $storageType = $storage->storageType;
-        $place = $storageType->place;
+        $place = $storage->getPlace();
 
         $portalUrl = $this->urlGenerator->generate(
             'portal_dashboard',

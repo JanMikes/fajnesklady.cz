@@ -50,12 +50,9 @@ class StorageType
         #[ORM\Column]
         private(set) int $innerLength,
         #[ORM\Column]
-        private(set) int $pricePerWeek,
+        private(set) int $defaultPricePerWeek,
         #[ORM\Column]
-        private(set) int $pricePerMonth,
-        #[ORM\ManyToOne(targetEntity: Place::class)]
-        #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
-        private(set) Place $place,
+        private(set) int $defaultPricePerMonth,
         #[ORM\Column]
         private(set) \DateTimeImmutable $createdAt,
         ?int $outerWidth = null,
@@ -69,14 +66,14 @@ class StorageType
         $this->outerLength = $outerLength;
     }
 
-    public function getPricePerWeekInCzk(): float
+    public function getDefaultPricePerWeekInCzk(): float
     {
-        return $this->pricePerWeek / 100;
+        return $this->defaultPricePerWeek / 100;
     }
 
-    public function getPricePerMonthInCzk(): float
+    public function getDefaultPricePerMonthInCzk(): float
     {
-        return $this->pricePerMonth / 100;
+        return $this->defaultPricePerMonth / 100;
     }
 
     public function getFloorAreaInSquareMeters(): float
@@ -146,8 +143,8 @@ class StorageType
         ?int $outerWidth,
         ?int $outerHeight,
         ?int $outerLength,
-        int $pricePerWeek,
-        int $pricePerMonth,
+        int $defaultPricePerWeek,
+        int $defaultPricePerMonth,
         ?string $description,
         \DateTimeImmutable $now,
     ): void {
@@ -158,8 +155,8 @@ class StorageType
         $this->outerWidth = $outerWidth;
         $this->outerHeight = $outerHeight;
         $this->outerLength = $outerLength;
-        $this->pricePerWeek = $pricePerWeek;
-        $this->pricePerMonth = $pricePerMonth;
+        $this->defaultPricePerWeek = $defaultPricePerWeek;
+        $this->defaultPricePerMonth = $defaultPricePerMonth;
         $this->description = $description;
         $this->updatedAt = $now;
     }
@@ -182,16 +179,6 @@ class StorageType
     {
         $this->isActive = false;
         $this->updatedAt = $now;
-    }
-
-    public function belongsToPlace(Place $place): bool
-    {
-        return $this->place->id->equals($place->id);
-    }
-
-    public function isOwnedBy(User $user): bool
-    {
-        return $this->place->isOwnedBy($user);
     }
 
     /**

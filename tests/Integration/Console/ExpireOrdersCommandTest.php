@@ -6,6 +6,7 @@ namespace App\Tests\Integration\Console;
 
 use App\DataFixtures\UserFixtures;
 use App\Entity\Order;
+use App\Entity\Place;
 use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\OrderStatus;
@@ -48,6 +49,9 @@ class ExpireOrdersCommandTest extends KernelTestCase
         /** @var StorageType $storageType */
         $storageType = $this->entityManager->getRepository(StorageType::class)->findOneBy(['name' => 'Maly box']);
 
+        /** @var Place $place */
+        $place = $this->entityManager->getRepository(Place::class)->findOneBy(['name' => 'Sklad Praha - Centrum']);
+
         $now = $this->clock->now();
         $pastDate = $now->modify('-10 days');
         $startDate = $now->modify('+1 day');
@@ -57,6 +61,7 @@ class ExpireOrdersCommandTest extends KernelTestCase
         $order1 = $this->orderService->createOrder(
             $tenant,
             $storageType,
+            $place,
             RentalType::LIMITED,
             $startDate,
             $endDate,
@@ -67,6 +72,7 @@ class ExpireOrdersCommandTest extends KernelTestCase
         $order2 = $this->orderService->createOrder(
             $tenant,
             $storageType,
+            $place,
             RentalType::LIMITED,
             $startDate,
             $endDate,

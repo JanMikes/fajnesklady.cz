@@ -33,7 +33,7 @@
                                 <div class="text-xs text-gray-500">{{ contract.user.email }}</div>
                             </td>
                             <td class="text-gray-900">{{ contract.storage.number }}</td>
-                            <td class="text-gray-500">{{ contract.storage.storageType.place.name }}</td>
+                            <td class="text-gray-500">{{ contract.storage.place.name }}</td>
                             <td class="text-sm">
                                 {{ contract.startDate|date('d.m.Y') }}
                                 {% if contract.endDate %}

@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Command;
 
-use Symfony\Component\Uid\Uuid;
-
 final readonly class CreateStorageTypeCommand
 {
     public function __construct(
@@ -16,10 +14,9 @@ final readonly class CreateStorageTypeCommand
         public ?int $outerWidth,
         public ?int $outerHeight,
         public ?int $outerLength,
-        public int $pricePerWeek,
-        public int $pricePerMonth,
+        public int $defaultPricePerWeek,
+        public int $defaultPricePerMonth,
         public ?string $description,
-        public Uuid $placeId,
     ) {
     }
 }

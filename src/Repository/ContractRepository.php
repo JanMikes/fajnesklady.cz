@@ -7,6 +7,7 @@ namespace App\Repository;
 use App\Entity\Contract;
 use App\Entity\Order;
 use App\Entity\Storage;
+use App\Entity\StorageType;
 use App\Entity\User;
 use App\Exception\ContractNotFound;
 use Doctrine\ORM\EntityManagerInterface;
@@ -258,5 +259,28 @@ class ContractRepository
             ->setParameter('paymentId', $parentPaymentId)
             ->getQuery()
             ->getOneOrNullResult();
+    }
+
+    /**
+     * Find LIMITED contracts for a storage type that end in the future.
+     * LIMITED contracts have an end date (unlimited contracts have NULL end date).
+     *
+     * @return Contract[]
+     */
+    public function findLimitedByStorageType(StorageType $storageType, \DateTimeImmutable $now): array
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('c')
+            ->from(Contract::class, 'c')
+            ->join('c.storage', 's')
+            ->where('s.storageType = :storageType')
+            ->andWhere('c.terminatedAt IS NULL')
+            ->andWhere('c.endDate IS NOT NULL')
+            ->andWhere('c.endDate > :now')
+            ->setParameter('storageType', $storageType)
+            ->setParameter('now', $now)
+            ->orderBy('c.endDate', 'ASC')
+            ->getQuery()
+            ->getResult();
     }
 }

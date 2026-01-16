@@ -80,8 +80,8 @@ final readonly class ChargeRecurringPaymentHandler
     private function calculateBillingAmount(?PaymentFrequency $frequency, \App\Entity\StorageType $storageType): int
     {
         return match ($frequency) {
-            PaymentFrequency::YEARLY => $storageType->pricePerMonth * 12,
-            default => $storageType->pricePerMonth,
+            PaymentFrequency::YEARLY => $storageType->defaultPricePerMonth * 12,
+            default => $storageType->defaultPricePerMonth,
         };
     }
 

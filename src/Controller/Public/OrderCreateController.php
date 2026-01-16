@@ -10,6 +10,7 @@ use App\Entity\Order;
 use App\Entity\User;
 use App\Form\OrderFormData;
 use App\Form\OrderFormType;
+use App\Repository\PlaceRepository;
 use App\Repository\StorageTypeRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -20,30 +21,36 @@ use Symfony\Component\Messenger\Stamp\HandledStamp;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Uid\Uuid;
 
-#[Route('/objednavka/{storageTypeId}', name: 'public_order_create')]
+#[Route('/objednavka/{placeId}/{storageTypeId}', name: 'public_order_create', requirements: ['placeId' => '[0-9a-f-]{36}', 'storageTypeId' => '[0-9a-f-]{36}'])]
 final class OrderCreateController extends AbstractController
 {
     public function __construct(
+        private readonly PlaceRepository $placeRepository,
         private readonly StorageTypeRepository $storageTypeRepository,
         private readonly MessageBusInterface $commandBus,
     ) {
     }
 
-    public function __invoke(string $storageTypeId, Request $request): Response
+    public function __invoke(string $placeId, string $storageTypeId, Request $request): Response
     {
+        if (!Uuid::isValid($placeId)) {
+            throw new NotFoundHttpException('Pobočka nenalezena.');
+        }
+
         if (!Uuid::isValid($storageTypeId)) {
             throw new NotFoundHttpException('Typ skladové jednotky nenalezen.');
+        }
+
+        $place = $this->placeRepository->find(Uuid::fromString($placeId));
+
+        if (null === $place || !$place->isActive) {
+            throw new NotFoundHttpException('Pobočka nenalezena.');
         }
 
         $storageType = $this->storageTypeRepository->find(Uuid::fromString($storageTypeId));
 
         if (null === $storageType || !$storageType->isActive) {
             throw new NotFoundHttpException('Typ skladové jednotky nenalezen.');
-        }
-
-        $place = $storageType->place;
-        if (!$place->isActive) {
-            throw new NotFoundHttpException('Pobočka není aktivní.');
         }
 
         $user = $this->getUser();
@@ -84,6 +91,7 @@ final class OrderCreateController extends AbstractController
                 $orderEnvelope = $this->commandBus->dispatch(new CreateOrderCommand(
                     user: $user,
                     storageType: $storageType,
+                    place: $place,
                     rentalType: $formData->rentalType,
                     startDate: $formData->startDate,
                     endDate: $formData->endDate,
@@ -108,8 +116,8 @@ final class OrderCreateController extends AbstractController
         }
 
         // Calculate example prices for display
-        $weeklyPrice = $storageType->getPricePerWeekInCzk();
-        $monthlyPrice = $storageType->getPricePerMonthInCzk();
+        $weeklyPrice = $storageType->getDefaultPricePerWeekInCzk();
+        $monthlyPrice = $storageType->getDefaultPricePerMonthInCzk();
 
         return $this->render('public/order_create.html.twig', [
             'storageType' => $storageType,

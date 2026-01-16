@@ -48,6 +48,7 @@ final class PlaceDetailController extends AbstractController
         foreach ($storageTypes as $storageType) {
             $availability[$storageType->id->toRfc4122()] = $this->storageAssignment->countAvailableStorages(
                 $storageType,
+                $place,
                 $startDate,
                 $endDate
             );
@@ -62,7 +63,7 @@ final class PlaceDetailController extends AbstractController
             'coordinates' => $s->coordinates,
             'status' => $s->status->value,
             'dimensions' => $s->storageType->getDimensionsInMeters(),
-            'pricePerMonth' => $s->storageType->getPricePerMonthInCzk(),
+            'pricePerMonth' => $s->getEffectivePricePerMonthInCzk(),
         ], $storages);
 
         $storageTypesData = array_map(fn ($t) => [

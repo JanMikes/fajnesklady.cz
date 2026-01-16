@@ -17,8 +17,7 @@ class StorageRepository
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
-    ) {
-    }
+    ) {}
 
     public function save(Storage $storage): void
     {
@@ -34,6 +33,11 @@ class StorageRepository
     {
         return $this->entityManager->find(Storage::class, $id)
             ?? throw StorageNotFound::withId($id);
+    }
+
+    public function find(Uuid $id): ?Storage
+    {
+        return $this->entityManager->find(Storage::class, $id);
     }
 
     /**
@@ -54,13 +58,61 @@ class StorageRepository
     /**
      * @return Storage[]
      */
+    public function findByStorageTypeAndPlace(StorageType $storageType, Place $place): array
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('s')
+            ->from(Storage::class, 's')
+            ->where('s.storageType = :storageType')
+            ->andWhere('s.place = :place')
+            ->setParameter('storageType', $storageType)
+            ->setParameter('place', $place)
+            ->orderBy('s.number', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * @return Storage[]
+     */
     public function findByPlace(Place $place): array
     {
         return $this->entityManager->createQueryBuilder()
             ->select('s')
             ->from(Storage::class, 's')
-            ->join('s.storageType', 'st')
-            ->where('st.place = :place')
+            ->where('s.place = :place')
+            ->setParameter('place', $place)
+            ->orderBy('s.number', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * @return Storage[]
+     */
+    public function findByOwner(User $owner): array
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('s')
+            ->from(Storage::class, 's')
+            ->where('s.owner = :owner')
+            ->setParameter('owner', $owner)
+            ->orderBy('s.number', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * @return Storage[]
+     */
+    public function findByOwnerAndPlace(User $owner, Place $place): array
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('s')
+            ->from(Storage::class, 's')
+            ->where('s.owner = :owner')
+            ->andWhere('s.place = :place')
+            ->setParameter('owner', $owner)
             ->setParameter('place', $place)
             ->orderBy('s.number', 'ASC')
             ->getQuery()
@@ -113,9 +165,7 @@ class StorageRepository
         return (int) $this->entityManager->createQueryBuilder()
             ->select('COUNT(s.id)')
             ->from(Storage::class, 's')
-            ->join('s.storageType', 'st')
-            ->join('st.place', 'p')
-            ->where('p.owner = :owner')
+            ->where('s.owner = :owner')
             ->setParameter('owner', $owner)
             ->getQuery()
             ->getSingleScalarResult();
@@ -126,9 +176,7 @@ class StorageRepository
         return (int) $this->entityManager->createQueryBuilder()
             ->select('COUNT(s.id)')
             ->from(Storage::class, 's')
-            ->join('s.storageType', 'st')
-            ->join('st.place', 'p')
-            ->where('p.owner = :owner')
+            ->where('s.owner = :owner')
             ->andWhere('s.status = :status')
             ->setParameter('owner', $owner)
             ->setParameter('status', StorageStatus::OCCUPIED)
@@ -141,12 +189,77 @@ class StorageRepository
         return (int) $this->entityManager->createQueryBuilder()
             ->select('COUNT(s.id)')
             ->from(Storage::class, 's')
-            ->join('s.storageType', 'st')
-            ->join('st.place', 'p')
-            ->where('p.owner = :owner')
+            ->where('s.owner = :owner')
             ->andWhere('s.status = :status')
             ->setParameter('owner', $owner)
             ->setParameter('status', StorageStatus::AVAILABLE)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    public function hasOrdersOrContracts(Storage $storage): bool
+    {
+        // Check for orders
+        $orderCount = (int) $this->entityManager->createQueryBuilder()
+            ->select('COUNT(o.id)')
+            ->from('App\Entity\Order', 'o')
+            ->where('o.storage = :storage')
+            ->setParameter('storage', $storage)
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        if ($orderCount > 0) {
+            return true;
+        }
+
+        // Check for contracts
+        $contractCount = (int) $this->entityManager->createQueryBuilder()
+            ->select('COUNT(c.id)')
+            ->from('App\Entity\Contract', 'c')
+            ->where('c.storage = :storage')
+            ->setParameter('storage', $storage)
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return $contractCount > 0;
+    }
+
+    /**
+     * @return Storage[]
+     */
+    public function findAll(): array
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('s')
+            ->from(Storage::class, 's')
+            ->orderBy('s.number', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * @return Storage[]
+     */
+    public function findAllPaginated(int $page, int $limit): array
+    {
+        $offset = ($page - 1) * $limit;
+
+        return $this->entityManager->createQueryBuilder()
+            ->select('s')
+            ->from(Storage::class, 's')
+            ->orderBy('s.createdAt', 'DESC')
+            ->addOrderBy('s.id', 'DESC')
+            ->setFirstResult($offset)
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+    }
+
+    public function countTotal(): int
+    {
+        return (int) $this->entityManager->createQueryBuilder()
+            ->select('COUNT(s.id)')
+            ->from(Storage::class, 's')
             ->getQuery()
             ->getSingleScalarResult();
     }

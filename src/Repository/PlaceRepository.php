@@ -14,8 +14,7 @@ class PlaceRepository
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
-    ) {
-    }
+    ) {}
 
     public function save(Place $place): void
     {
@@ -33,6 +32,11 @@ class PlaceRepository
             ?? throw PlaceNotFound::withId($id);
     }
 
+    public function find(Uuid $id): ?Place
+    {
+        return $this->entityManager->find(Place::class, $id);
+    }
+
     /**
      * @return Place[]
      */
@@ -41,24 +45,7 @@ class PlaceRepository
         return $this->entityManager->createQueryBuilder()
             ->select('p')
             ->from(Place::class, 'p')
-            ->orderBy('p.createdAt', 'DESC')
-            ->addOrderBy('p.id', 'DESC')
-            ->getQuery()
-            ->getResult();
-    }
-
-    /**
-     * @return Place[]
-     */
-    public function findByOwner(User $owner): array
-    {
-        return $this->entityManager->createQueryBuilder()
-            ->select('p')
-            ->from(Place::class, 'p')
-            ->where('p.owner = :owner')
-            ->setParameter('owner', $owner)
-            ->orderBy('p.createdAt', 'DESC')
-            ->addOrderBy('p.id', 'DESC')
+            ->orderBy('p.name', 'ASC')
             ->getQuery()
             ->getResult();
     }
@@ -81,41 +68,10 @@ class PlaceRepository
             ->getResult();
     }
 
-    /**
-     * @return Place[]
-     */
-    public function findByOwnerPaginated(User $owner, int $page, int $limit): array
-    {
-        $offset = ($page - 1) * $limit;
-
-        return $this->entityManager->createQueryBuilder()
-            ->select('p')
-            ->from(Place::class, 'p')
-            ->where('p.owner = :owner')
-            ->setParameter('owner', $owner)
-            ->orderBy('p.createdAt', 'DESC')
-            ->addOrderBy('p.id', 'DESC')
-            ->setFirstResult($offset)
-            ->setMaxResults($limit)
-            ->getQuery()
-            ->getResult();
-    }
-
     public function countTotal(): int
     {
         $connection = $this->entityManager->getConnection();
         $result = $connection->executeQuery('SELECT COUNT(id) FROM place')->fetchOne();
-
-        return (int) $result;
-    }
-
-    public function countByOwner(User $owner): int
-    {
-        $connection = $this->entityManager->getConnection();
-        $result = $connection->executeQuery(
-            'SELECT COUNT(id) FROM place WHERE owner_id = :ownerId',
-            ['ownerId' => $owner->id->toRfc4122()]
-        )->fetchOne();
 
         return (int) $result;
     }
@@ -135,8 +91,36 @@ class PlaceRepository
             ->getResult();
     }
 
-    public function find(Uuid $id): ?Place
+    /**
+     * Count distinct places that have storages owned by the given user.
+     */
+    public function countPlacesWithStoragesByOwner(User $owner): int
     {
-        return $this->entityManager->find(Place::class, $id);
+        return (int) $this->entityManager->createQueryBuilder()
+            ->select('COUNT(DISTINCT p.id)')
+            ->from(Place::class, 'p')
+            ->innerJoin('App\Entity\Storage', 's', 'WITH', 's.place = p')
+            ->where('s.owner = :owner')
+            ->setParameter('owner', $owner)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    /**
+     * Find places that have storages owned by the given user.
+     *
+     * @return Place[]
+     */
+    public function findByOwner(User $owner): array
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('DISTINCT p')
+            ->from(Place::class, 'p')
+            ->innerJoin('App\Entity\Storage', 's', 'WITH', 's.place = p')
+            ->where('s.owner = :owner')
+            ->setParameter('owner', $owner)
+            ->orderBy('p.name', 'ASC')
+            ->getQuery()
+            ->getResult();
     }
 }

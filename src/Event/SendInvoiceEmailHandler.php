@@ -26,7 +26,7 @@ final readonly class SendInvoiceEmailHandler
         $order = $invoice->order;
         $storage = $order->storage;
         $storageType = $storage->storageType;
-        $place = $storageType->place;
+        $place = $storage->getPlace();
 
         $email = (new TemplatedEmail())
             ->from(new Address('noreply@fajnesklady.cz', 'Fajné Sklady'))

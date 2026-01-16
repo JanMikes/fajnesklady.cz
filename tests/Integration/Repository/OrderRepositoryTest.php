@@ -41,7 +41,7 @@ class OrderRepositoryTest extends KernelTestCase
         return $user;
     }
 
-    private function createPlace(User $owner): Place
+    private function createPlace(): Place
     {
         $place = new Place(
             id: Uuid::v7(),
@@ -50,7 +50,6 @@ class OrderRepositoryTest extends KernelTestCase
             city: 'Praha',
             postalCode: '110 00',
             description: null,
-            owner: $owner,
             createdAt: new \DateTimeImmutable(),
         );
         $this->entityManager->persist($place);
@@ -58,7 +57,7 @@ class OrderRepositoryTest extends KernelTestCase
         return $place;
     }
 
-    private function createStorageType(Place $place): StorageType
+    private function createStorageType(): StorageType
     {
         $storageType = new StorageType(
             id: Uuid::v7(),
@@ -66,9 +65,8 @@ class OrderRepositoryTest extends KernelTestCase
             innerWidth: 100,
             innerHeight: 100,
             innerLength: 100,
-            pricePerWeek: 10000,
-            pricePerMonth: 35000,
-            place: $place,
+            defaultPricePerWeek: 10000,
+            defaultPricePerMonth: 35000,
             createdAt: new \DateTimeImmutable(),
         );
         $this->entityManager->persist($storageType);
@@ -76,14 +74,16 @@ class OrderRepositoryTest extends KernelTestCase
         return $storageType;
     }
 
-    private function createStorage(StorageType $storageType, string $number): Storage
+    private function createStorage(StorageType $storageType, Place $place, string $number, ?User $owner = null): Storage
     {
         $storage = new Storage(
             id: Uuid::v7(),
             number: $number,
             coordinates: ['x' => 0, 'y' => 0, 'width' => 100, 'height' => 100, 'rotation' => 0],
             storageType: $storageType,
+            place: $place,
             createdAt: new \DateTimeImmutable(),
+            owner: $owner,
         );
         $this->entityManager->persist($storage);
 
@@ -117,11 +117,10 @@ class OrderRepositoryTest extends KernelTestCase
 
     public function testFindOverlappingDetectsOverlappingLimitedPeriods(): void
     {
-        $owner = $this->createUser('landlord-overlap1@test.com');
         $tenant = $this->createUser('tenant-overlap1@test.com');
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $storage = $this->createStorage($storageType, 'OL1');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage = $this->createStorage($storageType, $place, 'OL1');
 
         // Existing order: Jan 10-20
         $existingOrder = $this->createOrder(
@@ -146,11 +145,10 @@ class OrderRepositoryTest extends KernelTestCase
 
     public function testFindOverlappingDetectsNoOverlapForAdjacentPeriods(): void
     {
-        $owner = $this->createUser('landlord-adjacent@test.com');
         $tenant = $this->createUser('tenant-adjacent@test.com');
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $storage = $this->createStorage($storageType, 'ADJ');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage = $this->createStorage($storageType, $place, 'ADJ');
 
         // Existing order: Jan 1-10
         $existingOrder = $this->createOrder(
@@ -174,11 +172,10 @@ class OrderRepositoryTest extends KernelTestCase
 
     public function testFindOverlappingHandlesUnlimitedExistingPeriod(): void
     {
-        $owner = $this->createUser('landlord-unlimited1@test.com');
         $tenant = $this->createUser('tenant-unlimited1@test.com');
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $storage = $this->createStorage($storageType, 'UNL1');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage = $this->createStorage($storageType, $place, 'UNL1');
 
         // Existing unlimited order starting Jan 1
         $existingOrder = $this->createOrder(
@@ -203,11 +200,10 @@ class OrderRepositoryTest extends KernelTestCase
 
     public function testFindOverlappingHandlesUnlimitedRequestedPeriod(): void
     {
-        $owner = $this->createUser('landlord-unlimited2@test.com');
         $tenant = $this->createUser('tenant-unlimited2@test.com');
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $storage = $this->createStorage($storageType, 'UNL2');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage = $this->createStorage($storageType, $place, 'UNL2');
 
         // Existing limited order: Feb 1-28
         $existingOrder = $this->createOrder(
@@ -231,11 +227,10 @@ class OrderRepositoryTest extends KernelTestCase
 
     public function testFindOverlappingExcludesSpecificOrder(): void
     {
-        $owner = $this->createUser('landlord-exclude@test.com');
         $tenant = $this->createUser('tenant-exclude@test.com');
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $storage = $this->createStorage($storageType, 'EXC');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage = $this->createStorage($storageType, $place, 'EXC');
 
         // Existing order: Jan 10-20
         $existingOrder = $this->createOrder(
@@ -260,11 +255,10 @@ class OrderRepositoryTest extends KernelTestCase
 
     public function testFindOverlappingOnlyConsidersActiveStatuses(): void
     {
-        $owner = $this->createUser('landlord-status@test.com');
         $tenant = $this->createUser('tenant-status@test.com');
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $storage = $this->createStorage($storageType, 'STAT');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage = $this->createStorage($storageType, $place, 'STAT');
 
         // Cancelled order: Jan 10-20
         $cancelledOrder = $this->createOrder(
@@ -307,11 +301,10 @@ class OrderRepositoryTest extends KernelTestCase
 
     public function testFindExpiredOrdersIgnoresPaid(): void
     {
-        $owner = $this->createUser('landlord-paid@test.com');
         $tenant = $this->createUser('tenant-paid@test.com');
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $storage = $this->createStorage($storageType, 'PAI');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage = $this->createStorage($storageType, $place, 'PAI');
 
         // Create an order that has expired but is paid
         $paidOrder = new Order(
@@ -339,11 +332,10 @@ class OrderRepositoryTest extends KernelTestCase
 
     public function testFindExpiredOrdersIgnoresTerminalStatuses(): void
     {
-        $owner = $this->createUser('landlord-terminal@test.com');
         $tenant = $this->createUser('tenant-terminal@test.com');
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $storage = $this->createStorage($storageType, 'TRM');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage = $this->createStorage($storageType, $place, 'TRM');
 
         // Create an already cancelled order with expired timestamp
         $cancelledOrder = new Order(
@@ -371,11 +363,10 @@ class OrderRepositoryTest extends KernelTestCase
 
     public function testFindExpiredOrdersReturnsValidExpiredOrders(): void
     {
-        $owner = $this->createUser('landlord-expired@test.com');
         $tenant = $this->createUser('tenant-expired@test.com');
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $storage = $this->createStorage($storageType, 'EXP');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage = $this->createStorage($storageType, $place, 'EXP');
 
         // Create an expired but not processed order
         $expiredOrder = new Order(
@@ -411,10 +402,10 @@ class OrderRepositoryTest extends KernelTestCase
     {
         $landlord = $this->createUser('landlord-revenue@test.com');
         $tenant = $this->createUser('tenant-revenue@test.com');
-        $place = $this->createPlace($landlord);
-        $storageType = $this->createStorageType($place);
-        $storage1 = $this->createStorage($storageType, 'REV1');
-        $storage2 = $this->createStorage($storageType, 'REV2');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage1 = $this->createStorage($storageType, $place, 'REV1', $landlord);
+        $storage2 = $this->createStorage($storageType, $place, 'REV2', $landlord);
 
         // Paid order - 150 CZK
         $paidOrder = $this->createOrder($tenant, $storage1, new \DateTimeImmutable('+1 day'), new \DateTimeImmutable('+30 days'), RentalType::LIMITED, 15000);
@@ -436,11 +427,11 @@ class OrderRepositoryTest extends KernelTestCase
     {
         $landlord = $this->createUser('landlord-count@test.com');
         $tenant = $this->createUser('tenant-count@test.com');
-        $place = $this->createPlace($landlord);
-        $storageType = $this->createStorageType($place);
-        $storage1 = $this->createStorage($storageType, 'CNT1');
-        $storage2 = $this->createStorage($storageType, 'CNT2');
-        $storage3 = $this->createStorage($storageType, 'CNT3');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage1 = $this->createStorage($storageType, $place, 'CNT1', $landlord);
+        $storage2 = $this->createStorage($storageType, $place, 'CNT2', $landlord);
+        $storage3 = $this->createStorage($storageType, $place, 'CNT3', $landlord);
 
         // Paid order (use reflection to set status directly)
         $paidOrder = $this->createOrder($tenant, $storage1, new \DateTimeImmutable('+1 day'), new \DateTimeImmutable('+30 days'));

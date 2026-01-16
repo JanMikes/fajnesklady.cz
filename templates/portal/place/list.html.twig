@@ -21,9 +21,6 @@
                         <th>Název</th>
                         <th>Adresa</th>
                         <th>Popis</th>
-                        {% if is_granted('ROLE_ADMIN') %}
-                            <th>Vlastník</th>
-                        {% endif %}
                         <th>Vytvořeno</th>
                         <th>Akce</th>
                     </tr>
@@ -34,9 +31,6 @@
                             <td class="font-medium text-gray-900">{{ place.name }}</td>
                             <td class="text-gray-500">{{ place.address }}</td>
                             <td class="text-gray-500 max-w-xs truncate">{{ place.description|default('-') }}</td>
-                            {% if is_granted('ROLE_ADMIN') %}
-                                <td class="text-gray-500">{{ place.owner.fullName }}</td>
-                            {% endif %}
                             <td class="text-gray-500 text-sm">{{ place.createdAt|date('d.m.Y H:i') }}</td>
                             <td>
                                 <div class="flex items-center gap-2">
@@ -65,7 +59,7 @@
                         </tr>
                     {% else %}
                         <tr>
-                            <td colspan="{{ is_granted('ROLE_ADMIN') ? 6 : 5 }}" class="text-center text-gray-500 py-8">Žádná místa nebyla nalezena</td>
+                            <td colspan="5" class="text-center text-gray-500 py-8">Žádná místa nebyla nalezena</td>
                         </tr>
                     {% endfor %}
                 </tbody>

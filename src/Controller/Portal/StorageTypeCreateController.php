@@ -16,10 +16,9 @@ use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Messenger\Stamp\HandledStamp;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
-use Symfony\Component\Uid\Uuid;
 
 #[Route('/portal/storage-types/create', name: 'portal_storage_types_create')]
-#[IsGranted('ROLE_LANDLORD')]
+#[IsGranted('ROLE_ADMIN')]
 final class StorageTypeCreateController extends AbstractController
 {
     public function __construct(
@@ -36,15 +35,9 @@ final class StorageTypeCreateController extends AbstractController
             /** @var StorageTypeFormData $formData */
             $formData = $form->getData();
 
-            // placeId must be provided - either from admin form or from the user's default place
-            if (null === $formData->placeId) {
-                throw new \InvalidArgumentException('Place ID must be provided');
-            }
-            $placeId = Uuid::fromString($formData->placeId);
-
             // Convert CZK to halire (cents)
-            $pricePerWeek = (int) round(($formData->pricePerWeek ?? 0.0) * 100);
-            $pricePerMonth = (int) round(($formData->pricePerMonth ?? 0.0) * 100);
+            $defaultPricePerWeek = (int) round(($formData->defaultPricePerWeek ?? 0.0) * 100);
+            $defaultPricePerMonth = (int) round(($formData->defaultPricePerMonth ?? 0.0) * 100);
 
             $command = new CreateStorageTypeCommand(
                 name: $formData->name,
@@ -54,10 +47,9 @@ final class StorageTypeCreateController extends AbstractController
                 outerWidth: $formData->outerWidth,
                 outerHeight: $formData->outerHeight,
                 outerLength: $formData->outerLength,
-                pricePerWeek: $pricePerWeek,
-                pricePerMonth: $pricePerMonth,
+                defaultPricePerWeek: $defaultPricePerWeek,
+                defaultPricePerMonth: $defaultPricePerMonth,
                 description: $formData->description,
-                placeId: $placeId,
             );
 
             $envelope = $this->commandBus->dispatch($command);

@@ -19,7 +19,7 @@ class StorageTest extends TestCase
         return new User(Uuid::v7(), $email, 'password', 'Test', 'Owner', new \DateTimeImmutable());
     }
 
-    private function createPlace(User $owner): Place
+    private function createPlace(): Place
     {
         return new Place(
             id: Uuid::v7(),
@@ -28,12 +28,11 @@ class StorageTest extends TestCase
             city: 'Praha',
             postalCode: '110 00',
             description: null,
-            owner: $owner,
             createdAt: new \DateTimeImmutable(),
         );
     }
 
-    private function createStorageType(Place $place): StorageType
+    private function createStorageType(): StorageType
     {
         return new StorageType(
             id: Uuid::v7(),
@@ -41,36 +40,37 @@ class StorageTest extends TestCase
             innerWidth: 100,
             innerHeight: 100,
             innerLength: 100,
-            pricePerWeek: 10000,
-            pricePerMonth: 35000,
-            place: $place,
+            defaultPricePerWeek: 10000,
+            defaultPricePerMonth: 35000,
             createdAt: new \DateTimeImmutable(),
         );
     }
 
-    private function createStorage(StorageType $storageType): Storage
+    private function createStorage(StorageType $storageType, Place $place, ?User $owner = null): Storage
     {
         return new Storage(
             id: Uuid::v7(),
             number: 'A1',
             coordinates: ['x' => 0, 'y' => 0, 'width' => 100, 'height' => 100, 'rotation' => 0],
             storageType: $storageType,
+            place: $place,
             createdAt: new \DateTimeImmutable(),
+            owner: $owner,
         );
     }
 
     public function testCreateStorage(): void
     {
         $now = new \DateTimeImmutable();
-        $owner = $this->createUser();
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
 
         $storage = new Storage(
             id: Uuid::v7(),
             number: 'A1',
             coordinates: ['x' => 10, 'y' => 20, 'width' => 100, 'height' => 100, 'rotation' => 0],
             storageType: $storageType,
+            place: $place,
             createdAt: $now,
         );
 
@@ -78,6 +78,7 @@ class StorageTest extends TestCase
         $this->assertSame('A1', $storage->number);
         $this->assertSame(['x' => 10, 'y' => 20, 'width' => 100, 'height' => 100, 'rotation' => 0], $storage->coordinates);
         $this->assertSame($storageType, $storage->storageType);
+        $this->assertSame($place, $storage->place);
         $this->assertSame(StorageStatus::AVAILABLE, $storage->status);
         $this->assertSame($now, $storage->createdAt);
         $this->assertSame($now, $storage->updatedAt);
@@ -85,10 +86,9 @@ class StorageTest extends TestCase
 
     public function testDefaultStatusIsAvailable(): void
     {
-        $owner = $this->createUser();
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $storage = $this->createStorage($storageType);
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage = $this->createStorage($storageType, $place);
 
         $this->assertSame(StorageStatus::AVAILABLE, $storage->status);
         $this->assertTrue($storage->isAvailable());
@@ -98,10 +98,9 @@ class StorageTest extends TestCase
 
     public function testReserve(): void
     {
-        $owner = $this->createUser();
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $storage = $this->createStorage($storageType);
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage = $this->createStorage($storageType, $place);
         $now = new \DateTimeImmutable();
 
         $storage->reserve($now);
@@ -115,10 +114,9 @@ class StorageTest extends TestCase
 
     public function testOccupy(): void
     {
-        $owner = $this->createUser();
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $storage = $this->createStorage($storageType);
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage = $this->createStorage($storageType, $place);
         $now = new \DateTimeImmutable();
 
         $storage->occupy($now);
@@ -132,10 +130,9 @@ class StorageTest extends TestCase
 
     public function testRelease(): void
     {
-        $owner = $this->createUser();
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $storage = $this->createStorage($storageType);
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage = $this->createStorage($storageType, $place);
         $reserveTime = new \DateTimeImmutable('2024-01-01 10:00:00');
         $releaseTime = new \DateTimeImmutable('2024-01-01 11:00:00');
 
@@ -151,10 +148,9 @@ class StorageTest extends TestCase
 
     public function testMarkUnavailable(): void
     {
-        $owner = $this->createUser();
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $storage = $this->createStorage($storageType);
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage = $this->createStorage($storageType, $place);
         $now = new \DateTimeImmutable();
 
         $storage->markUnavailable($now);
@@ -166,10 +162,9 @@ class StorageTest extends TestCase
 
     public function testStatusTransitions(): void
     {
-        $owner = $this->createUser();
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $storage = $this->createStorage($storageType);
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage = $this->createStorage($storageType, $place);
 
         // Available -> Reserved
         $storage->reserve(new \DateTimeImmutable());
@@ -196,15 +191,15 @@ class StorageTest extends TestCase
     {
         $createdAt = new \DateTimeImmutable('2024-01-01 10:00:00');
         $updatedAt = new \DateTimeImmutable('2024-01-01 11:00:00');
-        $owner = $this->createUser();
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
 
         $storage = new Storage(
             id: Uuid::v7(),
             number: 'A1',
             coordinates: ['x' => 0, 'y' => 0, 'width' => 100, 'height' => 100, 'rotation' => 0],
             storageType: $storageType,
+            place: $place,
             createdAt: $createdAt,
         );
 
@@ -222,20 +217,19 @@ class StorageTest extends TestCase
 
     public function testGetPlace(): void
     {
-        $owner = $this->createUser();
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $storage = $this->createStorage($storageType);
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage = $this->createStorage($storageType, $place);
 
-        $this->assertSame($place, $storage->getPlace());
+        $this->assertSame($place, $storage->place);
     }
 
     public function testIsOwnedByReturnsTrueForOwner(): void
     {
         $owner = $this->createUser();
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $storage = $this->createStorage($storageType);
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage = $this->createStorage($storageType, $place, $owner);
 
         $this->assertTrue($storage->isOwnedBy($owner));
     }
@@ -244,10 +238,20 @@ class StorageTest extends TestCase
     {
         $owner = $this->createUser('owner@example.com');
         $otherUser = $this->createUser('other@example.com');
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $storage = $this->createStorage($storageType);
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage = $this->createStorage($storageType, $place, $owner);
 
         $this->assertFalse($storage->isOwnedBy($otherUser));
+    }
+
+    public function testIsOwnedByReturnsFalseWhenNoOwner(): void
+    {
+        $user = $this->createUser();
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage = $this->createStorage($storageType, $place); // No owner
+
+        $this->assertFalse($storage->isOwnedBy($user));
     }
 }

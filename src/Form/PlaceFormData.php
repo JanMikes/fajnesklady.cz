@@ -28,8 +28,6 @@ final class PlaceFormData
 
     public ?string $description = null;
 
-    public ?string $ownerId = null;
-
     #[Assert\Image(
         maxSize: '5M',
         mimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
@@ -47,7 +45,6 @@ final class PlaceFormData
         $formData->city = $place->city;
         $formData->postalCode = $place->postalCode;
         $formData->description = $place->description;
-        $formData->ownerId = $place->owner->id->toRfc4122();
         $formData->currentMapImagePath = $place->mapImagePath;
 
         return $formData;

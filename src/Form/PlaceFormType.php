@@ -4,28 +4,18 @@ declare(strict_types=1);
 
 namespace App\Form;
 
-use App\Enum\UserRole;
-use App\Repository\UserRepository;
 use Symfony\Component\Form\AbstractType;
-use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\FileType;
 use Symfony\Component\Form\Extension\Core\Type\TextareaType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
-use Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface;
 
 /**
  * @extends AbstractType<PlaceFormData>
  */
 class PlaceFormType extends AbstractType
 {
-    public function __construct(
-        private readonly UserRepository $userRepository,
-        private readonly AuthorizationCheckerInterface $authorizationChecker,
-    ) {
-    }
-
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $builder->add('name', TextType::class, [
@@ -79,17 +69,6 @@ class PlaceFormType extends AbstractType
             ],
             'help' => 'Obrazek mapy skladu (JPEG, PNG, WebP, max 5 MB)',
         ]);
-
-        // Only show owner selector for admins
-        if ($this->authorizationChecker->isGranted('ROLE_ADMIN')) {
-            $builder->add('ownerId', ChoiceType::class, [
-                'label' => 'Vlastnik',
-                'choices' => $this->getOwnerChoices(),
-                'attr' => [
-                    'class' => 'select select-bordered w-full',
-                ],
-            ]);
-        }
     }
 
     public function configureOptions(OptionsResolver $resolver): void
@@ -97,24 +76,5 @@ class PlaceFormType extends AbstractType
         $resolver->setDefaults([
             'data_class' => PlaceFormData::class,
         ]);
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    private function getOwnerChoices(): array
-    {
-        $users = $this->userRepository->findAll();
-        $choices = [];
-
-        foreach ($users as $user) {
-            $roles = $user->getRoles();
-            if (in_array(UserRole::LANDLORD->value, $roles, true)
-                || in_array(UserRole::ADMIN->value, $roles, true)) {
-                $choices[$user->fullName.' ('.$user->email.')'] = $user->id->toRfc4122();
-            }
-        }
-
-        return $choices;
     }
 }

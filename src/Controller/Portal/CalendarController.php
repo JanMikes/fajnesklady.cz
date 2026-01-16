@@ -62,8 +62,8 @@ final class CalendarController extends AbstractController
             $selectedStorageType = $this->storageTypeRepository->find(Uuid::fromString($storageTypeId));
 
             if (null !== $selectedStorageType) {
-                // Verify ownership
-                if (!$this->isGranted('ROLE_ADMIN') && !$selectedStorageType->isOwnedBy($user)) {
+                // Verify ownership (user owns at least one storage of this type)
+                if (!$this->isGranted('ROLE_ADMIN') && !$this->storageTypeRepository->isOwnedBy($selectedStorageType, $user)) {
                     throw $this->createAccessDeniedException();
                 }
 

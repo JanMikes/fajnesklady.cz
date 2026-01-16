@@ -6,7 +6,9 @@ namespace App\Tests\Unit\Security;
 
 use App\Entity\Place;
 use App\Entity\User;
+use App\Repository\PlaceAccessRepository;
 use App\Service\Security\PlaceVoter;
+use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Authorization\Voter\VoterInterface;
@@ -14,11 +16,13 @@ use Symfony\Component\Uid\Uuid;
 
 class PlaceVoterTest extends TestCase
 {
+    private PlaceAccessRepository&MockObject $placeAccessRepository;
     private PlaceVoter $voter;
 
     protected function setUp(): void
     {
-        $this->voter = new PlaceVoter();
+        $this->placeAccessRepository = $this->createMock(PlaceAccessRepository::class);
+        $this->voter = new PlaceVoter($this->placeAccessRepository);
     }
 
     private function createUser(string $email = 'user@example.com'): User
@@ -26,7 +30,7 @@ class PlaceVoterTest extends TestCase
         return new User(Uuid::v7(), $email, 'password', 'Test', 'User', new \DateTimeImmutable());
     }
 
-    private function createPlace(User $owner): Place
+    private function createPlace(): Place
     {
         return new Place(
             id: Uuid::v7(),
@@ -35,7 +39,6 @@ class PlaceVoterTest extends TestCase
             city: 'Praha',
             postalCode: '110 00',
             description: null,
-            owner: $owner,
             createdAt: new \DateTimeImmutable(),
         );
     }
@@ -60,12 +63,10 @@ class PlaceVoterTest extends TestCase
 
     public function testAdminCanViewAnyPlace(): void
     {
-        $owner = $this->createUser('owner@example.com');
         $admin = $this->createUser('admin@example.com');
-
         $this->setUserRoles($admin, ['ROLE_USER', 'ROLE_ADMIN']);
 
-        $place = $this->createPlace($owner);
+        $place = $this->createPlace();
 
         $result = $this->voter->vote($this->createToken($admin), $place, [PlaceVoter::VIEW]);
 
@@ -74,12 +75,10 @@ class PlaceVoterTest extends TestCase
 
     public function testAdminCanEditAnyPlace(): void
     {
-        $owner = $this->createUser('owner@example.com');
         $admin = $this->createUser('admin@example.com');
-
         $this->setUserRoles($admin, ['ROLE_USER', 'ROLE_ADMIN']);
 
-        $place = $this->createPlace($owner);
+        $place = $this->createPlace();
 
         $result = $this->voter->vote($this->createToken($admin), $place, [PlaceVoter::EDIT]);
 
@@ -88,105 +87,93 @@ class PlaceVoterTest extends TestCase
 
     public function testAdminCanDeleteAnyPlace(): void
     {
-        $owner = $this->createUser('owner@example.com');
         $admin = $this->createUser('admin@example.com');
-
         $this->setUserRoles($admin, ['ROLE_USER', 'ROLE_ADMIN']);
 
-        $place = $this->createPlace($owner);
+        $place = $this->createPlace();
 
         $result = $this->voter->vote($this->createToken($admin), $place, [PlaceVoter::DELETE]);
 
         $this->assertSame(VoterInterface::ACCESS_GRANTED, $result);
     }
 
-    public function testLandlordCanViewOwnPlace(): void
+    public function testLandlordCanViewAnyPlace(): void
     {
         $landlord = $this->createUser('landlord@example.com');
-
         $this->setUserRoles($landlord, ['ROLE_USER', 'ROLE_LANDLORD']);
 
-        $place = $this->createPlace($landlord);
+        $place = $this->createPlace();
 
         $result = $this->voter->vote($this->createToken($landlord), $place, [PlaceVoter::VIEW]);
 
         $this->assertSame(VoterInterface::ACCESS_GRANTED, $result);
     }
 
-    public function testLandlordCanEditOwnPlace(): void
+    public function testLandlordCannotEditPlace(): void
     {
         $landlord = $this->createUser('landlord@example.com');
-
         $this->setUserRoles($landlord, ['ROLE_USER', 'ROLE_LANDLORD']);
 
-        $place = $this->createPlace($landlord);
+        $place = $this->createPlace();
 
         $result = $this->voter->vote($this->createToken($landlord), $place, [PlaceVoter::EDIT]);
 
-        $this->assertSame(VoterInterface::ACCESS_GRANTED, $result);
+        $this->assertSame(VoterInterface::ACCESS_DENIED, $result);
     }
 
-    public function testLandlordCanDeleteOwnPlace(): void
+    public function testLandlordCannotDeletePlace(): void
     {
         $landlord = $this->createUser('landlord@example.com');
-
         $this->setUserRoles($landlord, ['ROLE_USER', 'ROLE_LANDLORD']);
 
-        $place = $this->createPlace($landlord);
+        $place = $this->createPlace();
 
         $result = $this->voter->vote($this->createToken($landlord), $place, [PlaceVoter::DELETE]);
 
+        $this->assertSame(VoterInterface::ACCESS_DENIED, $result);
+    }
+
+    public function testLandlordWithAccessCanRequestChange(): void
+    {
+        $landlord = $this->createUser('landlord@example.com');
+        $this->setUserRoles($landlord, ['ROLE_USER', 'ROLE_LANDLORD']);
+
+        $place = $this->createPlace();
+
+        $this->placeAccessRepository
+            ->expects($this->once())
+            ->method('hasAccess')
+            ->with($landlord, $place)
+            ->willReturn(true);
+
+        $result = $this->voter->vote($this->createToken($landlord), $place, [PlaceVoter::REQUEST_CHANGE]);
+
         $this->assertSame(VoterInterface::ACCESS_GRANTED, $result);
     }
 
-    public function testLandlordCannotViewOtherLandlordPlace(): void
+    public function testLandlordWithoutAccessCannotRequestChange(): void
     {
-        $owner = $this->createUser('owner@example.com');
-        $otherLandlord = $this->createUser('other@example.com');
+        $landlord = $this->createUser('landlord@example.com');
+        $this->setUserRoles($landlord, ['ROLE_USER', 'ROLE_LANDLORD']);
 
-        $this->setUserRoles($otherLandlord, ['ROLE_USER', 'ROLE_LANDLORD']);
+        $place = $this->createPlace();
 
-        $place = $this->createPlace($owner);
+        $this->placeAccessRepository
+            ->expects($this->once())
+            ->method('hasAccess')
+            ->with($landlord, $place)
+            ->willReturn(false);
 
-        $result = $this->voter->vote($this->createToken($otherLandlord), $place, [PlaceVoter::VIEW]);
-
-        $this->assertSame(VoterInterface::ACCESS_DENIED, $result);
-    }
-
-    public function testLandlordCannotEditOtherLandlordPlace(): void
-    {
-        $owner = $this->createUser('owner@example.com');
-        $otherLandlord = $this->createUser('other@example.com');
-
-        $this->setUserRoles($otherLandlord, ['ROLE_USER', 'ROLE_LANDLORD']);
-
-        $place = $this->createPlace($owner);
-
-        $result = $this->voter->vote($this->createToken($otherLandlord), $place, [PlaceVoter::EDIT]);
-
-        $this->assertSame(VoterInterface::ACCESS_DENIED, $result);
-    }
-
-    public function testLandlordCannotDeleteOtherLandlordPlace(): void
-    {
-        $owner = $this->createUser('owner@example.com');
-        $otherLandlord = $this->createUser('other@example.com');
-
-        $this->setUserRoles($otherLandlord, ['ROLE_USER', 'ROLE_LANDLORD']);
-
-        $place = $this->createPlace($owner);
-
-        $result = $this->voter->vote($this->createToken($otherLandlord), $place, [PlaceVoter::DELETE]);
+        $result = $this->voter->vote($this->createToken($landlord), $place, [PlaceVoter::REQUEST_CHANGE]);
 
         $this->assertSame(VoterInterface::ACCESS_DENIED, $result);
     }
 
     public function testRegularUserCannotAccessPlace(): void
     {
-        $owner = $this->createUser('owner@example.com');
         $regularUser = $this->createUser('user@example.com');
 
-        $place = $this->createPlace($owner);
+        $place = $this->createPlace();
 
         $result = $this->voter->vote($this->createToken($regularUser), $place, [PlaceVoter::VIEW]);
 
@@ -195,8 +182,7 @@ class PlaceVoterTest extends TestCase
 
     public function testAnonymousUserCannotAccessPlace(): void
     {
-        $owner = $this->createUser('owner@example.com');
-        $place = $this->createPlace($owner);
+        $place = $this->createPlace();
 
         $result = $this->voter->vote($this->createToken(null), $place, [PlaceVoter::VIEW]);
 
@@ -205,10 +191,10 @@ class PlaceVoterTest extends TestCase
 
     public function testAbstainsForUnsupportedAttribute(): void
     {
-        $owner = $this->createUser('owner@example.com');
-        $place = $this->createPlace($owner);
+        $user = $this->createUser();
+        $place = $this->createPlace();
 
-        $result = $this->voter->vote($this->createToken($owner), $place, ['UNSUPPORTED_ATTRIBUTE']);
+        $result = $this->voter->vote($this->createToken($user), $place, ['UNSUPPORTED_ATTRIBUTE']);
 
         $this->assertSame(VoterInterface::ACCESS_ABSTAIN, $result);
     }

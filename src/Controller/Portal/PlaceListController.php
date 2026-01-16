@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Controller\Portal;
 
-use App\Entity\User;
 use App\Repository\PlaceRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -26,17 +25,9 @@ final class PlaceListController extends AbstractController
         $page = max(1, (int) $request->query->get('page', '1'));
         $limit = 20;
 
-        /** @var User $user */
-        $user = $this->getUser();
-
-        // Admin sees all, landlord sees only own
-        if ($this->isGranted('ROLE_ADMIN')) {
-            $places = $this->placeRepository->findAllPaginated($page, $limit);
-            $totalPlaces = $this->placeRepository->countTotal();
-        } else {
-            $places = $this->placeRepository->findByOwnerPaginated($user, $page, $limit);
-            $totalPlaces = $this->placeRepository->countByOwner($user);
-        }
+        // All users see all places (places are now global)
+        $places = $this->placeRepository->findAllPaginated($page, $limit);
+        $totalPlaces = $this->placeRepository->countTotal();
 
         $totalPages = (int) ceil($totalPlaces / $limit);
 

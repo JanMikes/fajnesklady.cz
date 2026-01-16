@@ -29,8 +29,8 @@ final readonly class UpdateStorageTypeHandler
             outerWidth: $command->outerWidth,
             outerHeight: $command->outerHeight,
             outerLength: $command->outerLength,
-            pricePerWeek: $command->pricePerWeek,
-            pricePerMonth: $command->pricePerMonth,
+            defaultPricePerWeek: $command->defaultPricePerWeek,
+            defaultPricePerMonth: $command->defaultPricePerMonth,
             description: $command->description,
             now: $this->clock->now(),
         );

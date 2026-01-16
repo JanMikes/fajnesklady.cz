@@ -7,7 +7,6 @@ namespace App\Tests\Unit\Form;
 use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
-use App\Entity\User;
 use App\Form\StorageFormData;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
@@ -51,15 +50,6 @@ class StorageFormDataTest extends TestCase
 
     public function testFromStorageCreatesFormDataCorrectly(): void
     {
-        $owner = new User(
-            Uuid::v7(),
-            'owner@example.com',
-            'password',
-            'Test',
-            'User',
-            new \DateTimeImmutable(),
-        );
-
         $place = new Place(
             id: Uuid::v7(),
             name: 'Test Place',
@@ -67,7 +57,6 @@ class StorageFormDataTest extends TestCase
             city: 'Praha',
             postalCode: '110 00',
             description: null,
-            owner: $owner,
             createdAt: new \DateTimeImmutable(),
         );
 
@@ -77,9 +66,8 @@ class StorageFormDataTest extends TestCase
             innerWidth: 100,
             innerHeight: 200,
             innerLength: 150,
-            pricePerWeek: 10000,
-            pricePerMonth: 35000,
-            place: $place,
+            defaultPricePerWeek: 10000,
+            defaultPricePerMonth: 35000,
             createdAt: new \DateTimeImmutable(),
         );
 
@@ -89,6 +77,7 @@ class StorageFormDataTest extends TestCase
             number: 'B5',
             coordinates: $coordinates,
             storageType: $storageType,
+            place: $place,
             createdAt: new \DateTimeImmutable(),
         );
 

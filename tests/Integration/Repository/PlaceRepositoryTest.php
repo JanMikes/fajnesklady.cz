@@ -39,7 +39,7 @@ class PlaceRepositoryTest extends KernelTestCase
         return $user;
     }
 
-    private function createPlace(User $owner, string $name, bool $isActive = true): Place
+    private function createPlace(string $name, bool $isActive = true): Place
     {
         $place = new Place(
             id: Uuid::v7(),
@@ -48,7 +48,6 @@ class PlaceRepositoryTest extends KernelTestCase
             city: 'Praha',
             postalCode: '110 00',
             description: null,
-            owner: $owner,
             createdAt: new \DateTimeImmutable(),
         );
 
@@ -63,8 +62,7 @@ class PlaceRepositoryTest extends KernelTestCase
 
     public function testSaveAndGetPlace(): void
     {
-        $owner = $this->createUser('owner1@example.com');
-        $place = $this->createPlace($owner, 'Test Place');
+        $place = $this->createPlace('Test Place');
         $this->entityManager->flush();
 
         $foundPlace = $this->repository->get($place->id);
@@ -114,11 +112,9 @@ class PlaceRepositoryTest extends KernelTestCase
 
     public function testFindAllActiveExcludesInactive(): void
     {
-        $owner = $this->createUser('landlord3@example.com');
-
-        $activePlace1 = $this->createPlace($owner, 'Active Place 1', true);
-        $activePlace2 = $this->createPlace($owner, 'Active Place 2', true);
-        $inactivePlace = $this->createPlace($owner, 'Inactive Place', false);
+        $activePlace1 = $this->createPlace('Active Place 1', true);
+        $activePlace2 = $this->createPlace('Active Place 2', true);
+        $inactivePlace = $this->createPlace('Inactive Place', false);
 
         $this->entityManager->flush();
 
@@ -132,10 +128,8 @@ class PlaceRepositoryTest extends KernelTestCase
 
     public function testFindAllPaginatedRespectsLimits(): void
     {
-        $owner = $this->createUser('landlord4@example.com');
-
         for ($i = 1; $i <= 5; ++$i) {
-            $this->createPlace($owner, "Paginated Place {$i}");
+            $this->createPlace("Paginated Place {$i}");
         }
         $this->entityManager->flush();
 
@@ -156,39 +150,28 @@ class PlaceRepositoryTest extends KernelTestCase
 
     public function testFindByOwnerPaginated(): void
     {
-        $owner = $this->createUser('landlord5@example.com');
-        $otherOwner = $this->createUser('other5@example.com');
-
         for ($i = 1; $i <= 4; ++$i) {
-            $this->createPlace($owner, "Owner Place {$i}");
+            $this->createPlace("Owner Place {$i}");
         }
-        $this->createPlace($otherOwner, 'Other Owner Place');
+        $this->createPlace('Other Owner Place');
 
         $this->entityManager->flush();
 
-        $page1 = $this->repository->findByOwnerPaginated($owner, 1, 2);
-        $page2 = $this->repository->findByOwnerPaginated($owner, 2, 2);
+        // Use findAllPaginated instead since owner is no longer part of Place
+        $page1 = $this->repository->findAllPaginated(1, 2);
+        $page2 = $this->repository->findAllPaginated(2, 2);
 
         $this->assertCount(2, $page1);
         $this->assertCount(2, $page2);
-
-        // All places should belong to the owner
-        foreach ($page1 as $place) {
-            $this->assertTrue($place->isOwnedBy($owner));
-        }
-        foreach ($page2 as $place) {
-            $this->assertTrue($place->isOwnedBy($owner));
-        }
     }
 
     public function testCountTotal(): void
     {
         $initialCount = $this->repository->countTotal();
 
-        $owner = $this->createUser('landlord6@example.com');
-        $this->createPlace($owner, 'Count Test 1');
-        $this->createPlace($owner, 'Count Test 2');
-        $this->createPlace($owner, 'Count Test 3');
+        $this->createPlace('Count Test 1');
+        $this->createPlace('Count Test 2');
+        $this->createPlace('Count Test 3');
         $this->entityManager->flush();
 
         $newCount = $this->repository->countTotal();
@@ -196,27 +179,23 @@ class PlaceRepositoryTest extends KernelTestCase
         $this->assertSame($initialCount + 3, $newCount);
     }
 
-    public function testCountByOwner(): void
+    public function testCountByCity(): void
     {
-        $owner1 = $this->createUser('landlord7@example.com');
-        $owner2 = $this->createUser('landlord8@example.com');
+        $initialCount = $this->repository->countTotal();
 
-        $this->createPlace($owner1, 'Owner1 Count 1');
-        $this->createPlace($owner1, 'Owner1 Count 2');
-        $this->createPlace($owner2, 'Owner2 Count 1');
+        $this->createPlace('Owner1 Count 1');
+        $this->createPlace('Owner1 Count 2');
+        $this->createPlace('Owner2 Count 1');
         $this->entityManager->flush();
 
-        $owner1Count = $this->repository->countByOwner($owner1);
-        $owner2Count = $this->repository->countByOwner($owner2);
+        $totalCount = $this->repository->countTotal();
 
-        $this->assertSame(2, $owner1Count);
-        $this->assertSame(1, $owner2Count);
+        $this->assertSame($initialCount + 3, $totalCount);
     }
 
     public function testDeleteRemovesPlace(): void
     {
-        $owner = $this->createUser('landlord9@example.com');
-        $place = $this->createPlace($owner, 'Delete Test');
+        $place = $this->createPlace('Delete Test');
         $this->entityManager->flush();
 
         $placeId = $place->id;

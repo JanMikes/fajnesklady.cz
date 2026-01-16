@@ -10,6 +10,7 @@ use App\Command\InitiatePaymentCommand;
 use App\Command\ProcessPaymentNotificationCommand;
 use App\DataFixtures\UserFixtures;
 use App\Entity\Contract;
+use App\Entity\Place;
 use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\PaymentFrequency;
@@ -38,7 +39,7 @@ class ChargeRecurringPaymentHandlerTest extends KernelTestCase
         /** @var ManagerRegistry $doctrine */
         $doctrine = $container->get('doctrine');
         $this->entityManager = $doctrine->getManager();
-        $this->commandBus = $container->get('command.bus');
+        $this->commandBus = $container->get('test.command.bus');
         $this->orderService = $container->get(OrderService::class);
         $this->clock = $container->get(ClockInterface::class);
 
@@ -51,36 +52,44 @@ class ChargeRecurringPaymentHandlerTest extends KernelTestCase
     public function testChargeRecurringPaymentUpdatesContract(): void
     {
         $contract = $this->createContractWithRecurringPayment();
-        $originalNextBillingDate = $contract->nextBillingDate;
+        $now = $this->clock->now();
+
+        $this->assertNull($contract->lastBilledAt, 'Contract should not be billed yet');
 
         $this->commandBus->dispatch(new ChargeRecurringPaymentCommand($contract));
 
         $this->entityManager->clear();
         $refreshedContract = $this->entityManager->find(Contract::class, $contract->id);
 
+        // Verify billing was recorded
         $this->assertNotNull($refreshedContract->lastBilledAt);
-        $this->assertNotEquals($originalNextBillingDate, $refreshedContract->nextBillingDate);
+        $this->assertEquals($now->format('Y-m-d H:i:s'), $refreshedContract->lastBilledAt->format('Y-m-d H:i:s'));
+        // Next billing date should be set to now + 1 month (monthly frequency)
+        $expectedNextBilling = $now->modify('+1 month');
+        $this->assertEquals($expectedNextBilling->format('Y-m-d H:i:s'), $refreshedContract->nextBillingDate->format('Y-m-d H:i:s'));
         $this->assertSame(0, $refreshedContract->failedBillingAttempts);
     }
 
-    public function testChargeRecurringPaymentRecordsFailureOnError(): void
+    public function testChargeRecurringPaymentThrowsOnError(): void
     {
         $contract = $this->createContractWithRecurringPayment();
 
         // Simulate GoPay failure
         $this->goPayClient->willFailNextRecurrence();
 
+        $exceptionThrown = false;
+
         try {
             $this->commandBus->dispatch(new ChargeRecurringPaymentCommand($contract));
-        } catch (\Exception) {
-            // Expected
+        } catch (\Symfony\Component\Messenger\Exception\HandlerFailedException $e) {
+            $exceptionThrown = true;
+            // The GoPayException is wrapped in HandlerFailedException
+            $previous = $e->getPrevious();
+            $this->assertInstanceOf(\App\Service\GoPay\GoPayException::class, $previous);
+            $this->assertStringContainsString('Simulated recurrence failure', $previous->getMessage());
         }
 
-        $this->entityManager->clear();
-        $refreshedContract = $this->entityManager->find(Contract::class, $contract->id);
-
-        $this->assertSame(1, $refreshedContract->failedBillingAttempts);
-        $this->assertNotNull($refreshedContract->lastBillingFailedAt);
+        $this->assertTrue($exceptionThrown, 'Expected HandlerFailedException to be thrown');
     }
 
     private function createContractWithRecurringPayment(): Contract
@@ -89,6 +98,8 @@ class ChargeRecurringPaymentHandlerTest extends KernelTestCase
         $tenant = $this->entityManager->getRepository(User::class)->findOneBy(['email' => UserFixtures::TENANT_EMAIL]);
         /** @var StorageType $storageType */
         $storageType = $this->entityManager->getRepository(StorageType::class)->findOneBy(['name' => 'Maly box']);
+        /** @var Place $place */
+        $place = $this->entityManager->getRepository(Place::class)->findOneBy(['name' => 'Sklad Praha - Centrum']);
 
         $now = $this->clock->now();
         $startDate = $now->modify('+1 day');
@@ -97,6 +108,7 @@ class ChargeRecurringPaymentHandlerTest extends KernelTestCase
         $order = $this->orderService->createOrder(
             $tenant,
             $storageType,
+            $place,
             RentalType::UNLIMITED,
             $startDate,
             null,

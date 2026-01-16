@@ -38,7 +38,7 @@ class StorageUnavailabilityRepositoryTest extends KernelTestCase
         return $user;
     }
 
-    private function createPlace(User $owner): Place
+    private function createPlace(): Place
     {
         $place = new Place(
             id: Uuid::v7(),
@@ -47,7 +47,6 @@ class StorageUnavailabilityRepositoryTest extends KernelTestCase
             city: 'Praha',
             postalCode: '110 00',
             description: null,
-            owner: $owner,
             createdAt: new \DateTimeImmutable(),
         );
         $this->entityManager->persist($place);
@@ -55,7 +54,7 @@ class StorageUnavailabilityRepositoryTest extends KernelTestCase
         return $place;
     }
 
-    private function createStorageType(Place $place): StorageType
+    private function createStorageType(): StorageType
     {
         $storageType = new StorageType(
             id: Uuid::v7(),
@@ -63,9 +62,8 @@ class StorageUnavailabilityRepositoryTest extends KernelTestCase
             innerWidth: 100,
             innerHeight: 100,
             innerLength: 100,
-            pricePerWeek: 10000,
-            pricePerMonth: 35000,
-            place: $place,
+            defaultPricePerWeek: 10000,
+            defaultPricePerMonth: 35000,
             createdAt: new \DateTimeImmutable(),
         );
         $this->entityManager->persist($storageType);
@@ -73,14 +71,16 @@ class StorageUnavailabilityRepositoryTest extends KernelTestCase
         return $storageType;
     }
 
-    private function createStorage(StorageType $storageType, string $number): Storage
+    private function createStorage(StorageType $storageType, Place $place, string $number, ?User $owner = null): Storage
     {
         $storage = new Storage(
             id: Uuid::v7(),
             number: $number,
             coordinates: ['x' => 0, 'y' => 0, 'width' => 100, 'height' => 100, 'rotation' => 0],
             storageType: $storageType,
+            place: $place,
             createdAt: new \DateTimeImmutable(),
+            owner: $owner,
         );
         $this->entityManager->persist($storage);
 
@@ -111,9 +111,9 @@ class StorageUnavailabilityRepositoryTest extends KernelTestCase
     public function testFindOverlappingWithLimitedPeriod(): void
     {
         $owner = $this->createUser('landlord-una-overlap@test.com');
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $storage = $this->createStorage($storageType, 'UNA1');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage = $this->createStorage($storageType, $place, 'UNA1');
 
         // Existing unavailability: Jan 10-20
         $existingUnavailability = $this->createUnavailability(
@@ -138,9 +138,9 @@ class StorageUnavailabilityRepositoryTest extends KernelTestCase
     public function testFindOverlappingWithUnlimitedPeriod(): void
     {
         $owner = $this->createUser('landlord-una-unlimited@test.com');
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $storage = $this->createStorage($storageType, 'UNA2');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage = $this->createStorage($storageType, $place, 'UNA2');
 
         // Existing indefinite unavailability starting Jan 1
         $existingUnavailability = $this->createUnavailability(
@@ -164,9 +164,9 @@ class StorageUnavailabilityRepositoryTest extends KernelTestCase
     public function testFindOverlappingWithUnlimitedRequestedPeriod(): void
     {
         $owner = $this->createUser('landlord-una-unlimited2@test.com');
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $storage = $this->createStorage($storageType, 'UNA3');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage = $this->createStorage($storageType, $place, 'UNA3');
 
         // Existing limited unavailability: Feb 1-28
         $existingUnavailability = $this->createUnavailability(
@@ -190,9 +190,9 @@ class StorageUnavailabilityRepositoryTest extends KernelTestCase
     public function testFindOverlappingNoOverlapForAdjacentPeriods(): void
     {
         $owner = $this->createUser('landlord-una-adjacent@test.com');
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $storage = $this->createStorage($storageType, 'UNA4');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage = $this->createStorage($storageType, $place, 'UNA4');
 
         // Existing unavailability: Jan 1-10
         $existingUnavailability = $this->createUnavailability(
@@ -216,9 +216,9 @@ class StorageUnavailabilityRepositoryTest extends KernelTestCase
     public function testFindActiveByStorageOnDateReturnsActiveRecords(): void
     {
         $owner = $this->createUser('landlord-una-active@test.com');
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $storage = $this->createStorage($storageType, 'UNA5');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage = $this->createStorage($storageType, $place, 'UNA5');
 
         // Unavailability active on Jan 15: Jan 10-20
         $activeUnavailability = $this->createUnavailability(
@@ -257,10 +257,10 @@ class StorageUnavailabilityRepositoryTest extends KernelTestCase
     public function testFindByStorageTypeInDateRange(): void
     {
         $owner = $this->createUser('landlord-una-type@test.com');
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $storage1 = $this->createStorage($storageType, 'UNA6');
-        $storage2 = $this->createStorage($storageType, 'UNA7');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage1 = $this->createStorage($storageType, $place, 'UNA6');
+        $storage2 = $this->createStorage($storageType, $place, 'UNA7');
 
         // Unavailability for storage1: Jan 10-20
         $unavailability1 = $this->createUnavailability(
@@ -294,12 +294,12 @@ class StorageUnavailabilityRepositoryTest extends KernelTestCase
     {
         $owner1 = $this->createUser('landlord-una-owner1@test.com');
         $owner2 = $this->createUser('landlord-una-owner2@test.com');
-        $place1 = $this->createPlace($owner1);
-        $place2 = $this->createPlace($owner2);
-        $storageType1 = $this->createStorageType($place1);
-        $storageType2 = $this->createStorageType($place2);
-        $storage1 = $this->createStorage($storageType1, 'UNA8');
-        $storage2 = $this->createStorage($storageType2, 'UNA9');
+        $place1 = $this->createPlace();
+        $place2 = $this->createPlace();
+        $storageType1 = $this->createStorageType();
+        $storageType2 = $this->createStorageType();
+        $storage1 = $this->createStorage($storageType1, $place1, 'UNA8', $owner1);
+        $storage2 = $this->createStorage($storageType2, $place2, 'UNA9', $owner2);
 
         // Unavailability for owner1's storage
         $unavailability1 = $this->createUnavailability(

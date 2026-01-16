@@ -41,19 +41,17 @@ final class StorageTypeFormData
     #[Assert\Positive(message: 'Vnejsi delka musi byt kladne cislo')]
     public ?int $outerLength = null;
 
-    /** Price in CZK (will be converted to halire in controller) */
+    /** Default price in CZK (will be converted to halire in controller) */
     #[Assert\NotNull(message: 'Zadejte cenu za tyden')]
     #[Assert\PositiveOrZero(message: 'Cena za tyden musi byt nula nebo kladna')]
-    public ?float $pricePerWeek = null;
+    public ?float $defaultPricePerWeek = null;
 
-    /** Price in CZK (will be converted to halire in controller) */
+    /** Default price in CZK (will be converted to halire in controller) */
     #[Assert\NotNull(message: 'Zadejte cenu za mesic')]
     #[Assert\PositiveOrZero(message: 'Cena za mesic musi byt nula nebo kladna')]
-    public ?float $pricePerMonth = null;
+    public ?float $defaultPricePerMonth = null;
 
     public ?string $description = null;
-
-    public ?string $placeId = null;
 
     /**
      * @var UploadedFile[]
@@ -77,10 +75,9 @@ final class StorageTypeFormData
         $formData->outerWidth = $storageType->outerWidth;
         $formData->outerHeight = $storageType->outerHeight;
         $formData->outerLength = $storageType->outerLength;
-        $formData->pricePerWeek = $storageType->getPricePerWeekInCzk();
-        $formData->pricePerMonth = $storageType->getPricePerMonthInCzk();
+        $formData->defaultPricePerWeek = $storageType->getDefaultPricePerWeekInCzk();
+        $formData->defaultPricePerMonth = $storageType->getDefaultPricePerMonthInCzk();
         $formData->description = $storageType->description;
-        $formData->placeId = $storageType->place->id->toRfc4122();
 
         return $formData;
     }

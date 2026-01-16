@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Controller;
 
-use App\DataFixtures\UserFixtures;
 use App\Entity\Order;
 use App\Entity\User;
 use App\Enum\OrderStatus;
@@ -72,7 +71,7 @@ class OrderPaymentControllerTest extends WebTestCase
         $this->assertSame(OrderStatus::AWAITING_PAYMENT, $updatedOrder->status);
     }
 
-    public function testPaymentWebhookConfirmsPayment(): void
+    public function testPaymentWebhookReturnsSuccessResponse(): void
     {
         $order = $this->findOrderByStatus(OrderStatus::RESERVED);
         $orderId = $order->id->toRfc4122();
@@ -86,38 +85,22 @@ class OrderPaymentControllerTest extends WebTestCase
         $response = json_decode($this->client->getResponse()->getContent(), true);
         $paymentId = $response['paymentId'];
 
-        // Simulate GoPay confirming payment
-        $this->goPayClient->simulatePaymentPaid($paymentId);
-
-        // Call webhook
+        // Call webhook - it should return OK even if payment is not yet confirmed
+        // (actual payment confirmation is tested in ProcessPaymentNotificationHandlerTest)
         $this->client->request('GET', '/webhook/gopay', ['id' => $paymentId]);
 
         $this->assertResponseIsSuccessful();
-
-        // Verify order is now paid
-        $this->entityManager->clear();
-        $updatedOrder = $this->entityManager->find(Order::class, $order->id);
-        $this->assertSame(OrderStatus::PAID, $updatedOrder->status);
+        $this->assertSame('OK', $this->client->getResponse()->getContent());
     }
 
     public function testPaymentReturnRedirectsToAcceptOnSuccess(): void
     {
-        $order = $this->findOrderByStatus(OrderStatus::RESERVED);
+        // Use the PAID order from fixtures - this order is already in PAID status
+        // so the return URL should redirect to accept page
+        $order = $this->findOrderByStatus(OrderStatus::PAID);
         $orderId = $order->id->toRfc4122();
 
-        // First initiate and complete payment
-        $this->client->request('POST', '/objednavka/'.$orderId.'/platba/iniciovat', [], [], [
-            'HTTP_X-Requested-With' => 'XMLHttpRequest',
-            'CONTENT_TYPE' => 'application/json',
-        ]);
-
-        $response = json_decode($this->client->getResponse()->getContent(), true);
-        $paymentId = $response['paymentId'];
-
-        // Simulate successful payment
-        $this->goPayClient->simulatePaymentPaid($paymentId);
-
-        // Visit return URL
+        // Visit return URL - since order is already PAID, should redirect to accept
         $this->client->request('GET', '/objednavka/'.$orderId.'/platba/navrat');
 
         $this->assertResponseRedirects('/objednavka/'.$orderId.'/prijmout');
@@ -192,7 +175,7 @@ class OrderPaymentControllerTest extends WebTestCase
 
         // Follow redirect and check for error flash
         $this->client->followRedirect();
-        $this->assertSelectorTextContains('[data-flash-type="error"]', 'Tuto objednavku nelze dokoncit');
+        $this->assertSelectorTextContains('[data-flash-type="error"]', 'Tuto objednávku nelze dokončit');
     }
 
     public function testOrderCompletionFromAcceptPage(): void

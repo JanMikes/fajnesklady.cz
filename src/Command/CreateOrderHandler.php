@@ -23,6 +23,7 @@ final readonly class CreateOrderHandler
         return $this->orderService->createOrder(
             user: $command->user,
             storageType: $command->storageType,
+            place: $command->place,
             rentalType: $command->rentalType,
             startDate: $command->startDate,
             endDate: $command->endDate,

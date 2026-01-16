@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\DataFixtures;
 
+use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
+use App\Entity\User;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
@@ -56,28 +58,43 @@ final class StorageFixtures extends Fixture implements DependentFixtureInterface
     {
         $now = $this->clock->now();
 
+        // Get places
+        /** @var Place $placePrahaCentrum */
+        $placePrahaCentrum = $this->getReference(PlaceFixtures::REF_PRAHA_CENTRUM, Place::class);
+
+        /** @var Place $placePrahaJih */
+        $placePrahaJih = $this->getReference(PlaceFixtures::REF_PRAHA_JIH, Place::class);
+
+        /** @var Place $placeBrno */
+        $placeBrno = $this->getReference(PlaceFixtures::REF_BRNO, Place::class);
+
+        /** @var Place $placeOstrava */
+        $placeOstrava = $this->getReference(PlaceFixtures::REF_OSTRAVA, Place::class);
+
+        // Get users for ownership
+        /** @var User $landlord */
+        $landlord = $this->getReference(UserFixtures::REF_LANDLORD, User::class);
+
+        /** @var User $landlord2 */
+        $landlord2 = $this->getReference(UserFixtures::REF_LANDLORD2, User::class);
+
+        // Get storage types (now global)
         /** @var StorageType $smallType */
-        $smallType = $this->getReference(StorageTypeFixtures::REF_SMALL_CENTRUM, StorageType::class);
+        $smallType = $this->getReference(StorageTypeFixtures::REF_SMALL, StorageType::class);
 
         /** @var StorageType $mediumType */
-        $mediumType = $this->getReference(StorageTypeFixtures::REF_MEDIUM_CENTRUM, StorageType::class);
+        $mediumType = $this->getReference(StorageTypeFixtures::REF_MEDIUM, StorageType::class);
 
         /** @var StorageType $largeType */
-        $largeType = $this->getReference(StorageTypeFixtures::REF_LARGE_CENTRUM, StorageType::class);
-
-        /** @var StorageType $smallJihType */
-        $smallJihType = $this->getReference(StorageTypeFixtures::REF_SMALL_JIH, StorageType::class);
-
-        /** @var StorageType $mediumJihType */
-        $mediumJihType = $this->getReference(StorageTypeFixtures::REF_MEDIUM_JIH, StorageType::class);
+        $largeType = $this->getReference(StorageTypeFixtures::REF_LARGE, StorageType::class);
 
         /** @var StorageType $premiumType */
-        $premiumType = $this->getReference(StorageTypeFixtures::REF_PREMIUM_BRNO, StorageType::class);
+        $premiumType = $this->getReference(StorageTypeFixtures::REF_PREMIUM, StorageType::class);
 
-        /** @var StorageType $standardOstravaType */
-        $standardOstravaType = $this->getReference(StorageTypeFixtures::REF_STANDARD_OSTRAVA, StorageType::class);
+        /** @var StorageType $standardType */
+        $standardType = $this->getReference(StorageTypeFixtures::REF_STANDARD, StorageType::class);
 
-        // Small boxes A1-A5 in Praha Centrum
+        // Small boxes A1-A5 in Praha Centrum (owned by landlord)
         $smallRefs = [self::REF_SMALL_A1, self::REF_SMALL_A2, self::REF_SMALL_A3, self::REF_SMALL_A4, self::REF_SMALL_A5];
         for ($i = 1; $i <= 5; ++$i) {
             $storage = new Storage(
@@ -85,13 +102,15 @@ final class StorageFixtures extends Fixture implements DependentFixtureInterface
                 number: "A{$i}",
                 coordinates: ['x' => 50 + ($i - 1) * 110, 'y' => 50, 'width' => 100, 'height' => 100, 'rotation' => 0],
                 storageType: $smallType,
+                place: $placePrahaCentrum,
                 createdAt: $now,
+                owner: $landlord,
             );
             $manager->persist($storage);
             $this->addReference($smallRefs[$i - 1], $storage);
         }
 
-        // Medium boxes B1-B3 in Praha Centrum
+        // Medium boxes B1-B3 in Praha Centrum (owned by landlord)
         $mediumRefs = [self::REF_MEDIUM_B1, self::REF_MEDIUM_B2, self::REF_MEDIUM_B3];
         for ($i = 1; $i <= 3; ++$i) {
             $storage = new Storage(
@@ -99,13 +118,15 @@ final class StorageFixtures extends Fixture implements DependentFixtureInterface
                 number: "B{$i}",
                 coordinates: ['x' => 50 + ($i - 1) * 220, 'y' => 200, 'width' => 200, 'height' => 200, 'rotation' => 0],
                 storageType: $mediumType,
+                place: $placePrahaCentrum,
                 createdAt: $now,
+                owner: $landlord,
             );
             $manager->persist($storage);
             $this->addReference($mediumRefs[$i - 1], $storage);
         }
 
-        // Large boxes C1-C2 in Praha Centrum
+        // Large boxes C1-C2 in Praha Centrum (owned by landlord)
         $largeRefs = [self::REF_LARGE_C1, self::REF_LARGE_C2];
         for ($i = 1; $i <= 2; ++$i) {
             $storage = new Storage(
@@ -113,41 +134,47 @@ final class StorageFixtures extends Fixture implements DependentFixtureInterface
                 number: "C{$i}",
                 coordinates: ['x' => 50 + ($i - 1) * 420, 'y' => 450, 'width' => 400, 'height' => 300, 'rotation' => 0],
                 storageType: $largeType,
+                place: $placePrahaCentrum,
                 createdAt: $now,
+                owner: $landlord,
             );
             $manager->persist($storage);
             $this->addReference($largeRefs[$i - 1], $storage);
         }
 
-        // Small boxes D1-D3 in Praha Jih
+        // Small boxes D1-D3 in Praha Jih (owned by landlord)
         $smallJihRefs = [self::REF_SMALL_D1, self::REF_SMALL_D2, self::REF_SMALL_D3];
         for ($i = 1; $i <= 3; ++$i) {
             $storage = new Storage(
                 id: Uuid::v7(),
                 number: "D{$i}",
                 coordinates: ['x' => 50 + ($i - 1) * 110, 'y' => 50, 'width' => 100, 'height' => 100, 'rotation' => 0],
-                storageType: $smallJihType,
+                storageType: $smallType,
+                place: $placePrahaJih,
                 createdAt: $now,
+                owner: $landlord,
             );
             $manager->persist($storage);
             $this->addReference($smallJihRefs[$i - 1], $storage);
         }
 
-        // Medium boxes E1-E2 in Praha Jih
+        // Medium boxes E1-E2 in Praha Jih (owned by landlord)
         $mediumJihRefs = [self::REF_MEDIUM_E1, self::REF_MEDIUM_E2];
         for ($i = 1; $i <= 2; ++$i) {
             $storage = new Storage(
                 id: Uuid::v7(),
                 number: "E{$i}",
                 coordinates: ['x' => 50 + ($i - 1) * 220, 'y' => 200, 'width' => 200, 'height' => 200, 'rotation' => 0],
-                storageType: $mediumJihType,
+                storageType: $mediumType,
+                place: $placePrahaJih,
                 createdAt: $now,
+                owner: $landlord,
             );
             $manager->persist($storage);
             $this->addReference($mediumJihRefs[$i - 1], $storage);
         }
 
-        // Premium boxes P1-P2 in Brno
+        // Premium boxes P1-P2 in Brno (no owner - unassigned)
         $premiumRefs = [self::REF_PREMIUM_P1, self::REF_PREMIUM_P2];
         for ($i = 1; $i <= 2; ++$i) {
             $storage = new Storage(
@@ -155,21 +182,24 @@ final class StorageFixtures extends Fixture implements DependentFixtureInterface
                 number: "P{$i}",
                 coordinates: ['x' => 50 + ($i - 1) * 620, 'y' => 50, 'width' => 600, 'height' => 500, 'rotation' => 0],
                 storageType: $premiumType,
+                place: $placeBrno,
                 createdAt: $now,
             );
             $manager->persist($storage);
             $this->addReference($premiumRefs[$i - 1], $storage);
         }
 
-        // Standard boxes O1-O2 in Ostrava (landlord2)
+        // Standard boxes O1-O2 in Ostrava (owned by landlord2)
         $ostravaRefs = [self::REF_STANDARD_O1, self::REF_STANDARD_O2];
         for ($i = 1; $i <= 2; ++$i) {
             $storage = new Storage(
                 id: Uuid::v7(),
                 number: "O{$i}",
                 coordinates: ['x' => 50 + ($i - 1) * 160, 'y' => 50, 'width' => 150, 'height' => 150, 'rotation' => 0],
-                storageType: $standardOstravaType,
+                storageType: $standardType,
+                place: $placeOstrava,
                 createdAt: $now,
+                owner: $landlord2,
             );
             $manager->persist($storage);
             $this->addReference($ostravaRefs[$i - 1], $storage);
@@ -184,6 +214,8 @@ final class StorageFixtures extends Fixture implements DependentFixtureInterface
     public function getDependencies(): array
     {
         return [
+            UserFixtures::class,
+            PlaceFixtures::class,
             StorageTypeFixtures::class,
         ];
     }

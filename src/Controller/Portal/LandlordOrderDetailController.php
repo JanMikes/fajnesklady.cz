@@ -30,7 +30,7 @@ final class LandlordOrderDetailController extends AbstractController
 
         $storage = $order->storage;
         $storageType = $storage->storageType;
-        $place = $storageType->place;
+        $place = $storage->getPlace();
         $contract = $this->contractRepository->findByOrder($order);
 
         return $this->render('portal/landlord/order/detail.html.twig', [

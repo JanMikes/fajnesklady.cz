@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Controller\Portal;
 
-use App\Entity\User;
 use App\Repository\StorageTypeRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -26,17 +25,9 @@ final class StorageTypeListController extends AbstractController
         $page = max(1, (int) $request->query->get('page', '1'));
         $limit = 20;
 
-        /** @var User $user */
-        $user = $this->getUser();
-
-        // Admin sees all, landlord sees only own
-        if ($this->isGranted('ROLE_ADMIN')) {
-            $storageTypes = $this->storageTypeRepository->findAllPaginated($page, $limit);
-            $totalStorageTypes = $this->storageTypeRepository->countTotal();
-        } else {
-            $storageTypes = $this->storageTypeRepository->findByOwnerPaginated($user, $page, $limit);
-            $totalStorageTypes = $this->storageTypeRepository->countByOwner($user);
-        }
+        // All users see all storage types (storage types are now global)
+        $storageTypes = $this->storageTypeRepository->findAllPaginated($page, $limit);
+        $totalStorageTypes = $this->storageTypeRepository->countTotal();
 
         $totalPages = (int) ceil($totalStorageTypes / $limit);
 

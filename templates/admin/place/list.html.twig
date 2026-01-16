@@ -13,7 +13,6 @@
                 <thead>
                     <tr>
                         <th>Název</th>
-                        <th>Vlastník</th>
                         <th>Adresa</th>
                         <th>Stav</th>
                         <th>Vytvořeno</th>
@@ -24,11 +23,6 @@
                     {% for place in places %}
                         <tr>
                             <td class="font-medium text-gray-900">{{ place.name }}</td>
-                            <td class="text-gray-500">
-                                <a href="{{ path('portal_users_view', {id: place.owner.id}) }}" class="link">
-                                    {{ place.owner.fullName }}
-                                </a>
-                            </td>
                             <td class="text-gray-500">{{ place.address }}, {{ place.city }}</td>
                             <td>
                                 {% if place.isActive %}
@@ -57,7 +51,7 @@
                         </tr>
                     {% else %}
                         <tr>
-                            <td colspan="6" class="text-center text-gray-500 py-8">Žádná místa nenalezena</td>
+                            <td colspan="5" class="text-center text-gray-500 py-8">Žádná místa nenalezena</td>
                         </tr>
                     {% endfor %}
                 </tbody>

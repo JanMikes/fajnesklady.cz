@@ -43,7 +43,7 @@ class StorageAssignmentTest extends KernelTestCase
         return $user;
     }
 
-    private function createPlace(User $owner): Place
+    private function createPlace(): Place
     {
         $place = new Place(
             id: Uuid::v7(),
@@ -52,7 +52,6 @@ class StorageAssignmentTest extends KernelTestCase
             city: 'Praha',
             postalCode: '110 00',
             description: null,
-            owner: $owner,
             createdAt: new \DateTimeImmutable(),
         );
         $this->entityManager->persist($place);
@@ -60,7 +59,7 @@ class StorageAssignmentTest extends KernelTestCase
         return $place;
     }
 
-    private function createStorageType(Place $place): StorageType
+    private function createStorageType(): StorageType
     {
         $storageType = new StorageType(
             id: Uuid::v7(),
@@ -68,9 +67,8 @@ class StorageAssignmentTest extends KernelTestCase
             innerWidth: 100,
             innerHeight: 100,
             innerLength: 100,
-            pricePerWeek: 10000,
-            pricePerMonth: 35000,
-            place: $place,
+            defaultPricePerWeek: 10000,
+            defaultPricePerMonth: 35000,
             createdAt: new \DateTimeImmutable(),
         );
         $this->entityManager->persist($storageType);
@@ -78,13 +76,14 @@ class StorageAssignmentTest extends KernelTestCase
         return $storageType;
     }
 
-    private function createStorage(StorageType $storageType, string $number): Storage
+    private function createStorage(StorageType $storageType, Place $place, string $number): Storage
     {
         $storage = new Storage(
             id: Uuid::v7(),
             number: $number,
             coordinates: ['x' => 0, 'y' => 0, 'width' => 100, 'height' => 100, 'rotation' => 0],
             storageType: $storageType,
+            place: $place,
             createdAt: new \DateTimeImmutable(),
         );
         $this->entityManager->persist($storage);
@@ -161,29 +160,27 @@ class StorageAssignmentTest extends KernelTestCase
 
     public function testAssignsFirstAvailableStorage(): void
     {
-        $owner = $this->createUser('owner@test.com');
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $storage1 = $this->createStorage($storageType, 'A1');
-        $storage2 = $this->createStorage($storageType, 'A2');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage1 = $this->createStorage($storageType, $place, 'A1');
+        $storage2 = $this->createStorage($storageType, $place, 'A2');
         $this->entityManager->flush();
 
         $startDate = new \DateTimeImmutable('+1 day');
         $endDate = new \DateTimeImmutable('+30 days');
 
-        $assigned = $this->storageAssignment->assignStorage($storageType, $startDate, $endDate);
+        $assigned = $this->storageAssignment->assignStorage($storageType, $place, $startDate, $endDate);
 
         $this->assertTrue($assigned->id->equals($storage1->id) || $assigned->id->equals($storage2->id));
     }
 
     public function testNeverAssignsStorageWithOverlappingReservation(): void
     {
-        $owner = $this->createUser('owner@test.com');
         $tenant = $this->createUser('tenant@test.com');
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $storage1 = $this->createStorage($storageType, 'A1');
-        $storage2 = $this->createStorage($storageType, 'A2');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage1 = $this->createStorage($storageType, $place, 'A1');
+        $storage2 = $this->createStorage($storageType, $place, 'A2');
 
         // Create order for storage1 that overlaps with requested period
         $order = $this->createOrder(
@@ -199,7 +196,7 @@ class StorageAssignmentTest extends KernelTestCase
         $startDate = new \DateTimeImmutable('+10 days');
         $endDate = new \DateTimeImmutable('+40 days');
 
-        $assigned = $this->storageAssignment->assignStorage($storageType, $startDate, $endDate);
+        $assigned = $this->storageAssignment->assignStorage($storageType, $place, $startDate, $endDate);
 
         // Should get storage2, not storage1
         $this->assertTrue($assigned->id->equals($storage2->id));
@@ -207,12 +204,11 @@ class StorageAssignmentTest extends KernelTestCase
 
     public function testNeverAssignsStorageWithOverlappingContract(): void
     {
-        $owner = $this->createUser('owner@test.com');
         $tenant = $this->createUser('tenant@test.com');
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $storage1 = $this->createStorage($storageType, 'A1');
-        $storage2 = $this->createStorage($storageType, 'A2');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage1 = $this->createStorage($storageType, $place, 'A1');
+        $storage2 = $this->createStorage($storageType, $place, 'A2');
 
         // Create contract for storage1
         $order = $this->createOrder(
@@ -234,7 +230,7 @@ class StorageAssignmentTest extends KernelTestCase
         $startDate = new \DateTimeImmutable('+10 days');
         $endDate = new \DateTimeImmutable('+40 days');
 
-        $assigned = $this->storageAssignment->assignStorage($storageType, $startDate, $endDate);
+        $assigned = $this->storageAssignment->assignStorage($storageType, $place, $startDate, $endDate);
 
         // Should get storage2, not storage1
         $this->assertTrue($assigned->id->equals($storage2->id));
@@ -243,10 +239,10 @@ class StorageAssignmentTest extends KernelTestCase
     public function testNeverAssignsManuallyBlockedStorage(): void
     {
         $owner = $this->createUser('owner@test.com');
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $storage1 = $this->createStorage($storageType, 'A1');
-        $storage2 = $this->createStorage($storageType, 'A2');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage1 = $this->createStorage($storageType, $place, 'A1');
+        $storage2 = $this->createStorage($storageType, $place, 'A2');
 
         // Block storage1
         $this->createUnavailability(
@@ -261,7 +257,7 @@ class StorageAssignmentTest extends KernelTestCase
         $startDate = new \DateTimeImmutable('+10 days');
         $endDate = new \DateTimeImmutable('+40 days');
 
-        $assigned = $this->storageAssignment->assignStorage($storageType, $startDate, $endDate);
+        $assigned = $this->storageAssignment->assignStorage($storageType, $place, $startDate, $endDate);
 
         // Should get storage2, not storage1
         $this->assertTrue($assigned->id->equals($storage2->id));
@@ -269,12 +265,11 @@ class StorageAssignmentTest extends KernelTestCase
 
     public function testHandlesUnlimitedRentalsWithNullEndDate(): void
     {
-        $owner = $this->createUser('owner@test.com');
         $tenant = $this->createUser('tenant@test.com');
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $storage1 = $this->createStorage($storageType, 'A1');
-        $storage2 = $this->createStorage($storageType, 'A2');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage1 = $this->createStorage($storageType, $place, 'A1');
+        $storage2 = $this->createStorage($storageType, $place, 'A2');
 
         // Create unlimited contract for storage1
         $order = $this->createOrder(
@@ -298,7 +293,7 @@ class StorageAssignmentTest extends KernelTestCase
         // Try to get a storage for unlimited rental
         $startDate = new \DateTimeImmutable('+10 days');
 
-        $assigned = $this->storageAssignment->assignStorage($storageType, $startDate, null);
+        $assigned = $this->storageAssignment->assignStorage($storageType, $place, $startDate, null);
 
         // Should get storage2, not storage1
         $this->assertTrue($assigned->id->equals($storage2->id));
@@ -306,12 +301,11 @@ class StorageAssignmentTest extends KernelTestCase
 
     public function testPrefersSameStorageForUserExtension(): void
     {
-        $owner = $this->createUser('owner@test.com');
         $tenant = $this->createUser('tenant@test.com');
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $storage1 = $this->createStorage($storageType, 'A1');
-        $storage2 = $this->createStorage($storageType, 'A2');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage1 = $this->createStorage($storageType, $place, 'A1');
+        $storage2 = $this->createStorage($storageType, $place, 'A2');
 
         // Create active contract for storage1 ending on day 30
         $order = $this->createOrder(
@@ -334,7 +328,7 @@ class StorageAssignmentTest extends KernelTestCase
         $startDate = new \DateTimeImmutable('+21 days');
         $endDate = new \DateTimeImmutable('+51 days');
 
-        $assigned = $this->storageAssignment->assignStorage($storageType, $startDate, $endDate, $tenant);
+        $assigned = $this->storageAssignment->assignStorage($storageType, $place, $startDate, $endDate, $tenant);
 
         // Should get storage1 (same storage for extension)
         $this->assertTrue($assigned->id->equals($storage1->id));
@@ -342,13 +336,12 @@ class StorageAssignmentTest extends KernelTestCase
 
     public function testFallsBackToDifferentStorageWhenSameUnavailable(): void
     {
-        $owner = $this->createUser('owner@test.com');
         $tenant = $this->createUser('tenant@test.com');
         $otherTenant = $this->createUser('other@test.com');
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $storage1 = $this->createStorage($storageType, 'A1');
-        $storage2 = $this->createStorage($storageType, 'A2');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage1 = $this->createStorage($storageType, $place, 'A1');
+        $storage2 = $this->createStorage($storageType, $place, 'A2');
 
         // Create active contract for storage1 for tenant
         $order1 = $this->createOrder(
@@ -380,7 +373,7 @@ class StorageAssignmentTest extends KernelTestCase
         $startDate = new \DateTimeImmutable('+21 days');
         $endDate = new \DateTimeImmutable('+51 days');
 
-        $assigned = $this->storageAssignment->assignStorage($storageType, $startDate, $endDate, $tenant);
+        $assigned = $this->storageAssignment->assignStorage($storageType, $place, $startDate, $endDate, $tenant);
 
         // Should get storage2 (fallback)
         $this->assertTrue($assigned->id->equals($storage2->id));
@@ -388,11 +381,10 @@ class StorageAssignmentTest extends KernelTestCase
 
     public function testThrowsExceptionWhenNoStorageAvailable(): void
     {
-        $owner = $this->createUser('owner@test.com');
         $tenant = $this->createUser('tenant@test.com');
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $storage1 = $this->createStorage($storageType, 'A1');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage1 = $this->createStorage($storageType, $place, 'A1');
 
         // Block the only storage
         $order = $this->createOrder(
@@ -409,30 +401,28 @@ class StorageAssignmentTest extends KernelTestCase
         $endDate = new \DateTimeImmutable('+40 days');
 
         $this->expectException(NoStorageAvailable::class);
-        $this->storageAssignment->assignStorage($storageType, $startDate, $endDate);
+        $this->storageAssignment->assignStorage($storageType, $place, $startDate, $endDate);
     }
 
     public function testHasAvailableStorageReturnsTrue(): void
     {
-        $owner = $this->createUser('owner@test.com');
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $this->createStorage($storageType, 'A1');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $this->createStorage($storageType, $place, 'A1');
         $this->entityManager->flush();
 
         $startDate = new \DateTimeImmutable('+1 day');
         $endDate = new \DateTimeImmutable('+30 days');
 
-        $this->assertTrue($this->storageAssignment->hasAvailableStorage($storageType, $startDate, $endDate));
+        $this->assertTrue($this->storageAssignment->hasAvailableStorage($storageType, $place, $startDate, $endDate));
     }
 
     public function testHasAvailableStorageReturnsFalseWhenBlocked(): void
     {
-        $owner = $this->createUser('owner@test.com');
         $tenant = $this->createUser('tenant@test.com');
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $storage = $this->createStorage($storageType, 'A1');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage = $this->createStorage($storageType, $place, 'A1');
 
         $order = $this->createOrder(
             $tenant,
@@ -447,18 +437,17 @@ class StorageAssignmentTest extends KernelTestCase
         $startDate = new \DateTimeImmutable('+10 days');
         $endDate = new \DateTimeImmutable('+40 days');
 
-        $this->assertFalse($this->storageAssignment->hasAvailableStorage($storageType, $startDate, $endDate));
+        $this->assertFalse($this->storageAssignment->hasAvailableStorage($storageType, $place, $startDate, $endDate));
     }
 
     public function testCountAvailableStorages(): void
     {
-        $owner = $this->createUser('owner@test.com');
         $tenant = $this->createUser('tenant@test.com');
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $storage1 = $this->createStorage($storageType, 'A1');
-        $storage2 = $this->createStorage($storageType, 'A2');
-        $storage3 = $this->createStorage($storageType, 'A3');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage1 = $this->createStorage($storageType, $place, 'A1');
+        $storage2 = $this->createStorage($storageType, $place, 'A2');
+        $storage3 = $this->createStorage($storageType, $place, 'A3');
 
         // Block one storage
         $order = $this->createOrder(
@@ -474,7 +463,7 @@ class StorageAssignmentTest extends KernelTestCase
         $startDate = new \DateTimeImmutable('+10 days');
         $endDate = new \DateTimeImmutable('+40 days');
 
-        $count = $this->storageAssignment->countAvailableStorages($storageType, $startDate, $endDate);
+        $count = $this->storageAssignment->countAvailableStorages($storageType, $place, $startDate, $endDate);
 
         $this->assertSame(2, $count);
     }
@@ -482,11 +471,10 @@ class StorageAssignmentTest extends KernelTestCase
     public function testNoOverlapWhenPeriodsAreAdjacent(): void
     {
         // Contract expires on day, new rental starts on next day - no overlap
-        $owner = $this->createUser('owner@test.com');
         $tenant = $this->createUser('tenant@test.com');
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $storage = $this->createStorage($storageType, 'A1');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage = $this->createStorage($storageType, $place, 'A1');
 
         // Contract ends on day 20
         $order = $this->createOrder(
@@ -509,7 +497,7 @@ class StorageAssignmentTest extends KernelTestCase
         $startDate = new \DateTimeImmutable('+21 days');
         $endDate = new \DateTimeImmutable('+51 days');
 
-        $assigned = $this->storageAssignment->assignStorage($storageType, $startDate, $endDate);
+        $assigned = $this->storageAssignment->assignStorage($storageType, $place, $startDate, $endDate);
 
         // Should get the same storage since there's no overlap
         $this->assertTrue($assigned->id->equals($storage->id));

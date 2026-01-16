@@ -42,7 +42,7 @@ final readonly class FakturoidApiClient implements FakturoidClient
     {
         $storage = $order->storage;
         $storageType = $storage->storageType;
-        $place = $storageType->place;
+        $place = $storage->getPlace();
 
         $response = $this->manager->getInvoicesProvider()->create([
             'subject_id' => $subjectId,

@@ -7,13 +7,13 @@ namespace App\Tests\Integration\Command;
 use App\Command\InitiatePaymentCommand;
 use App\Command\ProcessPaymentNotificationCommand;
 use App\DataFixtures\UserFixtures;
+use App\Entity\Place;
 use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\OrderStatus;
 use App\Enum\RentalType;
 use App\Service\OrderService;
 use App\Tests\Mock\MockGoPayClient;
-use App\Value\GoPayPayment;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ManagerRegistry;
 use Psr\Clock\ClockInterface;
@@ -36,7 +36,7 @@ class ProcessPaymentNotificationHandlerTest extends KernelTestCase
         /** @var ManagerRegistry $doctrine */
         $doctrine = $container->get('doctrine');
         $this->entityManager = $doctrine->getManager();
-        $this->commandBus = $container->get('command.bus');
+        $this->commandBus = $container->get('test.command.bus');
         $this->orderService = $container->get(OrderService::class);
         $this->clock = $container->get(ClockInterface::class);
 
@@ -106,6 +106,8 @@ class ProcessPaymentNotificationHandlerTest extends KernelTestCase
         $tenant = $this->entityManager->getRepository(User::class)->findOneBy(['email' => UserFixtures::TENANT_EMAIL]);
         /** @var StorageType $storageType */
         $storageType = $this->entityManager->getRepository(StorageType::class)->findOneBy(['name' => 'Maly box']);
+        /** @var Place $place */
+        $place = $this->entityManager->getRepository(Place::class)->findOneBy(['name' => 'Sklad Praha - Centrum']);
 
         $now = $this->clock->now();
         $startDate = $now->modify('+1 day');
@@ -114,6 +116,7 @@ class ProcessPaymentNotificationHandlerTest extends KernelTestCase
         $order = $this->orderService->createOrder(
             $tenant,
             $storageType,
+            $place,
             $rentalType,
             $startDate,
             $endDate,

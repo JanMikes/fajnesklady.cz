@@ -19,7 +19,7 @@
                     </div>
                     <div>
                         <h2 class="text-xl font-bold text-gray-900">Sklad {{ storage.number }}</h2>
-                        <p class="text-gray-600">{{ storage.storageType.place.name }} - {{ storage.storageType.name }}</p>
+                        <p class="text-gray-600">{{ storage.place.name }} - {{ storage.storageType.name }}</p>
                         <div class="mt-1">
                             {% if storage.status.value == 'available' %}
                                 <span class="badge badge-success">Dostupný</span>

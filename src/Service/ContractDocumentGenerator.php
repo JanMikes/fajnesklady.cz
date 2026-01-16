@@ -67,7 +67,7 @@ final readonly class ContractDocumentGenerator
         $user = $contract->user;
         $storage = $contract->storage;
         $storageType = $storage->storageType;
-        $place = $storageType->place;
+        $place = $storage->getPlace();
         $order = $contract->order;
 
         // Tenant information

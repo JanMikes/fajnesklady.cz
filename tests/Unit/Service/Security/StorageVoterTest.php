@@ -28,7 +28,7 @@ class StorageVoterTest extends TestCase
         return new User(Uuid::v7(), $email, 'password', 'Test', 'User', new \DateTimeImmutable());
     }
 
-    private function createStorage(User $owner): Storage
+    private function createStorage(?User $owner = null): Storage
     {
         $place = new Place(
             id: Uuid::v7(),
@@ -37,7 +37,6 @@ class StorageVoterTest extends TestCase
             city: 'Praha',
             postalCode: '110 00',
             description: null,
-            owner: $owner,
             createdAt: new \DateTimeImmutable(),
         );
 
@@ -47,9 +46,8 @@ class StorageVoterTest extends TestCase
             innerWidth: 100,
             innerHeight: 200,
             innerLength: 150,
-            pricePerWeek: 10000,
-            pricePerMonth: 35000,
-            place: $place,
+            defaultPricePerWeek: 10000,
+            defaultPricePerMonth: 35000,
             createdAt: new \DateTimeImmutable(),
         );
 
@@ -58,7 +56,9 @@ class StorageVoterTest extends TestCase
             number: 'A1',
             coordinates: ['x' => 0, 'y' => 0, 'width' => 50, 'height' => 50, 'rotation' => 0],
             storageType: $storageType,
+            place: $place,
             createdAt: new \DateTimeImmutable(),
+            owner: $owner,
         );
     }
 
@@ -148,7 +148,7 @@ class StorageVoterTest extends TestCase
         $this->assertSame(VoterInterface::ACCESS_GRANTED, $result);
     }
 
-    public function testLandlordCanDeleteOwnStorage(): void
+    public function testLandlordCannotDeleteOwnStorage(): void
     {
         $landlord = $this->createUser('landlord@example.com');
 
@@ -156,9 +156,50 @@ class StorageVoterTest extends TestCase
 
         $storage = $this->createStorage($landlord);
 
+        // Landlords cannot delete storages - admin only
         $result = $this->voter->vote($this->createToken($landlord), $storage, [StorageVoter::DELETE]);
 
+        $this->assertSame(VoterInterface::ACCESS_DENIED, $result);
+    }
+
+    public function testLandlordCanEditPricesForOwnStorage(): void
+    {
+        $landlord = $this->createUser('landlord@example.com');
+
+        $this->setUserRoles($landlord, ['ROLE_USER', 'ROLE_LANDLORD']);
+
+        $storage = $this->createStorage($landlord);
+
+        $result = $this->voter->vote($this->createToken($landlord), $storage, [StorageVoter::EDIT_PRICES]);
+
         $this->assertSame(VoterInterface::ACCESS_GRANTED, $result);
+    }
+
+    public function testLandlordCanManagePhotosForOwnStorage(): void
+    {
+        $landlord = $this->createUser('landlord@example.com');
+
+        $this->setUserRoles($landlord, ['ROLE_USER', 'ROLE_LANDLORD']);
+
+        $storage = $this->createStorage($landlord);
+
+        $result = $this->voter->vote($this->createToken($landlord), $storage, [StorageVoter::MANAGE_PHOTOS]);
+
+        $this->assertSame(VoterInterface::ACCESS_GRANTED, $result);
+    }
+
+    public function testLandlordCannotAssignOwnerForOwnStorage(): void
+    {
+        $landlord = $this->createUser('landlord@example.com');
+
+        $this->setUserRoles($landlord, ['ROLE_USER', 'ROLE_LANDLORD']);
+
+        $storage = $this->createStorage($landlord);
+
+        // Landlords cannot assign/reassign owner - admin only
+        $result = $this->voter->vote($this->createToken($landlord), $storage, [StorageVoter::ASSIGN_OWNER]);
+
+        $this->assertSame(VoterInterface::ACCESS_DENIED, $result);
     }
 
     public function testLandlordCannotViewOtherLandlordStorage(): void

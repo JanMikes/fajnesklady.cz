@@ -25,7 +25,7 @@ final readonly class SendRecurringPaymentFailedEmailHandler
         $user = $contract->user;
         $storage = $contract->storage;
         $storageType = $storage->storageType;
-        $place = $storageType->place;
+        $place = $storage->getPlace();
 
         $isFirstAttempt = 1 === $event->attempt;
         $subject = $isFirstAttempt

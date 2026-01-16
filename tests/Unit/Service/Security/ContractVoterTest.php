@@ -49,7 +49,7 @@ class ContractVoterTest extends TestCase
         return $user;
     }
 
-    private function createContract(User $contractUser, User $placeOwner, RentalType $rentalType = RentalType::LIMITED): Contract
+    private function createContract(User $contractUser, ?User $storageOwner = null, RentalType $rentalType = RentalType::LIMITED): Contract
     {
         $place = new Place(
             id: Uuid::v7(),
@@ -58,7 +58,6 @@ class ContractVoterTest extends TestCase
             city: 'Praha',
             postalCode: '110 00',
             description: null,
-            owner: $placeOwner,
             createdAt: new \DateTimeImmutable(),
         );
 
@@ -68,9 +67,8 @@ class ContractVoterTest extends TestCase
             innerWidth: 100,
             innerHeight: 200,
             innerLength: 150,
-            pricePerWeek: 10000,
-            pricePerMonth: 35000,
-            place: $place,
+            defaultPricePerWeek: 10000,
+            defaultPricePerMonth: 35000,
             createdAt: new \DateTimeImmutable(),
         );
 
@@ -79,7 +77,9 @@ class ContractVoterTest extends TestCase
             number: 'A1',
             coordinates: ['x' => 0, 'y' => 0, 'width' => 100, 'height' => 100, 'rotation' => 0],
             storageType: $storageType,
+            place: $place,
             createdAt: new \DateTimeImmutable(),
+            owner: $storageOwner,
         );
 
         $order = new Order(

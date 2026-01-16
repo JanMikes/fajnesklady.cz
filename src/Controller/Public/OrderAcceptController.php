@@ -49,7 +49,7 @@ final class OrderAcceptController extends AbstractController
 
         $storage = $order->storage;
         $storageType = $storage->storageType;
-        $place = $storageType->place;
+        $place = $storage->getPlace();
 
         // Handle contract acceptance
         if ($request->isMethod('POST')) {

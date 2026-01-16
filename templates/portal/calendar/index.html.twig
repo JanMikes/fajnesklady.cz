@@ -18,7 +18,7 @@
                         <option value="">-- Vyberte typ skladu --</option>
                         {% for storageType in storageTypes %}
                             <option value="{{ storageType.id }}" {{ selectedStorageType and selectedStorageType.id.equals(storageType.id) ? 'selected' : '' }}>
-                                {{ storageType.place.name }} - {{ storageType.name }} ({{ storageType.getDimensionsInMeters() }})
+                                {{ storageType.name }} ({{ storageType.getDimensionsInMeters() }})
                             </option>
                         {% endfor %}
                     </select>

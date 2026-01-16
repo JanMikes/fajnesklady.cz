@@ -24,9 +24,6 @@
                         <th>Objem (m&sup3;)</th>
                         <th>Cena/týden</th>
                         <th>Cena/měsíc</th>
-                        {% if is_granted('ROLE_ADMIN') %}
-                            <th>Vlastník</th>
-                        {% endif %}
                         <th>Vytvořeno</th>
                         <th>Akce</th>
                     </tr>
@@ -47,11 +44,8 @@
                             <td class="text-gray-500">{{ storageType.innerDimensionsInMeters }}</td>
                             <td class="text-gray-500">{{ storageType.floorAreaInSquareMeters|number_format(2, ',', ' ') }}</td>
                             <td class="text-gray-500">{{ storageType.volumeInCubicMeters|number_format(2, ',', ' ') }}</td>
-                            <td class="text-gray-900 font-medium">{{ storageType.pricePerWeekInCzk|number_format(0, ',', ' ') }} Kč</td>
-                            <td class="text-gray-900 font-medium">{{ storageType.pricePerMonthInCzk|number_format(0, ',', ' ') }} Kč</td>
-                            {% if is_granted('ROLE_ADMIN') %}
-                                <td class="text-gray-500">{{ storageType.place.owner.fullName }}</td>
-                            {% endif %}
+                            <td class="text-gray-900 font-medium">{{ storageType.defaultPricePerWeekInCzk|number_format(0, ',', ' ') }} Kč</td>
+                            <td class="text-gray-900 font-medium">{{ storageType.defaultPricePerMonthInCzk|number_format(0, ',', ' ') }} Kč</td>
                             <td class="text-gray-500 text-sm">{{ storageType.createdAt|date('d.m.Y H:i') }}</td>
                             <td>
                                 <div class="flex items-center gap-2">
@@ -74,7 +68,7 @@
                         </tr>
                     {% else %}
                         <tr>
-                            <td colspan="{{ is_granted('ROLE_ADMIN') ? 9 : 8 }}" class="text-center text-gray-500 py-8">Žádné typy skladu nebyly nalezeny</td>
+                            <td colspan="8" class="text-center text-gray-500 py-8">Žádné typy skladu nebyly nalezeny</td>
                         </tr>
                     {% endfor %}
                 </tbody>

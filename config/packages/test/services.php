@@ -24,5 +24,18 @@ return App::config([
             ],
             'public' => true,
         ],
+        // Make messenger buses public for tests
+        'test.command.bus' => [
+            'alias' => 'command.bus',
+            'public' => true,
+        ],
+        'test.query.bus' => [
+            'alias' => 'query.bus',
+            'public' => true,
+        ],
+        'test.event.bus' => [
+            'alias' => 'event.bus',
+            'public' => true,
+        ],
     ],
 ]);

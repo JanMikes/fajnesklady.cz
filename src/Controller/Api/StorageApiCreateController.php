@@ -45,15 +45,13 @@ final class StorageApiCreateController extends AbstractController
 
         $storageType = $this->storageTypeRepository->get(Uuid::fromString($data['storageTypeId']));
 
-        // Verify storage type belongs to this place
-        if (!$storageType->place->id->equals($place->id)) {
-            return new JsonResponse(['message' => 'Typ skladu nepatri k tomuto mistu'], Response::HTTP_BAD_REQUEST);
-        }
+        // StorageTypes are now global - no place verification needed
 
         $command = new CreateStorageCommand(
             storageTypeId: $storageType->id,
             number: $data['number'],
             coordinates: $this->sanitizeCoordinates($data['coordinates']),
+            placeId: $place->id,
         );
 
         $envelope = $this->commandBus->dispatch($command);

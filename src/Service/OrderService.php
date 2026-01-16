@@ -6,6 +6,7 @@ namespace App\Service;
 
 use App\Entity\Contract;
 use App\Entity\Order;
+use App\Entity\Place;
 use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\PaymentFrequency;
@@ -42,6 +43,7 @@ final readonly class OrderService
     public function createOrder(
         User $user,
         StorageType $storageType,
+        Place $place,
         RentalType $rentalType,
         \DateTimeImmutable $startDate,
         ?\DateTimeImmutable $endDate,
@@ -51,6 +53,7 @@ final readonly class OrderService
         // Assign storage (throws NoStorageAvailable if none available)
         $storage = $this->storageAssignment->assignStorage(
             $storageType,
+            $place,
             $startDate,
             $endDate,
             $user,

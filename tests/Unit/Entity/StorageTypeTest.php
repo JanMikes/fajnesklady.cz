@@ -4,38 +4,15 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Entity;
 
-use App\Entity\Place;
 use App\Entity\StorageType;
-use App\Entity\User;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
 class StorageTypeTest extends TestCase
 {
-    private function createUser(string $email = 'owner@example.com'): User
-    {
-        return new User(Uuid::v7(), $email, 'password', 'Test', 'Owner', new \DateTimeImmutable());
-    }
-
-    private function createPlace(User $owner): Place
-    {
-        return new Place(
-            id: Uuid::v7(),
-            name: 'Test Place',
-            address: 'Test Address',
-            city: 'Praha',
-            postalCode: '110 00',
-            description: null,
-            owner: $owner,
-            createdAt: new \DateTimeImmutable(),
-        );
-    }
-
     public function testCreateStorageType(): void
     {
         $now = new \DateTimeImmutable();
-        $owner = $this->createUser();
-        $place = $this->createPlace($owner);
 
         $storageType = new StorageType(
             id: Uuid::v7(),
@@ -43,9 +20,8 @@ class StorageTypeTest extends TestCase
             innerWidth: 150,
             innerHeight: 200,
             innerLength: 250,
-            pricePerWeek: 15000,
-            pricePerMonth: 50000,
-            place: $place,
+            defaultPricePerWeek: 15000,
+            defaultPricePerMonth: 50000,
             createdAt: $now,
         );
 
@@ -54,58 +30,46 @@ class StorageTypeTest extends TestCase
         $this->assertSame(150, $storageType->innerWidth);
         $this->assertSame(200, $storageType->innerHeight);
         $this->assertSame(250, $storageType->innerLength);
-        $this->assertSame(15000, $storageType->pricePerWeek);
-        $this->assertSame(50000, $storageType->pricePerMonth);
-        $this->assertSame($place, $storageType->place);
+        $this->assertSame(15000, $storageType->defaultPricePerWeek);
+        $this->assertSame(50000, $storageType->defaultPricePerMonth);
         $this->assertSame($now, $storageType->createdAt);
         $this->assertSame($now, $storageType->updatedAt);
     }
 
-    public function testGetPricePerWeekInCzk(): void
+    public function testGetDefaultPricePerWeekInCzk(): void
     {
-        $owner = $this->createUser();
-        $place = $this->createPlace($owner);
-
         $storageType = new StorageType(
             id: Uuid::v7(),
             name: 'Test',
             innerWidth: 100,
             innerHeight: 100,
             innerLength: 100,
-            pricePerWeek: 15000,
-            pricePerMonth: 50000,
-            place: $place,
+            defaultPricePerWeek: 15000,
+            defaultPricePerMonth: 50000,
             createdAt: new \DateTimeImmutable(),
         );
 
-        $this->assertSame(150.0, $storageType->getPricePerWeekInCzk());
+        $this->assertSame(150.0, $storageType->getDefaultPricePerWeekInCzk());
     }
 
-    public function testGetPricePerMonthInCzk(): void
+    public function testGetDefaultPricePerMonthInCzk(): void
     {
-        $owner = $this->createUser();
-        $place = $this->createPlace($owner);
-
         $storageType = new StorageType(
             id: Uuid::v7(),
             name: 'Test',
             innerWidth: 100,
             innerHeight: 100,
             innerLength: 100,
-            pricePerWeek: 15000,
-            pricePerMonth: 50000,
-            place: $place,
+            defaultPricePerWeek: 15000,
+            defaultPricePerMonth: 50000,
             createdAt: new \DateTimeImmutable(),
         );
 
-        $this->assertSame(500.0, $storageType->getPricePerMonthInCzk());
+        $this->assertSame(500.0, $storageType->getDefaultPricePerMonthInCzk());
     }
 
     public function testGetVolumeInCubicMeters(): void
     {
-        $owner = $this->createUser();
-        $place = $this->createPlace($owner);
-
         // 200cm x 300cm x 400cm = 2m x 3m x 4m = 24 m³
         $storageType = new StorageType(
             id: Uuid::v7(),
@@ -113,9 +77,8 @@ class StorageTypeTest extends TestCase
             innerWidth: 200,
             innerHeight: 300,
             innerLength: 400,
-            pricePerWeek: 15000,
-            pricePerMonth: 50000,
-            place: $place,
+            defaultPricePerWeek: 15000,
+            defaultPricePerMonth: 50000,
             createdAt: new \DateTimeImmutable(),
         );
 
@@ -124,9 +87,6 @@ class StorageTypeTest extends TestCase
 
     public function testGetFloorAreaInSquareMeters(): void
     {
-        $owner = $this->createUser();
-        $place = $this->createPlace($owner);
-
         // 200cm x 400cm = 2m x 4m = 8 m²
         $storageType = new StorageType(
             id: Uuid::v7(),
@@ -134,9 +94,8 @@ class StorageTypeTest extends TestCase
             innerWidth: 200,
             innerHeight: 300,
             innerLength: 400,
-            pricePerWeek: 15000,
-            pricePerMonth: 50000,
-            place: $place,
+            defaultPricePerWeek: 15000,
+            defaultPricePerMonth: 50000,
             createdAt: new \DateTimeImmutable(),
         );
 
@@ -145,18 +104,14 @@ class StorageTypeTest extends TestCase
 
     public function testGetInnerDimensionsInMeters(): void
     {
-        $owner = $this->createUser();
-        $place = $this->createPlace($owner);
-
         $storageType = new StorageType(
             id: Uuid::v7(),
             name: 'Test',
             innerWidth: 200,
             innerHeight: 300,
             innerLength: 400,
-            pricePerWeek: 15000,
-            pricePerMonth: 50000,
-            place: $place,
+            defaultPricePerWeek: 15000,
+            defaultPricePerMonth: 50000,
             createdAt: new \DateTimeImmutable(),
         );
 
@@ -165,9 +120,6 @@ class StorageTypeTest extends TestCase
 
     public function testOuterDimensions(): void
     {
-        $owner = $this->createUser();
-        $place = $this->createPlace($owner);
-
         // Without outer dimensions
         $storageType = new StorageType(
             id: Uuid::v7(),
@@ -175,9 +127,8 @@ class StorageTypeTest extends TestCase
             innerWidth: 200,
             innerHeight: 300,
             innerLength: 400,
-            pricePerWeek: 15000,
-            pricePerMonth: 50000,
-            place: $place,
+            defaultPricePerWeek: 15000,
+            defaultPricePerMonth: 50000,
             createdAt: new \DateTimeImmutable(),
         );
 
@@ -191,9 +142,8 @@ class StorageTypeTest extends TestCase
             innerWidth: 200,
             innerHeight: 300,
             innerLength: 400,
-            pricePerWeek: 15000,
-            pricePerMonth: 50000,
-            place: $place,
+            defaultPricePerWeek: 15000,
+            defaultPricePerMonth: 50000,
             createdAt: new \DateTimeImmutable(),
             outerWidth: 220,
             outerHeight: 320,
@@ -208,8 +158,6 @@ class StorageTypeTest extends TestCase
     {
         $createdAt = new \DateTimeImmutable('2024-01-01 10:00:00');
         $updatedAt = new \DateTimeImmutable('2024-01-01 11:00:00');
-        $owner = $this->createUser();
-        $place = $this->createPlace($owner);
 
         $storageType = new StorageType(
             id: Uuid::v7(),
@@ -217,9 +165,8 @@ class StorageTypeTest extends TestCase
             innerWidth: 100,
             innerHeight: 100,
             innerLength: 100,
-            pricePerWeek: 10000,
-            pricePerMonth: 30000,
-            place: $place,
+            defaultPricePerWeek: 10000,
+            defaultPricePerMonth: 30000,
             createdAt: $createdAt,
         );
 
@@ -231,8 +178,8 @@ class StorageTypeTest extends TestCase
             outerWidth: 220,
             outerHeight: 220,
             outerLength: 220,
-            pricePerWeek: 20000,
-            pricePerMonth: 60000,
+            defaultPricePerWeek: 20000,
+            defaultPricePerMonth: 60000,
             description: 'Test description',
             now: $updatedAt,
         );
@@ -244,85 +191,17 @@ class StorageTypeTest extends TestCase
         $this->assertSame(220, $storageType->outerWidth);
         $this->assertSame(220, $storageType->outerHeight);
         $this->assertSame(220, $storageType->outerLength);
-        $this->assertSame(20000, $storageType->pricePerWeek);
-        $this->assertSame(60000, $storageType->pricePerMonth);
+        $this->assertSame(20000, $storageType->defaultPricePerWeek);
+        $this->assertSame(60000, $storageType->defaultPricePerMonth);
         $this->assertSame('Test description', $storageType->description);
         $this->assertSame($createdAt, $storageType->createdAt);
         $this->assertSame($updatedAt, $storageType->updatedAt);
-    }
-
-    public function testIsOwnedByReturnsTrueForOwner(): void
-    {
-        $now = new \DateTimeImmutable();
-        $owner = $this->createUser();
-        $place = $this->createPlace($owner);
-
-        $storageType = new StorageType(
-            id: Uuid::v7(),
-            name: 'Test',
-            innerWidth: 100,
-            innerHeight: 100,
-            innerLength: 100,
-            pricePerWeek: 10000,
-            pricePerMonth: 30000,
-            place: $place,
-            createdAt: $now,
-        );
-
-        $this->assertTrue($storageType->isOwnedBy($owner));
-    }
-
-    public function testIsOwnedByReturnsFalseForDifferentUser(): void
-    {
-        $now = new \DateTimeImmutable();
-        $owner = $this->createUser('owner@example.com');
-        $otherUser = $this->createUser('other@example.com');
-        $place = $this->createPlace($owner);
-
-        $storageType = new StorageType(
-            id: Uuid::v7(),
-            name: 'Test',
-            innerWidth: 100,
-            innerHeight: 100,
-            innerLength: 100,
-            pricePerWeek: 10000,
-            pricePerMonth: 30000,
-            place: $place,
-            createdAt: $now,
-        );
-
-        $this->assertFalse($storageType->isOwnedBy($otherUser));
-    }
-
-    public function testBelongsToPlace(): void
-    {
-        $now = new \DateTimeImmutable();
-        $owner = $this->createUser();
-        $place = $this->createPlace($owner);
-        $otherPlace = $this->createPlace($owner);
-
-        $storageType = new StorageType(
-            id: Uuid::v7(),
-            name: 'Test',
-            innerWidth: 100,
-            innerHeight: 100,
-            innerLength: 100,
-            pricePerWeek: 10000,
-            pricePerMonth: 30000,
-            place: $place,
-            createdAt: $now,
-        );
-
-        $this->assertTrue($storageType->belongsToPlace($place));
-        $this->assertFalse($storageType->belongsToPlace($otherPlace));
     }
 
     public function testCreatedAtIsImmutable(): void
     {
         $createdAt = new \DateTimeImmutable('2024-01-01 10:00:00');
         $updatedAt = new \DateTimeImmutable('2024-01-01 11:00:00');
-        $owner = $this->createUser();
-        $place = $this->createPlace($owner);
 
         $storageType = new StorageType(
             id: Uuid::v7(),
@@ -330,9 +209,8 @@ class StorageTypeTest extends TestCase
             innerWidth: 100,
             innerHeight: 100,
             innerLength: 100,
-            pricePerWeek: 10000,
-            pricePerMonth: 30000,
-            place: $place,
+            defaultPricePerWeek: 10000,
+            defaultPricePerMonth: 30000,
             createdAt: $createdAt,
         );
 
@@ -344,8 +222,8 @@ class StorageTypeTest extends TestCase
             outerWidth: null,
             outerHeight: null,
             outerLength: null,
-            pricePerWeek: 10000,
-            pricePerMonth: 30000,
+            defaultPricePerWeek: 10000,
+            defaultPricePerMonth: 30000,
             description: null,
             now: $updatedAt,
         );
@@ -356,8 +234,6 @@ class StorageTypeTest extends TestCase
     public function testActivateDeactivate(): void
     {
         $createdAt = new \DateTimeImmutable('2024-01-01 10:00:00');
-        $owner = $this->createUser();
-        $place = $this->createPlace($owner);
 
         $storageType = new StorageType(
             id: Uuid::v7(),
@@ -365,9 +241,8 @@ class StorageTypeTest extends TestCase
             innerWidth: 100,
             innerHeight: 100,
             innerLength: 100,
-            pricePerWeek: 10000,
-            pricePerMonth: 30000,
-            place: $place,
+            defaultPricePerWeek: 10000,
+            defaultPricePerMonth: 30000,
             createdAt: $createdAt,
         );
 

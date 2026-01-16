@@ -25,7 +25,7 @@ final readonly class SendRecurringPaymentCancelledEmailHandler
         $user = $contract->user;
         $storage = $contract->storage;
         $storageType = $storage->storageType;
-        $place = $storageType->place;
+        $place = $storage->getPlace();
 
         $email = (new TemplatedEmail())
             ->from(new Address('noreply@fajnesklady.cz', 'Fajne Sklady'))

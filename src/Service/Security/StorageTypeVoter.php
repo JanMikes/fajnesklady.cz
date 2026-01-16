@@ -32,17 +32,14 @@ final class StorageTypeVoter extends Voter
             return false;
         }
 
-        /** @var StorageType $storageType */
-        $storageType = $subject;
-
         // Admins can do anything
         if (in_array('ROLE_ADMIN', $user->getRoles(), true)) {
             return true;
         }
 
-        // Landlords can only access their own storage types
+        // Landlords can only view storage types (they're global now)
         if (in_array('ROLE_LANDLORD', $user->getRoles(), true)) {
-            return $storageType->isOwnedBy($user);
+            return self::VIEW === $attribute;
         }
 
         return false;

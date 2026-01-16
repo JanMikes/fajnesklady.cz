@@ -32,37 +32,43 @@ class OrderTest extends TestCase
         return new User(Uuid::v7(), 'owner@example.com', 'password', 'Test', 'Owner', new \DateTimeImmutable());
     }
 
-    private function createStorage(User $owner): Storage
+    private function createPlace(): Place
     {
-        $place = new Place(
+        return new Place(
             id: Uuid::v7(),
             name: 'Test Place',
             address: 'Test Address',
             city: 'Praha',
             postalCode: '110 00',
             description: null,
-            owner: $owner,
             createdAt: new \DateTimeImmutable(),
         );
+    }
 
-        $storageType = new StorageType(
+    private function createStorageType(): StorageType
+    {
+        return new StorageType(
             id: Uuid::v7(),
             name: 'Small Box',
             innerWidth: 100,
             innerHeight: 100,
             innerLength: 100,
-            pricePerWeek: 10000,
-            pricePerMonth: 35000,
-            place: $place,
+            defaultPricePerWeek: 10000,
+            defaultPricePerMonth: 35000,
             createdAt: new \DateTimeImmutable(),
         );
+    }
 
+    private function createStorage(?User $owner = null): Storage
+    {
         return new Storage(
             id: Uuid::v7(),
             number: 'A1',
             coordinates: ['x' => 0, 'y' => 0, 'width' => 100, 'height' => 100, 'rotation' => 0],
-            storageType: $storageType,
+            storageType: $this->createStorageType(),
+            place: $this->createPlace(),
             createdAt: new \DateTimeImmutable(),
+            owner: $owner,
         );
     }
 

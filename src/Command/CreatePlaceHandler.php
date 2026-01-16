@@ -6,7 +6,6 @@ namespace App\Command;
 
 use App\Entity\Place;
 use App\Repository\PlaceRepository;
-use App\Repository\UserRepository;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
@@ -15,14 +14,12 @@ final readonly class CreatePlaceHandler
 {
     public function __construct(
         private PlaceRepository $placeRepository,
-        private UserRepository $userRepository,
         private ClockInterface $clock,
     ) {
     }
 
     public function __invoke(CreatePlaceCommand $command): Place
     {
-        $owner = $this->userRepository->get($command->ownerId);
         $now = $this->clock->now();
 
         $place = new Place(
@@ -32,7 +29,6 @@ final readonly class CreatePlaceHandler
             city: $command->city,
             postalCode: $command->postalCode,
             description: $command->description,
-            owner: $owner,
             createdAt: $now,
         );
 

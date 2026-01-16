@@ -15,6 +15,8 @@ final readonly class CreateStorageCommand
         public string $number,
         public array $coordinates,
         public Uuid $storageTypeId,
+        public Uuid $placeId,
+        public ?Uuid $ownerId = null,
     ) {
     }
 }

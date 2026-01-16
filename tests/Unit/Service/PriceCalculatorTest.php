@@ -22,28 +22,14 @@ class PriceCalculatorTest extends TestCase
 
     private function createStorageType(int $pricePerWeek, int $pricePerMonth): StorageType
     {
-        $owner = new User(Uuid::v7(), 'owner@example.com', 'password', 'Test', 'Owner', new \DateTimeImmutable());
-
-        $place = new Place(
-            id: Uuid::v7(),
-            name: 'Test Place',
-            address: 'Test Address',
-            city: 'Praha',
-            postalCode: '110 00',
-            description: null,
-            owner: $owner,
-            createdAt: new \DateTimeImmutable(),
-        );
-
         return new StorageType(
             id: Uuid::v7(),
             name: 'Test Type',
             innerWidth: 100,
             innerHeight: 100,
             innerLength: 100,
-            pricePerWeek: $pricePerWeek,
-            pricePerMonth: $pricePerMonth,
-            place: $place,
+            defaultPricePerWeek: $pricePerWeek,
+            defaultPricePerMonth: $pricePerMonth,
             createdAt: new \DateTimeImmutable(),
         );
     }

@@ -37,21 +37,26 @@ final class StorageListController extends AbstractController
             $selectedStorageType = $this->storageTypeRepository->find(Uuid::fromString($storageTypeId));
 
             if (null !== $selectedStorageType) {
-                // Verify ownership
-                if (!$this->isGranted('ROLE_ADMIN') && !$selectedStorageType->isOwnedBy($user)) {
-                    throw $this->createAccessDeniedException();
+                // Admin sees all storages, landlord sees only their own
+                if ($this->isGranted('ROLE_ADMIN')) {
+                    $storages = $this->storageRepository->findByStorageType($selectedStorageType);
+                } else {
+                    // Filter storages by owner for landlords
+                    $allStorages = $this->storageRepository->findByStorageType($selectedStorageType);
+                    $storages = array_filter($allStorages, fn ($s) => $s->isOwnedBy($user));
                 }
-
-                $storages = $this->storageRepository->findByStorageType($selectedStorageType);
+            }
+        } else {
+            // When no filter is selected, show all owned storages for landlord, all for admin
+            if ($this->isGranted('ROLE_ADMIN')) {
+                $storages = $this->storageRepository->findAll();
+            } else {
+                $storages = $this->storageRepository->findByOwner($user);
             }
         }
 
-        // Get storage types for the filter dropdown
-        if ($this->isGranted('ROLE_ADMIN')) {
-            $storageTypes = $this->storageTypeRepository->findAll();
-        } else {
-            $storageTypes = $this->storageTypeRepository->findByOwner($user);
-        }
+        // All users see all storage types for the filter dropdown (storage types are global)
+        $storageTypes = $this->storageTypeRepository->findAll();
 
         return $this->render('portal/storage/list.html.twig', [
             'storages' => $storages,

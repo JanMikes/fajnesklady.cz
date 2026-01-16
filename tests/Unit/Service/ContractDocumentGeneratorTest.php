@@ -60,7 +60,7 @@ class ContractDocumentGeneratorTest extends TestCase
         return $user;
     }
 
-    private function createPlace(User $owner): Place
+    private function createPlace(): Place
     {
         return new Place(
             id: Uuid::v7(),
@@ -69,12 +69,11 @@ class ContractDocumentGeneratorTest extends TestCase
             city: 'Praha',
             postalCode: '110 00',
             description: null,
-            owner: $owner,
             createdAt: new \DateTimeImmutable(),
         );
     }
 
-    private function createStorageType(Place $place): StorageType
+    private function createStorageType(): StorageType
     {
         return new StorageType(
             id: Uuid::v7(),
@@ -82,20 +81,20 @@ class ContractDocumentGeneratorTest extends TestCase
             innerWidth: 100,
             innerHeight: 200,
             innerLength: 150,
-            pricePerWeek: 10000,
-            pricePerMonth: 35000,
-            place: $place,
+            defaultPricePerWeek: 10000,
+            defaultPricePerMonth: 35000,
             createdAt: new \DateTimeImmutable(),
         );
     }
 
-    private function createStorage(StorageType $storageType): Storage
+    private function createStorage(): Storage
     {
         return new Storage(
             id: Uuid::v7(),
             number: 'A1',
             coordinates: ['x' => 0, 'y' => 0, 'width' => 100, 'height' => 100, 'rotation' => 0],
-            storageType: $storageType,
+            storageType: $this->createStorageType(),
+            place: $this->createPlace(),
             createdAt: new \DateTimeImmutable(),
         );
     }
@@ -161,11 +160,8 @@ class ContractDocumentGeneratorTest extends TestCase
 
     public function testGenerateCreatesDocumentWithCorrectFilename(): void
     {
-        $owner = $this->createUser();
         $tenant = $this->createUser();
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $storage = $this->createStorage($storageType);
+        $storage = $this->createStorage();
         $order = $this->createOrder($tenant, $storage);
         $contract = $this->createContract($order);
 
@@ -180,11 +176,8 @@ class ContractDocumentGeneratorTest extends TestCase
 
     public function testGenerateThrowsExceptionForMissingTemplate(): void
     {
-        $owner = $this->createUser();
         $tenant = $this->createUser();
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $storage = $this->createStorage($storageType);
+        $storage = $this->createStorage();
         $order = $this->createOrder($tenant, $storage);
         $contract = $this->createContract($order);
 
@@ -196,11 +189,8 @@ class ContractDocumentGeneratorTest extends TestCase
 
     public function testGenerateCreatesOutputDirectory(): void
     {
-        $owner = $this->createUser();
         $tenant = $this->createUser();
-        $place = $this->createPlace($owner);
-        $storageType = $this->createStorageType($place);
-        $storage = $this->createStorage($storageType);
+        $storage = $this->createStorage();
         $order = $this->createOrder($tenant, $storage);
         $contract = $this->createContract($order);
 

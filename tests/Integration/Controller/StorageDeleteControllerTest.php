@@ -34,8 +34,8 @@ class StorageDeleteControllerTest extends WebTestCase
 
     public function testApiDeleteReturns409ForOccupiedStorage(): void
     {
-        $landlord = $this->findUserByEmail('landlord@example.com');
-        $this->client->loginUser($landlord, 'main');
+        $admin = $this->findUserByEmail('admin@example.com');
+        $this->client->loginUser($admin, 'main');
 
         // Storage B3 is OCCUPIED (has active contract)
         $storage = $this->findStorageByNumber('B3');
@@ -52,8 +52,8 @@ class StorageDeleteControllerTest extends WebTestCase
 
     public function testApiDeleteReturns409ForReservedStorage(): void
     {
-        $landlord = $this->findUserByEmail('landlord@example.com');
-        $this->client->loginUser($landlord, 'main');
+        $admin = $this->findUserByEmail('admin@example.com');
+        $this->client->loginUser($admin, 'main');
 
         // Storage B1 is RESERVED (has active order)
         $storage = $this->findStorageByNumber('B1');
@@ -70,8 +70,8 @@ class StorageDeleteControllerTest extends WebTestCase
 
     public function testApiDeleteSucceedsForAvailableStorage(): void
     {
-        $landlord = $this->findUserByEmail('landlord@example.com');
-        $this->client->loginUser($landlord, 'main');
+        $admin = $this->findUserByEmail('admin@example.com');
+        $this->client->loginUser($admin, 'main');
 
         // Storage A1 is AVAILABLE
         $storage = $this->findStorageByNumber('A1');
@@ -94,8 +94,8 @@ class StorageDeleteControllerTest extends WebTestCase
 
     public function testPortalDeleteRedirectsWithErrorForOccupiedStorage(): void
     {
-        $landlord = $this->findUserByEmail('landlord@example.com');
-        $this->client->loginUser($landlord, 'main');
+        $admin = $this->findUserByEmail('admin@example.com');
+        $this->client->loginUser($admin, 'main');
 
         // Storage B3 is OCCUPIED
         $storage = $this->findStorageByNumber('B3');
@@ -111,8 +111,8 @@ class StorageDeleteControllerTest extends WebTestCase
 
     public function testPortalDeleteRedirectsWithErrorForReservedStorage(): void
     {
-        $landlord = $this->findUserByEmail('landlord@example.com');
-        $this->client->loginUser($landlord, 'main');
+        $admin = $this->findUserByEmail('admin@example.com');
+        $this->client->loginUser($admin, 'main');
 
         // Storage B1 is RESERVED
         $storage = $this->findStorageByNumber('B1');
@@ -128,8 +128,8 @@ class StorageDeleteControllerTest extends WebTestCase
 
     public function testPortalDeleteSucceedsForAvailableStorage(): void
     {
-        $landlord = $this->findUserByEmail('landlord@example.com');
-        $this->client->loginUser($landlord, 'main');
+        $admin = $this->findUserByEmail('admin@example.com');
+        $this->client->loginUser($admin, 'main');
 
         // Storage A2 is AVAILABLE
         $storage = $this->findStorageByNumber('A2');

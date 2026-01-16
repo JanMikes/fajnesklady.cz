@@ -44,9 +44,6 @@ class Place
         private(set) string $postalCode,
         #[ORM\Column(type: Types::TEXT, nullable: true)]
         private(set) ?string $description,
-        #[ORM\ManyToOne(targetEntity: User::class)]
-        #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
-        private(set) User $owner,
         #[ORM\Column]
         private(set) \DateTimeImmutable $createdAt,
     ) {
@@ -101,10 +98,5 @@ class Place
     {
         $this->isActive = false;
         $this->updatedAt = $now;
-    }
-
-    public function isOwnedBy(User $user): bool
-    {
-        return $this->owner->id->equals($user->id);
     }
 }

@@ -98,11 +98,11 @@
                         <div class="border-t pt-4 mt-4">
                             <div class="flex justify-between items-center mb-2">
                                 <span class="text-gray-600">Týdenní sazba</span>
-                                <span class="font-semibold">{{ storageType.pricePerWeekInCzk|number_format(0, ',', ' ') }} Kč</span>
+                                <span class="font-semibold">{{ storageType.defaultPricePerWeekInCzk|number_format(0, ',', ' ') }} Kč</span>
                             </div>
                             <div class="flex justify-between items-center mb-4">
                                 <span class="text-gray-600">Měsíční sazba</span>
-                                <span class="font-semibold text-primary-600">{{ storageType.pricePerMonthInCzk|number_format(0, ',', ' ') }} Kč</span>
+                                <span class="font-semibold text-primary-600">{{ storageType.defaultPricePerMonthInCzk|number_format(0, ',', ' ') }} Kč</span>
                             </div>
 
                             <div class="flex justify-between items-center mb-4">
@@ -122,7 +122,7 @@
                             </div>
 
                             {% if availableCount > 0 %}
-                                <a href="{{ path('public_order_create', {storageTypeId: storageType.id}) }}"
+                                <a href="{{ path('public_order_create', {placeId: place.id, storageTypeId: storageType.id}) }}"
                                    class="btn btn-primary w-full">
                                     Objednat
                                 </a>

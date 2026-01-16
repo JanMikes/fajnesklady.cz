@@ -100,7 +100,7 @@ final readonly class GoPayApiClient implements GoPayClient
     {
         $storage = $order->storage;
         $storageType = $storage->storageType;
-        $place = $storageType->place;
+        $place = $storage->getPlace();
 
         return [
             'payer' => [
@@ -128,10 +128,7 @@ final readonly class GoPayApiClient implements GoPayClient
     private function assertSuccess(Response $response): void
     {
         if (!$response->hasSucceed()) {
-            throw new GoPayException(
-                sprintf('GoPay API error: %s', json_encode($response->json, JSON_THROW_ON_ERROR)),
-                (int) $response->statusCode,
-            );
+            throw new GoPayException(sprintf('GoPay API error: %s', json_encode($response->json, JSON_THROW_ON_ERROR)), (int) $response->statusCode);
         }
     }
 }

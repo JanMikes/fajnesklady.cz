@@ -98,8 +98,7 @@ class ControllerAccessTest extends WebTestCase
 
     public function testPlaceDetailIsAccessiblePublicly(): void
     {
-        $landlord = $this->createUser('place-landlord@example.com', UserRole::LANDLORD);
-        $place = $this->createPlace($landlord, 'Test Place');
+        $place = $this->createPlace('Test Place');
 
         $this->client->request('GET', '/pobocka/'.$place->id->toRfc4122());
 
@@ -223,10 +222,9 @@ class ControllerAccessTest extends WebTestCase
         $owner = $this->createUser('owner@example.com', UserRole::USER);
         $otherUser = $this->createUser('other@example.com', UserRole::USER);
 
-        $landlord = $this->createUser('landlord-for-order@example.com', UserRole::LANDLORD);
-        $place = $this->createPlace($landlord, 'Order Place');
-        $storageType = $this->createStorageType($place, 'Order Type');
-        $storage = $this->createStorage($storageType, 'O1');
+        $place = $this->createPlace('Order Place');
+        $storageType = $this->createStorageType('Order Type');
+        $storage = $this->createStorage($storageType, $place, 'O1');
         $order = $this->createOrder($storage, $owner);
 
         $this->login($otherUser);
@@ -240,10 +238,9 @@ class ControllerAccessTest extends WebTestCase
         $owner = $this->createUser('contract-owner@example.com', UserRole::USER);
         $otherUser = $this->createUser('contract-other@example.com', UserRole::USER);
 
-        $landlord = $this->createUser('landlord-for-contract@example.com', UserRole::LANDLORD);
-        $place = $this->createPlace($landlord, 'Contract Place');
-        $storageType = $this->createStorageType($place, 'Contract Type');
-        $storage = $this->createStorage($storageType, 'C1');
+        $place = $this->createPlace('Contract Place');
+        $storageType = $this->createStorageType('Contract Type');
+        $storage = $this->createStorage($storageType, $place, 'C1');
         $contract = $this->createContract($storage, $owner);
 
         $this->login($otherUser);
@@ -286,35 +283,34 @@ class ControllerAccessTest extends WebTestCase
         $this->assertResponseIsSuccessful();
     }
 
-    public function testLandlordCannotAccessOtherLandlordPlace(): void
+    public function testLandlordCannotAccessPlaceEdit(): void
     {
-        // Use fixture data - landlord owns Praha places, landlord2 cannot access them
+        // In the new architecture, landlords cannot edit places - only admin can
         $landlord = $this->entityManager->getRepository(User::class)->findOneBy(['email' => 'landlord@example.com']);
-        $landlord2 = $this->entityManager->getRepository(User::class)->findOneBy(['email' => 'landlord2@example.com']);
-        $place = $this->entityManager->getRepository(Place::class)->findOneBy(['owner' => $landlord]);
+        $place = $this->entityManager->getRepository(Place::class)->findOneBy(['name' => 'Sklad Praha - Centrum']);
 
-        $this->login($landlord2);
+        $this->login($landlord);
         $this->client->request('GET', '/portal/places/'.$place->id->toRfc4122().'/edit');
 
         $this->assertResponseStatusCodeSame(403);
     }
 
-    public function testLandlordCanAccessOwnPlaceEdit(): void
+    public function testLandlordCannotAccessAnyPlaceEdit(): void
     {
         $landlord = $this->createUser('own-place-landlord@example.com', UserRole::LANDLORD);
-        $place = $this->createPlace($landlord, 'Own Place');
+        $place = $this->createPlace('Own Place');
 
         $this->login($landlord);
         $this->client->request('GET', '/portal/places/'.$place->id->toRfc4122().'/edit');
 
-        $this->assertResponseIsSuccessful();
+        // Landlords cannot edit places in the new architecture
+        $this->assertResponseStatusCodeSame(403);
     }
 
     public function testAdminCanAccessAnyPlaceEdit(): void
     {
-        $landlord = $this->createUser('place-owner-for-admin@example.com', UserRole::LANDLORD);
         $admin = $this->createUser('admin-edit@example.com', UserRole::ADMIN);
-        $place = $this->createPlace($landlord, 'Admin Edit Place');
+        $place = $this->createPlace('Admin Edit Place');
 
         $this->login($admin);
         $this->client->request('GET', '/portal/places/'.$place->id->toRfc4122().'/edit');
@@ -335,8 +331,7 @@ class ControllerAccessTest extends WebTestCase
     public function testStorageTypeListRendersForLandlord(): void
     {
         $landlord = $this->createUser('st-list-landlord@example.com', UserRole::LANDLORD);
-        $place = $this->createPlace($landlord, 'ST List Place');
-        $this->createStorageType($place, 'Test Storage Type');
+        $this->createStorageType('Test Storage Type');
 
         $this->login($landlord);
         $this->client->request('GET', '/portal/storage-types');
@@ -347,10 +342,8 @@ class ControllerAccessTest extends WebTestCase
 
     public function testStorageTypeListRendersForAdmin(): void
     {
-        $landlord = $this->createUser('st-list-owner@example.com', UserRole::LANDLORD);
         $admin = $this->createUser('st-list-admin@example.com', UserRole::ADMIN);
-        $place = $this->createPlace($landlord, 'Admin ST Place');
-        $this->createStorageType($place, 'Admin View Type');
+        $this->createStorageType('Admin View Type');
 
         $this->login($admin);
         $this->client->request('GET', '/portal/storage-types');
@@ -371,11 +364,9 @@ class ControllerAccessTest extends WebTestCase
 
     public function testLandlordCannotEditOtherLandlordStorageType(): void
     {
-        $landlord1 = $this->createUser('st-landlord1@example.com', UserRole::LANDLORD);
         $landlord2 = $this->createUser('st-landlord2@example.com', UserRole::LANDLORD);
 
-        $place = $this->createPlace($landlord1, 'ST Place');
-        $storageType = $this->createStorageType($place, 'ST Type');
+        $storageType = $this->createStorageType('ST Type');
 
         $this->login($landlord2);
         $this->client->request('GET', '/portal/storage-types/'.$storageType->id->toRfc4122().'/edit');
@@ -385,12 +376,11 @@ class ControllerAccessTest extends WebTestCase
 
     public function testLandlordCannotEditOtherLandlordStorage(): void
     {
-        $landlord1 = $this->createUser('s-landlord1@example.com', UserRole::LANDLORD);
         $landlord2 = $this->createUser('s-landlord2@example.com', UserRole::LANDLORD);
 
-        $place = $this->createPlace($landlord1, 'S Place');
-        $storageType = $this->createStorageType($place, 'S Type');
-        $storage = $this->createStorage($storageType, 'S1');
+        $place = $this->createPlace('S Place');
+        $storageType = $this->createStorageType('S Type');
+        $storage = $this->createStorage($storageType, $place, 'S1');
 
         $this->login($landlord2);
         $this->client->request('GET', '/portal/storages/'.$storage->id->toRfc4122().'/edit');
@@ -424,13 +414,12 @@ class ControllerAccessTest extends WebTestCase
 
     public function testLandlordCannotAccessOtherLandlordOrderDetail(): void
     {
-        $landlord1 = $this->createUser('lo-landlord1@example.com', UserRole::LANDLORD);
         $landlord2 = $this->createUser('lo-landlord2@example.com', UserRole::LANDLORD);
         $user = $this->createUser('lo-user@example.com', UserRole::USER);
 
-        $place = $this->createPlace($landlord1, 'LO Place');
-        $storageType = $this->createStorageType($place, 'LO Type');
-        $storage = $this->createStorage($storageType, 'LO1');
+        $place = $this->createPlace('LO Place');
+        $storageType = $this->createStorageType('LO Type');
+        $storage = $this->createStorage($storageType, $place, 'LO1');
         $order = $this->createOrder($storage, $user);
 
         $this->login($landlord2);
@@ -441,13 +430,12 @@ class ControllerAccessTest extends WebTestCase
 
     public function testAdminCanAccessAnyLandlordOrderDetail(): void
     {
-        $landlord = $this->createUser('admin-lo-landlord@example.com', UserRole::LANDLORD);
         $admin = $this->createUser('admin-lo-admin@example.com', UserRole::ADMIN);
         $user = $this->createUser('admin-lo-user@example.com', UserRole::USER);
 
-        $place = $this->createPlace($landlord, 'Admin LO Place');
-        $storageType = $this->createStorageType($place, 'Admin LO Type');
-        $storage = $this->createStorage($storageType, 'ALO1');
+        $place = $this->createPlace('Admin LO Place');
+        $storageType = $this->createStorageType('Admin LO Type');
+        $storage = $this->createStorage($storageType, $place, 'ALO1');
         $order = $this->createOrder($storage, $user);
 
         $this->login($admin);
@@ -619,8 +607,7 @@ class ControllerAccessTest extends WebTestCase
 
     public function testStorageCanvasRequiresLandlordRole(): void
     {
-        $landlord = $this->createUser('canvas-landlord@example.com', UserRole::LANDLORD);
-        $place = $this->createPlace($landlord, 'Canvas Place');
+        $place = $this->createPlace('Canvas Place');
 
         $user = $this->createUser('canvas-user@example.com', UserRole::USER);
         $this->login($user);
@@ -630,27 +617,27 @@ class ControllerAccessTest extends WebTestCase
         $this->assertResponseStatusCodeSame(403);
     }
 
-    public function testLandlordCanAccessOwnPlaceCanvas(): void
+    public function testLandlordCannotAccessPlaceCanvas(): void
     {
+        // In the new architecture, landlords cannot access canvas (admin only)
         $landlord = $this->createUser('own-canvas-landlord@example.com', UserRole::LANDLORD);
-        $place = $this->createPlace($landlord, 'Own Canvas Place');
+        $place = $this->createPlace('Own Canvas Place');
 
         $this->login($landlord);
         $this->client->request('GET', '/portal/places/'.$place->id->toRfc4122().'/canvas');
 
-        $this->assertResponseIsSuccessful();
+        $this->assertResponseStatusCodeSame(403);
     }
 
-    public function testLandlordCannotAccessOtherLandlordCanvas(): void
+    public function testAdminCanAccessPlaceCanvas(): void
     {
-        $landlord1 = $this->createUser('canvas-landlord1@example.com', UserRole::LANDLORD);
-        $landlord2 = $this->createUser('canvas-landlord2@example.com', UserRole::LANDLORD);
-        $place = $this->createPlace($landlord1, 'Other Canvas Place');
+        $admin = $this->createUser('canvas-admin@example.com', UserRole::ADMIN);
+        $place = $this->createPlace('Admin Canvas Place');
 
-        $this->login($landlord2);
+        $this->login($admin);
         $this->client->request('GET', '/portal/places/'.$place->id->toRfc4122().'/canvas');
 
-        $this->assertResponseStatusCodeSame(403);
+        $this->assertResponseIsSuccessful();
     }
 
     // ===========================================
@@ -749,7 +736,7 @@ class ControllerAccessTest extends WebTestCase
         return $user;
     }
 
-    private function createPlace(User $owner, string $name): Place
+    private function createPlace(string $name): Place
     {
         $now = new \DateTimeImmutable();
         $place = new Place(
@@ -759,7 +746,6 @@ class ControllerAccessTest extends WebTestCase
             city: 'Test City',
             postalCode: '12345',
             description: null,
-            owner: $owner,
             createdAt: $now,
         );
 
@@ -769,7 +755,7 @@ class ControllerAccessTest extends WebTestCase
         return $place;
     }
 
-    private function createStorageType(Place $place, string $name): StorageType
+    private function createStorageType(string $name): StorageType
     {
         $now = new \DateTimeImmutable();
         $storageType = new StorageType(
@@ -778,9 +764,8 @@ class ControllerAccessTest extends WebTestCase
             innerWidth: 100,
             innerHeight: 100,
             innerLength: 100,
-            pricePerWeek: 10000,
-            pricePerMonth: 35000,
-            place: $place,
+            defaultPricePerWeek: 10000,
+            defaultPricePerMonth: 35000,
             createdAt: $now,
         );
 
@@ -790,7 +775,7 @@ class ControllerAccessTest extends WebTestCase
         return $storageType;
     }
 
-    private function createStorage(StorageType $storageType, string $number): Storage
+    private function createStorage(StorageType $storageType, Place $place, string $number): Storage
     {
         $now = new \DateTimeImmutable();
         $storage = new Storage(
@@ -798,6 +783,7 @@ class ControllerAccessTest extends WebTestCase
             number: $number,
             coordinates: ['x' => 0, 'y' => 0, 'width' => 100, 'height' => 100, 'rotation' => 0],
             storageType: $storageType,
+            place: $place,
             createdAt: $now,
         );
 
