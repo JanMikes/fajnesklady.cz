@@ -163,7 +163,7 @@
 
     {# Revenue Chart #}
     <div class="mb-8">
-        {{ component('RevenueChart', { landlordId: landlord.id|string }) }}
+        {{ component('RevenueChart', { landlordId: landlord.id.toRfc4122 }) }}
     </div>
 
     <div class="grid md:grid-cols-2 gap-6">

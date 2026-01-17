@@ -128,8 +128,9 @@ class PaymentRepository
     {
         $startDate = $now->modify("-{$months} months")->modify('first day of this month midnight');
 
-        $result = $this->entityManager->createQueryBuilder()
-            ->select('YEAR(p.paidAt) as year, MONTH(p.paidAt) as month, SUM(p.amount) as total')
+        /** @var Payment[] $payments */
+        $payments = $this->entityManager->createQueryBuilder()
+            ->select('p')
             ->from(Payment::class, 'p')
             ->join('p.storage', 's')
             ->where('s.owner = :landlord')
@@ -138,17 +139,10 @@ class PaymentRepository
             ->setParameter('landlord', $landlord)
             ->setParameter('startDate', $startDate)
             ->setParameter('endDate', $now->modify('first day of next month midnight'))
-            ->groupBy('year, month')
-            ->orderBy('year', 'ASC')
-            ->addOrderBy('month', 'ASC')
             ->getQuery()
             ->getResult();
 
-        return array_map(fn(array $row) => [
-            'year' => (int) $row['year'],
-            'month' => (int) $row['month'],
-            'total' => (int) ($row['total'] ?? 0),
-        ], $result);
+        return $this->groupPaymentsByMonth($payments);
     }
 
     /**
@@ -160,24 +154,45 @@ class PaymentRepository
     {
         $startDate = $now->modify("-{$months} months")->modify('first day of this month midnight');
 
-        $result = $this->entityManager->createQueryBuilder()
-            ->select('YEAR(p.paidAt) as year, MONTH(p.paidAt) as month, SUM(p.amount) as total')
+        /** @var Payment[] $payments */
+        $payments = $this->entityManager->createQueryBuilder()
+            ->select('p')
             ->from(Payment::class, 'p')
             ->where('p.paidAt >= :startDate')
             ->andWhere('p.paidAt < :endDate')
             ->setParameter('startDate', $startDate)
             ->setParameter('endDate', $now->modify('first day of next month midnight'))
-            ->groupBy('year, month')
-            ->orderBy('year', 'ASC')
-            ->addOrderBy('month', 'ASC')
             ->getQuery()
             ->getResult();
 
-        return array_map(fn(array $row) => [
-            'year' => (int) $row['year'],
-            'month' => (int) $row['month'],
-            'total' => (int) ($row['total'] ?? 0),
-        ], $result);
+        return $this->groupPaymentsByMonth($payments);
+    }
+
+    /**
+     * Group payments by year and month.
+     *
+     * @param Payment[] $payments
+     * @return array<array{year: int, month: int, total: int}>
+     */
+    private function groupPaymentsByMonth(array $payments): array
+    {
+        $grouped = [];
+
+        foreach ($payments as $payment) {
+            $year = (int) $payment->paidAt->format('Y');
+            $month = (int) $payment->paidAt->format('n');
+            $key = sprintf('%d-%02d', $year, $month);
+
+            if (!isset($grouped[$key])) {
+                $grouped[$key] = ['year' => $year, 'month' => $month, 'total' => 0];
+            }
+
+            $grouped[$key]['total'] += $payment->amount;
+        }
+
+        usort($grouped, static fn(array $a, array $b): int => ($a['year'] <=> $b['year']) ?: ($a['month'] <=> $b['month']));
+
+        return $grouped;
     }
 
     /**
