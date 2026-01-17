@@ -96,4 +96,42 @@ class SelfBillingInvoiceRepository
             ->getQuery()
             ->getSingleScalarResult();
     }
+
+    /**
+     * Sum commission (grossAmount - netAmount) for a landlord in a specific period.
+     */
+    public function sumCommissionByLandlordAndPeriod(User $landlord, int $year, int $month): int
+    {
+        $result = $this->entityManager->createQueryBuilder()
+            ->select('SUM(i.grossAmount - i.netAmount)')
+            ->from(SelfBillingInvoice::class, 'i')
+            ->where('i.landlord = :landlord')
+            ->andWhere('i.year = :year')
+            ->andWhere('i.month = :month')
+            ->setParameter('landlord', $landlord)
+            ->setParameter('year', $year)
+            ->setParameter('month', $month)
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return (int) ($result ?? 0);
+    }
+
+    /**
+     * Sum all commissions across all landlords for a specific period.
+     */
+    public function sumAllCommissionsByPeriod(int $year, int $month): int
+    {
+        $result = $this->entityManager->createQueryBuilder()
+            ->select('SUM(i.grossAmount - i.netAmount)')
+            ->from(SelfBillingInvoice::class, 'i')
+            ->where('i.year = :year')
+            ->andWhere('i.month = :month')
+            ->setParameter('year', $year)
+            ->setParameter('month', $month)
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return (int) ($result ?? 0);
+    }
 }

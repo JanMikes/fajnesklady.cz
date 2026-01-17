@@ -5,8 +5,97 @@
 {% block content %}
     <h1 class="text-3xl font-bold text-gray-900 mb-8">Přehled</h1>
 
-    {# Stats Cards #}
+    {# Revenue Stats Cards #}
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div class="bg-white overflow-hidden shadow rounded-lg">
+            <div class="p-5">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <svg class="h-6 w-6 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 truncate">Tržby minulý měsíc</dt>
+                            <dd class="text-lg font-semibold text-gray-900">{{ (stats.lastMonthRevenue / 100)|number_format(0, ',', ' ') }} Kč</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-50 px-5 py-3">
+                <span class="text-sm text-gray-500">Hrubé tržby</span>
+            </div>
+        </div>
+
+        <div class="bg-white overflow-hidden shadow rounded-lg">
+            <div class="p-5">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <svg class="h-6 w-6 text-orange-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2zM10 8.5a.5.5 0 11-1 0 .5.5 0 011 0zm5 5a.5.5 0 11-1 0 .5.5 0 011 0z" />
+                        </svg>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 truncate">Provize minulý měsíc</dt>
+                            <dd class="text-lg font-semibold text-gray-900">{{ (stats.lastMonthCommission / 100)|number_format(0, ',', ' ') }} Kč</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-50 px-5 py-3">
+                <span class="text-sm text-gray-500">Odvedená provize</span>
+            </div>
+        </div>
+
+        <div class="bg-white overflow-hidden shadow rounded-lg">
+            <div class="p-5">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <svg class="h-6 w-6 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                        </svg>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 truncate">Očekávané tržby</dt>
+                            <dd class="text-lg font-semibold text-gray-900">{{ (stats.expectedThisMonthRevenue / 100)|number_format(0, ',', ' ') }} Kč</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-50 px-5 py-3">
+                <span class="text-sm text-gray-500">{{ stats.activeRecurringContracts }} aktivních smluv</span>
+            </div>
+        </div>
+
+        <div class="bg-white overflow-hidden shadow rounded-lg">
+            <div class="p-5">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <svg class="h-6 w-6 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 truncate">Obsazenost</dt>
+                            <dd class="text-lg font-semibold text-gray-900">{{ stats.occupancyRate|number_format(1, ',', ' ') }}%</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-50 px-5 py-3">
+                <div class="w-full bg-gray-200 rounded-full h-2">
+                    <div class="bg-green-600 h-2 rounded-full" style="width: {{ min(stats.occupancyRate, 100) }}%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# Storage Stats Cards #}
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div class="bg-white overflow-hidden shadow rounded-lg">
             <div class="p-5">
                 <div class="flex items-center">
@@ -19,7 +108,7 @@
                     <div class="ml-5 w-0 flex-1">
                         <dl>
                             <dt class="text-sm font-medium text-gray-500 truncate">Počet míst</dt>
-                            <dd class="text-lg font-semibold text-gray-900">{{ placesCount }}</dd>
+                            <dd class="text-lg font-semibold text-gray-900">{{ stats.placesCount }}</dd>
                         </dl>
                     </div>
                 </div>
@@ -40,13 +129,13 @@
                     <div class="ml-5 w-0 flex-1">
                         <dl>
                             <dt class="text-sm font-medium text-gray-500 truncate">Celkem skladů</dt>
-                            <dd class="text-lg font-semibold text-gray-900">{{ totalStorages }}</dd>
+                            <dd class="text-lg font-semibold text-gray-900">{{ stats.totalStorages }}</dd>
                         </dl>
                     </div>
                 </div>
             </div>
             <div class="bg-gray-50 px-5 py-3">
-                <span class="text-sm text-gray-500">{{ availableStorages }} volných / {{ occupiedStorages }} obsazených</span>
+                <span class="text-sm text-gray-500">{{ stats.availableStorages }} volných / {{ stats.occupiedStorages }} obsazených</span>
             </div>
         </div>
 
@@ -55,44 +144,26 @@
                 <div class="flex items-center">
                     <div class="flex-shrink-0">
                         <svg class="h-6 w-6 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
                     </div>
                     <div class="ml-5 w-0 flex-1">
                         <dl>
-                            <dt class="text-sm font-medium text-gray-500 truncate">Obsazenost</dt>
-                            <dd class="text-lg font-semibold text-gray-900">{{ occupancyRate|number_format(1, ',', ' ') }}%</dd>
+                            <dt class="text-sm font-medium text-gray-500 truncate">Aktivní smlouvy</dt>
+                            <dd class="text-lg font-semibold text-gray-900">{{ stats.activeRecurringContracts }}</dd>
                         </dl>
                     </div>
                 </div>
             </div>
             <div class="bg-gray-50 px-5 py-3">
-                <div class="w-full bg-gray-200 rounded-full h-2">
-                    <div class="bg-green-600 h-2 rounded-full" style="width: {{ min(occupancyRate, 100) }}%"></div>
-                </div>
+                <span class="text-sm text-gray-500">S opakovanou platbou</span>
             </div>
         </div>
+    </div>
 
-        <div class="bg-white overflow-hidden shadow rounded-lg">
-            <div class="p-5">
-                <div class="flex items-center">
-                    <div class="flex-shrink-0">
-                        <svg class="h-6 w-6 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                    </div>
-                    <div class="ml-5 w-0 flex-1">
-                        <dl>
-                            <dt class="text-sm font-medium text-gray-500 truncate">Celkové tržby</dt>
-                            <dd class="text-lg font-semibold text-gray-900">{{ (totalRevenue / 100)|number_format(0, ',', ' ') }} Kč</dd>
-                        </dl>
-                    </div>
-                </div>
-            </div>
-            <div class="bg-gray-50 px-5 py-3">
-                <a href="{{ path('portal_landlord_orders') }}" class="link text-sm font-medium">Zobrazit objednávky</a>
-            </div>
-        </div>
+    {# Revenue Chart #}
+    <div class="mb-8">
+        {{ component('RevenueChart', { landlordId: landlord.id|string }) }}
     </div>
 
     <div class="grid md:grid-cols-2 gap-6">

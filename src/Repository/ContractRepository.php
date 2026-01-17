@@ -283,4 +283,91 @@ class ContractRepository
             ->getQuery()
             ->getResult();
     }
+
+    /**
+     * Find contracts with active recurring payments for a landlord's storages.
+     *
+     * @return Contract[]
+     */
+    public function findWithActiveRecurringByLandlord(User $landlord): array
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('c')
+            ->from(Contract::class, 'c')
+            ->join('c.storage', 's')
+            ->where('s.owner = :landlord')
+            ->andWhere('c.goPayParentPaymentId IS NOT NULL')
+            ->andWhere('c.terminatedAt IS NULL')
+            ->setParameter('landlord', $landlord)
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Sum expected recurring revenue for a landlord (sum of order.totalPrice for active recurring contracts).
+     */
+    public function sumExpectedRecurringByLandlord(User $landlord): int
+    {
+        $result = $this->entityManager->createQueryBuilder()
+            ->select('SUM(o.totalPrice)')
+            ->from(Contract::class, 'c')
+            ->join('c.storage', 's')
+            ->join('c.order', 'o')
+            ->where('s.owner = :landlord')
+            ->andWhere('c.goPayParentPaymentId IS NOT NULL')
+            ->andWhere('c.terminatedAt IS NULL')
+            ->setParameter('landlord', $landlord)
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return (int) ($result ?? 0);
+    }
+
+    /**
+     * Sum expected recurring revenue across all landlords.
+     */
+    public function sumExpectedRecurringAll(): int
+    {
+        $result = $this->entityManager->createQueryBuilder()
+            ->select('SUM(o.totalPrice)')
+            ->from(Contract::class, 'c')
+            ->join('c.order', 'o')
+            ->where('c.goPayParentPaymentId IS NOT NULL')
+            ->andWhere('c.terminatedAt IS NULL')
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return (int) ($result ?? 0);
+    }
+
+    /**
+     * Count contracts with active recurring payments for a landlord.
+     */
+    public function countActiveRecurringByLandlord(User $landlord): int
+    {
+        return (int) $this->entityManager->createQueryBuilder()
+            ->select('COUNT(c.id)')
+            ->from(Contract::class, 'c')
+            ->join('c.storage', 's')
+            ->where('s.owner = :landlord')
+            ->andWhere('c.goPayParentPaymentId IS NOT NULL')
+            ->andWhere('c.terminatedAt IS NULL')
+            ->setParameter('landlord', $landlord)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    /**
+     * Count all contracts with active recurring payments.
+     */
+    public function countActiveRecurringAll(): int
+    {
+        return (int) $this->entityManager->createQueryBuilder()
+            ->select('COUNT(c.id)')
+            ->from(Contract::class, 'c')
+            ->where('c.goPayParentPaymentId IS NOT NULL')
+            ->andWhere('c.terminatedAt IS NULL')
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
 }

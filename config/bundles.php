@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 return [
     Symfony\Bundle\FrameworkBundle\FrameworkBundle::class => ['all' => true],
     Doctrine\Bundle\DoctrineBundle\DoctrineBundle::class => ['all' => true],
@@ -23,4 +21,5 @@ return [
     Symfony\UX\TwigComponent\TwigComponentBundle::class => ['all' => true],
     Symfony\UX\LiveComponent\LiveComponentBundle::class => ['all' => true],
     League\FlysystemBundle\FlysystemBundle::class => ['all' => true],
+    Symfony\UX\Chartjs\ChartjsBundle::class => ['all' => true],
 ];

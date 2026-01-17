@@ -6,11 +6,10 @@ namespace App\Controller\Portal;
 
 use App\Entity\User;
 use App\Query\GetDashboardStats;
+use App\Query\GetLandlordDashboardStats;
 use App\Query\QueryBus;
 use App\Repository\ContractRepository;
 use App\Repository\OrderRepository;
-use App\Repository\PlaceRepository;
-use App\Repository\StorageRepository;
 use Psr\Clock\ClockInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
@@ -25,15 +24,12 @@ final class DashboardController extends AbstractController
         private readonly QueryBus $queryBus,
         private readonly OrderRepository $orderRepository,
         private readonly ContractRepository $contractRepository,
-        private readonly PlaceRepository $placeRepository,
-        private readonly StorageRepository $storageRepository,
         private readonly ClockInterface $clock,
     ) {
     }
 
     public function __invoke(): Response
     {
-        // Render different dashboard based on role
         if ($this->isGranted('ROLE_ADMIN')) {
             $stats = $this->queryBus->handle(new GetDashboardStats());
 
@@ -46,22 +42,12 @@ final class DashboardController extends AbstractController
             /** @var User $landlord */
             $landlord = $this->getUser();
 
-            $placesCount = $this->placeRepository->countPlacesWithStoragesByOwner($landlord);
-            $totalStorages = $this->storageRepository->countByOwner($landlord);
-            $occupiedStorages = $this->storageRepository->countOccupiedByOwner($landlord);
-            $availableStorages = $this->storageRepository->countAvailableByOwner($landlord);
-            $totalRevenue = $this->orderRepository->sumRevenueByLandlord($landlord);
+            $stats = $this->queryBus->handle(new GetLandlordDashboardStats($landlord->id));
             $recentOrders = $this->orderRepository->findByLandlord($landlord, 5);
 
-            $occupancyRate = $totalStorages > 0 ? ($occupiedStorages / $totalStorages) * 100 : 0;
-
             return $this->render('portal/dashboard_landlord.html.twig', [
-                'placesCount' => $placesCount,
-                'totalStorages' => $totalStorages,
-                'occupiedStorages' => $occupiedStorages,
-                'availableStorages' => $availableStorages,
-                'occupancyRate' => $occupancyRate,
-                'totalRevenue' => $totalRevenue,
+                'stats' => $stats,
+                'landlord' => $landlord,
                 'recentOrders' => $recentOrders,
             ]);
         }

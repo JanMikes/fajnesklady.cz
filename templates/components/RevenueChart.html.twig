@@ -1,0 +1,16 @@
+<div {{ attributes.defaults({class: 'bg-white shadow rounded-lg p-6'}) }}>
+    <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-medium text-gray-900">Přehled tržeb</h3>
+        <select
+            data-model="months"
+            class="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
+        >
+            <option value="6" {{ months == 6 ? 'selected' : '' }}>Posledních 6 měsíců</option>
+            <option value="12" {{ months == 12 ? 'selected' : '' }}>Posledních 12 měsíců</option>
+            <option value="24" {{ months == 24 ? 'selected' : '' }}>Posledních 24 měsíců</option>
+        </select>
+    </div>
+    <div style="height: 300px;">
+        {{ render_chart(this.chart) }}
+    </div>
+</div>

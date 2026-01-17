@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 /**
  * Returns the importmap for this application.
  *
@@ -49,5 +47,8 @@ return [
     ],
     'alpinejs' => [
         'version' => '3.15.3',
+    ],
+    'chart.js' => [
+        'version' => '3.9.1',
     ],
 ];

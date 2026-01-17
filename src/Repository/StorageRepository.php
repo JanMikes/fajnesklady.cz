@@ -263,4 +263,15 @@ class StorageRepository
             ->getQuery()
             ->getSingleScalarResult();
     }
+
+    public function countOccupied(): int
+    {
+        return (int) $this->entityManager->createQueryBuilder()
+            ->select('COUNT(s.id)')
+            ->from(Storage::class, 's')
+            ->where('s.status = :status')
+            ->setParameter('status', StorageStatus::OCCUPIED)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
 }
