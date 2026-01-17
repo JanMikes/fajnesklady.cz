@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Form;
 
+use App\Entity\StorageType;
 use App\Entity\User;
 use App\Repository\PlaceRepository;
 use App\Repository\StorageTypeRepository;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\IntegerType;
+use Symfony\Component\Form\Extension\Core\Type\NumberType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
@@ -97,13 +99,59 @@ class StorageFormType extends AbstractType
                 'max' => 360,
             ],
         ]);
+
+        /** @var StorageType|null $storageType */
+        $storageType = $options['storage_type'];
+        if (null !== $storageType && !$storageType->uniformStorages) {
+            $builder->add('pricePerWeek', NumberType::class, [
+                'label' => 'Vlastni cena za tyden (CZK)',
+                'required' => false,
+                'scale' => 2,
+                'attr' => [
+                    'placeholder' => 'Pouzije se vychozi cena typu',
+                    'class' => 'input input-bordered w-full',
+                    'step' => '0.01',
+                ],
+                'help' => 'Nechte prazdne pro pouziti vychozi ceny typu skladu',
+            ]);
+
+            $builder->add('pricePerMonth', NumberType::class, [
+                'label' => 'Vlastni cena za mesic (CZK)',
+                'required' => false,
+                'scale' => 2,
+                'attr' => [
+                    'placeholder' => 'Pouzije se vychozi cena typu',
+                    'class' => 'input input-bordered w-full',
+                    'step' => '0.01',
+                ],
+                'help' => 'Nechte prazdne pro pouziti vychozi ceny typu skladu',
+            ]);
+        }
+
+        // Commission rate - only for admins
+        if ($this->authorizationChecker->isGranted('ROLE_ADMIN')) {
+            $builder->add('commissionRate', NumberType::class, [
+                'label' => 'Provize pro pronajimatele (%)',
+                'required' => false,
+                'scale' => 0,
+                'attr' => [
+                    'placeholder' => 'Pouzije se vychozi provize pronajimatele',
+                    'class' => 'input input-bordered w-full',
+                    'min' => 0,
+                    'max' => 100,
+                ],
+                'help' => 'Nechte prazdne pro pouziti vychozi provize pronajimatele (nebo 90%)',
+            ]);
+        }
     }
 
     public function configureOptions(OptionsResolver $resolver): void
     {
         $resolver->setDefaults([
             'data_class' => StorageFormData::class,
+            'storage_type' => null,
         ]);
+        $resolver->setAllowedTypes('storage_type', ['null', StorageType::class]);
     }
 
     /**

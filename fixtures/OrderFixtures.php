@@ -88,6 +88,7 @@ final class OrderFixtures extends Fixture implements DependentFixtureInterface
             createdAt: $now,
         );
         $orderReserved->reserve($now);
+        $orderReserved->popEvents();
         $manager->persist($orderReserved);
         $this->addReference(self::REF_ORDER_RESERVED, $orderReserved);
 
@@ -107,6 +108,7 @@ final class OrderFixtures extends Fixture implements DependentFixtureInterface
         $orderPaid->reserve($now);
         $orderPaid->markAwaitingPayment($now);
         $orderPaid->markPaid($now);
+        $orderPaid->popEvents();
         $manager->persist($orderPaid);
         $this->addReference(self::REF_ORDER_PAID, $orderPaid);
 
@@ -129,6 +131,7 @@ final class OrderFixtures extends Fixture implements DependentFixtureInterface
         $orderCompleted->markAwaitingPayment($now->modify('-7 days'));
         $orderCompleted->markPaid($now->modify('-6 days'));
         // complete() will be called from ContractFixtures after contract is created
+        $orderCompleted->popEvents();
         $manager->persist($orderCompleted);
         $this->addReference(self::REF_ORDER_COMPLETED, $orderCompleted);
 
@@ -150,6 +153,7 @@ final class OrderFixtures extends Fixture implements DependentFixtureInterface
         $orderUnlimited->markAwaitingPayment($now->modify('-36 days'));
         $orderUnlimited->markPaid($now->modify('-35 days'));
         // complete() will be called from ContractFixtures after contract is created
+        $orderUnlimited->popEvents();
         $manager->persist($orderUnlimited);
         $this->addReference(self::REF_ORDER_COMPLETED_UNLIMITED, $orderUnlimited);
 
@@ -168,6 +172,7 @@ final class OrderFixtures extends Fixture implements DependentFixtureInterface
         );
         $orderCancelled->reserve($now->modify('-2 days'));
         $orderCancelled->cancel($now->modify('-1 day'));
+        $orderCancelled->popEvents();
         $manager->persist($orderCancelled);
         $this->addReference(self::REF_ORDER_CANCELLED, $orderCancelled);
 
@@ -186,6 +191,7 @@ final class OrderFixtures extends Fixture implements DependentFixtureInterface
         );
         $orderExpired->reserve($now->modify('-8 days'));
         $orderExpired->expire($now);
+        $orderExpired->popEvents();
         $manager->persist($orderExpired);
         $this->addReference(self::REF_ORDER_EXPIRED, $orderExpired);
 
@@ -208,6 +214,7 @@ final class OrderFixtures extends Fixture implements DependentFixtureInterface
         $orderExpiringSoon->markAwaitingPayment($now->modify('-29 days'));
         $orderExpiringSoon->markPaid($now->modify('-28 days'));
         // complete() will be called from ContractFixtures after contract is created
+        $orderExpiringSoon->popEvents();
         $manager->persist($orderExpiringSoon);
         $this->addReference(self::REF_ORDER_EXPIRING_SOON, $orderExpiringSoon);
 

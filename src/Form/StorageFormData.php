@@ -34,6 +34,18 @@ final class StorageFormData
     #[Assert\Range(min: 0, max: 360, notInRangeMessage: 'Rotace musi byt mezi 0 a 360')]
     public int $coordinateRotation = 0;
 
+    /** Custom price in CZK (optional, null means use default from storage type) */
+    #[Assert\PositiveOrZero(message: 'Cena za tyden musi byt nula nebo kladna')]
+    public ?float $pricePerWeek = null;
+
+    /** Custom price in CZK (optional, null means use default from storage type) */
+    #[Assert\PositiveOrZero(message: 'Cena za mesic musi byt nula nebo kladna')]
+    public ?float $pricePerMonth = null;
+
+    /** Commission rate as percentage (0-100), e.g., 90 for 90% */
+    #[Assert\Range(min: 0, max: 100, notInRangeMessage: 'Provize musi byt mezi 0 a 100%')]
+    public ?float $commissionRate = null;
+
     public static function fromStorage(Storage $storage): self
     {
         $formData = new self();
@@ -45,6 +57,12 @@ final class StorageFormData
         $formData->coordinateWidth = $storage->coordinates['width'];
         $formData->coordinateHeight = $storage->coordinates['height'];
         $formData->coordinateRotation = $storage->coordinates['rotation'];
+        $formData->pricePerWeek = null !== $storage->pricePerWeek ? $storage->pricePerWeek / 100 : null;
+        $formData->pricePerMonth = null !== $storage->pricePerMonth ? $storage->pricePerMonth / 100 : null;
+        // Cast through float to ensure numeric-string for bcmul
+        $formData->commissionRate = null !== $storage->commissionRate
+            ? (float) bcmul((string) (float) $storage->commissionRate, '100', 0)
+            : null;
 
         return $formData;
     }

@@ -88,6 +88,39 @@
                         <p class="mt-1 text-sm text-gray-500">Úhel rotace od 0 do 360 stupňů</p>
                     </div>
 
+                    {% if form.pricePerWeek is defined and form.pricePerMonth is defined %}
+                        <hr class="my-6 border-t border-gray-200">
+
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Vlastní ceny</h3>
+                        <p class="text-sm text-gray-500 mb-4">Tyto ceny se použijí místo výchozích cen typu skladu. Ponechte prázdné pro použití výchozích cen.</p>
+
+                        <div class="grid grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label for="{{ form.pricePerWeek.vars.id }}" class="block text-sm font-semibold text-gray-700 mb-2">Cena za týden (CZK)</label>
+                                {{ form_widget(form.pricePerWeek) }}
+                                {{ form_errors(form.pricePerWeek) }}
+                            </div>
+                            <div>
+                                <label for="{{ form.pricePerMonth.vars.id }}" class="block text-sm font-semibold text-gray-700 mb-2">Cena za měsíc (CZK)</label>
+                                {{ form_widget(form.pricePerMonth) }}
+                                {{ form_errors(form.pricePerMonth) }}
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    {% if form.commissionRate is defined %}
+                        <hr class="my-6 border-t border-gray-200">
+
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Provize (samofakturace)</h3>
+                        <p class="text-sm text-gray-500 mb-4">Procento z platby, které obdrží pronajímatel. Pokud není nastaveno, použije se výchozí provize pronajímatele (nebo 90%).</p>
+
+                        <div class="mb-4">
+                            <label for="{{ form.commissionRate.vars.id }}" class="block text-sm font-semibold text-gray-700 mb-2">Provize (%)</label>
+                            {{ form_widget(form.commissionRate) }}
+                            {{ form_errors(form.commissionRate) }}
+                        </div>
+                    {% endif %}
+
                     <hr class="my-6 border-t border-gray-200">
 
                     <div class="flex justify-end gap-2">

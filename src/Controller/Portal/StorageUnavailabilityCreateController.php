@@ -8,6 +8,7 @@ use App\Command\CreateStorageUnavailabilityCommand;
 use App\Entity\User;
 use App\Form\StorageUnavailabilityFormData;
 use App\Form\StorageUnavailabilityFormType;
+use Psr\Clock\ClockInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -22,6 +23,7 @@ final class StorageUnavailabilityCreateController extends AbstractController
 {
     public function __construct(
         private readonly MessageBusInterface $commandBus,
+        private readonly ClockInterface $clock,
     ) {
     }
 
@@ -40,7 +42,7 @@ final class StorageUnavailabilityCreateController extends AbstractController
 
             $command = new CreateStorageUnavailabilityCommand(
                 storageId: Uuid::fromString($formData->storageId ?? ''),
-                startDate: $formData->startDate ?? new \DateTimeImmutable(),
+                startDate: $formData->startDate ?? $this->clock->now(),
                 endDate: $endDate,
                 reason: $formData->reason,
                 createdById: $user->id,

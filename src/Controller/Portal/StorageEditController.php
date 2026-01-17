@@ -35,14 +35,39 @@ final class StorageEditController extends AbstractController
         $this->denyAccessUnlessGranted(StorageVoter::EDIT, $storage);
 
         $formData = StorageFormData::fromStorage($storage);
-        $form = $this->createForm(StorageFormType::class, $formData);
+        $form = $this->createForm(StorageFormType::class, $formData, [
+            'storage_type' => $storage->storageType,
+        ]);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
+            // Convert CZK to halire for prices (only for non-uniform storage types)
+            $pricePerWeek = null !== $formData->pricePerWeek
+                ? (int) round($formData->pricePerWeek * 100)
+                : null;
+            $pricePerMonth = null !== $formData->pricePerMonth
+                ? (int) round($formData->pricePerMonth * 100)
+                : null;
+
+            // Convert percentage to decimal for commission rate (only for admins)
+            $commissionRate = null;
+            $updateCommissionRate = false;
+            if ($this->isGranted('ROLE_ADMIN')) {
+                $commissionRate = null !== $formData->commissionRate
+                    ? bcdiv((string) $formData->commissionRate, '100', 2)
+                    : null;
+                $updateCommissionRate = true;
+            }
+
             $command = new UpdateStorageCommand(
                 storageId: $storage->id,
                 number: $formData->number,
                 coordinates: $formData->getCoordinates(),
+                pricePerWeek: $pricePerWeek,
+                pricePerMonth: $pricePerMonth,
+                updatePrices: !$storage->storageType->uniformStorages,
+                commissionRate: $commissionRate,
+                updateCommissionRate: $updateCommissionRate,
             );
 
             $this->commandBus->dispatch($command);

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Entity\Storage;
 use App\Entity\StorageType;
 
 final readonly class PriceCalculator
@@ -41,6 +42,37 @@ final readonly class PriceCalculator
         }
 
         return $this->calculateMonthlyPrice($storageType->defaultPricePerMonth, $days);
+    }
+
+    /**
+     * Calculate total rental price for a specific storage (uses effective prices).
+     *
+     * @return int Total price in halire
+     */
+    public function calculatePriceForStorage(
+        Storage $storage,
+        \DateTimeImmutable $startDate,
+        ?\DateTimeImmutable $endDate,
+    ): int {
+        $pricePerWeek = $storage->getEffectivePricePerWeek();
+        $pricePerMonth = $storage->getEffectivePricePerMonth();
+
+        // For unlimited rentals, return first period price (monthly)
+        if (null === $endDate) {
+            return $pricePerMonth;
+        }
+
+        $days = $this->calculateDays($startDate, $endDate);
+
+        if ($days <= 0) {
+            return 0;
+        }
+
+        if ($days < self::WEEKLY_THRESHOLD_DAYS) {
+            return $this->calculateWeeklyPrice($pricePerWeek, $days);
+        }
+
+        return $this->calculateMonthlyPrice($pricePerMonth, $days);
     }
 
     /**

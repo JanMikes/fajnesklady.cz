@@ -1,0 +1,189 @@
+{% extends 'portal/layout.html.twig' %}
+
+{% block title %}Samofakturace {{ invoice.invoiceNumber }} - Portal{% endblock %}
+
+{% block content %}
+    <div class="mb-8">
+        <nav class="flex" aria-label="Breadcrumb">
+            <ol class="flex items-center space-x-2">
+                <li>
+                    <a href="{{ path('portal_landlord_self_billing_list') }}" class="text-gray-500 hover:text-gray-700">
+                        Samofakturace
+                    </a>
+                </li>
+                <li>
+                    <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                    </svg>
+                </li>
+                <li>
+                    <span class="text-gray-900 font-medium">{{ invoice.invoiceNumber }}</span>
+                </li>
+            </ol>
+        </nav>
+    </div>
+
+    <div class="flex items-center justify-between mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">Samofakturace {{ invoice.invoiceNumber }}</h1>
+        {% if invoice.hasPdf() %}
+            <a href="{{ path('portal_landlord_self_billing_pdf', {id: invoice.id}) }}" class="btn btn-primary">
+                <svg class="h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Stahnout PDF
+            </a>
+        {% endif %}
+    </div>
+
+    {# Invoice summary #}
+    <div class="bg-white shadow overflow-hidden sm:rounded-lg mb-8">
+        <div class="px-4 py-5 sm:px-6">
+            <h3 class="text-lg leading-6 font-medium text-gray-900">
+                Souhrn faktury
+            </h3>
+            <p class="mt-1 max-w-2xl text-sm text-gray-500">
+                Obdobi: {{ invoice.getPeriodFormatted() }}
+            </p>
+        </div>
+        <div class="border-t border-gray-200">
+            <dl>
+                <div class="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                    <dt class="text-sm font-medium text-gray-500">
+                        Cislo faktury
+                    </dt>
+                    <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2 font-mono">
+                        {{ invoice.invoiceNumber }}
+                    </dd>
+                </div>
+                <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                    <dt class="text-sm font-medium text-gray-500">
+                        Obdobi
+                    </dt>
+                    <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                        {{ invoice.getPeriodFormatted() }}
+                    </dd>
+                </div>
+                <div class="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                    <dt class="text-sm font-medium text-gray-500">
+                        Hruba castka (prijate platby)
+                    </dt>
+                    <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                        {{ invoice.getGrossAmountInCzk()|number_format(2, ',', ' ') }} Kc
+                    </dd>
+                </div>
+                <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                    <dt class="text-sm font-medium text-gray-500">
+                        Provize
+                    </dt>
+                    <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                        {{ (invoice.commissionRate * 100)|number_format(0) }}%
+                    </dd>
+                </div>
+                <div class="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                    <dt class="text-sm font-medium text-gray-500">
+                        K vyplaceni
+                    </dt>
+                    <dd class="mt-1 text-sm font-medium text-green-600 sm:mt-0 sm:col-span-2">
+                        {{ invoice.getNetAmountInCzk()|number_format(2, ',', ' ') }} Kc
+                    </dd>
+                </div>
+                <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                    <dt class="text-sm font-medium text-gray-500">
+                        Datum vystaveni
+                    </dt>
+                    <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                        {{ invoice.issuedAt|date('d.m.Y H:i') }}
+                    </dd>
+                </div>
+            </dl>
+        </div>
+    </div>
+
+    {# Payments breakdown #}
+    <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+        <div class="px-4 py-5 sm:px-6">
+            <h3 class="text-lg leading-6 font-medium text-gray-900">
+                Rozpis plateb
+            </h3>
+            <p class="mt-1 max-w-2xl text-sm text-gray-500">
+                Platby zahrnuty v teto fakture ({{ payments|length }} plateb)
+            </p>
+        </div>
+        <div class="border-t border-gray-200">
+            {% if payments|length > 0 %}
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Sklad
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Typ
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Datum platby
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Castka
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for payment in payments %}
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex items-center">
+                                        <div class="flex-shrink-0 h-10 w-10 bg-accent/10 rounded-lg flex items-center justify-center">
+                                            <svg class="h-6 w-6 text-accent" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                            </svg>
+                                        </div>
+                                        <div class="ml-4">
+                                            <div class="text-sm font-medium text-gray-900">
+                                                {{ payment.storage.storageType.name }}
+                                            </div>
+                                            <div class="text-sm text-gray-500">
+                                                {{ payment.storage.number }} - {{ payment.storage.getPlace().name }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    {% if payment.order %}
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                            Prvotni platba
+                                        </span>
+                                    {% else %}
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                            Opakujici se platba
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    {{ payment.paidAt|date('d.m.Y H:i') }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-medium">
+                                    {{ (payment.amount / 100)|number_format(2, ',', ' ') }} Kc
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot class="bg-gray-50">
+                        <tr>
+                            <td colspan="3" class="px-6 py-4 text-sm font-medium text-gray-900 text-right">
+                                Celkem:
+                            </td>
+                            <td class="px-6 py-4 text-sm font-bold text-gray-900 text-right">
+                                {{ invoice.getGrossAmountInCzk()|number_format(2, ',', ' ') }} Kc
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            {% else %}
+                <div class="p-6 text-center text-gray-500">
+                    Zadne platby k zobrazeni.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+{% endblock %}

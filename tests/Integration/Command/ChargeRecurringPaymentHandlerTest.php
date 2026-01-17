@@ -112,6 +112,7 @@ class ChargeRecurringPaymentHandlerTest extends KernelTestCase
             RentalType::UNLIMITED,
             $startDate,
             null,
+            $now,
             PaymentFrequency::MONTHLY,
         );
 

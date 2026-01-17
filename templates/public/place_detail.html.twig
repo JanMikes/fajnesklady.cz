@@ -122,10 +122,16 @@
                             </div>
 
                             {% if availableCount > 0 %}
-                                <a href="{{ path('public_order_create', {placeId: place.id, storageTypeId: storageType.id}) }}"
-                                   class="btn btn-primary w-full">
-                                    Objednat
-                                </a>
+                                {% if storageType.uniformStorages %}
+                                    <a href="{{ path('public_order_create', {placeId: place.id, storageTypeId: storageType.id}) }}"
+                                       class="btn btn-primary w-full">
+                                        Objednat
+                                    </a>
+                                {% else %}
+                                    <button class="btn btn-secondary w-full" disabled>
+                                        Vyberte na mapě
+                                    </button>
+                                {% endif %}
                             {% else %}
                                 <button disabled class="btn btn-secondary w-full opacity-50 cursor-not-allowed">
                                     Nedostupné
@@ -144,7 +150,8 @@
              data-controller="storage-map"
              data-storage-map-map-image-value="{{ place.mapImagePath ? asset('uploads/places/' ~ place.mapImagePath) : '' }}"
              data-storage-map-storages-value="{{ storagesJson|e('html_attr') }}"
-             data-storage-map-storage-types-value="{{ storageTypesJson|e('html_attr') }}">
+             data-storage-map-storage-types-value="{{ storageTypesJson|e('html_attr') }}"
+             data-storage-map-place-id-value="{{ placeId }}">
             <div class="card-header bg-gray-50 px-4 py-3 border-b">
                 <div class="flex items-center justify-between">
                     <h2 class="font-semibold text-gray-900">Mapa skladu</h2>
@@ -168,6 +175,26 @@
                 <canvas data-storage-map-target="canvas" class="w-full rounded-lg"></canvas>
                 <div data-storage-map-target="tooltip" class="hidden absolute z-10 bg-white border border-gray-200 shadow-lg rounded-lg p-3 text-sm pointer-events-none max-w-xs"></div>
             </div>
+
+            {# Storage Selection Modal for Non-Uniform Types #}
+            <dialog data-storage-map-target="modal" class="modal">
+                <div class="modal-box max-w-md">
+                    <h3 class="font-bold text-lg" data-storage-map-target="modalTitle"></h3>
+                    <div class="py-4">
+                        <img data-storage-map-target="modalPhoto" class="hidden w-full h-48 object-cover rounded-lg mb-4">
+                        <div data-storage-map-target="modalDetails" class="space-y-2 text-gray-600"></div>
+                    </div>
+                    <div class="modal-action">
+                        <a data-storage-map-target="modalOrderBtn" href="#" class="btn btn-primary">Objednat</a>
+                        <form method="dialog">
+                            <button class="btn btn-ghost">Zavřít</button>
+                        </form>
+                    </div>
+                </div>
+                <form method="dialog" class="modal-backdrop">
+                    <button>close</button>
+                </form>
+            </dialog>
         </div>
     {% endif %}
 {% endblock %}

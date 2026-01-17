@@ -30,7 +30,7 @@ final readonly class ContractService
      *
      * @return string Path to the generated document
      */
-    public function generateDocument(Contract $contract, \DateTimeImmutable $now = new \DateTimeImmutable()): string
+    public function generateDocument(Contract $contract, \DateTimeImmutable $now): string
     {
         $documentPath = $this->documentGenerator->generate($contract, $this->contractTemplatePath);
         $contract->attachDocument($documentPath, $now);
@@ -41,7 +41,7 @@ final readonly class ContractService
     /**
      * Sign a contract.
      */
-    public function signContract(Contract $contract, \DateTimeImmutable $now = new \DateTimeImmutable()): void
+    public function signContract(Contract $contract, \DateTimeImmutable $now): void
     {
         if ($contract->isSigned()) {
             throw new \DomainException('Contract is already signed.');
@@ -54,7 +54,7 @@ final readonly class ContractService
     /**
      * Terminate a contract (for unlimited rentals or early termination).
      */
-    public function terminateContract(Contract $contract, \DateTimeImmutable $now = new \DateTimeImmutable()): void
+    public function terminateContract(Contract $contract, \DateTimeImmutable $now): void
     {
         if ($contract->isTerminated()) {
             throw new \DomainException('Contract is already terminated.');
@@ -86,7 +86,7 @@ final readonly class ContractService
      *
      * @return Contract[]
      */
-    public function findExpiringContracts(int $days, \DateTimeImmutable $now = new \DateTimeImmutable()): array
+    public function findExpiringContracts(int $days, \DateTimeImmutable $now): array
     {
         return $this->contractRepository->findExpiringWithinDays($days, $now);
     }
@@ -96,7 +96,7 @@ final readonly class ContractService
      *
      * @return Contract[]
      */
-    public function findContractsExpiringOnDay(int $daysFromNow, \DateTimeImmutable $now = new \DateTimeImmutable()): array
+    public function findContractsExpiringOnDay(int $daysFromNow, \DateTimeImmutable $now): array
     {
         $targetDate = $now->modify("+{$daysFromNow} days")->setTime(0, 0, 0);
         $nextDay = $targetDate->modify('+1 day');
@@ -125,7 +125,7 @@ final readonly class ContractService
     /**
      * Get days remaining until contract expires.
      */
-    public function getDaysRemaining(Contract $contract, \DateTimeImmutable $now = new \DateTimeImmutable()): ?int
+    public function getDaysRemaining(Contract $contract, \DateTimeImmutable $now): ?int
     {
         if (null === $contract->endDate) {
             return null; // Unlimited contract

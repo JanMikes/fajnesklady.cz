@@ -133,4 +133,66 @@ class UserRepository
             ->getQuery()
             ->getResult();
     }
+
+    /**
+     * Find landlords eligible for self-billing (landlords who are not admins).
+     *
+     * @return User[]
+     */
+    public function findLandlordsForSelfBilling(): array
+    {
+        $connection = $this->entityManager->getConnection();
+
+        // Find users who are landlords but NOT admins
+        $ids = $connection->executeQuery(
+            'SELECT id FROM users
+             WHERE roles::jsonb @> :landlordRole::jsonb
+             AND NOT (roles::jsonb @> :adminRole::jsonb)',
+            [
+                'landlordRole' => json_encode([UserRole::LANDLORD->value]),
+                'adminRole' => json_encode([UserRole::ADMIN->value]),
+            ],
+            [
+                'landlordRole' => \Doctrine\DBAL\Types\Types::STRING,
+                'adminRole' => \Doctrine\DBAL\Types\Types::STRING,
+            ]
+        )->fetchFirstColumn();
+
+        if (0 === count($ids)) {
+            return [];
+        }
+
+        return $this->entityManager->createQueryBuilder()
+            ->select('u')
+            ->from(User::class, 'u')
+            ->where('u.id IN (:ids)')
+            ->setParameter('ids', $ids)
+            ->orderBy('u.createdAt', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Generate next available self-billing prefix (P001, P002, ...).
+     */
+    public function getNextSelfBillingPrefix(): string
+    {
+        $connection = $this->entityManager->getConnection();
+
+        $result = $connection->executeQuery(
+            "SELECT self_billing_prefix FROM users
+             WHERE self_billing_prefix IS NOT NULL
+             ORDER BY self_billing_prefix DESC
+             LIMIT 1"
+        )->fetchOne();
+
+        if (false === $result || null === $result) {
+            return 'P001';
+        }
+
+        // Extract number from prefix (e.g., "P001" -> 1)
+        $number = (int) substr($result, 1);
+
+        return sprintf('P%03d', $number + 1);
+    }
 }

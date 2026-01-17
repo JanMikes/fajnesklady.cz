@@ -79,6 +79,7 @@ final class ContractFixtures extends Fixture implements DependentFixtureInterfac
         );
         $contractActive->sign($now->modify('-5 days'));
         $orderCompleted->complete($contractActiveId, $now->modify('-5 days'));
+        $orderCompleted->popEvents();
         $manager->persist($contractActive);
         $this->addReference(self::REF_CONTRACT_ACTIVE, $contractActive);
 
@@ -96,6 +97,7 @@ final class ContractFixtures extends Fixture implements DependentFixtureInterfac
         );
         $contractUnlimited->sign($now->modify('-34 days'));
         $orderUnlimited->complete($contractUnlimitedId, $now->modify('-34 days'));
+        $orderUnlimited->popEvents();
         $manager->persist($contractUnlimited);
         $this->addReference(self::REF_CONTRACT_UNLIMITED, $contractUnlimited);
 
@@ -113,6 +115,7 @@ final class ContractFixtures extends Fixture implements DependentFixtureInterfac
         );
         $contractExpiring7Days->sign($now->modify('-27 days'));
         $orderExpiringSoon->complete($contractExpiring7DaysId, $now->modify('-27 days'));
+        $orderExpiringSoon->popEvents();
         $manager->persist($contractExpiring7Days);
         $this->addReference(self::REF_CONTRACT_EXPIRING_7_DAYS, $contractExpiring7Days);
 
@@ -133,6 +136,7 @@ final class ContractFixtures extends Fixture implements DependentFixtureInterfac
         $terminatedOrder->reserve($now->modify('-67 days'));
         $terminatedOrder->markAwaitingPayment($now->modify('-66 days'));
         $terminatedOrder->markPaid($now->modify('-65 days'));
+        $terminatedOrder->popEvents();
         $manager->persist($terminatedOrder);
 
         $contractTerminatedId = Uuid::v7();
@@ -148,6 +152,7 @@ final class ContractFixtures extends Fixture implements DependentFixtureInterfac
         );
         $contractTerminated->sign($now->modify('-64 days'));
         $terminatedOrder->complete($contractTerminatedId, $now->modify('-64 days'));
+        $terminatedOrder->popEvents();
         $contractTerminated->terminate($now->modify('-30 days'));
         $manager->persist($contractTerminated);
         $this->addReference(self::REF_CONTRACT_TERMINATED, $contractTerminated);

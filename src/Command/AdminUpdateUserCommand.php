@@ -21,6 +21,8 @@ final readonly class AdminUpdateUserCommand
         public ?string $billingCity,
         public ?string $billingPostalCode,
         public UserRole $role,
+        public ?string $commissionRate = null,
+        public ?string $selfBillingPrefix = null,
     ) {
     }
 }

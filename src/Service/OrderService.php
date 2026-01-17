@@ -7,6 +7,7 @@ namespace App\Service;
 use App\Entity\Contract;
 use App\Entity\Order;
 use App\Entity\Place;
+use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\PaymentFrequency;
@@ -36,9 +37,10 @@ final readonly class OrderService
     }
 
     /**
-     * Create a new order with automatic storage assignment.
+     * Create a new order with automatic or pre-selected storage assignment.
      *
      * @throws NoStorageAvailable When no storage is available for the requested period
+     * @throws \InvalidArgumentException When pre-selected storage is invalid
      */
     public function createOrder(
         User $user,
@@ -47,20 +49,35 @@ final readonly class OrderService
         RentalType $rentalType,
         \DateTimeImmutable $startDate,
         ?\DateTimeImmutable $endDate,
+        \DateTimeImmutable $now,
         ?PaymentFrequency $paymentFrequency = null,
-        \DateTimeImmutable $now = new \DateTimeImmutable(),
+        ?Storage $preSelectedStorage = null,
     ): Order {
-        // Assign storage (throws NoStorageAvailable if none available)
-        $storage = $this->storageAssignment->assignStorage(
-            $storageType,
-            $place,
-            $startDate,
-            $endDate,
-            $user,
-        );
+        if (null !== $preSelectedStorage) {
+            // Validate pre-selected storage
+            if (!$preSelectedStorage->storageType->id->equals($storageType->id)) {
+                throw new \InvalidArgumentException('Pre-selected storage does not belong to the specified storage type.');
+            }
+            if (!$preSelectedStorage->place->id->equals($place->id)) {
+                throw new \InvalidArgumentException('Pre-selected storage does not belong to the specified place.');
+            }
+            if (!$preSelectedStorage->isAvailable()) {
+                throw NoStorageAvailable::forStorageType($storageType, $startDate, $endDate);
+            }
+            $storage = $preSelectedStorage;
+        } else {
+            // Assign storage automatically (throws NoStorageAvailable if none available)
+            $storage = $this->storageAssignment->assignStorage(
+                $storageType,
+                $place,
+                $startDate,
+                $endDate,
+                $user,
+            );
+        }
 
-        // Calculate price
-        $totalPrice = $this->priceCalculator->calculatePrice($storageType, $startDate, $endDate);
+        // Calculate price using storage's effective prices (may differ from type defaults)
+        $totalPrice = $this->priceCalculator->calculatePriceForStorage($storage, $startDate, $endDate);
 
         // Create order
         $order = new Order(

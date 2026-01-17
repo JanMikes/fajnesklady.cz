@@ -49,6 +49,11 @@ final class StorageFixtures extends Fixture implements DependentFixtureInterface
     public const REF_STANDARD_O1 = 'storage-standard-o1';
     public const REF_STANDARD_O2 = 'storage-standard-o2';
 
+    // Praha Centrum - Custom boxes (non-uniform with per-storage pricing)
+    public const REF_CUSTOM_X1 = 'storage-custom-x1';
+    public const REF_CUSTOM_X2 = 'storage-custom-x2';
+    public const REF_CUSTOM_X3 = 'storage-custom-x3';
+
     public function __construct(
         private ClockInterface $clock,
     ) {
@@ -93,6 +98,9 @@ final class StorageFixtures extends Fixture implements DependentFixtureInterface
 
         /** @var StorageType $standardType */
         $standardType = $this->getReference(StorageTypeFixtures::REF_STANDARD, StorageType::class);
+
+        /** @var StorageType $customType */
+        $customType = $this->getReference(StorageTypeFixtures::REF_CUSTOM, StorageType::class);
 
         // Small boxes A1-A5 in Praha Centrum (owned by landlord)
         $smallRefs = [self::REF_SMALL_A1, self::REF_SMALL_A2, self::REF_SMALL_A3, self::REF_SMALL_A4, self::REF_SMALL_A5];
@@ -204,6 +212,49 @@ final class StorageFixtures extends Fixture implements DependentFixtureInterface
             $manager->persist($storage);
             $this->addReference($ostravaRefs[$i - 1], $storage);
         }
+
+        // Custom boxes X1-X3 in Praha Centrum (non-uniform with per-storage pricing)
+        // X1 - Custom price: 350 CZK/week, 1200 CZK/month (lower than default)
+        $storageX1 = new Storage(
+            id: Uuid::v7(),
+            number: 'X1',
+            coordinates: ['x' => 700, 'y' => 50, 'width' => 250, 'height' => 220, 'rotation' => 0],
+            storageType: $customType,
+            place: $placePrahaCentrum,
+            createdAt: $now,
+            owner: $landlord,
+        );
+        $storageX1->updatePrices(35000, 120000, $now); // 350 CZK/week, 1200 CZK/month
+        $manager->persist($storageX1);
+        $this->addReference(self::REF_CUSTOM_X1, $storageX1);
+
+        // X2 - Custom price: 500 CZK/week, 1800 CZK/month (higher than default)
+        $storageX2 = new Storage(
+            id: Uuid::v7(),
+            number: 'X2',
+            coordinates: ['x' => 700, 'y' => 300, 'width' => 250, 'height' => 220, 'rotation' => 0],
+            storageType: $customType,
+            place: $placePrahaCentrum,
+            createdAt: $now,
+            owner: $landlord,
+        );
+        $storageX2->updatePrices(50000, 180000, $now); // 500 CZK/week, 1800 CZK/month
+        $manager->persist($storageX2);
+        $this->addReference(self::REF_CUSTOM_X2, $storageX2);
+
+        // X3 - Uses default storage type pricing (no custom price)
+        $storageX3 = new Storage(
+            id: Uuid::v7(),
+            number: 'X3',
+            coordinates: ['x' => 700, 'y' => 550, 'width' => 250, 'height' => 220, 'rotation' => 0],
+            storageType: $customType,
+            place: $placePrahaCentrum,
+            createdAt: $now,
+            owner: $landlord,
+        );
+        // No updatePrices call - uses default storage type prices (400 CZK/week, 1400 CZK/month)
+        $manager->persist($storageX3);
+        $this->addReference(self::REF_CUSTOM_X3, $storageX3);
 
         $manager->flush();
     }

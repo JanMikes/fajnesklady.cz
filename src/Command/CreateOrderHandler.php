@@ -27,8 +27,9 @@ final readonly class CreateOrderHandler
             rentalType: $command->rentalType,
             startDate: $command->startDate,
             endDate: $command->endDate,
-            paymentFrequency: $command->paymentFrequency,
             now: $this->clock->now(),
+            paymentFrequency: $command->paymentFrequency,
+            preSelectedStorage: $command->preSelectedStorage,
         );
     }
 }

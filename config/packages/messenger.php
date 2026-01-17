@@ -41,6 +41,7 @@ return App::config([
                         'allow_no_handlers' => true,
                     ],
                     'middleware' => [
+                        'doctrine_transaction',
                         'validation',
                     ],
                 ],

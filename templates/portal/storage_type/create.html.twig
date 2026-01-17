@@ -85,6 +85,15 @@
                     </div>
 
                     <div class="mb-4">
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            {{ form_widget(form.uniformStorages, {'attr': {'class': 'checkbox checkbox-primary'}}) }}
+                            <span class="text-sm font-semibold text-gray-700">Všechna úložiště budou stejná</span>
+                        </label>
+                        <p class="text-xs text-gray-500 mt-1 ml-8">Nebude se zobrazovat mapa pro výběr konkrétního místa a budou mít jednotnou cenu</p>
+                        {{ form_errors(form.uniformStorages) }}
+                    </div>
+
+                    <div class="mb-4">
                         <label for="{{ form.photos.vars.id }}" class="block text-sm font-semibold text-gray-700 mb-2">Fotografie</label>
                         {{ form_widget(form.photos, {'attr': {'class': 'file-input file-input-bordered w-full'}}) }}
                         <p class="text-xs text-gray-500 mt-1">Nahrajte fotografie skladu (JPEG, PNG, WebP, max 5 MB každá)</p>

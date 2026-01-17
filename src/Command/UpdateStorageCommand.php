@@ -15,6 +15,11 @@ final readonly class UpdateStorageCommand
         public Uuid $storageId,
         public string $number,
         public array $coordinates,
+        public ?int $pricePerWeek = null,
+        public ?int $pricePerMonth = null,
+        public bool $updatePrices = false,
+        public ?string $commissionRate = null,
+        public bool $updateCommissionRate = false,
     ) {
     }
 }

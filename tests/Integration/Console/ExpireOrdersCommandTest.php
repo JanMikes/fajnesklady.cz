@@ -65,7 +65,6 @@ class ExpireOrdersCommandTest extends KernelTestCase
             RentalType::LIMITED,
             $startDate,
             $endDate,
-            null,
             $pastDate,
         );
 
@@ -76,7 +75,6 @@ class ExpireOrdersCommandTest extends KernelTestCase
             RentalType::LIMITED,
             $startDate,
             $endDate,
-            null,
             $pastDate,
         );
 

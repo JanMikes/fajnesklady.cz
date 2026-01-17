@@ -50,6 +50,11 @@ return App::config([
                 '$invoicesDirectory' => '%kernel.project_dir%/var/invoices',
             ],
         ],
+        'App\\Service\\SelfBillingService' => [
+            'arguments' => [
+                '$selfBillingInvoicesDirectory' => '%kernel.project_dir%/var/self_billing_invoices',
+            ],
+        ],
         'fakturoid.psr18_client' => [
             'class' => 'Symfony\\Component\\HttpClient\\Psr18Client',
         ],

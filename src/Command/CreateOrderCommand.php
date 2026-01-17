@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Command;
 
 use App\Entity\Place;
+use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\PaymentFrequency;
@@ -23,6 +24,7 @@ final readonly class CreateOrderCommand
         public \DateTimeImmutable $startDate,
         public ?\DateTimeImmutable $endDate,
         public ?PaymentFrequency $paymentFrequency = null,
+        public ?Storage $preSelectedStorage = null,
     ) {
     }
 }

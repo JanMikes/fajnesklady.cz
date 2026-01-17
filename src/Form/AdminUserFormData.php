@@ -43,6 +43,15 @@ final class AdminUserFormData
 
     public UserRole $role = UserRole::USER;
 
+    /** Commission rate as percentage (0-100), e.g., 90 for 90% */
+    #[Assert\Range(min: 0, max: 100, notInRangeMessage: 'Provize musi byt mezi 0 a 100%')]
+    public ?float $commissionRate = null;
+
+    /** Self-billing invoice prefix for landlords (e.g., P001) */
+    #[Assert\Length(max: 10, maxMessage: 'Prefix muze mit maximalne {{ limit }} znaku')]
+    #[Assert\Regex(pattern: '/^[A-Z]\d{3}$/', message: 'Prefix musi byt ve formatu P001, P002, ...')]
+    public ?string $selfBillingPrefix = null;
+
     public static function fromUser(User $user): self
     {
         $formData = new self();
@@ -66,6 +75,13 @@ final class AdminUserFormData
         } else {
             $formData->role = UserRole::USER;
         }
+
+        // Self-billing settings (for landlords)
+        // Cast through float to ensure numeric-string for bcmul
+        $formData->commissionRate = null !== $user->commissionRate
+            ? (float) bcmul((string) (float) $user->commissionRate, '100', 0)
+            : null;
+        $formData->selfBillingPrefix = $user->selfBillingPrefix;
 
         return $formData;
     }

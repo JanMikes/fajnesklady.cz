@@ -7,6 +7,7 @@ namespace App\Controller\Portal\User;
 use App\Entity\User;
 use App\Repository\ContractRepository;
 use App\Service\ContractService;
+use Psr\Clock\ClockInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
@@ -22,6 +23,7 @@ final class ContractDetailController extends AbstractController
     public function __construct(
         private readonly ContractRepository $contractRepository,
         private readonly ContractService $contractService,
+        private readonly ClockInterface $clock,
     ) {
     }
 
@@ -44,7 +46,7 @@ final class ContractDetailController extends AbstractController
             throw new AccessDeniedHttpException('Nemáte přístup k této smlouvě.');
         }
 
-        $now = new \DateTimeImmutable();
+        $now = $this->clock->now();
         $daysRemaining = $this->contractService->getDaysRemaining($contract, $now);
 
         return $this->render('portal/user/contract/detail.html.twig', [

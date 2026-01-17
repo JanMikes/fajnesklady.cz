@@ -35,6 +35,11 @@ final class UserEditController extends AbstractController
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
+            // Convert percentage to decimal for commission rate
+            $commissionRate = null !== $formData->commissionRate
+                ? bcdiv((string) $formData->commissionRate, '100', 2)
+                : null;
+
             $this->commandBus->dispatch(new AdminUpdateUserCommand(
                 userId: $user->id,
                 firstName: $formData->firstName,
@@ -47,6 +52,8 @@ final class UserEditController extends AbstractController
                 billingCity: $formData->billingCity,
                 billingPostalCode: $formData->billingPostalCode,
                 role: $formData->role,
+                commissionRate: $commissionRate,
+                selfBillingPrefix: $formData->selfBillingPrefix,
             ));
 
             $this->addFlash('success', 'Údaje uživatele byly aktualizovány.');

@@ -1,0 +1,95 @@
+{% extends 'portal/layout.html.twig' %}
+
+{% block title %}Samofakturace - Portal{% endblock %}
+
+{% block content %}
+    <div class="flex items-center justify-between mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">Samofakturace</h1>
+    </div>
+
+    {% if invoices|length > 0 %}
+        <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Obdobi
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Cislo faktury
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Hruba castka
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Provize
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            K vyplaceni
+                        </th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Vystaveno
+                        </th>
+                        <th scope="col" class="relative px-6 py-3">
+                            <span class="sr-only">Akce</span>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for invoice in invoices %}
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm font-medium text-gray-900">
+                                    {{ invoice.getPeriodFormatted() }}
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-gray-900 font-mono">
+                                    {{ invoice.invoiceNumber }}
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{ invoice.getGrossAmountInCzk()|number_format(2, ',', ' ') }} Kc
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{ (invoice.commissionRate * 100)|number_format(0) }}%
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="text-sm font-medium text-green-600">
+                                    {{ invoice.getNetAmountInCzk()|number_format(2, ',', ' ') }} Kc
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {{ invoice.issuedAt|date('d.m.Y') }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <div class="flex items-center justify-end gap-3">
+                                    <a href="{{ path('portal_landlord_self_billing_detail', {id: invoice.id}) }}" class="link">
+                                        Detail
+                                    </a>
+                                    {% if invoice.hasPdf() %}
+                                        <a href="{{ path('portal_landlord_self_billing_pdf', {id: invoice.id}) }}" class="link">
+                                            PDF
+                                        </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="bg-white overflow-hidden shadow rounded-lg">
+            <div class="p-6 text-center">
+                <svg class="mx-auto h-8 w-8 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <h3 class="mt-2 text-sm font-medium text-gray-900">Zadne faktury</h3>
+                <p class="mt-1 text-sm text-gray-500">
+                    Zatim nemame zadne samofakturacni doklady k zobrazeni.
+                </p>
+            </div>
+        </div>
+    {% endif %}
+{% endblock %}

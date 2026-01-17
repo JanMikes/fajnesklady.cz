@@ -51,6 +51,7 @@ final class UserFixtures extends Fixture
         );
         $user->changePassword($this->passwordHasher->hashPassword($user, 'password'), $now);
         $user->markAsVerified($now);
+        $user->popEvents();
         $manager->persist($user);
         $this->addReference(self::REF_USER, $user);
 
@@ -65,6 +66,7 @@ final class UserFixtures extends Fixture
         );
         $unverified->changePassword($this->passwordHasher->hashPassword($unverified, 'password'), $now);
         // Don't mark as verified
+        $unverified->popEvents();
         $manager->persist($unverified);
         $this->addReference(self::REF_UNVERIFIED, $unverified);
 
@@ -81,6 +83,7 @@ final class UserFixtures extends Fixture
         $landlord->markAsVerified($now);
         $landlord->changeRole(UserRole::LANDLORD, $now);
         $landlord->updateProfile('Marie', 'Skladova', '+420777123456', $now);
+        $landlord->popEvents();
         $manager->persist($landlord);
         $this->addReference(self::REF_LANDLORD, $landlord);
 
@@ -96,6 +99,7 @@ final class UserFixtures extends Fixture
         $landlord2->changePassword($this->passwordHasher->hashPassword($landlord2, 'password'), $now);
         $landlord2->markAsVerified($now);
         $landlord2->changeRole(UserRole::LANDLORD, $now);
+        $landlord2->popEvents();
         $manager->persist($landlord2);
         $this->addReference(self::REF_LANDLORD2, $landlord2);
 
@@ -110,6 +114,7 @@ final class UserFixtures extends Fixture
         );
         $tenant->changePassword($this->passwordHasher->hashPassword($tenant, 'password'), $now);
         $tenant->markAsVerified($now);
+        $tenant->popEvents();
         $manager->persist($tenant);
         $this->addReference(self::REF_TENANT, $tenant);
 
@@ -125,6 +130,7 @@ final class UserFixtures extends Fixture
         $admin->changePassword($this->passwordHasher->hashPassword($admin, 'password'), $now);
         $admin->markAsVerified($now);
         $admin->changeRole(UserRole::ADMIN, $now);
+        $admin->popEvents();
         $manager->persist($admin);
         $this->addReference(self::REF_ADMIN, $admin);
 

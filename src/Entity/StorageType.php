@@ -23,6 +23,9 @@ class StorageType
     #[ORM\Column]
     public private(set) bool $isActive = true;
 
+    #[ORM\Column]
+    public private(set) bool $uniformStorages = true;
+
     #[ORM\Column(nullable: true)]
     public private(set) ?int $outerWidth = null;
 
@@ -55,12 +58,14 @@ class StorageType
         private(set) int $defaultPricePerMonth,
         #[ORM\Column]
         private(set) \DateTimeImmutable $createdAt,
+        bool $uniformStorages = true,
         ?int $outerWidth = null,
         ?int $outerHeight = null,
         ?int $outerLength = null,
     ) {
         $this->updatedAt = $createdAt;
         $this->photos = new ArrayCollection();
+        $this->uniformStorages = $uniformStorages;
         $this->outerWidth = $outerWidth;
         $this->outerHeight = $outerHeight;
         $this->outerLength = $outerLength;
@@ -146,6 +151,7 @@ class StorageType
         int $defaultPricePerWeek,
         int $defaultPricePerMonth,
         ?string $description,
+        bool $uniformStorages,
         \DateTimeImmutable $now,
     ): void {
         $this->name = $name;
@@ -158,6 +164,7 @@ class StorageType
         $this->defaultPricePerWeek = $defaultPricePerWeek;
         $this->defaultPricePerMonth = $defaultPricePerMonth;
         $this->description = $description;
+        $this->uniformStorages = $uniformStorages;
         $this->updatedAt = $now;
     }
 

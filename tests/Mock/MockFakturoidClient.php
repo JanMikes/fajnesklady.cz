@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Mock;
 
 use App\Entity\Order;
+use App\Entity\SelfBillingInvoice;
 use App\Entity\User;
 use App\Service\Fakturoid\FakturoidClient;
 use App\Value\FakturoidInvoice;
@@ -52,6 +53,20 @@ final class MockFakturoidClient implements FakturoidClient
     public function downloadInvoicePdf(int $invoiceId): string
     {
         return $this->pdfContent;
+    }
+
+    public function createSelfBillingInvoice(int $subjectId, SelfBillingInvoice $selfBillingInvoice): FakturoidInvoice
+    {
+        $invoiceId = $this->nextInvoiceId++;
+        $invoice = new FakturoidInvoice(
+            id: $invoiceId,
+            number: $selfBillingInvoice->invoiceNumber,
+            total: $selfBillingInvoice->netAmount,
+        );
+
+        $this->createdInvoices[$invoice->id] = $invoice;
+
+        return $invoice;
     }
 
     public function willReturnPdf(string $content): void

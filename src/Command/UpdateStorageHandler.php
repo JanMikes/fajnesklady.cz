@@ -21,12 +21,28 @@ final readonly class UpdateStorageHandler
     public function __invoke(UpdateStorageCommand $command): Storage
     {
         $storage = $this->storageRepository->get($command->storageId);
+        $now = $this->clock->now();
 
         $storage->updateDetails(
             number: $command->number,
             coordinates: $command->coordinates,
-            now: $this->clock->now(),
+            now: $now,
         );
+
+        if ($command->updatePrices) {
+            $storage->updatePrices(
+                pricePerWeek: $command->pricePerWeek,
+                pricePerMonth: $command->pricePerMonth,
+                now: $now,
+            );
+        }
+
+        if ($command->updateCommissionRate) {
+            $storage->updateCommissionRate(
+                commissionRate: $command->commissionRate,
+                now: $now,
+            );
+        }
 
         $this->storageRepository->save($storage);
 

@@ -6,6 +6,7 @@ namespace App\Console;
 
 use App\Event\ContractExpiringSoon;
 use App\Service\ContractService;
+use Psr\Clock\ClockInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -35,6 +36,7 @@ final class SendExpirationRemindersCommand extends Command
         private readonly ContractService $contractService,
         #[Autowire(service: 'event.bus')]
         private readonly MessageBusInterface $eventBus,
+        private readonly ClockInterface $clock,
     ) {
         parent::__construct();
     }
@@ -42,7 +44,7 @@ final class SendExpirationRemindersCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
-        $now = new \DateTimeImmutable();
+        $now = $this->clock->now();
         $totalReminders = 0;
 
         foreach (self::REMINDER_DAYS as $days) {

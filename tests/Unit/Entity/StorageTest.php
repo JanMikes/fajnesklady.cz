@@ -254,4 +254,127 @@ class StorageTest extends TestCase
 
         $this->assertFalse($storage->isOwnedBy($user));
     }
+
+    public function testGetEffectivePricePerWeekReturnsStorageTypePriceWhenNoCustomPrice(): void
+    {
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType(); // 10000 halíře per week
+        $storage = $this->createStorage($storageType, $place);
+
+        $this->assertSame(10000, $storage->getEffectivePricePerWeek());
+    }
+
+    public function testGetEffectivePricePerWeekReturnsCustomPriceWhenSet(): void
+    {
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType(); // 10000 halíře per week
+        $storage = $this->createStorage($storageType, $place);
+
+        $storage->updatePrices(15000, 50000, new \DateTimeImmutable());
+
+        $this->assertSame(15000, $storage->getEffectivePricePerWeek());
+    }
+
+    public function testGetEffectivePricePerMonthReturnsStorageTypePriceWhenNoCustomPrice(): void
+    {
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType(); // 35000 halíře per month
+        $storage = $this->createStorage($storageType, $place);
+
+        $this->assertSame(35000, $storage->getEffectivePricePerMonth());
+    }
+
+    public function testGetEffectivePricePerMonthReturnsCustomPriceWhenSet(): void
+    {
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType(); // 35000 halíře per month
+        $storage = $this->createStorage($storageType, $place);
+
+        $storage->updatePrices(15000, 50000, new \DateTimeImmutable());
+
+        $this->assertSame(50000, $storage->getEffectivePricePerMonth());
+    }
+
+    public function testUpdatePrices(): void
+    {
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage = $this->createStorage($storageType, $place);
+        $now = new \DateTimeImmutable();
+
+        $this->assertNull($storage->pricePerWeek);
+        $this->assertNull($storage->pricePerMonth);
+
+        $storage->updatePrices(12000, 40000, $now);
+
+        $this->assertSame(12000, $storage->pricePerWeek);
+        $this->assertSame(40000, $storage->pricePerMonth);
+        $this->assertSame($now, $storage->updatedAt);
+    }
+
+    public function testUpdatePricesToNull(): void
+    {
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage = $this->createStorage($storageType, $place);
+        $now = new \DateTimeImmutable();
+
+        $storage->updatePrices(12000, 40000, $now);
+        $this->assertSame(12000, $storage->pricePerWeek);
+        $this->assertSame(40000, $storage->pricePerMonth);
+
+        $storage->updatePrices(null, null, $now);
+
+        $this->assertNull($storage->pricePerWeek);
+        $this->assertNull($storage->pricePerMonth);
+    }
+
+    public function testHasCustomPricesReturnsFalseWhenNoCustomPrices(): void
+    {
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage = $this->createStorage($storageType, $place);
+
+        $this->assertFalse($storage->hasCustomPrices());
+    }
+
+    public function testHasCustomPricesReturnsTrueWhenCustomPricesSet(): void
+    {
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage = $this->createStorage($storageType, $place);
+
+        $storage->updatePrices(12000, 40000, new \DateTimeImmutable());
+
+        $this->assertTrue($storage->hasCustomPrices());
+    }
+
+    public function testHasCustomPricesReturnsTrueWhenOnlyWeeklyPriceSet(): void
+    {
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage = $this->createStorage($storageType, $place);
+
+        $storage->updatePrices(12000, null, new \DateTimeImmutable());
+
+        $this->assertTrue($storage->hasCustomPrices());
+    }
+
+    public function testGetEffectivePricePerWeekInCzk(): void
+    {
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType(); // 10000 halíře = 100 CZK
+        $storage = $this->createStorage($storageType, $place);
+
+        $this->assertSame(100.0, $storage->getEffectivePricePerWeekInCzk());
+    }
+
+    public function testGetEffectivePricePerMonthInCzk(): void
+    {
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType(); // 35000 halíře = 350 CZK
+        $storage = $this->createStorage($storageType, $place);
+
+        $this->assertSame(350.0, $storage->getEffectivePricePerMonthInCzk());
+    }
 }

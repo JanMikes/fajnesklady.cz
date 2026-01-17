@@ -14,6 +14,7 @@ use App\Enum\OrderStatus;
 use App\Enum\RentalType;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ManagerRegistry;
+use Psr\Clock\ClockInterface;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Console\Tester\CommandTester;
@@ -23,6 +24,7 @@ class SendExpirationRemindersCommandTest extends KernelTestCase
 {
     private EntityManagerInterface $entityManager;
     private Application $application;
+    private ClockInterface $clock;
 
     protected function setUp(): void
     {
@@ -33,12 +35,16 @@ class SendExpirationRemindersCommandTest extends KernelTestCase
         $doctrine = $container->get('doctrine');
         $this->entityManager = $doctrine->getManager();
 
+        /** @var ClockInterface $clock */
+        $clock = $container->get(ClockInterface::class);
+        $this->clock = $clock;
+
         $this->application = new Application(self::$kernel);
     }
 
     private function createUser(string $email): User
     {
-        $user = new User(Uuid::v7(), $email, 'password', 'Test', 'User', new \DateTimeImmutable());
+        $user = new User(Uuid::v7(), $email, 'password', 'Test', 'User', $this->clock->now());
         $this->entityManager->persist($user);
 
         return $user;
@@ -53,7 +59,7 @@ class SendExpirationRemindersCommandTest extends KernelTestCase
             city: 'Praha',
             postalCode: '110 00',
             description: null,
-            createdAt: new \DateTimeImmutable(),
+            createdAt: $this->clock->now(),
         );
         $this->entityManager->persist($place);
 
@@ -70,7 +76,7 @@ class SendExpirationRemindersCommandTest extends KernelTestCase
             innerLength: 100,
             defaultPricePerWeek: 10000,
             defaultPricePerMonth: 35000,
-            createdAt: new \DateTimeImmutable(),
+            createdAt: $this->clock->now(),
         );
         $this->entityManager->persist($storageType);
 
@@ -85,7 +91,7 @@ class SendExpirationRemindersCommandTest extends KernelTestCase
             coordinates: ['x' => 0, 'y' => 0, 'width' => 100, 'height' => 100, 'rotation' => 0],
             storageType: $storageType,
             place: $place,
-            createdAt: new \DateTimeImmutable(),
+            createdAt: $this->clock->now(),
         );
         $this->entityManager->persist($storage);
 
@@ -94,7 +100,7 @@ class SendExpirationRemindersCommandTest extends KernelTestCase
 
     private function createCompletedOrder(User $user, Storage $storage, \DateTimeImmutable $endDate): Order
     {
-        $now = new \DateTimeImmutable();
+        $now = $this->clock->now();
         $order = new Order(
             id: Uuid::v7(),
             user: $user,
@@ -132,7 +138,7 @@ class SendExpirationRemindersCommandTest extends KernelTestCase
             rentalType: $order->rentalType,
             startDate: $order->startDate,
             endDate: $order->endDate,
-            createdAt: new \DateTimeImmutable(),
+            createdAt: $this->clock->now(),
         );
         $this->entityManager->persist($contract);
 
@@ -141,6 +147,7 @@ class SendExpirationRemindersCommandTest extends KernelTestCase
 
     public function testSendsRemindersForContractsExpiringSoon(): void
     {
+        $now = $this->clock->now();
         $tenant = $this->createUser('tenant-reminder@test.com');
         $place = $this->createPlace();
         $storageType = $this->createStorageType();
@@ -148,12 +155,12 @@ class SendExpirationRemindersCommandTest extends KernelTestCase
         $storage2 = $this->createStorage($storageType, $place, 'REM2');
 
         // Contract expiring in 7 days
-        $sevenDaysFromNow = (new \DateTimeImmutable())->modify('+7 days')->setTime(12, 0, 0);
+        $sevenDaysFromNow = $now->modify('+7 days')->setTime(12, 0, 0);
         $order1 = $this->createCompletedOrder($tenant, $storage1, $sevenDaysFromNow);
         $this->createContract($order1);
 
         // Contract expiring in 1 day
-        $oneDayFromNow = (new \DateTimeImmutable())->modify('+1 day')->setTime(12, 0, 0);
+        $oneDayFromNow = $now->modify('+1 day')->setTime(12, 0, 0);
         $order2 = $this->createCompletedOrder($tenant, $storage2, $oneDayFromNow);
         $this->createContract($order2);
 
@@ -167,19 +174,32 @@ class SendExpirationRemindersCommandTest extends KernelTestCase
         $commandTester->assertCommandIsSuccessful();
         $output = $commandTester->getDisplay();
 
-        // Should have sent 2 reminders (one for 7-day, one for 1-day)
-        $this->assertStringContainsString('Sent 2 expiration reminder(s)', $output);
+        // Should have sent 3 reminders: 2 for 7-day (including fixture contract), 1 for 1-day
+        $this->assertStringContainsString('Sent 3 expiration reminder(s)', $output);
     }
 
     public function testNoRemindersWhenNoContractsExpiringSoon(): void
     {
+        $now = $this->clock->now();
+
+        // Remove fixture contracts that would interfere with this test
+        $this->entityManager->createQueryBuilder()
+            ->delete(Contract::class, 'c')
+            ->where('c.endDate IS NOT NULL')
+            ->andWhere('c.endDate > :now')
+            ->andWhere('c.endDate <= :maxDate')
+            ->setParameter('now', $now)
+            ->setParameter('maxDate', $now->modify('+7 days'))
+            ->getQuery()
+            ->execute();
+
         // Create contract that expires in 30 days (not 7 or 1)
         $tenant = $this->createUser('tenant-noreminder@test.com');
         $place = $this->createPlace();
         $storageType = $this->createStorageType();
         $storage = $this->createStorage($storageType, $place, 'NOREM1');
 
-        $thirtyDaysFromNow = (new \DateTimeImmutable())->modify('+30 days')->setTime(12, 0, 0);
+        $thirtyDaysFromNow = $now->modify('+30 days')->setTime(12, 0, 0);
         $order = $this->createCompletedOrder($tenant, $storage, $thirtyDaysFromNow);
         $this->createContract($order);
 
@@ -196,13 +216,25 @@ class SendExpirationRemindersCommandTest extends KernelTestCase
 
     public function testSkipsUnlimitedContracts(): void
     {
+        $now = $this->clock->now();
+
+        // Remove fixture contracts that would interfere with this test
+        $this->entityManager->createQueryBuilder()
+            ->delete(Contract::class, 'c')
+            ->where('c.endDate IS NOT NULL')
+            ->andWhere('c.endDate > :now')
+            ->andWhere('c.endDate <= :maxDate')
+            ->setParameter('now', $now)
+            ->setParameter('maxDate', $now->modify('+7 days'))
+            ->getQuery()
+            ->execute();
+
         $tenant = $this->createUser('tenant-unlimited@test.com');
         $place = $this->createPlace();
         $storageType = $this->createStorageType();
         $storage = $this->createStorage($storageType, $place, 'UNLIM1');
 
         // Create order with no end date (unlimited)
-        $now = new \DateTimeImmutable();
         $order = new Order(
             id: Uuid::v7(),
             user: $tenant,
@@ -235,7 +267,7 @@ class SendExpirationRemindersCommandTest extends KernelTestCase
             rentalType: $order->rentalType,
             startDate: $order->startDate,
             endDate: null, // Unlimited
-            createdAt: new \DateTimeImmutable(),
+            createdAt: $now,
         );
         $this->entityManager->persist($contract);
         $this->entityManager->flush();

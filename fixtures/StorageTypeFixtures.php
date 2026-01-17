@@ -18,6 +18,7 @@ final class StorageTypeFixtures extends Fixture
     public const REF_LARGE = 'storage-type-large';
     public const REF_PREMIUM = 'storage-type-premium';
     public const REF_STANDARD = 'storage-type-standard';
+    public const REF_CUSTOM = 'storage-type-custom'; // Non-uniform type with per-storage pricing
 
     // Keep old references for backward compatibility in tests
     public const REF_SMALL_CENTRUM = self::REF_SMALL;
@@ -111,6 +112,24 @@ final class StorageTypeFixtures extends Fixture
         );
         $manager->persist($standardBox);
         $this->addReference(self::REF_STANDARD, $standardBox);
+
+        // Non-uniform storage type - each storage has unique pricing
+        $customBox = new StorageType(
+            id: Uuid::v7(),
+            name: 'Custom box',
+            innerWidth: 250,
+            innerHeight: 220,
+            innerLength: 300,
+            defaultPricePerWeek: 40000,   // 400 CZK (default)
+            defaultPricePerMonth: 140000, // 1400 CZK (default)
+            createdAt: $now,
+            uniformStorages: false, // Non-uniform - allows per-storage pricing
+            outerWidth: 260,
+            outerHeight: 230,
+            outerLength: 310,
+        );
+        $manager->persist($customBox);
+        $this->addReference(self::REF_CUSTOM, $customBox);
 
         $manager->flush();
     }

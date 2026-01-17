@@ -41,6 +41,10 @@ final readonly class AdminUpdateUserHandler
 
         $user->changeRole($command->role, $now);
 
+        // Update self-billing settings (for landlords)
+        $user->updateCommissionRate($command->commissionRate, $now);
+        $user->setSelfBillingPrefix($command->selfBillingPrefix, $now);
+
         $this->userRepository->save($user);
     }
 }

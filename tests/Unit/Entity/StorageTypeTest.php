@@ -181,6 +181,7 @@ class StorageTypeTest extends TestCase
             defaultPricePerWeek: 20000,
             defaultPricePerMonth: 60000,
             description: 'Test description',
+            uniformStorages: true,
             now: $updatedAt,
         );
 
@@ -194,6 +195,7 @@ class StorageTypeTest extends TestCase
         $this->assertSame(20000, $storageType->defaultPricePerWeek);
         $this->assertSame(60000, $storageType->defaultPricePerMonth);
         $this->assertSame('Test description', $storageType->description);
+        $this->assertTrue($storageType->uniformStorages);
         $this->assertSame($createdAt, $storageType->createdAt);
         $this->assertSame($updatedAt, $storageType->updatedAt);
     }
@@ -225,6 +227,7 @@ class StorageTypeTest extends TestCase
             defaultPricePerWeek: 10000,
             defaultPricePerMonth: 30000,
             description: null,
+            uniformStorages: true,
             now: $updatedAt,
         );
 
@@ -253,5 +256,76 @@ class StorageTypeTest extends TestCase
 
         $storageType->activate(new \DateTimeImmutable('2024-01-01 12:00:00'));
         $this->assertTrue($storageType->isActive);
+    }
+
+    public function testUniformStoragesDefaultsToTrue(): void
+    {
+        $storageType = new StorageType(
+            id: Uuid::v7(),
+            name: 'Test',
+            innerWidth: 100,
+            innerHeight: 100,
+            innerLength: 100,
+            defaultPricePerWeek: 10000,
+            defaultPricePerMonth: 30000,
+            createdAt: new \DateTimeImmutable(),
+        );
+
+        $this->assertTrue($storageType->uniformStorages);
+    }
+
+    public function testUniformStoragesCanBeSetToFalse(): void
+    {
+        $storageType = new StorageType(
+            id: Uuid::v7(),
+            name: 'Non-Uniform Storage',
+            innerWidth: 100,
+            innerHeight: 100,
+            innerLength: 100,
+            defaultPricePerWeek: 10000,
+            defaultPricePerMonth: 30000,
+            createdAt: new \DateTimeImmutable(),
+            uniformStorages: false,
+        );
+
+        $this->assertFalse($storageType->uniformStorages);
+    }
+
+    public function testUpdateDetailsUpdatesUniformStorages(): void
+    {
+        $createdAt = new \DateTimeImmutable('2024-01-01 10:00:00');
+        $updatedAt = new \DateTimeImmutable('2024-01-01 11:00:00');
+
+        $storageType = new StorageType(
+            id: Uuid::v7(),
+            name: 'Test',
+            innerWidth: 100,
+            innerHeight: 100,
+            innerLength: 100,
+            defaultPricePerWeek: 10000,
+            defaultPricePerMonth: 30000,
+            createdAt: $createdAt,
+            uniformStorages: true,
+        );
+
+        $this->assertTrue($storageType->uniformStorages);
+
+        $storageType->updateDetails(
+            name: 'Updated',
+            innerWidth: 100,
+            innerHeight: 100,
+            innerLength: 100,
+            outerWidth: null,
+            outerHeight: null,
+            outerLength: null,
+            defaultPricePerWeek: 10000,
+            defaultPricePerMonth: 30000,
+            description: null,
+            uniformStorages: false,
+            now: $updatedAt,
+        );
+
+        $this->assertFalse($storageType->uniformStorages);
+        $this->assertSame($updatedAt, $storageType->updatedAt);
     }
 }

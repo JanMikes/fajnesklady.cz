@@ -11,6 +11,7 @@ use App\Entity\Storage;
 use App\Entity\User;
 use App\Repository\AuditLogRepository;
 use App\Service\Identity\ProvideIdentity;
+use Psr\Clock\ClockInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\RequestStack;
 
@@ -29,6 +30,7 @@ final readonly class AuditLogger
         private ProvideIdentity $identityProvider,
         private Security $security,
         private RequestStack $requestStack,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -251,7 +253,7 @@ final readonly class AuditLogger
             payload: $payload,
             user: $this->getCurrentUser(),
             ipAddress: $this->getClientIp(),
-            createdAt: new \DateTimeImmutable(),
+            createdAt: $this->clock->now(),
         );
 
         $this->auditLogRepository->save($auditLog);

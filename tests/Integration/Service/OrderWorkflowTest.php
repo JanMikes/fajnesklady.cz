@@ -50,6 +50,7 @@ class OrderWorkflowTest extends KernelTestCase
             RentalType::LIMITED,
             $startDate,
             $endDate,
+            $now,
         );
 
         $this->assertSame(OrderStatus::RESERVED, $order->status);
@@ -71,7 +72,6 @@ class OrderWorkflowTest extends KernelTestCase
             RentalType::LIMITED,
             $startDate,
             $endDate,
-            null,
             $now,
         );
 
@@ -108,7 +108,6 @@ class OrderWorkflowTest extends KernelTestCase
             RentalType::LIMITED,
             $startDate,
             $endDate,
-            null,
             $pastDate,
         );
 
@@ -119,7 +118,6 @@ class OrderWorkflowTest extends KernelTestCase
             RentalType::LIMITED,
             $startDate,
             $endDate,
-            null,
             $pastDate,
         );
 
@@ -149,6 +147,7 @@ class OrderWorkflowTest extends KernelTestCase
             RentalType::LIMITED,
             $startDate,
             $endDate,
+            $now,
         );
 
         $this->assertSame(StorageStatus::RESERVED, $order->storage->status);
@@ -175,6 +174,7 @@ class OrderWorkflowTest extends KernelTestCase
             RentalType::LIMITED,
             $startDate,
             $endDate,
+            $now,
         );
 
         // Process payment
@@ -215,6 +215,7 @@ class OrderWorkflowTest extends KernelTestCase
             RentalType::LIMITED,
             $startDate,
             $endDate,
+            $now,
         );
 
         // Try to complete without payment - should throw
@@ -238,6 +239,7 @@ class OrderWorkflowTest extends KernelTestCase
             RentalType::LIMITED,
             $startDate,
             $endDate,
+            $now,
         );
 
         // Pay and complete
@@ -265,6 +267,7 @@ class OrderWorkflowTest extends KernelTestCase
             RentalType::LIMITED,
             $startDate,
             $endDate,
+            $now,
         );
 
         // Cancel first
@@ -290,6 +293,7 @@ class OrderWorkflowTest extends KernelTestCase
             RentalType::UNLIMITED,
             $startDate,
             null, // No end date for unlimited
+            $now,
         );
 
         $this->assertTrue($order->isUnlimited());
@@ -302,6 +306,8 @@ class OrderWorkflowTest extends KernelTestCase
     {
         [$tenant, $storageType, $place] = $this->getFixtures();
 
+        $now = $this->clock->now();
+
         // 7 days = 1 week
         $order = $this->orderService->createOrder(
             $tenant,
@@ -310,6 +316,7 @@ class OrderWorkflowTest extends KernelTestCase
             RentalType::LIMITED,
             new \DateTimeImmutable('2024-01-01'),
             new \DateTimeImmutable('2024-01-08'),
+            $now,
         );
 
         // Maly box has pricePerWeek = 150 CZK = 15000 halere

@@ -7,31 +7,35 @@ namespace App\Controller\Public;
 use App\Command\CreateOrderCommand;
 use App\Command\GetOrCreateUserByEmailCommand;
 use App\Entity\Order;
+use App\Entity\Storage;
 use App\Entity\User;
 use App\Form\OrderFormData;
 use App\Form\OrderFormType;
 use App\Repository\PlaceRepository;
+use App\Repository\StorageRepository;
 use App\Repository\StorageTypeRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Messenger\Stamp\HandledStamp;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Uid\Uuid;
 
-#[Route('/objednavka/{placeId}/{storageTypeId}', name: 'public_order_create', requirements: ['placeId' => '[0-9a-f-]{36}', 'storageTypeId' => '[0-9a-f-]{36}'])]
+#[Route('/objednavka/{placeId}/{storageTypeId}/{storageId?}', name: 'public_order_create', requirements: ['placeId' => '[0-9a-f-]{36}', 'storageTypeId' => '[0-9a-f-]{36}', 'storageId' => '[0-9a-f-]{36}'])]
 final class OrderCreateController extends AbstractController
 {
     public function __construct(
         private readonly PlaceRepository $placeRepository,
         private readonly StorageTypeRepository $storageTypeRepository,
+        private readonly StorageRepository $storageRepository,
         private readonly MessageBusInterface $commandBus,
     ) {
     }
 
-    public function __invoke(string $placeId, string $storageTypeId, Request $request): Response
+    public function __invoke(string $placeId, string $storageTypeId, Request $request, ?string $storageId = null): Response
     {
         if (!Uuid::isValid($placeId)) {
             throw new NotFoundHttpException('Pobočka nenalezena.');
@@ -51,6 +55,32 @@ final class OrderCreateController extends AbstractController
 
         if (null === $storageType || !$storageType->isActive) {
             throw new NotFoundHttpException('Typ skladové jednotky nenalezen.');
+        }
+
+        // Handle storage selection for non-uniform storage types
+        $preSelectedStorage = null;
+        if (!$storageType->uniformStorages) {
+            // Non-uniform storage type requires a specific storage to be selected
+            if (null === $storageId || !Uuid::isValid($storageId)) {
+                throw new BadRequestHttpException('Pro tento typ skladu je nutné vybrat konkrétní úložiště z mapy.');
+            }
+            $preSelectedStorage = $this->storageRepository->find(Uuid::fromString($storageId));
+            if (null === $preSelectedStorage) {
+                throw new NotFoundHttpException('Skladová jednotka nenalezena.');
+            }
+            // Validate that storage belongs to the correct type and place
+            if (!$preSelectedStorage->storageType->id->equals($storageType->id)) {
+                throw new BadRequestHttpException('Vybraná skladová jednotka nepatří k vybranému typu.');
+            }
+            if (!$preSelectedStorage->place->id->equals($place->id)) {
+                throw new BadRequestHttpException('Vybraná skladová jednotka nepatří k vybrané pobočce.');
+            }
+            if (!$preSelectedStorage->isAvailable()) {
+                throw new BadRequestHttpException('Vybraná skladová jednotka již není dostupná.');
+            }
+        } elseif (null !== $storageId) {
+            // Uniform storage type should not have a storage pre-selected
+            throw new BadRequestHttpException('Pro tento typ skladu nelze vybrat konkrétní úložiště.');
         }
 
         $user = $this->getUser();
@@ -96,6 +126,7 @@ final class OrderCreateController extends AbstractController
                     startDate: $formData->startDate,
                     endDate: $formData->endDate,
                     paymentFrequency: $formData->paymentFrequency,
+                    preSelectedStorage: $preSelectedStorage,
                 ));
 
                 $orderHandledStamp = $orderEnvelope->last(HandledStamp::class);
@@ -115,9 +146,14 @@ final class OrderCreateController extends AbstractController
             }
         }
 
-        // Calculate example prices for display
-        $weeklyPrice = $storageType->getDefaultPricePerWeekInCzk();
-        $monthlyPrice = $storageType->getDefaultPricePerMonthInCzk();
+        // Calculate example prices for display (use storage's effective prices if pre-selected)
+        if (null !== $preSelectedStorage) {
+            $weeklyPrice = $preSelectedStorage->getEffectivePricePerWeekInCzk();
+            $monthlyPrice = $preSelectedStorage->getEffectivePricePerMonthInCzk();
+        } else {
+            $weeklyPrice = $storageType->getDefaultPricePerWeekInCzk();
+            $monthlyPrice = $storageType->getDefaultPricePerMonthInCzk();
+        }
 
         return $this->render('public/order_create.html.twig', [
             'storageType' => $storageType,
@@ -126,6 +162,7 @@ final class OrderCreateController extends AbstractController
             'weeklyPrice' => $weeklyPrice,
             'monthlyPrice' => $monthlyPrice,
             'minStartDate' => $this->calculateMinStartDate($place->daysInAdvance),
+            'preSelectedStorage' => $preSelectedStorage,
         ]);
     }
 

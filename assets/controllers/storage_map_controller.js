@@ -1,11 +1,12 @@
 import { Controller } from '@hotwired/stimulus';
 
 export default class extends Controller {
-    static targets = ['canvas', 'tooltip'];
+    static targets = ['canvas', 'tooltip', 'modal', 'modalTitle', 'modalPhoto', 'modalDetails', 'modalOrderBtn'];
     static values = {
         mapImage: String,
         storages: Array,
-        storageTypes: Array
+        storageTypes: Array,
+        placeId: String
     }
 
     connect() {
@@ -94,14 +95,63 @@ export default class extends Controller {
         const storage = this.getStorageAtPosition(pos);
 
         if (storage && storage.status === 'available') {
-            // Could navigate to order page or show modal
-            const orderBtn = document.querySelector(`[data-storage-type-id="${storage.storageTypeId}"]`);
-            if (orderBtn) {
-                orderBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                orderBtn.classList.add('ring-2', 'ring-blue-500');
-                setTimeout(() => orderBtn.classList.remove('ring-2', 'ring-blue-500'), 2000);
+            if (storage.isUniform) {
+                // For uniform storage types, scroll to the type card
+                const orderBtn = document.querySelector(`[data-storage-type-id="${storage.storageTypeId}"]`);
+                if (orderBtn) {
+                    orderBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    orderBtn.classList.add('ring-2', 'ring-blue-500');
+                    setTimeout(() => orderBtn.classList.remove('ring-2', 'ring-blue-500'), 2000);
+                }
+            } else {
+                // For non-uniform storage types, show the modal with storage details
+                this.showStorageModal(storage);
             }
         }
+    }
+
+    showStorageModal(storage) {
+        if (!this.hasModalTarget) return;
+
+        // Set modal title
+        this.modalTitleTarget.textContent = `Sklad ${storage.number}`;
+
+        // Set photo
+        if (storage.photoUrl) {
+            this.modalPhotoTarget.src = storage.photoUrl;
+            this.modalPhotoTarget.classList.remove('hidden');
+        } else {
+            this.modalPhotoTarget.classList.add('hidden');
+        }
+
+        // Set details
+        this.modalDetailsTarget.innerHTML = `
+            <div class="flex justify-between">
+                <span class="text-gray-500">Typ:</span>
+                <span class="font-medium">${storage.storageTypeName}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-gray-500">Rozměry:</span>
+                <span class="font-medium">${storage.dimensions}</span>
+            </div>
+            <div class="border-t pt-2 mt-2">
+                <div class="flex justify-between">
+                    <span class="text-gray-500">Cena za týden:</span>
+                    <span class="font-semibold">${storage.pricePerWeek.toLocaleString('cs-CZ')} Kč</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-500">Cena za měsíc:</span>
+                    <span class="font-semibold text-primary">${storage.pricePerMonth.toLocaleString('cs-CZ')} Kč</span>
+                </div>
+            </div>
+        `;
+
+        // Set order button URL
+        const orderUrl = `/objednavka/${this.placeIdValue}/${storage.storageTypeId}/${storage.id}`;
+        this.modalOrderBtnTarget.href = orderUrl;
+
+        // Show modal
+        this.modalTarget.showModal();
     }
 
     getStorageAtPosition(pos) {

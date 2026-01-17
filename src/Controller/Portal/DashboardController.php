@@ -11,6 +11,7 @@ use App\Repository\ContractRepository;
 use App\Repository\OrderRepository;
 use App\Repository\PlaceRepository;
 use App\Repository\StorageRepository;
+use Psr\Clock\ClockInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -26,6 +27,7 @@ final class DashboardController extends AbstractController
         private readonly ContractRepository $contractRepository,
         private readonly PlaceRepository $placeRepository,
         private readonly StorageRepository $storageRepository,
+        private readonly ClockInterface $clock,
     ) {
     }
 
@@ -66,7 +68,7 @@ final class DashboardController extends AbstractController
 
         /** @var User $user */
         $user = $this->getUser();
-        $now = new \DateTimeImmutable();
+        $now = $this->clock->now();
 
         $activeContracts = $this->contractRepository->findActiveByUser($user, $now);
         $recentOrders = $this->orderRepository->findByUser($user);

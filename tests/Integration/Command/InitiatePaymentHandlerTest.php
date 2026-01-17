@@ -107,6 +107,7 @@ class InitiatePaymentHandlerTest extends KernelTestCase
             $rentalType,
             $startDate,
             $endDate,
+            $now,
         );
     }
 }

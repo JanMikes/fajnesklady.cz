@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Service;
 
 use App\Entity\Place;
+use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
 use App\Service\PriceCalculator;
@@ -30,6 +31,31 @@ class PriceCalculatorTest extends TestCase
             innerLength: 100,
             defaultPricePerWeek: $pricePerWeek,
             defaultPricePerMonth: $pricePerMonth,
+            createdAt: new \DateTimeImmutable(),
+        );
+    }
+
+    private function createPlace(): Place
+    {
+        return new Place(
+            id: Uuid::v7(),
+            name: 'Test Place',
+            address: 'Test Address',
+            city: 'Praha',
+            postalCode: '110 00',
+            description: null,
+            createdAt: new \DateTimeImmutable(),
+        );
+    }
+
+    private function createStorage(StorageType $storageType, Place $place): Storage
+    {
+        return new Storage(
+            id: Uuid::v7(),
+            number: 'A1',
+            coordinates: ['x' => 0, 'y' => 0, 'width' => 100, 'height' => 100, 'rotation' => 0],
+            storageType: $storageType,
+            place: $place,
             createdAt: new \DateTimeImmutable(),
         );
     }
@@ -232,5 +258,90 @@ class PriceCalculatorTest extends TestCase
 
         // 1 day = 10000 / 7 = 1428.57... rounded to 1429
         $this->assertSame(1429, $price);
+    }
+
+    public function testCalculatePriceForStorageWithoutCustomPrices(): void
+    {
+        // When storage has no custom prices, it uses storage type defaults
+        $storageType = $this->createStorageType(10000, 35000); // 100 Kč/week, 350 Kč/month
+        $place = $this->createPlace();
+        $storage = $this->createStorage($storageType, $place);
+
+        $startDate = new \DateTimeImmutable('2024-01-01');
+        $endDate = new \DateTimeImmutable('2024-01-08'); // 7 days
+
+        $price = $this->calculator->calculatePriceForStorage($storage, $startDate, $endDate);
+
+        $this->assertSame(10000, $price);
+    }
+
+    public function testCalculatePriceForStorageWithCustomPrices(): void
+    {
+        // When storage has custom prices, it uses those instead of defaults
+        $storageType = $this->createStorageType(10000, 35000); // defaults: 100 Kč/week, 350 Kč/month
+        $place = $this->createPlace();
+        $storage = $this->createStorage($storageType, $place);
+
+        // Set custom prices (150 Kč/week, 500 Kč/month)
+        $storage->updatePrices(15000, 50000, new \DateTimeImmutable());
+
+        $startDate = new \DateTimeImmutable('2024-01-01');
+        $endDate = new \DateTimeImmutable('2024-01-08'); // 7 days
+
+        $price = $this->calculator->calculatePriceForStorage($storage, $startDate, $endDate);
+
+        // Should use custom weekly price (15000), not default (10000)
+        $this->assertSame(15000, $price);
+    }
+
+    public function testCalculatePriceForStorageWithCustomPricesMonthly(): void
+    {
+        // Test monthly calculation with custom prices (>= 28 days)
+        $storageType = $this->createStorageType(10000, 30000); // defaults
+        $place = $this->createPlace();
+        $storage = $this->createStorage($storageType, $place);
+
+        // Set custom prices (200 Kč/week, 600 Kč/month)
+        $storage->updatePrices(20000, 60000, new \DateTimeImmutable());
+
+        $startDate = new \DateTimeImmutable('2024-01-01');
+        $endDate = new \DateTimeImmutable('2024-01-31'); // 30 days
+
+        $price = $this->calculator->calculatePriceForStorage($storage, $startDate, $endDate);
+
+        // Should use custom monthly price (60000), not default (30000)
+        $this->assertSame(60000, $price);
+    }
+
+    public function testCalculatePriceForStorageUnlimitedRental(): void
+    {
+        // Unlimited rental should return monthly price
+        $storageType = $this->createStorageType(10000, 35000);
+        $place = $this->createPlace();
+        $storage = $this->createStorage($storageType, $place);
+
+        // Set custom prices
+        $storage->updatePrices(15000, 50000, new \DateTimeImmutable());
+
+        $startDate = new \DateTimeImmutable('2024-01-01');
+
+        $price = $this->calculator->calculatePriceForStorage($storage, $startDate, null);
+
+        // Should use custom monthly price for unlimited
+        $this->assertSame(50000, $price);
+    }
+
+    public function testCalculatePriceForStorageZeroDays(): void
+    {
+        $storageType = $this->createStorageType(10000, 30000);
+        $place = $this->createPlace();
+        $storage = $this->createStorage($storageType, $place);
+
+        $startDate = new \DateTimeImmutable('2024-01-01');
+        $endDate = new \DateTimeImmutable('2024-01-01'); // Same day = 0 days
+
+        $price = $this->calculator->calculatePriceForStorage($storage, $startDate, $endDate);
+
+        $this->assertSame(0, $price);
     }
 }

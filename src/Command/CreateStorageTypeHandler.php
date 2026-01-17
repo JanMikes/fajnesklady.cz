@@ -33,6 +33,7 @@ final readonly class CreateStorageTypeHandler
             defaultPricePerWeek: $command->defaultPricePerWeek,
             defaultPricePerMonth: $command->defaultPricePerMonth,
             createdAt: $now,
+            uniformStorages: $command->uniformStorages,
             outerWidth: $command->outerWidth,
             outerHeight: $command->outerHeight,
             outerLength: $command->outerLength,
@@ -50,6 +51,7 @@ final readonly class CreateStorageTypeHandler
                 defaultPricePerWeek: $command->defaultPricePerWeek,
                 defaultPricePerMonth: $command->defaultPricePerMonth,
                 description: $command->description,
+                uniformStorages: $command->uniformStorages,
                 now: $now,
             );
         }

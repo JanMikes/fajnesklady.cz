@@ -56,6 +56,7 @@ final class StorageTypeEditController extends AbstractController
                 defaultPricePerWeek: $defaultPricePerWeek,
                 defaultPricePerMonth: $defaultPricePerMonth,
                 description: $formData->description,
+                uniformStorages: $formData->uniformStorages,
             );
 
             $this->commandBus->dispatch($command);

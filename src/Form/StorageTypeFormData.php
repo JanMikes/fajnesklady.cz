@@ -53,6 +53,8 @@ final class StorageTypeFormData
 
     public ?string $description = null;
 
+    public bool $uniformStorages = true;
+
     /**
      * @var UploadedFile[]
      */
@@ -78,6 +80,7 @@ final class StorageTypeFormData
         $formData->defaultPricePerWeek = $storageType->getDefaultPricePerWeekInCzk();
         $formData->defaultPricePerMonth = $storageType->getDefaultPricePerMonthInCzk();
         $formData->description = $storageType->description;
+        $formData->uniformStorages = $storageType->uniformStorages;
 
         return $formData;
     }

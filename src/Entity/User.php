@@ -7,6 +7,7 @@ namespace App\Entity;
 use App\Enum\UserRole;
 use App\Event\EmailVerified;
 use App\Event\UserRegistered;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
@@ -53,6 +54,12 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, EntityW
 
     #[ORM\Column(nullable: true)]
     public private(set) ?int $fakturoidSubjectId = null;
+
+    #[ORM\Column(type: Types::DECIMAL, precision: 5, scale: 2, nullable: true)]
+    public private(set) ?string $commissionRate = null;
+
+    #[ORM\Column(length: 10, nullable: true, unique: true)]
+    public private(set) ?string $selfBillingPrefix = null;
 
     public string $fullName {
         get => trim($this->firstName.' '.$this->lastName);
@@ -197,5 +204,32 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, EntityW
     public function hasFakturoidSubject(): bool
     {
         return null !== $this->fakturoidSubjectId;
+    }
+
+    public function updateCommissionRate(?string $commissionRate, \DateTimeImmutable $now): void
+    {
+        $this->commissionRate = $commissionRate;
+        $this->updatedAt = $now;
+    }
+
+    public function setSelfBillingPrefix(?string $prefix, \DateTimeImmutable $now): void
+    {
+        $this->selfBillingPrefix = $prefix;
+        $this->updatedAt = $now;
+    }
+
+    public function hasSelfBillingPrefix(): bool
+    {
+        return null !== $this->selfBillingPrefix;
+    }
+
+    public function isAdmin(): bool
+    {
+        return \in_array(UserRole::ADMIN->value, $this->roles, true);
+    }
+
+    public function isLandlord(): bool
+    {
+        return \in_array(UserRole::LANDLORD->value, $this->roles, true);
     }
 }

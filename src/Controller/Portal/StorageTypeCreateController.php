@@ -50,6 +50,7 @@ final class StorageTypeCreateController extends AbstractController
                 defaultPricePerWeek: $defaultPricePerWeek,
                 defaultPricePerMonth: $defaultPricePerMonth,
                 description: $formData->description,
+                uniformStorages: $formData->uniformStorages,
             );
 
             $envelope = $this->commandBus->dispatch($command);

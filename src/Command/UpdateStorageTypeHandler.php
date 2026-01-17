@@ -32,6 +32,7 @@ final readonly class UpdateStorageTypeHandler
             defaultPricePerWeek: $command->defaultPricePerWeek,
             defaultPricePerMonth: $command->defaultPricePerMonth,
             description: $command->description,
+            uniformStorages: $command->uniformStorages,
             now: $this->clock->now(),
         );
 

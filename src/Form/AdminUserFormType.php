@@ -7,6 +7,7 @@ namespace App\Form;
 use App\Enum\UserRole;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\EnumType;
+use Symfony\Component\Form\Extension\Core\Type\NumberType;
 use Symfony\Component\Form\Extension\Core\Type\TelType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
@@ -105,6 +106,31 @@ final class AdminUserFormType extends AbstractType
             'label' => 'Role',
             'expanded' => true,
             'choice_label' => static fn (UserRole $role): string => $role->label(),
+        ]);
+
+        // Self-billing settings (for landlords)
+        $builder->add('commissionRate', NumberType::class, [
+            'label' => 'Provize pro pronajimatele (%)',
+            'required' => false,
+            'scale' => 0,
+            'attr' => [
+                'placeholder' => 'Vychozi 90%',
+                'class' => 'input input-bordered w-full',
+                'min' => 0,
+                'max' => 100,
+            ],
+            'help' => 'Procento z platby, ktere obdrzi pronajimatel. Nechte prazdne pro 90%.',
+        ]);
+
+        $builder->add('selfBillingPrefix', TextType::class, [
+            'label' => 'Prefix samofakturace',
+            'required' => false,
+            'attr' => [
+                'placeholder' => 'napr. P001',
+                'class' => 'input input-bordered w-full',
+                'maxlength' => 10,
+            ],
+            'help' => 'Prefix pro samofakturacni doklady (napr. P001). Povinne pro samofakturaci.',
         ]);
     }
 

@@ -27,6 +27,9 @@ class Storage
     #[ORM\Column(nullable: true)]
     public private(set) ?int $pricePerMonth = null;
 
+    #[ORM\Column(type: Types::DECIMAL, precision: 5, scale: 2, nullable: true)]
+    public private(set) ?string $commissionRate = null;
+
     #[ORM\ManyToOne(targetEntity: User::class)]
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     public private(set) ?User $owner = null;
@@ -131,6 +134,12 @@ class Storage
     {
         $this->pricePerWeek = $pricePerWeek;
         $this->pricePerMonth = $pricePerMonth;
+        $this->updatedAt = $now;
+    }
+
+    public function updateCommissionRate(?string $commissionRate, \DateTimeImmutable $now): void
+    {
+        $this->commissionRate = $commissionRate;
         $this->updatedAt = $now;
     }
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Form;
 
 use Symfony\Component\Form\AbstractType;
+use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\Extension\Core\Type\FileType;
 use Symfony\Component\Form\Extension\Core\Type\IntegerType;
 use Symfony\Component\Form\Extension\Core\Type\NumberType;
@@ -108,6 +109,15 @@ class StorageTypeFormType extends AbstractType
                 'placeholder' => 'Volitelny popis typu skladu',
                 'class' => 'textarea textarea-bordered w-full',
                 'rows' => 3,
+            ],
+        ]);
+
+        $builder->add('uniformStorages', CheckboxType::class, [
+            'label' => 'Vsechna uloziste budou stejna',
+            'required' => false,
+            'help' => 'Nebude se zobrazovat mapa pro vyber konkretniho mista a maji jednotnou cenu',
+            'attr' => [
+                'class' => 'checkbox',
             ],
         ]);
 

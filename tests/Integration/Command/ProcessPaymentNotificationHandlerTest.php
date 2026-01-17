@@ -120,6 +120,7 @@ class ProcessPaymentNotificationHandlerTest extends KernelTestCase
             $rentalType,
             $startDate,
             $endDate,
+            $now,
         );
 
         $envelope = $this->commandBus->dispatch(new InitiatePaymentCommand(
