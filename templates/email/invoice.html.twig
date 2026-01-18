@@ -77,24 +77,24 @@
     <div class="content">
         <h2>{{ name }},</h2>
 
-        <p>v priloze najdete fakturu za pronajem skladoveho boxu.</p>
+        <p>v příloze najdete fakturu za pronájem skladového boxu.</p>
 
         <div class="amount-highlight">
-            <strong>Castka: {{ amount }}</strong>
+            <strong>Částka: {{ amount }}</strong>
         </div>
 
         <div class="invoice-details">
             <table>
                 <tr>
-                    <td>Cislo faktury:</td>
+                    <td>Číslo faktury:</td>
                     <td><strong>{{ invoiceNumber }}</strong></td>
                 </tr>
                 <tr>
-                    <td>Datum vystaveni:</td>
+                    <td>Datum vystavení:</td>
                     <td>{{ issuedAt }}</td>
                 </tr>
                 <tr>
-                    <td>Misto:</td>
+                    <td>Místo:</td>
                     <td>{{ placeName }}</td>
                 </tr>
                 <tr>
@@ -102,23 +102,23 @@
                     <td>{{ storageType }}</td>
                 </tr>
                 <tr>
-                    <td>Cislo boxu:</td>
+                    <td>Číslo boxu:</td>
                     <td>{{ storageNumber }}</td>
                 </tr>
             </table>
         </div>
 
-        <p>Faktura je prilozena k tomuto emailu ve formatu PDF.</p>
+        <p>Faktura je přiložena k tomuto emailu ve formátu PDF.</p>
 
-        <p>Dekujeme za duveru!</p>
+        <p>Děkujeme za důvěru!</p>
 
         <p>S pozdravem,<br>
-        <strong>Tym Fajne Sklady</strong></p>
+        <strong>Tým Fajné Sklady</strong></p>
     </div>
 
     <div class="footer">
-        <p>Toto je automaticky generovany email. Prosim neodpovidejte na tuto zpravu.</p>
-        <p>&copy; {{ 'now'|date('Y') }} Fajne Sklady. Vsechna prava vyhrazena.</p>
+        <p>Toto je automaticky generovaný email. Prosím neodpovídejte na tuto zprávu.</p>
+        <p>&copy; {{ 'now'|date('Y') }} Fajné Sklady. Všechna práva vyhrazena.</p>
     </div>
 </body>
 </html>

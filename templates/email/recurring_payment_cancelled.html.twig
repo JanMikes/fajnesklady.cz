@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pravidelna platba zrusena</title>
+    <title>Pravidelná platba zrušena</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -66,20 +66,20 @@
 </head>
 <body>
     <div class="header">
-        <h1>Pravidelna platba zrusena</h1>
+        <h1>Pravidelná platba zrušena</h1>
     </div>
 
     <div class="content">
         <h2>{{ name }},</h2>
 
         <div class="info-box">
-            <p>Informujeme Vas, ze pravidelna platba za Vas skladovy box byla zrusena.</p>
+            <p>Informujeme Vás, že pravidelná platba za Váš skladový box byla zrušena.</p>
         </div>
 
         <div class="storage-details">
             <table>
                 <tr>
-                    <td>Misto:</td>
+                    <td>Místo:</td>
                     <td>{{ placeName }}</td>
                 </tr>
                 <tr>
@@ -87,23 +87,23 @@
                     <td>{{ storageType }}</td>
                 </tr>
                 <tr>
-                    <td>Cislo boxu:</td>
+                    <td>Číslo boxu:</td>
                     <td>{{ storageNumber }}</td>
                 </tr>
             </table>
         </div>
 
-        <p>Pokud si prejete obnovit pronajem, prosim kontaktujte nas nebo vytvorte novou objednavku na nasich webovych strankach.</p>
+        <p>Pokud si přejete obnovit pronájem, prosím kontaktujte nás nebo vytvořte novou objednávku na našich webových stránkách.</p>
 
-        <p>Dekujeme, ze jste vyuzivali nase sluzby!</p>
+        <p>Děkujeme, že jste využívali naše služby!</p>
 
         <p>S pozdravem,<br>
-        <strong>Tym Fajne Sklady</strong></p>
+        <strong>Tým Fajné Sklady</strong></p>
     </div>
 
     <div class="footer">
-        <p>Toto je automaticky generovany email. Prosim neodpovidejte na tuto zpravu.</p>
-        <p>&copy; {{ 'now'|date('Y') }} Fajne Sklady. Vsechna prava vyhrazena.</p>
+        <p>Toto je automaticky generovaný email. Prosím neodpovídejte na tuto zprávu.</p>
+        <p>&copy; {{ 'now'|date('Y') }} Fajné Sklady. Všechna práva vyhrazena.</p>
     </div>
 </body>
 </html>

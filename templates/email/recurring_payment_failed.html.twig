@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Platba se nepodarila</title>
+    <title>Platba se nepodařila</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -66,7 +66,7 @@
 </head>
 <body>
     <div class="header">
-        <h1>{% if isFirstAttempt %}Platba se nepodarila{% else %}Druha neuspesna platba{% endif %}</h1>
+        <h1>{% if isFirstAttempt %}Platba se nepodařila{% else %}Druhá neúspěšná platba{% endif %}</h1>
     </div>
 
     <div class="content">
@@ -74,20 +74,20 @@
 
         {% if isFirstAttempt %}
             <div class="warning-box">
-                <p><strong>Upozorneni:</strong> Pravidelna platba za Vas skladovy box se nepodarila.</p>
-                <p>Platbu se automaticky pokusime opakovat za 3 dny. Prosim, zkontrolujte, ze mate na uctu dostatek prostredku.</p>
+                <p><strong>Upozornění:</strong> Pravidelná platba za Váš skladový box se nepodařila.</p>
+                <p>Platbu se automaticky pokusíme opakovat za 3 dny. Prosím, zkontrolujte, že máte na účtu dostatek prostředků.</p>
             </div>
         {% else %}
             <div class="warning-box">
-                <p><strong>Dulezite:</strong> Druhy pokus o platbu za Vas skladovy box selhal.</p>
-                <p>Pravidelna platba byla zrusena. Pro obnoveni pronajmu nas prosim kontaktujte.</p>
+                <p><strong>Důležité:</strong> Druhý pokus o platbu za Váš skladový box selhal.</p>
+                <p>Pravidelná platba byla zrušena. Pro obnovení pronájmu nás prosím kontaktujte.</p>
             </div>
         {% endif %}
 
         <div class="storage-details">
             <table>
                 <tr>
-                    <td>Misto:</td>
+                    <td>Místo:</td>
                     <td>{{ placeName }}</td>
                 </tr>
                 <tr>
@@ -95,21 +95,21 @@
                     <td>{{ storageType }}</td>
                 </tr>
                 <tr>
-                    <td>Cislo boxu:</td>
+                    <td>Číslo boxu:</td>
                     <td>{{ storageNumber }}</td>
                 </tr>
             </table>
         </div>
 
-        <p>Pokud mate dotazy, nevahjete nas kontaktovat.</p>
+        <p>Pokud máte dotazy, neváhejte nás kontaktovat.</p>
 
         <p>S pozdravem,<br>
-        <strong>Tym Fajne Sklady</strong></p>
+        <strong>Tým Fajné Sklady</strong></p>
     </div>
 
     <div class="footer">
-        <p>Toto je automaticky generovany email. Prosim neodpovidejte na tuto zpravu.</p>
-        <p>&copy; {{ 'now'|date('Y') }} Fajne Sklady. Vsechna prava vyhrazena.</p>
+        <p>Toto je automaticky generovaný email. Prosím neodpovídejte na tuto zprávu.</p>
+        <p>&copy; {{ 'now'|date('Y') }} Fajné Sklady. Všechna práva vyhrazena.</p>
     </div>
 </body>
 </html>

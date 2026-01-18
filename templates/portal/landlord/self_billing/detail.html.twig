@@ -30,7 +30,7 @@
                 <svg class="h-5 w-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
-                Stahnout PDF
+                Stáhnout PDF
             </a>
         {% endif %}
     </div>
@@ -42,14 +42,14 @@
                 Souhrn faktury
             </h3>
             <p class="mt-1 max-w-2xl text-sm text-gray-500">
-                Obdobi: {{ invoice.getPeriodFormatted() }}
+                Období: {{ invoice.getPeriodFormatted() }}
             </p>
         </div>
         <div class="border-t border-gray-200">
             <dl>
                 <div class="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                     <dt class="text-sm font-medium text-gray-500">
-                        Cislo faktury
+                        Číslo faktury
                     </dt>
                     <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2 font-mono">
                         {{ invoice.invoiceNumber }}
@@ -57,7 +57,7 @@
                 </div>
                 <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                     <dt class="text-sm font-medium text-gray-500">
-                        Obdobi
+                        Období
                     </dt>
                     <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
                         {{ invoice.getPeriodFormatted() }}
@@ -65,10 +65,10 @@
                 </div>
                 <div class="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                     <dt class="text-sm font-medium text-gray-500">
-                        Hruba castka (prijate platby)
+                        Hrubá částka (přijaté platby)
                     </dt>
                     <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                        {{ invoice.getGrossAmountInCzk()|number_format(2, ',', ' ') }} Kc
+                        {{ invoice.getGrossAmountInCzk()|number_format(2, ',', ' ') }} Kč
                     </dd>
                 </div>
                 <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
@@ -81,15 +81,15 @@
                 </div>
                 <div class="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                     <dt class="text-sm font-medium text-gray-500">
-                        K vyplaceni
+                        K vyplacení
                     </dt>
                     <dd class="mt-1 text-sm font-medium text-green-600 sm:mt-0 sm:col-span-2">
-                        {{ invoice.getNetAmountInCzk()|number_format(2, ',', ' ') }} Kc
+                        {{ invoice.getNetAmountInCzk()|number_format(2, ',', ' ') }} Kč
                     </dd>
                 </div>
                 <div class="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                     <dt class="text-sm font-medium text-gray-500">
-                        Datum vystaveni
+                        Datum vystavení
                     </dt>
                     <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
                         {{ invoice.issuedAt|date('d.m.Y H:i') }}
@@ -106,7 +106,7 @@
                 Rozpis plateb
             </h3>
             <p class="mt-1 max-w-2xl text-sm text-gray-500">
-                Platby zahrnuty v teto fakture ({{ payments|length }} plateb)
+                Platby zahrnuté v této faktuře ({{ payments|length }} plateb)
             </p>
         </div>
         <div class="border-t border-gray-200">
@@ -124,7 +124,7 @@
                                 Datum platby
                             </th>
                             <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Castka
+                                Částka
                             </th>
                         </tr>
                     </thead>
@@ -151,11 +151,11 @@
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     {% if payment.order %}
                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                            Prvotni platba
+                                            Prvotní platba
                                         </span>
                                     {% else %}
                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                            Opakujici se platba
+                                            Opakující se platba
                                         </span>
                                     {% endif %}
                                 </td>
@@ -163,7 +163,7 @@
                                     {{ payment.paidAt|date('d.m.Y H:i') }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-medium">
-                                    {{ (payment.amount / 100)|number_format(2, ',', ' ') }} Kc
+                                    {{ (payment.amount / 100)|number_format(2, ',', ' ') }} Kč
                                 </td>
                             </tr>
                         {% endfor %}
@@ -174,14 +174,14 @@
                                 Celkem:
                             </td>
                             <td class="px-6 py-4 text-sm font-bold text-gray-900 text-right">
-                                {{ invoice.getGrossAmountInCzk()|number_format(2, ',', ' ') }} Kc
+                                {{ invoice.getGrossAmountInCzk()|number_format(2, ',', ' ') }} Kč
                             </td>
                         </tr>
                     </tfoot>
                 </table>
             {% else %}
                 <div class="p-6 text-center text-gray-500">
-                    Zadne platby k zobrazeni.
+                    Žádné platby k zobrazení.
                 </div>
             {% endif %}
         </div>

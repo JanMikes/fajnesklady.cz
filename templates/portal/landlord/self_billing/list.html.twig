@@ -13,19 +13,19 @@
                 <thead class="bg-gray-50">
                     <tr>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Obdobi
+                            Období
                         </th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Cislo faktury
+                            Číslo faktury
                         </th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Hruba castka
+                            Hrubá částka
                         </th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Provize
                         </th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            K vyplaceni
+                            K vyplacení
                         </th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Vystaveno
@@ -49,14 +49,14 @@
                                 </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                {{ invoice.getGrossAmountInCzk()|number_format(2, ',', ' ') }} Kc
+                                {{ invoice.getGrossAmountInCzk()|number_format(2, ',', ' ') }} Kč
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                 {{ (invoice.commissionRate * 100)|number_format(0) }}%
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <span class="text-sm font-medium text-green-600">
-                                    {{ invoice.getNetAmountInCzk()|number_format(2, ',', ' ') }} Kc
+                                    {{ invoice.getNetAmountInCzk()|number_format(2, ',', ' ') }} Kč
                                 </span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -85,9 +85,9 @@
                 <svg class="mx-auto h-8 w-8 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
-                <h3 class="mt-2 text-sm font-medium text-gray-900">Zadne faktury</h3>
+                <h3 class="mt-2 text-sm font-medium text-gray-900">Žádné faktury</h3>
                 <p class="mt-1 text-sm text-gray-500">
-                    Zatim nemame zadne samofakturacni doklady k zobrazeni.
+                    Zatím nemáme žádné samofakturační doklady k zobrazení.
                 </p>
             </div>
         </div>
