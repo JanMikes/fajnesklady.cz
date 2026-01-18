@@ -118,14 +118,14 @@
                         <label class="block text-sm font-semibold text-gray-700 mb-2">Ceny (v CZK)</label>
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label for="{{ form.pricePerWeek.vars.id }}" class="block text-xs text-gray-500 mb-1">Cena za týden</label>
-                                {{ form_widget(form.pricePerWeek, {'attr': {'class': 'input input-bordered w-full', 'placeholder': '0'}}) }}
-                                {{ form_errors(form.pricePerWeek) }}
+                                <label for="{{ form.defaultPricePerWeek.vars.id }}" class="block text-xs text-gray-500 mb-1">Cena za týden</label>
+                                {{ form_widget(form.defaultPricePerWeek, {'attr': {'class': 'input input-bordered w-full', 'placeholder': '0'}}) }}
+                                {{ form_errors(form.defaultPricePerWeek) }}
                             </div>
                             <div>
-                                <label for="{{ form.pricePerMonth.vars.id }}" class="block text-xs text-gray-500 mb-1">Cena za měsíc</label>
-                                {{ form_widget(form.pricePerMonth, {'attr': {'class': 'input input-bordered w-full', 'placeholder': '0'}}) }}
-                                {{ form_errors(form.pricePerMonth) }}
+                                <label for="{{ form.defaultPricePerMonth.vars.id }}" class="block text-xs text-gray-500 mb-1">Cena za měsíc</label>
+                                {{ form_widget(form.defaultPricePerMonth, {'attr': {'class': 'input input-bordered w-full', 'placeholder': '0'}}) }}
+                                {{ form_errors(form.defaultPricePerMonth) }}
                             </div>
                         </div>
                     </div>

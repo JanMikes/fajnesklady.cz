@@ -104,6 +104,20 @@ select.form-input {
     @apply mt-1 text-sm text-gray-500;
 }
 
+/* Required field indicator - asterisk after label */
+.form-group:has(input:required, select:required, textarea:required) > .form-label::after,
+.form-group:has(.form-input:required)::before + .form-label::after {
+    content: " *";
+    @apply text-red-600 font-normal;
+}
+
+/* Checkbox and radio - label follows input, so use adjacent sibling */
+input[type="checkbox"]:required + label::after,
+input[type="radio"]:required + label::after {
+    content: " *";
+    @apply text-red-600 font-normal;
+}
+
 /* Badge component */
 .badge {
     @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;

@@ -4,11 +4,15 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Controller;
 
+use App\Entity\Contract;
+use App\Entity\Invoice;
 use App\Entity\Order;
 use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
+use App\Entity\StorageUnavailability;
 use App\Entity\User;
+use App\Enum\OrderStatus;
 use App\Enum\PaymentFrequency;
 use App\Enum\RentalType;
 use App\Enum\UserRole;
@@ -648,6 +652,497 @@ class ControllerAccessTest extends WebTestCase
         $this->assertResponseIsSuccessful();
     }
 
+    public function testUnavailabilityListAccessibleByAdmin(): void
+    {
+        $this->login($this->getFixtureAdmin());
+
+        $this->client->request('GET', '/portal/unavailabilities');
+
+        $this->assertResponseIsSuccessful();
+    }
+
+    // ===========================================
+    // PLACE CREATE - Admin only
+    // ===========================================
+
+    public function testPlaceCreateRequiresAdminRole(): void
+    {
+        $landlord = $this->getFixtureLandlord();
+        $this->login($landlord);
+
+        $this->client->request('GET', '/portal/places/create');
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    public function testPlaceCreateDeniedForUser(): void
+    {
+        $user = $this->getFixtureUser();
+        $this->login($user);
+
+        $this->client->request('GET', '/portal/places/create');
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    public function testPlaceCreateRendersForAdmin(): void
+    {
+        $admin = $this->getFixtureAdmin();
+        $this->login($admin);
+
+        $this->client->request('GET', '/portal/places/create');
+
+        $this->assertResponseIsSuccessful();
+    }
+
+    // ===========================================
+    // PLACE DELETE - Admin only (via voter)
+    // ===========================================
+
+    public function testPlaceDeleteDeniedForUser(): void
+    {
+        $place = $this->getFixturePlace();
+        $user = $this->getFixtureUser();
+        $this->login($user);
+
+        $this->client->request('POST', '/portal/places/'.$place->id->toRfc4122().'/delete');
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    public function testPlaceDeleteDeniedForLandlord(): void
+    {
+        $place = $this->getFixturePlace();
+        $landlord = $this->getFixtureLandlord();
+        $this->login($landlord);
+
+        $this->client->request('POST', '/portal/places/'.$place->id->toRfc4122().'/delete');
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    // ===========================================
+    // STORAGE LIST - Landlord/Admin
+    // ===========================================
+
+    public function testStorageListAccessibleByLandlord(): void
+    {
+        $landlord = $this->getFixtureLandlord();
+        $this->login($landlord);
+
+        $this->client->request('GET', '/portal/storages');
+
+        $this->assertResponseIsSuccessful();
+    }
+
+    public function testStorageListAccessibleByAdmin(): void
+    {
+        $admin = $this->getFixtureAdmin();
+        $this->login($admin);
+
+        $this->client->request('GET', '/portal/storages');
+
+        $this->assertResponseIsSuccessful();
+    }
+
+    // ===========================================
+    // STORAGE CREATE - Landlord/Admin
+    // ===========================================
+
+    public function testStorageCreateDeniedForUser(): void
+    {
+        $user = $this->getFixtureUser();
+        $this->login($user);
+
+        $this->client->request('GET', '/portal/storages/create');
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    public function testStorageCreateAccessibleByLandlord(): void
+    {
+        $landlord = $this->getFixtureLandlord();
+        $this->login($landlord);
+
+        $this->client->request('GET', '/portal/storages/create');
+
+        $this->assertResponseIsSuccessful();
+    }
+
+    public function testStorageCreateAccessibleByAdmin(): void
+    {
+        $admin = $this->getFixtureAdmin();
+        $this->login($admin);
+
+        $this->client->request('GET', '/portal/storages/create');
+
+        $this->assertResponseIsSuccessful();
+    }
+
+    // ===========================================
+    // STORAGE TYPE CREATE - User denied test
+    // ===========================================
+
+    public function testStorageTypeCreateDeniedForUser(): void
+    {
+        $user = $this->getFixtureUser();
+        $this->login($user);
+
+        $this->client->request('GET', '/portal/storage-types/create');
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    // ===========================================
+    // STORAGE TYPE DELETE - Landlord/Admin
+    // ===========================================
+
+    public function testStorageTypeDeleteDeniedForUser(): void
+    {
+        $storageType = $this->getFixtureStorageType();
+        $user = $this->getFixtureUser();
+        $this->login($user);
+
+        $this->client->request('POST', '/portal/storage-types/'.$storageType->id->toRfc4122().'/delete');
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    // ===========================================
+    // STORAGE TYPE EDIT - Admin can edit any
+    // ===========================================
+
+    public function testStorageTypeEditDeniedForUser(): void
+    {
+        $storageType = $this->getFixtureStorageType();
+        $user = $this->getFixtureUser();
+        $this->login($user);
+
+        $this->client->request('GET', '/portal/storage-types/'.$storageType->id->toRfc4122().'/edit');
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    public function testStorageTypeEditAccessibleByAdmin(): void
+    {
+        $storageType = $this->getFixtureStorageType();
+        $admin = $this->getFixtureAdmin();
+        $this->login($admin);
+
+        $this->client->request('GET', '/portal/storage-types/'.$storageType->id->toRfc4122().'/edit');
+
+        $this->assertResponseIsSuccessful();
+    }
+
+    // ===========================================
+    // STORAGE EDIT - Admin can edit any
+    // ===========================================
+
+    public function testStorageEditDeniedForUser(): void
+    {
+        $storage = $this->getFixtureStorage();
+        $user = $this->getFixtureUser();
+        $this->login($user);
+
+        $this->client->request('GET', '/portal/storages/'.$storage->id->toRfc4122().'/edit');
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    public function testStorageEditAccessibleByOwnerLandlord(): void
+    {
+        $storage = $this->getFixtureStorage();
+        $landlord = $this->getFixtureLandlord();
+        $this->login($landlord);
+
+        $this->client->request('GET', '/portal/storages/'.$storage->id->toRfc4122().'/edit');
+
+        $this->assertResponseIsSuccessful();
+    }
+
+    public function testStorageEditAccessibleByAdmin(): void
+    {
+        $storage = $this->getFixtureStorage();
+        $admin = $this->getFixtureAdmin();
+        $this->login($admin);
+
+        $this->client->request('GET', '/portal/storages/'.$storage->id->toRfc4122().'/edit');
+
+        $this->assertResponseIsSuccessful();
+    }
+
+    // ===========================================
+    // UNAVAILABILITY CREATE - Landlord/Admin
+    // ===========================================
+
+    public function testUnavailabilityCreateDeniedForUser(): void
+    {
+        $user = $this->getFixtureUser();
+        $this->login($user);
+
+        $this->client->request('GET', '/portal/unavailabilities/create');
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    public function testUnavailabilityCreateAccessibleByLandlord(): void
+    {
+        $landlord = $this->getFixtureLandlord();
+        $this->login($landlord);
+
+        $this->client->request('GET', '/portal/unavailabilities/create');
+
+        $this->assertResponseIsSuccessful();
+    }
+
+    public function testUnavailabilityCreateAccessibleByAdmin(): void
+    {
+        $admin = $this->getFixtureAdmin();
+        $this->login($admin);
+
+        $this->client->request('GET', '/portal/unavailabilities/create');
+
+        $this->assertResponseIsSuccessful();
+    }
+
+    // ===========================================
+    // UNAVAILABILITY DELETE - Landlord/Admin
+    // ===========================================
+
+    public function testUnavailabilityDeleteDeniedForUser(): void
+    {
+        $unavailability = $this->getFixtureUnavailability();
+        $user = $this->getFixtureUser();
+        $this->login($user);
+
+        $this->client->request('POST', '/portal/unavailabilities/'.$unavailability->id->toRfc4122().'/delete');
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    // ===========================================
+    // SELF-BILLING - Landlord/Admin
+    // ===========================================
+
+    public function testSelfBillingListDeniedForUser(): void
+    {
+        $user = $this->getFixtureUser();
+        $this->login($user);
+
+        $this->client->request('GET', '/portal/landlord/self-billing');
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    public function testSelfBillingListAccessibleByLandlord(): void
+    {
+        $landlord = $this->getFixtureLandlord();
+        $this->login($landlord);
+
+        $this->client->request('GET', '/portal/landlord/self-billing');
+
+        $this->assertResponseIsSuccessful();
+    }
+
+    public function testSelfBillingListAccessibleByAdmin(): void
+    {
+        $admin = $this->getFixtureAdmin();
+        $this->login($admin);
+
+        $this->client->request('GET', '/portal/landlord/self-billing');
+
+        $this->assertResponseIsSuccessful();
+    }
+
+    // ===========================================
+    // USER CONTRACTS - User role required
+    // ===========================================
+
+    public function testUserContractPdfDeniedForUnauthenticated(): void
+    {
+        $contract = $this->getFixtureContract();
+
+        $this->client->request('GET', '/portal/smlouvy/'.$contract->id->toRfc4122().'/pdf');
+
+        $this->assertResponseRedirects('/login');
+    }
+
+    public function testUserContractDownloadDeniedForUnauthenticated(): void
+    {
+        $contract = $this->getFixtureContract();
+
+        $this->client->request('GET', '/portal/smlouvy/'.$contract->id->toRfc4122().'/stahnout');
+
+        $this->assertResponseRedirects('/login');
+    }
+
+    public function testUserContractPdfDeniedForOtherUser(): void
+    {
+        $contract = $this->getFixtureContract(); // belongs to user@example.com
+        $tenant = $this->findUserByEmail('tenant@example.com');
+        $this->login($tenant);
+
+        $this->client->request('GET', '/portal/smlouvy/'.$contract->id->toRfc4122().'/pdf');
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    public function testUserContractPdfAccessibleByOwner(): void
+    {
+        $contract = $this->getFixtureContract(); // belongs to user@example.com
+        $user = $this->getFixtureUser();
+        $this->login($user);
+
+        $this->client->request('GET', '/portal/smlouvy/'.$contract->id->toRfc4122().'/pdf');
+
+        // Should not be 403 (access denied) - may be 200, redirect, or error if PDF service unavailable
+        $this->assertNotSame(403, $this->client->getResponse()->getStatusCode());
+    }
+
+    // ===========================================
+    // USER INVOICES - User role required
+    // ===========================================
+
+    public function testUserInvoicePdfDeniedForUnauthenticated(): void
+    {
+        $invoice = $this->getFixtureInvoice();
+
+        $this->client->request('GET', '/portal/faktury/'.$invoice->id->toRfc4122().'/pdf');
+
+        $this->assertResponseRedirects('/login');
+    }
+
+    public function testUserInvoicePdfDeniedForOtherUser(): void
+    {
+        $invoice = $this->getFixtureInvoice(); // belongs to user@example.com
+        $tenant = $this->findUserByEmail('tenant@example.com');
+        $this->login($tenant);
+
+        $this->client->request('GET', '/portal/faktury/'.$invoice->id->toRfc4122().'/pdf');
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    public function testUserInvoicePdfAccessibleByOwner(): void
+    {
+        $invoice = $this->getFixtureInvoice(); // belongs to user@example.com
+        $user = $this->getFixtureUser();
+        $this->login($user);
+
+        $this->client->request('GET', '/portal/faktury/'.$invoice->id->toRfc4122().'/pdf');
+
+        // Should not be 403 (access denied) - may be 200, redirect, or error if PDF service unavailable
+        $this->assertNotSame(403, $this->client->getResponse()->getStatusCode());
+    }
+
+    // ===========================================
+    // CALENDAR - Admin access
+    // ===========================================
+
+    public function testCalendarAccessibleByAdmin(): void
+    {
+        $admin = $this->getFixtureAdmin();
+        $this->login($admin);
+
+        $this->client->request('GET', '/portal/calendar');
+
+        $this->assertResponseIsSuccessful();
+    }
+
+    // ===========================================
+    // LANDLORD ORDER DETAIL - User denied
+    // ===========================================
+
+    public function testLandlordOrderDetailDeniedForUser(): void
+    {
+        $order = $this->getFixtureOrder();
+        $user = $this->getFixtureUser();
+        $this->login($user);
+
+        $this->client->request('GET', '/portal/landlord/orders/'.$order->id->toRfc4122());
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    // ===========================================
+    // API - Storage operations
+    // ===========================================
+
+    public function testApiStorageCreateDeniedForUnauthenticated(): void
+    {
+        $place = $this->getFixturePlace();
+
+        $this->client->request('POST', '/api/places/'.$place->id->toRfc4122().'/storages', [], [], [
+            'CONTENT_TYPE' => 'application/json',
+        ], '{}');
+
+        // Symfony redirects unauthenticated users to login
+        $this->assertResponseRedirects('/login');
+    }
+
+    public function testApiStorageCreateDeniedForUser(): void
+    {
+        $place = $this->getFixturePlace();
+        $user = $this->getFixtureUser();
+        $this->login($user);
+
+        $this->client->request('POST', '/api/places/'.$place->id->toRfc4122().'/storages', [], [], [
+            'CONTENT_TYPE' => 'application/json',
+        ], '{}');
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    public function testApiStorageUpdateDeniedForUser(): void
+    {
+        $storage = $this->getFixtureStorage();
+        $user = $this->getFixtureUser();
+        $this->login($user);
+
+        $this->client->request('PUT', '/api/places/'.$storage->place->id->toRfc4122().'/storages/'.$storage->id->toRfc4122(), [], [], [
+            'CONTENT_TYPE' => 'application/json',
+        ], '{}');
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    public function testApiStorageDeleteDeniedForUser(): void
+    {
+        $storage = $this->getFixtureStorage();
+        $user = $this->getFixtureUser();
+        $this->login($user);
+
+        $this->client->request('DELETE', '/api/places/'.$storage->place->id->toRfc4122().'/storages/'.$storage->id->toRfc4122());
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    // ===========================================
+    // CROSS-LANDLORD ISOLATION
+    // ===========================================
+
+    public function testLandlord2CannotAccessLandlord1Storage(): void
+    {
+        $storage = $this->getFixtureStorage(); // owned by landlord@example.com
+        $landlord2 = $this->findUserByEmail('landlord2@example.com');
+        $this->login($landlord2);
+
+        $this->client->request('GET', '/portal/storages/'.$storage->id->toRfc4122().'/edit');
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    public function testLandlord2CannotDeleteLandlord1Unavailability(): void
+    {
+        $unavailability = $this->getFixtureUnavailability(); // created by landlord@example.com
+        $landlord2 = $this->findUserByEmail('landlord2@example.com');
+        $this->login($landlord2);
+
+        $this->client->request('POST', '/portal/unavailabilities/'.$unavailability->id->toRfc4122().'/delete');
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
     // ===========================================
     // HELPER METHODS
     // ===========================================
@@ -678,6 +1173,67 @@ class ControllerAccessTest extends WebTestCase
     private function getFixtureAdmin(): User
     {
         return $this->findUserByEmail('admin@example.com');
+    }
+
+    private function getFixturePlace(): Place
+    {
+        $place = $this->entityManager->getRepository(Place::class)->findOneBy(['name' => 'Sklad Praha - Centrum']);
+        \assert($place instanceof Place, 'Place "Sklad Praha - Centrum" not found in fixtures');
+
+        return $place;
+    }
+
+    private function getFixtureStorageType(): StorageType
+    {
+        $storageType = $this->entityManager->getRepository(StorageType::class)->findOneBy(['name' => 'Maly box']);
+        \assert($storageType instanceof StorageType, 'StorageType "Maly box" not found in fixtures');
+
+        return $storageType;
+    }
+
+    private function getFixtureStorage(): Storage
+    {
+        $storage = $this->entityManager->getRepository(Storage::class)->findOneBy(['number' => 'A1']);
+        \assert($storage instanceof Storage, 'Storage "A1" not found in fixtures');
+
+        return $storage;
+    }
+
+    private function getFixtureUnavailability(): StorageUnavailability
+    {
+        $unavailability = $this->entityManager->getRepository(StorageUnavailability::class)->findOneBy(['reason' => 'Preventivni udrzba']);
+        \assert($unavailability instanceof StorageUnavailability, 'StorageUnavailability not found in fixtures');
+
+        return $unavailability;
+    }
+
+    private function getFixtureContract(): Contract
+    {
+        // Get the active contract (belongs to user@example.com)
+        $user = $this->getFixtureUser();
+        $contract = $this->entityManager->getRepository(Contract::class)->findOneBy(['user' => $user]);
+        \assert($contract instanceof Contract, 'Contract not found in fixtures');
+
+        return $contract;
+    }
+
+    private function getFixtureInvoice(): Invoice
+    {
+        // Get an invoice (belongs to user@example.com)
+        $user = $this->getFixtureUser();
+        $invoice = $this->entityManager->getRepository(Invoice::class)->findOneBy(['user' => $user]);
+        \assert($invoice instanceof Invoice, 'Invoice not found in fixtures');
+
+        return $invoice;
+    }
+
+    private function getFixtureOrder(): Order
+    {
+        // Get any order (e.g., a reserved one)
+        $order = $this->entityManager->getRepository(Order::class)->findOneBy(['status' => OrderStatus::RESERVED]);
+        \assert($order instanceof Order, 'Order not found in fixtures');
+
+        return $order;
     }
 
     private function createUser(string $email, UserRole $role): User
