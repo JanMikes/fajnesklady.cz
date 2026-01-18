@@ -9,10 +9,10 @@ return App::config([
         'mailer' => [
             'dsn' => '%env(MAILER_DSN)%',
             'envelope' => [
-                'sender' => 'noreply@fajnesklady.cz',
+                'sender' => '%env(MAILER_FROM_EMAIL)%',
             ],
             'headers' => [
-                'from' => 'Fajné Sklady <noreply@fajnesklady.cz>',
+                'from' => '%env(MAILER_FROM_NAME)% <%env(MAILER_FROM_EMAIL)%>',
             ],
         ],
     ],
