@@ -14,10 +14,6 @@ final class LandlordRegistrationFormData
 
     #[Assert\NotBlank(message: 'Zadejte prosím heslo')]
     #[Assert\Length(min: 8, minMessage: 'Heslo musí mít alespoň {{ limit }} znaků')]
-    #[Assert\PasswordStrength(
-        minScore: Assert\PasswordStrength::STRENGTH_MEDIUM,
-        message: 'Heslo je příliš slabé. Použijte silnější heslo.',
-    )]
     public string $password = '';
 
     #[Assert\NotBlank(message: 'Zadejte prosím jméno')]

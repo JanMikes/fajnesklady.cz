@@ -22,10 +22,6 @@ final class RegistrationFormData
 
     #[Assert\NotBlank(message: 'Please enter a password')]
     #[Assert\Length(min: 8, minMessage: 'Your password should be at least {{ limit }} characters')]
-    #[Assert\PasswordStrength(
-        minScore: Assert\PasswordStrength::STRENGTH_MEDIUM,
-        message: 'Your password is too weak. Please use a stronger password.',
-    )]
     public string $password = '';
 
     #[Assert\IsTrue(message: 'You must agree to the terms and conditions.')]

@@ -10,19 +10,19 @@ return App::config([
             // Registration rate limiter - 3 attempts per hour per IP
             'registration' => [
                 'policy' => 'sliding_window',
-                'limit' => 3,
+                'limit' => 10,
                 'interval' => '1 hour',
             ],
             // Password reset rate limiter - 3 attempts per hour per IP
             'password_reset' => [
                 'policy' => 'sliding_window',
-                'limit' => 3,
+                'limit' => 10,
                 'interval' => '1 hour',
             ],
             // Email verification rate limiter - 5 attempts per hour per IP
             'email_verification' => [
                 'policy' => 'sliding_window',
-                'limit' => 5,
+                'limit' => 10,
                 'interval' => '1 hour',
             ],
         ],
