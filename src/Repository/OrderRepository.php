@@ -256,6 +256,42 @@ class OrderRepository
     }
 
     /**
+     * Find active orders for specific storages that overlap with a given date range.
+     *
+     * @param Storage[] $storages
+     *
+     * @return Order[]
+     */
+    public function findActiveByStoragesInDateRange(
+        array $storages,
+        \DateTimeImmutable $startDate,
+        \DateTimeImmutable $endDate,
+    ): array {
+        if ([] === $storages) {
+            return [];
+        }
+
+        return $this->entityManager->createQueryBuilder()
+            ->select('o')
+            ->from(Order::class, 'o')
+            ->where('o.storage IN (:storages)')
+            ->andWhere('o.status IN (:statuses)')
+            ->andWhere('o.startDate <= :endDate')
+            ->andWhere('o.endDate IS NULL OR o.endDate >= :startDate')
+            ->setParameter('storages', $storages)
+            ->setParameter('statuses', [
+                OrderStatus::RESERVED,
+                OrderStatus::AWAITING_PAYMENT,
+                OrderStatus::PAID,
+                OrderStatus::COMPLETED,
+            ])
+            ->setParameter('startDate', $startDate)
+            ->setParameter('endDate', $endDate)
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
      * @return Order[]
      */
     public function findAllPaginated(int $page, int $limit): array

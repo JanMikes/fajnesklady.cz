@@ -197,6 +197,19 @@ class StorageRepository
             ->getSingleScalarResult();
     }
 
+    public function countBlockedByOwner(User $owner): int
+    {
+        return (int) $this->entityManager->createQueryBuilder()
+            ->select('COUNT(s.id)')
+            ->from(Storage::class, 's')
+            ->where('s.owner = :owner')
+            ->andWhere('s.status = :status')
+            ->setParameter('owner', $owner)
+            ->setParameter('status', StorageStatus::MANUALLY_UNAVAILABLE)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
     public function hasOrdersOrContracts(Storage $storage): bool
     {
         // Check for orders
@@ -273,5 +286,36 @@ class StorageRepository
             ->setParameter('status', StorageStatus::OCCUPIED)
             ->getQuery()
             ->getSingleScalarResult();
+    }
+
+    /**
+     * Find storages with optional filtering by owner, place, and storage type.
+     *
+     * @return Storage[]
+     */
+    public function findFiltered(?User $owner, ?Place $place, ?StorageType $storageType): array
+    {
+        $qb = $this->entityManager->createQueryBuilder()
+            ->select('s')
+            ->from(Storage::class, 's');
+
+        if (null !== $owner) {
+            $qb->andWhere('s.owner = :owner')
+                ->setParameter('owner', $owner);
+        }
+
+        if (null !== $place) {
+            $qb->andWhere('s.place = :place')
+                ->setParameter('place', $place);
+        }
+
+        if (null !== $storageType) {
+            $qb->andWhere('s.storageType = :storageType')
+                ->setParameter('storageType', $storageType);
+        }
+
+        return $qb->orderBy('s.number', 'ASC')
+            ->getQuery()
+            ->getResult();
     }
 }

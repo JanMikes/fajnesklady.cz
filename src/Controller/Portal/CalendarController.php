@@ -6,6 +6,7 @@ namespace App\Controller\Portal;
 
 use App\Entity\User;
 use App\Repository\OrderRepository;
+use App\Repository\PlaceRepository;
 use App\Repository\StorageRepository;
 use App\Repository\StorageTypeRepository;
 use App\Repository\StorageUnavailabilityRepository;
@@ -21,6 +22,7 @@ use Symfony\Component\Uid\Uuid;
 final class CalendarController extends AbstractController
 {
     public function __construct(
+        private readonly PlaceRepository $placeRepository,
         private readonly StorageTypeRepository $storageTypeRepository,
         private readonly StorageRepository $storageRepository,
         private readonly OrderRepository $orderRepository,
@@ -32,6 +34,7 @@ final class CalendarController extends AbstractController
     {
         /** @var User $user */
         $user = $this->getUser();
+        $isAdmin = $this->isGranted('ROLE_ADMIN');
 
         // Get month/year from query params, default to current month
         $year = (int) $request->query->get('year', (string) date('Y'));
@@ -45,114 +48,150 @@ final class CalendarController extends AbstractController
             $year = (int) date('Y');
         }
 
-        $storageTypeId = $request->query->get('storage_type');
+        $placeId = $request->query->get('place', 'all');
+        $storageTypeId = $request->query->get('storage_type', 'all');
 
-        // Get storage types for the filter dropdown
-        if ($this->isGranted('ROLE_ADMIN')) {
-            $storageTypes = $this->storageTypeRepository->findAll();
+        // Get places for the filter dropdown
+        if ($isAdmin) {
+            $places = $this->placeRepository->findAll();
         } else {
-            $storageTypes = $this->storageTypeRepository->findByOwner($user);
+            $places = $this->placeRepository->findByOwner($user);
         }
 
-        $calendarData = [];
-        $selectedStorageType = null;
-        $storages = [];
+        // Determine selected place
+        $selectedPlace = null;
+        if ('' !== $placeId && 'all' !== $placeId) {
+            $selectedPlace = $this->placeRepository->find(Uuid::fromString($placeId));
 
-        if (null !== $storageTypeId && '' !== $storageTypeId) {
+            if (null !== $selectedPlace && !$isAdmin && !$this->placeRepository->isOwnedBy($selectedPlace, $user)) {
+                throw $this->createAccessDeniedException();
+            }
+        }
+
+        // Get storage types for the filter dropdown (based on selected place)
+        if ($isAdmin) {
+            if (null !== $selectedPlace) {
+                $storageTypes = $this->storageTypeRepository->findByPlace($selectedPlace);
+            } else {
+                $storageTypes = $this->storageTypeRepository->findAll();
+            }
+        } else {
+            if (null !== $selectedPlace) {
+                $storageTypes = $this->storageTypeRepository->findByOwnerAndPlace($user, $selectedPlace);
+            } else {
+                $storageTypes = $this->storageTypeRepository->findByOwner($user);
+            }
+        }
+
+        // Determine selected storage type
+        $selectedStorageType = null;
+        if ('' !== $storageTypeId && 'all' !== $storageTypeId) {
             $selectedStorageType = $this->storageTypeRepository->find(Uuid::fromString($storageTypeId));
 
             if (null !== $selectedStorageType) {
-                // Verify ownership (user owns at least one storage of this type)
-                if (!$this->isGranted('ROLE_ADMIN') && !$this->storageTypeRepository->isOwnedBy($selectedStorageType, $user)) {
-                    throw $this->createAccessDeniedException();
-                }
-
-                $storages = $this->storageRepository->findByStorageType($selectedStorageType);
-
-                // Build calendar data for the month
-                $startOfMonth = new \DateTimeImmutable(sprintf('%d-%02d-01', $year, $month));
-                $endOfMonth = $startOfMonth->modify('last day of this month');
-
-                // Get all orders and unavailabilities for this storage type in date range
-                $orders = $this->orderRepository->findActiveByStorageTypeInDateRange(
-                    $selectedStorageType,
-                    $startOfMonth,
-                    $endOfMonth
-                );
-                $unavailabilities = $this->unavailabilityRepository->findByStorageTypeInDateRange(
-                    $selectedStorageType,
-                    $startOfMonth,
-                    $endOfMonth
-                );
-
-                // Build lookup tables for quick access
-                $ordersByStorage = [];
-                foreach ($orders as $order) {
-                    $storageId = $order->storage->id->toRfc4122();
-                    $ordersByStorage[$storageId][] = $order;
-                }
-
-                $unavailabilitiesByStorage = [];
-                foreach ($unavailabilities as $unavailability) {
-                    $storageId = $unavailability->storage->id->toRfc4122();
-                    $unavailabilitiesByStorage[$storageId][] = $unavailability;
-                }
-
-                // For each day in the month, calculate availability
-                $currentDate = $startOfMonth;
-                while ($currentDate <= $endOfMonth) {
-                    $dayKey = $currentDate->format('Y-m-d');
-                    $available = 0;
-                    $occupied = 0;
-                    $unavailable = 0;
-
-                    foreach ($storages as $storage) {
-                        $storageId = $storage->id->toRfc4122();
-                        $isOccupied = false;
-                        $isUnavailable = false;
-
-                        // Check orders
-                        if (isset($ordersByStorage[$storageId])) {
-                            foreach ($ordersByStorage[$storageId] as $order) {
-                                if ($order->startDate <= $currentDate
-                                    && (null === $order->endDate || $order->endDate >= $currentDate)) {
-                                    $isOccupied = true;
-
-                                    break;
-                                }
-                            }
+                // Verify ownership
+                if (!$isAdmin) {
+                    if (null !== $selectedPlace) {
+                        if (!$this->storageTypeRepository->isOwnedByAtPlace($selectedStorageType, $user, $selectedPlace)) {
+                            throw $this->createAccessDeniedException();
                         }
+                    } elseif (!$this->storageTypeRepository->isOwnedBy($selectedStorageType, $user)) {
+                        throw $this->createAccessDeniedException();
+                    }
+                }
+            }
+        }
 
-                        // Check manual unavailabilities
-                        if (!$isOccupied && isset($unavailabilitiesByStorage[$storageId])) {
-                            foreach ($unavailabilitiesByStorage[$storageId] as $unavail) {
-                                if ($unavail->startDate <= $currentDate
-                                    && (null === $unavail->endDate || $unavail->endDate >= $currentDate)) {
-                                    $isUnavailable = true;
+        $calendarData = [];
 
-                                    break;
-                                }
+        // Get storages based on filters
+        $ownerFilter = $isAdmin ? null : $user;
+        $storages = $this->storageRepository->findFiltered($ownerFilter, $selectedPlace, $selectedStorageType);
+
+        if ([] !== $storages) {
+            // Build calendar data for the month
+            $startOfMonth = new \DateTimeImmutable(sprintf('%d-%02d-01', $year, $month));
+            $endOfMonth = $startOfMonth->modify('last day of this month');
+
+            // Get all orders and unavailabilities for these storages in date range
+            $orders = $this->orderRepository->findActiveByStoragesInDateRange(
+                $storages,
+                $startOfMonth,
+                $endOfMonth
+            );
+            $unavailabilities = $this->unavailabilityRepository->findByStoragesInDateRange(
+                $storages,
+                $startOfMonth,
+                $endOfMonth
+            );
+
+            // Build lookup tables for quick access
+            $ordersByStorage = [];
+            foreach ($orders as $order) {
+                $storageId = $order->storage->id->toRfc4122();
+                $ordersByStorage[$storageId][] = $order;
+            }
+
+            $unavailabilitiesByStorage = [];
+            foreach ($unavailabilities as $unavailability) {
+                $storageId = $unavailability->storage->id->toRfc4122();
+                $unavailabilitiesByStorage[$storageId][] = $unavailability;
+            }
+
+            // For each day in the month, calculate availability
+            $currentDate = $startOfMonth;
+            while ($currentDate <= $endOfMonth) {
+                $dayKey = $currentDate->format('Y-m-d');
+                $available = 0;
+                $occupied = 0;
+                $unavailable = 0;
+
+                foreach ($storages as $storage) {
+                    $storageId = $storage->id->toRfc4122();
+                    $isOccupied = false;
+                    $isUnavailable = false;
+
+                    // Check orders
+                    if (isset($ordersByStorage[$storageId])) {
+                        foreach ($ordersByStorage[$storageId] as $order) {
+                            if ($order->startDate <= $currentDate
+                                && (null === $order->endDate || $order->endDate >= $currentDate)) {
+                                $isOccupied = true;
+
+                                break;
                             }
-                        }
-
-                        if ($isOccupied) {
-                            ++$occupied;
-                        } elseif ($isUnavailable) {
-                            ++$unavailable;
-                        } else {
-                            ++$available;
                         }
                     }
 
-                    $calendarData[$dayKey] = [
-                        'available' => $available,
-                        'occupied' => $occupied,
-                        'unavailable' => $unavailable,
-                        'total' => count($storages),
-                    ];
+                    // Check manual unavailabilities
+                    if (!$isOccupied && isset($unavailabilitiesByStorage[$storageId])) {
+                        foreach ($unavailabilitiesByStorage[$storageId] as $unavail) {
+                            if ($unavail->startDate <= $currentDate
+                                && (null === $unavail->endDate || $unavail->endDate >= $currentDate)) {
+                                $isUnavailable = true;
 
-                    $currentDate = $currentDate->modify('+1 day');
+                                break;
+                            }
+                        }
+                    }
+
+                    if ($isOccupied) {
+                        ++$occupied;
+                    } elseif ($isUnavailable) {
+                        ++$unavailable;
+                    } else {
+                        ++$available;
+                    }
                 }
+
+                $calendarData[$dayKey] = [
+                    'available' => $available,
+                    'occupied' => $occupied,
+                    'unavailable' => $unavailable,
+                    'total' => count($storages),
+                ];
+
+                $currentDate = $currentDate->modify('+1 day');
             }
         }
 
@@ -172,8 +211,12 @@ final class CalendarController extends AbstractController
         }
 
         return $this->render('portal/calendar/index.html.twig', [
+            'places' => $places,
+            'selectedPlace' => $selectedPlace,
+            'selectedPlaceId' => $placeId,
             'storageTypes' => $storageTypes,
             'selectedStorageType' => $selectedStorageType,
+            'selectedStorageTypeId' => $storageTypeId,
             'storages' => $storages,
             'calendarData' => $calendarData,
             'year' => $year,

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Controller;
 
-use App\Entity\Contract;
 use App\Entity\Order;
 use App\Entity\Place;
 use App\Entity\Storage;
@@ -180,19 +179,12 @@ class ControllerAccessTest extends WebTestCase
     }
 
     // ===========================================
-    // USER PORTAL - Orders and Contracts
+    // USER PORTAL - Orders
     // ===========================================
 
     public function testUserOrderListRequiresAuthentication(): void
     {
         $this->client->request('GET', '/portal/objednavky');
-
-        $this->assertResponseRedirects('/login');
-    }
-
-    public function testUserContractListRequiresAuthentication(): void
-    {
-        $this->client->request('GET', '/portal/smlouvy');
 
         $this->assertResponseRedirects('/login');
     }
@@ -203,16 +195,6 @@ class ControllerAccessTest extends WebTestCase
         $this->login($user);
 
         $this->client->request('GET', '/portal/objednavky');
-
-        $this->assertResponseIsSuccessful();
-    }
-
-    public function testUserCanAccessOwnContracts(): void
-    {
-        $user = $this->createUser('contract-user@example.com', UserRole::USER);
-        $this->login($user);
-
-        $this->client->request('GET', '/portal/smlouvy');
 
         $this->assertResponseIsSuccessful();
     }
@@ -229,22 +211,6 @@ class ControllerAccessTest extends WebTestCase
 
         $this->login($otherUser);
         $this->client->request('GET', '/portal/objednavky/'.$order->id->toRfc4122());
-
-        $this->assertResponseStatusCodeSame(403);
-    }
-
-    public function testUserCannotAccessOtherUserContractDetail(): void
-    {
-        $owner = $this->createUser('contract-owner@example.com', UserRole::USER);
-        $otherUser = $this->createUser('contract-other@example.com', UserRole::USER);
-
-        $place = $this->createPlace('Contract Place');
-        $storageType = $this->createStorageType('Contract Type');
-        $storage = $this->createStorage($storageType, $place, 'C1');
-        $contract = $this->createContract($storage, $owner);
-
-        $this->login($otherUser);
-        $this->client->request('GET', '/portal/smlouvy/'.$contract->id->toRfc4122());
 
         $this->assertResponseStatusCodeSame(403);
     }
@@ -484,7 +450,6 @@ class ControllerAccessTest extends WebTestCase
     {
         yield 'admin_places' => ['/portal/admin/places'];
         yield 'admin_orders' => ['/portal/admin/orders'];
-        yield 'admin_contracts' => ['/portal/admin/contracts'];
         yield 'admin_audit_log' => ['/portal/admin/audit-log'];
     }
 
@@ -813,28 +778,5 @@ class ControllerAccessTest extends WebTestCase
         $this->entityManager->flush();
 
         return $order;
-    }
-
-    private function createContract(Storage $storage, User $user): Contract
-    {
-        $now = new \DateTimeImmutable();
-        $order = $this->createOrder($storage, $user);
-        $order->markPaid($now);
-
-        $contract = new Contract(
-            id: Uuid::v7(),
-            order: $order,
-            user: $user,
-            storage: $storage,
-            rentalType: RentalType::LIMITED,
-            startDate: $now,
-            endDate: $now->modify('+1 month'),
-            createdAt: $now,
-        );
-
-        $this->entityManager->persist($contract);
-        $this->entityManager->flush();
-
-        return $contract;
     }
 }

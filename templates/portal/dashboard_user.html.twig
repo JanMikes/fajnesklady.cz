@@ -66,7 +66,7 @@
     <div class="mb-8">
         <div class="flex items-center justify-between mb-4">
             <h2 class="text-xl font-bold text-gray-900">Aktivní smlouvy</h2>
-            <a href="{{ path('portal_user_contracts') }}" class="link text-sm font-medium">
+            <a href="{{ path('portal_user_orders') }}" class="link text-sm font-medium">
                 Zobrazit vše &rarr;
             </a>
         </div>
@@ -76,7 +76,7 @@
                 <ul class="divide-y divide-gray-200">
                     {% for contract in activeContracts %}
                         <li>
-                            <a href="{{ path('portal_user_contract_detail', {id: contract.id}) }}" class="block hover:bg-gray-50">
+                            <a href="{{ path('portal_user_order_detail', {id: contract.order.id}) }}" class="block hover:bg-gray-50">
                                 <div class="px-4 py-4 sm:px-6">
                                     <div class="flex items-center justify-between">
                                         <div class="flex items-center">

@@ -9,13 +9,26 @@
 
     <div class="card mb-6">
         <div class="card-body">
-            <form method="get" action="{{ path('portal_calendar') }}" class="flex items-end gap-4">
+            <form method="get" action="{{ path('portal_calendar') }}" class="flex flex-wrap items-end gap-4">
                 <input type="hidden" name="year" value="{{ year }}">
                 <input type="hidden" name="month" value="{{ month }}">
-                <div class="flex-1">
+                <div class="flex-1 min-w-[200px]">
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Místo</label>
+                    <select name="place" class="select select-bordered w-full" onchange="this.form.submit()">
+                        <option value="">-- Vyberte místo --</option>
+                        <option value="all" {{ selectedPlaceId == 'all' ? 'selected' : '' }}>Všechny</option>
+                        {% for place in places %}
+                            <option value="{{ place.id }}" {{ selectedPlace and selectedPlace.id.equals(place.id) ? 'selected' : '' }}>
+                                {{ place.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="flex-1 min-w-[200px]">
                     <label class="block text-sm font-semibold text-gray-700 mb-2">Typ skladu</label>
                     <select name="storage_type" class="select select-bordered w-full" onchange="this.form.submit()">
                         <option value="">-- Vyberte typ skladu --</option>
+                        <option value="all" {{ selectedStorageTypeId == 'all' ? 'selected' : '' }}>Všechny</option>
                         {% for storageType in storageTypes %}
                             <option value="{{ storageType.id }}" {{ selectedStorageType and selectedStorageType.id.equals(storageType.id) ? 'selected' : '' }}>
                                 {{ storageType.name }} ({{ storageType.getDimensionsInMeters() }})
@@ -27,21 +40,33 @@
         </div>
     </div>
 
-    {% if selectedStorageType %}
-        <div class="card">
+    <div class="card">
             <div class="card-header bg-gray-50 px-6 py-4 border-b">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-4">
-                        <a href="{{ path('portal_calendar', {storage_type: selectedStorageType.id, year: prevYear, month: prevMonth}) }}" class="btn btn-ghost btn-sm">
+                        <a href="{{ path('portal_calendar', {place: selectedPlaceId, storage_type: selectedStorageTypeId, year: prevYear, month: prevMonth}) }}" class="btn btn-ghost btn-sm">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                             </svg>
                         </a>
                         <div class="text-center">
                             <h2 class="text-xl font-semibold text-gray-900">{{ monthName }} {{ year }}</h2>
-                            <p class="text-sm text-gray-500">{{ selectedStorageType.name }} - {{ storages|length }} skladů</p>
+                            <p class="text-sm text-gray-500">
+                                {% if selectedPlace %}
+                                    {{ selectedPlace.name }}
+                                {% else %}
+                                    Všechny místa
+                                {% endif %}
+                                -
+                                {% if selectedStorageType %}
+                                    {{ selectedStorageType.name }}
+                                {% else %}
+                                    Všechny typy
+                                {% endif %}
+                                - {{ storages|length }} skladů
+                            </p>
                         </div>
-                        <a href="{{ path('portal_calendar', {storage_type: selectedStorageType.id, year: nextYear, month: nextMonth}) }}" class="btn btn-ghost btn-sm">
+                        <a href="{{ path('portal_calendar', {place: selectedPlaceId, storage_type: selectedStorageTypeId, year: nextYear, month: nextMonth}) }}" class="btn btn-ghost btn-sm">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                             </svg>
@@ -135,60 +160,65 @@
         </div>
 
         {# Storage list below calendar #}
-        <div class="card mt-6">
-            <div class="card-header bg-gray-50 px-6 py-4 border-b">
-                <h3 class="text-lg font-semibold text-gray-900">Přehled skladů</h3>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="table table-zebra">
-                    <thead>
-                        <tr>
-                            <th>Číslo</th>
-                            <th>Stav</th>
-                            <th>Aktuální stav</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for storage in storages %}
+        {% if storages|length > 0 %}
+            <div class="card mt-6">
+                <div class="card-header bg-gray-50 px-6 py-4 border-b">
+                    <h3 class="text-lg font-semibold text-gray-900">Přehled skladů</h3>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="table table-zebra">
+                        <thead>
                             <tr>
-                                <td class="font-medium text-gray-900">{{ storage.number }}</td>
-                                <td>
-                                    {% if storage.status.value == 'available' %}
-                                        <span class="badge badge-success">Dostupný</span>
-                                    {% elseif storage.status.value == 'reserved' %}
-                                        <span class="badge badge-warning">Rezervovaný</span>
-                                    {% elseif storage.status.value == 'occupied' %}
-                                        <span class="badge badge-error">Obsazený</span>
-                                    {% else %}
-                                        <span class="badge badge-ghost">Nedostupný</span>
-                                    {% endif %}
-                                </td>
-                                <td class="text-gray-500">
-                                    {% if storage.isAvailable() %}
-                                        Volný k pronájmu
-                                    {% elseif storage.isReserved() %}
-                                        Čeká na platbu
-                                    {% elseif storage.isOccupied() %}
-                                        Pronajatý
-                                    {% else %}
-                                        Ručně blokovaný
-                                    {% endif %}
-                                </td>
+                                <th>Číslo</th>
+                                <th>Místo</th>
+                                <th>Typ</th>
+                                <th>Stav</th>
+                                <th>Aktuální stav</th>
                             </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {% for storage in storages %}
+                                <tr>
+                                    <td class="font-medium text-gray-900">{{ storage.number }}</td>
+                                    <td>{{ storage.place.name }}</td>
+                                    <td>{{ storage.storageType.name }}</td>
+                                    <td>
+                                        {% if storage.status.value == 'available' %}
+                                            <span class="badge badge-success">Dostupný</span>
+                                        {% elseif storage.status.value == 'reserved' %}
+                                            <span class="badge badge-warning">Rezervovaný</span>
+                                        {% elseif storage.status.value == 'occupied' %}
+                                            <span class="badge badge-error">Obsazený</span>
+                                        {% else %}
+                                            <span class="badge badge-ghost">Nedostupný</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-gray-500">
+                                        {% if storage.isAvailable() %}
+                                            Volný k pronájmu
+                                        {% elseif storage.isReserved() %}
+                                            Čeká na platbu
+                                        {% elseif storage.isOccupied() %}
+                                            Pronajatý
+                                        {% else %}
+                                            Ručně blokovaný
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
-        </div>
-    {% else %}
-        <div class="card">
-            <div class="card-body text-center py-12">
-                <svg class="mx-auto h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                <h3 class="mt-4 text-lg font-medium text-gray-900">Vyberte typ skladu</h3>
-                <p class="mt-2 text-sm text-gray-500">Pro zobrazení kalendáře obsazenosti vyberte typ skladu z nabídky výše.</p>
+        {% else %}
+            <div class="card mt-6">
+                <div class="card-body text-center py-12">
+                    <svg class="mx-auto h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                    </svg>
+                    <h3 class="mt-4 text-lg font-medium text-gray-900">Žádné sklady</h3>
+                    <p class="mt-2 text-sm text-gray-500">Pro vybrané filtry nebyly nalezeny žádné sklady.</p>
+                </div>
             </div>
-        </div>
-    {% endif %}
+        {% endif %}
 {% endblock %}

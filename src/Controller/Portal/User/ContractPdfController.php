@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller\Portal\User;
 
 use App\Repository\ContractRepository;
+use App\Service\DocumentPdfConverter;
 use App\Service\Security\ContractVoter;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -15,12 +16,13 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Uid\Uuid;
 
-#[Route('/portal/smlouvy/{id}/stahnout', name: 'portal_user_contract_download')]
+#[Route('/portal/smlouvy/{id}/pdf', name: 'portal_user_contract_pdf')]
 #[IsGranted('ROLE_USER')]
-final class ContractDownloadController extends AbstractController
+final class ContractPdfController extends AbstractController
 {
     public function __construct(
         private readonly ContractRepository $contractRepository,
+        private readonly DocumentPdfConverter $pdfConverter,
         #[Autowire('%kernel.project_dir%')]
         private readonly string $projectDir,
     ) {
@@ -45,18 +47,23 @@ final class ContractDownloadController extends AbstractController
         }
 
         $contractsDir = $this->projectDir.'/var/contracts';
-        $filePath = $contractsDir.'/'.$contract->documentPath;
-        $realPath = realpath($filePath);
+        $docxPath = $contractsDir.'/'.$contract->documentPath;
+        $realPath = realpath($docxPath);
 
-        // Validate path to prevent directory traversal
         if (false === $realPath || !str_starts_with($realPath, realpath($contractsDir).'/')) {
             throw new NotFoundHttpException('Dokument smlouvy nebyl nalezen.');
         }
 
-        $response = new BinaryFileResponse($realPath);
+        $pdfPath = $this->pdfConverter->convertToPdf($realPath);
+
+        if (null === $pdfPath) {
+            throw new NotFoundHttpException('Konverze do PDF není dostupná. Stáhněte prosím DOCX verzi.');
+        }
+
+        $response = new BinaryFileResponse($pdfPath);
         $response->setContentDisposition(
             ResponseHeaderBag::DISPOSITION_ATTACHMENT,
-            'smlouva-'.$contract->id->toBase32().'.docx'
+            'smlouva-'.$contract->id->toBase32().'.pdf'
         );
 
         return $response;

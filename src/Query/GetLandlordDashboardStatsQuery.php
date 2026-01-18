@@ -55,6 +55,7 @@ final readonly class GetLandlordDashboardStatsQuery
         $totalStorages = $this->storageRepository->countByOwner($landlord);
         $occupiedStorages = $this->storageRepository->countOccupiedByOwner($landlord);
         $availableStorages = $this->storageRepository->countAvailableByOwner($landlord);
+        $blockedStorages = $this->storageRepository->countBlockedByOwner($landlord);
         $occupancyRate = $totalStorages > 0 ? ($occupiedStorages / $totalStorages) * 100 : 0.0;
 
         return new GetLandlordDashboardStatsResult(
@@ -66,6 +67,7 @@ final readonly class GetLandlordDashboardStatsQuery
             totalStorages: $totalStorages,
             occupiedStorages: $occupiedStorages,
             availableStorages: $availableStorages,
+            blockedStorages: $blockedStorages,
             occupancyRate: $occupancyRate,
         );
     }

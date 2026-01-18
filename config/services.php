@@ -74,6 +74,11 @@ return App::config([
                 '$contractsDirectory' => '%kernel.project_dir%/var/contracts',
             ],
         ],
+        'App\\Service\\DocumentPdfConverter' => [
+            'arguments' => [
+                '$cacheDirectory' => '%kernel.cache_dir%',
+            ],
+        ],
         'App\\Service\\ContractService' => [
             'arguments' => [
                 '$contractTemplatePath' => '%kernel.project_dir%/templates/documents/contract_template.docx',

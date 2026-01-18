@@ -15,6 +15,7 @@ final readonly class GetLandlordDashboardStatsResult
         public int $totalStorages,
         public int $occupiedStorages,
         public int $availableStorages,
+        public int $blockedStorages,
         public float $occupancyRate,
     ) {
     }

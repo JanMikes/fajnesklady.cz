@@ -9,6 +9,7 @@ use App\Entity\Order;
 use App\Entity\Storage;
 use App\Entity\User;
 use App\Enum\RentalType;
+use App\Service\ContractDocumentGenerator;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
@@ -31,6 +32,8 @@ final class ContractFixtures extends Fixture implements DependentFixtureInterfac
 
     public function __construct(
         private ClockInterface $clock,
+        private ContractDocumentGenerator $documentGenerator,
+        private string $contractTemplatePath,
     ) {
     }
 
@@ -78,6 +81,7 @@ final class ContractFixtures extends Fixture implements DependentFixtureInterfac
             createdAt: $now->modify('-5 days'),
         );
         $contractActive->sign($now->modify('-5 days'));
+        $this->generateDocument($contractActive);
         $orderCompleted->complete($contractActiveId, $now->modify('-5 days'));
         $orderCompleted->popEvents();
         $manager->persist($contractActive);
@@ -96,6 +100,7 @@ final class ContractFixtures extends Fixture implements DependentFixtureInterfac
             createdAt: $now->modify('-34 days'),
         );
         $contractUnlimited->sign($now->modify('-34 days'));
+        $this->generateDocument($contractUnlimited);
         $orderUnlimited->complete($contractUnlimitedId, $now->modify('-34 days'));
         $orderUnlimited->popEvents();
         $manager->persist($contractUnlimited);
@@ -114,6 +119,7 @@ final class ContractFixtures extends Fixture implements DependentFixtureInterfac
             createdAt: $now->modify('-27 days'),
         );
         $contractExpiring7Days->sign($now->modify('-27 days'));
+        $this->generateDocument($contractExpiring7Days);
         $orderExpiringSoon->complete($contractExpiring7DaysId, $now->modify('-27 days'));
         $orderExpiringSoon->popEvents();
         $manager->persist($contractExpiring7Days);
@@ -151,6 +157,7 @@ final class ContractFixtures extends Fixture implements DependentFixtureInterfac
             createdAt: $now->modify('-64 days'),
         );
         $contractTerminated->sign($now->modify('-64 days'));
+        $this->generateDocument($contractTerminated);
         $terminatedOrder->complete($contractTerminatedId, $now->modify('-64 days'));
         $terminatedOrder->popEvents();
         $contractTerminated->terminate($now->modify('-30 days'));
@@ -158,6 +165,21 @@ final class ContractFixtures extends Fixture implements DependentFixtureInterfac
         $this->addReference(self::REF_CONTRACT_TERMINATED, $contractTerminated);
 
         $manager->flush();
+    }
+
+    private function generateDocument(Contract $contract): void
+    {
+        if (!file_exists($this->contractTemplatePath)) {
+            return;
+        }
+
+        try {
+            $documentPath = $this->documentGenerator->generate($contract, $this->contractTemplatePath);
+            $filename = basename($documentPath);
+            $contract->attachDocument($filename, $this->clock->now());
+        } catch (\Exception) {
+            // Ignore document generation errors in fixtures
+        }
     }
 
     /**

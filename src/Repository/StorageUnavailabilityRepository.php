@@ -122,6 +122,35 @@ class StorageUnavailabilityRepository
     }
 
     /**
+     * Find unavailability records for specific storages that overlap with a date range.
+     *
+     * @param Storage[] $storages
+     *
+     * @return StorageUnavailability[]
+     */
+    public function findByStoragesInDateRange(
+        array $storages,
+        \DateTimeImmutable $startDate,
+        \DateTimeImmutable $endDate,
+    ): array {
+        if ([] === $storages) {
+            return [];
+        }
+
+        return $this->entityManager->createQueryBuilder()
+            ->select('su')
+            ->from(StorageUnavailability::class, 'su')
+            ->where('su.storage IN (:storages)')
+            ->andWhere('su.startDate <= :endDate')
+            ->andWhere('su.endDate IS NULL OR su.endDate >= :startDate')
+            ->setParameter('storages', $storages)
+            ->setParameter('startDate', $startDate)
+            ->setParameter('endDate', $endDate)
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
      * Find all unavailability records for storages owned by a user.
      *
      * @return StorageUnavailability[]

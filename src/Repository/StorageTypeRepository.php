@@ -105,6 +105,26 @@ class StorageTypeRepository
     }
 
     /**
+     * Find storage types that have storages owned by the given user at a specific place.
+     *
+     * @return StorageType[]
+     */
+    public function findByOwnerAndPlace(User $owner, Place $place): array
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('DISTINCT st')
+            ->from(StorageType::class, 'st')
+            ->innerJoin('App\Entity\Storage', 's', 'WITH', 's.storageType = st')
+            ->where('s.owner = :owner')
+            ->andWhere('s.place = :place')
+            ->setParameter('owner', $owner)
+            ->setParameter('place', $place)
+            ->orderBy('st.name', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
      * Check if the given user owns any storages of this storage type.
      */
     public function isOwnedBy(StorageType $storageType, User $user): bool
@@ -116,6 +136,26 @@ class StorageTypeRepository
             ->andWhere('s.owner = :owner')
             ->setParameter('storageType', $storageType)
             ->setParameter('owner', $user)
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return $count > 0;
+    }
+
+    /**
+     * Check if the given user owns any storages of this storage type at a specific place.
+     */
+    public function isOwnedByAtPlace(StorageType $storageType, User $user, Place $place): bool
+    {
+        $count = (int) $this->entityManager->createQueryBuilder()
+            ->select('COUNT(s.id)')
+            ->from('App\Entity\Storage', 's')
+            ->where('s.storageType = :storageType')
+            ->andWhere('s.owner = :owner')
+            ->andWhere('s.place = :place')
+            ->setParameter('storageType', $storageType)
+            ->setParameter('owner', $user)
+            ->setParameter('place', $place)
             ->getQuery()
             ->getSingleScalarResult();
 

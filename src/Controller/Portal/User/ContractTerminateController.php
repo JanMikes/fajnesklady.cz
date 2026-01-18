@@ -50,19 +50,19 @@ final class ContractTerminateController extends AbstractController
         if (!$contract->isUnlimited()) {
             $this->addFlash('error', 'Smlouvu na dobu určitou nelze předčasně ukončit.');
 
-            return $this->redirectToRoute('portal_user_contract_detail', ['id' => $id]);
+            return $this->redirectToRoute('portal_user_order_detail', ['id' => $contract->order->id]);
         }
 
         if (!$this->contractService->canTerminate($contract)) {
             $this->addFlash('error', 'Tuto smlouvu nelze ukončit.');
 
-            return $this->redirectToRoute('portal_user_contract_detail', ['id' => $id]);
+            return $this->redirectToRoute('portal_user_order_detail', ['id' => $contract->order->id]);
         }
 
         $this->contractService->terminateContract($contract, $this->clock->now());
 
         $this->addFlash('success', 'Smlouva byla úspěšně ukončena.');
 
-        return $this->redirectToRoute('portal_user_contracts');
+        return $this->redirectToRoute('portal_user_order_detail', ['id' => $contract->order->id]);
     }
 }

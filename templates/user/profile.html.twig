@@ -70,7 +70,13 @@
                         <dt class="text-sm font-semibold text-gray-500">Role</dt>
                         <dd class="col-span-2 flex flex-wrap gap-1">
                             {% for role in app.user.roles %}
-                                <span class="badge badge-outline">{{ role }}</span>
+                                {% if role == 'ROLE_ADMIN' %}
+                                    <span class="badge badge-primary">{{ role|role_label }}</span>
+                                {% elseif role == 'ROLE_LANDLORD' %}
+                                    <span class="badge badge-secondary">{{ role|role_label }}</span>
+                                {% else %}
+                                    <span class="badge badge-ghost">{{ role|role_label }}</span>
+                                {% endif %}
                             {% endfor %}
                         </dd>
                     </div>

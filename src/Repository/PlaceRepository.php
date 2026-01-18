@@ -123,4 +123,22 @@ class PlaceRepository
             ->getQuery()
             ->getResult();
     }
+
+    /**
+     * Check if the given user owns any storages at this place.
+     */
+    public function isOwnedBy(Place $place, User $user): bool
+    {
+        $count = (int) $this->entityManager->createQueryBuilder()
+            ->select('COUNT(s.id)')
+            ->from('App\Entity\Storage', 's')
+            ->where('s.place = :place')
+            ->andWhere('s.owner = :owner')
+            ->setParameter('place', $place)
+            ->setParameter('owner', $user)
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return $count > 0;
+    }
 }
