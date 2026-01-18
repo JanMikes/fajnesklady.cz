@@ -17,10 +17,8 @@ return App::config([
             ],
             // Sentry error handler - sends ERROR+ to Sentry
             'sentry' => [
-                'type' => 'sentry',
-                'level' => 'error',
-                'hub_id' => 'Sentry\\State\\HubInterface',
-                'fill_extra_context' => true,
+                'type' => 'service',
+                'id' => \Sentry\Monolog\Handler::class,
             ],
             // Existing handlers
             'main' => [

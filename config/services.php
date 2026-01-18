@@ -120,5 +120,16 @@ return App::config([
         'App\\Service\\GoPay\\GoPayClient' => [
             'alias' => 'App\\Service\\GoPay\\GoPayApiClient',
         ],
+        // Sentry Monolog handlers
+        'Sentry\\Monolog\\Handler' => [
+            'arguments' => [
+                '$hub' => '@Sentry\\State\\HubInterface',
+            ],
+        ],
+        'Sentry\\Monolog\\BreadcrumbHandler' => [
+            'arguments' => [
+                '$hub' => '@Sentry\\State\\HubInterface',
+            ],
+        ],
     ],
 ]);
