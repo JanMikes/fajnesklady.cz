@@ -44,7 +44,7 @@ class OrderPaymentControllerTest extends WebTestCase
         $crawler = $this->client->request('GET', '/objednavka/'.$orderId.'/platba');
 
         $this->assertResponseIsSuccessful();
-        $this->assertSelectorTextContains('h1', 'Platba objednavky');
+        $this->assertSelectorTextContains('h1', 'Platba objednávky');
         $this->assertSelectorExists('#pay-button');
     }
 

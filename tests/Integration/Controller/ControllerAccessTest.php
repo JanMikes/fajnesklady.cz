@@ -318,6 +318,26 @@ class ControllerAccessTest extends WebTestCase
         $this->assertSelectorTextContains('td', 'Admin View Type');
     }
 
+    public function testStorageTypeCreateRequiresAdminRole(): void
+    {
+        $landlord = $this->createUser('st-create-landlord@example.com', UserRole::LANDLORD);
+        $this->login($landlord);
+
+        $this->client->request('GET', '/portal/storage-types/create');
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    public function testStorageTypeCreateRendersForAdmin(): void
+    {
+        $admin = $this->createUser('st-create-admin@example.com', UserRole::ADMIN);
+        $this->login($admin);
+
+        $this->client->request('GET', '/portal/storage-types/create');
+
+        $this->assertResponseIsSuccessful();
+    }
+
     public function testStorageListRequiresLandlordRole(): void
     {
         $user = $this->createUser('storage-list-user@example.com', UserRole::USER);
