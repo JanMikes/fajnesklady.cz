@@ -16,11 +16,11 @@ final class NoStorageAvailable extends \DomainException
         ?\DateTimeImmutable $endDate,
     ): self {
         $period = null === $endDate
-            ? sprintf('from %s (unlimited)', $startDate->format('Y-m-d'))
-            : sprintf('from %s to %s', $startDate->format('Y-m-d'), $endDate->format('Y-m-d'));
+            ? sprintf('od %s (neomezeně)', $startDate->format('d.m.Y'))
+            : sprintf('od %s do %s', $startDate->format('d.m.Y'), $endDate->format('d.m.Y'));
 
         return new self(sprintf(
-            'No storage of type "%s" is available %s.',
+            'Žádný sklad typu "%s" není dostupný %s.',
             $storageType->name,
             $period,
         ));
@@ -29,9 +29,9 @@ final class NoStorageAvailable extends \DomainException
     public static function forPeriod(\DateTimeImmutable $startDate, ?\DateTimeImmutable $endDate): self
     {
         $period = null === $endDate
-            ? sprintf('from %s (unlimited)', $startDate->format('Y-m-d'))
-            : sprintf('from %s to %s', $startDate->format('Y-m-d'), $endDate->format('Y-m-d'));
+            ? sprintf('od %s (neomezeně)', $startDate->format('d.m.Y'))
+            : sprintf('od %s do %s', $startDate->format('d.m.Y'), $endDate->format('d.m.Y'));
 
-        return new self(sprintf('No storage is available %s.', $period));
+        return new self(sprintf('Žádný sklad není dostupný %s.', $period));
     }
 }

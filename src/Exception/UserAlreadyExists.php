@@ -11,6 +11,6 @@ final class UserAlreadyExists extends \DomainException
 {
     public static function withEmail(string $email): self
     {
-        return new self(sprintf('User with email "%s" already exists.', $email));
+        return new self(sprintf('Uživatel s e-mailem "%s" již existuje.', $email));
     }
 }

@@ -34,7 +34,7 @@ class NoStorageAvailableTest extends TestCase
         $exception = NoStorageAvailable::forStorageType($storageType, $startDate, $endDate);
 
         $this->assertSame(
-            'No storage of type "Premium Box" is available from 2024-06-01 to 2024-06-30.',
+            'Žádný sklad typu "Premium Box" není dostupný od 01.06.2024 do 30.06.2024.',
             $exception->getMessage(),
         );
     }
@@ -47,7 +47,7 @@ class NoStorageAvailableTest extends TestCase
         $exception = NoStorageAvailable::forStorageType($storageType, $startDate, null);
 
         $this->assertSame(
-            'No storage of type "Standard Box" is available from 2024-03-15 (unlimited).',
+            'Žádný sklad typu "Standard Box" není dostupný od 15.03.2024 (neomezeně).',
             $exception->getMessage(),
         );
     }
@@ -60,7 +60,7 @@ class NoStorageAvailableTest extends TestCase
         $exception = NoStorageAvailable::forPeriod($startDate, $endDate);
 
         $this->assertSame(
-            'No storage is available from 2024-01-10 to 2024-02-28.',
+            'Žádný sklad není dostupný od 10.01.2024 do 28.02.2024.',
             $exception->getMessage(),
         );
     }
@@ -72,7 +72,7 @@ class NoStorageAvailableTest extends TestCase
         $exception = NoStorageAvailable::forPeriod($startDate, null);
 
         $this->assertSame(
-            'No storage is available from 2024-12-01 (unlimited).',
+            'Žádný sklad není dostupný od 01.12.2024 (neomezeně).',
             $exception->getMessage(),
         );
     }

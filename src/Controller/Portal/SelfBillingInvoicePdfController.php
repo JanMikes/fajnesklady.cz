@@ -33,11 +33,11 @@ final class SelfBillingInvoicePdfController extends AbstractController
 
         // Ensure the invoice belongs to the current landlord
         if (!$invoice->landlord->id->equals($landlord->id)) {
-            throw new AccessDeniedHttpException('You do not have access to this invoice.');
+            throw new AccessDeniedHttpException('K této faktuře nemáte přístup.');
         }
 
         if (!$invoice->hasPdf() || null === $invoice->pdfPath) {
-            throw new NotFoundHttpException('PDF not available for this invoice.');
+            throw new NotFoundHttpException('PDF pro tuto fakturu není k dispozici.');
         }
 
         $response = new BinaryFileResponse($invoice->pdfPath);

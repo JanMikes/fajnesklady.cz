@@ -12,6 +12,6 @@ final class SelfBillingInvoiceNotFound extends \DomainException
 {
     public static function withId(Uuid $id): self
     {
-        return new self(sprintf('Self-billing invoice with ID "%s" was not found.', $id));
+        return new self(sprintf('Samofakturace s ID "%s" nebyla nalezena.', $id));
     }
 }

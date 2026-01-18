@@ -12,6 +12,6 @@ final class PlaceNotFound extends \RuntimeException
 {
     public static function withId(Uuid $id): self
     {
-        return new self(sprintf('Place with ID "%s" not found.', $id->toRfc4122()));
+        return new self(sprintf('Místo s ID "%s" nebylo nalezeno.', $id->toRfc4122()));
     }
 }

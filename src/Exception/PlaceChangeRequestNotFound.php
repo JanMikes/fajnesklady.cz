@@ -12,6 +12,6 @@ final class PlaceChangeRequestNotFound extends \RuntimeException
 {
     public static function withId(Uuid $id): self
     {
-        return new self(sprintf('Place change request with ID "%s" not found.', $id->toRfc4122()));
+        return new self(sprintf('Žádost o změnu místa s ID "%s" nebyla nalezena.', $id->toRfc4122()));
     }
 }

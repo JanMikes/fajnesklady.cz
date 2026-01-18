@@ -11,6 +11,6 @@ final class UnverifiedUser extends \RuntimeException
 {
     public static function forEmail(string $email): self
     {
-        return new self(sprintf('User "%s" has not verified their email address.', $email));
+        return new self(sprintf('Uživatel "%s" nemá ověřenou e-mailovou adresu.', $email));
     }
 }

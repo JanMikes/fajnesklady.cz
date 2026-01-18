@@ -12,6 +12,6 @@ final class CreatePlaceRequestAlreadyProcessed extends \RuntimeException
 {
     public static function withId(Uuid $id): self
     {
-        return new self(sprintf('Create place request with ID "%s" has already been processed.', $id->toRfc4122()));
+        return new self(sprintf('Žádost o vytvoření místa s ID "%s" již byla zpracována.', $id->toRfc4122()));
     }
 }

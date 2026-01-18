@@ -12,6 +12,6 @@ final class StorageTypeNotFound extends \RuntimeException
 {
     public static function withId(Uuid $id): self
     {
-        return new self(sprintf('StorageType with ID "%s" not found.', $id->toRfc4122()));
+        return new self(sprintf('Typ skladu s ID "%s" nebyl nalezen.', $id->toRfc4122()));
     }
 }

@@ -17,9 +17,9 @@ final class RequestPasswordResetFormType extends AbstractType
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $builder->add('email', EmailType::class, [
-            'label' => 'Email Address',
+            'label' => 'E-mailová adresa',
             'attr' => [
-                'placeholder' => 'Enter your email address',
+                'placeholder' => 'Zadejte vaši e-mailovou adresu',
                 'class' => 'input input-bordered w-full',
             ],
         ]);

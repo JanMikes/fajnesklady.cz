@@ -12,11 +12,11 @@ final class StorageNotFound extends \RuntimeException
 {
     public static function withId(Uuid $id): self
     {
-        return new self(sprintf('Storage with ID "%s" not found.', $id->toRfc4122()));
+        return new self(sprintf('Sklad s ID "%s" nebyl nalezen.', $id->toRfc4122()));
     }
 
     public static function withNumber(string $number): self
     {
-        return new self(sprintf('Storage with number "%s" not found.', $number));
+        return new self(sprintf('Sklad s číslem "%s" nebyl nalezen.', $number));
     }
 }

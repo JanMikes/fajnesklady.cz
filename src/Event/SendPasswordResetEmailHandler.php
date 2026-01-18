@@ -32,7 +32,7 @@ final readonly class SendPasswordResetEmailHandler
         $email = (new TemplatedEmail())
             ->from(new Address('noreply@fajnesklady.cz', 'Fajné Sklady'))
             ->to($event->email)
-            ->subject('Password Reset Request')
+            ->subject('Obnovení hesla')
             ->htmlTemplate('user/email/reset_password.html.twig')
             ->context([
                 'resetUrl' => $resetUrl,

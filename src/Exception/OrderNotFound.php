@@ -12,6 +12,6 @@ final class OrderNotFound extends \RuntimeException
 {
     public static function withId(Uuid $id): self
     {
-        return new self(sprintf('Order with ID "%s" not found.', $id->toRfc4122()));
+        return new self(sprintf('Objednávka s ID "%s" nebyla nalezena.', $id->toRfc4122()));
     }
 }

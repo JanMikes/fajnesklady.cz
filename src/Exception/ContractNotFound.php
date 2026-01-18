@@ -12,6 +12,6 @@ final class ContractNotFound extends \RuntimeException
 {
     public static function withId(Uuid $id): self
     {
-        return new self(sprintf('Contract with ID "%s" not found.', $id->toRfc4122()));
+        return new self(sprintf('Smlouva s ID "%s" nebyla nalezena.', $id->toRfc4122()));
     }
 }

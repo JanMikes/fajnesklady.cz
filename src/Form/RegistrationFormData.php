@@ -8,22 +8,22 @@ use Symfony\Component\Validator\Constraints as Assert;
 
 final class RegistrationFormData
 {
-    #[Assert\NotBlank(message: 'Please enter your email address')]
-    #[Assert\Email(message: 'Please enter a valid email address')]
+    #[Assert\NotBlank(message: 'Zadejte prosím e-mailovou adresu.')]
+    #[Assert\Email(message: 'Zadejte prosím platnou e-mailovou adresu.')]
     public string $email = '';
 
-    #[Assert\NotBlank(message: 'Please enter your first name')]
-    #[Assert\Length(max: 100, maxMessage: 'Your first name cannot be longer than {{ limit }} characters')]
+    #[Assert\NotBlank(message: 'Zadejte prosím jméno.')]
+    #[Assert\Length(max: 100, maxMessage: 'Jméno nesmí být delší než {{ limit }} znaků.')]
     public string $firstName = '';
 
-    #[Assert\NotBlank(message: 'Please enter your last name')]
-    #[Assert\Length(max: 100, maxMessage: 'Your last name cannot be longer than {{ limit }} characters')]
+    #[Assert\NotBlank(message: 'Zadejte prosím příjmení.')]
+    #[Assert\Length(max: 100, maxMessage: 'Příjmení nesmí být delší než {{ limit }} znaků.')]
     public string $lastName = '';
 
-    #[Assert\NotBlank(message: 'Please enter a password')]
-    #[Assert\Length(min: 8, minMessage: 'Your password should be at least {{ limit }} characters')]
+    #[Assert\NotBlank(message: 'Zadejte prosím heslo.')]
+    #[Assert\Length(min: 8, minMessage: 'Heslo musí mít alespoň {{ limit }} znaků.')]
     public string $password = '';
 
-    #[Assert\IsTrue(message: 'You must agree to the terms and conditions.')]
+    #[Assert\IsTrue(message: 'Musíte souhlasit s obchodními podmínkami.')]
     public bool $agreeTerms = false;
 }

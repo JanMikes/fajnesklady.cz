@@ -21,15 +21,15 @@ class RegistrationFormType extends AbstractType
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $builder->add('email', EmailType::class, [
-            'label' => 'Email Address',
+            'label' => 'E-mailová adresa',
             'attr' => [
-                'placeholder' => 'your@email.com',
+                'placeholder' => 'vas@email.cz',
                 'class' => 'input input-bordered w-full',
             ],
         ]);
 
         $builder->add('firstName', TextType::class, [
-            'label' => 'First Name',
+            'label' => 'Jméno',
             'attr' => [
                 'placeholder' => 'Jan',
                 'class' => 'input input-bordered w-full',
@@ -37,9 +37,9 @@ class RegistrationFormType extends AbstractType
         ]);
 
         $builder->add('lastName', TextType::class, [
-            'label' => 'Last Name',
+            'label' => 'Příjmení',
             'attr' => [
-                'placeholder' => 'Novak',
+                'placeholder' => 'Novák',
                 'class' => 'input input-bordered w-full',
             ],
         ]);
@@ -47,24 +47,24 @@ class RegistrationFormType extends AbstractType
         $builder->add('password', RepeatedType::class, [
             'type' => PasswordType::class,
             'first_options' => [
-                'label' => 'Password',
+                'label' => 'Heslo',
                 'attr' => [
-                    'placeholder' => 'Enter password',
+                    'placeholder' => 'Zadejte heslo',
                     'class' => 'input input-bordered w-full',
                 ],
             ],
             'second_options' => [
-                'label' => 'Repeat Password',
+                'label' => 'Heslo znovu',
                 'attr' => [
-                    'placeholder' => 'Repeat password',
+                    'placeholder' => 'Zopakujte heslo',
                     'class' => 'input input-bordered w-full',
                 ],
             ],
-            'invalid_message' => 'The password fields must match.',
+            'invalid_message' => 'Hesla se musí shodovat.',
         ]);
 
         $builder->add('agreeTerms', CheckboxType::class, [
-            'label' => 'I agree to the terms and conditions',
+            'label' => 'Souhlasím s obchodními podmínkami',
             'attr' => [
                 'class' => 'checkbox checkbox-primary',
             ],

@@ -12,11 +12,11 @@ final class UserNotFound extends \RuntimeException
 {
     public static function withId(Uuid $id): self
     {
-        return new self(sprintf('User with ID "%s" not found.', $id->toRfc4122()));
+        return new self(sprintf('Uživatel s ID "%s" nebyl nalezen.', $id->toRfc4122()));
     }
 
     public static function withEmail(string $email): self
     {
-        return new self(sprintf('User with email "%s" not found.', $email));
+        return new self(sprintf('Uživatel s e-mailem "%s" nebyl nalezen.', $email));
     }
 }

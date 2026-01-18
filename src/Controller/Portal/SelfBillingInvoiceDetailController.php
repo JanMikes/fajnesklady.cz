@@ -33,7 +33,7 @@ final class SelfBillingInvoiceDetailController extends AbstractController
 
         // Ensure the invoice belongs to the current landlord
         if (!$invoice->landlord->id->equals($landlord->id)) {
-            throw new AccessDeniedHttpException('You do not have access to this invoice.');
+            throw new AccessDeniedHttpException('K této faktuře nemáte přístup.');
         }
 
         $payments = $this->paymentRepository->findBySelfBillingInvoice($invoice);
