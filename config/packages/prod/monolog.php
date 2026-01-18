@@ -4,9 +4,25 @@ declare(strict_types=1);
 
 namespace Symfony\Component\DependencyInjection\Loader\Configurator;
 
+use Sentry\Monolog\BreadcrumbHandler;
+
 return App::config([
     'monolog' => [
         'handlers' => [
+            // Sentry breadcrumb handler - captures INFO+ as breadcrumbs
+            'sentry_breadcrumbs' => [
+                'type' => 'service',
+                'id' => BreadcrumbHandler::class,
+                'channels' => ['!deprecation'],
+            ],
+            // Sentry error handler - sends ERROR+ to Sentry
+            'sentry' => [
+                'type' => 'sentry',
+                'level' => 'error',
+                'hub_id' => 'Sentry\\State\\HubInterface',
+                'fill_extra_context' => true,
+            ],
+            // Existing handlers
             'main' => [
                 'type' => 'fingers_crossed',
                 'action_level' => 'error',
