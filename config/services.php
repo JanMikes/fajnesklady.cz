@@ -124,11 +124,15 @@ return App::config([
         'Sentry\\Monolog\\Handler' => [
             'arguments' => [
                 '$hub' => '@Sentry\\State\\HubInterface',
+                '$level' => \Monolog\Level::Error,
+                '$bubble' => true,
+                '$fillExtraContext' => true,
             ],
         ],
         'Sentry\\Monolog\\BreadcrumbHandler' => [
             'arguments' => [
                 '$hub' => '@Sentry\\State\\HubInterface',
+                '$level' => \Monolog\Level::Info,
             ],
         ],
     ],

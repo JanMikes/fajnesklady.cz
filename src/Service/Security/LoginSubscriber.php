@@ -49,9 +49,10 @@ class LoginSubscriber implements EventSubscriberInterface
             $request = $this->requestStack->getCurrentRequest();
             if (null !== $request && $request->hasSession()) {
                 $session = $request->getSession();
+                $session->set('unverified_user_email', $user->email);
                 $session->getFlashBag()->add(
-                    'error',
-                    'Please verify your email address before logging in. Check your inbox for the verification link.'
+                    'warning',
+                    'Nejprve ověřte svou emailovou adresu. Zkontrolujte svou schránku pro ověřovací odkaz.'
                 );
             }
 

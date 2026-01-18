@@ -24,6 +24,7 @@ return App::config([
             'in_app_include' => ['%kernel.project_dir%/src'],
             'traces_sample_rate' => 0,
             'profiles_sample_rate' => 0,
+            'attach_stacktrace' => true,
         ],
         'messenger' => [
             'enabled' => true,
