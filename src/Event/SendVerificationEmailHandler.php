@@ -30,7 +30,7 @@ final readonly class SendVerificationEmailHandler
             routeName: 'app_verify_email',
             userId: (string) $user->id,
             userEmail: $user->email,
-            extraParams: [],
+            extraParams: ['id' => (string) $user->id],
         );
 
         // Create email with verification link
