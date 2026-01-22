@@ -91,8 +91,10 @@
                 <p class="text-sm text-white/50">
                     © {{ 'now'|date('Y') }} Fajné Sklady. Všechna práva vyhrazena.
                 </p>
-                <div class="flex items-center gap-6">
+                <div class="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
                     <a href="{{ path('app_home') }}" class="text-sm text-white/50 hover:text-white transition-colors">Domů</a>
+                    <a href="{{ path('public_terms_and_conditions') }}" class="text-sm text-white/50 hover:text-white transition-colors">Obchodní podmínky</a>
+                    <a href="{{ path('public_privacy_policy') }}" class="text-sm text-white/50 hover:text-white transition-colors">Ochrana osobních údajů</a>
                     {% if not app.user %}
                         <a href="{{ path('app_login') }}" class="text-sm text-white/50 hover:text-white transition-colors">Přihlášení</a>
                         <a href="{{ path('app_register') }}" class="text-sm text-white/50 hover:text-white transition-colors">Registrace</a>

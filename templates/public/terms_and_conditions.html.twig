@@ -1,0 +1,434 @@
+{% extends 'user/layout.html.twig' %}
+
+{% block title %}Všeobecné obchodní podmínky - Fajné Sklady{% endblock %}
+{% block meta_description %}Všeobecné obchodní podmínky pro pronájem skladovacích kontejnerů od společnosti Mekmann s.r.o. provozující službu Fajné Sklady.{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    {# Back Link #}
+    <div class="mb-6">
+        <a href="{{ path('app_home') }}" class="text-primary-600 hover:text-primary-700">
+            &larr; Zpět na hlavní stránku
+        </a>
+    </div>
+
+    <article class="card">
+        <div class="card-body prose prose-gray max-w-none">
+            <h1 class="text-3xl font-bold text-gray-900 mb-6 pb-4 border-b">Všeobecné obchodní podmínky</h1>
+
+            <p class="text-gray-700 mb-8">
+                Tyto všeobecné obchodní podmínky (dále jen „VOP") upravují práva a povinnosti smluvních stran v souladu s příslušnými ustanoveními zákona č. 89/2012 Sb., občanský zákoník (dále jen „Občanský zákoník").
+            </p>
+
+            {# Definice pojmů #}
+            <section class="mb-8">
+                <div class="space-y-3 text-sm text-gray-700">
+                    <p><strong>„Areál"</strong> znamená skladovací areál na parc. č. 1331/2, 1331/37, k.ú. Místek, obec Frýdek - Místek, v němž je Předmět nájmu umístěn;</p>
+                    <p><strong>„Ceník"</strong> znamená cenové určení plateb nájemného či jiných plateb, dostupný z <a href="https://www.fajnesklady.cz" class="text-primary-600 hover:underline">www.fajnesklady.cz</a>;</p>
+                    <p><strong>„El. prostředky"</strong> znamená způsob elektronické komunikace, který umožňuje uzavřít Smlouvu bez současné fyzické přítomnosti Nájemce a Pronajímatele.</p>
+                    <p><strong>„Elektronický podpis"</strong> znamená elektronické podpisy podle Nařízení eIDAS a ZSVD.</p>
+                    <p><strong>„GDPR"</strong> znamená předpisy o ochraně osobních údajů, zejména pak zákon o ochraně osobních údajů č. 101/2000 Sb., a dále pak příslušná Nařízení Evropského parlamentu a Rady (EU), primárně pak č. 2016/679;</p>
+                    <p><strong>„Internetové stránky"</strong> znamená internetová stránka na adrese <a href="https://www.fajnesklady.cz" class="text-primary-600 hover:underline">https://www.fajnesklady.cz</a>, provozovaná Pronajímatelem;</p>
+                    <p><strong>„Nájemce"</strong> znamená fyzická či právnická osoba, která uzavře s Pronajímatelem Smlouvu;</p>
+                    <p><strong>„Nařízení eIDAS"</strong> nařízení Evropského parlamentu a Rady (EU) č. 910/2014 ze dne 23. července 2014 o elektronické identifikaci a službách vytvářejících důvěru pro elektronické transakce na vnitřním trhu a o zrušení směrnice 1999/93/ES, ve znění pozdějších předpisů.</p>
+                    <p><strong>„Objednávka"</strong> znamená Nájemcem podaná žádost Pronajímateli, kterou projevuje vážný zájem uzavřít Smlouvu s Pronajímatelem.</p>
+                    <p><strong>„Podnikatel"</strong> Podnikatelem se pro účely VOP rozumí ten, kdo jedná v rámci své podnikatelské činnosti. Podnikatelem je ten, kdo samostatně vykonává na vlastní účet a odpovědnost výdělečnou činnost živnostenským nebo obdobným způsobem se záměrem činit tak soustavně za účelem dosažení zisku. Za podnikatele je považován mj. pro účely ochrany spotřebitele také každá osoba, která uzavírá smlouvy související s vlastní obchodní, výrobní nebo obdobnou činností či při samostatném výkonu svého povolání, popřípadě osoba, která jedná jménem nebo na účet podnikatele. Uvede-li Nájemce ve Smlouvě, nebo v Objednávce své identifikační číslo, pak se má za to, že je ve smluvním vztahu s Pronajímatelem považován za podnikatele a platí pro něj pravidla uvedená ve VOP pro podnikatele.</p>
+                    <p><strong>„Pronajímatel"</strong> znamená Mekmann s.r.o., IČO: 11678631, se sídlem Dvořákova č.p. 780, 739 11 Frýdlant nad Ostravicí, zapsaná v obchodním rejstříku vedeném Krajským soudem v Ostravě, v oddíle C, vložka 86521;</p>
+                    <p><strong>„Provozní řád"</strong> znamená provozní řád Areálu, zveřejněný Pronajímatelem a dostupný z <a href="https://www.fajnesklady.cz" class="text-primary-600 hover:underline">www.fajnesklady.cz</a> a také u vstupu do Areálu;</p>
+                    <p><strong>„Předmět nájmu"</strong> znamená skladovací kontejnery, jejichž konkrétní specifikace a rozměry jsou detailně uvedeny na Internetových stránkách;</p>
+                    <p><strong>„Smlouva"</strong> znamená smlouva o nájmu skladových kontejnerů uzavřená mezi Nájemcem a Pronajímatelem;</p>
+                    <p><strong>„Smluvní strany"</strong> znamená Pronajímatel a Nájemce společně;</p>
+                    <p><strong>„Spotřebitel"</strong> je každý člověk, který mimo rámec své podnikatelské činnosti nebo mimo rámec samostatného výkonu svého povolání uzavírá Nájemní smlouvu s Pronajímatelem nebo s ním jinak jedná.</p>
+                    <p><strong>„VOP"</strong> znamená tyto všeobecné obchodní podmínky Pronajímatele;</p>
+                    <p><strong>„ZSVD"</strong> zákon č. 297/2016 Sb., o službách vytvářejících důvěru pro elektronické transakce, ve znění pozdějších předpisů.</p>
+                </div>
+            </section>
+
+            {# II. Předmět Smlouvy #}
+            <section class="mb-8">
+                <h2 class="text-xl font-semibold text-gray-900 mb-4">II. Předmět Smlouvy</h2>
+                <div class="space-y-3 text-gray-700">
+                    <p>VOP upravují práva a povinnosti Smluvních stran, vzniklé v souvislosti nebo na základě Smlouvy.</p>
+                    <p>Na základě Smlouvy se pronajímatel zavazuje přenechat do užívání sjednaný Předmět nájmu a Nájemce se zavazuje hradit sjednané nájemné stejně jako případně další platby určené Smlouvou.</p>
+                </div>
+            </section>
+
+            {# III. Uzavření Smlouvy #}
+            <section class="mb-8">
+                <h2 class="text-xl font-semibold text-gray-900 mb-4">III. Uzavření Smlouvy</h2>
+                <div class="space-y-3 text-gray-700">
+                    <p>VOP nevylučují možnost uzavřít Smlouvu způsobem bez použití Elektronických prostředků. Pronajímatel si vyhrazuje právo dočasně či trvale znemožnit elektronickou kontraktaci.</p>
+                    <p>Nájemce v Objednávce vybere typ Předmětu nájmu a určí časové období, po které hodlá Předmět nájmu užívat. Dále je povinen vyplnit veškeré požadované údaje, včetně identifikačních údajů potřebných pro vyhotovení a uzavření příslušné Smlouvy. Nájemce je povinen pravdivě a úplně vyplnit všechny své osobní údaje a další údaje, které Pronajímatel požaduje pro další postup v uzavření smluvního vztahu. Objednávku odešle Nájemce kliknutím na tlačítko „OBJEDNÁVÁM a zaplatím".</p>
+                    <p>Přijetí Objednávky následně Pronajímatel potvrdí, např. e-mailem či telefonicky. Budou-li splněny podmínky, předloží Pronajímatel návrh Smlouvy k akceptaci typicky prostřednictvím Elektronického prostředku.</p>
+                    <p>Smluvní strany používají Elektronické prostředky za účelem uzavření Smlouvy v písemné formě. Nájemce je oprávněn zvolit si způsob elektronické kontraktace podle aktuálních podmínek a technických možností Pronajímatele.</p>
+                    <p>Ověření identity Nájemce může proběhnout pomocí aplikací Pronajímatele k ověření identity, nebo za pomocí kvalifikovaného elektronického podpisu, zaručeného elektronického podpisu založeného na kvalifikovaném anebo úvodní osobní identifikací.</p>
+                    <p>Není-li Elektronický podpis připojen přímo za pomoci Elektronických prostředků, je Nájemce povinen Smlouvu bezprostředně po jejím podpisu dodat Pronajímateli prostřednictvím poštovního přepravce nebo osobním předáním.</p>
+                    <p>Nájemce souhlasí s použitím komunikačních prostředků na dálku při uzavírání Smlouvy. Náklady vzniklé při použití komunikačních prostředků na dálku v souvislosti s uzavřením Smlouvy (náklady na internetové připojení, náklady na telefonní hovory) si hradí Nájemce sám, přičemž tyto náklady se neliší od základní sazby.</p>
+                    <p>Smlouva je uzavřena, jakmile je k platnému návrhu Smlouvy připojen platný podpis obou Smluvních stran. Účinnou se Smlouva stává v okamžiku je úhrady první platby nájemného dle Smlouvy, případně dle Smluvně sjednané částky příslušné Jistoty.</p>
+                </div>
+            </section>
+
+            {# IV. Doba nájmu a prodloužení doby nájmu #}
+            <section class="mb-8">
+                <h2 class="text-xl font-semibold text-gray-900 mb-4">IV. Doba nájmu a prodloužení doby nájmu</h2>
+                <div class="space-y-3 text-gray-700">
+                    <p>Pokud není Smlouvou určeno jinak, je doba nájmu sjednána na dobu určitou s možností prodloužení, a to i opakovaně. V takovém případě existují dva režimy možnosti automatického prodloužení.</p>
+                    <p>Nájemce zvolil režim opakovaných plateb. V tomto případě platí, že do odvolání souhlasu s opakovanými platbami se doba nájmu vždy prodlužuje o kalendářní měsíc;</p>
+                    <p>Nájemce nezvolil režim opakovaných plateb. V takovém případě platí, že doba nájmu se prodlužuje pouze v případě, že Nájemce sdělí svůj zájem o prodloužení doby nájmu v předstihu minimálně jednoho kalendářního měsíce a současně ve stejné lhůtě uhradí nájemné za první měsíc takto prodloužené doby nájmu.</p>
+                    <p>Výjimkou z uvedených pravidel automatického prodlužování doby nájmu je prodlení Nájemce s jakoukoliv platbou podle Smlouvy, kdy k automatickému prodloužení nedochází.</p>
+                </div>
+            </section>
+
+            {# V. Přístup k Předmětu nájmu #}
+            <section class="mb-8">
+                <h2 class="text-xl font-semibold text-gray-900 mb-4">V. Přístup k Předmětu nájmu</h2>
+                <div class="space-y-3 text-gray-700">
+                    <p>První přístup do Předmětu nájmu bude umožněn prostřednictvím jedinečného kódu, který bude Nájemci sdělen po úhradě plateb v souladu s Objednávkou. V rámci Předmětu nájmu bude umístěn přístupový čip, který bude sloužit k dalšímu přístupu.</p>
+                    <p>Nájemce si je povinen pořídit bezpečnostní zámek k Předmětu nájmu na vlastní náklad.</p>
+                    <p>Předmět nájmu je umístěn v Areálu, a to v samostatném ohraničeném prostoru určeném výlučně pro umístění materiálových kontejnerů pronajatých za účelem uložení věcí Nájemců.</p>
+                    <p>Přístup do Areálu je oprávněným Nájemcům umožněn neomezeně, 24 hodin denně – za dodržení pravidel pro užívání bezpečnostního systému a Provozního řádu Areálu.</p>
+                    <p>V případě ukončení Smlouvy je Nájemce povinen odevzdat funkční čipy zpět, oproti povinnosti Pronajímatele navrátit uhrazenou zálohu, která je určena Ceníkem.</p>
+                    <p>Nájemce je povinen opatrovat přístupový čip tak, aby nedošlo k jeho předání třetím osobám, jeho ztrátě, odcizení či poškození. V případě ztráty, odcizení či poškození bezpečnostního čipu je Nájemce povinen toto okamžitě ohlásit s tím, že dosavadní čip bude zablokován.</p>
+                    <p>V případě, kdy Nájemce nesplní svoji povinnost počínat si tak, aby nedošlo předání čipu třetím osobám, a/nebo jeho ztrátě, odcizení či poškození, nese veškeré důsledky s tím spojené včetně povinnosti k náhradě vzniklé škody jak Pronajímateli, tak ostatním Nájemcům.</p>
+                </div>
+            </section>
+
+            {# VI. Cena a platební podmínky #}
+            <section class="mb-8">
+                <h2 class="text-xl font-semibold text-gray-900 mb-4">VI. Cena a platební podmínky</h2>
+                <div class="space-y-3 text-gray-700">
+                    <p>Pokud není ve Smlouvě uvedeno jinak, je cena za užívání Předmět nájmu určena Ceníkem.</p>
+                    <p>Není-li mezi Smluvními stranami sjednáno jinak, hradí se nájemné před předáním Předmětu nájmu, a to za vždy v pravidelných měsíčních platbách splatných vždy ke 20. dni měsíce předcházející měsíci, za nějž je platba Nájemného hrazena.</p>
+                    <p>Nájemné je splatné buď prostřednictvím platební brány v režimu opakovaných plateb nebo bezhotovostním převodem na základě faktury, popřípadě v hotovosti k rukám Pronajímatele na základě pokladního dokladu.</p>
+                    <p>V případě potřeby prodloužení doby nájmu obdrží Nájemce před skončením nájmu platební údaje na další období odpovídající aktuální ceně Nájemného. Splatnost nájemného na další období bude v platebních údajích stanovena tak, aby předcházela dni, kdy měl nájem dle původního ujednání v rámci Smlouvy skončit.</p>
+                    <p>Pokud Nájemce Předmět nájmu vyklidí dříve, než uplyne sjednaná doba nájmu, nevzniká mu nárok na vrácení nájemného, a to ani v poměrné části.</p>
+                    <p>Veškeré náklady na služby související s užíváním Předmětu nájmu si hradí Nájemce.</p>
+                    <p>Nájemce má možnost uhradit platby dle Smlouvy pomocí bankovního převodu (běžný a rychlý) nebo platební kartou (online), ve výjimečných případech v hotovosti.</p>
+                    <p>Platební metody jsou napojeny na platební brány, které poskytují zabezpečenou technologii přijímání platebních karet a online bankovních převodů. Čísla platebních karet, kreditních karet a hesla k elektronickému bankovnictví jsou zadávány pomocí zabezpečeného a důvěryhodného kanálu společnosti provozující platební bránu a Pronajímatel je nijak nezpracovává ani neuchovává.</p>
+                    <p>Podmínky opakovaných plateb jsou upraveny v Podmínkách opakovaných plateb dostupných z <a href="https://www.fajnesklady.cz" class="text-primary-600 hover:underline">www.fajnesklady.cz</a>.</p>
+                    <p>Ceny jsou uváděny včetně DPH, jsou-li uvedeny platby bez DPH je Pronajímatel oprávněn přičíst k ceně příslušnou sazbu DPH.</p>
+                </div>
+            </section>
+
+            {# VII. Jistota #}
+            <section class="mb-8">
+                <h2 class="text-xl font-semibold text-gray-900 mb-4">VII. Jistota</h2>
+                <div class="space-y-3 text-gray-700">
+                    <p>Pokud je ve Smlouvě uvedeno, že Nájemce složí Pronajímateli jistotu, pak je sjednáno, že tato musí být do 3 dní od uzavření Smlouvy (dále jen „Jistota").</p>
+                    <p>Pokud je Jistota sjednána, platí, že Smlouva se stává účinnou až úhradou Jistoty a nájemného za první období nájmu.</p>
+                    <p>Složená Jistota bude po dobu trvání nájemního vztahu deponována u Pronajímatele a není úročena, s tímto Nájemce souhlasí a nežádá uložení Jistoty na zvláštním účtu.</p>
+                    <p>Po dobu trvání nájmu může být Pronajímatelem jistota použita na vyrovnání dlužného nájemného, vzniklých škod na Předmětu nájmu, k úhradě jednorázových plateb, spoluúčasti na pojistné události, a nebo k úhradě nákladů vzniklých z jakýchkoliv jiných důvodů souvisejících s pronájmem včetně smluvních pokut.</p>
+                    <p>Pronajímatel je oprávněn započíst příslušnou částku na Jistotu a o tomto Nájemce písemně informovat. Nájemce je povinen dorovnat příslušnou částku jistiny do původní výše, a to do 7 dní od doručení písemného vyrozumění ze strany Pronajímatele.</p>
+                </div>
+            </section>
+
+            {# VIII. Právo na odstoupení od smlouvy spotřebitelem #}
+            <section class="mb-8">
+                <h2 class="text-xl font-semibold text-gray-900 mb-4">VIII. Právo na odstoupení od smlouvy spotřebitelem</h2>
+                <div class="space-y-3 text-gray-700">
+                    <p>Nájemce, který je spotřebitelem ve smyslu § 419 občanského zákoníku (dále jen „spotřebitel") má v souladu s § 1829 OZ právo na odstoupení od Smlouvy bez udání důvodu do 14 dnů. Uvedená lhůta je počítána od okamžiku převzetí Předmětu nájmu či započetí plnění, je-li předmětem Smlouvy služba.</p>
+                    <p>Každý spotřebitel, má právo odstoupit ve lhůtě 90 dní, pokud byl ze strany podnikatele vystaven tzv. nekalým obchodním praktikám. K nekalým obchodním praktikám více např.: <a href="https://www.coi.cz/faq/nekale-obchodni-praktiky/" class="text-primary-600 hover:underline" target="_blank">https://www.coi.cz/faq/nekale-obchodni-praktiky/</a></p>
+                    <p>Spotřebitel, jehož právo bylo nekalou obchodní praktikou dotčeno, může vedle nároků plynoucích z občanského zákoníku odstoupit od Smlouvy ve lhůtě 90 dnů ode dne jejího uzavření Smlouvy, nebo požadovat přiměřené snížení ceny v rozsahu odpovídajícím povaze a závažnosti nekalé obchodní praktiky.</p>
+                    <p>Spotřebitel nemůže odstoupit od Smlouvy podle předchozího odstavce, prokáže-li Pronajímatel, že je to s ohledem na předmět Smlouvy, povahu a závažnost nekalé obchodní praktiky nepřiměřené.</p>
+                    <p>Pro odstoupení od Smlouvy může spotřebitel též využít vzorový formulář, který je poskytován Pronajímatelem. Tento formulář tvoří přílohu těchto VOP, jako Příloha č. 1.</p>
+                    <p>Odstoupení od Smlouvy může být doručeno písemně na adresu Pronajímatele:</p>
+                    <p class="pl-4">
+                        Mekmann s.r.o.<br>
+                        Dvořákova č.p. 780<br>
+                        739 11 Frýdlant nad Ostravicí
+                    </p>
+                    <p>Odstoupení je možno učinit i elektronicky na e-mailovou adresu: <a href="mailto:skladmistr@fajnesklady.cz" class="text-primary-600 hover:underline">skladmistr@fajnesklady.cz</a></p>
+                    <p>Spotřebitel musí i v případě odstoupení od Smlouvy Předmět nájmu předat zpět, nepoškozený, čistý a pokud možno ve stavu a hodnotě, v jakém jej převzal.</p>
+                    <p>V případě, že spotřebitel odstoupí dle výše uvedených podmínek, je Pronajímatel povinen vrátit přijaté finanční prostředky, ve výši uhrazené, nenastane-li okolnost kdy na vráceném Předmětu nájmu jsou zjevné známky opotřebení nad rámec běžného opotřebení nezbytného pro to, aby se Nájemce – spotřebitel s Předmětem nájmu seznámil a odzkoušel jeho vhodnost. Platba bude vrácena do 14 dnů od odstoupení, nikoliv však dříve, než je Předmět nájmu předán nazpět Pronajímateli.</p>
+                    <p>Pronajímatel není povinen vrátit přijaté peněžní prostředky spotřebiteli dříve, než je mu ze strany spotřebitele Předmět nájmu předán nebo je mu důvěryhodně prokázáno, že Předmět nájmu je ve stavu odpovídajícím stavu před jeho předáním spotřebiteli.</p>
+                    <p>Nájemce, jenž je podnikatelem, jakož i v ostatních případech, kdy se nejedná o spotřebitele, právo na odstoupení shora uvedeným způsobem nevzniká. Uvedené však nemá vliv na případné odstoupení z jiných zákonných důvodů.</p>
+                </div>
+            </section>
+
+            {# IX. Práva a povinnosti smluvních stran #}
+            <section class="mb-8">
+                <h2 class="text-xl font-semibold text-gray-900 mb-4">IX. Práva a povinnosti smluvních stran</h2>
+                <div class="space-y-3 text-gray-700">
+                    <p><strong>Nájemce je povinen:</strong></p>
+                    <ul class="list-disc pl-6 space-y-1">
+                        <li>Řádně a včas zaplatit sjednané Nájemné;</li>
+                        <li>Udržovat Předmět nájmu v čistotě a pořádku, dbát na jeho ochranu před poškozením;</li>
+                        <li>Neznečišťovat Předmět nájmu, Areál ani jeho okolí, ani neobtěžovat neúměrným hlukem, světlem, zápachem či jiným způsobem ostatní uživatele Areálu;</li>
+                        <li>Uzavřít bezpečnostní zámek na Předmětu nájmu po dobu své nepřítomnosti;</li>
+                        <li>Neprodleně informovat Pronajímatele o nutnosti provedení oprav Předmětu nájmu a umožnit Pronajímateli vstup do Areálu za účelem provedení nezbytných oprav. U závad zjištěných později se má za to, že tyto byly způsobeny Nájemcem;</li>
+                        <li>Provádět běžnou údržbu Předmětu nájmu a dbát na to, aby nedošlo k jeho poškození;</li>
+                        <li>Dodržovat veškeré platné protipožární, bezpečnostní a hygienické předpisy;</li>
+                        <li>Neskladovat nebezpečné nebo zakázané látky, jako jsou hořlaviny výbušniny, toxické a jinak nebezpečné látky;</li>
+                        <li>Dodržovat podmínky užívání Předmětu nájmu;</li>
+                        <li>Dodržovat Provozní řád Areálu;</li>
+                        <li>Dodržovat Požární řád Areálu;</li>
+                        <li>zajistit, aby Předmět nájmu byl zabezpečen proti odcizení a poškození;</li>
+                        <li>Umožnit Pronajímateli vstup do Předmět nájmu v přiměřených časových intervalech za účelem kontroly jeho stavu a dodržování smluvních podmínek, a to s předchozím 48hodinovým oznámením, je-li to možné, nebo okamžitě v případě havarijních situací;</li>
+                        <li>Informovat Pronajímatele o změnách svých údajů, které jsou součástí Smlouvy, nejpozději však do tří (3) pracovních dnů od nastání takové změny.</li>
+                    </ul>
+                    <p>Nájemce není oprávněn dávat Předmět nájmu do podnájmu ani ho užívat k jiným než sjednaným účelům, a jakékoli změny či úpravy Předmětu nájmu je povinen provádět pouze s předchozím souhlasem Pronajímatele. Porušení těchto povinností se považuje za podstatné porušení Smlouvy.</p>
+                    <p><strong>Pronajímatel je povinen:</strong></p>
+                    <ul class="list-disc pl-6 space-y-1">
+                        <li>předat Nájemci Předmět nájmu ve stavu způsobilém k dohodnutému užívání;</li>
+                        <li>zajistit, aby Nájemce mohl nerušeně užívat Předmět nájmu po dobu nájmu;</li>
+                        <li>informovat Nájemce o všech důležitých změnách a událostech;</li>
+                        <li>být přiměřeně pojištěn proti poškození Předmětu nájmu;</li>
+                    </ul>
+                    <p>Pojištění dle předchozího odstavce se vztahuje rovněž na odcizení věcí – avšak výlučně v případě násilného vniknutí do pronajatého kontejneru – podmínkou však zásadně bude prokázání skutečnosti, že pachatel násilně překonal překážku v podobě řádného zabezpečení Předmětu nájmu.</p>
+                </div>
+            </section>
+
+            {# X. Vyklizení Předmětu nájmu Pronajímatelem #}
+            <section class="mb-8">
+                <h2 class="text-xl font-semibold text-gray-900 mb-4">X. Vyklizení Předmětu nájmu Pronajímatelem</h2>
+                <div class="space-y-3 text-gray-700">
+                    <p>V případě, že Nájemce nevyklidí Předmět nájmu ke dni skončení Nájmu, a to ani v náhradní lhůtě patnácti (15) kalendářních dnů od skončení Nájmu, platí, že Nájemce souhlasí s tím, aby Pronajímatel vstoupil do Předmětu nájmu za účelem jeho převzetí a vyklizení, a pověřuje Pronajímatele vyklizením Předmětu nájmu na náklady Nájemce. Při vyklizení Předmětu nájmu sepíše Pronajímatel o jeho obsahu protokol.</p>
+                    <p>Pronajímatel věci Nájemce uloží do úschovy (ve smyslu § 2402 a násl. občanského zákoníku), a to do vyzvednutí věcí Nájemcem, nejvýše však na dobu třiceti (30) kalendářních dnů. Na povinnost vyzvednout si věci z úschovy Pronajímatele Nájemce písemně upozorní.</p>
+                    <p>Nevyzvedne-li si Nájemce věci z úschovy Pronajímatele v přiměřené lhůtě od písemného upozornění, naloží s nimi Pronajímatel tak, že je oprávněn po marném uplynutí výše uvedené doby (30 dnů) věci z úschovy prodat. S neprodejnou věcí Pronajímatel naloží dle svého uvážení, je oprávněn ji odvézt do sběrného dvora či ji zlikvidovat. Pokud se jedná o věci podléhající rychlé zkáze, je Pronajímatel oprávněn tyto zlikvidovat bez zbytečného odkladu.</p>
+                    <p>Za každý den úschovy je Nájemce Pronajímateli povinen uhradit částku určenou Ceníkem.</p>
+                </div>
+            </section>
+
+            {# XI. Ukončení Smlouvy #}
+            <section class="mb-8">
+                <h2 class="text-xl font-semibold text-gray-900 mb-4">XI. Ukončení Smlouvy</h2>
+                <div class="space-y-3 text-gray-700">
+                    <p>Nájem dle této Smlouvy může být ukončen vzájemnou dohodou Smluvních stran anebo uplynutím doby, na kterou je nájem sjednán.</p>
+                    <p>Pronajímatel je oprávněn Smlouvu vypovědět i bez uvedení důvodu, a to s jednoměsíční výpovědní dobou, počínající dnem, kdy byla výpověď doručena Nájemci.</p>
+                    <p>Kterákoliv ze Smluvních stran může odstoupit od Smlouvy v případech stanovených Smlouvou nebo zákonem, a to zejména dle ustanovení § 1977 a násl. a § 2001 a následující občanského zákoníku.</p>
+                    <p>Nad rámec zákonných možností pro odstoupení, je Pronajímatel oprávněn vypovědět Smlouvu bez výpovědní doby z důvodů závažného porušení povinností Nájemce:</p>
+                    <ul class="list-disc pl-6 space-y-1">
+                        <li>Nájemce porušil jakoukoli ze svých povinností vyplývajících ze Smlouvy, VOP a/nebo Provozního řádu a nenapravil takové porušení v přiměřené lhůtě určené Pronajímatelem v písemné výzvě k nápravě;</li>
+                        <li>Nájemce nezaplatil sjednané nájemné, nesplatil či nedoplnil Jistotu anebo související úhrady a je v prodlení úhradou po dobu více jak sedm (7) dní;</li>
+                        <li>Nájemce dal Předmět nájmu do užívání nebo podnájmu třetí osobě bez předchozího písemného souhlasu Pronajímatele;</li>
+                        <li>Nájemce neinformoval Pronajímatele o škodách na Předmětu nájmu, nebo jeho zcizení;</li>
+                        <li>Nájemce bez předchozího písemného souhlasu Pronajímatele přemístil Předmět nájmu nebo jeho část mimo Areál;</li>
+                        <li>Nájemce hrubým způsobem znečišťuje Předmět nájmu nebo Areál;</li>
+                        <li>Nájemce užívá Předmět nájmu k jinému než sjednanému účelu;</li>
+                    </ul>
+                    <p>Odstoupení musí být učiněno písemnou formou. Právní účinky odstoupení nastávají dnem doručení oznámení o odstoupení od smlouvy druhé smluvní straně. V případě odstoupení od Smlouvy má Pronajímatel právo na úhradu nájemného a souvisejících úhrad za doposud uplynulou dobu nájmu.</p>
+                    <p>Zánikem smlouvy výpovědí, dohodou ani odstoupením není dotčena platnost kteréhokoliv ustanovení smlouvy, jež má výslovně či ve svých následcích zůstat v platnosti po zániku Smlouvy.</p>
+                </div>
+            </section>
+
+            {# XII. Ochrana informací a osobních údajů #}
+            <section class="mb-8">
+                <h2 class="text-xl font-semibold text-gray-900 mb-4">XII. Ochrana informací a osobních údajů</h2>
+                <div class="space-y-3 text-gray-700">
+                    <p>Osobní údaje poskytnuté Pronajímateli jsou zpracovávány v souladu s nařízením Evropského parlamentu a Rady (EU) 2016/679 ze dne 27. dubna 2016 o ochraně fyzických osob v souvislosti se zpracováním osobních údajů a o volném pohybu těchto údajů a o zrušení směrnice 95/46/ES (obecné nařízení o ochraně osobních údajů) a Zásadami ochrany osobních údajů Pronajímatele dostupných na webových stránkách <a href="{{ path('public_privacy_policy') }}" class="text-primary-600 hover:underline">www.fajnesklady.cz</a></p>
+                    <p>Před uzavřením Smlouvy je Pronajímatel oprávněn požadovat předložení dokladu nezbytného k identifikaci Nájemce. Tento postup se vztahuje jak na fyzické osoby, tak na právnické osoby, když smlouvu mohou uzavřít i zástupci Nájemce. Dokumenty akceptovatelné pro identifikaci zahrnují občanský průkaz pro občany České republiky, nebo cestovní pas, případně povolení k pobytu pro cizí státní příslušníky.</p>
+                </div>
+            </section>
+
+            {# XIII. Komunikace a kontaktní osoby #}
+            <section class="mb-8">
+                <h2 class="text-xl font-semibold text-gray-900 mb-4">XIII. Komunikace a kontaktní osoby</h2>
+                <div class="space-y-3 text-gray-700">
+                    <p>Smluvní strany se dohodly, že pro veškerou komunikaci, včetně té, která má být učiněna písemně, postačuje forma emailových zpráv nebo jiného Elektronického prostředku.</p>
+                    <p>Nájemce je povinen informovat Pronajímatele o změně e-mailové adresy, a pokud nebude schopen to učinit předem, tak bez zbytečného odkladu po provedení této změny. Veškerou komunikaci nájemce, kromě výslovně uvedených případech musí zasílat z adresy, uvedené při objednávce.</p>
+                    <p>Pronajímatel si vyhrazuje právo kdykoliv jednostranně změnit nebo doplnit znění VOP. Změny VOP nabývají účinnosti okamžikem jejich zveřejnění na Internetových stránkách.</p>
+                    <p>Pokud Nájemce pokračuje v užívání Předmětu nájmu i po datu oznámeném Pronajímatelem jako datum účinnosti změn VOP, projevuje tak souhlas s těmito změnami. V případě, že Nájemce nebude se změnami souhlasit, má právo odmítnout tyto změny a vypovědět Smlouvu písemně s výpovědní dobou v délce třiceti (30) dní.</p>
+                    <p>Veškeré právní vztahy vznikající na základě nebo v souvislosti se Smlouvou se řídí právním řádem České republiky, zejména občanským zákoníkem. Případné spory vyplývající z těchto VOP nebo ze Smlouvy budou projednávány před příslušnými soudy České republiky, přičemž místní příslušnost se určuje dle sídla Pronajímatele.</p>
+                    <p>Prodávající určuje kontaktní adresu a kontaktní osobu pro řešení případných práv z vadného plnění či odstoupení od smlouvy:</p>
+                    <p class="pl-4">Václav Šimek, <a href="mailto:simek@fajnesklady.cz" class="text-primary-600 hover:underline">simek@fajnesklady.cz</a>, <a href="tel:+420774307684" class="text-primary-600 hover:underline">+420 774 307 684</a></p>
+                </div>
+            </section>
+
+            {# XIV. Recenze produktů a jejich ověřování, uvádění cen a slev #}
+            <section class="mb-8">
+                <h2 class="text-xl font-semibold text-gray-900 mb-4">XIV. Recenze produktů a jejich ověřování, uvádění cen a slev</h2>
+                <div class="space-y-3 text-gray-700">
+                    <p>Pronajímatel neuvádí zákaznické recenze nabízených produktů ani e-shopu samotného, nekontroluje obsah recenzí a neověřuje jejich původ či pravost.</p>
+                    <p>Původní cena (na Internetových stránkách typicky vyobrazena v rámci informování o slevě jako přeškrtnutá) znamená nejnižší cenu za posledních 30 dní před zlevněním, za niž předmětné zboží/službu/licenci prodávající nabízel na svém e-shopu. Do výpočtu původní ceny se nezohledňují individuální cenová zvýhodnění a cenová zvýhodnění, která nejsou zahrnuta přímo v aktuální prodejní ceně daného produktu (tj. nejsou poskytována automaticky a plošně jako např. slevové kódy). Takto vypočtená původní cena zůstává v platnosti i v případě, kdy je produkt zlevňován postupně několikrát, maximálně však po dobu 90 dní.</p>
+                </div>
+            </section>
+
+            {# XV. Další sdělení spotřebitelům #}
+            <section class="mb-8">
+                <h2 class="text-xl font-semibold text-gray-900 mb-4">XV. Další sdělení spotřebitelům</h2>
+                <div class="space-y-3 text-gray-700">
+                    <p>Pronajímatel Nájemci spotřebiteli sděluje, že</p>
+                    <ul class="list-disc pl-6 space-y-1">
+                        <li>náklady na prostředky komunikace na dálku se neliší od základní sazby (v příp. internetového i telefonického připojení dle podmínek operátora Nájemce, Pronajímatel si neúčtuje žádné další poplatky, to se netýká příp. smluvní přepravy);</li>
+                        <li>Pronajímatel požaduje úhradu nájemného za první období Nájmu a Jistoty, to vše ještě před započetím Nájmu;</li>
+                        <li>Pronajímatel na základě Smlouvy uzavírá obligační vztah s Nájemcem, jehož předmětem je opakované plnění, tímto Pronajímatel sděluje, že dané plnění, včetně údajů o ceně, je určena Ceníkem, a to typicky vždy za jedno zúčtovací období, kterým je vždy jeden měsíc, pokud je tato cena neměnná;</li>
+                        <li>ceny jsou na Internetových stránkách a Ceníku uváděny včetně i bez DPH, včetně veškerých poplatků stanovených zákonem, nicméně náklady se liší podle způsobu úhrady;</li>
+                        <li>v případě odstoupení od Smlouvy nese Nájemce spotřebitel náklady spojené s vrácením Předmětu nájmu Pronajímateli;</li>
+                    </ul>
+                </div>
+            </section>
+
+            {# XVI. Závěrečná ustanovení #}
+            <section class="mb-8">
+                <h2 class="text-xl font-semibold text-gray-900 mb-4">XVI. Závěrečná ustanovení</h2>
+                <div class="space-y-3 text-gray-700">
+                    <p>Vztahy a případně spory, které vzniknou na základě Smlouvy, budou řešeny výhradně podle práva České republiky a budou řešeny příslušnými soudy České republiky.</p>
+                    <p>Smlouva je uzavírána v českém jazyce. Pokud vznikne pro potřebu Nájemce překlad Smlouvy či VOP do cizího jazyka, platí, že v případě interpretačního sporu o výklad pojmů platí výklad v českém jazyce.</p>
+                    <p>Stane-li se některé ustanovení těchto VOP neplatné či neúčinné, nedotýká se to ostatních ustanoveních obchodní podmínek, která zůstávají platná a účinná.</p>
+                    <p>VOP nabývají účinnosti dnem jejich zveřejnění, konkrétně pak dnem 25. 4. 2025.</p>
+                </div>
+            </section>
+
+            {# Přílohy #}
+            <section class="border-t pt-8">
+                <h2 class="text-xl font-semibold text-gray-900 mb-6">Přílohy</h2>
+
+                {# Příloha 1 - Formulář pro odstoupení #}
+                <div class="mb-8">
+                    <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
+                        <h3 class="font-semibold text-gray-900">Příloha č. 1 – Vzorový formulář pro odstoupení spotřebitelem</h3>
+                        <a href="{{ asset('documents/formular-odstoupeni-od-smlouvy.docx') }}" download class="btn btn-primary btn-sm inline-flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            Stáhnout formulář (.docx)
+                        </a>
+                    </div>
+
+                    <div class="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                        <div class="text-sm text-gray-700 space-y-4">
+                            <p class="font-semibold text-center text-base">Formulář na odstoupení od Smlouvy</p>
+
+                            <p>
+                                Mekmann s.r.o., IČO: 11678631,<br>
+                                Dvořákova č.p. 780, 739 11<br>
+                                Frýdlant nad Ostravicí
+                            </p>
+
+                            <p>
+                                Tímto odstupuji v souladu s § 1829 zákona č. 89/2012 Sb., občanský zákoník, od smlouvy ze dne…………………, a to ve vztahu k následujícímu:
+                            </p>
+
+                            <div class="border border-gray-300 rounded p-4 min-h-[60px] bg-white"></div>
+
+                            <div class="grid gap-2 text-sm">
+                                <div class="grid grid-cols-[220px_1fr] gap-2">
+                                    <span>Číslo objednávky:</span>
+                                    <span class="border-b border-dotted border-gray-400">…………………………………</span>
+                                </div>
+                                <div class="grid grid-cols-[220px_1fr] gap-2">
+                                    <span>Objednáno dne:</span>
+                                    <span class="border-b border-dotted border-gray-400">…………………………………</span>
+                                </div>
+                                <div class="grid grid-cols-[220px_1fr] gap-2">
+                                    <span>Jméno a příjmení spotřebitele:</span>
+                                    <span class="border-b border-dotted border-gray-400">…………………………………</span>
+                                </div>
+                                <div class="grid grid-cols-[220px_1fr] gap-2">
+                                    <span>Adresa spotřebitele:</span>
+                                    <span class="border-b border-dotted border-gray-400">…………………………………</span>
+                                </div>
+                                <div class="grid grid-cols-[220px_1fr] gap-2">
+                                    <span>Telefon:</span>
+                                    <span class="border-b border-dotted border-gray-400">…………………………………</span>
+                                </div>
+                                <div class="grid grid-cols-[220px_1fr] gap-2">
+                                    <span>Email:</span>
+                                    <span class="border-b border-dotted border-gray-400">…………………………………</span>
+                                </div>
+                                <div class="grid grid-cols-[220px_1fr] gap-2">
+                                    <span>Číslo účtu spotřebitele:</span>
+                                    <span class="border-b border-dotted border-gray-400">…………………………………</span>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4 pt-4">
+                                <div class="grid grid-cols-[120px_1fr] gap-2">
+                                    <span>Podpis spotřebitele:</span>
+                                    <span class="border-b border-dotted border-gray-400">…………………………………</span>
+                                </div>
+                                <div class="grid grid-cols-[80px_1fr] gap-2">
+                                    <span>Datum:</span>
+                                    <span class="border-b border-dotted border-gray-400">…………………………………</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {# Příloha 2 - Reklamační formulář #}
+                <div>
+                    <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
+                        <h3 class="font-semibold text-gray-900">Příloha č. 2 – Vzorový formulář pro uplatnění práv z vadného plnění</h3>
+                        <a href="{{ asset('documents/reklamacni-formular.docx') }}" download class="btn btn-primary btn-sm inline-flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            Stáhnout formulář (.docx)
+                        </a>
+                    </div>
+
+                    <div class="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                        <div class="text-sm text-gray-700 space-y-4">
+                            <p class="font-semibold text-center text-base">Reklamační formulář</p>
+
+                            <p>
+                                Mekmann s.r.o., IČO: 11678631,<br>
+                                Dvořákova č.p. 780, 739 11<br>
+                                Frýdlant nad Ostravicí
+                            </p>
+
+                            <div class="grid gap-2 text-sm">
+                                <div class="grid grid-cols-[220px_1fr] gap-2">
+                                    <span>Číslo objednávky:</span>
+                                    <span class="border-b border-dotted border-gray-400">…………………………………</span>
+                                </div>
+                                <div class="grid grid-cols-[220px_1fr] gap-2">
+                                    <span>Objednáno dne:</span>
+                                    <span class="border-b border-dotted border-gray-400">…………………………………</span>
+                                </div>
+                                <div class="grid grid-cols-[220px_1fr] gap-2">
+                                    <span>Jméno a příjmení:</span>
+                                    <span class="border-b border-dotted border-gray-400">…………………………………</span>
+                                </div>
+                                <div class="grid grid-cols-[220px_1fr] gap-2">
+                                    <span>Telefon:</span>
+                                    <span class="border-b border-dotted border-gray-400">…………………………………</span>
+                                </div>
+                                <div class="grid grid-cols-[220px_1fr] gap-2">
+                                    <span>Email:</span>
+                                    <span class="border-b border-dotted border-gray-400">…………………………………</span>
+                                </div>
+                                <div class="grid grid-cols-[220px_1fr] gap-2">
+                                    <span>Adresa:</span>
+                                    <span class="border-b border-dotted border-gray-400">…………………………………</span>
+                                </div>
+                                <div class="grid grid-cols-[220px_1fr] gap-2">
+                                    <span>Číslo účtu:</span>
+                                    <span class="border-b border-dotted border-gray-400">…………………………………</span>
+                                </div>
+                            </div>
+
+                            <div>
+                                <p class="mb-2">Popis závady:</p>
+                                <div class="border border-gray-300 rounded p-4 min-h-[80px] bg-white"></div>
+                            </div>
+
+                            <div>
+                                <p class="mb-2">Preferovaný způsob řešení:</p>
+                                <div class="space-y-1">
+                                    <p>a) oprava</p>
+                                    <p>b) výměna</p>
+                                    <p>c) sleva</p>
+                                    <p>d) odstoupení od smlouvy</p>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4 pt-4">
+                                <div class="grid grid-cols-[80px_1fr] gap-2">
+                                    <span>Podpis:</span>
+                                    <span class="border-b border-dotted border-gray-400">…………………………………</span>
+                                </div>
+                                <div class="grid grid-cols-[80px_1fr] gap-2">
+                                    <span>Datum:</span>
+                                    <span class="border-b border-dotted border-gray-400">…………………………………</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </article>
+</div>
+{% endblock %}

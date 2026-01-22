@@ -1,0 +1,488 @@
+{% extends 'user/layout.html.twig' %}
+
+{% block title %}Zásady ochrany osobních údajů - Fajné Sklady{% endblock %}
+{% block meta_description %}Zásady ochrany a zpracování osobních údajů společnosti Mekmann s.r.o. provozující službu Fajné Sklady.{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    {# Back Link #}
+    <div class="mb-6">
+        <a href="{{ path('app_home') }}" class="text-primary-600 hover:text-primary-700">
+            &larr; Zpět na hlavní stránku
+        </a>
+    </div>
+
+    <article class="card">
+        <div class="card-body prose prose-gray max-w-none">
+            <h1 class="text-3xl font-bold text-gray-900 mb-8 pb-4 border-b">Zásady ochrany osobních údajů</h1>
+
+            {# Správce osobních údajů #}
+            <section class="mb-10">
+                <h2 class="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                    Správce osobních údajů
+                </h2>
+                <div class="bg-gray-50 rounded-xl p-6">
+                    <p class="text-gray-700 leading-relaxed">
+                        Společnost <strong>Mekmann s.r.o.</strong>, IČO: 11678631, se sídlem Dvořákova č.p. 780, 739 11 Frýdlant nad Ostravicí,
+                        zapsaná v obchodním rejstříku vedeném Krajským soudem v Ostravě, v oddíle C, vložka 86521, jakožto správce, zpracovává Vaše osobní údaje.
+                    </p>
+                </div>
+            </section>
+
+            {# Co jsou osobní údaje #}
+            <section class="mb-10">
+                <h2 class="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Co jsou to osobní údaje? A proč je zpracováváme?
+                </h2>
+
+                <div class="space-y-4">
+                    <div>
+                        <h3 class="font-medium text-gray-900 mb-2">Co jsou osobní údaje?</h3>
+                        <p class="text-gray-700 leading-relaxed">
+                            Základní rámec osobních údajů je obsažen v rámci zákona č. 110/2019 Sb., o zpracovávání osobních údajů (dále jen „ZOÚ") –
+                            lze je definovat jako jakékoli informace, které se týkají identifikované nebo identifikovatelné žijící osoby.
+                            K osobním údajům patří i různé jednotlivé informace, které společně jako celek mohou vést k identifikaci určité osoby.
+                        </p>
+                    </div>
+                    <p class="text-gray-700 leading-relaxed">
+                        Může se tak jednat o datum narození, jméno, číslo bankovního účtu, emailová adresa. Všechny tyto údaje chráníme tak,
+                        aby nemohlo dojít k jejich neoprávněnému využití. Vždy shromažďujeme poskytnuté údaje v rozsahu nezbytném pro naplnění účelu
+                        a zpracováváme pouze v souladu s účelem, k němuž byly shromážděny či poskytnuty.
+                    </p>
+                </div>
+            </section>
+
+            {# Proč zpracováváme #}
+            <section class="mb-10">
+                <h2 class="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                    Proč osobní údaje zpracováváme a na základě čeho?
+                </h2>
+
+                <div class="space-y-6">
+                    <div class="bg-blue-50 rounded-xl p-6 border-l-4 border-blue-500">
+                        <h3 class="font-semibold text-blue-900 mb-2">Uzavření smlouvy</h3>
+                        <p class="text-gray-700 leading-relaxed">
+                            Většinu osobních údajů shromažďuje a zpracováváme k tomu, abychom byli vůbec schopni uzavřít nájemní smlouvu
+                            ohledně skladovacího kontejneru, který si u nás chcete pronajmout. Jakmile je smlouva uzavřena, pak následně
+                            údaje slouží k řádnému plnění smluvních povinností, doručování mezi smluvními stranami, ale také i ochraně
+                            zájmů naší společnosti a našich ostatních nájemců. Na základě tohoto právního důvodu tedy zpracováváme
+                            především údaje fakturační a doručovací. Typicky se jedná o adresu, jméno, číslo účtu či preferovaný způsob platby atd.
+                        </p>
+                    </div>
+
+                    <div class="bg-green-50 rounded-xl p-6 border-l-4 border-green-500">
+                        <h3 class="font-semibold text-green-900 mb-2">Oprávněné zájmy</h3>
+                        <p class="text-gray-700 leading-relaxed mb-3">
+                            Naším zájmem je, abyste se na našem webu cítili co nejlépe a současně abychom Vám mohli vždy zobrazovat co nejvíce
+                            relevantní obsah. Na základě oprávněného zájmu takto zpracováváme zejména osobní údaje, které zpracováváme automaticky
+                            a skrze užití analytických cookies. Ze stejného právního důvodu Vám, jako našim zákazníkům, můžeme zasílat emaily či newslettery.
+                        </p>
+                        <p class="text-gray-700 leading-relaxed">
+                            Současně však zpracováváme i údaje nezbytné pro zpracovávání smluvní dokumentace, konkrétně pak jméno, příjmení,
+                            datum narození, bydliště, doručovací adresa, telefon, email.
+                        </p>
+                    </div>
+
+                    <div class="bg-amber-50 rounded-xl p-6 border-l-4 border-amber-500">
+                        <h3 class="font-semibold text-amber-900 mb-2">Souhlas</h3>
+                        <p class="text-gray-700 leading-relaxed">
+                            Pro účely zasílání obchodních sdělení (e-mail marketing) a telemarketing zpracováváme Vaše osobní údaje na základě
+                            Vašeho souhlasu, pokud nám jej v rámci našich internetových stránek, anebo přímo v rámci smlouvy a související dokumentace udělíte.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            {# Proč tedy #}
+            <section class="mb-10">
+                <h2 class="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                    </svg>
+                    Proč tedy?
+                </h2>
+
+                <div class="grid gap-4 md:grid-cols-2">
+                    <div class="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+                        <h3 class="font-semibold text-gray-900 mb-2">🏪 Nákup zboží a služeb</h3>
+                        <p class="text-gray-600 text-sm leading-relaxed">
+                            V prvé řadě zpracováváme Vaše osobní údaje k tomu, abychom řádně vybavili a předali předmět nájmu.
+                            Zejména, abychom mohli přiřadit správný kontejner ke správné osobě, následně abychom mohli dodat přístupové kódy
+                            k našemu areálu v němž je kontejner umístěn, ale i další důvody, které vyplývají ze smlouvy a plnění našich nejenom zákonných povinností.
+                        </p>
+                    </div>
+
+                    <div class="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+                        <h3 class="font-semibold text-gray-900 mb-2">💬 Péče o zákazníky</h3>
+                        <p class="text-gray-600 text-sm leading-relaxed">
+                            Pokud se na nás obrátíte s nějakým dotazem/problémem, musíme k jeho zodpovězení/vyřešení zpracovávat Vaše údaje.
+                            V některých případech mohou být osobní údaje předány i třetím subjektům.
+                        </p>
+                    </div>
+
+                    <div class="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+                        <h3 class="font-semibold text-gray-900 mb-2">📧 E-mail marketing</h3>
+                        <p class="text-gray-600 text-sm leading-relaxed">
+                            E-mailová obchodní sdělení Vám zasíláme na základě Vašeho souhlasu. Z odběru obchodních sdělení se můžete kdykoliv, bez udání důvodů odhlásit.
+                        </p>
+                    </div>
+
+                    <div class="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+                        <h3 class="font-semibold text-gray-900 mb-2">📊 Zlepšování našich služeb</h3>
+                        <p class="text-gray-600 text-sm leading-relaxed">
+                            Pomocí historie vašich objednávek a chování na webu dokážeme nabídnout relevantnější nabídky dalšího zboží.
+                            Primárně se jedná o služby: Google Analytics, Sklik, apod.
+                        </p>
+                    </div>
+
+                    <div class="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+                        <h3 class="font-semibold text-gray-900 mb-2">⭐ Zákaznická hodnocení</h3>
+                        <p class="text-gray-600 text-sm leading-relaxed">
+                            Poté, co u nás nakoupíte služby, můžete být požádáni o jejich ohodnocení. Hodnocení lze vložit i z vlastní iniciativy.
+                        </p>
+                    </div>
+
+                    <div class="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+                        <h3 class="font-semibold text-gray-900 mb-2">⚖️ Uplatnění práv a právních nároků</h3>
+                        <p class="text-gray-600 text-sm leading-relaxed">
+                            Vaše osobní údaje můžeme rovněž zpracovávat z důvodu, že je potřebujeme k uplatnění našich práv a právních nároků
+                            nebo pro účely kontrol prováděných orgány veřejné moci.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            {# Jaké osobní údaje zpracováváme #}
+            <section class="mb-10">
+                <h2 class="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+                    </svg>
+                    Jaké osobní údaje zpracováváme?
+                </h2>
+
+                <ul class="space-y-3">
+                    <li class="flex items-start gap-3 p-4 bg-gray-50 rounded-lg">
+                        <span class="text-primary-600 font-bold mt-0.5">•</span>
+                        <div>
+                            <strong class="text-gray-900">Identifikační údaje</strong>
+                            <span class="text-gray-600"> – zejména jméno a příjmení, IČO a DIČ, pokud jste podnikatel</span>
+                        </div>
+                    </li>
+                    <li class="flex items-start gap-3 p-4 bg-gray-50 rounded-lg">
+                        <span class="text-primary-600 font-bold mt-0.5">•</span>
+                        <div>
+                            <strong class="text-gray-900">Kontaktní údaje</strong>
+                            <span class="text-gray-600"> – e-mailová adresa, telefonní číslo, adresa pro doručení, fakturační adresa, fakturační údaje, údaje platebních prostředků atd.</span>
+                        </div>
+                    </li>
+                    <li class="flex items-start gap-3 p-4 bg-gray-50 rounded-lg">
+                        <span class="text-primary-600 font-bold mt-0.5">•</span>
+                        <div>
+                            <strong class="text-gray-900">Vaše nastavení</strong>
+                            <span class="text-gray-600"> – údaje ve Vašem účtu, zejména uložené adresy a profily, nastavení newsletterů, nákupní seznamy, sledované produkty</span>
+                        </div>
+                    </li>
+                    <li class="flex items-start gap-3 p-4 bg-gray-50 rounded-lg">
+                        <span class="text-primary-600 font-bold mt-0.5">•</span>
+                        <div>
+                            <strong class="text-gray-900">Údaje o objednávkách</strong>
+                            <span class="text-gray-600"> – údaje o zboží a službách, které jste si objednali, způsobu doručení a platby včetně čísla platebního účtu</span>
+                        </div>
+                    </li>
+                    <li class="flex items-start gap-3 p-4 bg-gray-50 rounded-lg">
+                        <span class="text-primary-600 font-bold mt-0.5">•</span>
+                        <div>
+                            <strong class="text-gray-900">Údaje o chování na webu</strong>
+                            <span class="text-gray-600"> – zboží a služby, které si zobrazujete, odkazy, na které klikáte, IP adresa, identifikace zařízení, technické parametry</span>
+                        </div>
+                    </li>
+                    <li class="flex items-start gap-3 p-4 bg-gray-50 rounded-lg">
+                        <span class="text-primary-600 font-bold mt-0.5">•</span>
+                        <div>
+                            <strong class="text-gray-900">Údaje o čtení zpráv</strong>
+                            <span class="text-gray-600"> – časy otevření zpráv, údaje o zařízení, na kterém zprávy čtete</span>
+                        </div>
+                    </li>
+                    <li class="flex items-start gap-3 p-4 bg-gray-50 rounded-lg">
+                        <span class="text-primary-600 font-bold mt-0.5">•</span>
+                        <div>
+                            <strong class="text-gray-900">Odvozené údaje</strong>
+                            <span class="text-gray-600"> – osobní údaje odvozené z Vašeho nastavení, údajů o zboží a službách, které si u nás nakoupíte</span>
+                        </div>
+                    </li>
+                </ul>
+            </section>
+
+            {# Předávání třetím stranám #}
+            <section class="mb-10">
+                <h2 class="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    Předávání osobních údajů třetím stranám
+                </h2>
+
+                <p class="text-gray-700 mb-4 leading-relaxed">
+                    Typicky nepředáváme Vaše osobní údaje třetím stranám, nicméně existují některé případy, kdy je takovýto postup nezbytný pro realizaci obchodu či ochranu Vašich či našich oprávněných zájmů:
+                </p>
+
+                <div class="space-y-4">
+                    <div class="flex items-start gap-4 p-4 bg-gray-50 rounded-xl">
+                        <div class="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-gray-900">Platební karty</h3>
+                            <p class="text-gray-600 text-sm">Naše společnost nemá údaje o platebních kartách, kterými u nás platíte. Údaji o vašich platebních kartách disponuje pouze zabezpečená platební brána a příslušná bankovní instituce.</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start gap-4 p-4 bg-gray-50 rounded-xl">
+                        <div class="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-gray-900">Obchodní sdělení</h3>
+                            <p class="text-gray-600 text-sm">V případě rozesílání obchodních sdělení můžeme k rozesílce či telefonním hovorům využít třetí subjekt. Tento subjekt je vázán povinností mlčenlivosti a Vaše osobní údaje nesmí použít k žádnému dalšímu účelu.</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start gap-4 p-4 bg-gray-50 rounded-xl">
+                        <div class="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-gray-900">Státní orgány</h3>
+                            <p class="text-gray-600 text-sm">V případě vymáhání našich práv mohou být Vaše osobní údaje předány třetímu subjektu (např. advokátovi). Pokud nám právní řád, nebo orgán státní moci (např. Policie ČR), uloží povinnost, abychom mu předali Vaše osobní údaje, musíme tak učinit.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {# Jak dlouho zpracováváme #}
+            <section class="mb-10">
+                <h2 class="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Jak dlouho Vaše osobní údaje zpracováváme?
+                </h2>
+
+                <div class="space-y-4">
+                    <div class="p-4 bg-gray-50 rounded-xl">
+                        <p class="text-gray-700 leading-relaxed">
+                            V prvé řadě budeme Vaše údaje zpracovávat <strong>po celou dobu trvání smluvního vztahu</strong> mezi námi.
+                        </p>
+                    </div>
+
+                    <div class="p-4 bg-gray-50 rounded-xl">
+                        <p class="text-gray-700 leading-relaxed">
+                            V případě zpracovávání osobních údajů, ke kterému byl udělen souhlas, budou Vaše osobní údaje obecně zpracovávány
+                            <strong>po dobu 7 let</strong>, nebo do odvolání takového souhlasu. V případě, že se přihlásíte k odběru obchodních sdělení,
+                            tak Vaše osobní údaje budeme zpracovávat po dobu 7 let, popř. do doby vyslovení Vašeho nesouhlasu s jejich dalším zasíláním.
+                        </p>
+                    </div>
+
+                    <div class="p-4 bg-amber-50 rounded-xl border border-amber-200">
+                        <p class="text-gray-700 leading-relaxed">
+                            <strong class="text-amber-800">Důležité:</strong> Ty osobní údaje, které jsou nezbytné pro řádné poskytnutí služeb, resp. pro splnění všech
+                            našich povinností, ať již tyto povinnosti vyplývají ze smlouvy mezi námi či z obecně závazných právních předpisů, musíme
+                            zpracovávat bez ohledu na vámi udělený souhlas po dobu stanovenou příslušnými právními předpisy (např. u daňových dokladů je
+                            touto dobou doba nejméně <strong>10 let</strong>).
+                        </p>
+                    </div>
+
+                    <div class="p-4 bg-gray-50 rounded-xl">
+                        <h3 class="font-semibold text-gray-900 mb-2">Cookies</h3>
+                        <p class="text-gray-700 leading-relaxed">
+                            Pravidla a délka uchovávání souborů a údajů získaných prostřednictvím nástrojů cookies jsou obsažena v dokumentu upravující cookies,
+                            který je obsažen v rámci vyskakovacího okna při zobrazení webového rozhraní e-shopu.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            {# Vaše práva #}
+            <section class="mb-10">
+                <h2 class="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                    Jaké máte práva v souvislosti s ochranou Vašich osobních údajů?
+                </h2>
+
+                <p class="text-gray-700 mb-6 leading-relaxed">Ve vztahu k vašim osobním údajům máte zejména právo:</p>
+
+                <div class="grid gap-3 md:grid-cols-2 mb-8">
+                    <div class="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span class="text-gray-700 text-sm">kdykoliv odvolat svůj souhlas se zpracováním</span>
+                    </div>
+                    <div class="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span class="text-gray-700 text-sm">opravit či doplnit své osobní údaje</span>
+                    </div>
+                    <div class="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span class="text-gray-700 text-sm">požadovat omezení zpracování</span>
+                    </div>
+                    <div class="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span class="text-gray-700 text-sm">vznést námitku či stížnost proti zpracovávání</span>
+                    </div>
+                    <div class="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span class="text-gray-700 text-sm">přístup k vašim osobním údajům (portabilita)</span>
+                    </div>
+                    <div class="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span class="text-gray-700 text-sm">požadovat přenesení osobních údajů</span>
+                    </div>
+                    <div class="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span class="text-gray-700 text-sm">být informován o porušení zabezpečení</span>
+                    </div>
+                    <div class="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span class="text-gray-700 text-sm">výmaz některých osobních údajů</span>
+                    </div>
+                </div>
+
+                {# Právo na přístup #}
+                <div class="space-y-4">
+                    <div class="border border-gray-200 rounded-xl p-5">
+                        <h3 class="font-semibold text-gray-900 mb-2">Právo na přístup</h3>
+                        <p class="text-gray-600 text-sm leading-relaxed">
+                            Máte právo vědět, jaké údaje o vás zpracováváme, za jakým účelem, po jakou dobu, kde vaše osobní údaje získáváme,
+                            komu je předáváme, kdo je mimo nás zpracovává a jaká máte další práva. V rámci práva na přístup nás můžete požádat
+                            o kopii zpracovávaných osobních údajů, přičemž první kopii vám poskytneme bezplatně a další kopie již s poplatkem.
+                        </p>
+                    </div>
+
+                    <div class="border border-gray-200 rounded-xl p-5">
+                        <h3 class="font-semibold text-gray-900 mb-2">Právo na opravu</h3>
+                        <p class="text-gray-600 text-sm leading-relaxed">
+                            Pokud zjistíte, že osobní údaje, které o vás zpracováváme, jsou nepřesné nebo neúplné, máte právo na to,
+                            abychom je bez zbytečného odkladu opravili, popřípadě doplnili.
+                        </p>
+                    </div>
+
+                    <div class="border border-gray-200 rounded-xl p-5">
+                        <h3 class="font-semibold text-gray-900 mb-2">Právo na výmaz</h3>
+                        <p class="text-gray-600 text-sm leading-relaxed mb-3">
+                            V některých případech máte právo, abychom vaše osobní údaje vymazali. Vaše osobní údaje bez zbytečného odkladu vymažeme, pokud:
+                        </p>
+                        <ul class="text-gray-600 text-sm space-y-1 ml-4">
+                            <li>• vaše osobní údaje již nepotřebujeme pro účely, pro které jsme je zpracovávali</li>
+                            <li>• odvoláte souhlas se zpracováním osobních údajů</li>
+                            <li>• využijete svého práva vznést námitku proti zpracování</li>
+                            <li>• domníváte se, že námi prováděné zpracování přestalo být v souladu s předpisy</li>
+                        </ul>
+                        <p class="text-gray-500 text-xs mt-3 italic">
+                            Toto právo se neuplatní v případě, že zpracování vašich osobních údajů je i nadále nezbytné pro splnění naší právní povinnosti
+                            nebo určení, výkon či obhajobu našich právních nároků.
+                        </p>
+                    </div>
+
+                    <div class="border border-gray-200 rounded-xl p-5">
+                        <h3 class="font-semibold text-gray-900 mb-2">Vznesení námitky</h3>
+                        <p class="text-gray-600 text-sm leading-relaxed">
+                            Některé vaše osobní údaje zpracováváme na základě našeho oprávněného zájmu. Pokud na vaší straně budou existovat
+                            konkrétní důvody, můžete vznést námitku proti zpracovávání těchto vašich osobních údajů.
+                        </p>
+                    </div>
+
+                    <div class="border border-gray-200 rounded-xl p-5">
+                        <h3 class="font-semibold text-gray-900 mb-2">Omezení zpracování</h3>
+                        <p class="text-gray-600 text-sm leading-relaxed">
+                            Pokud popíráte přesnost vašich osobních údajů, vaše osobní údaje jsou zpracovávány protiprávně,
+                            my již vaše osobní údaje nepotřebujeme pro účely zpracování, ale vy je potřebujete pro určení, výkon nebo obhajobu
+                            vašich právních nároků, nebo pokud jste vznesl/a námitku, máte právo na to, abychom omezili zpracování vašich osobních údajů.
+                        </p>
+                    </div>
+
+                    <div class="border border-gray-200 rounded-xl p-5">
+                        <h3 class="font-semibold text-gray-900 mb-2">Podání stížnosti</h3>
+                        <p class="text-gray-600 text-sm leading-relaxed">
+                            Máte-li za to, že vaše osobní údaje zpracováváme protiprávně, máte rovněž právo podat stížnost
+                            <strong>Úřadu pro ochranu osobních údajů</strong>. Budeme však rádi, když vzniklý problém budete řešit nejprve s námi.
+                        </p>
+                        <p class="text-gray-500 text-xs mt-2">
+                            Stížnost můžete podat u Úřadu pro ochranu osobních údajů, který sídlí na adrese Pplk. Sochora 27, 170 00 Praha 7.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            {# Závěrečná ustanovení #}
+            <section class="mb-6">
+                <h2 class="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-primary-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    Závěrečná ustanovení a kontaktní osoba
+                </h2>
+
+                <div class="bg-primary-50 rounded-xl p-6 border border-primary-200">
+                    <p class="text-gray-700 mb-4 leading-relaxed">
+                        Společnost Mekmann s.r.o. určuje kontaktní osobu pro účely zpracovávání osobních údajů a řešení otázek osobních údajů a jejich ochrany
+                        (pověřence pro ochranu osobních údajů):
+                    </p>
+                    <div class="bg-white rounded-lg p-4 flex flex-col sm:flex-row sm:items-center gap-4">
+                        <div class="w-12 h-12 bg-primary-600 rounded-full flex items-center justify-center flex-shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="font-semibold text-gray-900">Martin Hermann</p>
+                            <p class="text-gray-600">
+                                <a href="mailto:hermann@fajnesklady.cz" class="text-primary-600 hover:underline">hermann@fajnesklady.cz</a>
+                                <span class="mx-2">•</span>
+                                <a href="tel:+420605522566" class="text-primary-600 hover:underline">+420 605 522 566</a>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <p class="text-gray-500 text-sm mt-6 text-center">
+                    Tento dokument týkající se ochrany osobních údajů je platný a účinný od okamžiku zveřejnění na webových stránkách zpracovatele
+                    a je k dispozici na webových stránkách <a href="https://www.fajnesklady.cz" class="text-primary-600 hover:underline">www.fajnesklady.cz</a>
+                </p>
+            </section>
+        </div>
+    </article>
+</div>
+{% endblock %}
