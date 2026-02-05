@@ -36,7 +36,7 @@ final readonly class SendPasswordResetEmailHandler
             ->htmlTemplate('user/email/reset_password.html.twig')
             ->context([
                 'resetUrl' => $resetUrl,
-                'email' => $event->email,
+                'userEmail' => $event->email,
             ]);
 
         $this->mailer->send($email);
