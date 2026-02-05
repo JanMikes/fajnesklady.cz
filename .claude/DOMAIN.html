@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Domain Documentation - Fajné Sklady</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 1000px; margin: 0 auto; padding: 20px; line-height: 1.6; font-size: 14px; }
+    h1 { color: #333; border-bottom: 2px solid #333; padding-bottom: 10px; }
+    h2 { color: #444; border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-top: 30px; }
+    h3 { color: #555; margin-top: 25px; }
+    table { border-collapse: collapse; width: 100%; margin: 15px 0; font-size: 13px; }
+    th, td { border: 1px solid #ddd; padding: 6px 10px; text-align: left; }
+    th { background-color: #f5f5f5; }
+    code { background-color: #f5f5f5; padding: 2px 6px; border-radius: 3px; font-size: 0.9em; }
+    pre { background-color: #f5f5f5; padding: 15px; border-radius: 5px; overflow-x: auto; font-size: 12px; }
+    pre code { background: none; padding: 0; }
+    .mermaid { background: white; text-align: center; margin: 20px 0; }
+    .mermaid svg { max-width: 100%; height: auto; }
+    ul { margin: 10px 0; padding-left: 25px; }
+    li { margin: 5px 0; }
+    hr { border: none; border-top: 1px solid #ddd; margin: 20px 0; }
+    @media print {
+      .mermaid { page-break-inside: avoid; }
+      h2 { page-break-before: auto; }
+    }
+  </style>
+</head>
+<body>
+<h1>Domain Understanding: Fajné Sklady (Storage Rental Platform)</h1>
+<h2>Overview</h2>
+<p><strong>Fajné Sklady</strong> is a B2C marketplace for self-storage rental. It connects landlords (warehouse owners) with tenants (customers) who need storage space. The platform handles:</p>
+<ul><li>Storage unit listings and availability</li>
+<li>Order processing and payment (GoPay integration)</li>
+<li>Recurring billing for unlimited rentals</li>
+<li>Contract management</li>
+<li>Invoicing (Fakturoid integration)</li>
+</ul>
+<hr>
+<h2>User Roles</h2>
+<table>
+<tr><th>Role</th><th>Czech Name</th><th>Description</th></tr>
+<tr><td><strong>ROLE_USER</strong></td><td>Nájemce (Tenant)</td><td>Customers who rent storage units</td></tr>
+<tr><td><strong>ROLE_LANDLORD</strong></td><td>Pronajímatel</td><td>Warehouse owners who list storage</td></tr>
+<tr><td><strong>ROLE_ADMIN</strong></td><td>Administrátor</td><td>Platform administrators</td></tr>
+</table><strong>Hierarchy:</strong> <code>ROLE_ADMIN → ROLE_LANDLORD → ROLE_USER</code>
+<hr>
+<h2>Core Entities</h2>
+<h3>User</h3>
+<ul><li>Registration with email verification (customers) or direct access (landlords)</li>
+<li>Billing info for invoicing (company, IČO, DIČ, address)</li>
+<li>Landlord-specific: commission rate, self-billing prefix for invoice numbering</li>
+</ul>
+<h3>Place</h3>
+<ul><li>Physical warehouse location (address, coordinates, map image)</li>
+<li>Contains multiple Storage units</li>
+<li><code>daysInAdvance</code>: minimum booking lead time</li>
+</ul>
+<h3>StorageType</h3>
+<ul><li>Template defining dimensions (inner/outer) and default pricing</li>
+<li><code>uniformStorages</code>: if true, system auto-assigns; if false, customer picks from visual map</li>
+</ul>
+<h3>Storage</h3>
+<ul><li>Individual rentable unit within a Place</li>
+<li>References a StorageType for dimensions</li>
+<li>Status: <code>AVAILABLE → RESERVED → OCCUPIED → AVAILABLE</code></li>
+<li>Can override default pricing and commission rate</li>
+<li>Canvas coordinates for visual map placement</li>
+</ul>
+<h3>Order</h3>
+<ul><li>Customer booking request</li>
+<li>Status flow: <code>CREATED → RESERVED → AWAITING_PAYMENT → PAID → COMPLETED</code></li>
+<li>Terminal states: <code>COMPLETED</code>, <code>CANCELLED</code>, <code>EXPIRED</code></li>
+<li>Expiration: 24 hours from creation</li>
+<li>Types: LIMITED (fixed dates) or UNLIMITED (ongoing)</li>
+</ul>
+<h3>Contract</h3>
+<ul><li>Created when Order completes (PAID → COMPLETED)</li>
+<li>Handles recurring billing for UNLIMITED rentals</li>
+<li>Can be terminated early (releases storage)</li>
+</ul>
+<h3>Invoice / SelfBillingInvoice</h3>
+<ul><li>Invoice: customer-facing (one-time orders)</li>
+<li>SelfBillingInvoice: landlord commission invoices (monthly aggregation)</li>
+</ul>
+<hr>
+<h2>Main Business Flows</h2>
+<h3>1. Customer Registration</h3>
+<pre><code>Register → Email Verification → Welcome Email → Portal Access</code></pre>
+<ul><li>Validation: unique email, 8+ char password, terms acceptance</li>
+</ul>
+<h3>2. Landlord Registration</h3>
+<pre><code>Register with Billing Info → Direct Portal Access</code></pre>
+<ul><li>No email verification required</li>
+<li>Must provide company info (IČO, address)</li>
+</ul>
+<h3>3. Order & Payment Flow</h3>
+<pre><code>Select Storage → Create Order → Payment (GoPay) → Invoice Generated → Contract Created</code></pre>
+<p><strong>Key Events:</strong>
+<table>
+<tr><th>Event</th><th>Side Effect</th></tr>
+<tr><td><code>OrderCreated</code></td><td>Confirmation email (24h expiry warning)</td></tr>
+<tr><td><code>OrderPaid</code></td><td>Invoice generated, PDF emailed</td></tr>
+<tr><td><code>OrderCompleted</code></td><td>Contract created, notification sent</td></tr>
+</table><h3>4. Recurring Billing (Unlimited Rentals)</h3>
+<pre><code>Monthly Charge → Success: Invoice sent
+             → Failure: Retry in 3 days (1 retry max)</code></pre></p>
+<h3>5. Contract Termination</h3>
+<ul><li>User: can terminate UNLIMITED contracts only</li>
+<li>Admin: can terminate any contract</li>
+<li>Effect: releases storage, stops recurring billing</li>
+</ul>
+<hr>
+<h2>Authorization Matrix</h2>
+<table>
+<tr><th>Action</th><th>Admin</th><th>Landlord</th><th>User</th></tr>
+<tr><td><strong>Places</strong></td><td></td><td></td><td></td></tr>
+<tr><td>View all</td><td>✅</td><td>✅</td><td>❌</td></tr>
+<tr><td>Create/Edit/Delete</td><td>✅</td><td>❌</td><td>❌</td></tr>
+<tr><td>Request changes</td><td>✅</td><td>✅ (if has access)</td><td>❌</td></tr>
+<tr><td><strong>Storages</strong></td><td></td><td></td><td></td></tr>
+<tr><td>View all</td><td>✅</td><td>Own only</td><td>❌</td></tr>
+<tr><td>Edit/Prices/Photos</td><td>✅</td><td>Own only</td><td>❌</td></tr>
+<tr><td>Delete</td><td>✅</td><td>❌</td><td>❌</td></tr>
+<tr><td>Assign owner</td><td>✅</td><td>❌</td><td>❌</td></tr>
+<tr><td><strong>Storage Types</strong></td><td></td><td></td><td></td></tr>
+<tr><td>View</td><td>✅</td><td>✅</td><td>❌</td></tr>
+<tr><td>Create/Edit/Delete</td><td>✅</td><td>❌</td><td>❌</td></tr>
+<tr><td><strong>Orders</strong></td><td></td><td></td><td></td></tr>
+<tr><td>View all</td><td>✅</td><td>Own storages</td><td>Own only</td></tr>
+<tr><td>Cancel</td><td>✅</td><td>❌</td><td>Own only</td></tr>
+<tr><td><strong>Contracts</strong></td><td></td><td></td><td></td></tr>
+<tr><td>View</td><td>✅</td><td>Own storages</td><td>Own only</td></tr>
+<tr><td>Terminate</td><td>✅</td><td>❌</td><td>Unlimited only</td></tr>
+</table>---
+<h2>Key Business Rules</h2>
+<p>1. <strong>Storage Status Transitions</strong>
+   - Only AVAILABLE storages can be ordered
+   - Order.reserve() → Storage.RESERVED
+   - Order.complete() → Storage.OCCUPIED
+   - Contract.terminate() or Order.cancel() → Storage.AVAILABLE</p>
+<p>2. <strong>Pricing Hierarchy</strong>
+   - Storage price overrides → StorageType default price
+   - Prices stored in cents, displayed in CZK</p>
+<p>3. <strong>Advance Booking</strong>
+   - Place.daysInAdvance enforced at order creation
+   - Start date must be ≥ today + daysInAdvance</p>
+<p>4. <strong>Order Expiration</strong>
+   - Orders expire 24 hours after creation if not paid
+   - Expired orders release reserved storage</p>
+<p>5. <strong>Recurring Payment Retry</strong>
+   - First failure: retry after 3 days
+   - Second failure: manual intervention required
+   - Contract.failedBillingAttempts tracks retries</p>
+<p>6. <strong>Invoice Numbering</strong>
+   - SelfBillingInvoice format: <code>{PREFIX}-{YEAR}-{XXXX}</code>
+   - Landlord must have selfBillingPrefix set
+   - LandlordInvoiceSequence tracks per-year counter</p>
+<hr>
+<h2>Validation Rules Summary</h2>
+<table>
+<tr><th>Entity</th><th>Rule</th></tr>
+<tr><td>User.email</td><td>Unique, valid format</td></tr>
+<tr><td>User.password</td><td>Min 8 characters</td></tr>
+<tr><td>Company IČO</td><td>Exactly 8 digits</td></tr>
+<tr><td>Company DIČ</td><td>Format: CZxxxxxxxx</td></tr>
+<tr><td>Order.startDate</td><td>≥ today + place.daysInAdvance</td></tr>
+<tr><td>Order.endDate</td><td>> startDate (if LIMITED rental)</td></tr>
+<tr><td>Map image</td><td>JPEG/PNG/WebP, max 5MB</td></tr>
+</table>---
+<h2>Domain Events Architecture</h2>
+<p>All events are <code>final readonly class</code> with <code>occurredOn: DateTimeImmutable</code></p>
+<p><strong>Event Flow:</strong>
+1. Entity records event via <code>HasEvents</code> trait
+2. <code>DomainEventsSubscriber</code> collects on persist/update
+3. Events dispatched via event bus after Doctrine flush
+4. Handlers execute side effects (emails, invoicing)</p>
+<hr>
+<h2>External Integrations</h2>
+<ul><li><strong>GoPay</strong>: Payment gateway for one-time and recurring payments</li>
+<li><strong>Fakturoid</strong>: Invoice generation and management</li>
+<li><strong>Email</strong>: Verification, notifications, invoices</li>
+</ul>
+<hr>
+<h2>Visual Storage Map</h2>
+<p>Non-uniform storage types use canvas-based visual selection:
+<ul><li>Storage.coordinates: <code>{x, y, width, height, rotation}</code></li>
+<li>Customers click to select specific unit</li>
+<li>Color-coded: available (green), occupied (red), unavailable (gray)</li>
+</ul>
+<hr></p>
+<h2>Diagrams</h2>
+<h3>Entity Relationship Diagram</h3>
+<div class="mermaid">
+erDiagram
+    User ||--o{ Order : places
+    User ||--o{ Contract : has
+    User ||--o{ PlaceAccess : granted
+    User ||--o{ Storage : owns
+    User ||--o{ Invoice : receives
+    User ||--o{ SelfBillingInvoice : generates
+
+    Place ||--o{ Storage : contains
+    Place ||--o{ PlaceAccess : allows
+    Place ||--o{ StorageUnavailability : has
+    Place ||--o{ CreatePlaceRequest : from
+    Place ||--o{ PlaceChangeRequest : has
+
+    StorageType ||--o{ Storage : templates
+    StorageType ||--o{ StorageTypePhoto : has
+
+    Storage ||--o{ StoragePhoto : has
+    Storage ||--o{ Order : booked_via
+    Storage ||--o{ Contract : rented_via
+    Storage ||--o{ Payment : linked_to
+    Storage ||--o{ StorageUnavailability : has
+
+    Order ||--|| Contract : creates
+    Order ||--o{ Invoice : generates
+    Order ||--o{ Payment : has
+
+    Contract ||--o{ Payment : has
+
+    User {
+        uuid id PK
+        string email UK
+        string password
+        string firstName
+        string lastName
+        enum role
+        bool isVerified
+        string companyName
+        string companyId
+        decimal commissionRate
+    }
+
+    Place {
+        uuid id PK
+        string name
+        string address
+        string city
+        int daysInAdvance
+        bool isActive
+    }
+
+    StorageType {
+        uuid id PK
+        string name
+        int innerWidth
+        int innerHeight
+        int innerLength
+        int defaultPricePerWeek
+        int defaultPricePerMonth
+        bool uniformStorages
+    }
+
+    Storage {
+        uuid id PK
+        string number
+        json coordinates
+        enum status
+        int pricePerWeek
+        int pricePerMonth
+    }
+
+    Order {
+        uuid id PK
+        enum status
+        enum rentalType
+        date startDate
+        date endDate
+        int totalPrice
+        datetime expiresAt
+    }
+
+    Contract {
+        uuid id PK
+        enum rentalType
+        date startDate
+        date endDate
+        datetime signedAt
+        datetime terminatedAt
+        datetime nextBillingDate
+    }
+</div>
+<h3>Order Status State Machine</h3>
+<div class="mermaid">
+stateDiagram-v2
+    [*] --> CREATED: Order placed
+
+    CREATED --> RESERVED: reserve()
+    CREATED --> EXPIRED: 24h timeout
+    CREATED --> CANCELLED: cancel()
+
+    RESERVED --> AWAITING_PAYMENT: initiate payment
+    RESERVED --> EXPIRED: 24h timeout
+    RESERVED --> CANCELLED: cancel()
+
+    AWAITING_PAYMENT --> PAID: payment success
+    AWAITING_PAYMENT --> EXPIRED: 24h timeout
+    AWAITING_PAYMENT --> CANCELLED: cancel()
+
+    PAID --> COMPLETED: complete()
+
+    COMPLETED --> [*]
+    CANCELLED --> [*]
+    EXPIRED --> [*]
+
+    note right of CREATED: Storage.AVAILABLE
+    note right of RESERVED: Storage.RESERVED
+    note right of COMPLETED: Storage.OCCUPIED
+    note left of CANCELLED: Storage.AVAILABLE (released)
+    note left of EXPIRED: Storage.AVAILABLE (released)
+</div>
+<h3>Storage Status State Machine</h3>
+<div class="mermaid">
+stateDiagram-v2
+    [*] --> AVAILABLE: Created
+
+    AVAILABLE --> RESERVED: Order.reserve()
+    AVAILABLE --> MANUALLY_UNAVAILABLE: markUnavailable()
+
+    RESERVED --> OCCUPIED: Order.complete()
+    RESERVED --> AVAILABLE: Order.cancel()/expire()
+
+    OCCUPIED --> AVAILABLE: Contract.terminate()
+
+    MANUALLY_UNAVAILABLE --> AVAILABLE: Admin action
+
+    note right of AVAILABLE: Can be ordered
+    note right of RESERVED: Awaiting payment
+    note right of OCCUPIED: Active contract
+    note left of MANUALLY_UNAVAILABLE: Maintenance/blocked
+</div>
+<h3>Order & Payment Flow (Sequence)</h3>
+<div class="mermaid">
+sequenceDiagram
+    participant C as Customer
+    participant S as System
+    participant G as GoPay
+    participant F as Fakturoid
+
+    C->>S: Select storage & dates
+    S->>S: Validate availability
+    S->>S: Create Order (CREATED)
+    S->>S: Reserve Storage
+    S-->>C: OrderCreated email (24h expiry)
+
+    C->>S: Initiate payment
+    S->>G: Create payment
+    G-->>C: Payment page
+    C->>G: Pay
+    G->>S: Payment webhook
+    S->>S: Order.markPaid()
+
+    S->>F: Create invoice
+    F-->>S: Invoice data
+    S->>S: OrderPaid event
+    S-->>C: Invoice email
+
+    S->>S: Order.complete()
+    S->>S: Create Contract
+    S->>S: Storage.occupy()
+    S-->>C: Contract ready email
+</div>
+<h3>User Registration Flow</h3>
+<div class="mermaid">
+flowchart TD
+    A[User visits /register] --> B{User type?}
+
+    B -->|Customer| C[Fill registration form]
+    C --> D[Submit]
+    D --> E[Create User with ROLE_USER]
+    E --> F[UserRegistered event]
+    F --> G[Send verification email]
+    G --> H[User clicks link]
+    H --> I[Mark as verified]
+    I --> J[EmailVerified event]
+    J --> K[Send welcome email]
+    K --> L[Portal access granted]
+
+    B -->|Landlord| M[Fill landlord form]
+    M --> N[Include billing info]
+    N --> O[Submit]
+    O --> P[Create User with ROLE_LANDLORD]
+    P --> Q[LandlordRegistered event]
+    Q --> R[Direct portal access]
+
+    style L fill:#90EE90
+    style R fill:#90EE90
+</div>
+<h3>Recurring Billing Flow</h3>
+<div class="mermaid">
+flowchart TD
+    A[Contract with recurring payment] --> B{isDueBilling?}
+
+    B -->|No| C[Wait for next billing date]
+    C --> B
+
+    B -->|Yes| D[ChargeRecurringPaymentCommand]
+    D --> E{Payment success?}
+
+    E -->|Yes| F[recordBillingCharge]
+    F --> G[Update nextBillingDate]
+    G --> H[Create Payment record]
+    H --> I[Send invoice]
+    I --> C
+
+    E -->|No| J[recordFailedBillingAttempt]
+    J --> K{Attempt count?}
+
+    K -->|First failure| L[Wait 3 days]
+    L --> M[Retry payment]
+    M --> E
+
+    K -->|Second failure| N[RecurringPaymentFailed event]
+    N --> O[Notify landlord & customer]
+    O --> P[Manual intervention required]
+
+    style I fill:#90EE90
+    style P fill:#FF6B6B
+</div>
+<h3>Authorization Flow</h3>
+<div class="mermaid">
+flowchart TD
+    A[Request to resource] --> B{Route-level check}
+
+    B -->|Denied| Z[403 Forbidden]
+    B -->|Passed| C{Controller #IsGranted?}
+
+    C -->|Denied| Z
+    C -->|Passed| D{Voter check needed?}
+
+    D -->|No| E[Execute action]
+    D -->|Yes| F[Invoke Voter]
+
+    F --> G{User role?}
+
+    G -->|ADMIN| H[Grant access]
+    G -->|LANDLORD| I{Owns resource?}
+    G -->|USER| J{Is own data?}
+
+    I -->|Yes| K[Check attribute permission]
+    I -->|No| Z
+
+    J -->|Yes| L[Check attribute permission]
+    J -->|No| Z
+
+    H --> E
+    K --> E
+    L --> E
+
+    style E fill:#90EE90
+    style Z fill:#FF6B6B
+</div>
+<h3>Domain Events Flow</h3>
+<div class="mermaid">
+flowchart LR
+    A[Entity action] --> B[recordThat event]
+    B --> C[Doctrine persist/update]
+    C --> D[DomainEventsSubscriber]
+    D --> E[postFlush]
+    E --> F[Dispatch to Event Bus]
+    F --> G[Handler 1: Send Email]
+    F --> H[Handler 2: Create Invoice]
+    F --> I[Handler N: ...]
+
+    style F fill:#FFD700
+</div>
+<h3>Contract Lifecycle</h3>
+<div class="mermaid">
+stateDiagram-v2
+    [*] --> Created: Order.complete()
+
+    Created --> Signed: sign()
+    Created --> Active: Time passes
+
+    Signed --> Active: Time passes
+
+    Active --> Terminated: terminate()
+    Active --> Expired: endDate reached (LIMITED)
+
+    Terminated --> [*]
+    Expired --> [*]
+
+    note right of Created: Contract created from completed order
+    note right of Signed: Optional document signing
+    note right of Active: Storage is OCCUPIED
+    note left of Terminated: Storage released to AVAILABLE
+</div>
+<h3>Contract Billing States (Unlimited Rentals)</h3>
+<div class="mermaid">
+stateDiagram-v2
+    [*] --> NoBilling: No recurring setup
+
+    [*] --> ActiveBilling: setRecurringPayment()
+
+    ActiveBilling --> DueBilling: nextBillingDate reached
+    DueBilling --> Charged: Payment success
+    Charged --> ActiveBilling: nextBillingDate updated
+
+    DueBilling --> FirstFailure: Payment failed
+    FirstFailure --> RetryPending: Wait 3 days
+    RetryPending --> DueBilling: Retry attempt
+    RetryPending --> SecondFailure: Payment failed again
+
+    SecondFailure --> ManualIntervention: Needs attention
+
+    ActiveBilling --> Cancelled: cancelRecurringPayment()
+    Cancelled --> [*]
+</div>
+<h3>Place & Storage Hierarchy</h3>
+<div class="mermaid">
+stateDiagram-v2
+    [*] --> CREATED: Order placed
+
+    CREATED --> RESERVED: reserve()
+    CREATED --> EXPIRED: 24h timeout
+    CREATED --> CANCELLED: cancel()
+
+    RESERVED --> AWAITING_PAYMENT: initiate payment
+    RESERVED --> EXPIRED: 24h timeout
+    RESERVED --> CANCELLED: cancel()
+
+    AWAITING_PAYMENT --> PAID: payment success
+    AWAITING_PAYMENT --> EXPIRED: 24h timeout
+    AWAITING_PAYMENT --> CANCELLED: cancel()
+
+    PAID --> COMPLETED: complete()
+
+    COMPLETED --> [*]
+    CANCELLED --> [*]
+    EXPIRED --> [*]
+
+    note right of CREATED: Storage.AVAILABLE
+    note right of RESERVED: Storage.RESERVED
+    note right of COMPLETED: Storage.OCCUPIED
+    note left of CANCELLED: Storage.AVAILABLE (released)
+    note left of EXPIRED: Storage.AVAILABLE (released)
+</div>0
+<h3>Invoice Types & Flow</h3>
+<div class="mermaid">
+stateDiagram-v2
+    [*] --> CREATED: Order placed
+
+    CREATED --> RESERVED: reserve()
+    CREATED --> EXPIRED: 24h timeout
+    CREATED --> CANCELLED: cancel()
+
+    RESERVED --> AWAITING_PAYMENT: initiate payment
+    RESERVED --> EXPIRED: 24h timeout
+    RESERVED --> CANCELLED: cancel()
+
+    AWAITING_PAYMENT --> PAID: payment success
+    AWAITING_PAYMENT --> EXPIRED: 24h timeout
+    AWAITING_PAYMENT --> CANCELLED: cancel()
+
+    PAID --> COMPLETED: complete()
+
+    COMPLETED --> [*]
+    CANCELLED --> [*]
+    EXPIRED --> [*]
+
+    note right of CREATED: Storage.AVAILABLE
+    note right of RESERVED: Storage.RESERVED
+    note right of COMPLETED: Storage.OCCUPIED
+    note left of CANCELLED: Storage.AVAILABLE (released)
+    note left of EXPIRED: Storage.AVAILABLE (released)
+</div>1
+<h3>Password Reset Flow</h3>
+<div class="mermaid">
+stateDiagram-v2
+    [*] --> CREATED: Order placed
+
+    CREATED --> RESERVED: reserve()
+    CREATED --> EXPIRED: 24h timeout
+    CREATED --> CANCELLED: cancel()
+
+    RESERVED --> AWAITING_PAYMENT: initiate payment
+    RESERVED --> EXPIRED: 24h timeout
+    RESERVED --> CANCELLED: cancel()
+
+    AWAITING_PAYMENT --> PAID: payment success
+    AWAITING_PAYMENT --> EXPIRED: 24h timeout
+    AWAITING_PAYMENT --> CANCELLED: cancel()
+
+    PAID --> COMPLETED: complete()
+
+    COMPLETED --> [*]
+    CANCELLED --> [*]
+    EXPIRED --> [*]
+
+    note right of CREATED: Storage.AVAILABLE
+    note right of RESERVED: Storage.RESERVED
+    note right of COMPLETED: Storage.OCCUPIED
+    note left of CANCELLED: Storage.AVAILABLE (released)
+    note left of EXPIRED: Storage.AVAILABLE (released)
+</div>2
+<h3>Place Change Request Workflow</h3>
+<div class="mermaid">
+stateDiagram-v2
+    [*] --> CREATED: Order placed
+
+    CREATED --> RESERVED: reserve()
+    CREATED --> EXPIRED: 24h timeout
+    CREATED --> CANCELLED: cancel()
+
+    RESERVED --> AWAITING_PAYMENT: initiate payment
+    RESERVED --> EXPIRED: 24h timeout
+    RESERVED --> CANCELLED: cancel()
+
+    AWAITING_PAYMENT --> PAID: payment success
+    AWAITING_PAYMENT --> EXPIRED: 24h timeout
+    AWAITING_PAYMENT --> CANCELLED: cancel()
+
+    PAID --> COMPLETED: complete()
+
+    COMPLETED --> [*]
+    CANCELLED --> [*]
+    EXPIRED --> [*]
+
+    note right of CREATED: Storage.AVAILABLE
+    note right of RESERVED: Storage.RESERVED
+    note right of COMPLETED: Storage.OCCUPIED
+    note left of CANCELLED: Storage.AVAILABLE (released)
+    note left of EXPIRED: Storage.AVAILABLE (released)
+</div>3
+<h3>Create Place Request Workflow</h3>
+<div class="mermaid">
+stateDiagram-v2
+    [*] --> CREATED: Order placed
+
+    CREATED --> RESERVED: reserve()
+    CREATED --> EXPIRED: 24h timeout
+    CREATED --> CANCELLED: cancel()
+
+    RESERVED --> AWAITING_PAYMENT: initiate payment
+    RESERVED --> EXPIRED: 24h timeout
+    RESERVED --> CANCELLED: cancel()
+
+    AWAITING_PAYMENT --> PAID: payment success
+    AWAITING_PAYMENT --> EXPIRED: 24h timeout
+    AWAITING_PAYMENT --> CANCELLED: cancel()
+
+    PAID --> COMPLETED: complete()
+
+    COMPLETED --> [*]
+    CANCELLED --> [*]
+    EXPIRED --> [*]
+
+    note right of CREATED: Storage.AVAILABLE
+    note right of RESERVED: Storage.RESERVED
+    note right of COMPLETED: Storage.OCCUPIED
+    note left of CANCELLED: Storage.AVAILABLE (released)
+    note left of EXPIRED: Storage.AVAILABLE (released)
+</div>4
+<h3>Dashboard Views by Role</h3>
+<div class="mermaid">
+stateDiagram-v2
+    [*] --> CREATED: Order placed
+
+    CREATED --> RESERVED: reserve()
+    CREATED --> EXPIRED: 24h timeout
+    CREATED --> CANCELLED: cancel()
+
+    RESERVED --> AWAITING_PAYMENT: initiate payment
+    RESERVED --> EXPIRED: 24h timeout
+    RESERVED --> CANCELLED: cancel()
+
+    AWAITING_PAYMENT --> PAID: payment success
+    AWAITING_PAYMENT --> EXPIRED: 24h timeout
+    AWAITING_PAYMENT --> CANCELLED: cancel()
+
+    PAID --> COMPLETED: complete()
+
+    COMPLETED --> [*]
+    CANCELLED --> [*]
+    EXPIRED --> [*]
+
+    note right of CREATED: Storage.AVAILABLE
+    note right of RESERVED: Storage.RESERVED
+    note right of COMPLETED: Storage.OCCUPIED
+    note left of CANCELLED: Storage.AVAILABLE (released)
+    note left of EXPIRED: Storage.AVAILABLE (released)
+</div>5
+<h3>Email Verification Flow</h3>
+<div class="mermaid">
+stateDiagram-v2
+    [*] --> CREATED: Order placed
+
+    CREATED --> RESERVED: reserve()
+    CREATED --> EXPIRED: 24h timeout
+    CREATED --> CANCELLED: cancel()
+
+    RESERVED --> AWAITING_PAYMENT: initiate payment
+    RESERVED --> EXPIRED: 24h timeout
+    RESERVED --> CANCELLED: cancel()
+
+    AWAITING_PAYMENT --> PAID: payment success
+    AWAITING_PAYMENT --> EXPIRED: 24h timeout
+    AWAITING_PAYMENT --> CANCELLED: cancel()
+
+    PAID --> COMPLETED: complete()
+
+    COMPLETED --> [*]
+    CANCELLED --> [*]
+    EXPIRED --> [*]
+
+    note right of CREATED: Storage.AVAILABLE
+    note right of RESERVED: Storage.RESERVED
+    note right of COMPLETED: Storage.OCCUPIED
+    note left of CANCELLED: Storage.AVAILABLE (released)
+    note left of EXPIRED: Storage.AVAILABLE (released)
+</div>6
+<h3>Storage Selection Modes</h3>
+<div class="mermaid">
+stateDiagram-v2
+    [*] --> CREATED: Order placed
+
+    CREATED --> RESERVED: reserve()
+    CREATED --> EXPIRED: 24h timeout
+    CREATED --> CANCELLED: cancel()
+
+    RESERVED --> AWAITING_PAYMENT: initiate payment
+    RESERVED --> EXPIRED: 24h timeout
+    RESERVED --> CANCELLED: cancel()
+
+    AWAITING_PAYMENT --> PAID: payment success
+    AWAITING_PAYMENT --> EXPIRED: 24h timeout
+    AWAITING_PAYMENT --> CANCELLED: cancel()
+
+    PAID --> COMPLETED: complete()
+
+    COMPLETED --> [*]
+    CANCELLED --> [*]
+    EXPIRED --> [*]
+
+    note right of CREATED: Storage.AVAILABLE
+    note right of RESERVED: Storage.RESERVED
+    note right of COMPLETED: Storage.OCCUPIED
+    note left of CANCELLED: Storage.AVAILABLE (released)
+    note left of EXPIRED: Storage.AVAILABLE (released)
+</div>7
+<h3>Pricing Resolution</h3>
+<div class="mermaid">
+stateDiagram-v2
+    [*] --> CREATED: Order placed
+
+    CREATED --> RESERVED: reserve()
+    CREATED --> EXPIRED: 24h timeout
+    CREATED --> CANCELLED: cancel()
+
+    RESERVED --> AWAITING_PAYMENT: initiate payment
+    RESERVED --> EXPIRED: 24h timeout
+    RESERVED --> CANCELLED: cancel()
+
+    AWAITING_PAYMENT --> PAID: payment success
+    AWAITING_PAYMENT --> EXPIRED: 24h timeout
+    AWAITING_PAYMENT --> CANCELLED: cancel()
+
+    PAID --> COMPLETED: complete()
+
+    COMPLETED --> [*]
+    CANCELLED --> [*]
+    EXPIRED --> [*]
+
+    note right of CREATED: Storage.AVAILABLE
+    note right of RESERVED: Storage.RESERVED
+    note right of COMPLETED: Storage.OCCUPIED
+    note left of CANCELLED: Storage.AVAILABLE (released)
+    note left of EXPIRED: Storage.AVAILABLE (released)
+</div>8
+<h3>Commission Rate Resolution</h3>
+<div class="mermaid">
+stateDiagram-v2
+    [*] --> CREATED: Order placed
+
+    CREATED --> RESERVED: reserve()
+    CREATED --> EXPIRED: 24h timeout
+    CREATED --> CANCELLED: cancel()
+
+    RESERVED --> AWAITING_PAYMENT: initiate payment
+    RESERVED --> EXPIRED: 24h timeout
+    RESERVED --> CANCELLED: cancel()
+
+    AWAITING_PAYMENT --> PAID: payment success
+    AWAITING_PAYMENT --> EXPIRED: 24h timeout
+    AWAITING_PAYMENT --> CANCELLED: cancel()
+
+    PAID --> COMPLETED: complete()
+
+    COMPLETED --> [*]
+    CANCELLED --> [*]
+    EXPIRED --> [*]
+
+    note right of CREATED: Storage.AVAILABLE
+    note right of RESERVED: Storage.RESERVED
+    note right of COMPLETED: Storage.OCCUPIED
+    note left of CANCELLED: Storage.AVAILABLE (released)
+    note left of EXPIRED: Storage.AVAILABLE (released)
+</div>9
+<h3>Audit Log Recording</h3>
+<div class="mermaid">
+stateDiagram-v2
+    [*] --> AVAILABLE: Created
+
+    AVAILABLE --> RESERVED: Order.reserve()
+    AVAILABLE --> MANUALLY_UNAVAILABLE: markUnavailable()
+
+    RESERVED --> OCCUPIED: Order.complete()
+    RESERVED --> AVAILABLE: Order.cancel()/expire()
+
+    OCCUPIED --> AVAILABLE: Contract.terminate()
+
+    MANUALLY_UNAVAILABLE --> AVAILABLE: Admin action
+
+    note right of AVAILABLE: Can be ordered
+    note right of RESERVED: Awaiting payment
+    note right of OCCUPIED: Active contract
+    note left of MANUALLY_UNAVAILABLE: Maintenance/blocked
+</div>0
+<h3>Full Order Journey</h3>
+<div class="mermaid">
+stateDiagram-v2
+    [*] --> AVAILABLE: Created
+
+    AVAILABLE --> RESERVED: Order.reserve()
+    AVAILABLE --> MANUALLY_UNAVAILABLE: markUnavailable()
+
+    RESERVED --> OCCUPIED: Order.complete()
+    RESERVED --> AVAILABLE: Order.cancel()/expire()
+
+    OCCUPIED --> AVAILABLE: Contract.terminate()
+
+    MANUALLY_UNAVAILABLE --> AVAILABLE: Admin action
+
+    note right of AVAILABLE: Can be ordered
+    note right of RESERVED: Awaiting payment
+    note right of OCCUPIED: Active contract
+    note left of MANUALLY_UNAVAILABLE: Maintenance/blocked
+</div>1
+<h3>Storage Unavailability Handling</h3>
+<div class="mermaid">
+stateDiagram-v2
+    [*] --> AVAILABLE: Created
+
+    AVAILABLE --> RESERVED: Order.reserve()
+    AVAILABLE --> MANUALLY_UNAVAILABLE: markUnavailable()
+
+    RESERVED --> OCCUPIED: Order.complete()
+    RESERVED --> AVAILABLE: Order.cancel()/expire()
+
+    OCCUPIED --> AVAILABLE: Contract.terminate()
+
+    MANUALLY_UNAVAILABLE --> AVAILABLE: Admin action
+
+    note right of AVAILABLE: Can be ordered
+    note right of RESERVED: Awaiting payment
+    note right of OCCUPIED: Active contract
+    note left of MANUALLY_UNAVAILABLE: Maintenance/blocked
+</div>2
+<hr>
+<p>This documentation provides a complete domain understanding for development, testing, and onboarding.</p>
+<script>
+  mermaid.initialize({ 
+    startOnLoad: true, 
+    theme: 'default', 
+    securityLevel: 'loose',
+    flowchart: { useMaxWidth: true, htmlLabels: true },
+    sequence: { useMaxWidth: true },
+    er: { useMaxWidth: true }
+  });
+</script>
+</body>
+</html>
