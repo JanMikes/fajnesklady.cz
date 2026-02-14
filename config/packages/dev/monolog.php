@@ -13,6 +13,12 @@ return App::config([
                 'level' => 'debug',
                 'channels' => ['!event'],
             ],
+            'stderr' => [
+                'type' => 'stream',
+                'path' => 'php://stderr',
+                'level' => 'debug',
+                'channels' => ['!event'],
+            ],
             'console' => [
                 'type' => 'console',
                 'process_psr_3_messages' => false,
