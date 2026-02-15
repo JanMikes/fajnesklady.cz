@@ -33,10 +33,13 @@ class Order implements EntityWithEvents
     public private(set) ?\DateTimeImmutable $cancelledAt = null;
 
     #[ORM\Column(nullable: true)]
-    public private(set) ?int $goPayPaymentId = null;
+    public private(set) ?\DateTimeImmutable $termsAcceptedAt = null;
 
     #[ORM\Column(nullable: true)]
-    public private(set) ?int $goPayParentPaymentId = null;
+    public private(set) ?string $goPayPaymentId = null;
+
+    #[ORM\Column(nullable: true)]
+    public private(set) ?string $goPayParentPaymentId = null;
 
     public function __construct(
         #[ORM\Id]
@@ -78,6 +81,16 @@ class Order implements EntityWithEvents
     {
         $this->status = OrderStatus::RESERVED;
         $this->storage->reserve($now);
+    }
+
+    public function acceptTerms(\DateTimeImmutable $now): void
+    {
+        $this->termsAcceptedAt = $now;
+    }
+
+    public function hasAcceptedTerms(): bool
+    {
+        return null !== $this->termsAcceptedAt;
     }
 
     public function markAwaitingPayment(\DateTimeImmutable $now): void
@@ -161,12 +174,12 @@ class Order implements EntityWithEvents
         return $this->totalPrice / 100;
     }
 
-    public function setGoPayPaymentId(int $paymentId): void
+    public function setGoPayPaymentId(string $paymentId): void
     {
         $this->goPayPaymentId = $paymentId;
     }
 
-    public function setGoPayParentPaymentId(int $parentPaymentId): void
+    public function setGoPayParentPaymentId(string $parentPaymentId): void
     {
         $this->goPayParentPaymentId = $parentPaymentId;
     }

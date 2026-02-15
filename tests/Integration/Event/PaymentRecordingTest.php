@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Event;
 
-use App\Command\CompleteOrderCommand;
 use App\Command\InitiatePaymentCommand;
 use App\Command\ProcessPaymentNotificationCommand;
 use App\DataFixtures\UserFixtures;
@@ -25,7 +24,6 @@ use Doctrine\Persistence\ManagerRegistry;
 use Psr\Clock\ClockInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Messenger\MessageBusInterface;
-use Symfony\Component\Messenger\Stamp\HandledStamp;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -91,6 +89,9 @@ class PaymentRecordingTest extends KernelTestCase
         // works regardless of which storage is used
         $assignedStorage = $order->storage;
 
+        // Accept terms before payment (new flow requirement)
+        $order->acceptTerms($now);
+
         // Count payments before
         $paymentsBefore = $this->countPaymentsForStorage($assignedStorage);
 
@@ -135,7 +136,7 @@ class PaymentRecordingTest extends KernelTestCase
         // Dispatch RecurringPaymentCharged event directly
         $this->eventBus->dispatch(new RecurringPaymentCharged(
             contractId: $contract->id,
-            paymentId: 123456,
+            paymentId: '123456',
             amount: 50000, // 500 CZK
             occurredOn: $now,
         ));
@@ -304,6 +305,9 @@ class PaymentRecordingTest extends KernelTestCase
             PaymentFrequency::MONTHLY,
         );
 
+        // Accept terms before payment
+        $order->acceptTerms($now);
+
         // Initiate payment
         $this->commandBus->dispatch(new InitiatePaymentCommand(
             order: $order,
@@ -316,21 +320,20 @@ class PaymentRecordingTest extends KernelTestCase
         \assert(null !== $paymentId);
         $this->goPayClient->simulatePaymentPaid($paymentId);
 
-        // Process notification to mark order as paid
+        // Process notification — this will confirm payment AND auto-complete (terms accepted)
         $this->commandBus->dispatch(new ProcessPaymentNotificationCommand($paymentId));
 
-        // Set parent payment ID
-        $order->setGoPayParentPaymentId($paymentId);
         $this->entityManager->flush();
+        $this->entityManager->clear();
 
-        // Complete order to create contract
-        $envelope = $this->commandBus->dispatch(new CompleteOrderCommand($order));
-
-        /** @var HandledStamp $handledStamp */
-        $handledStamp = $envelope->last(HandledStamp::class);
-
-        /** @var Contract $contract */
-        $contract = $handledStamp->getResult();
+        // Fetch contract created by auto-completion
+        $contract = $this->entityManager->createQueryBuilder()
+            ->select('c')
+            ->from(Contract::class, 'c')
+            ->where('c.order = :order')
+            ->setParameter('order', $order->id)
+            ->getQuery()
+            ->getSingleResult();
 
         return $contract;
     }

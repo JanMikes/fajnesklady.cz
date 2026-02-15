@@ -10,7 +10,7 @@ final readonly class RecurringPaymentCharged
 {
     public function __construct(
         public Uuid $contractId,
-        public int $paymentId,
+        public string $paymentId,
         public int $amount,
         public \DateTimeImmutable $occurredOn,
     ) {

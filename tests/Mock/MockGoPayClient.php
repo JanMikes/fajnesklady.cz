@@ -14,13 +14,13 @@ final class MockGoPayClient implements GoPayClient
 {
     private int $nextPaymentId = 10000;
 
-    /** @var array<int, GoPayPaymentStatus> */
+    /** @var array<string, GoPayPaymentStatus> */
     private array $paymentStatuses = [];
 
-    /** @var array<int, GoPayPayment> */
+    /** @var array<string, GoPayPayment> */
     private array $createdPayments = [];
 
-    /** @var array<int, true> */
+    /** @var array<string, true> */
     private array $voidedRecurrences = [];
 
     private bool $shouldFailNextPayment = false;
@@ -37,7 +37,7 @@ final class MockGoPayClient implements GoPayClient
         return $this->doCreatePayment();
     }
 
-    public function createRecurrence(int $parentPaymentId, int $amount, string $orderNumber, string $description): GoPayPayment
+    public function createRecurrence(string $parentPaymentId, int $amount, string $orderNumber, string $description): GoPayPayment
     {
         if ($this->shouldFailNextRecurrence) {
             $this->shouldFailNextRecurrence = false;
@@ -45,7 +45,7 @@ final class MockGoPayClient implements GoPayClient
             throw new GoPayException('Simulated recurrence failure', 500);
         }
 
-        $paymentId = $this->nextPaymentId++;
+        $paymentId = 'gp_' . $this->nextPaymentId++;
         $payment = new GoPayPayment(
             id: $paymentId,
             gwUrl: '',
@@ -62,7 +62,7 @@ final class MockGoPayClient implements GoPayClient
         return $payment;
     }
 
-    public function voidRecurrence(int $paymentId): void
+    public function voidRecurrence(string $paymentId): void
     {
         if (isset($this->paymentStatuses[$paymentId])) {
             $current = $this->paymentStatuses[$paymentId];
@@ -76,7 +76,7 @@ final class MockGoPayClient implements GoPayClient
         $this->voidedRecurrences[$paymentId] = true;
     }
 
-    public function getStatus(int $paymentId): GoPayPaymentStatus
+    public function getStatus(string $paymentId): GoPayPaymentStatus
     {
         return $this->paymentStatuses[$paymentId]
             ?? new GoPayPaymentStatus($paymentId, 'CREATED', null);
@@ -95,7 +95,7 @@ final class MockGoPayClient implements GoPayClient
             throw new GoPayException('Simulated payment failure', 500);
         }
 
-        $paymentId = $this->nextPaymentId++;
+        $paymentId = 'gp_' . $this->nextPaymentId++;
         $payment = new GoPayPayment(
             id: $paymentId,
             gwUrl: 'https://mock.gopay.test/gw/'.$paymentId,
@@ -114,7 +114,7 @@ final class MockGoPayClient implements GoPayClient
 
     // Test helper methods
 
-    public function simulatePaymentPaid(int $paymentId): void
+    public function simulatePaymentPaid(string $paymentId): void
     {
         $current = $this->paymentStatuses[$paymentId] ?? null;
         $this->paymentStatuses[$paymentId] = new GoPayPaymentStatus(
@@ -124,7 +124,7 @@ final class MockGoPayClient implements GoPayClient
         );
     }
 
-    public function simulatePaymentCanceled(int $paymentId): void
+    public function simulatePaymentCanceled(string $paymentId): void
     {
         $current = $this->paymentStatuses[$paymentId] ?? null;
         $this->paymentStatuses[$paymentId] = new GoPayPaymentStatus(
@@ -145,14 +145,14 @@ final class MockGoPayClient implements GoPayClient
     }
 
     /**
-     * @return array<int, GoPayPayment>
+     * @return array<string, GoPayPayment>
      */
     public function getCreatedPayments(): array
     {
         return $this->createdPayments;
     }
 
-    public function wasRecurrenceVoided(int $paymentId): bool
+    public function wasRecurrenceVoided(string $paymentId): bool
     {
         return isset($this->voidedRecurrences[$paymentId]);
     }

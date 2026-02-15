@@ -23,7 +23,7 @@ class Contract
     public private(set) ?\DateTimeImmutable $terminatedAt = null;
 
     #[ORM\Column(nullable: true)]
-    public private(set) ?int $goPayParentPaymentId = null;
+    public private(set) ?string $goPayParentPaymentId = null;
 
     #[ORM\Column(nullable: true)]
     public private(set) ?\DateTimeImmutable $nextBillingDate = null;
@@ -110,7 +110,7 @@ class Contract
         return null !== $this->documentPath;
     }
 
-    public function setRecurringPayment(int $parentPaymentId, \DateTimeImmutable $nextBillingDate): void
+    public function setRecurringPayment(string $parentPaymentId, \DateTimeImmutable $nextBillingDate): void
     {
         $this->goPayParentPaymentId = $parentPaymentId;
         $this->nextBillingDate = $nextBillingDate;

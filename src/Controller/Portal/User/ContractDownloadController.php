@@ -40,12 +40,17 @@ final class ContractDownloadController extends AbstractController
 
         $this->denyAccessUnlessGranted(ContractVoter::DOWNLOAD, $contract);
 
-        if (!$contract->hasDocument()) {
+        if (!$contract->hasDocument() || null === $contract->documentPath) {
             throw new NotFoundHttpException('Dokument smlouvy není k dispozici.');
         }
 
         $contractsDir = $this->projectDir.'/var/contracts';
-        $filePath = $contractsDir.'/'.$contract->documentPath;
+
+        // documentPath may be absolute or relative — handle both
+        $filePath = str_starts_with($contract->documentPath, '/')
+            ? $contract->documentPath
+            : $contractsDir.'/'.$contract->documentPath;
+
         $realPath = realpath($filePath);
 
         // Validate path to prevent directory traversal

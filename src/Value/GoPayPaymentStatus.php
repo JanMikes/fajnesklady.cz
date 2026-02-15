@@ -7,9 +7,9 @@ namespace App\Value;
 final readonly class GoPayPaymentStatus
 {
     public function __construct(
-        public int $id,
+        public string $id,
         public string $state,
-        public ?int $parentId,
+        public ?string $parentId,
     ) {
     }
 

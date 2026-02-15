@@ -42,6 +42,11 @@ return App::config([
         'App\\Service\\AresLookup' => [
             'alias' => 'App\\Service\\AresService',
         ],
+        'App\\Service\\Fakturoid\\FakturoidApiClient' => [
+            'arguments' => [
+                '$vatRate' => '%env(int:FAKTUROID_VAT_RATE)%',
+            ],
+        ],
         'App\\Service\\Fakturoid\\FakturoidClient' => [
             'alias' => 'App\\Service\\Fakturoid\\FakturoidApiClient',
         ],
@@ -94,6 +99,7 @@ return App::config([
                 '$uploadsDirectory' => '%kernel.project_dir%/public/uploads',
             ],
         ],
+        'App\\Middleware\\DispatchDomainEventsMiddleware' => null,
         'App\\Twig\\' => [
             'resource' => '../src/Twig/',
             'exclude' => ['../src/Twig/Components/'],
@@ -102,19 +108,16 @@ return App::config([
             'resource' => '../src/Twig/Components/',
         ],
         // GoPay payment gateway
-        'gopay.psr18_client' => [
-            'class' => 'Symfony\\Component\\HttpClient\\Psr18Client',
-        ],
         'GoPay\\Payments' => [
             'factory' => ['GoPay\\Api', 'payments'],
             'arguments' => [
-                [[
+                [
                     'goid' => '%env(GOPAY_GOID)%',
                     'clientId' => '%env(GOPAY_CLIENT_ID)%',
                     'clientSecret' => '%env(GOPAY_CLIENT_SECRET)%',
                     'gatewayUrl' => '%env(GOPAY_GATEWAY_URL)%',
                     'language' => \GoPay\Definition\Language::CZECH,
-                ]],
+                ],
             ],
         ],
         'App\\Service\\GoPay\\GoPayClient' => [

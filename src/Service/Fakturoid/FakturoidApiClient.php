@@ -9,12 +9,16 @@ use App\Entity\SelfBillingInvoice;
 use App\Entity\User;
 use App\Value\FakturoidInvoice;
 use App\Value\FakturoidSubject;
+use Fakturoid\Exception\RequestException;
 use Fakturoid\FakturoidManager;
+use Psr\Log\LoggerInterface;
 
 final readonly class FakturoidApiClient implements FakturoidClient
 {
     public function __construct(
         private FakturoidManager $manager,
+        private LoggerInterface $logger,
+        private int $vatRate,
     ) {
     }
 
@@ -45,22 +49,41 @@ final readonly class FakturoidApiClient implements FakturoidClient
         $storageType = $storage->storageType;
         $place = $storage->getPlace();
 
-        $response = $this->manager->getInvoicesProvider()->create([
-            'subject_id' => $subjectId,
-            'lines' => [
-                [
-                    'name' => sprintf(
-                        'Pronájem skladového boxu %s - %s (%s)',
-                        $storage->number,
-                        $storageType->name,
-                        $place->name,
-                    ),
-                    'quantity' => 1,
-                    'unit_price' => $order->getTotalPriceInCzk(),
-                    'vat_rate' => 21,
+        try {
+            $response = $this->manager->getInvoicesProvider()->create([
+                'subject_id' => $subjectId,
+                'lines' => [
+                    [
+                        'name' => sprintf(
+                            'Pronájem skladového boxu %s - %s (%s)',
+                            $storage->number,
+                            $storageType->name,
+                            $place->name,
+                        ),
+                        'quantity' => 1,
+                        'unit_price' => $order->getTotalPriceInCzk(),
+                        'vat_rate' => $this->vatRate,
+                    ],
                 ],
-            ],
-        ]);
+            ]);
+        } catch (\Throwable $e) {
+            $context = [
+                'subject_id' => $subjectId,
+                'order_id' => $order->id->toRfc4122(),
+                'error' => $e->getMessage(),
+            ];
+
+            if ($e instanceof RequestException) {
+                $body = $e->getResponse()->getBody();
+                $body->rewind();
+                $context['status'] = $e->getResponse()->getStatusCode();
+                $context['body'] = $body->getContents();
+            }
+
+            $this->logger->error('Fakturoid invoice creation failed', $context);
+
+            throw $e;
+        }
 
         /** @var \stdClass $body */
         $body = $response->getBody();
@@ -72,14 +95,44 @@ final readonly class FakturoidApiClient implements FakturoidClient
         );
     }
 
+    public function markInvoiceAsPaid(int $invoiceId, \DateTimeImmutable $paidAt): void
+    {
+        try {
+            $this->manager->getInvoicesProvider()->createPayment($invoiceId, [
+                'paid_on' => $paidAt->format('Y-m-d'),
+                'currency' => 'CZK',
+                'payment_method' => 'card',
+            ]);
+        } catch (\Throwable $e) {
+            $this->logger->error('Failed to mark Fakturoid invoice as paid', [
+                'invoice_id' => $invoiceId,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
     public function downloadInvoicePdf(int $invoiceId): string
     {
-        $response = $this->manager->getInvoicesProvider()->getPdf($invoiceId);
+        // Fakturoid returns 204 (No Content) when PDF is still being generated.
+        // Retry up to 3 times with 2s delay.
+        for ($attempt = 1; $attempt <= 3; ++$attempt) {
+            $response = $this->manager->getInvoicesProvider()->getPdf($invoiceId);
+            $body = $response->getBody();
 
-        /** @var string $body */
-        $body = $response->getBody();
+            if (\is_string($body) && '' !== $body) {
+                return $body;
+            }
 
-        return $body;
+            if ($attempt < 3) {
+                $this->logger->info('Fakturoid PDF not ready, retrying', [
+                    'invoice_id' => $invoiceId,
+                    'attempt' => $attempt,
+                ]);
+                sleep(2);
+            }
+        }
+
+        throw new \RuntimeException(sprintf('Fakturoid PDF not available after 3 attempts for invoice %d', $invoiceId));
     }
 
     public function createSelfBillingInvoice(int $subjectId, SelfBillingInvoice $invoice): FakturoidInvoice
@@ -99,7 +152,7 @@ final readonly class FakturoidApiClient implements FakturoidClient
                     ),
                     'quantity' => 1,
                     'unit_price' => $invoice->getNetAmountInCzk(),
-                    'vat_rate' => 21,
+                    'vat_rate' => $this->vatRate,
                 ],
             ],
             'note' => sprintf(

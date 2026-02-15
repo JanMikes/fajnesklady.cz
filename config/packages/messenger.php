@@ -26,6 +26,7 @@ return App::config([
             'buses' => [
                 'command.bus' => [
                     'middleware' => [
+                        'App\\Middleware\\DispatchDomainEventsMiddleware',
                         'doctrine_transaction',
                         'validation',
                     ],

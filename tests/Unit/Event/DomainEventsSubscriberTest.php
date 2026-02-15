@@ -16,8 +16,6 @@ use Doctrine\ORM\Event\PostRemoveEventArgs;
 use Doctrine\ORM\Event\PostUpdateEventArgs;
 use Doctrine\ORM\Event\PreRemoveEventArgs;
 use PHPUnit\Framework\TestCase;
-use Symfony\Component\Messenger\Envelope;
-use Symfony\Component\Messenger\MessageBusInterface;
 
 class DomainEventsSubscriberTest extends TestCase
 {
@@ -28,21 +26,19 @@ class DomainEventsSubscriberTest extends TestCase
         $this->entityManager = $this->createStub(EntityManagerInterface::class);
     }
 
-    public function testCollectsAndDispatchesEventsOnPostFlush(): void
+    public function testCollectsAndBuffersEventsOnPostFlush(): void
     {
         $event = new \stdClass();
         $entity = $this->createEntityWithEvent($event);
 
-        $eventBus = $this->createMock(MessageBusInterface::class);
-        $eventBus->expects($this->once())
-            ->method('dispatch')
-            ->with($event)
-            ->willReturn(new Envelope($event));
-
-        $subscriber = new DomainEventsSubscriber($eventBus);
+        $subscriber = new DomainEventsSubscriber();
 
         $subscriber->postPersist(new PostPersistEventArgs($entity, $this->entityManager));
         $subscriber->postFlush(new PostFlushEventArgs($this->entityManager));
+
+        $buffered = $subscriber->popBufferedEvents();
+        $this->assertCount(1, $buffered);
+        $this->assertSame($event, $buffered[0]);
     }
 
     public function testCollectsEventsFromPostUpdate(): void
@@ -50,16 +46,14 @@ class DomainEventsSubscriberTest extends TestCase
         $event = new \stdClass();
         $entity = $this->createEntityWithEvent($event);
 
-        $eventBus = $this->createMock(MessageBusInterface::class);
-        $eventBus->expects($this->once())
-            ->method('dispatch')
-            ->with($event)
-            ->willReturn(new Envelope($event));
-
-        $subscriber = new DomainEventsSubscriber($eventBus);
+        $subscriber = new DomainEventsSubscriber();
 
         $subscriber->postUpdate(new PostUpdateEventArgs($entity, $this->entityManager));
         $subscriber->postFlush(new PostFlushEventArgs($this->entityManager));
+
+        $buffered = $subscriber->popBufferedEvents();
+        $this->assertCount(1, $buffered);
+        $this->assertSame($event, $buffered[0]);
     }
 
     public function testCollectsEventsFromPostRemove(): void
@@ -67,29 +61,26 @@ class DomainEventsSubscriberTest extends TestCase
         $event = new \stdClass();
         $entity = $this->createEntityWithEvent($event);
 
-        $eventBus = $this->createMock(MessageBusInterface::class);
-        $eventBus->expects($this->once())
-            ->method('dispatch')
-            ->with($event)
-            ->willReturn(new Envelope($event));
-
-        $subscriber = new DomainEventsSubscriber($eventBus);
+        $subscriber = new DomainEventsSubscriber();
 
         $subscriber->postRemove(new PostRemoveEventArgs($entity, $this->entityManager));
         $subscriber->postFlush(new PostFlushEventArgs($this->entityManager));
+
+        $buffered = $subscriber->popBufferedEvents();
+        $this->assertCount(1, $buffered);
+        $this->assertSame($event, $buffered[0]);
     }
 
     public function testIgnoresEntitiesWithoutEventsInterface(): void
     {
         $entity = new \stdClass();
 
-        $eventBus = $this->createMock(MessageBusInterface::class);
-        $eventBus->expects($this->never())->method('dispatch');
-
-        $subscriber = new DomainEventsSubscriber($eventBus);
+        $subscriber = new DomainEventsSubscriber();
 
         $subscriber->postPersist(new PostPersistEventArgs($entity, $this->entityManager));
         $subscriber->postFlush(new PostFlushEventArgs($this->entityManager));
+
+        $this->assertSame([], $subscriber->popBufferedEvents());
     }
 
     public function testResetClearsCollectedEvents(): void
@@ -97,17 +88,16 @@ class DomainEventsSubscriberTest extends TestCase
         $event = new \stdClass();
         $entity = $this->createEntityWithEvent($event);
 
-        $eventBus = $this->createMock(MessageBusInterface::class);
-        $eventBus->expects($this->never())->method('dispatch');
-
-        $subscriber = new DomainEventsSubscriber($eventBus);
+        $subscriber = new DomainEventsSubscriber();
 
         $subscriber->postPersist(new PostPersistEventArgs($entity, $this->entityManager));
         $subscriber->reset();
         $subscriber->postFlush(new PostFlushEventArgs($this->entityManager));
+
+        $this->assertSame([], $subscriber->popBufferedEvents());
     }
 
-    public function testDispatchesMultipleEventsFromMultipleEntities(): void
+    public function testBuffersMultipleEventsFromMultipleEntities(): void
     {
         $event1 = new \stdClass();
         $entity1 = $this->createEntityWithEvent($event1);
@@ -115,49 +105,45 @@ class DomainEventsSubscriberTest extends TestCase
         $event2 = new \stdClass();
         $entity2 = $this->createEntityWithEvent($event2);
 
-        $dispatchedEvents = [];
-        $eventBus = $this->createMock(MessageBusInterface::class);
-        $eventBus->expects($this->exactly(2))
-            ->method('dispatch')
-            ->willReturnCallback(function ($event) use (&$dispatchedEvents) {
-                $dispatchedEvents[] = $event;
-
-                return new Envelope($event);
-            });
-
-        $subscriber = new DomainEventsSubscriber($eventBus);
+        $subscriber = new DomainEventsSubscriber();
 
         $subscriber->postPersist(new PostPersistEventArgs($entity1, $this->entityManager));
         $subscriber->postPersist(new PostPersistEventArgs($entity2, $this->entityManager));
         $subscriber->postFlush(new PostFlushEventArgs($this->entityManager));
 
-        $this->assertCount(2, $dispatchedEvents);
-        $this->assertSame($event1, $dispatchedEvents[0]);
-        $this->assertSame($event2, $dispatchedEvents[1]);
+        $buffered = $subscriber->popBufferedEvents();
+        $this->assertCount(2, $buffered);
+        $this->assertSame($event1, $buffered[0]);
+        $this->assertSame($event2, $buffered[1]);
     }
 
-    public function testDeleteEventDispatchedOnRemove(): void
+    public function testPopBufferedEventsClearsBuffer(): void
+    {
+        $event = new \stdClass();
+        $entity = $this->createEntityWithEvent($event);
+
+        $subscriber = new DomainEventsSubscriber();
+
+        $subscriber->postPersist(new PostPersistEventArgs($entity, $this->entityManager));
+        $subscriber->postFlush(new PostFlushEventArgs($this->entityManager));
+
+        $this->assertCount(1, $subscriber->popBufferedEvents());
+        $this->assertSame([], $subscriber->popBufferedEvents());
+    }
+
+    public function testDeleteEventBufferedOnRemove(): void
     {
         $entity = $this->createEntityWithDeleteEvent();
 
-        $dispatchedEvents = [];
-        $eventBus = $this->createMock(MessageBusInterface::class);
-        $eventBus->expects($this->once())
-            ->method('dispatch')
-            ->willReturnCallback(function ($event) use (&$dispatchedEvents) {
-                $dispatchedEvents[] = $event;
-
-                return new Envelope($event);
-            });
-
-        $subscriber = new DomainEventsSubscriber($eventBus);
+        $subscriber = new DomainEventsSubscriber();
 
         $subscriber->preRemove(new PreRemoveEventArgs($entity, $this->entityManager));
         $subscriber->postRemove(new PostRemoveEventArgs($entity, $this->entityManager));
         $subscriber->postFlush(new PostFlushEventArgs($this->entityManager));
 
-        $this->assertCount(1, $dispatchedEvents);
-        $this->assertInstanceOf(TestDeleteDomainEvent::class, $dispatchedEvents[0]);
+        $buffered = $subscriber->popBufferedEvents();
+        $this->assertCount(1, $buffered);
+        $this->assertInstanceOf(TestDeleteDomainEvent::class, $buffered[0]);
     }
 
     private function createEntityWithEvent(object $event): EntityWithEvents

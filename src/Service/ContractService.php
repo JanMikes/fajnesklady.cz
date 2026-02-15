@@ -62,7 +62,7 @@ final readonly class ContractService
 
         // Cancel recurring payment in GoPay if active
         if ($contract->hasActiveRecurringPayment()) {
-            /** @var int $parentPaymentId */
+            /** @var string $parentPaymentId */
             $parentPaymentId = $contract->goPayParentPaymentId;
             $this->goPayClient->voidRecurrence($parentPaymentId);
             $contract->cancelRecurringPayment();

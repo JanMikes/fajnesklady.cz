@@ -6,6 +6,8 @@ ENV APP_ENV="prod" \
 
 RUN rm $PHP_INI_DIR/conf.d/docker-php-ext-xdebug.ini
 
+RUN apt-get update -qq && apt-get install -y --no-install-recommends libreoffice-writer && rm -rf /var/lib/apt/lists/*
+
 COPY --link --chmod=755 .docker/on-startup.sh /docker-entrypoint.d/
 
 COPY composer.json composer.lock symfony.lock ./

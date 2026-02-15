@@ -16,6 +16,7 @@ use App\Repository\OrderRepository;
 use App\Service\InvoicingService;
 use PHPUnit\Framework\TestCase;
 use Psr\Clock\ClockInterface;
+use Psr\Log\NullLogger;
 use Symfony\Component\Uid\Uuid;
 
 class IssueInvoiceOnPaymentHandlerTest extends TestCase
@@ -45,6 +46,7 @@ class IssueInvoiceOnPaymentHandlerTest extends TestCase
             $orderRepository,
             $invoicingService,
             $clock,
+            new NullLogger(),
         );
 
         $handler($event);
@@ -73,6 +75,7 @@ class IssueInvoiceOnPaymentHandlerTest extends TestCase
             $orderRepository,
             $invoicingService,
             $clock,
+            new NullLogger(),
         );
 
         $handler($event);

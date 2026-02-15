@@ -11,6 +11,7 @@ use App\Repository\InvoiceRepository;
 use App\Repository\UserRepository;
 use App\Service\Fakturoid\FakturoidClient;
 use App\Service\Identity\ProvideIdentity;
+use Psr\Log\LoggerInterface;
 
 readonly class InvoicingService
 {
@@ -19,6 +20,7 @@ readonly class InvoicingService
         private ProvideIdentity $identityProvider,
         private InvoiceRepository $invoiceRepository,
         private UserRepository $userRepository,
+        private LoggerInterface $logger,
         private string $invoicesDirectory,
     ) {
     }
@@ -31,6 +33,11 @@ readonly class InvoicingService
 
         $fakturoidInvoice = $this->fakturoidClient->createInvoice($subjectId, $order);
 
+        // Invoice is created after payment, so mark it as paid immediately
+        if (null !== $order->paidAt) {
+            $this->fakturoidClient->markInvoiceAsPaid($fakturoidInvoice->id, $order->paidAt);
+        }
+
         $invoice = new Invoice(
             id: $this->identityProvider->next(),
             order: $order,
@@ -42,11 +49,20 @@ readonly class InvoicingService
             createdAt: $now,
         );
 
-        $pdfContent = $this->fakturoidClient->downloadInvoicePdf($fakturoidInvoice->id);
-        $pdfPath = $this->storePdf($invoice, $pdfContent);
-        $invoice->attachPdf($pdfPath);
-
+        // Save invoice first so InvoiceCreated event fires (email sent even without PDF)
         $this->invoiceRepository->save($invoice);
+
+        // PDF download is best-effort — invoice email is sent regardless
+        try {
+            $pdfContent = $this->fakturoidClient->downloadInvoicePdf($fakturoidInvoice->id);
+            $pdfPath = $this->storePdf($invoice, $pdfContent);
+            $invoice->attachPdf($pdfPath);
+        } catch (\Throwable $e) {
+            $this->logger->warning('Failed to download invoice PDF, email will be sent without attachment', [
+                'invoice_id' => $fakturoidInvoice->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         return $invoice;
     }

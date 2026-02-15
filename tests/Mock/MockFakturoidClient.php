@@ -50,6 +50,11 @@ final class MockFakturoidClient implements FakturoidClient
         return $invoice;
     }
 
+    public function markInvoiceAsPaid(int $invoiceId, \DateTimeImmutable $paidAt): void
+    {
+        // No-op in mock
+    }
+
     public function downloadInvoicePdf(int $invoiceId): string
     {
         return $this->pdfContent;

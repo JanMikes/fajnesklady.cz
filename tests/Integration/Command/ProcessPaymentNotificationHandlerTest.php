@@ -46,7 +46,7 @@ class ProcessPaymentNotificationHandlerTest extends KernelTestCase
         $this->goPayClient->reset();
     }
 
-    public function testProcessPaymentNotificationConfirmsPaymentOnPaid(): void
+    public function testProcessPaymentNotificationConfirmsAndCompletesOrder(): void
     {
         $order = $this->createAndInitiatePayment(RentalType::LIMITED);
         $paymentId = $order->goPayPaymentId;
@@ -60,7 +60,8 @@ class ProcessPaymentNotificationHandlerTest extends KernelTestCase
         $this->entityManager->clear();
         $refreshedOrder = $this->entityManager->find(\App\Entity\Order::class, $order->id);
 
-        $this->assertSame(OrderStatus::PAID, $refreshedOrder->status);
+        // Order should be auto-completed since terms were accepted before payment
+        $this->assertSame(OrderStatus::COMPLETED, $refreshedOrder->status);
         $this->assertNotNull($refreshedOrder->paidAt);
     }
 
@@ -95,7 +96,8 @@ class ProcessPaymentNotificationHandlerTest extends KernelTestCase
         $this->entityManager->clear();
         $refreshedOrder = $this->entityManager->find(\App\Entity\Order::class, $order->id);
 
-        $this->assertSame(OrderStatus::PAID, $refreshedOrder->status);
+        // Order should be auto-completed since terms were accepted before payment
+        $this->assertSame(OrderStatus::COMPLETED, $refreshedOrder->status);
         // Parent payment ID should be set (in mock it equals the original payment ID as parentId)
         $this->assertNotNull($refreshedOrder->goPayParentPaymentId);
     }
@@ -122,6 +124,9 @@ class ProcessPaymentNotificationHandlerTest extends KernelTestCase
             $endDate,
             $now,
         );
+
+        // Accept terms before payment (new flow requirement)
+        $order->acceptTerms($now);
 
         $envelope = $this->commandBus->dispatch(new InitiatePaymentCommand(
             order: $order,

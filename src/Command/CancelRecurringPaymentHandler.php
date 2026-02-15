@@ -29,7 +29,7 @@ final readonly class CancelRecurringPaymentHandler
             return; // Nothing to cancel
         }
 
-        /** @var int $parentPaymentId */
+        /** @var string $parentPaymentId */
         $parentPaymentId = $contract->goPayParentPaymentId;
 
         // Cancel in GoPay

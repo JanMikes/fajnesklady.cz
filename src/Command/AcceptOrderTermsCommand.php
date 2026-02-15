@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Command;
 
-final readonly class ProcessPaymentNotificationCommand
+use App\Entity\Order;
+
+final readonly class AcceptOrderTermsCommand
 {
     public function __construct(
-        public string $goPayPaymentId,
+        public Order $order,
     ) {
     }
 }

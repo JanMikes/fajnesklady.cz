@@ -27,7 +27,7 @@ final readonly class GoPayApiClient implements GoPayClient
         $this->assertSuccess($response);
 
         return new GoPayPayment(
-            id: (int) $response->json['id'],
+            id: (string) $response->json['id'],
             gwUrl: $response->json['gw_url'],
             state: $response->json['state'],
         );
@@ -46,13 +46,13 @@ final readonly class GoPayApiClient implements GoPayClient
         $this->assertSuccess($response);
 
         return new GoPayPayment(
-            id: (int) $response->json['id'],
+            id: (string) $response->json['id'],
             gwUrl: $response->json['gw_url'],
             state: $response->json['state'],
         );
     }
 
-    public function createRecurrence(int $parentPaymentId, int $amount, string $orderNumber, string $description): GoPayPayment
+    public function createRecurrence(string $parentPaymentId, int $amount, string $orderNumber, string $description): GoPayPayment
     {
         $response = $this->gopay->createRecurrence($parentPaymentId, [
             'amount' => $amount,
@@ -64,27 +64,27 @@ final readonly class GoPayApiClient implements GoPayClient
         $this->assertSuccess($response);
 
         return new GoPayPayment(
-            id: (int) $response->json['id'],
+            id: (string) $response->json['id'],
             gwUrl: $response->json['gw_url'] ?? '',
             state: $response->json['state'],
         );
     }
 
-    public function voidRecurrence(int $paymentId): void
+    public function voidRecurrence(string $paymentId): void
     {
         $response = $this->gopay->voidRecurrence($paymentId);
         $this->assertSuccess($response);
     }
 
-    public function getStatus(int $paymentId): GoPayPaymentStatus
+    public function getStatus(string $paymentId): GoPayPaymentStatus
     {
         $response = $this->gopay->getStatus($paymentId);
         $this->assertSuccess($response);
 
         return new GoPayPaymentStatus(
-            id: (int) $response->json['id'],
+            id: (string) $response->json['id'],
             state: $response->json['state'],
-            parentId: $response->json['parent_id'] ?? null,
+            parentId: isset($response->json['parent_id']) ? (string) $response->json['parent_id'] : null,
         );
     }
 

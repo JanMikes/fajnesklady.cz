@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Tests\Integration\Command;
 
 use App\Command\ChargeRecurringPaymentCommand;
-use App\Command\CompleteOrderCommand;
 use App\Command\InitiatePaymentCommand;
 use App\Command\ProcessPaymentNotificationCommand;
 use App\DataFixtures\UserFixtures;
@@ -22,7 +21,6 @@ use Doctrine\Persistence\ManagerRegistry;
 use Psr\Clock\ClockInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Messenger\MessageBusInterface;
-use Symfony\Component\Messenger\Stamp\HandledStamp;
 
 class ChargeRecurringPaymentHandlerTest extends KernelTestCase
 {
@@ -116,6 +114,9 @@ class ChargeRecurringPaymentHandlerTest extends KernelTestCase
             PaymentFrequency::MONTHLY,
         );
 
+        // Accept terms before payment
+        $order->acceptTerms($now);
+
         // Initiate payment
         $this->commandBus->dispatch(new InitiatePaymentCommand(
             order: $order,
@@ -128,21 +129,20 @@ class ChargeRecurringPaymentHandlerTest extends KernelTestCase
         \assert(null !== $paymentId);
         $this->goPayClient->simulatePaymentPaid($paymentId);
 
-        // Process notification to mark order as paid
+        // Process notification — auto-completes order and creates contract (terms accepted)
         $this->commandBus->dispatch(new ProcessPaymentNotificationCommand($paymentId));
 
-        // Set parent payment ID (in real flow this would come from GoPay status)
-        $order->setGoPayParentPaymentId($paymentId);
         $this->entityManager->flush();
+        $this->entityManager->clear();
 
-        // Complete order to create contract
-        $envelope = $this->commandBus->dispatch(new CompleteOrderCommand($order));
-
-        /** @var HandledStamp $handledStamp */
-        $handledStamp = $envelope->last(HandledStamp::class);
-
-        /** @var Contract $contract */
-        $contract = $handledStamp->getResult();
+        // Fetch contract created by auto-completion
+        $contract = $this->entityManager->createQueryBuilder()
+            ->select('c')
+            ->from(Contract::class, 'c')
+            ->where('c.order = :order')
+            ->setParameter('order', $order->id)
+            ->getQuery()
+            ->getSingleResult();
 
         return $contract;
     }

@@ -136,9 +136,9 @@ final class OrderCreateController extends AbstractController
                     throw new \RuntimeException('Failed to create order.');
                 }
 
-                $this->addFlash('success', 'Objednávka byla vytvořena. Pokračujte k platbě.');
+                $this->addFlash('success', 'Objednávka byla vytvořena. Přijměte prosím smluvní podmínky.');
 
-                return $this->redirectToRoute('public_order_payment', ['id' => $order->id]);
+                return $this->redirectToRoute('public_order_accept', ['id' => $order->id]);
             } catch (\App\Exception\NoStorageAvailable $e) {
                 $this->addFlash('error', 'Omlouváme se, ale vybraný typ skladové jednotky již není pro zvolené období dostupný.');
             } catch (\Exception $e) {

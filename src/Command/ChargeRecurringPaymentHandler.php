@@ -33,7 +33,7 @@ final readonly class ChargeRecurringPaymentHandler
             throw new \DomainException('Contract does not have active recurring payment.');
         }
 
-        /** @var int $parentPaymentId */
+        /** @var string $parentPaymentId */
         $parentPaymentId = $contract->goPayParentPaymentId;
         $storageType = $contract->storage->storageType;
         $paymentFrequency = $contract->order->paymentFrequency;

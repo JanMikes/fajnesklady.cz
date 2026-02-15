@@ -9,6 +9,7 @@ use App\Service\GoPay\GoPayClient;
 use App\Service\OrderService;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
+use Symfony\Component\Messenger\MessageBusInterface;
 
 #[AsMessageHandler]
 final readonly class ProcessPaymentNotificationHandler
@@ -17,6 +18,7 @@ final readonly class ProcessPaymentNotificationHandler
         private GoPayClient $goPayClient,
         private OrderRepository $orderRepository,
         private OrderService $orderService,
+        private MessageBusInterface $commandBus,
         private ClockInterface $clock,
     ) {
     }
@@ -41,6 +43,11 @@ final readonly class ProcessPaymentNotificationHandler
             }
 
             $this->orderService->confirmPayment($order, $now);
+
+            // Auto-complete the order (terms were already accepted before payment)
+            if ($order->hasAcceptedTerms()) {
+                $this->commandBus->dispatch(new CompleteOrderCommand($order));
+            }
         } elseif ($status->isCanceled() && $order->canBeCancelled()) {
             $this->orderService->cancelOrder($order, $now);
         }

@@ -36,11 +36,69 @@ class OrderPaymentControllerTest extends WebTestCase
         static::ensureKernelShutdown();
     }
 
-    public function testPaymentPageShowsOrderDetails(): void
+    public function testAcceptPageShowsContractFormForReservedOrder(): void
     {
         $order = $this->findOrderByStatus(OrderStatus::RESERVED);
         $orderId = $order->id->toRfc4122();
 
+        $crawler = $this->client->request('GET', '/objednavka/'.$orderId.'/prijmout');
+
+        $this->assertResponseIsSuccessful();
+        $this->assertSelectorTextContains('h1', 'Přijetí smluvních podmínek');
+        $this->assertSelectorExists('input[name="accept_contract"]');
+    }
+
+    public function testAcceptPageRedirectsToPaymentWhenTermsAlreadyAccepted(): void
+    {
+        // The PAID order in fixtures has termsAcceptedAt set
+        $order = $this->findOrderByStatus(OrderStatus::PAID);
+        $orderId = $order->id->toRfc4122();
+
+        $this->client->request('GET', '/objednavka/'.$orderId.'/prijmout');
+
+        // Terms already accepted, should redirect to payment (or complete for PAID)
+        $this->assertResponseRedirects('/objednavka/'.$orderId.'/platba');
+    }
+
+    public function testAcceptTermsRedirectsToPayment(): void
+    {
+        $order = $this->findOrderByStatus(OrderStatus::RESERVED);
+        $orderId = $order->id->toRfc4122();
+
+        $this->client->request('POST', '/objednavka/'.$orderId.'/prijmout', [
+            'accept_contract' => '1',
+        ]);
+
+        $this->assertResponseRedirects('/objednavka/'.$orderId.'/platba');
+
+        // Verify terms were accepted
+        $this->entityManager->clear();
+        $updatedOrder = $this->entityManager->find(Order::class, $order->id);
+        $this->assertNotNull($updatedOrder->termsAcceptedAt);
+    }
+
+    public function testPaymentPageRedirectsToAcceptWhenTermsNotAccepted(): void
+    {
+        $order = $this->findOrderByStatus(OrderStatus::RESERVED);
+        $orderId = $order->id->toRfc4122();
+
+        $this->client->request('GET', '/objednavka/'.$orderId.'/platba');
+
+        // Should redirect to accept page since terms not yet accepted
+        $this->assertResponseRedirects('/objednavka/'.$orderId.'/prijmout');
+    }
+
+    public function testPaymentPageShowsOrderDetailsAfterTermsAccepted(): void
+    {
+        $order = $this->findOrderByStatus(OrderStatus::RESERVED);
+        $orderId = $order->id->toRfc4122();
+
+        // Accept terms first
+        $this->client->request('POST', '/objednavka/'.$orderId.'/prijmout', [
+            'accept_contract' => '1',
+        ]);
+
+        // Now access payment page
         $crawler = $this->client->request('GET', '/objednavka/'.$orderId.'/platba');
 
         $this->assertResponseIsSuccessful();
@@ -52,6 +110,11 @@ class OrderPaymentControllerTest extends WebTestCase
     {
         $order = $this->findOrderByStatus(OrderStatus::RESERVED);
         $orderId = $order->id->toRfc4122();
+
+        // Accept terms first
+        $this->client->request('POST', '/objednavka/'.$orderId.'/prijmout', [
+            'accept_contract' => '1',
+        ]);
 
         $this->client->request('POST', '/objednavka/'.$orderId.'/platba/iniciovat', [], [], [
             'HTTP_X-Requested-With' => 'XMLHttpRequest',
@@ -76,7 +139,12 @@ class OrderPaymentControllerTest extends WebTestCase
         $order = $this->findOrderByStatus(OrderStatus::RESERVED);
         $orderId = $order->id->toRfc4122();
 
-        // First initiate payment
+        // Accept terms first
+        $this->client->request('POST', '/objednavka/'.$orderId.'/prijmout', [
+            'accept_contract' => '1',
+        ]);
+
+        // Then initiate payment
         $this->client->request('POST', '/objednavka/'.$orderId.'/platba/iniciovat', [], [], [
             'HTTP_X-Requested-With' => 'XMLHttpRequest',
             'CONTENT_TYPE' => 'application/json',
@@ -85,31 +153,34 @@ class OrderPaymentControllerTest extends WebTestCase
         $response = json_decode($this->client->getResponse()->getContent(), true);
         $paymentId = $response['paymentId'];
 
-        // Call webhook - it should return OK even if payment is not yet confirmed
-        // (actual payment confirmation is tested in ProcessPaymentNotificationHandlerTest)
+        // Call webhook
         $this->client->request('GET', '/webhook/gopay', ['id' => $paymentId]);
 
         $this->assertResponseIsSuccessful();
         $this->assertSame('OK', $this->client->getResponse()->getContent());
     }
 
-    public function testPaymentReturnRedirectsToAcceptOnSuccess(): void
+    public function testPaymentReturnRedirectsToCompleteOnSuccess(): void
     {
-        // Use the PAID order from fixtures - this order is already in PAID status
-        // so the return URL should redirect to accept page
+        // PAID order has terms accepted - should redirect to complete page
         $order = $this->findOrderByStatus(OrderStatus::PAID);
         $orderId = $order->id->toRfc4122();
 
-        // Visit return URL - since order is already PAID, should redirect to accept
         $this->client->request('GET', '/objednavka/'.$orderId.'/platba/navrat');
 
-        $this->assertResponseRedirects('/objednavka/'.$orderId.'/prijmout');
+        // PAID order redirects to complete page
+        $this->assertResponseRedirects('/objednavka/'.$orderId.'/dokonceno');
     }
 
     public function testPaymentReturnRedirectsToPaymentOnPending(): void
     {
         $order = $this->findOrderByStatus(OrderStatus::RESERVED);
         $orderId = $order->id->toRfc4122();
+
+        // Accept terms first
+        $this->client->request('POST', '/objednavka/'.$orderId.'/prijmout', [
+            'accept_contract' => '1',
+        ]);
 
         // Initiate payment but don't complete it
         $this->client->request('POST', '/objednavka/'.$orderId.'/platba/iniciovat', [], [], [
@@ -128,7 +199,12 @@ class OrderPaymentControllerTest extends WebTestCase
         $order = $this->findOrderByStatus(OrderStatus::RESERVED);
         $orderId = $order->id->toRfc4122();
 
-        // Submit cancellation
+        // Accept terms first
+        $this->client->request('POST', '/objednavka/'.$orderId.'/prijmout', [
+            'accept_contract' => '1',
+        ]);
+
+        // Submit cancellation from payment page
         $this->client->request('POST', '/objednavka/'.$orderId.'/platba', [
             'action' => 'cancel',
         ]);
@@ -142,62 +218,6 @@ class OrderPaymentControllerTest extends WebTestCase
         // Verify order is now CANCELLED
         $updatedOrder = $this->entityManager->find(Order::class, $order->id);
         $this->assertSame(OrderStatus::CANCELLED, $updatedOrder->status, 'Order should be in CANCELLED status after cancellation');
-    }
-
-    public function testAcceptPageShowsContractFormForPaidOrder(): void
-    {
-        // Get the paid order from fixtures
-        $order = $this->findOrderByStatus(OrderStatus::PAID);
-        $orderId = $order->id->toRfc4122();
-
-        // Access accept page
-        $crawler = $this->client->request('GET', '/objednavka/'.$orderId.'/prijmout');
-
-        // Should be successful
-        $this->assertResponseIsSuccessful();
-
-        // Should show contract acceptance form
-        $this->assertSelectorExists('form');
-        $this->assertSelectorExists('input[name="accept_contract"]');
-    }
-
-    public function testAcceptPageRedirectsForNonPaidOrder(): void
-    {
-        // Get the reserved order from fixtures
-        $order = $this->findOrderByStatus(OrderStatus::RESERVED);
-        $orderId = $order->id->toRfc4122();
-
-        // Try to access accept page without payment
-        $this->client->request('GET', '/objednavka/'.$orderId.'/prijmout');
-
-        // Should redirect to home with error
-        $this->assertResponseRedirects('/');
-
-        // Follow redirect and check for error flash
-        $this->client->followRedirect();
-        $this->assertSelectorTextContains('[data-flash-type="error"]', 'Tuto objednávku nelze dokončit');
-    }
-
-    public function testOrderCompletionFromAcceptPage(): void
-    {
-        // Get the paid order from fixtures
-        $order = $this->findOrderByStatus(OrderStatus::PAID);
-        $orderId = $order->id->toRfc4122();
-
-        // Submit contract acceptance
-        $this->client->request('POST', '/objednavka/'.$orderId.'/prijmout', [
-            'accept_contract' => '1',
-        ]);
-
-        // Should redirect to complete page
-        $this->assertResponseRedirects('/objednavka/'.$orderId.'/dokonceno');
-
-        // Clear entity manager to get fresh data from DB
-        $this->entityManager->clear();
-
-        // Verify order is now COMPLETED
-        $updatedOrder = $this->entityManager->find(Order::class, $order->id);
-        $this->assertSame(OrderStatus::COMPLETED, $updatedOrder->status, 'Order should be in COMPLETED status after acceptance');
     }
 
     private function findUserByEmail(string $email): User

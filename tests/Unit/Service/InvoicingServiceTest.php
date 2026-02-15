@@ -18,6 +18,7 @@ use App\Service\InvoicingService;
 use App\Value\FakturoidInvoice;
 use App\Value\FakturoidSubject;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\NullLogger;
 use Symfony\Component\Uid\Uuid;
 
 class InvoicingServiceTest extends TestCase
@@ -85,6 +86,7 @@ class InvoicingServiceTest extends TestCase
             $identityProvider,
             $invoiceRepository,
             $userRepository,
+            new NullLogger(),
             $this->tempDir,
         );
 
@@ -135,6 +137,7 @@ class InvoicingServiceTest extends TestCase
             $identityProvider,
             $invoiceRepository,
             $userRepository,
+            new NullLogger(),
             $this->tempDir,
         );
 
@@ -169,6 +172,7 @@ class InvoicingServiceTest extends TestCase
             $identityProvider,
             $invoiceRepository,
             $userRepository,
+            new NullLogger(),
             $this->tempDir,
         );
 
@@ -206,6 +210,7 @@ class InvoicingServiceTest extends TestCase
             $identityProvider,
             $invoiceRepository,
             $userRepository,
+            new NullLogger(),
             $nestedDir,
         );
 

@@ -106,6 +106,7 @@ final class OrderFixtures extends Fixture implements DependentFixtureInterface
             createdAt: $now,
         );
         $orderPaid->reserve($now);
+        $orderPaid->acceptTerms($now);
         $orderPaid->markAwaitingPayment($now);
         $orderPaid->markPaid($now);
         $orderPaid->popEvents();
@@ -128,6 +129,7 @@ final class OrderFixtures extends Fixture implements DependentFixtureInterface
             createdAt: $now->modify('-8 days'),
         );
         $orderCompleted->reserve($now->modify('-8 days'));
+        $orderCompleted->acceptTerms($now->modify('-8 days'));
         $orderCompleted->markAwaitingPayment($now->modify('-7 days'));
         $orderCompleted->markPaid($now->modify('-6 days'));
         // complete() will be called from ContractFixtures after contract is created
@@ -150,6 +152,7 @@ final class OrderFixtures extends Fixture implements DependentFixtureInterface
             createdAt: $now->modify('-37 days'),
         );
         $orderUnlimited->reserve($now->modify('-37 days'));
+        $orderUnlimited->acceptTerms($now->modify('-37 days'));
         $orderUnlimited->markAwaitingPayment($now->modify('-36 days'));
         $orderUnlimited->markPaid($now->modify('-35 days'));
         // complete() will be called from ContractFixtures after contract is created
@@ -211,6 +214,7 @@ final class OrderFixtures extends Fixture implements DependentFixtureInterface
             createdAt: $now->modify('-30 days'),
         );
         $orderExpiringSoon->reserve($now->modify('-30 days'));
+        $orderExpiringSoon->acceptTerms($now->modify('-30 days'));
         $orderExpiringSoon->markAwaitingPayment($now->modify('-29 days'));
         $orderExpiringSoon->markPaid($now->modify('-28 days'));
         // complete() will be called from ContractFixtures after contract is created

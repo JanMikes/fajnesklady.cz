@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller\Public;
 
-use App\Command\CompleteOrderCommand;
+use App\Command\AcceptOrderTermsCommand;
 use App\Enum\OrderStatus;
 use App\Repository\OrderRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -36,12 +36,18 @@ final class OrderAcceptController extends AbstractController
             throw new NotFoundHttpException('Objednávka nenalezena.');
         }
 
-        // Check if order is paid and ready for completion
-        if (OrderStatus::PAID !== $order->status) {
-            if (OrderStatus::COMPLETED === $order->status) {
-                return $this->redirectToRoute('public_order_complete', ['id' => $order->id]);
-            }
+        // Already completed - show completion page
+        if (OrderStatus::COMPLETED === $order->status) {
+            return $this->redirectToRoute('public_order_complete', ['id' => $order->id]);
+        }
 
+        // Terms already accepted - go to payment
+        if ($order->hasAcceptedTerms()) {
+            return $this->redirectToRoute('public_order_payment', ['id' => $order->id]);
+        }
+
+        // Only reserved orders can accept terms
+        if (OrderStatus::RESERVED !== $order->status) {
             $this->addFlash('error', 'Tuto objednávku nelze dokončit.');
 
             return $this->redirectToRoute('app_home');
@@ -56,7 +62,7 @@ final class OrderAcceptController extends AbstractController
             $accepted = $request->request->getBoolean('accept_contract');
 
             if (!$accepted) {
-                $this->addFlash('error', 'Pro dokončení objednávky je nutné souhlasit se smluvními podmínkami.');
+                $this->addFlash('error', 'Pro pokračování k platbě je nutné souhlasit se smluvními podmínkami.');
 
                 return $this->render('public/order_accept.html.twig', [
                     'order' => $order,
@@ -66,16 +72,11 @@ final class OrderAcceptController extends AbstractController
                 ]);
             }
 
-            try {
-                // Complete the order, create contract, generate document, and sign
-                $this->commandBus->dispatch(new CompleteOrderCommand($order));
+            $this->commandBus->dispatch(new AcceptOrderTermsCommand($order));
 
-                $this->addFlash('success', 'Objednávka byla úspěšně dokončena. Smlouva byla vytvořena.');
+            $this->addFlash('success', 'Smluvní podmínky byly přijaty. Pokračujte k platbě.');
 
-                return $this->redirectToRoute('public_order_complete', ['id' => $order->id]);
-            } catch (\Exception $e) {
-                $this->addFlash('error', 'Při dokončování objednávky došlo k chybě.');
-            }
+            return $this->redirectToRoute('public_order_payment', ['id' => $order->id]);
         }
 
         return $this->render('public/order_accept.html.twig', [

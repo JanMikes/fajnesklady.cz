@@ -12,12 +12,14 @@ use Doctrine\ORM\Event\PostRemoveEventArgs;
 use Doctrine\ORM\Event\PostUpdateEventArgs;
 use Doctrine\ORM\Event\PreRemoveEventArgs;
 use Doctrine\ORM\Events;
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
-use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Contracts\Service\ResetInterface;
 
 /**
- * Collects domain events from entities and dispatches them after Doctrine flush.
+ * Collects domain events from entities and buffers them for dispatch after transaction commit.
+ *
+ * Events are NOT dispatched here — they are buffered and dispatched by DispatchDomainEventsMiddleware
+ * after the command bus's doctrine_transaction commits. This ensures event handler failures
+ * never roll back the command's transaction.
  */
 #[AsDoctrineListener(event: Events::postPersist)]
 #[AsDoctrineListener(event: Events::postUpdate)]
@@ -36,11 +38,10 @@ final class DomainEventsSubscriber implements ResetInterface
      */
     private array $pendingDeleteEvents = [];
 
-    public function __construct(
-        #[Autowire(service: 'event.bus')]
-        private readonly MessageBusInterface $eventBus,
-    ) {
-    }
+    /**
+     * @var array<object>
+     */
+    private array $bufferedEvents = [];
 
     public function postPersist(PostPersistEventArgs $args): void
     {
@@ -72,7 +73,7 @@ final class DomainEventsSubscriber implements ResetInterface
     }
 
     /**
-     * Post-flush: Dispatch all collected events.
+     * Post-flush: Move collected events to the buffer for middleware dispatch.
      */
     public function postFlush(PostFlushEventArgs $args): void
     {
@@ -81,8 +82,21 @@ final class DomainEventsSubscriber implements ResetInterface
         $this->pendingDeleteEvents = [];
 
         foreach ($events as $event) {
-            $this->eventBus->dispatch($event);
+            $this->bufferedEvents[] = $event;
         }
+    }
+
+    /**
+     * Pop all buffered events for dispatch by middleware.
+     *
+     * @return array<object>
+     */
+    public function popBufferedEvents(): array
+    {
+        $events = $this->bufferedEvents;
+        $this->bufferedEvents = [];
+
+        return $events;
     }
 
     /**
@@ -92,6 +106,7 @@ final class DomainEventsSubscriber implements ResetInterface
     {
         $this->collectedEvents = [];
         $this->pendingDeleteEvents = [];
+        $this->bufferedEvents = [];
     }
 
     private function collectEventsFromEntity(object $entity): void

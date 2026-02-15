@@ -24,17 +24,17 @@ interface GoPayClient
     /**
      * Charge a subsequent recurring payment using parent payment ID.
      */
-    public function createRecurrence(int $parentPaymentId, int $amount, string $orderNumber, string $description): GoPayPayment;
+    public function createRecurrence(string $parentPaymentId, int $amount, string $orderNumber, string $description): GoPayPayment;
 
     /**
      * Cancel recurring payment capability.
      */
-    public function voidRecurrence(int $paymentId): void;
+    public function voidRecurrence(string $paymentId): void;
 
     /**
      * Get payment status from GoPay.
      */
-    public function getStatus(int $paymentId): GoPayPaymentStatus;
+    public function getStatus(string $paymentId): GoPayPaymentStatus;
 
     /**
      * Get URL for embedding inline gateway JavaScript.

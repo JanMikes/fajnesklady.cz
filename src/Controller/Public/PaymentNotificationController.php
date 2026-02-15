@@ -22,9 +22,9 @@ final class PaymentNotificationController extends AbstractController
     public function __invoke(Request $request): Response
     {
         // GoPay sends payment ID as 'id' parameter
-        $paymentId = $request->query->getInt('id');
+        $paymentId = $request->query->getString('id');
 
-        if ($paymentId <= 0) {
+        if ('' === $paymentId) {
             return new Response('Invalid payment ID', Response::HTTP_BAD_REQUEST);
         }
 

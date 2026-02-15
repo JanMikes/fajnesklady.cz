@@ -317,7 +317,7 @@ class OrderRepository
             ->getSingleScalarResult();
     }
 
-    public function findByGoPayPaymentId(int $paymentId): ?Order
+    public function findByGoPayPaymentId(string $paymentId): ?Order
     {
         return $this->entityManager->createQueryBuilder()
             ->select('o')

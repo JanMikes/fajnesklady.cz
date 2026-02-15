@@ -38,6 +38,11 @@ final class OrderPaymentController extends AbstractController
             throw new NotFoundHttpException('Objednávka nenalezena.');
         }
 
+        // Terms must be accepted before payment
+        if (!$order->hasAcceptedTerms()) {
+            return $this->redirectToRoute('public_order_accept', ['id' => $order->id]);
+        }
+
         // Check if order can be paid
         if (!$order->canBePaid()) {
             if (OrderStatus::COMPLETED === $order->status) {
@@ -45,7 +50,7 @@ final class OrderPaymentController extends AbstractController
             }
 
             if (OrderStatus::PAID === $order->status) {
-                return $this->redirectToRoute('public_order_accept', ['id' => $order->id]);
+                return $this->redirectToRoute('public_order_complete', ['id' => $order->id]);
             }
 
             $this->addFlash('error', 'Tuto objednávku již nelze zaplatit.');

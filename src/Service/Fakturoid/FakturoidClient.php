@@ -18,6 +18,8 @@ interface FakturoidClient
 
     public function downloadInvoicePdf(int $invoiceId): string;
 
+    public function markInvoiceAsPaid(int $invoiceId, \DateTimeImmutable $paidAt): void;
+
     /**
      * Create a self-billing invoice in Fakturoid.
      * Self-billing: platform issues invoice on behalf of the landlord (supplier).

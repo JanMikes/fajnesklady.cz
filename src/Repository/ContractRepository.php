@@ -250,7 +250,7 @@ class ContractRepository
             ->getResult();
     }
 
-    public function findByGoPayParentPaymentId(int $parentPaymentId): ?Contract
+    public function findByGoPayParentPaymentId(string $parentPaymentId): ?Contract
     {
         return $this->entityManager->createQueryBuilder()
             ->select('c')

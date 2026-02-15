@@ -50,13 +50,16 @@ final class PaymentReturnController extends AbstractController
         }
 
         // Redirect based on status
-        if (OrderStatus::PAID === $order->status) {
-            $this->addFlash('success', 'Platba byla úspěšně přijata.');
+        if (OrderStatus::COMPLETED === $order->status) {
+            $this->addFlash('success', 'Platba byla přijata a objednávka dokončena.');
 
-            return $this->redirectToRoute('public_order_accept', ['id' => $id]);
+            return $this->redirectToRoute('public_order_complete', ['id' => $id]);
         }
 
-        if (OrderStatus::COMPLETED === $order->status) {
+        if (OrderStatus::PAID === $order->status) {
+            // Payment confirmed but not auto-completed (shouldn't happen in normal flow)
+            $this->addFlash('success', 'Platba byla úspěšně přijata.');
+
             return $this->redirectToRoute('public_order_complete', ['id' => $id]);
         }
 
