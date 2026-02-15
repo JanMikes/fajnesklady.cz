@@ -6,7 +6,7 @@ volumes:
 
 services:
     web:
-        image: ghcr.io/thedevs-cz/php:8.5
+        image: ghcr.io/thedevs-cz/php:8.5-fajnesklady
         restart: unless-stopped
         tty: true
         stdin_open: true
@@ -64,7 +64,7 @@ services:
             - postgres
 
     tailwind:
-        image: ghcr.io/thedevs-cz/php:8.5
+        image: ghcr.io/thedevs-cz/php:8.5-fajnesklady
         volumes:
             - .:/app
         command: bin/console tailwind:build --watch

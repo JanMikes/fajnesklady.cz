@@ -1,12 +1,10 @@
-FROM ghcr.io/thedevs-cz/php:8.5
+FROM ghcr.io/thedevs-cz/php:8.5-fajnesklady
 
 ENV APP_ENV="prod" \
     APP_DEBUG=0 \
     PHP_OPCACHE_VALIDATE_TIMESTAMPS=0
 
 RUN rm $PHP_INI_DIR/conf.d/docker-php-ext-xdebug.ini
-
-RUN apt-get update -qq && apt-get install -y --no-install-recommends libreoffice-writer && rm -rf /var/lib/apt/lists/*
 
 COPY --link --chmod=755 .docker/on-startup.sh /docker-entrypoint.d/
 
