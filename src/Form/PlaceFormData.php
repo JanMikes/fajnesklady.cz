@@ -5,12 +5,16 @@ declare(strict_types=1);
 namespace App\Form;
 
 use App\Entity\Place;
+use App\Enum\PlaceType;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Component\Validator\Context\ExecutionContextInterface;
 
 final class PlaceFormData
 {
+    #[Assert\NotNull(message: 'Vyberte typ mista')]
+    public PlaceType $type = PlaceType::FAJNE_SKLADY;
+
     #[Assert\NotBlank(message: 'Zadejte nazev')]
     #[Assert\Length(max: 255, maxMessage: 'Nazev nemuze byt delsi nez {{ limit }} znaku')]
     public string $name = '';
@@ -69,6 +73,7 @@ final class PlaceFormData
     public static function fromPlace(Place $place): self
     {
         $formData = new self();
+        $formData->type = $place->type;
         $formData->name = $place->name;
         $formData->address = $place->address;
         $formData->city = $place->city;

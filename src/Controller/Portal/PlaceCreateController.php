@@ -52,6 +52,7 @@ final class PlaceCreateController extends AbstractController
                 city: $formData->city,
                 postalCode: $formData->postalCode,
                 description: $formData->description,
+                type: $formData->type,
                 mapImagePath: $mapImagePath,
                 latitude: $formData->latitude,
                 longitude: $formData->longitude,

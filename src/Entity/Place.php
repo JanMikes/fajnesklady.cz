@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use App\Enum\PlaceType;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Types\UuidType;
@@ -46,6 +47,8 @@ class Place
         private(set) ?string $description,
         #[ORM\Column]
         private(set) \DateTimeImmutable $createdAt,
+        #[ORM\Column(length: 20)]
+        private(set) PlaceType $type = PlaceType::FAJNE_SKLADY,
     ) {
         $this->updatedAt = $this->createdAt;
     }
@@ -61,6 +64,7 @@ class Place
         string $city,
         string $postalCode,
         ?string $description,
+        PlaceType $type,
         \DateTimeImmutable $now,
     ): void {
         $this->name = $name;
@@ -68,6 +72,7 @@ class Place
         $this->city = $city;
         $this->postalCode = $postalCode;
         $this->description = $description;
+        $this->type = $type;
         $this->updatedAt = $now;
     }
 

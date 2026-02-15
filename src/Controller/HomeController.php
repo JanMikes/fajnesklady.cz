@@ -47,6 +47,8 @@ final class HomeController extends AbstractController
                 'city' => $place->city,
                 'latitude' => $place->latitude,
                 'longitude' => $place->longitude,
+                'type' => $place->type->value,
+                'typeColor' => $place->type->color(),
                 'url' => $this->urlGenerator->generate('public_place_detail', ['id' => $place->id]),
                 'storageTypes' => array_map(
                     fn (StorageType $type) => [

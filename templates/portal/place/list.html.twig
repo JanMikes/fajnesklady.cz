@@ -19,6 +19,7 @@
                 <thead>
                     <tr>
                         <th>Název</th>
+                        <th>Typ</th>
                         <th>Adresa</th>
                         <th>Popis</th>
                         <th>Vytvořeno</th>
@@ -29,6 +30,12 @@
                     {% for place in places %}
                         <tr>
                             <td class="font-medium text-gray-900">{{ place.name }}</td>
+                            <td>
+                                <span class="inline-flex items-center gap-1.5 text-xs font-medium">
+                                    <span class="w-2.5 h-2.5 rounded-full" style="background-color: {{ place.type.color }}"></span>
+                                    {{ place.type.label }}
+                                </span>
+                            </td>
                             <td class="text-gray-500">{{ place.address ?: place.city }}</td>
                             <td class="text-gray-500 max-w-xs truncate">{{ place.description|default('-') }}</td>
                             <td class="text-gray-500 text-sm">{{ place.createdAt|date('d.m.Y H:i') }}</td>
@@ -65,7 +72,7 @@
                         </tr>
                     {% else %}
                         <tr>
-                            <td colspan="5" class="text-center text-gray-500 py-8">Žádná místa nebyla nalezena</td>
+                            <td colspan="6" class="text-center text-gray-500 py-8">Žádná místa nebyla nalezena</td>
                         </tr>
                     {% endfor %}
                 </tbody>

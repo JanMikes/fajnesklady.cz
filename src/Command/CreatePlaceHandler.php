@@ -30,6 +30,7 @@ final readonly class CreatePlaceHandler
             postalCode: $command->postalCode,
             description: $command->description,
             createdAt: $now,
+            type: $command->type,
         );
 
         if (null !== $command->mapImagePath) {

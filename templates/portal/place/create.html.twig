@@ -20,6 +20,12 @@
             <div class="card-body">
                 {{ form_start(form, {'attr': {'enctype': 'multipart/form-data'}}) }}
                     <div class="mb-4">
+                        <label for="{{ form.type.vars.id }}" class="block text-sm font-semibold text-gray-700 mb-2">Typ místa</label>
+                        {{ form_widget(form.type, {'attr': {'class': 'select select-bordered w-full'}}) }}
+                        {{ form_errors(form.type) }}
+                    </div>
+
+                    <div class="mb-4">
                         <label for="{{ form.name.vars.id }}" class="block text-sm font-semibold text-gray-700 mb-2">Název</label>
                         {{ form_widget(form.name, {}) }}
                         {{ form_errors(form.name) }}

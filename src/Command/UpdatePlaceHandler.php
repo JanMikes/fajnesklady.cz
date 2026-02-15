@@ -28,6 +28,7 @@ final readonly class UpdatePlaceHandler
             city: $command->city,
             postalCode: $command->postalCode,
             description: $command->description,
+            type: $command->type,
             now: $now,
         );
 

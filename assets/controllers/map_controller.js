@@ -40,30 +40,30 @@ export default class extends Controller {
         const bounds = L.latLngBounds();
         let hasValidCoordinates = false;
 
-        // Create custom icon
-        const customIcon = L.divIcon({
-            className: 'custom-map-marker',
-            html: `<div style="
-                width: 32px;
-                height: 32px;
-                background-color: #d23233;
-                border: 3px solid white;
-                border-radius: 50%;
-                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-            "></div>`,
-            iconSize: [32, 32],
-            iconAnchor: [16, 16],
-            popupAnchor: [0, -16]
-        });
-
         places.forEach(place => {
             // Skip places without coordinates
             if (!place.latitude || !place.longitude) {
                 return;
             }
 
+            const pinColor = place.typeColor || '#d23233';
+            const icon = L.divIcon({
+                className: 'custom-map-marker',
+                html: `<div style="
+                    width: 32px;
+                    height: 32px;
+                    background-color: ${pinColor};
+                    border: 3px solid white;
+                    border-radius: 50%;
+                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+                "></div>`,
+                iconSize: [32, 32],
+                iconAnchor: [16, 16],
+                popupAnchor: [0, -16]
+            });
+
             const coords = [parseFloat(place.latitude), parseFloat(place.longitude)];
-            const marker = L.marker(coords, { icon: customIcon }).addTo(this.map);
+            const marker = L.marker(coords, { icon }).addTo(this.map);
 
             const popupContent = this.createPopupContent(place);
             marker.bindPopup(popupContent, {

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Entity;
 
 use App\Entity\Place;
+use App\Enum\PlaceType;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
@@ -72,6 +73,7 @@ class PlaceTest extends TestCase
             city: 'Brno',
             postalCode: '602 00',
             description: 'Updated Description',
+            type: PlaceType::SAMOSTATNY_SKLAD,
             now: $updatedAt,
         );
 
@@ -80,6 +82,7 @@ class PlaceTest extends TestCase
         $this->assertSame('Brno', $place->city);
         $this->assertSame('602 00', $place->postalCode);
         $this->assertSame('Updated Description', $place->description);
+        $this->assertSame(PlaceType::SAMOSTATNY_SKLAD, $place->type);
         $this->assertSame($createdAt, $place->createdAt);
         $this->assertSame($updatedAt, $place->updatedAt);
     }
@@ -105,6 +108,7 @@ class PlaceTest extends TestCase
             city: 'Brno',
             postalCode: '602 00',
             description: null,
+            type: PlaceType::FAJNE_SKLADY,
             now: $updatedAt,
         );
 
@@ -130,6 +134,7 @@ class PlaceTest extends TestCase
         $this->assertNull($place->latitude);
         $this->assertNull($place->longitude);
         $this->assertNull($place->mapImagePath);
+        $this->assertSame(PlaceType::FAJNE_SKLADY, $place->type);
     }
 
     public function testCreatePlaceWithoutAddress(): void
@@ -175,6 +180,7 @@ class PlaceTest extends TestCase
             city: 'Brno',
             postalCode: '602 00',
             description: null,
+            type: PlaceType::FAJNE_SKLADY,
             now: $updatedAt,
         );
 

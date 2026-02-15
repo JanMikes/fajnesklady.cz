@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Form;
 
+use App\Enum\PlaceType;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
+use Symfony\Component\Form\Extension\Core\Type\EnumType;
 use Symfony\Component\Form\Extension\Core\Type\FileType;
 use Symfony\Component\Form\Extension\Core\Type\TextareaType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
@@ -19,6 +21,12 @@ class PlaceFormType extends AbstractType
 {
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
+        $builder->add('type', EnumType::class, [
+            'class' => PlaceType::class,
+            'label' => 'Typ mista',
+            'choice_label' => fn (PlaceType $type) => $type->label(),
+        ]);
+
         $builder->add('name', TextType::class, [
             'label' => 'Nazev',
             'attr' => [
