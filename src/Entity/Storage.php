@@ -18,6 +18,9 @@ class Storage
     #[ORM\Column]
     public private(set) \DateTimeImmutable $updatedAt;
 
+    #[ORM\Column(nullable: true)]
+    public private(set) ?\DateTimeImmutable $deletedAt = null;
+
     #[ORM\Column(length: 30, enumType: StorageStatus::class)]
     public private(set) StorageStatus $status;
 
@@ -206,5 +209,16 @@ class Storage
     public function isOccupied(): bool
     {
         return StorageStatus::OCCUPIED === $this->status;
+    }
+
+    public function softDelete(\DateTimeImmutable $now): void
+    {
+        $this->deletedAt = $now;
+        $this->updatedAt = $now;
+    }
+
+    public function isDeleted(): bool
+    {
+        return null !== $this->deletedAt;
     }
 }

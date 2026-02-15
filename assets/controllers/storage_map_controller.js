@@ -1,7 +1,8 @@
 import { Controller } from '@hotwired/stimulus';
+import Konva from 'konva';
 
 export default class extends Controller {
-    static targets = ['canvas', 'tooltip', 'modal', 'modalTitle', 'modalPhoto', 'modalDetails', 'modalOrderBtn'];
+    static targets = ['container', 'tooltip', 'modal', 'modalTitle', 'modalPhoto', 'modalDetails', 'modalOrderBtn'];
     static values = {
         mapImage: String,
         storages: Array,
@@ -11,112 +12,211 @@ export default class extends Controller {
 
     connect() {
         this.hoveredStorage = null;
-        this.scale = 1;
-        this.mousePos = { x: 0, y: 0 };
-
-        this.initializeCanvas();
+        this.initializeStage();
         this.loadMapImage();
-        this.bindEvents();
     }
 
-    initializeCanvas() {
-        this.ctx = this.canvasTarget.getContext('2d');
-        this.canvasTarget.width = this.canvasTarget.parentElement.clientWidth;
-        this.canvasTarget.height = 400;
+    disconnect() {
+        if (this.stage) {
+            this.stage.destroy();
+        }
+    }
+
+    initializeStage() {
+        const width = this.containerTarget.clientWidth;
+        const height = 400;
+
+        this.stage = new Konva.Stage({
+            container: this.containerTarget,
+            width: width,
+            height: height,
+        });
+
+        this.bgLayer = new Konva.Layer({ listening: false });
+        this.storageLayer = new Konva.Layer();
+
+        this.stage.add(this.bgLayer);
+        this.stage.add(this.storageLayer);
+
+        // Draw default background
+        this.bgRect = new Konva.Rect({
+            x: 0, y: 0,
+            width: width, height: height,
+            fill: '#f3f4f6',
+        });
+        this.bgLayer.add(this.bgRect);
+        this.bgLayer.draw();
     }
 
     loadMapImage() {
         if (this.mapImageValue) {
-            this.mapImg = new Image();
-            this.mapImg.onload = () => {
-                this.fitImageToCanvas();
-                this.render();
+            const img = new Image();
+            img.onload = () => {
+                this.mapImg = img;
+                this.fitImageToStage();
+                this.renderStorages();
             };
-            this.mapImg.src = this.mapImageValue;
+            img.src = this.mapImageValue;
         } else {
-            this.render();
+            this.drawGrid();
+            this.renderStorages();
         }
     }
 
-    fitImageToCanvas() {
-        if (!this.mapImg) return;
+    fitImageToStage() {
+        const stageW = this.stage.width();
+        const stageH = this.stage.height();
+        const imgW = this.mapImg.width;
+        const imgH = this.mapImg.height;
 
-        const canvasRatio = this.canvasTarget.width / this.canvasTarget.height;
-        const imageRatio = this.mapImg.width / this.mapImg.height;
+        const scale = Math.min(stageW / imgW, stageH / imgH);
+        const offsetX = (stageW - imgW * scale) / 2;
+        const offsetY = (stageH - imgH * scale) / 2;
 
-        if (imageRatio > canvasRatio) {
-            this.scale = this.canvasTarget.width / this.mapImg.width;
-        } else {
-            this.scale = this.canvasTarget.height / this.mapImg.height;
+        const konvaImg = new Konva.Image({
+            x: offsetX,
+            y: offsetY,
+            image: this.mapImg,
+            width: imgW * scale,
+            height: imgH * scale,
+        });
+
+        this.bgLayer.add(konvaImg);
+        this.bgLayer.draw();
+    }
+
+    drawGrid() {
+        const gridSize = 50;
+        const w = this.stage.width();
+        const h = this.stage.height();
+
+        for (let x = 0; x < w; x += gridSize) {
+            this.bgLayer.add(new Konva.Line({
+                points: [x, 0, x, h],
+                stroke: '#e5e7eb',
+                strokeWidth: 1,
+            }));
         }
-
-        this.imageOffset = {
-            x: (this.canvasTarget.width - this.mapImg.width * this.scale) / 2,
-            y: (this.canvasTarget.height - this.mapImg.height * this.scale) / 2
-        };
+        for (let y = 0; y < h; y += gridSize) {
+            this.bgLayer.add(new Konva.Line({
+                points: [0, y, w, y],
+                stroke: '#e5e7eb',
+                strokeWidth: 1,
+            }));
+        }
+        this.bgLayer.draw();
     }
 
-    bindEvents() {
-        this.canvasTarget.addEventListener('mousemove', this.onMouseMove.bind(this));
-        this.canvasTarget.addEventListener('mouseleave', this.onMouseLeave.bind(this));
-        this.canvasTarget.addEventListener('click', this.onClick.bind(this));
+    renderStorages() {
+        this.storageLayer.destroyChildren();
+
+        this.storagesValue.forEach(storage => {
+            const group = this.createStorageGroup(storage);
+            this.storageLayer.add(group);
+        });
+
+        this.storageLayer.draw();
     }
 
-    getMousePos(e) {
-        const rect = this.canvasTarget.getBoundingClientRect();
-        return {
-            x: e.clientX - rect.left,
-            y: e.clientY - rect.top
-        };
-    }
+    createStorageGroup(storage) {
+        const coords = storage.coordinates;
+        const color = this.getStorageColor(storage);
 
-    onMouseMove(e) {
-        const pos = this.getMousePos(e);
-        this.mousePos = pos;
-        const storage = this.getStorageAtPosition(pos);
+        const group = new Konva.Group({
+            x: coords.x + coords.width / 2,
+            y: coords.y + coords.height / 2,
+            rotation: coords.rotation || 0,
+            offsetX: 0,
+            offsetY: 0,
+        });
 
-        if (storage !== this.hoveredStorage) {
+        // Store storage data on the group for event handlers
+        group.storageData = storage;
+
+        const rect = new Konva.Rect({
+            x: -coords.width / 2,
+            y: -coords.height / 2,
+            width: coords.width,
+            height: coords.height,
+            fill: color + '99',
+            stroke: color,
+            strokeWidth: 2,
+            cornerRadius: 2,
+        });
+
+        const text = new Konva.Text({
+            x: -coords.width / 2,
+            y: -coords.height / 2,
+            width: coords.width,
+            height: coords.height,
+            text: storage.number,
+            fontSize: 14,
+            fontStyle: 'bold',
+            fontFamily: 'sans-serif',
+            fill: '#1f2937',
+            align: 'center',
+            verticalAlign: 'middle',
+        });
+
+        group.add(rect);
+        group.add(text);
+
+        // Events
+        group.on('mouseenter', () => {
             this.hoveredStorage = storage;
-            this.render();
+            this.stage.container().style.cursor = 'pointer';
+
+            rect.fill(color + 'cc');
+            rect.stroke('#1f2937');
+            rect.strokeWidth(3);
+            rect.shadowColor('rgba(0, 0, 0, 0.3)');
+            rect.shadowBlur(10);
+            rect.shadowOffsetX(2);
+            rect.shadowOffsetY(2);
+            rect.shadowEnabled(true);
+            text.fontSize(16);
+            this.storageLayer.draw();
+
             this.updateTooltip(storage);
-        }
+        });
 
-        this.canvasTarget.style.cursor = storage ? 'pointer' : 'default';
-    }
+        group.on('mouseleave', () => {
+            this.hoveredStorage = null;
+            this.stage.container().style.cursor = 'default';
 
-    onMouseLeave() {
-        this.hoveredStorage = null;
-        this.render();
-        this.hideTooltip();
-    }
+            rect.fill(color + '99');
+            rect.stroke(color);
+            rect.strokeWidth(2);
+            rect.shadowEnabled(false);
+            text.fontSize(14);
+            this.storageLayer.draw();
 
-    onClick(e) {
-        const pos = this.getMousePos(e);
-        const storage = this.getStorageAtPosition(pos);
+            this.hideTooltip();
+        });
 
-        if (storage && storage.status === 'available') {
-            if (storage.isUniform) {
-                // For uniform storage types, scroll to the type card
-                const orderBtn = document.querySelector(`[data-storage-type-id="${storage.storageTypeId}"]`);
-                if (orderBtn) {
-                    orderBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    orderBtn.classList.add('ring-2', 'ring-blue-500');
-                    setTimeout(() => orderBtn.classList.remove('ring-2', 'ring-blue-500'), 2000);
+        group.on('click tap', () => {
+            if (storage.status === 'available') {
+                if (storage.isUniform) {
+                    const orderBtn = document.querySelector(`[data-storage-type-id="${storage.storageTypeId}"]`);
+                    if (orderBtn) {
+                        orderBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        orderBtn.classList.add('ring-2', 'ring-blue-500');
+                        setTimeout(() => orderBtn.classList.remove('ring-2', 'ring-blue-500'), 2000);
+                    }
+                } else {
+                    this.showStorageModal(storage);
                 }
-            } else {
-                // For non-uniform storage types, show the modal with storage details
-                this.showStorageModal(storage);
             }
-        }
+        });
+
+        return group;
     }
 
     showStorageModal(storage) {
         if (!this.hasModalTarget) return;
 
-        // Set modal title
         this.modalTitleTarget.textContent = `Sklad ${storage.number}`;
 
-        // Set photo
         if (storage.photoUrl) {
             this.modalPhotoTarget.src = storage.photoUrl;
             this.modalPhotoTarget.classList.remove('hidden');
@@ -124,7 +224,6 @@ export default class extends Controller {
             this.modalPhotoTarget.classList.add('hidden');
         }
 
-        // Set details
         this.modalDetailsTarget.innerHTML = `
             <div class="flex justify-between">
                 <span class="text-gray-500">Typ:</span>
@@ -146,83 +245,65 @@ export default class extends Controller {
             </div>
         `;
 
-        // Set order button URL
         const orderUrl = `/objednavka/${this.placeIdValue}/${storage.storageTypeId}/${storage.id}`;
         this.modalOrderBtnTarget.href = orderUrl;
 
-        // Show modal
         this.modalTarget.showModal();
-    }
-
-    getStorageAtPosition(pos) {
-        for (let i = this.storagesValue.length - 1; i >= 0; i--) {
-            const s = this.storagesValue[i];
-            const coords = s.coordinates;
-            if (pos.x >= coords.x && pos.x <= coords.x + coords.width &&
-                pos.y >= coords.y && pos.y <= coords.y + coords.height) {
-                return s;
-            }
-        }
-        return null;
     }
 
     updateTooltip(storage) {
         if (!this.hasTooltipTarget) return;
 
-        if (storage) {
-            const statusText = this.getStatusText(storage.status);
-            const statusClass = this.getStatusClass(storage.status);
+        const statusText = this.getStatusText(storage.status);
+        const statusClass = this.getStatusClass(storage.status);
 
-            this.tooltipTarget.innerHTML = `
-                <div class="space-y-1">
-                    <div class="flex items-center gap-2">
-                        <span class="font-bold text-gray-900">${storage.number}</span>
-                        <span class="badge ${statusClass} text-xs">${statusText}</span>
-                    </div>
-                    <div class="text-gray-600">${storage.storageTypeName}</div>
-                    <div class="text-gray-500 text-xs">${storage.dimensions}</div>
-                    <div class="font-semibold text-blue-600 pt-1">${storage.pricePerMonth.toLocaleString('cs-CZ')} Kč/měsíc</div>
+        this.tooltipTarget.innerHTML = `
+            <div class="space-y-1">
+                <div class="flex items-center gap-2">
+                    <span class="font-bold text-gray-900">${storage.number}</span>
+                    <span class="badge ${statusClass} text-xs">${statusText}</span>
                 </div>
-            `;
+                <div class="text-gray-600">${storage.storageTypeName}</div>
+                <div class="text-gray-500 text-xs">${storage.dimensions}</div>
+                <div class="font-semibold text-blue-600 pt-1">${storage.pricePerMonth.toLocaleString('cs-CZ')} Kč/měsíc</div>
+            </div>
+        `;
 
-            // Position tooltip relative to the storage unit
-            const coords = storage.coordinates;
-            const containerRect = this.element.getBoundingClientRect();
-            const canvasRect = this.canvasTarget.getBoundingClientRect();
-            const canvasOffsetTop = canvasRect.top - containerRect.top;
+        // Position tooltip using pointer position
+        const pointerPos = this.stage.getPointerPosition();
+        if (!pointerPos) return;
 
-            // Show tooltip first to get its dimensions
-            this.tooltipTarget.classList.remove('hidden');
-            const tooltipRect = this.tooltipTarget.getBoundingClientRect();
+        const containerRect = this.element.getBoundingClientRect();
+        const stageRect = this.containerTarget.getBoundingClientRect();
+        const stageOffsetTop = stageRect.top - containerRect.top;
 
-            // Default position: to the right of the storage unit
-            let left = coords.x + coords.width + 10;
-            let top = canvasOffsetTop + coords.y;
+        this.tooltipTarget.classList.remove('hidden');
+        const tooltipRect = this.tooltipTarget.getBoundingClientRect();
 
-            // If tooltip would overflow right, position to the left of the storage
-            if (left + tooltipRect.width > containerRect.width - 10) {
-                left = coords.x - tooltipRect.width - 10;
-            }
+        const coords = storage.coordinates;
+        let left = coords.x + coords.width + 10;
+        let top = stageOffsetTop + coords.y;
 
-            // If tooltip would overflow left, center it above/below the storage
-            if (left < 10) {
-                left = coords.x + (coords.width - tooltipRect.width) / 2;
-                left = Math.max(10, Math.min(left, containerRect.width - tooltipRect.width - 10));
-            }
-
-            // If tooltip would overflow bottom, move it up
-            if (top + tooltipRect.height > canvasRect.bottom - containerRect.top - 10) {
-                top = canvasOffsetTop + coords.y + coords.height - tooltipRect.height;
-            }
-
-            // Ensure top is not negative
-            top = Math.max(canvasOffsetTop + 10, top);
-
-            this.tooltipTarget.style.left = `${left}px`;
-            this.tooltipTarget.style.top = `${top}px`;
-        } else {
-            this.hideTooltip();
+        // Overflow right → position left
+        if (left + tooltipRect.width > containerRect.width - 10) {
+            left = coords.x - tooltipRect.width - 10;
         }
+
+        // Overflow left → center
+        if (left < 10) {
+            left = coords.x + (coords.width - tooltipRect.width) / 2;
+            left = Math.max(10, Math.min(left, containerRect.width - tooltipRect.width - 10));
+        }
+
+        // Overflow bottom
+        if (top + tooltipRect.height > stageRect.bottom - containerRect.top - 10) {
+            top = stageOffsetTop + coords.y + coords.height - tooltipRect.height;
+        }
+
+        top = Math.max(stageOffsetTop + 10, top);
+
+        this.tooltipTarget.style.left = `${left}px`;
+        this.tooltipTarget.style.top = `${top}px`;
     }
 
     hideTooltip() {
@@ -250,94 +331,12 @@ export default class extends Controller {
         }
     }
 
-    render() {
-        this.ctx.clearRect(0, 0, this.canvasTarget.width, this.canvasTarget.height);
-
-        // Draw background
-        this.ctx.fillStyle = '#f3f4f6';
-        this.ctx.fillRect(0, 0, this.canvasTarget.width, this.canvasTarget.height);
-
-        // Draw map image if loaded
-        if (this.mapImg && this.mapImg.complete) {
-            this.ctx.drawImage(
-                this.mapImg,
-                this.imageOffset.x,
-                this.imageOffset.y,
-                this.mapImg.width * this.scale,
-                this.mapImg.height * this.scale
-            );
-        } else {
-            this.drawGrid();
-        }
-
-        // Draw storages
-        this.storagesValue.forEach(storage => {
-            this.drawStorage(storage);
-        });
-    }
-
-    drawGrid() {
-        this.ctx.strokeStyle = '#e5e7eb';
-        this.ctx.lineWidth = 1;
-        const gridSize = 50;
-
-        for (let x = 0; x < this.canvasTarget.width; x += gridSize) {
-            this.ctx.beginPath();
-            this.ctx.moveTo(x, 0);
-            this.ctx.lineTo(x, this.canvasTarget.height);
-            this.ctx.stroke();
-        }
-
-        for (let y = 0; y < this.canvasTarget.height; y += gridSize) {
-            this.ctx.beginPath();
-            this.ctx.moveTo(0, y);
-            this.ctx.lineTo(this.canvasTarget.width, y);
-            this.ctx.stroke();
-        }
-    }
-
-    drawStorage(storage) {
-        const coords = storage.coordinates;
-        const isHovered = storage === this.hoveredStorage;
-        const color = this.getStorageColor(storage);
-
-        // Save context for rotation
-        this.ctx.save();
-        this.ctx.translate(coords.x + coords.width / 2, coords.y + coords.height / 2);
-        this.ctx.rotate((coords.rotation || 0) * Math.PI / 180);
-
-        // Draw rectangle with shadow if hovered
-        if (isHovered) {
-            this.ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
-            this.ctx.shadowBlur = 10;
-            this.ctx.shadowOffsetX = 2;
-            this.ctx.shadowOffsetY = 2;
-        }
-
-        this.ctx.fillStyle = color + (isHovered ? 'cc' : '99'); // More opacity when hovered
-        this.ctx.fillRect(-coords.width / 2, -coords.height / 2, coords.width, coords.height);
-
-        this.ctx.shadowColor = 'transparent';
-        this.ctx.strokeStyle = isHovered ? '#1f2937' : color;
-        this.ctx.lineWidth = isHovered ? 3 : 2;
-        this.ctx.strokeRect(-coords.width / 2, -coords.height / 2, coords.width, coords.height);
-
-        // Draw number label
-        this.ctx.fillStyle = '#1f2937';
-        this.ctx.font = `bold ${isHovered ? '16' : '14'}px sans-serif`;
-        this.ctx.textAlign = 'center';
-        this.ctx.textBaseline = 'middle';
-        this.ctx.fillText(storage.number, 0, 0);
-
-        this.ctx.restore();
-    }
-
     getStorageColor(storage) {
         switch (storage.status) {
-            case 'available': return '#22c55e'; // green
-            case 'reserved': return '#f59e0b'; // yellow
-            case 'occupied': return '#ef4444'; // red
-            case 'manually_unavailable': return '#6b7280'; // gray
+            case 'available': return '#22c55e';
+            case 'reserved': return '#f59e0b';
+            case 'occupied': return '#ef4444';
+            case 'manually_unavailable': return '#6b7280';
             default: return '#22c55e';
         }
     }

@@ -49,6 +49,7 @@ class StorageRepository
             ->select('s')
             ->from(Storage::class, 's')
             ->where('s.storageType = :storageType')
+            ->andWhere('s.deletedAt IS NULL')
             ->setParameter('storageType', $storageType)
             ->orderBy('s.number', 'ASC')
             ->getQuery()
@@ -65,6 +66,7 @@ class StorageRepository
             ->from(Storage::class, 's')
             ->where('s.storageType = :storageType')
             ->andWhere('s.place = :place')
+            ->andWhere('s.deletedAt IS NULL')
             ->setParameter('storageType', $storageType)
             ->setParameter('place', $place)
             ->orderBy('s.number', 'ASC')
@@ -81,6 +83,7 @@ class StorageRepository
             ->select('s')
             ->from(Storage::class, 's')
             ->where('s.place = :place')
+            ->andWhere('s.deletedAt IS NULL')
             ->setParameter('place', $place)
             ->orderBy('s.number', 'ASC')
             ->getQuery()
@@ -96,6 +99,7 @@ class StorageRepository
             ->select('s')
             ->from(Storage::class, 's')
             ->where('s.owner = :owner')
+            ->andWhere('s.deletedAt IS NULL')
             ->setParameter('owner', $owner)
             ->orderBy('s.number', 'ASC')
             ->getQuery()
@@ -112,6 +116,7 @@ class StorageRepository
             ->from(Storage::class, 's')
             ->where('s.owner = :owner')
             ->andWhere('s.place = :place')
+            ->andWhere('s.deletedAt IS NULL')
             ->setParameter('owner', $owner)
             ->setParameter('place', $place)
             ->orderBy('s.number', 'ASC')
@@ -129,6 +134,7 @@ class StorageRepository
             ->from(Storage::class, 's')
             ->where('s.storageType = :storageType')
             ->andWhere('s.status = :status')
+            ->andWhere('s.deletedAt IS NULL')
             ->setParameter('storageType', $storageType)
             ->setParameter('status', StorageStatus::AVAILABLE)
             ->orderBy('s.number', 'ASC')
@@ -142,6 +148,7 @@ class StorageRepository
             ->select('COUNT(s.id)')
             ->from(Storage::class, 's')
             ->where('s.storageType = :storageType')
+            ->andWhere('s.deletedAt IS NULL')
             ->setParameter('storageType', $storageType)
             ->getQuery()
             ->getSingleScalarResult();
@@ -154,6 +161,7 @@ class StorageRepository
             ->from(Storage::class, 's')
             ->where('s.storageType = :storageType')
             ->andWhere('s.status = :status')
+            ->andWhere('s.deletedAt IS NULL')
             ->setParameter('storageType', $storageType)
             ->setParameter('status', StorageStatus::AVAILABLE)
             ->getQuery()
@@ -166,6 +174,7 @@ class StorageRepository
             ->select('COUNT(s.id)')
             ->from(Storage::class, 's')
             ->where('s.owner = :owner')
+            ->andWhere('s.deletedAt IS NULL')
             ->setParameter('owner', $owner)
             ->getQuery()
             ->getSingleScalarResult();
@@ -178,6 +187,7 @@ class StorageRepository
             ->from(Storage::class, 's')
             ->where('s.owner = :owner')
             ->andWhere('s.status = :status')
+            ->andWhere('s.deletedAt IS NULL')
             ->setParameter('owner', $owner)
             ->setParameter('status', StorageStatus::OCCUPIED)
             ->getQuery()
@@ -191,6 +201,7 @@ class StorageRepository
             ->from(Storage::class, 's')
             ->where('s.owner = :owner')
             ->andWhere('s.status = :status')
+            ->andWhere('s.deletedAt IS NULL')
             ->setParameter('owner', $owner)
             ->setParameter('status', StorageStatus::AVAILABLE)
             ->getQuery()
@@ -204,6 +215,7 @@ class StorageRepository
             ->from(Storage::class, 's')
             ->where('s.owner = :owner')
             ->andWhere('s.status = :status')
+            ->andWhere('s.deletedAt IS NULL')
             ->setParameter('owner', $owner)
             ->setParameter('status', StorageStatus::MANUALLY_UNAVAILABLE)
             ->getQuery()
@@ -245,6 +257,7 @@ class StorageRepository
         return $this->entityManager->createQueryBuilder()
             ->select('s')
             ->from(Storage::class, 's')
+            ->where('s.deletedAt IS NULL')
             ->orderBy('s.number', 'ASC')
             ->getQuery()
             ->getResult();
@@ -260,6 +273,7 @@ class StorageRepository
         return $this->entityManager->createQueryBuilder()
             ->select('s')
             ->from(Storage::class, 's')
+            ->where('s.deletedAt IS NULL')
             ->orderBy('s.createdAt', 'DESC')
             ->addOrderBy('s.id', 'DESC')
             ->setFirstResult($offset)
@@ -273,6 +287,7 @@ class StorageRepository
         return (int) $this->entityManager->createQueryBuilder()
             ->select('COUNT(s.id)')
             ->from(Storage::class, 's')
+            ->where('s.deletedAt IS NULL')
             ->getQuery()
             ->getSingleScalarResult();
     }
@@ -283,6 +298,7 @@ class StorageRepository
             ->select('COUNT(s.id)')
             ->from(Storage::class, 's')
             ->where('s.status = :status')
+            ->andWhere('s.deletedAt IS NULL')
             ->setParameter('status', StorageStatus::OCCUPIED)
             ->getQuery()
             ->getSingleScalarResult();
@@ -297,7 +313,8 @@ class StorageRepository
     {
         $qb = $this->entityManager->createQueryBuilder()
             ->select('s')
-            ->from(Storage::class, 's');
+            ->from(Storage::class, 's')
+            ->where('s.deletedAt IS NULL');
 
         if (null !== $owner) {
             $qb->andWhere('s.owner = :owner')

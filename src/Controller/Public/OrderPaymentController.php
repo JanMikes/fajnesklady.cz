@@ -55,7 +55,7 @@ final class OrderPaymentController extends AbstractController
 
             $this->addFlash('error', 'Tuto objednávku již nelze zaplatit.');
 
-            return $this->redirectToRoute('app_home');
+            return $this->redirectToRoute($this->getUser() ? 'portal_browse_places' : 'app_home');
         }
 
         // Handle cancel action
@@ -67,7 +67,7 @@ final class OrderPaymentController extends AbstractController
                     $this->commandBus->dispatch(new CancelOrderCommand($order));
                     $this->addFlash('info', 'Objednávka byla zrušena.');
 
-                    return $this->redirectToRoute('app_home');
+                    return $this->redirectToRoute($this->getUser() ? 'portal_browse_places' : 'app_home');
                 } catch (\Exception $e) {
                     $this->addFlash('error', 'Při rušení objednávky došlo k chybě.');
                 }

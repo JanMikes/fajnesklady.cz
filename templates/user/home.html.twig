@@ -261,12 +261,7 @@
             <p class="text-gray-600 max-w-2xl mx-auto text-lg">Najděte nejbližší pobočku a zjistěte dostupnost kontejnerů</p>
         </div>
 
-        <div
-            data-controller="map"
-            data-map-places-value="{{ placesData|json_encode|e('html_attr') }}"
-            class="map-container"
-            style="height: 500px; width: 100%;">
-        </div>
+        {% include 'partials/places_map.html.twig' %}
     </section>
 
     {# Places Table #}
@@ -278,60 +273,7 @@
                 <p class="text-gray-600 max-w-2xl mx-auto text-lg">Porovnejte ceny a dostupnost kontejnerů na všech pobočkách</p>
             </div>
 
-            <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
-                <div class="overflow-x-auto">
-                    <table class="w-full">
-                        <thead class="bg-primary text-white">
-                            <tr>
-                                <th class="px-6 py-4 text-left text-sm font-semibold">Pobočka</th>
-                                <th class="px-6 py-4 text-left text-sm font-semibold">Adresa</th>
-                                <th class="px-6 py-4 text-left text-sm font-semibold">Typy skladů</th>
-                                <th class="px-6 py-4 text-left text-sm font-semibold">Ceny od</th>
-                                <th class="px-6 py-4 text-right text-sm font-semibold"></th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-100">
-                            {% for item in placesWithStorageTypes %}
-                            <tr class="hover:bg-gray-50 transition-colors">
-                                <td class="px-6 py-5">
-                                    <span class="font-semibold text-gray-900">{{ item.place.name }}</span>
-                                </td>
-                                <td class="px-6 py-5 text-gray-600">
-                                    {{ item.place.address }}, {{ item.place.city }}
-                                </td>
-                                <td class="px-6 py-5">
-                                    {% if item.storageTypes|length > 0 %}
-                                        <div class="flex flex-wrap gap-1">
-                                            {% for type in item.storageTypes %}
-                                                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">{{ type.name }}</span>
-                                            {% endfor %}
-                                        </div>
-                                    {% else %}
-                                        <span class="text-gray-400">-</span>
-                                    {% endif %}
-                                </td>
-                                <td class="px-6 py-5">
-                                    {% if item.lowestPrice %}
-                                        <span class="text-accent font-bold text-lg">{{ item.lowestPrice|number_format(0, ',', ' ') }} Kč</span>
-                                        <span class="text-gray-500 text-sm">/měsíc</span>
-                                    {% else %}
-                                        <span class="text-gray-400">-</span>
-                                    {% endif %}
-                                </td>
-                                <td class="px-6 py-5 text-right">
-                                    <a href="{{ path('public_place_detail', {id: item.place.id}) }}" class="btn btn-primary btn-sm">
-                                        Zobrazit
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                                        </svg>
-                                    </a>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+            {% include 'partials/places_table.html.twig' with {placeDetailRouteName: 'public_place_detail'} %}
         </div>
     </section>
     {% endif %}

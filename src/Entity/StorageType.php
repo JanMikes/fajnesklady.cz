@@ -17,6 +17,9 @@ class StorageType
     #[ORM\Column]
     public private(set) \DateTimeImmutable $updatedAt;
 
+    #[ORM\Column(nullable: true)]
+    public private(set) ?\DateTimeImmutable $deletedAt = null;
+
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     public private(set) ?string $description = null;
 
@@ -211,5 +214,16 @@ class StorageType
     public function hasPhotos(): bool
     {
         return !$this->photos->isEmpty();
+    }
+
+    public function softDelete(\DateTimeImmutable $now): void
+    {
+        $this->deletedAt = $now;
+        $this->updatedAt = $now;
+    }
+
+    public function isDeleted(): bool
+    {
+        return null !== $this->deletedAt;
     }
 }

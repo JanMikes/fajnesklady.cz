@@ -6,6 +6,7 @@ namespace App\Command;
 
 use App\Exception\StorageCannotBeDeleted;
 use App\Repository\StorageRepository;
+use Psr\Clock\ClockInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]
@@ -13,6 +14,7 @@ final readonly class DeleteStorageHandler
 {
     public function __construct(
         private StorageRepository $storageRepository,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -28,6 +30,6 @@ final readonly class DeleteStorageHandler
             throw StorageCannotBeDeleted::becauseItIsReserved($storage);
         }
 
-        $this->storageRepository->delete($storage);
+        $storage->softDelete($this->clock->now());
     }
 }

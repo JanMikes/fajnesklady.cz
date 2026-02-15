@@ -1,0 +1,194 @@
+{# Back Link #}
+<div class="mb-6">
+    <a href="{{ path(backRoute, backRouteParams ?? {}) }}" class="text-primary-600 hover:text-primary-700">
+        &larr; {{ backLabel|default('Zpět na seznam poboček') }}
+    </a>
+</div>
+
+{# Place Header #}
+<div class="card mb-8">
+    <div class="card-body">
+        <div class="md:flex md:justify-between md:items-start">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900 mb-2">{{ place.name }}</h1>
+                <p class="text-gray-600 mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    {{ place.address }}, {{ place.postalCode }} {{ place.city }}
+                </p>
+                {% if place.description %}
+                    <p class="text-gray-700">{{ place.description }}</p>
+                {% endif %}
+            </div>
+
+            {% if place.latitude and place.longitude %}
+            <div class="mt-4 md:mt-0">
+                <a href="https://maps.google.com/?q={{ place.latitude }},{{ place.longitude }}"
+                   target="_blank"
+                   class="btn btn-secondary">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                    </svg>
+                    Navigovat
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{# Storage Types #}
+<h2 class="text-2xl font-bold text-gray-900 mb-4">Dostupné skladové jednotky</h2>
+
+{% if storageTypes|length == 0 %}
+    <div class="card">
+        <div class="card-body text-center py-12">
+            <p class="text-gray-600">Na této pobočce aktuálně nejsou žádné dostupné skladové jednotky.</p>
+        </div>
+    </div>
+{% else %}
+    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        {% for storageType in storageTypes %}
+            {% set availableCount = availability[storageType.id.toRfc4122()] ?? 0 %}
+            <div class="card hover:shadow-lg transition-shadow {% if availableCount == 0 %}opacity-75{% endif %}" data-storage-type-id="{{ storageType.id }}">
+                <div class="card-body">
+                    <h3 class="text-xl font-bold text-gray-900 mb-2">{{ storageType.name }}</h3>
+
+                    {# Photo thumbnail #}
+                    {% if storageType.hasPhotos %}
+                        <div class="mb-3">
+                            <img src="{{ asset('uploads/' ~ storageType.photos[0].path) }}"
+                                 alt="{{ storageType.name }}"
+                                 class="w-full h-32 object-cover rounded-lg">
+                        </div>
+                    {% endif %}
+
+                    <div class="text-sm text-gray-600 mb-3">
+                        <div class="flex items-center gap-2 mb-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                            </svg>
+                            {{ storageType.innerDimensionsInMeters }}
+                        </div>
+                        <div class="flex items-center gap-2 mb-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1V5z" />
+                            </svg>
+                            {{ storageType.floorAreaInSquareMeters|number_format(1, ',', ' ') }} m&sup2;
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                            </svg>
+                            {{ storageType.volumeInCubicMeters|number_format(1, ',', ' ') }} m&sup3;
+                        </div>
+                    </div>
+
+                    {% if storageType.description %}
+                        <p class="text-gray-600 text-sm mb-4">{{ storageType.description }}</p>
+                    {% endif %}
+
+                    <div class="border-t pt-4 mt-4">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-gray-600">Týdenní sazba</span>
+                            <span class="font-semibold">{{ storageType.defaultPricePerWeekInCzk|number_format(0, ',', ' ') }} Kč</span>
+                        </div>
+                        <div class="flex justify-between items-center mb-4">
+                            <span class="text-gray-600">Měsíční sazba</span>
+                            <span class="font-semibold text-primary-600">{{ storageType.defaultPricePerMonthInCzk|number_format(0, ',', ' ') }} Kč</span>
+                        </div>
+
+                        <div class="flex justify-between items-center mb-4">
+                            <span class="text-sm {% if availableCount > 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                                {% if availableCount > 0 %}
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                    {{ availableCount }} volných
+                                {% else %}
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                    Obsazeno
+                                {% endif %}
+                            </span>
+                        </div>
+
+                        {% if availableCount > 0 %}
+                            {% if storageType.uniformStorages %}
+                                <a href="{{ path('public_order_create', {placeId: place.id, storageTypeId: storageType.id}) }}"
+                                   class="btn btn-primary w-full">
+                                    Objednat
+                                </a>
+                            {% else %}
+                                <button class="btn btn-secondary w-full" disabled>
+                                    Vyberte na mapě
+                                </button>
+                            {% endif %}
+                        {% else %}
+                            <button disabled class="btn btn-secondary w-full opacity-50 cursor-not-allowed">
+                                Nedostupné
+                            </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% endif %}
+
+{# Storage Map #}
+{% if place.mapImagePath or storagesJson != '[]' %}
+    <div class="card mb-8"
+         data-controller="storage-map"
+         data-storage-map-map-image-value="{{ place.mapImagePath ? asset('uploads/places/' ~ place.mapImagePath) : '' }}"
+         data-storage-map-storages-value="{{ storagesJson|e('html_attr') }}"
+         data-storage-map-storage-types-value="{{ storageTypesJson|e('html_attr') }}"
+         data-storage-map-place-id-value="{{ placeId }}">
+        <div class="card-header bg-gray-50 px-4 py-3 border-b">
+            <div class="flex items-center justify-between">
+                <h2 class="font-semibold text-gray-900">Mapa skladu</h2>
+                <div class="flex gap-4 text-sm">
+                    <div class="flex items-center gap-1">
+                        <div class="w-3 h-3 rounded bg-green-500"></div>
+                        <span class="text-gray-600">Volný</span>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <div class="w-3 h-3 rounded bg-yellow-500"></div>
+                        <span class="text-gray-600">Rezervovaný</span>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <div class="w-3 h-3 rounded bg-red-500"></div>
+                        <span class="text-gray-600">Obsazený</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="p-4 relative">
+            <div data-storage-map-target="container" class="w-full rounded-lg" style="min-height: 400px;"></div>
+            <div data-storage-map-target="tooltip" class="hidden absolute z-10 bg-white border border-gray-200 shadow-lg rounded-lg p-3 text-sm pointer-events-none max-w-xs"></div>
+        </div>
+
+        {# Storage Selection Modal for Non-Uniform Types #}
+        <dialog data-storage-map-target="modal" class="modal">
+            <div class="modal-box max-w-md">
+                <h3 class="font-bold text-lg" data-storage-map-target="modalTitle"></h3>
+                <div class="py-4">
+                    <img data-storage-map-target="modalPhoto" class="hidden w-full h-48 object-cover rounded-lg mb-4">
+                    <div data-storage-map-target="modalDetails" class="space-y-2 text-gray-600"></div>
+                </div>
+                <div class="modal-action">
+                    <a data-storage-map-target="modalOrderBtn" href="#" class="btn btn-primary">Objednat</a>
+                    <form method="dialog">
+                        <button class="btn btn-ghost">Zavřít</button>
+                    </form>
+                </div>
+            </div>
+            <form method="dialog" class="modal-backdrop">
+                <button>close</button>
+            </form>
+        </dialog>
+    </div>
+{% endif %}

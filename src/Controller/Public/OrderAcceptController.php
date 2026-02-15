@@ -50,7 +50,7 @@ final class OrderAcceptController extends AbstractController
         if (OrderStatus::RESERVED !== $order->status) {
             $this->addFlash('error', 'Tuto objednávku nelze dokončit.');
 
-            return $this->redirectToRoute('app_home');
+            return $this->redirectToRoute($this->getUser() ? 'portal_browse_places' : 'app_home');
         }
 
         $storage = $order->storage;

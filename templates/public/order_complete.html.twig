@@ -1,4 +1,4 @@
-{% extends 'user/layout.html.twig' %}
+{% extends app.user ? 'portal/layout.html.twig' : 'user/layout.html.twig' %}
 
 {% block title %}Objednávka dokončena - Fajné Sklady{% endblock %}
 
@@ -145,8 +145,8 @@
                 Navigovat na pobočku
             </a>
             {% endif %}
-            <a href="{{ path('app_home') }}" class="btn btn-primary flex-1 justify-center">
-                Zpět na hlavní stránku
+            <a href="{{ app.user ? path('portal_browse_places') : path('app_home') }}" class="btn btn-primary flex-1 justify-center">
+                {{ app.user ? 'Zpět na pobočky' : 'Zpět na hlavní stránku' }}
             </a>
         </div>
 

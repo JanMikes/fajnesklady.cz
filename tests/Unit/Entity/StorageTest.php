@@ -377,4 +377,28 @@ class StorageTest extends TestCase
 
         $this->assertSame(350.0, $storage->getEffectivePricePerMonthInCzk());
     }
+
+    public function testNewStorageIsNotDeleted(): void
+    {
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage = $this->createStorage($storageType, $place);
+
+        $this->assertFalse($storage->isDeleted());
+        $this->assertNull($storage->deletedAt);
+    }
+
+    public function testSoftDelete(): void
+    {
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage = $this->createStorage($storageType, $place);
+        $now = new \DateTimeImmutable('2025-06-15 12:00:00');
+
+        $storage->softDelete($now);
+
+        $this->assertTrue($storage->isDeleted());
+        $this->assertSame($now, $storage->deletedAt);
+        $this->assertSame($now, $storage->updatedAt);
+    }
 }

@@ -51,4 +51,7 @@ return [
     'chart.js' => [
         'version' => '3.9.1',
     ],
+    'konva' => [
+        'version' => '10.2.0',
+    ],
 ];

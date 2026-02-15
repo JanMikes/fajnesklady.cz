@@ -1,4 +1,4 @@
-{% extends 'user/layout.html.twig' %}
+{% extends app.user ? 'portal/layout.html.twig' : 'user/layout.html.twig' %}
 
 {% block title %}Platba objednávky - Fajné Sklady{% endblock %}
 
@@ -6,9 +6,9 @@
     {# Breadcrumb #}
     <nav class="mb-6">
         <ol class="flex items-center space-x-2 text-sm text-gray-600">
-            <li><a href="{{ path('app_home') }}" class="hover:text-accent">Domů</a></li>
+            <li><a href="{{ app.user ? path('portal_browse_places') : path('app_home') }}" class="hover:text-accent">{{ app.user ? 'Pobočky' : 'Domů' }}</a></li>
             <li><span class="mx-2">/</span></li>
-            <li><a href="{{ path('public_place_detail', {id: place.id}) }}" class="hover:text-accent">{{ place.name }}</a></li>
+            <li><a href="{{ app.user ? path('portal_browse_place_detail', {id: place.id}) : path('public_place_detail', {id: place.id}) }}" class="hover:text-accent">{{ place.name }}</a></li>
             <li><span class="mx-2">/</span></li>
             <li class="text-gray-900 font-medium">Platba</li>
         </ol>

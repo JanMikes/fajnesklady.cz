@@ -1,10 +1,10 @@
-{% extends 'user/layout.html.twig' %}
+{% extends 'portal/layout.html.twig' %}
 
-{% block title %}{{ place.name }} - Fajné Sklady{% endblock %}
+{% block title %}{{ place.name }} - Portal{% endblock %}
 
 {% block content %}
     {% include 'partials/place_detail_content.html.twig' with {
-        backRoute: 'app_home',
+        backRoute: 'portal_browse_places',
         backRouteParams: {},
         backLabel: 'Zpět na seznam poboček'
     } %}

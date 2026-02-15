@@ -32,10 +32,29 @@ final class StorageCanvasController extends AbstractController
         // Check ownership via voter
         $this->denyAccessUnlessGranted(PlaceVoter::EDIT, $place);
 
+        $hasMapImage = null !== $place->mapImagePath;
+        $allStorageTypes = $this->storageTypeRepository->findAllActive();
+        $hasStorageTypes = [] !== $allStorageTypes;
+
+        if (!$hasMapImage || !$hasStorageTypes) {
+            return $this->render('portal/storage/canvas.html.twig', [
+                'place' => $place,
+                'canvasReady' => false,
+                'hasMapImage' => $hasMapImage,
+                'hasStorageTypes' => $hasStorageTypes,
+            ]);
+        }
+
         $storages = $this->storageRepository->findByPlace($place);
         $storageTypes = $this->storageTypeRepository->findByPlace($place);
 
-        // Prepare storage data for JavaScript
+        // For the type dropdown, use all active types (not just those already used at this place)
+        $storageTypesData = array_map(fn ($t) => [
+            'id' => $t->id->toRfc4122(),
+            'name' => $t->name,
+            'dimensions' => $t->getDimensionsInMeters(),
+        ], $allStorageTypes);
+
         $storagesData = array_map(fn ($s) => [
             'id' => $s->id->toRfc4122(),
             'number' => $s->number,
@@ -44,17 +63,12 @@ final class StorageCanvasController extends AbstractController
             'status' => $s->status->value,
         ], $storages);
 
-        $storageTypesData = array_map(fn ($t) => [
-            'id' => $t->id->toRfc4122(),
-            'name' => $t->name,
-            'dimensions' => $t->getDimensionsInMeters(),
-        ], $storageTypes);
-
         return $this->render('portal/storage/canvas.html.twig', [
             'place' => $place,
+            'canvasReady' => true,
             'storagesJson' => json_encode($storagesData),
             'storageTypesJson' => json_encode($storageTypesData),
-            'storageTypes' => $storageTypes,
+            'storageTypes' => $allStorageTypes,
         ]);
     }
 }

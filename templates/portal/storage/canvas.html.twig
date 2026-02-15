@@ -19,128 +19,326 @@
         </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6"
-         data-controller="storage-canvas"
-         data-storage-canvas-map-image-value="{{ place.mapImagePath ? asset('uploads/' ~ place.mapImagePath) : '' }}"
-         data-storage-canvas-storages-value="{{ storagesJson|e('html_attr') }}"
-         data-storage-canvas-storage-types-value="{{ storageTypesJson|e('html_attr') }}"
-         data-storage-canvas-api-url-value="{{ path('api_storages_create', {placeId: place.id}) }}">
-
-        {# Canvas area #}
-        <div class="lg:col-span-3">
+    {% if not canvasReady %}
+        <div class="max-w-2xl mx-auto">
             <div class="card">
-                <div class="card-header bg-gray-50 px-4 py-3 border-b">
-                    <div class="flex items-center justify-between">
-                        <h2 class="font-semibold text-gray-900">Plátno</h2>
-                        <div class="text-sm text-gray-500">
-                            Klikněte a táhněte pro vytvoření skladu. Dvojklik pro úpravu.
+                <div class="card-body p-8">
+                    <div class="text-center mb-6">
+                        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-amber-100 mb-4">
+                            <svg class="w-8 h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                            </svg>
                         </div>
+                        <h2 class="text-xl font-semibold text-gray-900 mb-2">Než začnete s editorem</h2>
+                        <p class="text-gray-600">Pro práci s editorem skladu je potřeba splnit následující kroky:</p>
                     </div>
-                </div>
-                <div class="p-4">
-                    {% if not place.mapImagePath %}
-                        <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
-                            <div class="flex items-center gap-2">
-                                <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                </svg>
-                                <span class="text-amber-800">Nahrajte obrázek mapy v nastavení místa pro lepší vizualizaci.</span>
+
+                    <div class="space-y-4">
+                        {# Step 1: Map image #}
+                        <div class="flex items-start gap-4 p-4 rounded-lg {{ hasMapImage ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200' }}">
+                            <div class="flex-shrink-0 mt-0.5">
+                                {% if hasMapImage %}
+                                    <div class="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
+                                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                    </div>
+                                {% else %}
+                                    <div class="w-8 h-8 rounded-full bg-red-500 flex items-center justify-center">
+                                        <span class="text-white font-bold text-sm">1</span>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="flex-1">
+                                <h3 class="font-semibold {{ hasMapImage ? 'text-green-900' : 'text-red-900' }}">Obrázek mapy skladu</h3>
+                                {% if hasMapImage %}
+                                    <p class="text-sm text-green-700 mt-1">Obrázek mapy je nahraný.</p>
+                                {% else %}
+                                    <p class="text-sm text-red-700 mt-1">Nahrajte obrázek půdorysu nebo mapy vašeho skladu. Editor ho použije jako pozadí pro rozmístění skladových jednotek.</p>
+                                    <a href="{{ path('portal_places_edit', {id: place.id}) }}" class="inline-flex items-center gap-2 mt-3 btn btn-sm btn-primary">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                        </svg>
+                                        Nahrát obrázek mapy
+                                    </a>
+                                {% endif %}
                             </div>
                         </div>
-                    {% endif %}
-                    <canvas data-storage-canvas-target="canvas" class="border border-gray-300 rounded-lg w-full cursor-crosshair"></canvas>
-                </div>
-            </div>
 
-            {# Legend #}
-            <div class="card mt-4">
-                <div class="card-body p-4">
-                    <h3 class="font-semibold text-gray-900 mb-3">Legenda</h3>
-                    <div class="flex flex-wrap gap-4">
-                        <div class="flex items-center gap-2">
-                            <div class="w-4 h-4 rounded bg-green-500"></div>
-                            <span class="text-sm text-gray-600">Dostupný</span>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <div class="w-4 h-4 rounded bg-yellow-500"></div>
-                            <span class="text-sm text-gray-600">Rezervovaný</span>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <div class="w-4 h-4 rounded bg-red-500"></div>
-                            <span class="text-sm text-gray-600">Obsazený</span>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <div class="w-4 h-4 rounded bg-gray-500"></div>
-                            <span class="text-sm text-gray-600">Nedostupný</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        {# Sidebar #}
-        <div class="lg:col-span-1" data-storage-canvas-target="sidebar">
-            {# Storage list #}
-            <div class="card mb-4">
-                <div class="card-header bg-gray-50 px-4 py-3 border-b">
-                    <h2 class="font-semibold text-gray-900">Sklady</h2>
-                </div>
-                <div data-storage-canvas-target="storageList" class="max-h-64 overflow-y-auto">
-                    {# Populated by JS #}
-                </div>
-            </div>
-
-            {# Edit form #}
-            <div class="card hidden" data-storage-canvas-target="form">
-                <div class="card-header bg-gray-50 px-4 py-3 border-b">
-                    <h2 class="font-semibold text-gray-900">Upravit sklad</h2>
-                </div>
-                <div class="card-body p-4">
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Číslo skladu</label>
-                            <input type="text" data-storage-canvas-target="numberInput" class="input input-bordered w-full" placeholder="např. A1">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Typ skladu</label>
-                            <select data-storage-canvas-target="typeSelect" class="select select-bordered w-full">
-                                {% for type in storageTypes %}
-                                    <option value="{{ type.id }}">{{ type.name }} ({{ type.getDimensionsInMeters() }})</option>
+                        {# Step 2: Storage types #}
+                        <div class="flex items-start gap-4 p-4 rounded-lg {{ hasStorageTypes ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200' }}">
+                            <div class="flex-shrink-0 mt-0.5">
+                                {% if hasStorageTypes %}
+                                    <div class="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
+                                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                    </div>
                                 {% else %}
-                                    <option value="">Žádné typy</option>
-                                {% endfor %}
-                            </select>
+                                    <div class="w-8 h-8 rounded-full bg-red-500 flex items-center justify-center">
+                                        <span class="text-white font-bold text-sm">2</span>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="flex-1">
+                                <h3 class="font-semibold {{ hasStorageTypes ? 'text-green-900' : 'text-red-900' }}">Definice typů skladů</h3>
+                                {% if hasStorageTypes %}
+                                    <p class="text-sm text-green-700 mt-1">Typy skladů jsou definované.</p>
+                                {% else %}
+                                    <p class="text-sm text-red-700 mt-1">Vytvořte alespoň jeden typ skladu s rozměry a cenou. Typy skladů definují velikost a vlastnosti jednotlivých skladových jednotek.</p>
+                                    <a href="{{ path('portal_storage_types_create') }}" class="inline-flex items-center gap-2 mt-3 btn btn-sm btn-primary">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                        </svg>
+                                        Vytvořit typ skladu
+                                    </a>
+                                {% endif %}
+                            </div>
                         </div>
-                        <div class="flex gap-2 pt-2">
-                            <button type="button" data-storage-canvas-target="saveBtn" class="btn btn-primary btn-sm flex-1">
-                                Uložit
-                            </button>
-                            <button type="button" data-storage-canvas-target="cancelBtn" class="btn btn-ghost btn-sm">
-                                Zrušit
-                            </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6"
+             data-controller="storage-canvas"
+             data-storage-canvas-map-image-value="{{ place.mapImagePath ? asset('uploads/' ~ place.mapImagePath) : '' }}"
+             data-storage-canvas-storages-value="{{ storagesJson|e('html_attr') }}"
+             data-storage-canvas-storage-types-value="{{ storageTypesJson|e('html_attr') }}"
+             data-storage-canvas-api-url-value="{{ path('api_storages_create', {placeId: place.id}) }}">
+
+            {# Canvas area #}
+            <div class="lg:col-span-3">
+                <div class="card">
+                    <div class="card-header bg-gray-50 px-4 py-3 border-b">
+                        <div class="flex items-center justify-between">
+                            <h2 class="font-semibold text-gray-900">Plátno</h2>
+                            <div class="flex items-center gap-3">
+                                <button type="button"
+                                        data-storage-canvas-target="addBtn"
+                                        data-action="click->storage-canvas#addStorageViaButton"
+                                        class="btn btn-primary btn-sm">
+                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                    </svg>
+                                    Přidat sklad
+                                </button>
+                                <button type="button"
+                                        data-storage-canvas-target="copyBtn"
+                                        data-action="click->storage-canvas#copySelectedStorage"
+                                        class="btn btn-secondary btn-sm">
+                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                    </svg>
+                                    Kopírovat
+                                </button>
+                                <button type="button"
+                                        data-action="click->storage-canvas#saveAllStorages"
+                                        class="btn btn-success btn-sm">
+                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                    Uložit vše
+                                </button>
+                                <label class="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                                    <input type="checkbox"
+                                           data-storage-canvas-target="snapCheckbox"
+                                           data-action="change->storage-canvas#onSnapToggle"
+                                           class="checkbox checkbox-sm">
+                                    Přichytávání
+                                </label>
+                                <div class="flex items-center gap-1 border-l pl-3 ml-1">
+                                    <button type="button"
+                                            data-action="click->storage-canvas#zoomOut"
+                                            class="btn btn-ghost btn-xs" title="Oddálit">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7" />
+                                        </svg>
+                                    </button>
+                                    <button type="button"
+                                            data-action="click->storage-canvas#zoomReset"
+                                            data-storage-canvas-target="zoomLabel"
+                                            class="btn btn-ghost btn-xs text-xs min-w-[3rem]" title="Resetovat zoom">
+                                        100%
+                                    </button>
+                                    <button type="button"
+                                            data-action="click->storage-canvas#zoomIn"
+                                            class="btn btn-ghost btn-xs" title="Přiblížit">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                        <div class="pt-2 border-t">
-                            <button type="button" data-storage-canvas-target="deleteBtn" class="btn btn-error btn-sm w-full">
-                                Smazat sklad
-                            </button>
+                    </div>
+                    <div class="p-4">
+                        <div data-storage-canvas-target="container" class="border border-gray-300 rounded-lg w-full cursor-crosshair" style="min-height: 600px;"></div>
+                    </div>
+                </div>
+
+                {# Legend #}
+                <div class="card mt-4">
+                    <div class="card-body p-4">
+                        <h3 class="font-semibold text-gray-900 mb-3">Legenda</h3>
+                        <div class="flex flex-wrap gap-4">
+                            <div class="flex items-center gap-2">
+                                <div class="w-4 h-4 rounded bg-green-500"></div>
+                                <span class="text-sm text-gray-600">Dostupný</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <div class="w-4 h-4 rounded bg-yellow-500"></div>
+                                <span class="text-sm text-gray-600">Rezervovaný</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <div class="w-4 h-4 rounded bg-red-500"></div>
+                                <span class="text-sm text-gray-600">Obsazený</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <div class="w-4 h-4 rounded bg-gray-500"></div>
+                                <span class="text-sm text-gray-600">Nedostupný</span>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {# Help #}
-            <div class="card">
-                <div class="card-header bg-gray-50 px-4 py-3 border-b">
-                    <h2 class="font-semibold text-gray-900">Nápověda</h2>
+            {# Sidebar #}
+            <div class="lg:col-span-1" data-storage-canvas-target="sidebar">
+                {# Storage list #}
+                <div class="card mb-4">
+                    <div class="card-header bg-gray-50 px-4 py-3 border-b">
+                        <h2 class="font-semibold text-gray-900">Sklady</h2>
+                    </div>
+                    <div data-storage-canvas-target="storageList" class="max-h-64 overflow-y-auto">
+                        {# Populated by JS #}
+                    </div>
                 </div>
-                <div class="card-body p-4 text-sm text-gray-600 space-y-2">
-                    <p><strong>Vytvoření:</strong> Klikněte a táhněte na plátně</p>
-                    <p><strong>Přesun:</strong> Klikněte a táhněte existující sklad</p>
-                    <p><strong>Změna velikosti:</strong> Táhněte za roh vybraného skladu</p>
-                    <p><strong>Úprava:</strong> Dvojklik na sklad</p>
-                    <p><strong>Tip:</strong> Nezapomeňte uložit změny!</p>
+
+                {# Edit form #}
+                <div class="card hidden" data-storage-canvas-target="form">
+                    <div class="card-header bg-gray-50 px-4 py-3 border-b">
+                        <h2 class="font-semibold text-gray-900">Upravit sklad</h2>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Číslo skladu</label>
+                                <input type="text" data-storage-canvas-target="numberInput"
+                                       data-action="input->storage-canvas#onNumberInputChange"
+                                       class="input input-bordered w-full" placeholder="např. A1">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Typ skladu</label>
+                                <select data-storage-canvas-target="typeSelect" class="select select-bordered w-full">
+                                    {% for type in storageTypes %}
+                                        <option value="{{ type.id }}">{{ type.name }} ({{ type.getDimensionsInMeters() }})</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            {# Coordinate inputs #}
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Souřadnice</label>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label class="text-xs text-gray-500">X</label>
+                                        <input type="number" data-storage-canvas-target="coordX"
+                                               data-action="input->storage-canvas#onCoordinateInputChange"
+                                               class="input input-bordered input-sm w-full">
+                                    </div>
+                                    <div>
+                                        <label class="text-xs text-gray-500">Y</label>
+                                        <input type="number" data-storage-canvas-target="coordY"
+                                               data-action="input->storage-canvas#onCoordinateInputChange"
+                                               class="input input-bordered input-sm w-full">
+                                    </div>
+                                    <div>
+                                        <label class="text-xs text-gray-500">Šířka</label>
+                                        <input type="number" data-storage-canvas-target="coordW"
+                                               data-action="input->storage-canvas#onCoordinateInputChange"
+                                               class="input input-bordered input-sm w-full" min="1">
+                                    </div>
+                                    <div>
+                                        <label class="text-xs text-gray-500">Výška</label>
+                                        <input type="number" data-storage-canvas-target="coordH"
+                                               data-action="input->storage-canvas#onCoordinateInputChange"
+                                               class="input input-bordered input-sm w-full" min="1">
+                                    </div>
+                                </div>
+                                <div class="mt-2">
+                                    <label class="text-xs text-gray-500">Rotace (°)</label>
+                                    <input type="number" data-storage-canvas-target="coordR"
+                                           data-action="input->storage-canvas#onCoordinateInputChange"
+                                           class="input input-bordered input-sm w-full" min="0" max="359">
+                                </div>
+                            </div>
+
+                            <div class="flex gap-2 pt-2">
+                                <button type="button" data-storage-canvas-target="saveBtn"
+                                        data-action="click->storage-canvas#saveStorage"
+                                        class="btn btn-primary btn-sm flex-1">
+                                    Uložit
+                                </button>
+                                <button type="button" data-storage-canvas-target="cancelBtn"
+                                        data-action="click->storage-canvas#cancelEdit"
+                                        class="btn btn-ghost btn-sm">
+                                    Zrušit
+                                </button>
+                            </div>
+                            <div class="pt-2 border-t">
+                                <button type="button" data-storage-canvas-target="deleteBtn"
+                                        data-action="click->storage-canvas#deleteStorage"
+                                        class="btn btn-error btn-sm w-full">
+                                    Smazat sklad
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
+
+                {# Help modal trigger #}
+                <div class="flex justify-end">
+                    <button type="button" onclick="document.getElementById('helpModal').showModal()"
+                            class="btn btn-ghost btn-sm btn-circle" title="Nápověda">
+                        <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </button>
+                </div>
+
+                {# Help modal #}
+                <dialog id="helpModal" class="fixed inset-0 z-50 m-0 p-0 w-full h-full bg-transparent backdrop:bg-black/50">
+                    <div class="fixed inset-0 flex items-center justify-center p-4" onclick="if(event.target===this)document.getElementById('helpModal').close()">
+                        <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="font-bold text-lg">Nápověda</h3>
+                                <button type="button" onclick="document.getElementById('helpModal').close()" class="text-gray-400 hover:text-gray-600">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                            <div class="text-sm text-gray-600 space-y-2">
+                                <p><strong>Vytvoření:</strong> Klikněte a táhněte na plátně, nebo tlačítko „Přidat sklad"</p>
+                                <p><strong>Přesun:</strong> Klikněte a táhněte existující sklad</p>
+                                <p><strong>Změna velikosti:</strong> Táhněte za roh vybraného skladu</p>
+                                <p><strong>Rotace:</strong> Táhněte za kruhovou rukojeť nad vybraným skladem</p>
+                                <p><strong>Šipky:</strong> Posunutí vybraného skladu o 1 px (nebo krok mřížky)</p>
+                                <p><strong>Kopie:</strong> Ctrl+D nebo tlačítko „Kopírovat"</p>
+                                <p><strong>Smazání:</strong> Delete / Backspace</p>
+                                <p><strong>Přichytávání:</strong> Zaškrtněte pro přichytávání k mřížce</p>
+                                <p><strong>Zoom:</strong> Tlačítka +/- v panelu nástrojů</p>
+                                <p><strong>Posun plátna:</strong> Mezerník + táhnutí nebo prostřední tlačítko myši</p>
+                                <p><strong>Tip:</strong> Nezapomeňte uložit změny!</p>
+                            </div>
+                            <div class="mt-5 flex justify-end">
+                                <button type="button" onclick="document.getElementById('helpModal').close()" class="btn btn-ghost btn-sm">Zavřít</button>
+                            </div>
+                        </div>
+                    </div>
+                </dialog>
             </div>
         </div>
-    </div>
+    {% endif %}
 {% endblock %}

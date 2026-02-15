@@ -66,7 +66,7 @@ final class PaymentReturnController extends AbstractController
         if ($order->status->isTerminal()) {
             $this->addFlash('error', 'Platba byla zrušena.');
 
-            return $this->redirectToRoute('app_home');
+            return $this->redirectToRoute($this->getUser() ? 'portal_browse_places' : 'app_home');
         }
 
         // Still pending - redirect back to payment page

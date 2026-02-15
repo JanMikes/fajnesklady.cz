@@ -38,7 +38,7 @@ final class OrderCompleteController extends AbstractController
         if (OrderStatus::COMPLETED !== $order->status) {
             $this->addFlash('error', 'Tato objednávka nebyla dokončena.');
 
-            return $this->redirectToRoute('app_home');
+            return $this->redirectToRoute($this->getUser() ? 'portal_browse_places' : 'app_home');
         }
 
         $storage = $order->storage;

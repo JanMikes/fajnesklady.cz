@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Controller\Public;
+namespace App\Controller\Portal\User;
 
 use App\Repository\PlaceRepository;
 use App\Repository\StorageRepository;
@@ -12,10 +12,12 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Uid\Uuid;
 
-#[Route('/pobocka/{id}', name: 'public_place_detail')]
-final class PlaceDetailController extends AbstractController
+#[Route('/portal/pobocka/{id}', name: 'portal_browse_place_detail')]
+#[IsGranted('ROLE_USER')]
+final class PlaceBrowseDetailController extends AbstractController
 {
     public function __construct(
         private readonly PlaceRepository $placeRepository,
@@ -37,14 +39,9 @@ final class PlaceDetailController extends AbstractController
             throw new NotFoundHttpException('Pobočka nenalezena.');
         }
 
-        if ($this->getUser()) {
-            return $this->redirectToRoute('portal_browse_place_detail', ['id' => $id]);
-        }
-
         $storageTypes = $this->storageTypeRepository->findActiveByPlace($place);
         $storages = $this->storageRepository->findByPlace($place);
 
-        // Calculate availability for next 30 days for each storage type
         $startDate = new \DateTimeImmutable('tomorrow');
         $endDate = $startDate->modify('+30 days');
 
@@ -58,7 +55,6 @@ final class PlaceDetailController extends AbstractController
             );
         }
 
-        // Prepare storage data for the map
         $storagesData = array_map(function ($s) {
             $photos = $s->getPhotos();
             $photoUrl = !$photos->isEmpty() ? '/uploads/storage_photos/'.$photos->first()->path : null;
@@ -85,20 +81,12 @@ final class PlaceDetailController extends AbstractController
             'uniformStorages' => $t->uniformStorages,
         ], $storageTypes);
 
-        // Check if any non-uniform storage type exists
-        $hasNonUniformTypes = array_reduce(
-            $storageTypes,
-            fn ($carry, $t) => $carry || !$t->uniformStorages,
-            false
-        );
-
-        return $this->render('public/place_detail.html.twig', [
+        return $this->render('portal/user/browse/place_detail.html.twig', [
             'place' => $place,
             'storageTypes' => $storageTypes,
             'availability' => $availability,
             'storagesJson' => json_encode($storagesData),
             'storageTypesJson' => json_encode($storageTypesData),
-            'hasNonUniformTypes' => $hasNonUniformTypes,
             'placeId' => $place->id->toRfc4122(),
         ]);
     }

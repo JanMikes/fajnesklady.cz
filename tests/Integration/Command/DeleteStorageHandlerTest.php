@@ -9,7 +9,6 @@ use App\Command\DeleteStorageHandler;
 use App\DataFixtures\StorageFixtures;
 use App\Entity\Storage;
 use App\Exception\StorageCannotBeDeleted;
-use App\Exception\StorageNotFound;
 use App\Repository\StorageRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ManagerRegistry;
@@ -43,8 +42,9 @@ class DeleteStorageHandlerTest extends KernelTestCase
         $this->entityManager->flush();
         $this->entityManager->clear();
 
-        $this->expectException(StorageNotFound::class);
-        $this->storageRepository->get($storageId);
+        $deletedStorage = $this->storageRepository->get($storageId);
+        $this->assertTrue($deletedStorage->isDeleted());
+        $this->assertNotNull($deletedStorage->deletedAt);
     }
 
     public function testCannotDeleteOccupiedStorage(): void
@@ -95,8 +95,9 @@ class DeleteStorageHandlerTest extends KernelTestCase
         $this->entityManager->flush();
         $this->entityManager->clear();
 
-        $this->expectException(StorageNotFound::class);
-        $this->storageRepository->get($storageId);
+        $deletedStorage = $this->storageRepository->get($storageId);
+        $this->assertTrue($deletedStorage->isDeleted());
+        $this->assertNotNull($deletedStorage->deletedAt);
     }
 
     private function getFixtureReference(string $name): object

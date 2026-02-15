@@ -328,4 +328,42 @@ class StorageTypeTest extends TestCase
         $this->assertFalse($storageType->uniformStorages);
         $this->assertSame($updatedAt, $storageType->updatedAt);
     }
+
+    public function testNewStorageTypeIsNotDeleted(): void
+    {
+        $storageType = new StorageType(
+            id: Uuid::v7(),
+            name: 'Test',
+            innerWidth: 100,
+            innerHeight: 100,
+            innerLength: 100,
+            defaultPricePerWeek: 10000,
+            defaultPricePerMonth: 30000,
+            createdAt: new \DateTimeImmutable(),
+        );
+
+        $this->assertFalse($storageType->isDeleted());
+        $this->assertNull($storageType->deletedAt);
+    }
+
+    public function testSoftDelete(): void
+    {
+        $storageType = new StorageType(
+            id: Uuid::v7(),
+            name: 'Test',
+            innerWidth: 100,
+            innerHeight: 100,
+            innerLength: 100,
+            defaultPricePerWeek: 10000,
+            defaultPricePerMonth: 30000,
+            createdAt: new \DateTimeImmutable('2024-01-01 10:00:00'),
+        );
+        $now = new \DateTimeImmutable('2025-06-15 12:00:00');
+
+        $storageType->softDelete($now);
+
+        $this->assertTrue($storageType->isDeleted());
+        $this->assertSame($now, $storageType->deletedAt);
+        $this->assertSame($now, $storageType->updatedAt);
+    }
 }

@@ -55,5 +55,5 @@ docker compose exec web composer tailwind:watch
 
 - **Backend**: Symfony 8, PHP 8.5, FrankenPHP
 - **Database**: PostgreSQL 17, Doctrine ORM
-- **Frontend**: Twig, Tailwind CSS, DaisyUI, Stimulus
+- **Frontend**: Twig, Tailwind CSS, Stimulus
 - **Architecture**: CQRS with Symfony Messenger

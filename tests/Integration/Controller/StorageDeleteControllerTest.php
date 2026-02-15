@@ -82,10 +82,11 @@ class StorageDeleteControllerTest extends WebTestCase
 
         $this->assertResponseStatusCodeSame(204);
 
-        // Verify storage is deleted
+        // Verify storage is soft-deleted
         $this->entityManager->clear();
         $deletedStorage = $this->entityManager->find(Storage::class, $storage->id);
-        $this->assertNull($deletedStorage);
+        $this->assertNotNull($deletedStorage);
+        $this->assertTrue($deletedStorage->isDeleted());
     }
 
     // ===========================================
@@ -139,10 +140,11 @@ class StorageDeleteControllerTest extends WebTestCase
 
         $this->assertResponseRedirects();
 
-        // Verify storage is deleted
+        // Verify storage is soft-deleted
         $this->entityManager->clear();
         $deletedStorage = $this->entityManager->find(Storage::class, $storageId);
-        $this->assertNull($deletedStorage);
+        $this->assertNotNull($deletedStorage);
+        $this->assertTrue($deletedStorage->isDeleted());
     }
 
     // ===========================================
