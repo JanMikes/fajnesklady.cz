@@ -36,8 +36,8 @@ class Place
         private(set) Uuid $id,
         #[ORM\Column(length: 255)]
         private(set) string $name,
-        #[ORM\Column(length: 500)]
-        private(set) string $address,
+        #[ORM\Column(length: 500, nullable: true)]
+        private(set) ?string $address,
         #[ORM\Column(length: 100)]
         private(set) string $city,
         #[ORM\Column(length: 20)]
@@ -50,9 +50,14 @@ class Place
         $this->updatedAt = $this->createdAt;
     }
 
+    public function hasAddress(): bool
+    {
+        return $this->address !== null;
+    }
+
     public function updateDetails(
         string $name,
-        string $address,
+        ?string $address,
         string $city,
         string $postalCode,
         ?string $description,

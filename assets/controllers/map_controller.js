@@ -88,7 +88,7 @@ export default class extends Controller {
         let html = `
             <div class="storage-popup">
                 <h3 class="font-bold text-lg mb-1">${this.escapeHtml(place.name)}</h3>
-                <p class="text-sm text-gray-600 mb-3">${this.escapeHtml(place.address)}, ${this.escapeHtml(place.city)}</p>
+                <p class="text-sm text-gray-600 mb-3">${place.address ? this.escapeHtml(place.address) + ', ' : ''}${this.escapeHtml(place.city)}</p>
         `;
 
         if (place.storageTypes && place.storageTypes.length > 0) {

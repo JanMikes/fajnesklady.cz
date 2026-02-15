@@ -48,11 +48,13 @@ final class PlaceCreateController extends AbstractController
             $command = new CreatePlaceCommand(
                 placeId: $placeId,
                 name: $formData->name,
-                address: $formData->address,
+                address: $formData->useMapLocation ? null : $formData->address,
                 city: $formData->city,
                 postalCode: $formData->postalCode,
                 description: $formData->description,
                 mapImagePath: $mapImagePath,
+                latitude: $formData->latitude,
+                longitude: $formData->longitude,
             );
 
             $this->commandBus->dispatch($command);

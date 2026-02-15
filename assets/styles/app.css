@@ -129,7 +129,8 @@ select.form-input {
 }
 
 /* Required field indicator - red asterisk after label */
-.form-label-required::after {
+.form-label-required::after,
+label:has(~ input[required], ~ select[required], ~ textarea[required])::after {
     content: " *";
     @apply text-red-600 font-normal;
 }

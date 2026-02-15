@@ -29,7 +29,7 @@
                     {% for place in places %}
                         <tr>
                             <td class="font-medium text-gray-900">{{ place.name }}</td>
-                            <td class="text-gray-500">{{ place.address }}</td>
+                            <td class="text-gray-500">{{ place.address ?: place.city }}</td>
                             <td class="text-gray-500 max-w-xs truncate">{{ place.description|default('-') }}</td>
                             <td class="text-gray-500 text-sm">{{ place.createdAt|date('d.m.Y H:i') }}</td>
                             <td>

@@ -35,6 +35,8 @@ final readonly class UpdatePlaceHandler
             $place->updateMapImage($command->mapImagePath, $now);
         }
 
+        $place->updateLocation($command->latitude, $command->longitude, $now);
+
         $this->placeRepository->save($place);
     }
 }

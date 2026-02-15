@@ -51,11 +51,13 @@ final class PlaceEditController extends AbstractController
             $command = new UpdatePlaceCommand(
                 placeId: $place->id,
                 name: $formData->name,
-                address: $formData->address,
+                address: $formData->useMapLocation ? null : $formData->address,
                 city: $formData->city,
                 postalCode: $formData->postalCode,
                 description: $formData->description,
                 mapImagePath: $mapImagePath,
+                latitude: $formData->latitude,
+                longitude: $formData->longitude,
             );
 
             $this->commandBus->dispatch($command);

@@ -17,7 +17,11 @@
                         <span class="font-semibold text-gray-900">{{ item.place.name }}</span>
                     </td>
                     <td class="px-6 py-5 text-gray-600">
-                        {{ item.place.address }}, {{ item.place.city }}
+                        {% if item.place.address %}
+                            {{ item.place.address }}, {{ item.place.city }}
+                        {% else %}
+                            {{ item.place.city }}
+                        {% endif %}
                     </td>
                     <td class="px-6 py-5">
                         {% if item.storageTypes|length > 0 %}

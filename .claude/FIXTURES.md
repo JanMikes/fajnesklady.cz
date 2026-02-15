@@ -47,6 +47,7 @@ StorageUnavailabilityFixtures
 | `PlaceFixtures::REF_PRAHA_JIH` | LANDLORD | Sklad Praha - Jiznimesto | Praha 4 |
 | `PlaceFixtures::REF_BRNO` | ADMIN | Sklad Brno | Brno |
 | `PlaceFixtures::REF_OSTRAVA` | LANDLORD2 | Sklad Ostrava | Ostrava |
+| `PlaceFixtures::REF_PLZEN` | - | Sklad Plzen | Plzen (no address, map-only) |
 
 ## Storage Types (per-Place)
 

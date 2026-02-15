@@ -17,6 +17,7 @@ final class PlaceFixtures extends Fixture
     public const REF_PRAHA_JIH = 'place-praha-jih';
     public const REF_BRNO = 'place-brno';
     public const REF_OSTRAVA = 'place-ostrava';
+    public const REF_PLZEN = 'place-plzen';
 
     public function __construct(
         private ClockInterface $clock,
@@ -79,6 +80,20 @@ final class PlaceFixtures extends Fixture
         $place4->updateLocation('49.8347282', '18.2820642', $now);
         $manager->persist($place4);
         $this->addReference(self::REF_OSTRAVA, $place4);
+
+        // Place without address - map-only location
+        $place5 = new Place(
+            id: Uuid::v7(),
+            name: 'Sklad Plzen',
+            address: null,
+            city: 'Plzen',
+            postalCode: '301 00',
+            description: 'Skladovaci prostory v Plzni - bez presne adresy.',
+            createdAt: $now,
+        );
+        $place5->updateLocation('49.7437572', '13.3799330', $now);
+        $manager->persist($place5);
+        $this->addReference(self::REF_PLZEN, $place5);
 
         $manager->flush();
     }

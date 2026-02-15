@@ -39,12 +39,12 @@ class PlaceRepositoryTest extends KernelTestCase
         return $user;
     }
 
-    private function createPlace(string $name, bool $isActive = true): Place
+    private function createPlace(string $name, bool $isActive = true, ?string $address = 'Test Address'): Place
     {
         $place = new Place(
             id: Uuid::v7(),
             name: $name,
-            address: 'Test Address',
+            address: $address,
             city: 'Praha',
             postalCode: '110 00',
             description: null,
@@ -191,6 +191,23 @@ class PlaceRepositoryTest extends KernelTestCase
         $totalCount = $this->repository->countTotal();
 
         $this->assertSame($initialCount + 3, $totalCount);
+    }
+
+    public function testSaveAndGetPlaceWithoutAddress(): void
+    {
+        $place = $this->createPlace('No Address Place', address: null);
+        $place->updateLocation('49.7437572', '13.3799330', new \DateTimeImmutable());
+        $this->entityManager->flush();
+
+        $foundPlace = $this->repository->get($place->id);
+
+        $this->assertSame('No Address Place', $foundPlace->name);
+        $this->assertNull($foundPlace->address);
+        $this->assertFalse($foundPlace->hasAddress());
+        $this->assertSame('Praha', $foundPlace->city);
+        $this->assertSame('110 00', $foundPlace->postalCode);
+        $this->assertSame('49.7437572', $foundPlace->latitude);
+        $this->assertSame('13.3799330', $foundPlace->longitude);
     }
 
     public function testDeleteRemovesPlace(): void

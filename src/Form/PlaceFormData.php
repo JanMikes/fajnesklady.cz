@@ -7,6 +7,7 @@ namespace App\Form;
 use App\Entity\Place;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Component\Validator\Context\ExecutionContextInterface;
 
 final class PlaceFormData
 {
@@ -14,9 +15,8 @@ final class PlaceFormData
     #[Assert\Length(max: 255, maxMessage: 'Nazev nemuze byt delsi nez {{ limit }} znaku')]
     public string $name = '';
 
-    #[Assert\NotBlank(message: 'Zadejte adresu')]
     #[Assert\Length(max: 500, maxMessage: 'Adresa nemuze byt delsi nez {{ limit }} znaku')]
-    public string $address = '';
+    public ?string $address = null;
 
     #[Assert\NotBlank(message: 'Zadejte mesto')]
     #[Assert\Length(max: 100, maxMessage: 'Nazev mesta nemuze byt delsi nez {{ limit }} znaku')]
@@ -37,6 +37,35 @@ final class PlaceFormData
 
     public ?string $currentMapImagePath = null;
 
+    public bool $useMapLocation = false;
+
+    public ?string $latitude = null;
+
+    public ?string $longitude = null;
+
+    #[Assert\Callback]
+    public function validate(ExecutionContextInterface $context): void
+    {
+        if ($this->useMapLocation) {
+            if (null === $this->latitude || '' === $this->latitude) {
+                $context->buildViolation('Vyberte polohu na mape')
+                    ->atPath('latitude')
+                    ->addViolation();
+            }
+            if (null === $this->longitude || '' === $this->longitude) {
+                $context->buildViolation('Vyberte polohu na mape')
+                    ->atPath('longitude')
+                    ->addViolation();
+            }
+        } else {
+            if (null === $this->address || '' === $this->address) {
+                $context->buildViolation('Zadejte adresu')
+                    ->atPath('address')
+                    ->addViolation();
+            }
+        }
+    }
+
     public static function fromPlace(Place $place): self
     {
         $formData = new self();
@@ -46,6 +75,9 @@ final class PlaceFormData
         $formData->postalCode = $place->postalCode;
         $formData->description = $place->description;
         $formData->currentMapImagePath = $place->mapImagePath;
+        $formData->latitude = $place->latitude;
+        $formData->longitude = $place->longitude;
+        $formData->useMapLocation = !$place->hasAddress() && $place->latitude !== null;
 
         return $formData;
     }

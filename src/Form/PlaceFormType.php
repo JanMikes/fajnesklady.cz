@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Form;
 
 use Symfony\Component\Form\AbstractType;
+use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\Extension\Core\Type\FileType;
 use Symfony\Component\Form\Extension\Core\Type\TextareaType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
@@ -25,8 +26,14 @@ class PlaceFormType extends AbstractType
             ],
         ]);
 
+        $builder->add('useMapLocation', CheckboxType::class, [
+            'required' => false,
+            'label' => 'Misto nema adresu, vybrat na mape',
+        ]);
+
         $builder->add('address', TextType::class, [
             'label' => 'Adresa',
+            'required' => false,
             'attr' => [
                 'placeholder' => 'Ulice a cislo popisne',
             ],
@@ -43,6 +50,24 @@ class PlaceFormType extends AbstractType
             'label' => 'PSC',
             'attr' => [
                 'placeholder' => '110 00',
+            ],
+        ]);
+
+        $builder->add('latitude', TextType::class, [
+            'label' => 'Zeměpisná šířka',
+            'required' => false,
+            'attr' => [
+                'placeholder' => '49.7437572',
+                'inputmode' => 'decimal',
+            ],
+        ]);
+
+        $builder->add('longitude', TextType::class, [
+            'label' => 'Zeměpisná délka',
+            'required' => false,
+            'attr' => [
+                'placeholder' => '13.3799330',
+                'inputmode' => 'decimal',
             ],
         ]);
 
