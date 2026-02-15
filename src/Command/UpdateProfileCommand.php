@@ -13,6 +13,8 @@ final readonly class UpdateProfileCommand
         public string $firstName,
         public string $lastName,
         public ?string $phone,
+        public ?string $bankAccountNumber = null,
+        public ?string $bankCode = null,
     ) {
     }
 }

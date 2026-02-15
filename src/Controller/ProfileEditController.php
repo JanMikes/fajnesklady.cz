@@ -37,6 +37,8 @@ final class ProfileEditController extends AbstractController
                 firstName: $formData->firstName,
                 lastName: $formData->lastName,
                 phone: $formData->phone,
+                bankAccountNumber: $formData->bankAccountNumber,
+                bankCode: $formData->bankCode,
             ));
 
             $this->addFlash('success', 'Profil byl úspěšně aktualizován.');

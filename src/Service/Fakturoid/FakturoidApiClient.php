@@ -24,7 +24,7 @@ final readonly class FakturoidApiClient implements FakturoidClient
 
     public function createSubject(User $user): FakturoidSubject
     {
-        $response = $this->manager->getSubjectsProvider()->create([
+        $data = [
             'name' => $user->companyName ?? $user->fullName,
             'email' => $user->email,
             'street' => $user->billingStreet,
@@ -32,7 +32,15 @@ final readonly class FakturoidApiClient implements FakturoidClient
             'zip' => $user->billingPostalCode,
             'registration_no' => $user->companyId,
             'vat_no' => $user->companyVatId,
-        ]);
+        ];
+
+        if (null !== $user->bankAccountNumber) {
+            $data['bank_account'] = null !== $user->bankCode
+                ? $user->bankAccountNumber.'/'.$user->bankCode
+                : $user->bankAccountNumber;
+        }
+
+        $response = $this->manager->getSubjectsProvider()->create($data);
 
         /** @var \stdClass $body */
         $body = $response->getBody();
@@ -41,6 +49,26 @@ final readonly class FakturoidApiClient implements FakturoidClient
             id: (int) $body->id,
             name: (string) $body->name,
         );
+    }
+
+    public function updateSubject(int $subjectId, User $user): void
+    {
+        $data = [
+            'name' => $user->companyName ?? $user->fullName,
+            'email' => $user->email,
+            'street' => $user->billingStreet,
+            'city' => $user->billingCity,
+            'zip' => $user->billingPostalCode,
+            'registration_no' => $user->companyId,
+            'vat_no' => $user->companyVatId,
+            'bank_account' => null !== $user->bankAccountNumber
+                ? (null !== $user->bankCode
+                    ? $user->bankAccountNumber.'/'.$user->bankCode
+                    : $user->bankAccountNumber)
+                : null,
+        ];
+
+        $this->manager->getSubjectsProvider()->update($subjectId, $data);
     }
 
     public function createInvoice(int $subjectId, Order $order): FakturoidInvoice

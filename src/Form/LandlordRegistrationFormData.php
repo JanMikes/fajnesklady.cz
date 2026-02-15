@@ -50,6 +50,15 @@ final class LandlordRegistrationFormData
     #[Assert\Regex(pattern: '/^\d{3}\s?\d{2}$/', message: 'PSČ musí být ve formátu XXX XX')]
     public string $billingPostalCode = '';
 
+    #[Assert\NotBlank(message: 'Číslo účtu je povinné')]
+    #[Assert\Length(max: 17, maxMessage: 'Číslo účtu může mít maximálně {{ limit }} znaků.')]
+    #[Assert\Regex(pattern: '/^(\d{1,6}-)?\d{1,10}$/', message: 'Zadejte platné číslo účtu.')]
+    public string $bankAccountNumber = '';
+
+    #[Assert\NotBlank(message: 'Kód banky je povinný')]
+    #[Assert\Regex(pattern: '/^\d{4}$/', message: 'Kód banky musí obsahovat 4 číslice.')]
+    public string $bankCode = '';
+
     #[Assert\IsTrue(message: 'Musíte souhlasit s podmínkami.')]
     public bool $agreeTerms = false;
 }

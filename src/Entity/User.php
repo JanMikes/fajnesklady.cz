@@ -61,6 +61,12 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, EntityW
     #[ORM\Column(length: 10, nullable: true, unique: true)]
     public private(set) ?string $selfBillingPrefix = null;
 
+    #[ORM\Column(length: 17, nullable: true)]
+    public private(set) ?string $bankAccountNumber = null;
+
+    #[ORM\Column(length: 4, nullable: true)]
+    public private(set) ?string $bankCode = null;
+
     public string $fullName {
         get => trim($this->firstName.' '.$this->lastName);
     }
@@ -221,6 +227,13 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, EntityW
     public function hasSelfBillingPrefix(): bool
     {
         return null !== $this->selfBillingPrefix;
+    }
+
+    public function updateBankAccount(?string $bankAccountNumber, ?string $bankCode, \DateTimeImmutable $now): void
+    {
+        $this->bankAccountNumber = $bankAccountNumber;
+        $this->bankCode = $bankCode;
+        $this->updatedAt = $now;
     }
 
     public function isAdmin(): bool

@@ -13,8 +13,8 @@
 {# Form label #}
 {% block form_label -%}
     {% if label is not same as(false) -%}
-        {% set label_attr = label_attr|merge({class: (label_attr.class|default('') ~ ' form-label')|trim}) -%}
-        <label{% if label_attr %} {% set label_attr = label_attr|merge({class: (label_attr.class|default('') ~ '')|trim}) %}{{ block('attributes') }}{% endif %}>
+        {% set label_attr = label_attr|merge({class: (label_attr.class|default('') ~ ' form-label' ~ (required|default(false) ? ' form-label-required' : ''))|trim}) -%}
+        <label{% if label_attr %}{% with { attr: label_attr } %} {{ block('attributes') }}{% endwith %}{% endif %}>
             {%- if label is empty -%}
                 {{- name|humanize -}}
             {%- else -%}
@@ -72,6 +72,8 @@
                 <label for="{{ id }}" class="ml-2 text-sm text-gray-700 cursor-pointer">
                     {%- if label is empty -%}
                         {{- name|humanize -}}
+                    {%- elseif label_html|default(false) -%}
+                        {{- translation_domain is same as(false) ? label|raw : label|trans(label_translation_parameters, translation_domain)|raw -}}
                     {%- else -%}
                         {{- translation_domain is same as(false) ? label : label|trans(label_translation_parameters, translation_domain) -}}
                     {%- endif -%}

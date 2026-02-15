@@ -26,12 +26,14 @@ final readonly class UpdateProfileHandler
             throw UserNotFound::withId($command->userId);
         }
 
+        $now = $this->clock->now();
         $user->updateProfile(
             $command->firstName,
             $command->lastName,
             $command->phone,
-            $this->clock->now(),
+            $now,
         );
+        $user->updateBankAccount($command->bankAccountNumber, $command->bankCode, $now);
         $this->userRepository->save($user);
     }
 }

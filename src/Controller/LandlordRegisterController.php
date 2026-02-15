@@ -53,6 +53,8 @@ final class LandlordRegisterController extends AbstractController
                     billingStreet: $formData->billingStreet,
                     billingCity: $formData->billingCity,
                     billingPostalCode: $formData->billingPostalCode,
+                    bankAccountNumber: $formData->bankAccountNumber,
+                    bankCode: $formData->bankCode,
                 );
 
                 $this->commandBus->dispatch($command);

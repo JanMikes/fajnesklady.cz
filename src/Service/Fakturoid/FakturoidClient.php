@@ -14,6 +14,8 @@ interface FakturoidClient
 {
     public function createSubject(User $user): FakturoidSubject;
 
+    public function updateSubject(int $subjectId, User $user): void;
+
     public function createInvoice(int $subjectId, Order $order): FakturoidInvoice;
 
     public function downloadInvoicePdf(int $invoiceId): string;

@@ -131,6 +131,29 @@
 
         <div class="card mt-6">
             <div class="card-body">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-gray-900">Bankovní účet</h3>
+                    <a href="{{ path('portal_profile_edit') }}" class="btn btn-sm btn-ghost">
+                        {{ app.user.bankAccountNumber ? 'Upravit' : 'Vyplnit' }}
+                    </a>
+                </div>
+
+                {% if app.user.bankAccountNumber %}
+                    <dl class="space-y-2">
+                        <div class="grid grid-cols-3 gap-4">
+                            <dt class="text-sm font-semibold text-gray-500">Číslo účtu</dt>
+                            <dd class="col-span-2 text-gray-900">{{ app.user.bankAccountNumber }}/{{ app.user.bankCode }}</dd>
+                        </div>
+                    </dl>
+                {% else %}
+                    <p class="text-gray-500">Bankovní účet není vyplněn.</p>
+                    <p class="text-sm text-gray-400 mt-1">Pro příjem plateb je nutné vyplnit bankovní účet.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card mt-6">
+            <div class="card-body">
                 <div class="flex justify-between items-center">
                     <div>
                         <h3 class="text-lg font-semibold text-gray-900">Změna hesla</h3>

@@ -143,6 +143,9 @@ final readonly class SelfBillingService
             /** @var int $fakturoidSubjectId */
             $fakturoidSubjectId = $user->fakturoidSubjectId;
 
+            // Sync subject data (bank account, billing details) before invoicing
+            $this->fakturoidClient->updateSubject($fakturoidSubjectId, $user);
+
             return $fakturoidSubjectId;
         }
 

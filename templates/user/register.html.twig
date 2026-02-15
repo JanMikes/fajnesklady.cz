@@ -14,6 +14,22 @@
                     {{ form_row(registrationForm.lastName) }}
                     {{ form_row(registrationForm.password.first) }}
                     {{ form_row(registrationForm.password.second) }}
+
+                    <div class="my-4">
+                        {{ form_row(registrationForm.isCompany, {
+                            'attr': { 'data-toggle-company': '' }
+                        }) }}
+                    </div>
+
+                    <div id="company-fields" class="hidden space-y-0">
+                        {{ form_row(registrationForm.companyName) }}
+                        {{ form_row(registrationForm.companyId) }}
+                        {{ form_row(registrationForm.companyVatId) }}
+                        {{ form_row(registrationForm.billingStreet) }}
+                        {{ form_row(registrationForm.billingCity) }}
+                        {{ form_row(registrationForm.billingPostalCode) }}
+                    </div>
+
                     {{ form_row(registrationForm.agreeTerms) }}
 
                     <div class="form-group mt-2">
@@ -34,7 +50,25 @@
                     Už máte účet?
                     <a href="{{ path('app_login') }}" class="link">Přihlaste se</a>
                 </p>
+                <p class="text-center text-gray-500 text-sm mt-2">
+                    Chcete pronajímat prostory?
+                    <a href="{{ path('app_landlord_register') }}" class="link">Registrovat jako pronajímatel</a>
+                </p>
             </div>
         </div>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const checkbox = document.querySelector('[data-toggle-company]');
+            const companyFields = document.getElementById('company-fields');
+
+            function toggle() {
+                companyFields.classList.toggle('hidden', !checkbox.checked);
+            }
+
+            checkbox.addEventListener('change', toggle);
+            toggle();
+        });
+    </script>
 {% endblock %}

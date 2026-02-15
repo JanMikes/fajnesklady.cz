@@ -36,6 +36,11 @@ final class MockFakturoidClient implements FakturoidClient
         return $subject;
     }
 
+    public function updateSubject(int $subjectId, User $user): void
+    {
+        // No-op in mock
+    }
+
     public function createInvoice(int $subjectId, Order $order): FakturoidInvoice
     {
         $invoiceId = $this->nextInvoiceId++;

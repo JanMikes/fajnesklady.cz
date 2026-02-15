@@ -114,6 +114,7 @@ final class UserFixtures extends Fixture
         );
         $tenant->changePassword($this->passwordHasher->hashPassword($tenant, 'password'), $now);
         $tenant->markAsVerified($now);
+        $tenant->updateBankAccount('123456-1234567890', '0100', $now);
         $tenant->popEvents();
         $manager->persist($tenant);
         $this->addReference(self::REF_TENANT, $tenant);

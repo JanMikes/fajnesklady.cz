@@ -38,6 +38,22 @@ final class ProfileFormType extends AbstractType
                 'placeholder' => '+420 123 456 789',
             ],
         ]);
+
+        $builder->add('bankAccountNumber', TextType::class, [
+            'label' => 'Číslo účtu',
+            'required' => false,
+            'attr' => [
+                'placeholder' => '123456-1234567890',
+            ],
+        ]);
+
+        $builder->add('bankCode', TextType::class, [
+            'label' => 'Kód banky',
+            'required' => false,
+            'attr' => [
+                'placeholder' => '0100',
+            ],
+        ]);
     }
 
     public function configureOptions(OptionsResolver $resolver): void

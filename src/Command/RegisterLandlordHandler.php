@@ -61,6 +61,12 @@ final readonly class RegisterLandlordHandler
             now: $now,
         );
 
+        $user->updateBankAccount(
+            bankAccountNumber: $command->bankAccountNumber,
+            bankCode: $command->bankCode,
+            now: $now,
+        );
+
         if (null !== $command->phone) {
             $user->updateProfile(
                 firstName: $command->firstName,

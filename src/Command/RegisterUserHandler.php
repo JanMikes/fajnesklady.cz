@@ -44,6 +44,15 @@ final readonly class RegisterUserHandler
 
         $hashedPassword = $this->passwordHasher->hashPassword($user, $command->password);
         $user->changePassword($hashedPassword, $now);
+        $user->updateBillingInfo(
+            $command->companyName,
+            $command->companyId,
+            $command->companyVatId,
+            $command->billingStreet,
+            $command->billingCity,
+            $command->billingPostalCode,
+            $now,
+        );
 
         $this->userRepository->save($user);
     }

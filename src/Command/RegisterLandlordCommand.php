@@ -18,6 +18,8 @@ final readonly class RegisterLandlordCommand
         public string $billingStreet,
         public string $billingCity,
         public string $billingPostalCode,
+        public string $bankAccountNumber,
+        public string $bankCode,
     ) {
     }
 }

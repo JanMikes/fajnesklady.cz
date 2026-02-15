@@ -47,6 +47,12 @@ final class RegisterController extends AbstractController
                     password: $formData->password,
                     firstName: $formData->firstName,
                     lastName: $formData->lastName,
+                    companyName: $formData->isCompany ? $formData->companyName : null,
+                    companyId: $formData->isCompany ? $formData->companyId : null,
+                    companyVatId: $formData->isCompany ? $formData->companyVatId : null,
+                    billingStreet: $formData->isCompany ? $formData->billingStreet : null,
+                    billingCity: $formData->isCompany ? $formData->billingCity : null,
+                    billingPostalCode: $formData->isCompany ? $formData->billingPostalCode : null,
                 );
 
                 $this->commandBus->dispatch($command);

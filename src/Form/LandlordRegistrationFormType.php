@@ -13,12 +13,18 @@ use Symfony\Component\Form\Extension\Core\Type\TelType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 /**
  * @extends AbstractType<LandlordRegistrationFormData>
  */
 final class LandlordRegistrationFormType extends AbstractType
 {
+    public function __construct(
+        private readonly UrlGeneratorInterface $urlGenerator,
+    ) {
+    }
+
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $builder
@@ -108,8 +114,22 @@ final class LandlordRegistrationFormType extends AbstractType
                     'maxlength' => 10,
                 ],
             ])
+            ->add('bankAccountNumber', TextType::class, [
+                'label' => 'Číslo účtu',
+                'attr' => [
+                    'placeholder' => '123456-1234567890',
+                ],
+            ])
+            ->add('bankCode', TextType::class, [
+                'label' => 'Kód banky',
+                'attr' => [
+                    'placeholder' => '0100',
+                    'maxlength' => 4,
+                ],
+            ])
             ->add('agreeTerms', CheckboxType::class, [
-                'label' => 'Souhlasím s obchodními podmínkami',
+                'label' => sprintf('Souhlasím s <a href="%s" target="_blank" class="link">obchodními podmínkami</a>', $this->urlGenerator->generate('public_terms_and_conditions')),
+                'label_html' => true,
             ]);
     }
 
