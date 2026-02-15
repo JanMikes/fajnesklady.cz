@@ -15,7 +15,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Uid\Uuid;
 
 #[Route('/portal/places/{placeId}/storage-types/{storageTypeId}/photos/{photoId}/delete', name: 'portal_storage_type_photo_delete', methods: ['POST'])]
-#[IsGranted('ROLE_LANDLORD')]
+#[IsGranted('ROLE_ADMIN')]
 final class StorageTypePhotoDeleteController extends AbstractController
 {
     public function __construct(

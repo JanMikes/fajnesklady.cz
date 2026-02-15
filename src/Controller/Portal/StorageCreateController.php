@@ -16,7 +16,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Uid\Uuid;
 
 #[Route('/portal/storages/create', name: 'portal_storages_create')]
-#[IsGranted('ROLE_LANDLORD')]
+#[IsGranted('ROLE_ADMIN')]
 final class StorageCreateController extends AbstractController
 {
     public function __construct(

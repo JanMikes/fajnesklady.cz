@@ -14,7 +14,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Uid\Uuid;
 
 #[Route('/portal/places/{placeId}/storage-types', name: 'portal_storage_types_list')]
-#[IsGranted('ROLE_LANDLORD')]
+#[IsGranted('ROLE_ADMIN')]
 final class StorageTypeListController extends AbstractController
 {
     public function __construct(

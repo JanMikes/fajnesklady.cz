@@ -7,9 +7,7 @@ namespace App\Tests\Unit\Security;
 use App\Entity\Place;
 use App\Entity\StorageType;
 use App\Entity\User;
-use App\Repository\PlaceRepository;
 use App\Service\Security\StorageTypeVoter;
-use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Authorization\Voter\VoterInterface;
@@ -17,13 +15,11 @@ use Symfony\Component\Uid\Uuid;
 
 class StorageTypeVoterTest extends TestCase
 {
-    private PlaceRepository&MockObject $placeRepository;
     private StorageTypeVoter $voter;
 
     protected function setUp(): void
     {
-        $this->placeRepository = $this->createMock(PlaceRepository::class);
-        $this->voter = new StorageTypeVoter($this->placeRepository);
+        $this->voter = new StorageTypeVoter();
     }
 
     private function createUser(string $email = 'user@example.com'): User
@@ -31,9 +27,9 @@ class StorageTypeVoterTest extends TestCase
         return new User(Uuid::v7(), $email, 'password', 'Test', 'User', new \DateTimeImmutable());
     }
 
-    private function createPlace(): Place
+    private function createStorageType(): StorageType
     {
-        return new Place(
+        $place = new Place(
             id: Uuid::v7(),
             name: 'Test Place',
             address: 'Test Address',
@@ -42,13 +38,10 @@ class StorageTypeVoterTest extends TestCase
             description: null,
             createdAt: new \DateTimeImmutable(),
         );
-    }
 
-    private function createStorageType(?Place $place = null): StorageType
-    {
         return new StorageType(
             id: Uuid::v7(),
-            place: $place ?? $this->createPlace(),
+            place: $place,
             name: 'Test Storage Type',
             innerWidth: 100,
             innerHeight: 100,
@@ -113,7 +106,7 @@ class StorageTypeVoterTest extends TestCase
         $this->assertSame(VoterInterface::ACCESS_GRANTED, $result);
     }
 
-    public function testLandlordCanViewStorageType(): void
+    public function testLandlordCannotViewStorageType(): void
     {
         $landlord = $this->createUser('landlord@example.com');
         $this->setUserRoles($landlord, ['ROLE_USER', 'ROLE_LANDLORD']);
@@ -122,71 +115,27 @@ class StorageTypeVoterTest extends TestCase
 
         $result = $this->voter->vote($this->createToken($landlord), $storageType, [StorageTypeVoter::VIEW]);
 
-        $this->assertSame(VoterInterface::ACCESS_GRANTED, $result);
+        $this->assertSame(VoterInterface::ACCESS_DENIED, $result);
     }
 
-    public function testLandlordCanEditStorageTypeAtOwnedPlace(): void
+    public function testLandlordCannotEditStorageType(): void
     {
         $landlord = $this->createUser('landlord@example.com');
         $this->setUserRoles($landlord, ['ROLE_USER', 'ROLE_LANDLORD']);
 
-        $place = $this->createPlace();
-        $storageType = $this->createStorageType($place);
-
-        $this->placeRepository->method('isOwnedBy')
-            ->with($place, $landlord)
-            ->willReturn(true);
-
-        $result = $this->voter->vote($this->createToken($landlord), $storageType, [StorageTypeVoter::EDIT]);
-
-        $this->assertSame(VoterInterface::ACCESS_GRANTED, $result);
-    }
-
-    public function testLandlordCannotEditStorageTypeAtUnownedPlace(): void
-    {
-        $landlord = $this->createUser('landlord@example.com');
-        $this->setUserRoles($landlord, ['ROLE_USER', 'ROLE_LANDLORD']);
-
-        $place = $this->createPlace();
-        $storageType = $this->createStorageType($place);
-
-        $this->placeRepository->method('isOwnedBy')
-            ->with($place, $landlord)
-            ->willReturn(false);
+        $storageType = $this->createStorageType();
 
         $result = $this->voter->vote($this->createToken($landlord), $storageType, [StorageTypeVoter::EDIT]);
 
         $this->assertSame(VoterInterface::ACCESS_DENIED, $result);
     }
 
-    public function testLandlordCanDeleteStorageTypeAtOwnedPlace(): void
+    public function testLandlordCannotDeleteStorageType(): void
     {
         $landlord = $this->createUser('landlord@example.com');
         $this->setUserRoles($landlord, ['ROLE_USER', 'ROLE_LANDLORD']);
 
-        $place = $this->createPlace();
-        $storageType = $this->createStorageType($place);
-
-        $this->placeRepository->method('isOwnedBy')
-            ->with($place, $landlord)
-            ->willReturn(true);
-
-        $result = $this->voter->vote($this->createToken($landlord), $storageType, [StorageTypeVoter::DELETE]);
-
-        $this->assertSame(VoterInterface::ACCESS_GRANTED, $result);
-    }
-
-    public function testLandlordCannotDeleteStorageTypeAtUnownedPlace(): void
-    {
-        $landlord = $this->createUser('landlord@example.com');
-        $this->setUserRoles($landlord, ['ROLE_USER', 'ROLE_LANDLORD']);
-
-        $place = $this->createPlace();
-        $storageType = $this->createStorageType($place);
-
-        $this->placeRepository->method('isOwnedBy')
-            ->with($place, $landlord)
-            ->willReturn(false);
+        $storageType = $this->createStorageType();
 
         $result = $this->voter->vote($this->createToken($landlord), $storageType, [StorageTypeVoter::DELETE]);
 

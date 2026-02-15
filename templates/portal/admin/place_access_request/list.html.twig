@@ -1,0 +1,51 @@
+{% extends 'portal/layout.html.twig' %}
+
+{% block title %}Žádosti o přístup{% endblock %}
+
+{% block content %}
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold text-gray-900">Žádosti o přístup</h1>
+    </div>
+
+    <div class="card">
+        <div class="overflow-x-auto">
+            <table class="table table-zebra">
+                <thead>
+                    <tr>
+                        <th>Pronajímatel</th>
+                        <th>E-mail</th>
+                        <th>Místo</th>
+                        <th>Zpráva</th>
+                        <th>Vytvořeno</th>
+                        <th>Akce</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for request in requests %}
+                        <tr>
+                            <td class="font-medium text-gray-900">{{ request.requestedBy.fullName }}</td>
+                            <td class="text-gray-500">{{ request.requestedBy.email }}</td>
+                            <td class="font-medium">{{ request.place.name }}</td>
+                            <td class="text-gray-500 max-w-xs truncate">{{ request.message|default('-') }}</td>
+                            <td class="text-gray-500 text-sm">{{ request.createdAt|date('d.m.Y H:i') }}</td>
+                            <td>
+                                <div class="flex items-center gap-2">
+                                    <form action="{{ path('portal_admin_place_access_request_approve', {id: request.id}) }}" method="post" class="inline">
+                                        <button type="submit" class="btn btn-success btn-sm">Schválit</button>
+                                    </form>
+                                    <form action="{{ path('portal_admin_place_access_request_deny', {id: request.id}) }}" method="post" class="inline">
+                                        <button type="submit" class="btn btn-error btn-sm">Zamítnout</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center text-gray-500 py-8">Žádné nevyřízené žádosti</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}

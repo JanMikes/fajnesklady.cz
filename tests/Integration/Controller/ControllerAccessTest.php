@@ -299,7 +299,7 @@ class ControllerAccessTest extends WebTestCase
         $this->assertResponseStatusCodeSame(403);
     }
 
-    public function testStorageTypeListRendersForLandlord(): void
+    public function testStorageTypeListDeniedForLandlord(): void
     {
         $landlord = $this->createUser('st-list-landlord@example.com', UserRole::LANDLORD);
         $storageType = $this->createStorageType('Test Storage Type');
@@ -307,8 +307,7 @@ class ControllerAccessTest extends WebTestCase
         $this->login($landlord);
         $this->client->request('GET', '/portal/places/'.$storageType->place->id->toRfc4122().'/storage-types');
 
-        $this->assertResponseIsSuccessful();
-        $this->assertSelectorTextContains('td', 'Test Storage Type');
+        $this->assertResponseStatusCodeSame(403);
     }
 
     public function testStorageTypeListRendersForAdmin(): void
@@ -334,7 +333,7 @@ class ControllerAccessTest extends WebTestCase
         $this->assertResponseStatusCodeSame(403);
     }
 
-    public function testStorageTypeCreateRendersForLandlord(): void
+    public function testStorageTypeCreateDeniedForLandlord(): void
     {
         $landlord = $this->createUser('st-create-landlord@example.com', UserRole::LANDLORD);
         $place = $this->getFixturePlace();
@@ -342,7 +341,7 @@ class ControllerAccessTest extends WebTestCase
 
         $this->client->request('GET', '/portal/places/'.$place->id->toRfc4122().'/storage-types/create');
 
-        $this->assertResponseIsSuccessful();
+        $this->assertResponseStatusCodeSame(403);
     }
 
     public function testStorageTypeCreateRendersForAdmin(): void
@@ -489,6 +488,7 @@ class ControllerAccessTest extends WebTestCase
         yield 'admin_places' => ['/portal/admin/places'];
         yield 'admin_orders' => ['/portal/admin/orders'];
         yield 'admin_audit_log' => ['/portal/admin/audit-log'];
+        yield 'admin_place_access_requests' => ['/portal/admin/place-access-requests'];
     }
 
     #[DataProvider('adminPagesProvider')]
@@ -773,14 +773,14 @@ class ControllerAccessTest extends WebTestCase
         $this->assertResponseStatusCodeSame(403);
     }
 
-    public function testStorageCreateAccessibleByLandlord(): void
+    public function testStorageCreateDeniedForLandlord(): void
     {
         $landlord = $this->getFixtureLandlord();
         $this->login($landlord);
 
         $this->client->request('GET', '/portal/storages/create');
 
-        $this->assertResponseIsSuccessful();
+        $this->assertResponseStatusCodeSame(403);
     }
 
     public function testStorageCreateAccessibleByAdmin(): void
@@ -1128,6 +1128,52 @@ class ControllerAccessTest extends WebTestCase
         $this->login($user);
 
         $this->client->request('DELETE', '/api/places/'.$storage->place->id->toRfc4122().'/storages/'.$storage->id->toRfc4122());
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    // ===========================================
+    // PLACE PROPOSE - Landlord only
+    // ===========================================
+
+    public function testPlaceProposeRequiresAuthentication(): void
+    {
+        $this->client->request('GET', '/portal/places/propose');
+
+        $this->assertResponseRedirects('/login');
+    }
+
+    public function testPlaceProposeAccessibleByLandlord(): void
+    {
+        $landlord = $this->getFixtureLandlord();
+        $this->login($landlord);
+
+        $this->client->request('GET', '/portal/places/propose');
+
+        $this->assertResponseIsSuccessful();
+    }
+
+    public function testPlaceProposeDeniedForUser(): void
+    {
+        $user = $this->getFixtureUser();
+        $this->login($user);
+
+        $this->client->request('GET', '/portal/places/propose');
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    // ===========================================
+    // PLACE ACCESS REQUEST - Landlord can request
+    // ===========================================
+
+    public function testPlaceAccessRequestDeniedForUser(): void
+    {
+        $place = $this->getFixturePlace();
+        $user = $this->getFixtureUser();
+        $this->login($user);
+
+        $this->client->request('POST', '/portal/places/'.$place->id->toRfc4122().'/request-access');
 
         $this->assertResponseStatusCodeSame(403);
     }

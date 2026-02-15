@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Controller\Portal;
 
+use App\Entity\User;
+use App\Repository\PlaceAccessRepository;
+use App\Repository\PlaceAccessRequestRepository;
 use App\Repository\PlaceRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -17,6 +20,8 @@ final class PlaceListController extends AbstractController
 {
     public function __construct(
         private readonly PlaceRepository $placeRepository,
+        private readonly PlaceAccessRepository $placeAccessRepository,
+        private readonly PlaceAccessRequestRepository $placeAccessRequestRepository,
     ) {
     }
 
@@ -25,17 +30,36 @@ final class PlaceListController extends AbstractController
         $page = max(1, (int) $request->query->get('page', '1'));
         $limit = 20;
 
-        // All users see all places (places are now global)
         $places = $this->placeRepository->findAllPaginated($page, $limit);
         $totalPlaces = $this->placeRepository->countTotal();
 
         $totalPages = (int) ceil($totalPlaces / $limit);
+
+        $userPlaceAccessIds = [];
+        $pendingRequestPlaceIds = [];
+
+        if (!$this->isGranted('ROLE_ADMIN')) {
+            /** @var User $user */
+            $user = $this->getUser();
+
+            $placeAccesses = $this->placeAccessRepository->findByUser($user);
+            foreach ($placeAccesses as $access) {
+                $userPlaceAccessIds[] = $access->place->id->toRfc4122();
+            }
+
+            $pendingIds = $this->placeAccessRequestRepository->findPendingPlaceIdsByUser($user);
+            foreach ($pendingIds as $uuid) {
+                $pendingRequestPlaceIds[] = $uuid->toRfc4122();
+            }
+        }
 
         return $this->render('portal/place/list.html.twig', [
             'places' => $places,
             'currentPage' => $page,
             'totalPages' => $totalPages,
             'totalPlaces' => $totalPlaces,
+            'userPlaceAccessIds' => $userPlaceAccessIds,
+            'pendingRequestPlaceIds' => $pendingRequestPlaceIds,
         ]);
     }
 }

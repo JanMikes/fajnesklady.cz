@@ -1,16 +1,25 @@
 {% extends 'portal/layout.html.twig' %}
 
-{% block title %}Místa - Admin{% endblock %}
+{% block title %}Místa{% endblock %}
 
 {% block content %}
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-3xl font-bold text-gray-900">Místa</h1>
-        <a href="{{ path('portal_places_create') }}" class="btn btn-primary">
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-            </svg>
-            Přidat místo
-        </a>
+        {% if is_granted('ROLE_ADMIN') %}
+            <a href="{{ path('portal_places_create') }}" class="btn btn-primary">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                Přidat místo
+            </a>
+        {% else %}
+            <a href="{{ path('portal_places_propose') }}" class="btn btn-primary">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                Navrhnout nové místo
+            </a>
+        {% endif %}
     </div>
 
     <div class="card">
@@ -41,32 +50,59 @@
                             <td class="text-gray-500 text-sm">{{ place.createdAt|date('d.m.Y H:i') }}</td>
                             <td>
                                 <div class="flex items-center gap-2">
-                                    <a href="{{ path('portal_storage_types_list', {placeId: place.id}) }}" class="inline-flex items-center text-purple-600 hover:text-purple-800 text-sm font-medium" title="Typy skladů">
-                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                                        </svg>
-                                        Typy
-                                    </a>
-                                    <a href="{{ path('portal_storage_canvas', {placeId: place.id}) }}" class="inline-flex items-center text-green-600 hover:text-green-800 text-sm font-medium" title="Editor skladu">
-                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
-                                        </svg>
-                                        Editor
-                                    </a>
-                                    <a href="{{ path('portal_places_edit', {id: place.id}) }}" class="inline-flex items-center link text-sm font-medium">
-                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                        </svg>
-                                        Upravit
-                                    </a>
-                                    <form action="{{ path('portal_places_delete', {id: place.id}) }}" method="post" class="inline" onsubmit="return confirm('Opravdu chcete smazat toto místo?');">
-                                        <button type="submit" class="inline-flex items-center text-red-600 hover:text-red-800 text-sm font-medium">
+                                    {% if is_granted('ROLE_ADMIN') %}
+                                        <a href="{{ path('portal_storage_types_list', {placeId: place.id}) }}" class="inline-flex items-center text-purple-600 hover:text-purple-800 text-sm font-medium" title="Typy skladů">
                                             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                                             </svg>
-                                            Smazat
-                                        </button>
-                                    </form>
+                                            Typy
+                                        </a>
+                                        <a href="{{ path('portal_storage_canvas', {placeId: place.id}) }}" class="inline-flex items-center text-green-600 hover:text-green-800 text-sm font-medium" title="Editor skladu">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+                                            </svg>
+                                            Editor
+                                        </a>
+                                        <a href="{{ path('portal_places_edit', {id: place.id}) }}" class="inline-flex items-center link text-sm font-medium">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                            </svg>
+                                            Upravit
+                                        </a>
+                                        <form action="{{ path('portal_places_delete', {id: place.id}) }}" method="post" class="inline" onsubmit="return confirm('Opravdu chcete smazat toto místo?');">
+                                            <button type="submit" class="inline-flex items-center text-red-600 hover:text-red-800 text-sm font-medium">
+                                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                                Smazat
+                                            </button>
+                                        </form>
+                                    {% else %}
+                                        {% if place.id.toRfc4122() in userPlaceAccessIds %}
+                                            <a href="{{ path('portal_storages_list', {place: place.id}) }}" class="inline-flex items-center text-green-600 hover:text-green-800 text-sm font-medium">
+                                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                                                </svg>
+                                                Moje sklady
+                                            </a>
+                                        {% elseif place.id.toRfc4122() in pendingRequestPlaceIds %}
+                                            <span class="inline-flex items-center text-amber-600 text-sm font-medium">
+                                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                                Žádost odeslána
+                                            </span>
+                                        {% else %}
+                                            <form action="{{ path('portal_place_request_access', {placeId: place.id}) }}" method="post" class="inline">
+                                                <button type="submit" class="inline-flex items-center text-blue-600 hover:text-blue-800 text-sm font-medium">
+                                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                                                    </svg>
+                                                    Požádat o přístup
+                                                </button>
+                                            </form>
+                                        {% endif %}
+                                    {% endif %}
                                 </div>
                             </td>
                         </tr>
