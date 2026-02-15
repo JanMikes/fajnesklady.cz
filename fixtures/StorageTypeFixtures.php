@@ -4,30 +4,39 @@ declare(strict_types=1);
 
 namespace App\DataFixtures;
 
+use App\Entity\Place;
 use App\Entity\StorageType;
 use Doctrine\Bundle\FixturesBundle\Fixture;
+use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
-final class StorageTypeFixtures extends Fixture
+final class StorageTypeFixtures extends Fixture implements DependentFixtureInterface
 {
-    // Global storage types (no longer place-specific)
-    public const REF_SMALL = 'storage-type-small';
-    public const REF_MEDIUM = 'storage-type-medium';
-    public const REF_LARGE = 'storage-type-large';
-    public const REF_PREMIUM = 'storage-type-premium';
-    public const REF_STANDARD = 'storage-type-standard';
-    public const REF_CUSTOM = 'storage-type-custom'; // Non-uniform type with per-storage pricing
+    // Praha Centrum
+    public const REF_SMALL_CENTRUM = 'storage-type-small-centrum';
+    public const REF_MEDIUM_CENTRUM = 'storage-type-medium-centrum';
+    public const REF_LARGE_CENTRUM = 'storage-type-large-centrum';
+    public const REF_CUSTOM_CENTRUM = 'storage-type-custom-centrum';
 
-    // Keep old references for backward compatibility in tests
-    public const REF_SMALL_CENTRUM = self::REF_SMALL;
-    public const REF_MEDIUM_CENTRUM = self::REF_MEDIUM;
-    public const REF_LARGE_CENTRUM = self::REF_LARGE;
-    public const REF_SMALL_JIH = self::REF_SMALL;
-    public const REF_MEDIUM_JIH = self::REF_MEDIUM;
-    public const REF_PREMIUM_BRNO = self::REF_PREMIUM;
-    public const REF_STANDARD_OSTRAVA = self::REF_STANDARD;
+    // Praha Jih
+    public const REF_SMALL_JIH = 'storage-type-small-jih';
+    public const REF_MEDIUM_JIH = 'storage-type-medium-jih';
+
+    // Brno
+    public const REF_PREMIUM_BRNO = 'storage-type-premium-brno';
+
+    // Ostrava
+    public const REF_STANDARD_OSTRAVA = 'storage-type-standard-ostrava';
+
+    // Backward compatibility aliases
+    public const REF_SMALL = self::REF_SMALL_CENTRUM;
+    public const REF_MEDIUM = self::REF_MEDIUM_CENTRUM;
+    public const REF_LARGE = self::REF_LARGE_CENTRUM;
+    public const REF_PREMIUM = self::REF_PREMIUM_BRNO;
+    public const REF_STANDARD = self::REF_STANDARD_OSTRAVA;
+    public const REF_CUSTOM = self::REF_CUSTOM_CENTRUM;
 
     public function __construct(
         private ClockInterface $clock,
@@ -38,99 +47,161 @@ final class StorageTypeFixtures extends Fixture
     {
         $now = $this->clock->now();
 
-        // Global storage types with default prices
-        $smallBox = new StorageType(
+        /** @var Place $placePrahaCentrum */
+        $placePrahaCentrum = $this->getReference(PlaceFixtures::REF_PRAHA_CENTRUM, Place::class);
+
+        /** @var Place $placePrahaJih */
+        $placePrahaJih = $this->getReference(PlaceFixtures::REF_PRAHA_JIH, Place::class);
+
+        /** @var Place $placeBrno */
+        $placeBrno = $this->getReference(PlaceFixtures::REF_BRNO, Place::class);
+
+        /** @var Place $placeOstrava */
+        $placeOstrava = $this->getReference(PlaceFixtures::REF_OSTRAVA, Place::class);
+
+        // Praha Centrum storage types
+        $smallCentrum = new StorageType(
             id: Uuid::v7(),
+            place: $placePrahaCentrum,
             name: 'Maly box',
-            innerWidth: 100,   // 1m in cm
+            innerWidth: 100,
             innerHeight: 100,
             innerLength: 100,
-            defaultPricePerWeek: 15000,   // 150 CZK
-            defaultPricePerMonth: 50000,  // 500 CZK
+            defaultPricePerWeek: 15000,
+            defaultPricePerMonth: 50000,
             createdAt: $now,
         );
-        $manager->persist($smallBox);
-        $this->addReference(self::REF_SMALL, $smallBox);
+        $manager->persist($smallCentrum);
+        $this->addReference(self::REF_SMALL_CENTRUM, $smallCentrum);
 
-        $mediumBox = new StorageType(
+        $mediumCentrum = new StorageType(
             id: Uuid::v7(),
+            place: $placePrahaCentrum,
             name: 'Stredni box',
-            innerWidth: 200,   // 2m in cm
+            innerWidth: 200,
             innerHeight: 200,
             innerLength: 200,
-            defaultPricePerWeek: 35000,   // 350 CZK
-            defaultPricePerMonth: 120000, // 1200 CZK
+            defaultPricePerWeek: 35000,
+            defaultPricePerMonth: 120000,
             createdAt: $now,
             outerWidth: 210,
             outerHeight: 210,
             outerLength: 210,
         );
-        $manager->persist($mediumBox);
-        $this->addReference(self::REF_MEDIUM, $mediumBox);
+        $manager->persist($mediumCentrum);
+        $this->addReference(self::REF_MEDIUM_CENTRUM, $mediumCentrum);
 
-        $largeBox = new StorageType(
+        $largeCentrum = new StorageType(
             id: Uuid::v7(),
+            place: $placePrahaCentrum,
             name: 'Velky box',
-            innerWidth: 300,   // 3m in cm
+            innerWidth: 300,
             innerHeight: 250,
             innerLength: 400,
-            defaultPricePerWeek: 80000,   // 800 CZK
-            defaultPricePerMonth: 280000, // 2800 CZK
+            defaultPricePerWeek: 80000,
+            defaultPricePerMonth: 280000,
             createdAt: $now,
             outerWidth: 320,
             outerHeight: 270,
             outerLength: 420,
         );
-        $manager->persist($largeBox);
-        $this->addReference(self::REF_LARGE, $largeBox);
+        $manager->persist($largeCentrum);
+        $this->addReference(self::REF_LARGE_CENTRUM, $largeCentrum);
 
-        $premiumBox = new StorageType(
+        // Non-uniform storage type at Praha Centrum
+        $customCentrum = new StorageType(
             id: Uuid::v7(),
+            place: $placePrahaCentrum,
+            name: 'Custom box',
+            innerWidth: 250,
+            innerHeight: 220,
+            innerLength: 300,
+            defaultPricePerWeek: 40000,
+            defaultPricePerMonth: 140000,
+            createdAt: $now,
+            uniformStorages: false,
+            outerWidth: 260,
+            outerHeight: 230,
+            outerLength: 310,
+        );
+        $manager->persist($customCentrum);
+        $this->addReference(self::REF_CUSTOM_CENTRUM, $customCentrum);
+
+        // Praha Jih storage types
+        $smallJih = new StorageType(
+            id: Uuid::v7(),
+            place: $placePrahaJih,
+            name: 'Maly box',
+            innerWidth: 100,
+            innerHeight: 100,
+            innerLength: 100,
+            defaultPricePerWeek: 12000,
+            defaultPricePerMonth: 40000,
+            createdAt: $now,
+        );
+        $manager->persist($smallJih);
+        $this->addReference(self::REF_SMALL_JIH, $smallJih);
+
+        $mediumJih = new StorageType(
+            id: Uuid::v7(),
+            place: $placePrahaJih,
+            name: 'Stredni box',
+            innerWidth: 200,
+            innerHeight: 200,
+            innerLength: 200,
+            defaultPricePerWeek: 30000,
+            defaultPricePerMonth: 100000,
+            createdAt: $now,
+            outerWidth: 210,
+            outerHeight: 210,
+            outerLength: 210,
+        );
+        $manager->persist($mediumJih);
+        $this->addReference(self::REF_MEDIUM_JIH, $mediumJih);
+
+        // Brno
+        $premiumBrno = new StorageType(
+            id: Uuid::v7(),
+            place: $placeBrno,
             name: 'Premium box',
-            innerWidth: 500,   // 5m in cm
+            innerWidth: 500,
             innerHeight: 300,
             innerLength: 600,
-            defaultPricePerWeek: 150000,  // 1500 CZK
-            defaultPricePerMonth: 500000, // 5000 CZK
+            defaultPricePerWeek: 150000,
+            defaultPricePerMonth: 500000,
             createdAt: $now,
             outerWidth: 520,
             outerHeight: 320,
             outerLength: 620,
         );
-        $manager->persist($premiumBox);
-        $this->addReference(self::REF_PREMIUM, $premiumBox);
+        $manager->persist($premiumBrno);
+        $this->addReference(self::REF_PREMIUM_BRNO, $premiumBrno);
 
-        $standardBox = new StorageType(
+        // Ostrava
+        $standardOstrava = new StorageType(
             id: Uuid::v7(),
+            place: $placeOstrava,
             name: 'Standardni box',
             innerWidth: 150,
             innerHeight: 150,
             innerLength: 150,
-            defaultPricePerWeek: 20000,   // 200 CZK
-            defaultPricePerMonth: 70000,  // 700 CZK
+            defaultPricePerWeek: 20000,
+            defaultPricePerMonth: 70000,
             createdAt: $now,
         );
-        $manager->persist($standardBox);
-        $this->addReference(self::REF_STANDARD, $standardBox);
-
-        // Non-uniform storage type - each storage has unique pricing
-        $customBox = new StorageType(
-            id: Uuid::v7(),
-            name: 'Custom box',
-            innerWidth: 250,
-            innerHeight: 220,
-            innerLength: 300,
-            defaultPricePerWeek: 40000,   // 400 CZK (default)
-            defaultPricePerMonth: 140000, // 1400 CZK (default)
-            createdAt: $now,
-            uniformStorages: false, // Non-uniform - allows per-storage pricing
-            outerWidth: 260,
-            outerHeight: 230,
-            outerLength: 310,
-        );
-        $manager->persist($customBox);
-        $this->addReference(self::REF_CUSTOM, $customBox);
+        $manager->persist($standardOstrava);
+        $this->addReference(self::REF_STANDARD_OSTRAVA, $standardOstrava);
 
         $manager->flush();
+    }
+
+    /**
+     * @return array<class-string<Fixture>>
+     */
+    public function getDependencies(): array
+    {
+        return [
+            PlaceFixtures::class,
+        ];
     }
 }

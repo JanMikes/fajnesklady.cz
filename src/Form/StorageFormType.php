@@ -171,12 +171,11 @@ class StorageFormType extends AbstractType
      */
     private function getStorageTypeChoices(): array
     {
-        // Storage types are now global, show all available
         $storageTypes = $this->storageTypeRepository->findAllActive();
 
         $choices = [];
         foreach ($storageTypes as $storageType) {
-            $label = $storageType->name.' ('.$storageType->getDimensionsInMeters().')';
+            $label = $storageType->name.' ('.$storageType->getDimensionsInMeters().') - '.$storageType->place->name;
             $choices[$label] = $storageType->id->toRfc4122();
         }
 

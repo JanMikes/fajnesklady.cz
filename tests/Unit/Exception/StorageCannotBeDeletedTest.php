@@ -49,6 +49,7 @@ class StorageCannotBeDeletedTest extends TestCase
 
         $storageType = new StorageType(
             id: Uuid::v7(),
+            place: $place,
             name: 'Test Type',
             innerWidth: 100,
             innerHeight: 200,

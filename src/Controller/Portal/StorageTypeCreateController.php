@@ -9,6 +9,7 @@ use App\Command\CreateStorageTypeCommand;
 use App\Entity\StorageType;
 use App\Form\StorageTypeFormData;
 use App\Form\StorageTypeFormType;
+use App\Repository\PlaceRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -16,18 +17,22 @@ use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Messenger\Stamp\HandledStamp;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
+use Symfony\Component\Uid\Uuid;
 
-#[Route('/portal/storage-types/create', name: 'portal_storage_types_create')]
-#[IsGranted('ROLE_ADMIN')]
+#[Route('/portal/places/{placeId}/storage-types/create', name: 'portal_storage_types_create')]
+#[IsGranted('ROLE_LANDLORD')]
 final class StorageTypeCreateController extends AbstractController
 {
     public function __construct(
         private readonly MessageBusInterface $commandBus,
+        private readonly PlaceRepository $placeRepository,
     ) {
     }
 
-    public function __invoke(Request $request): Response
+    public function __invoke(Request $request, string $placeId): Response
     {
+        $place = $this->placeRepository->get(Uuid::fromString($placeId));
+
         $form = $this->createForm(StorageTypeFormType::class);
         $form->handleRequest($request);
 
@@ -40,6 +45,7 @@ final class StorageTypeCreateController extends AbstractController
             $defaultPricePerMonth = (int) round(($formData->defaultPricePerMonth ?? 0.0) * 100);
 
             $command = new CreateStorageTypeCommand(
+                placeId: $place->id,
                 name: $formData->name,
                 innerWidth: $formData->innerWidth ?? 0,
                 innerHeight: $formData->innerHeight ?? 0,
@@ -67,10 +73,11 @@ final class StorageTypeCreateController extends AbstractController
 
             $this->addFlash('success', 'Typ skladu byl úspěšně vytvořen.');
 
-            return $this->redirectToRoute('portal_storage_types_list');
+            return $this->redirectToRoute('portal_storage_types_list', ['placeId' => $placeId]);
         }
 
         return $this->render('portal/storage_type/create.html.twig', [
+            'place' => $place,
             'form' => $form,
         ]);
     }

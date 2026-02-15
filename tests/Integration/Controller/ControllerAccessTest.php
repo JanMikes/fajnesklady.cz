@@ -291,9 +291,10 @@ class ControllerAccessTest extends WebTestCase
     public function testStorageTypeListRequiresLandlordRole(): void
     {
         $user = $this->createUser('storage-type-user@example.com', UserRole::USER);
+        $place = $this->getFixturePlace();
         $this->login($user);
 
-        $this->client->request('GET', '/portal/storage-types');
+        $this->client->request('GET', '/portal/places/'.$place->id->toRfc4122().'/storage-types');
 
         $this->assertResponseStatusCodeSame(403);
     }
@@ -301,10 +302,10 @@ class ControllerAccessTest extends WebTestCase
     public function testStorageTypeListRendersForLandlord(): void
     {
         $landlord = $this->createUser('st-list-landlord@example.com', UserRole::LANDLORD);
-        $this->createStorageType('Test Storage Type');
+        $storageType = $this->createStorageType('Test Storage Type');
 
         $this->login($landlord);
-        $this->client->request('GET', '/portal/storage-types');
+        $this->client->request('GET', '/portal/places/'.$storageType->place->id->toRfc4122().'/storage-types');
 
         $this->assertResponseIsSuccessful();
         $this->assertSelectorTextContains('td', 'Test Storage Type');
@@ -313,31 +314,44 @@ class ControllerAccessTest extends WebTestCase
     public function testStorageTypeListRendersForAdmin(): void
     {
         $admin = $this->createUser('st-list-admin@example.com', UserRole::ADMIN);
-        $this->createStorageType('Admin View Type');
+        $storageType = $this->createStorageType('Admin View Type');
 
         $this->login($admin);
-        $this->client->request('GET', '/portal/storage-types');
+        $this->client->request('GET', '/portal/places/'.$storageType->place->id->toRfc4122().'/storage-types');
 
         $this->assertResponseIsSuccessful();
         $this->assertSelectorTextContains('td', 'Admin View Type');
     }
 
-    public function testStorageTypeCreateRequiresAdminRole(): void
+    public function testStorageTypeCreateRequiresUserRole(): void
     {
-        $landlord = $this->createUser('st-create-landlord@example.com', UserRole::LANDLORD);
-        $this->login($landlord);
+        $user = $this->createUser('st-create-user@example.com', UserRole::USER);
+        $place = $this->getFixturePlace();
+        $this->login($user);
 
-        $this->client->request('GET', '/portal/storage-types/create');
+        $this->client->request('GET', '/portal/places/'.$place->id->toRfc4122().'/storage-types/create');
 
         $this->assertResponseStatusCodeSame(403);
+    }
+
+    public function testStorageTypeCreateRendersForLandlord(): void
+    {
+        $landlord = $this->createUser('st-create-landlord@example.com', UserRole::LANDLORD);
+        $place = $this->getFixturePlace();
+        $this->login($landlord);
+
+        $this->client->request('GET', '/portal/places/'.$place->id->toRfc4122().'/storage-types/create');
+
+        $this->assertResponseIsSuccessful();
     }
 
     public function testStorageTypeCreateRendersForAdmin(): void
     {
         $admin = $this->createUser('st-create-admin@example.com', UserRole::ADMIN);
+        $place = $this->getFixturePlace();
         $this->login($admin);
 
-        $this->client->request('GET', '/portal/storage-types/create');
+        $this->client->request('GET', '/portal/places/'.$place->id->toRfc4122().'/storage-types/create');
 
         $this->assertResponseIsSuccessful();
     }
@@ -359,7 +373,7 @@ class ControllerAccessTest extends WebTestCase
         $storageType = $this->createStorageType('ST Type');
 
         $this->login($landlord2);
-        $this->client->request('GET', '/portal/storage-types/'.$storageType->id->toRfc4122().'/edit');
+        $this->client->request('GET', '/portal/places/'.$storageType->place->id->toRfc4122().'/storage-types/'.$storageType->id->toRfc4122().'/edit');
 
         $this->assertResponseStatusCodeSame(403);
     }
@@ -786,9 +800,10 @@ class ControllerAccessTest extends WebTestCase
     public function testStorageTypeCreateDeniedForUser(): void
     {
         $user = $this->getFixtureUser();
+        $place = $this->getFixturePlace();
         $this->login($user);
 
-        $this->client->request('GET', '/portal/storage-types/create');
+        $this->client->request('GET', '/portal/places/'.$place->id->toRfc4122().'/storage-types/create');
 
         $this->assertResponseStatusCodeSame(403);
     }
@@ -803,7 +818,7 @@ class ControllerAccessTest extends WebTestCase
         $user = $this->getFixtureUser();
         $this->login($user);
 
-        $this->client->request('POST', '/portal/storage-types/'.$storageType->id->toRfc4122().'/delete');
+        $this->client->request('POST', '/portal/places/'.$storageType->place->id->toRfc4122().'/storage-types/'.$storageType->id->toRfc4122().'/delete');
 
         $this->assertResponseStatusCodeSame(403);
     }
@@ -818,7 +833,7 @@ class ControllerAccessTest extends WebTestCase
         $user = $this->getFixtureUser();
         $this->login($user);
 
-        $this->client->request('GET', '/portal/storage-types/'.$storageType->id->toRfc4122().'/edit');
+        $this->client->request('GET', '/portal/places/'.$storageType->place->id->toRfc4122().'/storage-types/'.$storageType->id->toRfc4122().'/edit');
 
         $this->assertResponseStatusCodeSame(403);
     }
@@ -829,7 +844,7 @@ class ControllerAccessTest extends WebTestCase
         $admin = $this->getFixtureAdmin();
         $this->login($admin);
 
-        $this->client->request('GET', '/portal/storage-types/'.$storageType->id->toRfc4122().'/edit');
+        $this->client->request('GET', '/portal/places/'.$storageType->place->id->toRfc4122().'/storage-types/'.$storageType->id->toRfc4122().'/edit');
 
         $this->assertResponseIsSuccessful();
     }
@@ -1301,6 +1316,7 @@ class ControllerAccessTest extends WebTestCase
         $now = new \DateTimeImmutable();
         $storageType = new StorageType(
             id: Uuid::v7(),
+            place: $this->createPlace('Place for '.$name),
             name: $name,
             innerWidth: 100,
             innerHeight: 100,

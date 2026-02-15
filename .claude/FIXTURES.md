@@ -15,7 +15,7 @@ UserFixtures
     ↓
 PlaceFixtures
     ↓
-StorageTypeFixtures
+StorageTypeFixtures (depends on PlaceFixtures)
     ↓
 StorageFixtures
     ↓
@@ -48,7 +48,9 @@ StorageUnavailabilityFixtures
 | `PlaceFixtures::REF_BRNO` | ADMIN | Sklad Brno | Brno |
 | `PlaceFixtures::REF_OSTRAVA` | LANDLORD2 | Sklad Ostrava | Ostrava |
 
-## Storage Types
+## Storage Types (per-Place)
+
+Storage types belong to a specific Place.
 
 ### Praha Centrum
 | Constant | Name | Dimensions | Weekly | Monthly |
@@ -56,6 +58,7 @@ StorageUnavailabilityFixtures
 | `StorageTypeFixtures::REF_SMALL_CENTRUM` | Maly box | 1m x 1m x 1m | 150 CZK | 500 CZK |
 | `StorageTypeFixtures::REF_MEDIUM_CENTRUM` | Stredni box | 2m x 2m x 2m | 350 CZK | 1200 CZK |
 | `StorageTypeFixtures::REF_LARGE_CENTRUM` | Velky box | 3m x 2.5m x 4m | 800 CZK | 2800 CZK |
+| `StorageTypeFixtures::REF_CUSTOM_CENTRUM` | Custom box | 2.5m x 2.2m x 3m | 400 CZK | 1400 CZK |
 
 ### Praha Jih
 | Constant | Name | Weekly | Monthly |
@@ -72,6 +75,16 @@ StorageUnavailabilityFixtures
 | Constant | Name | Weekly | Monthly |
 |----------|------|--------|---------|
 | `StorageTypeFixtures::REF_STANDARD_OSTRAVA` | Standardni box | 200 CZK | 700 CZK |
+
+### Backward compatibility aliases
+| Alias | Points to |
+|-------|-----------|
+| `StorageTypeFixtures::REF_SMALL` | `REF_SMALL_CENTRUM` |
+| `StorageTypeFixtures::REF_MEDIUM` | `REF_MEDIUM_CENTRUM` |
+| `StorageTypeFixtures::REF_LARGE` | `REF_LARGE_CENTRUM` |
+| `StorageTypeFixtures::REF_PREMIUM` | `REF_PREMIUM_BRNO` |
+| `StorageTypeFixtures::REF_STANDARD` | `REF_STANDARD_OSTRAVA` |
+| `StorageTypeFixtures::REF_CUSTOM` | `REF_CUSTOM_CENTRUM` |
 
 ## Storages
 
@@ -172,3 +185,4 @@ class MyTest extends KernelTestCase
 2. **Use constants** - `UserFixtures::REF_LANDLORD` not `'user-landlord'`
 3. **MockClock** - Time is fixed at 2025-06-15 12:00:00 UTC, never use `new \DateTimeImmutable()`
 4. **Isolation tests** - Use LANDLORD2 and Ostrava place to test landlord isolation
+5. **Storage types are per-Place** - Each storage type belongs to exactly one Place

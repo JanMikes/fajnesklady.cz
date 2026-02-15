@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Exception;
 
+use App\Entity\Place;
 use App\Entity\StorageType;
 use App\Exception\NoStorageAvailable;
 use PHPUnit\Framework\TestCase;
@@ -11,10 +12,24 @@ use Symfony\Component\Uid\Uuid;
 
 class NoStorageAvailableTest extends TestCase
 {
+    private function createPlace(): Place
+    {
+        return new Place(
+            id: Uuid::v7(),
+            name: 'Test Place',
+            address: 'Test Address',
+            city: 'Praha',
+            postalCode: '110 00',
+            description: null,
+            createdAt: new \DateTimeImmutable(),
+        );
+    }
+
     private function createStorageType(string $name): StorageType
     {
         return new StorageType(
             id: Uuid::v7(),
+            place: $this->createPlace(),
             name: $name,
             innerWidth: 100,
             innerHeight: 200,

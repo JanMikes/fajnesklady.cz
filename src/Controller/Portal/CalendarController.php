@@ -69,37 +69,18 @@ final class CalendarController extends AbstractController
         }
 
         // Get storage types for the filter dropdown (based on selected place)
-        if ($isAdmin) {
-            if (null !== $selectedPlace) {
-                $storageTypes = $this->storageTypeRepository->findByPlace($selectedPlace);
-            } else {
-                $storageTypes = $this->storageTypeRepository->findAll();
-            }
+        if (null !== $selectedPlace) {
+            $storageTypes = $this->storageTypeRepository->findByPlace($selectedPlace);
+        } elseif ($isAdmin) {
+            $storageTypes = $this->storageTypeRepository->findAll();
         } else {
-            if (null !== $selectedPlace) {
-                $storageTypes = $this->storageTypeRepository->findByOwnerAndPlace($user, $selectedPlace);
-            } else {
-                $storageTypes = $this->storageTypeRepository->findByOwner($user);
-            }
+            $storageTypes = [];
         }
 
         // Determine selected storage type
         $selectedStorageType = null;
         if ('' !== $storageTypeId && 'all' !== $storageTypeId) {
             $selectedStorageType = $this->storageTypeRepository->find(Uuid::fromString($storageTypeId));
-
-            if (null !== $selectedStorageType) {
-                // Verify ownership
-                if (!$isAdmin) {
-                    if (null !== $selectedPlace) {
-                        if (!$this->storageTypeRepository->isOwnedByAtPlace($selectedStorageType, $user, $selectedPlace)) {
-                            throw $this->createAccessDeniedException();
-                        }
-                    } elseif (!$this->storageTypeRepository->isOwnedBy($selectedStorageType, $user)) {
-                        throw $this->createAccessDeniedException();
-                    }
-                }
-            }
         }
 
         $calendarData = [];

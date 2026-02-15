@@ -8,6 +8,7 @@ use App\Command\AddStorageTypePhotoCommand;
 use App\Command\UpdateStorageTypeCommand;
 use App\Form\StorageTypeFormData;
 use App\Form\StorageTypeFormType;
+use App\Repository\PlaceRepository;
 use App\Repository\StorageTypeRepository;
 use App\Service\Security\StorageTypeVoter;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -18,19 +19,26 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Uid\Uuid;
 
-#[Route('/portal/storage-types/{id}/edit', name: 'portal_storage_types_edit')]
+#[Route('/portal/places/{placeId}/storage-types/{id}/edit', name: 'portal_storage_types_edit')]
 #[IsGranted('ROLE_LANDLORD')]
 final class StorageTypeEditController extends AbstractController
 {
     public function __construct(
         private readonly StorageTypeRepository $storageTypeRepository,
+        private readonly PlaceRepository $placeRepository,
         private readonly MessageBusInterface $commandBus,
     ) {
     }
 
-    public function __invoke(Request $request, string $id): Response
+    public function __invoke(Request $request, string $placeId, string $id): Response
     {
+        $place = $this->placeRepository->get(Uuid::fromString($placeId));
         $storageType = $this->storageTypeRepository->get(Uuid::fromString($id));
+
+        // Verify storage type belongs to this place
+        if ($storageType->place->id->toRfc4122() !== $place->id->toRfc4122()) {
+            throw $this->createNotFoundException();
+        }
 
         // Check ownership via voter
         $this->denyAccessUnlessGranted(StorageTypeVoter::EDIT, $storageType);
@@ -71,10 +79,11 @@ final class StorageTypeEditController extends AbstractController
 
             $this->addFlash('success', 'Typ skladu byl úspěšně aktualizován.');
 
-            return $this->redirectToRoute('portal_storage_types_list');
+            return $this->redirectToRoute('portal_storage_types_list', ['placeId' => $placeId]);
         }
 
         return $this->render('portal/storage_type/edit.html.twig', [
+            'place' => $place,
             'form' => $form,
             'storageType' => $storageType,
         ]);

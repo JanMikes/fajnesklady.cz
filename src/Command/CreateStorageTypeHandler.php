@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Command;
 
 use App\Entity\StorageType;
+use App\Repository\PlaceRepository;
 use App\Repository\StorageTypeRepository;
 use App\Service\Identity\ProvideIdentity;
 use Psr\Clock\ClockInterface;
@@ -15,6 +16,7 @@ final readonly class CreateStorageTypeHandler
 {
     public function __construct(
         private StorageTypeRepository $storageTypeRepository,
+        private PlaceRepository $placeRepository,
         private ClockInterface $clock,
         private ProvideIdentity $identityProvider,
     ) {
@@ -23,9 +25,11 @@ final readonly class CreateStorageTypeHandler
     public function __invoke(CreateStorageTypeCommand $command): StorageType
     {
         $now = $this->clock->now();
+        $place = $this->placeRepository->get($command->placeId);
 
         $storageType = new StorageType(
             id: $this->identityProvider->next(),
+            place: $place,
             name: $command->name,
             innerWidth: $command->innerWidth,
             innerHeight: $command->innerHeight,

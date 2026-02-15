@@ -62,6 +62,7 @@ class ContractRepositoryTest extends KernelTestCase
     {
         $storageType = new StorageType(
             id: Uuid::v7(),
+            place: $this->createPlace(),
             name: 'Test Type',
             innerWidth: 100,
             innerHeight: 100,

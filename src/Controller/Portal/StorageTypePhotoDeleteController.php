@@ -14,7 +14,7 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Uid\Uuid;
 
-#[Route('/portal/storage-types/{storageTypeId}/photos/{photoId}/delete', name: 'portal_storage_type_photo_delete', methods: ['POST'])]
+#[Route('/portal/places/{placeId}/storage-types/{storageTypeId}/photos/{photoId}/delete', name: 'portal_storage_type_photo_delete', methods: ['POST'])]
 #[IsGranted('ROLE_LANDLORD')]
 final class StorageTypePhotoDeleteController extends AbstractController
 {
@@ -24,7 +24,7 @@ final class StorageTypePhotoDeleteController extends AbstractController
     ) {
     }
 
-    public function __invoke(string $storageTypeId, string $photoId): Response
+    public function __invoke(string $placeId, string $storageTypeId, string $photoId): Response
     {
         $photo = $this->photoRepository->find(Uuid::fromString($photoId));
 
@@ -41,6 +41,6 @@ final class StorageTypePhotoDeleteController extends AbstractController
 
         $this->addFlash('success', 'Fotografie byla úspěšně odstraněna.');
 
-        return $this->redirectToRoute('portal_storage_types_edit', ['id' => $storageTypeId]);
+        return $this->redirectToRoute('portal_storage_types_edit', ['placeId' => $placeId, 'id' => $storageTypeId]);
     }
 }

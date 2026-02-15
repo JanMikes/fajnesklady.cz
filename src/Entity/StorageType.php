@@ -47,6 +47,9 @@ class StorageType
         #[ORM\Id]
         #[ORM\Column(type: UuidType::NAME, unique: true)]
         private(set) Uuid $id,
+        #[ORM\ManyToOne(targetEntity: Place::class)]
+        #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
+        private(set) Place $place,
         #[ORM\Column(length: 255)]
         private(set) string $name,
         #[ORM\Column]

@@ -371,6 +371,7 @@ class GenerateSelfBillingInvoicesCommandTest extends KernelTestCase
     {
         $storageType = new StorageType(
             id: Uuid::v7(),
+            place: $this->createPlace(),
             name: 'Test Type SB',
             innerWidth: 100,
             innerHeight: 100,

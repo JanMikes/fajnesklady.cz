@@ -44,6 +44,7 @@ class ContractTest extends TestCase
     {
         return new StorageType(
             id: Uuid::v7(),
+            place: $this->createPlace(),
             name: 'Small Box',
             innerWidth: 100,
             innerHeight: 100,

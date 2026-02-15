@@ -83,24 +83,30 @@ final class StorageFixtures extends Fixture implements DependentFixtureInterface
         /** @var User $landlord2 */
         $landlord2 = $this->getReference(UserFixtures::REF_LANDLORD2, User::class);
 
-        // Get storage types (now global)
-        /** @var StorageType $smallType */
-        $smallType = $this->getReference(StorageTypeFixtures::REF_SMALL, StorageType::class);
+        // Get storage types (place-specific)
+        /** @var StorageType $smallTypeCentrum */
+        $smallTypeCentrum = $this->getReference(StorageTypeFixtures::REF_SMALL_CENTRUM, StorageType::class);
 
-        /** @var StorageType $mediumType */
-        $mediumType = $this->getReference(StorageTypeFixtures::REF_MEDIUM, StorageType::class);
+        /** @var StorageType $mediumTypeCentrum */
+        $mediumTypeCentrum = $this->getReference(StorageTypeFixtures::REF_MEDIUM_CENTRUM, StorageType::class);
 
-        /** @var StorageType $largeType */
-        $largeType = $this->getReference(StorageTypeFixtures::REF_LARGE, StorageType::class);
+        /** @var StorageType $largeTypeCentrum */
+        $largeTypeCentrum = $this->getReference(StorageTypeFixtures::REF_LARGE_CENTRUM, StorageType::class);
+
+        /** @var StorageType $smallTypeJih */
+        $smallTypeJih = $this->getReference(StorageTypeFixtures::REF_SMALL_JIH, StorageType::class);
+
+        /** @var StorageType $mediumTypeJih */
+        $mediumTypeJih = $this->getReference(StorageTypeFixtures::REF_MEDIUM_JIH, StorageType::class);
 
         /** @var StorageType $premiumType */
-        $premiumType = $this->getReference(StorageTypeFixtures::REF_PREMIUM, StorageType::class);
+        $premiumType = $this->getReference(StorageTypeFixtures::REF_PREMIUM_BRNO, StorageType::class);
 
         /** @var StorageType $standardType */
-        $standardType = $this->getReference(StorageTypeFixtures::REF_STANDARD, StorageType::class);
+        $standardType = $this->getReference(StorageTypeFixtures::REF_STANDARD_OSTRAVA, StorageType::class);
 
         /** @var StorageType $customType */
-        $customType = $this->getReference(StorageTypeFixtures::REF_CUSTOM, StorageType::class);
+        $customType = $this->getReference(StorageTypeFixtures::REF_CUSTOM_CENTRUM, StorageType::class);
 
         // Small boxes A1-A5 in Praha Centrum (owned by landlord)
         $smallRefs = [self::REF_SMALL_A1, self::REF_SMALL_A2, self::REF_SMALL_A3, self::REF_SMALL_A4, self::REF_SMALL_A5];
@@ -109,7 +115,7 @@ final class StorageFixtures extends Fixture implements DependentFixtureInterface
                 id: Uuid::v7(),
                 number: "A{$i}",
                 coordinates: ['x' => 50 + ($i - 1) * 110, 'y' => 50, 'width' => 100, 'height' => 100, 'rotation' => 0],
-                storageType: $smallType,
+                storageType: $smallTypeCentrum,
                 place: $placePrahaCentrum,
                 createdAt: $now,
                 owner: $landlord,
@@ -125,7 +131,7 @@ final class StorageFixtures extends Fixture implements DependentFixtureInterface
                 id: Uuid::v7(),
                 number: "B{$i}",
                 coordinates: ['x' => 50 + ($i - 1) * 220, 'y' => 200, 'width' => 200, 'height' => 200, 'rotation' => 0],
-                storageType: $mediumType,
+                storageType: $mediumTypeCentrum,
                 place: $placePrahaCentrum,
                 createdAt: $now,
                 owner: $landlord,
@@ -141,7 +147,7 @@ final class StorageFixtures extends Fixture implements DependentFixtureInterface
                 id: Uuid::v7(),
                 number: "C{$i}",
                 coordinates: ['x' => 50 + ($i - 1) * 420, 'y' => 450, 'width' => 400, 'height' => 300, 'rotation' => 0],
-                storageType: $largeType,
+                storageType: $largeTypeCentrum,
                 place: $placePrahaCentrum,
                 createdAt: $now,
                 owner: $landlord,
@@ -157,7 +163,7 @@ final class StorageFixtures extends Fixture implements DependentFixtureInterface
                 id: Uuid::v7(),
                 number: "D{$i}",
                 coordinates: ['x' => 50 + ($i - 1) * 110, 'y' => 50, 'width' => 100, 'height' => 100, 'rotation' => 0],
-                storageType: $smallType,
+                storageType: $smallTypeJih,
                 place: $placePrahaJih,
                 createdAt: $now,
                 owner: $landlord,
@@ -173,7 +179,7 @@ final class StorageFixtures extends Fixture implements DependentFixtureInterface
                 id: Uuid::v7(),
                 number: "E{$i}",
                 coordinates: ['x' => 50 + ($i - 1) * 220, 'y' => 200, 'width' => 200, 'height' => 200, 'rotation' => 0],
-                storageType: $mediumType,
+                storageType: $mediumTypeJih,
                 place: $placePrahaJih,
                 createdAt: $now,
                 owner: $landlord,

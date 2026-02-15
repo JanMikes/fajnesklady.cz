@@ -4,18 +4,34 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Entity;
 
+use App\Entity\Place;
 use App\Entity\StorageType;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
 class StorageTypeTest extends TestCase
 {
+    private function createPlace(): Place
+    {
+        return new Place(
+            id: Uuid::v7(),
+            name: 'Test Place',
+            address: 'Test Address',
+            city: 'Praha',
+            postalCode: '110 00',
+            description: null,
+            createdAt: new \DateTimeImmutable(),
+        );
+    }
+
     public function testCreateStorageType(): void
     {
         $now = new \DateTimeImmutable();
+        $place = $this->createPlace();
 
         $storageType = new StorageType(
             id: Uuid::v7(),
+            place: $place,
             name: 'Small Box',
             innerWidth: 150,
             innerHeight: 200,
@@ -26,6 +42,7 @@ class StorageTypeTest extends TestCase
         );
 
         $this->assertInstanceOf(Uuid::class, $storageType->id);
+        $this->assertSame($place, $storageType->place);
         $this->assertSame('Small Box', $storageType->name);
         $this->assertSame(150, $storageType->innerWidth);
         $this->assertSame(200, $storageType->innerHeight);
@@ -40,6 +57,7 @@ class StorageTypeTest extends TestCase
     {
         $storageType = new StorageType(
             id: Uuid::v7(),
+            place: $this->createPlace(),
             name: 'Test',
             innerWidth: 100,
             innerHeight: 100,
@@ -56,6 +74,7 @@ class StorageTypeTest extends TestCase
     {
         $storageType = new StorageType(
             id: Uuid::v7(),
+            place: $this->createPlace(),
             name: 'Test',
             innerWidth: 100,
             innerHeight: 100,
@@ -73,6 +92,7 @@ class StorageTypeTest extends TestCase
         // 200cm x 300cm x 400cm = 2m x 3m x 4m = 24 m³
         $storageType = new StorageType(
             id: Uuid::v7(),
+            place: $this->createPlace(),
             name: 'Test',
             innerWidth: 200,
             innerHeight: 300,
@@ -90,6 +110,7 @@ class StorageTypeTest extends TestCase
         // 200cm x 400cm = 2m x 4m = 8 m²
         $storageType = new StorageType(
             id: Uuid::v7(),
+            place: $this->createPlace(),
             name: 'Test',
             innerWidth: 200,
             innerHeight: 300,
@@ -106,6 +127,7 @@ class StorageTypeTest extends TestCase
     {
         $storageType = new StorageType(
             id: Uuid::v7(),
+            place: $this->createPlace(),
             name: 'Test',
             innerWidth: 200,
             innerHeight: 300,
@@ -120,9 +142,12 @@ class StorageTypeTest extends TestCase
 
     public function testOuterDimensions(): void
     {
+        $place = $this->createPlace();
+
         // Without outer dimensions
         $storageType = new StorageType(
             id: Uuid::v7(),
+            place: $place,
             name: 'Test',
             innerWidth: 200,
             innerHeight: 300,
@@ -138,6 +163,7 @@ class StorageTypeTest extends TestCase
         // With outer dimensions
         $storageTypeWithOuter = new StorageType(
             id: Uuid::v7(),
+            place: $place,
             name: 'Test',
             innerWidth: 200,
             innerHeight: 300,
@@ -161,6 +187,7 @@ class StorageTypeTest extends TestCase
 
         $storageType = new StorageType(
             id: Uuid::v7(),
+            place: $this->createPlace(),
             name: 'Original',
             innerWidth: 100,
             innerHeight: 100,
@@ -207,6 +234,7 @@ class StorageTypeTest extends TestCase
 
         $storageType = new StorageType(
             id: Uuid::v7(),
+            place: $this->createPlace(),
             name: 'Test',
             innerWidth: 100,
             innerHeight: 100,
@@ -240,6 +268,7 @@ class StorageTypeTest extends TestCase
 
         $storageType = new StorageType(
             id: Uuid::v7(),
+            place: $this->createPlace(),
             name: 'Test',
             innerWidth: 100,
             innerHeight: 100,
@@ -262,6 +291,7 @@ class StorageTypeTest extends TestCase
     {
         $storageType = new StorageType(
             id: Uuid::v7(),
+            place: $this->createPlace(),
             name: 'Test',
             innerWidth: 100,
             innerHeight: 100,
@@ -278,6 +308,7 @@ class StorageTypeTest extends TestCase
     {
         $storageType = new StorageType(
             id: Uuid::v7(),
+            place: $this->createPlace(),
             name: 'Non-Uniform Storage',
             innerWidth: 100,
             innerHeight: 100,
@@ -298,6 +329,7 @@ class StorageTypeTest extends TestCase
 
         $storageType = new StorageType(
             id: Uuid::v7(),
+            place: $this->createPlace(),
             name: 'Test',
             innerWidth: 100,
             innerHeight: 100,
@@ -333,6 +365,7 @@ class StorageTypeTest extends TestCase
     {
         $storageType = new StorageType(
             id: Uuid::v7(),
+            place: $this->createPlace(),
             name: 'Test',
             innerWidth: 100,
             innerHeight: 100,
@@ -350,6 +383,7 @@ class StorageTypeTest extends TestCase
     {
         $storageType = new StorageType(
             id: Uuid::v7(),
+            place: $this->createPlace(),
             name: 'Test',
             innerWidth: 100,
             innerHeight: 100,
