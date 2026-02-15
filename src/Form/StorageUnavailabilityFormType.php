@@ -33,41 +33,29 @@ class StorageUnavailabilityFormType extends AbstractType
         $builder->add('storageId', ChoiceType::class, [
             'label' => 'Sklad',
             'choices' => $this->getStorageChoices(),
-            'attr' => [
-                'class' => 'select select-bordered w-full',
-            ],
             'placeholder' => '-- Vyberte sklad --',
         ]);
 
         $builder->add('startDate', DateType::class, [
             'label' => 'Datum zacatku',
             'widget' => 'single_text',
-            'attr' => [
-                'class' => 'input input-bordered w-full',
-            ],
         ]);
 
         $builder->add('endDate', DateType::class, [
             'label' => 'Datum konce',
             'widget' => 'single_text',
             'required' => false,
-            'attr' => [
-                'class' => 'input input-bordered w-full',
-            ],
         ]);
 
         $builder->add('indefinite', CheckboxType::class, [
             'label' => 'Neomezene (bez data konce)',
             'required' => false,
-            'attr' => [
-                'class' => 'checkbox',
-            ],
         ]);
 
         $builder->add('reason', TextareaType::class, [
             'label' => 'Duvod blokovani',
             'attr' => [
-                'class' => 'textarea textarea-bordered w-full',
+
                 'rows' => 3,
                 'placeholder' => 'napr. udrzba, renovace, rezervace pro konkretniho zakaznika...',
             ],

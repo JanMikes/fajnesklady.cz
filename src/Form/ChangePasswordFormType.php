@@ -21,7 +21,7 @@ final class ChangePasswordFormType extends AbstractType
             'label' => 'Aktuální heslo',
             'attr' => [
                 'placeholder' => 'Zadejte aktuální heslo',
-                'class' => 'input input-bordered w-full',
+
                 'autocomplete' => 'current-password',
             ],
         ]);
@@ -32,7 +32,7 @@ final class ChangePasswordFormType extends AbstractType
                 'label' => 'Nové heslo',
                 'attr' => [
                     'placeholder' => 'Zadejte nové heslo',
-                    'class' => 'input input-bordered w-full',
+    
                     'autocomplete' => 'new-password',
                 ],
             ],
@@ -40,7 +40,7 @@ final class ChangePasswordFormType extends AbstractType
                 'label' => 'Potvrzení nového hesla',
                 'attr' => [
                     'placeholder' => 'Zopakujte nové heslo',
-                    'class' => 'input input-bordered w-full',
+    
                     'autocomplete' => 'new-password',
                 ],
             ],

@@ -22,7 +22,6 @@ class PlaceFormType extends AbstractType
             'label' => 'Nazev',
             'attr' => [
                 'placeholder' => 'Nazev mista',
-                'class' => 'input input-bordered w-full',
             ],
         ]);
 
@@ -30,7 +29,6 @@ class PlaceFormType extends AbstractType
             'label' => 'Adresa',
             'attr' => [
                 'placeholder' => 'Ulice a cislo popisne',
-                'class' => 'input input-bordered w-full',
             ],
         ]);
 
@@ -38,7 +36,6 @@ class PlaceFormType extends AbstractType
             'label' => 'Mesto',
             'attr' => [
                 'placeholder' => 'Praha',
-                'class' => 'input input-bordered w-full',
             ],
         ]);
 
@@ -46,7 +43,6 @@ class PlaceFormType extends AbstractType
             'label' => 'PSC',
             'attr' => [
                 'placeholder' => '110 00',
-                'class' => 'input input-bordered w-full',
             ],
         ]);
 
@@ -55,7 +51,7 @@ class PlaceFormType extends AbstractType
             'required' => false,
             'attr' => [
                 'placeholder' => 'Volitelny popis mista',
-                'class' => 'textarea textarea-bordered w-full',
+
                 'rows' => 4,
             ],
         ]);
@@ -65,7 +61,6 @@ class PlaceFormType extends AbstractType
             'required' => false,
             'attr' => [
                 'accept' => 'image/jpeg,image/png,image/webp',
-                'class' => 'file-input file-input-bordered w-full',
             ],
             'help' => 'Obrazek mapy skladu (JPEG, PNG, WebP, max 5 MB)',
         ]);

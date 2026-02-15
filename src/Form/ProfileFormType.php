@@ -21,7 +21,6 @@ final class ProfileFormType extends AbstractType
             'label' => 'Jméno',
             'attr' => [
                 'placeholder' => 'Jan',
-                'class' => 'input input-bordered w-full',
             ],
         ]);
 
@@ -29,7 +28,6 @@ final class ProfileFormType extends AbstractType
             'label' => 'Příjmení',
             'attr' => [
                 'placeholder' => 'Novák',
-                'class' => 'input input-bordered w-full',
             ],
         ]);
 
@@ -38,7 +36,6 @@ final class ProfileFormType extends AbstractType
             'required' => false,
             'attr' => [
                 'placeholder' => '+420 123 456 789',
-                'class' => 'input input-bordered w-full',
             ],
         ]);
     }

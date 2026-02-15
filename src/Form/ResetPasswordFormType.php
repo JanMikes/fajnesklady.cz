@@ -23,14 +23,14 @@ final class ResetPasswordFormType extends AbstractType
                 'label' => 'Nové heslo',
                 'attr' => [
                     'placeholder' => 'Zadejte nové heslo',
-                    'class' => 'input input-bordered w-full',
+    
                 ],
             ],
             'second_options' => [
                 'label' => 'Potvrzení hesla',
                 'attr' => [
                     'placeholder' => 'Zopakujte nové heslo',
-                    'class' => 'input input-bordered w-full',
+    
                 ],
             ],
             'invalid_message' => 'Hesla se musí shodovat.',

@@ -37,7 +37,6 @@ class StorageFormType extends AbstractType
             'label' => 'Cislo skladu',
             'attr' => [
                 'placeholder' => 'napr. A1, B12',
-                'class' => 'input input-bordered w-full',
             ],
         ]);
 
@@ -45,24 +44,17 @@ class StorageFormType extends AbstractType
             'label' => 'Misto',
             'choices' => $this->getPlaceChoices(),
             'placeholder' => '-- Vyberte misto --',
-            'attr' => [
-                'class' => 'select select-bordered w-full',
-            ],
         ]);
 
         $builder->add('storageTypeId', ChoiceType::class, [
             'label' => 'Typ skladu',
             'choices' => $this->getStorageTypeChoices(),
             'placeholder' => '-- Vyberte typ skladu --',
-            'attr' => [
-                'class' => 'select select-bordered w-full',
-            ],
         ]);
 
         $builder->add('coordinateX', IntegerType::class, [
             'label' => 'Pozice X',
             'attr' => [
-                'class' => 'input input-bordered w-full',
                 'min' => 0,
             ],
         ]);
@@ -70,7 +62,6 @@ class StorageFormType extends AbstractType
         $builder->add('coordinateY', IntegerType::class, [
             'label' => 'Pozice Y',
             'attr' => [
-                'class' => 'input input-bordered w-full',
                 'min' => 0,
             ],
         ]);
@@ -78,7 +69,6 @@ class StorageFormType extends AbstractType
         $builder->add('coordinateWidth', IntegerType::class, [
             'label' => 'Sirka',
             'attr' => [
-                'class' => 'input input-bordered w-full',
                 'min' => 1,
             ],
         ]);
@@ -86,7 +76,6 @@ class StorageFormType extends AbstractType
         $builder->add('coordinateHeight', IntegerType::class, [
             'label' => 'Vyska',
             'attr' => [
-                'class' => 'input input-bordered w-full',
                 'min' => 1,
             ],
         ]);
@@ -94,7 +83,6 @@ class StorageFormType extends AbstractType
         $builder->add('coordinateRotation', IntegerType::class, [
             'label' => 'Rotace (stupne)',
             'attr' => [
-                'class' => 'input input-bordered w-full',
                 'min' => 0,
                 'max' => 360,
             ],
@@ -109,7 +97,6 @@ class StorageFormType extends AbstractType
                 'scale' => 2,
                 'attr' => [
                     'placeholder' => 'Pouzije se vychozi cena typu',
-                    'class' => 'input input-bordered w-full',
                     'step' => '0.01',
                 ],
                 'help' => 'Nechte prazdne pro pouziti vychozi ceny typu skladu',
@@ -121,7 +108,6 @@ class StorageFormType extends AbstractType
                 'scale' => 2,
                 'attr' => [
                     'placeholder' => 'Pouzije se vychozi cena typu',
-                    'class' => 'input input-bordered w-full',
                     'step' => '0.01',
                 ],
                 'help' => 'Nechte prazdne pro pouziti vychozi ceny typu skladu',
@@ -136,7 +122,6 @@ class StorageFormType extends AbstractType
                 'scale' => 0,
                 'attr' => [
                     'placeholder' => 'Pouzije se vychozi provize pronajimatele',
-                    'class' => 'input input-bordered w-full',
                     'min' => 0,
                     'max' => 100,
                 ],

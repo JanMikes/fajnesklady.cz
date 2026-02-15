@@ -24,7 +24,6 @@ class RegistrationFormType extends AbstractType
             'label' => 'E-mailová adresa',
             'attr' => [
                 'placeholder' => 'vas@email.cz',
-                'class' => 'input input-bordered w-full',
             ],
         ]);
 
@@ -32,7 +31,6 @@ class RegistrationFormType extends AbstractType
             'label' => 'Jméno',
             'attr' => [
                 'placeholder' => 'Jan',
-                'class' => 'input input-bordered w-full',
             ],
         ]);
 
@@ -40,7 +38,6 @@ class RegistrationFormType extends AbstractType
             'label' => 'Příjmení',
             'attr' => [
                 'placeholder' => 'Novák',
-                'class' => 'input input-bordered w-full',
             ],
         ]);
 
@@ -50,14 +47,14 @@ class RegistrationFormType extends AbstractType
                 'label' => 'Heslo',
                 'attr' => [
                     'placeholder' => 'Zadejte heslo',
-                    'class' => 'input input-bordered w-full',
+    
                 ],
             ],
             'second_options' => [
                 'label' => 'Heslo znovu',
                 'attr' => [
                     'placeholder' => 'Zopakujte heslo',
-                    'class' => 'input input-bordered w-full',
+    
                 ],
             ],
             'invalid_message' => 'Hesla se musí shodovat.',
@@ -65,9 +62,8 @@ class RegistrationFormType extends AbstractType
 
         $builder->add('agreeTerms', CheckboxType::class, [
             'label' => 'Souhlasím s obchodními podmínkami',
-            'attr' => [
-                'class' => 'checkbox checkbox-primary',
-            ],
+
+
         ]);
     }
 

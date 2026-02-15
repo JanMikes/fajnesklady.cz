@@ -25,7 +25,6 @@ class StorageTypeFormType extends AbstractType
             'label' => 'Nazev',
             'attr' => [
                 'placeholder' => 'Nazev typu skladu',
-                'class' => 'input input-bordered w-full',
             ],
         ]);
 
@@ -34,7 +33,6 @@ class StorageTypeFormType extends AbstractType
             'label' => 'Vnitrni sirka (cm)',
             'attr' => [
                 'placeholder' => '200',
-                'class' => 'input input-bordered w-full',
             ],
         ]);
 
@@ -42,7 +40,6 @@ class StorageTypeFormType extends AbstractType
             'label' => 'Vnitrni vyska (cm)',
             'attr' => [
                 'placeholder' => '250',
-                'class' => 'input input-bordered w-full',
             ],
         ]);
 
@@ -50,7 +47,6 @@ class StorageTypeFormType extends AbstractType
             'label' => 'Vnitrni delka (cm)',
             'attr' => [
                 'placeholder' => '300',
-                'class' => 'input input-bordered w-full',
             ],
         ]);
 
@@ -60,7 +56,6 @@ class StorageTypeFormType extends AbstractType
             'required' => false,
             'attr' => [
                 'placeholder' => '210',
-                'class' => 'input input-bordered w-full',
             ],
         ]);
 
@@ -69,7 +64,6 @@ class StorageTypeFormType extends AbstractType
             'required' => false,
             'attr' => [
                 'placeholder' => '260',
-                'class' => 'input input-bordered w-full',
             ],
         ]);
 
@@ -78,7 +72,6 @@ class StorageTypeFormType extends AbstractType
             'required' => false,
             'attr' => [
                 'placeholder' => '310',
-                'class' => 'input input-bordered w-full',
             ],
         ]);
 
@@ -87,7 +80,7 @@ class StorageTypeFormType extends AbstractType
             'scale' => 2,
             'attr' => [
                 'placeholder' => '500.00',
-                'class' => 'input input-bordered w-full',
+
                 'step' => '0.01',
             ],
         ]);
@@ -97,7 +90,7 @@ class StorageTypeFormType extends AbstractType
             'scale' => 2,
             'attr' => [
                 'placeholder' => '1500.00',
-                'class' => 'input input-bordered w-full',
+
                 'step' => '0.01',
             ],
         ]);
@@ -107,7 +100,7 @@ class StorageTypeFormType extends AbstractType
             'required' => false,
             'attr' => [
                 'placeholder' => 'Volitelny popis typu skladu',
-                'class' => 'textarea textarea-bordered w-full',
+
                 'rows' => 3,
             ],
         ]);
@@ -116,9 +109,8 @@ class StorageTypeFormType extends AbstractType
             'label' => 'Vsechna uloziste budou stejna',
             'required' => false,
             'help' => 'Nebude se zobrazovat mapa pro vyber konkretniho mista a maji jednotnou cenu',
-            'attr' => [
-                'class' => 'checkbox',
-            ],
+
+
         ]);
 
         $builder->add('photos', FileType::class, [
@@ -127,7 +119,6 @@ class StorageTypeFormType extends AbstractType
             'multiple' => true,
             'attr' => [
                 'accept' => 'image/jpeg,image/png,image/webp',
-                'class' => 'file-input file-input-bordered w-full',
             ],
             'help' => 'Nahrajte fotografie skladu (JPEG, PNG, WebP, max 5 MB kazda)',
         ]);

@@ -24,7 +24,6 @@ final class AdminUserFormType extends AbstractType
             'label' => 'Jméno',
             'attr' => [
                 'placeholder' => 'Jan',
-                'class' => 'input input-bordered w-full',
             ],
         ]);
 
@@ -32,7 +31,6 @@ final class AdminUserFormType extends AbstractType
             'label' => 'Příjmení',
             'attr' => [
                 'placeholder' => 'Novák',
-                'class' => 'input input-bordered w-full',
             ],
         ]);
 
@@ -41,7 +39,6 @@ final class AdminUserFormType extends AbstractType
             'required' => false,
             'attr' => [
                 'placeholder' => '+420 123 456 789',
-                'class' => 'input input-bordered w-full',
             ],
         ]);
 
@@ -50,7 +47,6 @@ final class AdminUserFormType extends AbstractType
             'required' => false,
             'attr' => [
                 'placeholder' => 'Firma s.r.o.',
-                'class' => 'input input-bordered w-full',
             ],
         ]);
 
@@ -59,7 +55,7 @@ final class AdminUserFormType extends AbstractType
             'required' => false,
             'attr' => [
                 'placeholder' => '12345678',
-                'class' => 'input input-bordered w-full',
+
                 'maxlength' => 8,
             ],
         ]);
@@ -69,7 +65,6 @@ final class AdminUserFormType extends AbstractType
             'required' => false,
             'attr' => [
                 'placeholder' => 'CZ12345678',
-                'class' => 'input input-bordered w-full',
             ],
         ]);
 
@@ -78,7 +73,6 @@ final class AdminUserFormType extends AbstractType
             'required' => false,
             'attr' => [
                 'placeholder' => 'Hlavní 123',
-                'class' => 'input input-bordered w-full',
             ],
         ]);
 
@@ -87,7 +81,6 @@ final class AdminUserFormType extends AbstractType
             'required' => false,
             'attr' => [
                 'placeholder' => 'Praha',
-                'class' => 'input input-bordered w-full',
             ],
         ]);
 
@@ -96,7 +89,7 @@ final class AdminUserFormType extends AbstractType
             'required' => false,
             'attr' => [
                 'placeholder' => '110 00',
-                'class' => 'input input-bordered w-full',
+
                 'maxlength' => 10,
             ],
         ]);
@@ -115,7 +108,7 @@ final class AdminUserFormType extends AbstractType
             'scale' => 0,
             'attr' => [
                 'placeholder' => 'Vychozi 90%',
-                'class' => 'input input-bordered w-full',
+
                 'min' => 0,
                 'max' => 100,
             ],
@@ -127,7 +120,7 @@ final class AdminUserFormType extends AbstractType
             'required' => false,
             'attr' => [
                 'placeholder' => 'napr. P001',
-                'class' => 'input input-bordered w-full',
+
                 'maxlength' => 10,
             ],
             'help' => 'Prefix pro samofakturacni doklady (napr. P001). Povinne pro samofakturaci.',

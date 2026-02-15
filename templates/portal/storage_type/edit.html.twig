@@ -66,7 +66,7 @@
                 {{ form_start(form, {'attr': {'enctype': 'multipart/form-data'}}) }}
                     <div class="mb-4">
                         <label for="{{ form.name.vars.id }}" class="block text-sm font-semibold text-gray-700 mb-2">Název</label>
-                        {{ form_widget(form.name, {'attr': {'class': 'input input-bordered w-full'}}) }}
+                        {{ form_widget(form.name, {}) }}
                         {{ form_errors(form.name) }}
                     </div>
 
@@ -76,17 +76,17 @@
                         <div class="grid grid-cols-3 gap-4">
                             <div>
                                 <label for="{{ form.innerWidth.vars.id }}" class="block text-xs text-gray-500 mb-1">Šířka</label>
-                                {{ form_widget(form.innerWidth, {'attr': {'class': 'input input-bordered w-full', 'placeholder': '200'}}) }}
+                                {{ form_widget(form.innerWidth, {'attr': {'placeholder':'200'}}) }}
                                 {{ form_errors(form.innerWidth) }}
                             </div>
                             <div>
                                 <label for="{{ form.innerHeight.vars.id }}" class="block text-xs text-gray-500 mb-1">Výška</label>
-                                {{ form_widget(form.innerHeight, {'attr': {'class': 'input input-bordered w-full', 'placeholder': '250'}}) }}
+                                {{ form_widget(form.innerHeight, {'attr': {'placeholder':'250'}}) }}
                                 {{ form_errors(form.innerHeight) }}
                             </div>
                             <div>
                                 <label for="{{ form.innerLength.vars.id }}" class="block text-xs text-gray-500 mb-1">Délka</label>
-                                {{ form_widget(form.innerLength, {'attr': {'class': 'input input-bordered w-full', 'placeholder': '300'}}) }}
+                                {{ form_widget(form.innerLength, {'attr': {'placeholder':'300'}}) }}
                                 {{ form_errors(form.innerLength) }}
                             </div>
                         </div>
@@ -98,17 +98,17 @@
                         <div class="grid grid-cols-3 gap-4">
                             <div>
                                 <label for="{{ form.outerWidth.vars.id }}" class="block text-xs text-gray-500 mb-1">Šířka</label>
-                                {{ form_widget(form.outerWidth, {'attr': {'class': 'input input-bordered w-full', 'placeholder': '210'}}) }}
+                                {{ form_widget(form.outerWidth, {'attr': {'placeholder':'210'}}) }}
                                 {{ form_errors(form.outerWidth) }}
                             </div>
                             <div>
                                 <label for="{{ form.outerHeight.vars.id }}" class="block text-xs text-gray-500 mb-1">Výška</label>
-                                {{ form_widget(form.outerHeight, {'attr': {'class': 'input input-bordered w-full', 'placeholder': '260'}}) }}
+                                {{ form_widget(form.outerHeight, {'attr': {'placeholder':'260'}}) }}
                                 {{ form_errors(form.outerHeight) }}
                             </div>
                             <div>
                                 <label for="{{ form.outerLength.vars.id }}" class="block text-xs text-gray-500 mb-1">Délka</label>
-                                {{ form_widget(form.outerLength, {'attr': {'class': 'input input-bordered w-full', 'placeholder': '310'}}) }}
+                                {{ form_widget(form.outerLength, {'attr': {'placeholder':'310'}}) }}
                                 {{ form_errors(form.outerLength) }}
                             </div>
                         </div>
@@ -119,12 +119,12 @@
                         <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <label for="{{ form.defaultPricePerWeek.vars.id }}" class="block text-xs text-gray-500 mb-1">Cena za týden</label>
-                                {{ form_widget(form.defaultPricePerWeek, {'attr': {'class': 'input input-bordered w-full', 'placeholder': '0'}}) }}
+                                {{ form_widget(form.defaultPricePerWeek, {'attr': {'placeholder':'0'}}) }}
                                 {{ form_errors(form.defaultPricePerWeek) }}
                             </div>
                             <div>
                                 <label for="{{ form.defaultPricePerMonth.vars.id }}" class="block text-xs text-gray-500 mb-1">Cena za měsíc</label>
-                                {{ form_widget(form.defaultPricePerMonth, {'attr': {'class': 'input input-bordered w-full', 'placeholder': '0'}}) }}
+                                {{ form_widget(form.defaultPricePerMonth, {'attr': {'placeholder':'0'}}) }}
                                 {{ form_errors(form.defaultPricePerMonth) }}
                             </div>
                         </div>
@@ -132,13 +132,13 @@
 
                     <div class="mb-4">
                         <label for="{{ form.description.vars.id }}" class="block text-sm font-semibold text-gray-700 mb-2">Popis</label>
-                        {{ form_widget(form.description, {'attr': {'class': 'textarea textarea-bordered w-full', 'rows': 3}}) }}
+                        {{ form_widget(form.description, {'attr': {'rows': 3}}) }}
                         {{ form_errors(form.description) }}
                     </div>
 
                     <div class="mb-4">
                         <label class="flex items-center gap-3 cursor-pointer">
-                            {{ form_widget(form.uniformStorages, {'attr': {'class': 'checkbox checkbox-primary'}}) }}
+                            {{ form_widget(form.uniformStorages, {}) }}
                             <span class="text-sm font-semibold text-gray-700">Všechna úložiště budou stejná</span>
                         </label>
                         <p class="text-xs text-gray-500 mt-1 ml-8">Nebude se zobrazovat mapa pro výběr konkrétního místa a budou mít jednotnou cenu</p>
@@ -147,7 +147,7 @@
 
                     <div class="mb-4">
                         <label for="{{ form.photos.vars.id }}" class="block text-sm font-semibold text-gray-700 mb-2">Přidat další fotografie</label>
-                        {{ form_widget(form.photos, {'attr': {'class': 'file-input file-input-bordered w-full'}}) }}
+                        {{ form_widget(form.photos, {}) }}
                         <p class="text-xs text-gray-500 mt-1">Nahrajte fotografie skladu (JPEG, PNG, WebP, max 5 MB každá)</p>
                         {{ form_errors(form.photos) }}
                     </div>

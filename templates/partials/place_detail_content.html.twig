@@ -172,23 +172,20 @@
         </div>
 
         {# Storage Selection Modal for Non-Uniform Types #}
-        <dialog data-storage-map-target="modal" class="modal">
-            <div class="modal-box max-w-md">
-                <h3 class="font-bold text-lg" data-storage-map-target="modalTitle"></h3>
-                <div class="py-4">
-                    <img data-storage-map-target="modalPhoto" class="hidden w-full h-48 object-cover rounded-lg mb-4">
-                    <div data-storage-map-target="modalDetails" class="space-y-2 text-gray-600"></div>
-                </div>
-                <div class="modal-action">
-                    <a data-storage-map-target="modalOrderBtn" href="#" class="btn btn-primary">Objednat</a>
-                    <form method="dialog">
-                        <button class="btn btn-ghost">Zavřít</button>
-                    </form>
+        <dialog data-storage-map-target="modal" class="fixed inset-0 z-50 m-0 p-0 w-full h-full bg-transparent backdrop:bg-black/50">
+            <div class="fixed inset-0 flex items-center justify-center p-4" onclick="if(event.target===this)document.getElementById(this.parentElement.id||this.closest('dialog').id)?.close?.();this.closest('dialog')?.close?.()">
+                <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+                    <h3 class="font-bold text-lg" data-storage-map-target="modalTitle"></h3>
+                    <div class="py-4">
+                        <img data-storage-map-target="modalPhoto" class="hidden w-full h-48 object-cover rounded-lg mb-4">
+                        <div data-storage-map-target="modalDetails" class="space-y-2 text-gray-600"></div>
+                    </div>
+                    <div class="flex justify-end gap-2 mt-4">
+                        <a data-storage-map-target="modalOrderBtn" href="#" class="btn btn-primary">Objednat</a>
+                        <button type="button" onclick="this.closest('dialog').close()" class="btn btn-ghost">Zavřít</button>
+                    </div>
                 </div>
             </div>
-            <form method="dialog" class="modal-backdrop">
-                <button>close</button>
-            </form>
         </dialog>
     </div>
 {% endif %}

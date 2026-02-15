@@ -47,8 +47,32 @@ button {
     @apply bg-transparent text-gray-700 hover:bg-gray-100 border-gray-300 shadow-none;
 }
 
+.btn-success {
+    @apply bg-green-600 text-white hover:bg-green-700 focus:ring-green-500;
+}
+
+.btn-error {
+    @apply bg-red-600 text-white hover:bg-red-700 focus:ring-red-500;
+}
+
+.btn-outline {
+    @apply bg-transparent border-gray-300 text-gray-700 hover:bg-gray-50 shadow-none;
+}
+
+.btn-circle {
+    @apply rounded-full p-2 min-w-0;
+}
+
 .btn-sm {
     @apply px-3 py-1.5 text-xs;
+}
+
+.btn-xs {
+    @apply px-2 py-1 text-xs;
+}
+
+.btn-disabled {
+    @apply opacity-50 cursor-not-allowed;
 }
 
 .btn-lg {

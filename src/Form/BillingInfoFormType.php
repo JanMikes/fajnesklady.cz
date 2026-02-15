@@ -21,7 +21,7 @@ final class BillingInfoFormType extends AbstractType
             'required' => false,
             'attr' => [
                 'placeholder' => '12345678',
-                'class' => 'input input-bordered w-full',
+
                 'maxlength' => 8,
             ],
         ]);
@@ -31,7 +31,6 @@ final class BillingInfoFormType extends AbstractType
             'required' => false,
             'attr' => [
                 'placeholder' => 'Firma s.r.o.',
-                'class' => 'input input-bordered w-full',
             ],
         ]);
 
@@ -40,7 +39,6 @@ final class BillingInfoFormType extends AbstractType
             'required' => false,
             'attr' => [
                 'placeholder' => 'CZ12345678',
-                'class' => 'input input-bordered w-full',
             ],
         ]);
 
@@ -49,7 +47,6 @@ final class BillingInfoFormType extends AbstractType
             'required' => false,
             'attr' => [
                 'placeholder' => 'Hlavní 123',
-                'class' => 'input input-bordered w-full',
             ],
         ]);
 
@@ -58,7 +55,6 @@ final class BillingInfoFormType extends AbstractType
             'required' => false,
             'attr' => [
                 'placeholder' => 'Praha',
-                'class' => 'input input-bordered w-full',
             ],
         ]);
 
@@ -67,7 +63,7 @@ final class BillingInfoFormType extends AbstractType
             'required' => false,
             'attr' => [
                 'placeholder' => '110 00',
-                'class' => 'input input-bordered w-full',
+
                 'maxlength' => 10,
             ],
         ]);

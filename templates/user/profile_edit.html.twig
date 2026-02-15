@@ -14,19 +14,19 @@
                 {{ form_start(form) }}
                     <div class="mb-4">
                         <label for="{{ form.firstName.vars.id }}" class="block text-sm font-semibold text-gray-700 mb-2">Jméno</label>
-                        {{ form_widget(form.firstName, {'attr': {'class': 'input input-bordered w-full'}}) }}
+                        {{ form_widget(form.firstName, {}) }}
                         {{ form_errors(form.firstName) }}
                     </div>
 
                     <div class="mb-4">
                         <label for="{{ form.lastName.vars.id }}" class="block text-sm font-semibold text-gray-700 mb-2">Příjmení</label>
-                        {{ form_widget(form.lastName, {'attr': {'class': 'input input-bordered w-full'}}) }}
+                        {{ form_widget(form.lastName, {}) }}
                         {{ form_errors(form.lastName) }}
                     </div>
 
                     <div class="mb-4">
                         <label for="{{ form.phone.vars.id }}" class="block text-sm font-semibold text-gray-700 mb-2">Telefon</label>
-                        {{ form_widget(form.phone, {'attr': {'class': 'input input-bordered w-full'}}) }}
+                        {{ form_widget(form.phone, {}) }}
                         {{ form_errors(form.phone) }}
                     </div>
 

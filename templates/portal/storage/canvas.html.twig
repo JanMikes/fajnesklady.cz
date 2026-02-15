@@ -144,7 +144,7 @@
                                     <input type="checkbox"
                                            data-storage-canvas-target="snapCheckbox"
                                            data-action="change->storage-canvas#onSnapToggle"
-                                           class="checkbox checkbox-sm">
+                                           class="h-4 w-4 rounded border-gray-300">
                                     Přichytávání
                                 </label>
                                 <div class="flex items-center gap-1 border-l pl-3 ml-1">
@@ -226,11 +226,11 @@
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Číslo skladu</label>
                                 <input type="text" data-storage-canvas-target="numberInput"
                                        data-action="input->storage-canvas#onNumberInputChange"
-                                       class="input input-bordered w-full" placeholder="např. A1">
+                                       class="form-input" placeholder="např. A1">
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Typ skladu</label>
-                                <select data-storage-canvas-target="typeSelect" class="select select-bordered w-full">
+                                <select data-storage-canvas-target="typeSelect" class="form-input">
                                     {% for type in storageTypes %}
                                         <option value="{{ type.id }}">{{ type.name }} ({{ type.getDimensionsInMeters() }})</option>
                                     {% endfor %}
@@ -245,32 +245,32 @@
                                         <label class="text-xs text-gray-500">X</label>
                                         <input type="number" data-storage-canvas-target="coordX"
                                                data-action="input->storage-canvas#onCoordinateInputChange"
-                                               class="input input-bordered input-sm w-full">
+                                               class="form-input text-sm py-1.5">
                                     </div>
                                     <div>
                                         <label class="text-xs text-gray-500">Y</label>
                                         <input type="number" data-storage-canvas-target="coordY"
                                                data-action="input->storage-canvas#onCoordinateInputChange"
-                                               class="input input-bordered input-sm w-full">
+                                               class="form-input text-sm py-1.5">
                                     </div>
                                     <div>
                                         <label class="text-xs text-gray-500">Šířka</label>
                                         <input type="number" data-storage-canvas-target="coordW"
                                                data-action="input->storage-canvas#onCoordinateInputChange"
-                                               class="input input-bordered input-sm w-full" min="1">
+                                               class="form-input text-sm py-1.5" min="1">
                                     </div>
                                     <div>
                                         <label class="text-xs text-gray-500">Výška</label>
                                         <input type="number" data-storage-canvas-target="coordH"
                                                data-action="input->storage-canvas#onCoordinateInputChange"
-                                               class="input input-bordered input-sm w-full" min="1">
+                                               class="form-input text-sm py-1.5" min="1">
                                     </div>
                                 </div>
                                 <div class="mt-2">
                                     <label class="text-xs text-gray-500">Rotace (°)</label>
                                     <input type="number" data-storage-canvas-target="coordR"
                                            data-action="input->storage-canvas#onCoordinateInputChange"
-                                           class="input input-bordered input-sm w-full" min="0" max="359">
+                                           class="form-input text-sm py-1.5" min="0" max="359">
                                 </div>
                             </div>
 
