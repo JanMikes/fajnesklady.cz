@@ -2,7 +2,7 @@ import { Controller } from '@hotwired/stimulus';
 import Konva from 'konva';
 
 export default class extends Controller {
-    static targets = ['container', 'tooltip', 'modal', 'modalTitle', 'modalPhoto', 'modalDetails', 'modalOrderBtn'];
+    static targets = ['container', 'tooltip', 'modal', 'modalTitle', 'modalPhotos', 'modalDetails', 'modalOrderBtn'];
     static values = {
         mapImage: String,
         storages: Array,
@@ -217,11 +217,23 @@ export default class extends Controller {
 
         this.modalTitleTarget.textContent = `Sklad ${storage.number}`;
 
-        if (storage.photoUrl) {
-            this.modalPhotoTarget.src = storage.photoUrl;
-            this.modalPhotoTarget.classList.remove('hidden');
+        if (storage.photoUrls && storage.photoUrls.length > 0) {
+            this.modalPhotosTarget.innerHTML = storage.photoUrls.map((url, index) =>
+                `<a href="${url}" class="glightbox" data-gallery="storage-${storage.id}">
+                    <img src="${url}" alt="Sklad ${storage.number}" class="${index === 0 ? 'w-full h-48' : 'w-full h-20'} object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity">
+                </a>`
+            ).join('');
+            this.modalPhotosTarget.className = storage.photoUrls.length > 1
+                ? 'grid grid-cols-3 gap-2 mb-4'
+                : 'mb-4';
+            this.modalPhotosTarget.classList.remove('hidden');
+        } else if (storage.photoUrl) {
+            this.modalPhotosTarget.innerHTML = `<img src="${storage.photoUrl}" alt="Sklad ${storage.number}" class="w-full h-48 object-cover rounded-lg">`;
+            this.modalPhotosTarget.className = 'mb-4';
+            this.modalPhotosTarget.classList.remove('hidden');
         } else {
-            this.modalPhotoTarget.classList.add('hidden');
+            this.modalPhotosTarget.innerHTML = '';
+            this.modalPhotosTarget.classList.add('hidden');
         }
 
         this.modalDetailsTarget.innerHTML = `

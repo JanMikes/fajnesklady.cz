@@ -33,7 +33,7 @@ final class StorageCanvasController extends AbstractController
         $this->denyAccessUnlessGranted(PlaceVoter::EDIT, $place);
 
         $hasMapImage = null !== $place->mapImagePath;
-        $allStorageTypes = $this->storageTypeRepository->findAllActive();
+        $allStorageTypes = $this->storageTypeRepository->findActiveByPlace($place);
         $hasStorageTypes = [] !== $allStorageTypes;
 
         if (!$hasMapImage || !$hasStorageTypes) {

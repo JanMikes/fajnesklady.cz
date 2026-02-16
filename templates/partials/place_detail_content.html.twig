@@ -1,9 +1,11 @@
+{% if showBackLink ?? true %}
 {# Back Link #}
 <div class="mb-6">
     <a href="{{ path(backRoute, backRouteParams ?? {}) }}" class="text-primary-600 hover:text-primary-700">
         &larr; {{ backLabel|default('Zpět na seznam poboček') }}
     </a>
 </div>
+{% endif %}
 
 {# Place Header #}
 <div class="card mb-8">
@@ -149,7 +151,7 @@
 {# Storage Map #}
 {% if place.mapImagePath or storagesJson != '[]' %}
     <div class="card mb-8"
-         data-controller="storage-map"
+         data-controller="storage-map lightbox"
          data-storage-map-map-image-value="{{ place.mapImagePath ? asset('uploads/places/' ~ place.mapImagePath) : '' }}"
          data-storage-map-storages-value="{{ storagesJson|e('html_attr') }}"
          data-storage-map-storage-types-value="{{ storageTypesJson|e('html_attr') }}"
@@ -184,7 +186,7 @@
                 <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
                     <h3 class="font-bold text-lg" data-storage-map-target="modalTitle"></h3>
                     <div class="py-4">
-                        <img data-storage-map-target="modalPhoto" class="hidden w-full h-48 object-cover rounded-lg mb-4">
+                        <div data-storage-map-target="modalPhotos" class="hidden mb-4"></div>
                         <div data-storage-map-target="modalDetails" class="space-y-2 text-gray-600"></div>
                     </div>
                     <div class="flex justify-end gap-2 mt-4">

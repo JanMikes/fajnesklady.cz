@@ -38,7 +38,9 @@
                 <tbody>
                     {% for place in places %}
                         <tr>
-                            <td class="font-medium text-gray-900">{{ place.name }}</td>
+                            <td class="font-medium text-gray-900">
+                                <a href="{{ path('portal_places_detail', {id: place.id}) }}" class="link">{{ place.name }}</a>
+                            </td>
                             <td>
                                 <span class="inline-flex items-center gap-1.5 text-xs font-medium">
                                     <span class="w-2.5 h-2.5 rounded-full" style="background-color: {{ place.type.color }}"></span>
@@ -51,39 +53,21 @@
                             <td>
                                 <div class="flex items-center gap-2">
                                     {% if is_granted('ROLE_ADMIN') %}
-                                        <a href="{{ path('portal_storage_types_list', {placeId: place.id}) }}" class="inline-flex items-center text-purple-600 hover:text-purple-800 text-sm font-medium" title="Typy skladů">
+                                        <a href="{{ path('portal_places_detail', {id: place.id}) }}" class="inline-flex items-center link text-sm font-medium">
                                             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                             </svg>
-                                            Typy
+                                            Detail
                                         </a>
-                                        <a href="{{ path('portal_storage_canvas', {placeId: place.id}) }}" class="inline-flex items-center text-green-600 hover:text-green-800 text-sm font-medium" title="Editor skladu">
-                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
-                                            </svg>
-                                            Editor
-                                        </a>
-                                        <a href="{{ path('portal_places_edit', {id: place.id}) }}" class="inline-flex items-center link text-sm font-medium">
-                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                            </svg>
-                                            Upravit
-                                        </a>
-                                        <form action="{{ path('portal_places_delete', {id: place.id}) }}" method="post" class="inline" onsubmit="return confirm('Opravdu chcete smazat toto místo?');">
-                                            <button type="submit" class="inline-flex items-center text-red-600 hover:text-red-800 text-sm font-medium">
-                                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                </svg>
-                                                Smazat
-                                            </button>
-                                        </form>
                                     {% else %}
                                         {% if place.id.toRfc4122() in userPlaceAccessIds %}
-                                            <a href="{{ path('portal_storages_list', {place: place.id}) }}" class="inline-flex items-center text-green-600 hover:text-green-800 text-sm font-medium">
+                                            <a href="{{ path('portal_places_detail', {id: place.id}) }}" class="inline-flex items-center link text-sm font-medium">
                                                 <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                                 </svg>
-                                                Moje sklady
+                                                Detail
                                             </a>
                                         {% elseif place.id.toRfc4122() in pendingRequestPlaceIds %}
                                             <span class="inline-flex items-center text-amber-600 text-sm font-medium">

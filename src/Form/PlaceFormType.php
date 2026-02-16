@@ -43,7 +43,7 @@ class PlaceFormType extends AbstractType
             'label' => 'Adresa',
             'required' => false,
             'attr' => [
-                'placeholder' => 'Ulice a cislo popisne',
+                'placeholder' => 'Ulice a čislo popisne',
             ],
         ]);
 

@@ -1,0 +1,158 @@
+{% extends 'portal/layout.html.twig' %}
+
+{% block title %}{{ place.name }}{% endblock %}
+
+{% block breadcrumb %}
+    {% include 'components/breadcrumb.html.twig' with {breadcrumb_items: [
+        {label: 'Místa', url: path('portal_places_list')},
+        {label: place.name},
+    ]} %}
+{% endblock %}
+
+{% block content %}
+    <div class="card mb-8">
+        <div class="card-body">
+            <div class="flex items-center gap-4">
+                <div class="flex-shrink-0">
+                    <div class="bg-primary text-white rounded-full w-16 h-16 flex items-center justify-center">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                    </div>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900">{{ place.name }}</h1>
+                    <div class="flex items-center gap-3 mt-1">
+                        <span class="inline-flex items-center gap-1.5 text-xs font-medium">
+                            <span class="w-2.5 h-2.5 rounded-full" style="background-color: {{ place.type.color }}"></span>
+                            {{ place.type.label }}
+                        </span>
+                        <span class="text-gray-400">|</span>
+                        <span class="text-sm text-gray-500">
+                            {% if place.address %}
+                                {{ place.address }}, {{ place.postalCode }} {{ place.city }}
+                            {% else %}
+                                {{ place.postalCode }} {{ place.city }}
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% if hasAccess %}
+            <a href="{{ path('portal_storages_list', {placeId: place.id}) }}" class="card hover:shadow-lg transition-shadow border-2 border-transparent hover:border-blue-300">
+                <div class="card-body">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="bg-blue-100 text-blue-600 rounded-lg p-3">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 class="text-lg font-semibold text-gray-900">Sklady</h2>
+                            <p class="text-sm text-gray-500">{{ storageCount }} {{ storageCount == 1 ? 'sklad' : (storageCount >= 2 and storageCount <= 4 ? 'sklady' : 'skladu') }}</p>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-600">Spravovat sklady na tomto místě</p>
+                </div>
+            </a>
+        {% endif %}
+
+        {% if is_granted('ROLE_ADMIN') %}
+            <a href="{{ path('portal_storage_types_list', {placeId: place.id}) }}" class="card hover:shadow-lg transition-shadow border-2 border-transparent hover:border-purple-300">
+                <div class="card-body">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="bg-purple-100 text-purple-600 rounded-lg p-3">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                            </svg>
+                        </div>
+                        <div class="flex-1">
+                            <h2 class="text-lg font-semibold text-gray-900">Typy skladů</h2>
+                            <p class="text-sm text-gray-500">{{ storageTypeCount }} {{ storageTypeCount == 1 ? 'typ' : (storageTypeCount >= 2 and storageTypeCount <= 4 ? 'typy' : 'typů') }}</p>
+                        </div>
+                        {% if storageTypeCount == 0 %}
+                            <div class="bg-amber-100 text-amber-600 rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0" title="Žádné typy skladů">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4.5c-.77-.833-2.694-.833-3.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                                </svg>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <p class="text-sm text-gray-600">Spravovat typy skladů</p>
+                </div>
+            </a>
+
+            <a href="{{ path('portal_storage_canvas', {placeId: place.id}) }}" class="card hover:shadow-lg transition-shadow border-2 border-transparent hover:border-green-300">
+                <div class="card-body">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="bg-green-100 text-green-600 rounded-lg p-3">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+                            </svg>
+                        </div>
+                        <div class="flex-1">
+                            <h2 class="text-lg font-semibold text-gray-900">Editor mapy</h2>
+                            <p class="text-sm text-gray-500">
+                                {% if place.mapImagePath %}
+                                    <span class="text-green-600">Mapa nahrána</span>
+                                {% else %}
+                                    <span class="text-amber-600">Mapa není nahrána</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                        {% if not place.mapImagePath %}
+                            <div class="bg-amber-100 text-amber-600 rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0" title="Mapa není nahrána">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4.5c-.77-.833-2.694-.833-3.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                                </svg>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <p class="text-sm text-gray-600">Vizuální editor rozmístění skladů</p>
+                </div>
+            </a>
+
+            <a href="{{ path('portal_places_edit', {id: place.id}) }}" class="card hover:shadow-lg transition-shadow border-2 border-transparent hover:border-gray-300">
+                <div class="card-body">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="bg-gray-100 text-gray-600 rounded-lg p-3">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 class="text-lg font-semibold text-gray-900">Upravit místo</h2>
+                            <p class="text-sm text-gray-500">Název, adresa, popis</p>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-600">Upravit základní informace o místě</p>
+                </div>
+            </a>
+
+            <div class="card border-2 border-transparent">
+                <div class="card-body">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="bg-red-100 text-red-600 rounded-lg p-3">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h2 class="text-lg font-semibold text-gray-900">Smazat místo</h2>
+                            <p class="text-sm text-gray-500 text-red-500">Nebezpečná zóna</p>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-600 mb-4">Trvale smazat toto místo a všechna přiřazená data</p>
+                    <form action="{{ path('portal_places_delete', {id: place.id}) }}" method="post" onsubmit="return confirm('Opravdu chcete smazat toto místo? Tato akce je nevratná.');">
+                        <button type="submit" class="btn btn-error btn-sm">Smazat místo</button>
+                    </form>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+{% endblock %}

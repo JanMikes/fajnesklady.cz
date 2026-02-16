@@ -2,11 +2,15 @@
 
 {% block title %}Navrhnout nové místo{% endblock %}
 
+{% block breadcrumb %}
+    {% include 'components/breadcrumb.html.twig' with {breadcrumb_items: [
+        {label: 'Místa', url: path('portal_places_list')},
+        {label: 'Navrhnout nové místo'},
+    ]} %}
+{% endblock %}
+
 {% block content %}
-    <div class="flex justify-between items-center mb-6">
-        <h1 class="text-3xl font-bold text-gray-900">Navrhnout nové místo</h1>
-        <a href="{{ path('portal_places_list') }}" class="btn btn-ghost">Zpět na seznam</a>
-    </div>
+    <h1 class="text-3xl font-bold text-gray-900 mb-6">Navrhnout nové místo</h1>
 
     <div class="max-w-2xl">
         <div class="card">

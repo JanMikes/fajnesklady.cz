@@ -54,4 +54,11 @@ return [
     'konva' => [
         'version' => '10.2.0',
     ],
+    'glightbox' => [
+        'version' => '3.3.1',
+    ],
+    'glightbox/dist/css/glightbox.min.css' => [
+        'version' => '3.3.1',
+        'type' => 'css',
+    ],
 ];

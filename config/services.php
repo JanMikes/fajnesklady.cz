@@ -99,6 +99,7 @@ return App::config([
                 '$uploadsDirectory' => '%kernel.project_dir%/public/uploads',
             ],
         ],
+        'App\\Service\\StoragePhotoUploader' => null,
         'App\\Middleware\\DispatchDomainEventsMiddleware' => null,
         'App\\Twig\\' => [
             'resource' => '../src/Twig/',

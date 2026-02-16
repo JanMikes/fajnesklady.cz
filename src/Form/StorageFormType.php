@@ -10,6 +10,7 @@ use App\Repository\PlaceRepository;
 use App\Repository\StorageTypeRepository;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
+use Symfony\Component\Form\Extension\Core\Type\FileType;
 use Symfony\Component\Form\Extension\Core\Type\IntegerType;
 use Symfony\Component\Form\Extension\Core\Type\NumberType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
@@ -40,53 +41,57 @@ class StorageFormType extends AbstractType
             ],
         ]);
 
-        $builder->add('placeId', ChoiceType::class, [
-            'label' => 'Misto',
-            'choices' => $this->getPlaceChoices(),
-            'placeholder' => '-- Vyberte misto --',
-        ]);
+        if (!$options['is_edit']) {
+            $builder->add('placeId', ChoiceType::class, [
+                'label' => 'Misto',
+                'choices' => $this->getPlaceChoices(),
+                'placeholder' => '-- Vyberte misto --',
+            ]);
 
-        $builder->add('storageTypeId', ChoiceType::class, [
-            'label' => 'Typ skladu',
-            'choices' => $this->getStorageTypeChoices(),
-            'placeholder' => '-- Vyberte typ skladu --',
-        ]);
+            $builder->add('storageTypeId', ChoiceType::class, [
+                'label' => 'Typ skladu',
+                'choices' => $this->getStorageTypeChoices(),
+                'placeholder' => '-- Vyberte typ skladu --',
+            ]);
+        }
 
-        $builder->add('coordinateX', IntegerType::class, [
-            'label' => 'Pozice X',
-            'attr' => [
-                'min' => 0,
-            ],
-        ]);
+        if (!$options['is_edit']) {
+            $builder->add('coordinateX', IntegerType::class, [
+                'label' => 'Pozice X',
+                'attr' => [
+                    'min' => 0,
+                ],
+            ]);
 
-        $builder->add('coordinateY', IntegerType::class, [
-            'label' => 'Pozice Y',
-            'attr' => [
-                'min' => 0,
-            ],
-        ]);
+            $builder->add('coordinateY', IntegerType::class, [
+                'label' => 'Pozice Y',
+                'attr' => [
+                    'min' => 0,
+                ],
+            ]);
 
-        $builder->add('coordinateWidth', IntegerType::class, [
-            'label' => 'Sirka',
-            'attr' => [
-                'min' => 1,
-            ],
-        ]);
+            $builder->add('coordinateWidth', IntegerType::class, [
+                'label' => 'Sirka',
+                'attr' => [
+                    'min' => 1,
+                ],
+            ]);
 
-        $builder->add('coordinateHeight', IntegerType::class, [
-            'label' => 'Vyska',
-            'attr' => [
-                'min' => 1,
-            ],
-        ]);
+            $builder->add('coordinateHeight', IntegerType::class, [
+                'label' => 'Vyska',
+                'attr' => [
+                    'min' => 1,
+                ],
+            ]);
 
-        $builder->add('coordinateRotation', IntegerType::class, [
-            'label' => 'Rotace (stupne)',
-            'attr' => [
-                'min' => 0,
-                'max' => 360,
-            ],
-        ]);
+            $builder->add('coordinateRotation', IntegerType::class, [
+                'label' => 'Rotace (stupne)',
+                'attr' => [
+                    'min' => 0,
+                    'max' => 360,
+                ],
+            ]);
+        }
 
         /** @var StorageType|null $storageType */
         $storageType = $options['storage_type'];
@@ -114,6 +119,16 @@ class StorageFormType extends AbstractType
             ]);
         }
 
+        $builder->add('photos', FileType::class, [
+            'label' => 'Fotografie',
+            'required' => false,
+            'multiple' => true,
+            'attr' => [
+                'accept' => 'image/jpeg,image/png,image/webp',
+            ],
+            'help' => 'Nahrajte fotografie skladu (JPEG, PNG, WebP, max 5 MB kazda)',
+        ]);
+
         // Commission rate - only for admins
         if ($this->authorizationChecker->isGranted('ROLE_ADMIN')) {
             $builder->add('commissionRate', NumberType::class, [
@@ -135,8 +150,10 @@ class StorageFormType extends AbstractType
         $resolver->setDefaults([
             'data_class' => StorageFormData::class,
             'storage_type' => null,
+            'is_edit' => false,
         ]);
         $resolver->setAllowedTypes('storage_type', ['null', StorageType::class]);
+        $resolver->setAllowedTypes('is_edit', 'bool');
     }
 
     /**

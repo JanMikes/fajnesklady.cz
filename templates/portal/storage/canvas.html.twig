@@ -2,16 +2,15 @@
 
 {% block title %}Editor skladu - {{ place.name }}{% endblock %}
 
-{% block content %}
-    <div class="mb-6">
-        <a href="{{ path('portal_places_list') }}" class="inline-flex items-center text-gray-600 hover:text-gray-900">
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            Zpět na místa
-        </a>
-    </div>
+{% block breadcrumb %}
+    {% include 'components/breadcrumb.html.twig' with {breadcrumb_items: [
+        {label: 'Místa', url: path('portal_places_list')},
+        {label: place.name, url: path('portal_places_detail', {id: place.id})},
+        {label: 'Editor mapy'},
+    ]} %}
+{% endblock %}
 
+{% block content %}
     <div class="flex justify-between items-center mb-6">
         <div>
             <h1 class="text-3xl font-bold text-gray-900">Editor skladu</h1>
@@ -86,7 +85,7 @@
                                     <p class="text-sm text-green-700 mt-1">Typy skladů jsou definované.</p>
                                 {% else %}
                                     <p class="text-sm text-red-700 mt-1">Vytvořte alespoň jeden typ skladu s rozměry a cenou. Typy skladů definují velikost a vlastnosti jednotlivých skladových jednotek.</p>
-                                    <a href="{{ path('portal_storage_types_create') }}" class="inline-flex items-center gap-2 mt-3 btn btn-sm btn-primary">
+                                    <a href="{{ path('portal_storage_types_create', {placeId: place.id}) }}" class="inline-flex items-center gap-2 mt-3 btn btn-sm btn-primary">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                                         </svg>

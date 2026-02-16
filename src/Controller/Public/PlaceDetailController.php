@@ -61,7 +61,11 @@ final class PlaceDetailController extends AbstractController
         // Prepare storage data for the map
         $storagesData = array_map(function ($s) {
             $photos = $s->getPhotos();
-            $photoUrl = !$photos->isEmpty() ? '/uploads/storage_photos/'.$photos->first()->path : null;
+            $photoUrls = array_map(
+                fn ($photo) => '/uploads/'.$photo->path,
+                $photos->toArray(),
+            );
+            $photoUrl = !empty($photoUrls) ? $photoUrls[0] : null;
 
             return [
                 'id' => $s->id->toRfc4122(),
@@ -75,6 +79,7 @@ final class PlaceDetailController extends AbstractController
                 'pricePerMonth' => $s->getEffectivePricePerMonthInCzk(),
                 'isUniform' => $s->storageType->uniformStorages,
                 'photoUrl' => $photoUrl,
+                'photoUrls' => array_values($photoUrls),
             ];
         }, $storages);
 

@@ -2,11 +2,16 @@
 
 {% block title %}Upravit uživatele - Admin{% endblock %}
 
+{% block breadcrumb %}
+    {% include 'components/breadcrumb.html.twig' with {breadcrumb_items: [
+        {label: 'Uživatelé', url: path('portal_users_list')},
+        {label: user.fullName, url: path('portal_users_view', {id: user.id})},
+        {label: 'Upravit'},
+    ]} %}
+{% endblock %}
+
 {% block content %}
-    <div class="flex justify-between items-center mb-6">
-        <h1 class="text-3xl font-bold">Upravit uživatele</h1>
-        <a href="{{ path('portal_users_view', {id: user.id}) }}" class="btn btn-ghost">Zrušit</a>
-    </div>
+    <h1 class="text-3xl font-bold mb-6">Upravit uživatele</h1>
 
     <div class="max-w-2xl">
         <div class="card mb-6">

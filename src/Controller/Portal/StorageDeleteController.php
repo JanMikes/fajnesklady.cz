@@ -35,6 +35,7 @@ final class StorageDeleteController extends AbstractController
         $this->denyAccessUnlessGranted(StorageVoter::DELETE, $storage);
 
         $storageTypeId = $storage->storageType->id->toRfc4122();
+        $placeId = $storage->place->id->toRfc4122();
 
         try {
             $command = new DeleteStorageCommand(storageId: $storage->id);
@@ -50,6 +51,7 @@ final class StorageDeleteController extends AbstractController
         }
 
         return $this->redirectToRoute('portal_storages_list', [
+            'placeId' => $placeId,
             'storage_type' => $storageTypeId,
         ]);
     }

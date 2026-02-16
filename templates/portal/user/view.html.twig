@@ -2,6 +2,13 @@
 
 {% block title %}Detail uživatele - Admin{% endblock %}
 
+{% block breadcrumb %}
+    {% include 'components/breadcrumb.html.twig' with {breadcrumb_items: [
+        {label: 'Uživatelé', url: path('portal_users_list')},
+        {label: user.fullName},
+    ]} %}
+{% endblock %}
+
 {% block content %}
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-3xl font-bold">Detail uživatele</h1>
@@ -15,7 +22,6 @@
                 </form>
             {% endif %}
             <a href="{{ path('portal_users_edit', {id: user.id}) }}" class="btn btn-primary">Upravit</a>
-            <a href="{{ path('portal_users_list') }}" class="btn btn-ghost">Zpět na seznam</a>
         </div>
     </div>
 

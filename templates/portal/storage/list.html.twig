@@ -1,116 +1,202 @@
 {% extends 'portal/layout.html.twig' %}
 
-{% block title %}Sklady{% endblock %}
+{% block title %}Sklady - {{ place.name }}{% endblock %}
+
+{% block breadcrumb %}
+    {% include 'components/breadcrumb.html.twig' with {breadcrumb_items: [
+        {label: 'Místa', url: path('portal_places_list')},
+        {label: place.name, url: path('portal_places_detail', {id: place.id})},
+        {label: 'Sklady'},
+    ]} %}
+{% endblock %}
 
 {% block content %}
     <div class="flex justify-between items-center mb-6">
-        <h1 class="text-3xl font-bold text-gray-900">Sklady</h1>
-        <a href="{{ path('portal_storages_create') }}" class="btn btn-primary">
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-            </svg>
-            Přidat sklad
-        </a>
+        <h1 class="text-3xl font-bold text-gray-900">Sklady - {{ place.name }}</h1>
+        {% if canvasReady %}
+            <a href="{{ path('portal_storage_canvas', {placeId: place.id}) }}" class="btn btn-primary">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                Přidat nové sklady přes mapu
+            </a>
+        {% endif %}
     </div>
 
-    <div class="card mb-6">
-        <div class="card-body">
-            <form method="get" action="{{ path('portal_storages_list') }}" class="flex items-end gap-4">
-                <div class="flex-1">
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">Typ skladu</label>
-                    <select name="storage_type" class="form-input" onchange="this.form.submit()">
-                        <option value="">-- Vyberte typ skladu --</option>
-                        {% for storageType in storageTypes %}
-                            <option value="{{ storageType.id }}" {{ selectedStorageType and selectedStorageType.id.equals(storageType.id) ? 'selected' : '' }}>
-                                {{ storageType.name }} ({{ storageType.dimensionsInMeters }})
-                            </option>
-                        {% endfor %}
-                    </select>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    {% if selectedStorageType %}
-        <div class="card">
-            <div class="card-header bg-gray-50 px-6 py-4 border-b">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <h2 class="text-lg font-semibold text-gray-900">{{ selectedStorageType.name }}</h2>
-                        <p class="text-sm text-gray-500">{{ selectedStorageType.dimensionsInMeters }}</p>
+    {% if not canvasReady %}
+        <div class="max-w-2xl mb-6">
+            <div class="card">
+                <div class="card-body p-8">
+                    <div class="text-center mb-6">
+                        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-amber-100 mb-4">
+                            <svg class="w-8 h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                            </svg>
+                        </div>
+                        <h2 class="text-xl font-semibold text-gray-900 mb-2">Než začnete přidávat sklady</h2>
+                        <p class="text-gray-600">Pro přidání skladů je potřeba splnit následující kroky:</p>
                     </div>
-                    <span class="badge badge-primary">{{ storages|length }} skladů</span>
-                </div>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="table table-zebra">
-                    <thead>
-                        <tr>
-                            <th>Číslo</th>
-                            <th>Pozice (X, Y)</th>
-                            <th>Velikost</th>
-                            <th>Rotace</th>
-                            <th>Stav</th>
-                            <th>Vytvořeno</th>
-                            <th>Akce</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for storage in storages %}
-                            <tr>
-                                <td class="font-medium text-gray-900">{{ storage.number }}</td>
-                                <td class="text-gray-500">{{ storage.coordinates.x }}, {{ storage.coordinates.y }}</td>
-                                <td class="text-gray-500">{{ storage.coordinates.width }} x {{ storage.coordinates.height }}</td>
-                                <td class="text-gray-500">{{ storage.coordinates.rotation }}deg</td>
-                                <td>
-                                    {% if storage.status.value == 'available' %}
-                                        <span class="badge badge-success">Dostupný</span>
-                                    {% elseif storage.status.value == 'reserved' %}
-                                        <span class="badge badge-warning">Rezervovaný</span>
-                                    {% elseif storage.status.value == 'occupied' %}
-                                        <span class="badge badge-error">Obsazený</span>
-                                    {% else %}
-                                        <span class="badge badge-ghost">Nedostupný</span>
-                                    {% endif %}
-                                </td>
-                                <td class="text-gray-500 text-sm">{{ storage.createdAt|date('d.m.Y H:i') }}</td>
-                                <td>
-                                    <div class="flex items-center gap-2">
-                                        <a href="{{ path('portal_storages_edit', {id: storage.id}) }}" class="inline-flex items-center link text-sm font-medium">
-                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                            </svg>
-                                            Upravit
-                                        </a>
-                                        <form action="{{ path('portal_storages_delete', {id: storage.id}) }}" method="post" class="inline" onsubmit="return confirm('Opravdu chcete smazat tento sklad?');">
-                                            <button type="submit" class="inline-flex items-center text-red-600 hover:text-red-800 text-sm font-medium">
-                                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                </svg>
-                                                Smazat
-                                            </button>
-                                        </form>
+
+                    <div class="space-y-4">
+                        {# Step 1: Map image #}
+                        <div class="flex items-start gap-4 p-4 rounded-lg {{ hasMapImage ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200' }}">
+                            <div class="flex-shrink-0 mt-0.5">
+                                {% if hasMapImage %}
+                                    <div class="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
+                                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                        </svg>
                                     </div>
-                                </td>
-                            </tr>
-                        {% else %}
-                            <tr>
-                                <td colspan="7" class="text-center text-gray-500 py-8">Žádné sklady nebyly nalezeny pro tento typ</td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                                {% else %}
+                                    <div class="w-8 h-8 rounded-full bg-red-500 flex items-center justify-center">
+                                        <span class="text-white font-bold text-sm">1</span>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="flex-1">
+                                <h3 class="font-semibold {{ hasMapImage ? 'text-green-900' : 'text-red-900' }}">Obrázek mapy skladu</h3>
+                                {% if hasMapImage %}
+                                    <p class="text-sm text-green-700 mt-1">Obrázek mapy je nahraný.</p>
+                                {% else %}
+                                    <p class="text-sm text-red-700 mt-1">Nahrajte obrázek půdorysu nebo mapy vašeho skladu.</p>
+                                    <a href="{{ path('portal_places_edit', {id: place.id}) }}" class="inline-flex items-center gap-2 mt-3 btn btn-sm btn-primary">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                        </svg>
+                                        Nahrát obrázek mapy
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        {# Step 2: Storage types #}
+                        <div class="flex items-start gap-4 p-4 rounded-lg {{ hasStorageTypes ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200' }}">
+                            <div class="flex-shrink-0 mt-0.5">
+                                {% if hasStorageTypes %}
+                                    <div class="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
+                                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                    </div>
+                                {% else %}
+                                    <div class="w-8 h-8 rounded-full bg-red-500 flex items-center justify-center">
+                                        <span class="text-white font-bold text-sm">2</span>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="flex-1">
+                                <h3 class="font-semibold {{ hasStorageTypes ? 'text-green-900' : 'text-red-900' }}">Definice typů skladů</h3>
+                                {% if hasStorageTypes %}
+                                    <p class="text-sm text-green-700 mt-1">Typy skladů jsou definované.</p>
+                                {% else %}
+                                    <p class="text-sm text-red-700 mt-1">Vytvořte alespoň jeden typ skladu s rozměry a cenou.</p>
+                                    <a href="{{ path('portal_storage_types_create', {placeId: place.id}) }}" class="inline-flex items-center gap-2 mt-3 btn btn-sm btn-primary">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                        </svg>
+                                        Vytvořit typ skladu
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     {% else %}
-        <div class="card">
-            <div class="card-body text-center py-12">
-                <svg class="mx-auto h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                </svg>
-                <h3 class="mt-4 text-lg font-medium text-gray-900">Vyberte typ skladu</h3>
-                <p class="mt-2 text-sm text-gray-500">Pro zobrazení skladů vyberte typ skladu z nabídky výše.</p>
+        <div class="card mb-6">
+            <div class="card-body">
+                <form method="get" action="{{ path('portal_storages_list', {placeId: place.id}) }}" class="flex items-end gap-4">
+                    <div class="flex-1">
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Typ skladu</label>
+                        <select name="storage_type" class="form-input" onchange="this.form.submit()">
+                            <option value="">-- Vyberte typ skladu --</option>
+                            {% for storageType in storageTypes %}
+                                <option value="{{ storageType.id }}" {{ selectedStorageType and selectedStorageType.id.equals(storageType.id) ? 'selected' : '' }}>
+                                    {{ storageType.name }} ({{ storageType.dimensionsInMeters }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </form>
             </div>
         </div>
+
+        {% if selectedStorageType %}
+            <div class="card">
+                <div class="card-header bg-gray-50 px-6 py-4 border-b">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h2 class="text-lg font-semibold text-gray-900">{{ selectedStorageType.name }}</h2>
+                            <p class="text-sm text-gray-500">{{ selectedStorageType.dimensionsInMeters }}</p>
+                        </div>
+                        <span class="badge badge-primary">{{ storages|length }} skladů</span>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="table table-zebra">
+                        <thead>
+                            <tr>
+                                <th>Číslo</th>
+                                <th>Stav</th>
+                                <th>Vytvořeno</th>
+                                <th>Akce</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for storage in storages %}
+                                <tr>
+                                    <td class="font-medium text-gray-900">{{ storage.number }}</td>
+                                    <td>
+                                        {% if storage.status.value == 'available' %}
+                                            <span class="badge badge-success">Dostupný</span>
+                                        {% elseif storage.status.value == 'reserved' %}
+                                            <span class="badge badge-warning">Rezervovaný</span>
+                                        {% elseif storage.status.value == 'occupied' %}
+                                            <span class="badge badge-error">Obsazený</span>
+                                        {% else %}
+                                            <span class="badge badge-ghost">Nedostupný</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-gray-500 text-sm">{{ storage.createdAt|date('d.m.Y H:i') }}</td>
+                                    <td>
+                                        <div class="flex items-center gap-2">
+                                            <a href="{{ path('portal_storages_edit', {id: storage.id}) }}" class="inline-flex items-center link text-sm font-medium">
+                                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                </svg>
+                                                Upravit
+                                            </a>
+                                            <form action="{{ path('portal_storages_delete', {id: storage.id}) }}" method="post" class="inline" onsubmit="return confirm('Opravdu chcete smazat tento sklad?');">
+                                                <button type="submit" class="inline-flex items-center text-red-600 hover:text-red-800 text-sm font-medium">
+                                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                    </svg>
+                                                    Smazat
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% else %}
+                                <tr>
+                                    <td colspan="4" class="text-center text-gray-500 py-8">Žádné sklady nebyly nalezeny pro tento typ</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        {% else %}
+            <div class="card">
+                <div class="card-body text-center py-12">
+                    <svg class="mx-auto h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                    </svg>
+                    <h3 class="mt-4 text-lg font-medium text-gray-900">Vyberte typ skladu</h3>
+                    <p class="mt-2 text-sm text-gray-500">Pro zobrazení skladů vyberte typ skladu z nabídky výše.</p>
+                </div>
+            </div>
+        {% endif %}
     {% endif %}
 {% endblock %}

@@ -25,7 +25,7 @@ class PlaceProposeFormType extends AbstractType
         $builder->add('address', TextType::class, [
             'label' => 'Adresa',
             'required' => false,
-            'attr' => ['placeholder' => 'Ulice a cislo popisne'],
+            'attr' => ['placeholder' => 'Ulice a čislo popisne'],
         ]);
 
         $builder->add('city', TextType::class, [

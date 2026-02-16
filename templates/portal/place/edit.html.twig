@@ -9,11 +9,16 @@
           crossorigin=""/>
 {% endblock %}
 
+{% block breadcrumb %}
+    {% include 'components/breadcrumb.html.twig' with {breadcrumb_items: [
+        {label: 'Místa', url: path('portal_places_list')},
+        {label: place.name, url: path('portal_places_detail', {id: place.id})},
+        {label: 'Upravit místo'},
+    ]} %}
+{% endblock %}
+
 {% block content %}
-    <div class="flex justify-between items-center mb-6">
-        <h1 class="text-3xl font-bold text-gray-900">Upravit místo</h1>
-        <a href="{{ path('portal_places_list') }}" class="btn btn-ghost">Zpět na seznam</a>
-    </div>
+    <h1 class="text-3xl font-bold text-gray-900 mb-6">Upravit místo</h1>
 
     <div class="max-w-2xl">
         <div class="card mb-6">
@@ -151,7 +156,7 @@
                     <hr class="my-6 border-t border-gray-200">
 
                     <div class="flex justify-end gap-2">
-                        <a href="{{ path('portal_places_list') }}" class="btn btn-ghost">Zrušit</a>
+                        <a href="{{ path('portal_places_detail', {id: place.id}) }}" class="btn btn-ghost">Zrušit</a>
                         <button type="submit" class="btn btn-primary">Uložit změny</button>
                     </div>
                 {{ form_end(form) }}

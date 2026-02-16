@@ -65,7 +65,7 @@ final class PlaceEditController extends AbstractController
 
             $this->addFlash('success', 'Místo bylo úspěšně aktualizováno.');
 
-            return $this->redirectToRoute('portal_places_list');
+            return $this->redirectToRoute('portal_places_detail', ['id' => $place->id->toRfc4122()]);
         }
 
         return $this->render('portal/place/edit.html.twig', [

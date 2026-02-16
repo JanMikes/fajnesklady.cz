@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller\Portal;
 
+use App\Command\AddStoragePhotoCommand;
 use App\Command\UpdateStorageCommand;
 use App\Form\StorageFormData;
 use App\Form\StorageFormType;
@@ -37,6 +38,7 @@ final class StorageEditController extends AbstractController
         $formData = StorageFormData::fromStorage($storage);
         $form = $this->createForm(StorageFormType::class, $formData, [
             'storage_type' => $storage->storageType,
+            'is_edit' => true,
         ]);
         $form->handleRequest($request);
 
@@ -72,9 +74,17 @@ final class StorageEditController extends AbstractController
 
             $this->commandBus->dispatch($command);
 
+            foreach ($formData->photos as $photo) {
+                $this->commandBus->dispatch(new AddStoragePhotoCommand(
+                    storageId: $storage->id,
+                    file: $photo,
+                ));
+            }
+
             $this->addFlash('success', 'Sklad byl úspěšně aktualizován.');
 
             return $this->redirectToRoute('portal_storages_list', [
+                'placeId' => $storage->place->id->toRfc4122(),
                 'storage_type' => $storage->storageType->id->toRfc4122(),
             ]);
         }

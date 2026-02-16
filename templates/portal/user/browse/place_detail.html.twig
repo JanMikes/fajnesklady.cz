@@ -2,10 +2,15 @@
 
 {% block title %}{{ place.name }} - Portal{% endblock %}
 
+{% block breadcrumb %}
+    {% include 'components/breadcrumb.html.twig' with {breadcrumb_items: [
+        {label: 'Pronajmout si', url: path('portal_browse_places')},
+        {label: place.name},
+    ]} %}
+{% endblock %}
+
 {% block content %}
     {% include 'partials/place_detail_content.html.twig' with {
-        backRoute: 'portal_browse_places',
-        backRouteParams: {},
-        backLabel: 'Zpět na seznam poboček'
+        showBackLink: false
     } %}
 {% endblock %}

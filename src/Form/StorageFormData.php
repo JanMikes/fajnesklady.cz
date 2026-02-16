@@ -5,11 +5,12 @@ declare(strict_types=1);
 namespace App\Form;
 
 use App\Entity\Storage;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\Validator\Constraints as Assert;
 
 final class StorageFormData
 {
-    #[Assert\NotBlank(message: 'Zadejte cislo skladu')]
+    #[Assert\NotBlank(message: 'Zadejte čislo skladu')]
     #[Assert\Length(max: 20, maxMessage: 'Cislo skladu nemuze byt delsi nez {{ limit }} znaku')]
     public string $number = '';
 
@@ -45,6 +46,18 @@ final class StorageFormData
     /** Commission rate as percentage (0-100), e.g., 90 for 90% */
     #[Assert\Range(min: 0, max: 100, notInRangeMessage: 'Provize musi byt mezi 0 a 100%')]
     public ?float $commissionRate = null;
+
+    /**
+     * @var UploadedFile[]
+     */
+    #[Assert\All([
+        new Assert\Image(
+            maxSize: '5M',
+            mimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
+            mimeTypesMessage: 'Nahrajte obrazek ve formatu JPEG, PNG nebo WebP',
+        ),
+    ])]
+    public array $photos = [];
 
     public static function fromStorage(Storage $storage): self
     {

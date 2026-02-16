@@ -168,6 +168,32 @@ class StorageRepository
             ->getSingleScalarResult();
     }
 
+    public function countByPlace(Place $place): int
+    {
+        return (int) $this->entityManager->createQueryBuilder()
+            ->select('COUNT(s.id)')
+            ->from(Storage::class, 's')
+            ->where('s.place = :place')
+            ->andWhere('s.deletedAt IS NULL')
+            ->setParameter('place', $place)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    public function countByOwnerAndPlace(User $owner, Place $place): int
+    {
+        return (int) $this->entityManager->createQueryBuilder()
+            ->select('COUNT(s.id)')
+            ->from(Storage::class, 's')
+            ->where('s.owner = :owner')
+            ->andWhere('s.place = :place')
+            ->andWhere('s.deletedAt IS NULL')
+            ->setParameter('owner', $owner)
+            ->setParameter('place', $place)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
     public function countByOwner(User $owner): int
     {
         return (int) $this->entityManager->createQueryBuilder()
