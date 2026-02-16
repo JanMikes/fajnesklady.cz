@@ -360,7 +360,8 @@ class ControllerAccessTest extends WebTestCase
         $user = $this->createUser('storage-list-user@example.com', UserRole::USER);
         $this->login($user);
 
-        $this->client->request('GET', '/portal/storages');
+        $place = $this->getFixturePlace();
+        $this->client->request('GET', '/portal/places/'.$place->id->toRfc4122().'/storages');
 
         $this->assertResponseStatusCodeSame(403);
     }
@@ -744,7 +745,8 @@ class ControllerAccessTest extends WebTestCase
         $landlord = $this->getFixtureLandlord();
         $this->login($landlord);
 
-        $this->client->request('GET', '/portal/storages');
+        $place = $this->getFixturePlace();
+        $this->client->request('GET', '/portal/places/'.$place->id->toRfc4122().'/storages');
 
         $this->assertResponseIsSuccessful();
     }
@@ -754,41 +756,8 @@ class ControllerAccessTest extends WebTestCase
         $admin = $this->getFixtureAdmin();
         $this->login($admin);
 
-        $this->client->request('GET', '/portal/storages');
-
-        $this->assertResponseIsSuccessful();
-    }
-
-    // ===========================================
-    // STORAGE CREATE - Landlord/Admin
-    // ===========================================
-
-    public function testStorageCreateDeniedForUser(): void
-    {
-        $user = $this->getFixtureUser();
-        $this->login($user);
-
-        $this->client->request('GET', '/portal/storages/create');
-
-        $this->assertResponseStatusCodeSame(403);
-    }
-
-    public function testStorageCreateDeniedForLandlord(): void
-    {
-        $landlord = $this->getFixtureLandlord();
-        $this->login($landlord);
-
-        $this->client->request('GET', '/portal/storages/create');
-
-        $this->assertResponseStatusCodeSame(403);
-    }
-
-    public function testStorageCreateAccessibleByAdmin(): void
-    {
-        $admin = $this->getFixtureAdmin();
-        $this->login($admin);
-
-        $this->client->request('GET', '/portal/storages/create');
+        $place = $this->getFixturePlace();
+        $this->client->request('GET', '/portal/places/'.$place->id->toRfc4122().'/storages');
 
         $this->assertResponseIsSuccessful();
     }

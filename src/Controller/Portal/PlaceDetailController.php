@@ -16,7 +16,7 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Uid\Uuid;
 
-#[Route('/portal/places/{id}', name: 'portal_places_detail')]
+#[Route('/portal/places/{id}', name: 'portal_places_detail', requirements: ['id' => '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'])]
 #[IsGranted('ROLE_LANDLORD')]
 final class PlaceDetailController extends AbstractController
 {
