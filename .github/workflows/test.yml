@@ -28,7 +28,7 @@ jobs:
             -   uses: actions/checkout@v4
             -   uses: actions/cache@v4
                 with:
-                    path: ./api/vendor
+                    path: ./vendor
                     key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
                     restore-keys: |
                         ${{ runner.os }}-composer-
@@ -46,7 +46,7 @@ jobs:
             -   uses: actions/checkout@v4
             -   uses: actions/cache@v4
                 with:
-                    path: ./api/vendor
+                    path: ./vendor
                     key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
                     restore-keys: |
                         ${{ runner.os }}-composer-
@@ -73,7 +73,7 @@ jobs:
             -   uses: actions/checkout@v4
             -   uses: actions/cache@v4
                 with:
-                    path: ./api/vendor
+                    path: ./vendor
                     key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
                     restore-keys: |
                         ${{ runner.os }}-composer-
