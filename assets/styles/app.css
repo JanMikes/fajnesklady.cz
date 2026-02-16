@@ -258,36 +258,82 @@ label:has(~ input[required], ~ select[required], ~ textarea[required])::after {
 }
 
 .flatpickr-months {
-    @apply rounded-t-lg text-white;
-    background-color: var(--color-primary);
+    @apply rounded-t-lg;
+    background-color: var(--color-primary) !important;
 }
 
 .flatpickr-months .flatpickr-month {
-    @apply text-white;
+    color: white !important;
+    fill: white !important;
+}
+
+.flatpickr-current-month {
+    font-size: 110% !important;
 }
 
 .flatpickr-current-month .flatpickr-monthDropdown-months {
-    @apply text-white;
-    background-color: var(--color-primary);
+    color: white !important;
+    background-color: var(--color-primary) !important;
+}
+
+.flatpickr-current-month .flatpickr-monthDropdown-months:hover {
+    background: rgba(255, 255, 255, 0.15) !important;
+}
+
+.flatpickr-current-month .flatpickr-monthDropdown-months .flatpickr-monthDropdown-month {
+    background-color: white !important;
+    color: #111827 !important;
 }
 
 .flatpickr-current-month input.cur-year {
-    @apply text-white;
+    color: white !important;
 }
 
 .flatpickr-months .flatpickr-prev-month,
 .flatpickr-months .flatpickr-next-month {
-    @apply text-white fill-white;
+    color: white !important;
+    fill: white !important;
 }
 
-.flatpickr-months .flatpickr-prev-month:hover,
-.flatpickr-months .flatpickr-next-month:hover {
-    @apply text-gray-300;
+.flatpickr-months .flatpickr-prev-month svg,
+.flatpickr-months .flatpickr-next-month svg {
+    fill: white !important;
+}
+
+.flatpickr-months .flatpickr-prev-month svg path,
+.flatpickr-months .flatpickr-next-month svg path {
+    fill: white !important;
 }
 
 .flatpickr-months .flatpickr-prev-month:hover svg,
 .flatpickr-months .flatpickr-next-month:hover svg {
-    @apply fill-gray-300;
+    fill: var(--color-accent) !important;
+}
+
+.flatpickr-months .flatpickr-prev-month:hover svg path,
+.flatpickr-months .flatpickr-next-month:hover svg path {
+    fill: var(--color-accent) !important;
+}
+
+/* Year input arrows */
+.flatpickr-current-month .numInputWrapper span {
+    border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+.flatpickr-current-month .numInputWrapper span.arrowUp:after {
+    border-bottom-color: white !important;
+}
+
+.flatpickr-current-month .numInputWrapper span.arrowDown:after {
+    border-top-color: white !important;
+}
+
+.flatpickr-current-month .numInputWrapper span:hover {
+    background: rgba(255, 255, 255, 0.2) !important;
+}
+
+.flatpickr-current-month .numInputWrapper:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
 }
 
 .flatpickr-weekdays {
