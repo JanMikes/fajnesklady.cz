@@ -26,13 +26,6 @@ jobs:
 
         steps:
             -   uses: actions/checkout@v4
-            -   uses: actions/cache@v4
-                with:
-                    path: ./vendor
-                    key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
-                    restore-keys: |
-                        ${{ runner.os }}-composer-
-
             -   run: composer install --no-scripts --no-progress
             -   run: bin/console importmap:install
             -   run: bin/console tailwind:build
@@ -44,13 +37,6 @@ jobs:
         container: ghcr.io/thedevs-cz/php:8.5-fajnesklady
         steps:
             -   uses: actions/checkout@v4
-            -   uses: actions/cache@v4
-                with:
-                    path: ./vendor
-                    key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
-                    restore-keys: |
-                        ${{ runner.os }}-composer-
-
             -   run: composer install --no-scripts --no-progress
             -   run: bin/console cache:warmup --env=dev
             -   run: composer run-script phpstan
@@ -71,13 +57,6 @@ jobs:
 
         steps:
             -   uses: actions/checkout@v4
-            -   uses: actions/cache@v4
-                with:
-                    path: ./vendor
-                    key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
-                    restore-keys: |
-                        ${{ runner.os }}-composer-
-
             -   run: composer install --no-scripts --no-progress
             -   run: bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
             -   run: bin/console doctrine:schema:update --dump-sql
