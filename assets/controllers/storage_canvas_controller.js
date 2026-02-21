@@ -7,7 +7,7 @@ export default class extends Controller {
         'numberInput', 'typeSelect', 'saveBtn', 'deleteBtn', 'cancelBtn',
         'addBtn', 'copyBtn', 'snapCheckbox',
         'coordX', 'coordY', 'coordW', 'coordH', 'coordR',
-        'zoomLabel',
+        'zoomLabel', 'minimap',
     ];
     static values = {
         mapImage: String,
@@ -34,8 +34,16 @@ export default class extends Controller {
         this.panLastPos = null;
         this.boundPanMove = null;
         this.boundPanUp = null;
+        this.modifierPanActive = false;
+
+        this.minimapStage = null;
+        this.minimapBgLayer = null;
+        this.minimapStorageLayer = null;
+        this.minimapViewportLayer = null;
+        this.minimapViewportRect = null;
 
         this.initializeStage();
+        this.initializeMinimap();
         this.loadMapImage();
         this.renderStorages();
         this.renderStorageList();
@@ -58,6 +66,9 @@ export default class extends Controller {
         }
         if (this.boundPanUp) {
             window.removeEventListener('mouseup', this.boundPanUp);
+        }
+        if (this.minimapStage) {
+            this.minimapStage.destroy();
         }
         if (this.stage) {
             this.stage.destroy();
@@ -165,6 +176,7 @@ export default class extends Controller {
 
         this.bgLayer.add(konvaImg);
         this.bgLayer.draw();
+        this.renderMinimap();
     }
 
     drawGrid() {
@@ -187,13 +199,14 @@ export default class extends Controller {
             }));
         }
         this.bgLayer.draw();
+        this.renderMinimap();
     }
 
     // --- Stage mouse events for draw-to-create ---
 
     onStageMouseDown(e) {
-        // Middle mouse button or space+left click = pan
-        if (e.evt.button === 1 || (e.evt.button === 0 && this.spacePressed)) {
+        // Middle mouse button, space+left click, or Ctrl/Cmd+left click = pan
+        if (e.evt.button === 1 || (e.evt.button === 0 && (this.spacePressed || e.evt.ctrlKey || e.evt.metaKey))) {
             this.isPanning = true;
             this.panLastPos = { x: e.evt.clientX, y: e.evt.clientY };
             this.stage.container().style.cursor = 'grabbing';
@@ -320,6 +333,7 @@ export default class extends Controller {
         this.transformer.moveToTop();
         this.creationRect.moveToTop();
         this.storageLayer.draw();
+        this.renderMinimap();
     }
 
     createStorageGroup(storage, index) {
@@ -650,6 +664,7 @@ export default class extends Controller {
         this.stage.position({ x: 0, y: 0 });
         this.zoomLevel = 1;
         this.updateZoomLabel();
+        this.updateMinimap();
     }
 
     applyZoom(newScale) {
@@ -674,6 +689,7 @@ export default class extends Controller {
 
         this.zoomLevel = newScale;
         this.updateZoomLabel();
+        this.updateMinimap();
     }
 
     updateZoomLabel() {
@@ -689,11 +705,12 @@ export default class extends Controller {
         this.stage.x(this.stage.x() + dx);
         this.stage.y(this.stage.y() + dy);
         this.panLastPos = { x: e.clientX, y: e.clientY };
+        this.updateMinimap();
     }
 
     onPanUp(e) {
         this.isPanning = false;
-        this.stage.container().style.cursor = this.spacePressed ? 'grab' : 'crosshair';
+        this.stage.container().style.cursor = (this.spacePressed || this.modifierPanActive) ? 'grab' : 'crosshair';
         window.removeEventListener('mousemove', this.boundPanMove);
         window.removeEventListener('mouseup', this.boundPanUp);
         this.boundPanMove = null;
@@ -703,7 +720,13 @@ export default class extends Controller {
     onKeyUp(e) {
         if (e.key === ' ') {
             this.spacePressed = false;
-            if (!this.isPanning) {
+            if (!this.isPanning && !this.modifierPanActive) {
+                this.stage.container().style.cursor = 'crosshair';
+            }
+        }
+        if (e.key === 'Control' || e.key === 'Meta') {
+            this.modifierPanActive = false;
+            if (!this.isPanning && !this.spacePressed) {
                 this.stage.container().style.cursor = 'crosshair';
             }
         }
@@ -720,6 +743,15 @@ export default class extends Controller {
             e.preventDefault();
             this.spacePressed = true;
             this.stage.container().style.cursor = 'grab';
+            return;
+        }
+
+        // Ctrl/Cmd key for pan mode
+        if ((e.key === 'Control' || e.key === 'Meta') && !this.modifierPanActive) {
+            this.modifierPanActive = true;
+            if (!this.isPanning) {
+                this.stage.container().style.cursor = 'grab';
+            }
             return;
         }
 
@@ -967,6 +999,184 @@ export default class extends Controller {
             this.renderStorageList();
         }
         this.deselectStorage();
+    }
+
+    // --- Minimap ---
+
+    initializeMinimap() {
+        if (!this.hasMinimapTarget) return;
+
+        const minimapW = 180;
+        const minimapH = 120;
+
+        this.minimapStage = new Konva.Stage({
+            container: this.minimapTarget,
+            width: minimapW,
+            height: minimapH,
+        });
+
+        this.minimapBgLayer = new Konva.Layer({ listening: false });
+        this.minimapStorageLayer = new Konva.Layer({ listening: false });
+        this.minimapViewportLayer = new Konva.Layer();
+
+        this.minimapStage.add(this.minimapBgLayer);
+        this.minimapStage.add(this.minimapStorageLayer);
+        this.minimapStage.add(this.minimapViewportLayer);
+
+        // Background fill
+        this.minimapBgLayer.add(new Konva.Rect({
+            x: 0, y: 0,
+            width: minimapW, height: minimapH,
+            fill: '#f3f4f6',
+        }));
+
+        // Viewport rectangle (draggable)
+        this.minimapViewportRect = new Konva.Rect({
+            x: 0, y: 0,
+            width: minimapW, height: minimapH,
+            fill: 'rgba(59, 130, 246, 0.15)',
+            stroke: '#3b82f6',
+            strokeWidth: 1.5,
+            draggable: true,
+            name: 'viewportRect',
+        });
+        this.minimapViewportLayer.add(this.minimapViewportRect);
+
+        // Drag viewport to pan main stage
+        this.minimapViewportRect.on('dragmove', () => this.onMinimapViewportDrag());
+
+        // Click on minimap background to navigate
+        this.minimapStage.on('click', (e) => {
+            if (e.target === this.minimapViewportRect) return;
+            this.onMinimapClick(e);
+        });
+
+        this.minimapBgLayer.draw();
+    }
+
+    getMinimapScale() {
+        const stageW = this.stage.width();
+        const stageH = this.stage.height();
+        return Math.min(180 / stageW, 120 / stageH);
+    }
+
+    renderMinimap() {
+        if (!this.minimapStage) return;
+
+        const mmScale = this.getMinimapScale();
+
+        // Redraw background: map image or grid representation
+        this.minimapBgLayer.destroyChildren();
+        this.minimapBgLayer.add(new Konva.Rect({
+            x: 0, y: 0,
+            width: 180, height: 120,
+            fill: '#f3f4f6',
+        }));
+
+        if (this.mapImg) {
+            const stageW = this.stage.width();
+            const stageH = this.stage.height();
+            const imgW = this.mapImg.width;
+            const imgH = this.mapImg.height;
+            const imgScale = Math.min(stageW / imgW, stageH / imgH);
+            const offsetX = (stageW - imgW * imgScale) / 2;
+            const offsetY = (stageH - imgH * imgScale) / 2;
+
+            this.minimapBgLayer.add(new Konva.Image({
+                x: offsetX * mmScale,
+                y: offsetY * mmScale,
+                image: this.mapImg,
+                width: imgW * imgScale * mmScale,
+                height: imgH * imgScale * mmScale,
+                opacity: 0.6,
+            }));
+        }
+        this.minimapBgLayer.draw();
+
+        // Redraw storage rects
+        this.minimapStorageLayer.destroyChildren();
+        this.storages.forEach((storage) => {
+            const c = storage.coordinates;
+            const storageType = this.storageTypesValue.find(t => t.id === storage.storageTypeId);
+            const color = this.getStorageColor(storage, storageType);
+
+            this.minimapStorageLayer.add(new Konva.Rect({
+                x: (c.x + c.width / 2) * mmScale,
+                y: (c.y + c.height / 2) * mmScale,
+                offsetX: Math.max(3, c.width * mmScale) / 2,
+                offsetY: Math.max(3, c.height * mmScale) / 2,
+                width: Math.max(3, c.width * mmScale),
+                height: Math.max(3, c.height * mmScale),
+                rotation: c.rotation || 0,
+                fill: color,
+                opacity: 0.8,
+            }));
+        });
+        this.minimapStorageLayer.draw();
+
+        this.updateMinimapViewport();
+    }
+
+    updateMinimapViewport() {
+        if (!this.minimapStage || !this.minimapViewportRect) return;
+
+        const mmScale = this.getMinimapScale();
+        const scale = this.stage.scaleX();
+
+        // Visible area in stage coordinates
+        const viewX = -this.stage.x() / scale;
+        const viewY = -this.stage.y() / scale;
+        const viewW = this.stage.width() / scale;
+        const viewH = this.stage.height() / scale;
+
+        this.minimapViewportRect.setAttrs({
+            x: viewX * mmScale,
+            y: viewY * mmScale,
+            width: viewW * mmScale,
+            height: viewH * mmScale,
+        });
+        this.minimapViewportLayer.draw();
+    }
+
+    updateMinimap() {
+        if (!this.minimapStage) return;
+
+        const scale = this.stage.scaleX();
+        if (scale > 1.05) {
+            this.minimapTarget.style.display = 'block';
+            this.updateMinimapViewport();
+        } else {
+            this.minimapTarget.style.display = 'none';
+        }
+    }
+
+    onMinimapViewportDrag() {
+        const mmScale = this.getMinimapScale();
+        const scale = this.stage.scaleX();
+
+        const viewX = this.minimapViewportRect.x() / mmScale;
+        const viewY = this.minimapViewportRect.y() / mmScale;
+
+        this.stage.x(-viewX * scale);
+        this.stage.y(-viewY * scale);
+    }
+
+    onMinimapClick(e) {
+        const mmScale = this.getMinimapScale();
+        const scale = this.stage.scaleX();
+
+        const pos = this.minimapStage.getPointerPosition();
+        const stageX = pos.x / mmScale;
+        const stageY = pos.y / mmScale;
+
+        // Center the main stage view on this point
+        const viewW = this.stage.width() / scale;
+        const viewH = this.stage.height() / scale;
+
+        this.stage.x(-(stageX - viewW / 2) * scale);
+        this.stage.y(-(stageY - viewH / 2) * scale);
+
+        this.updateMinimapViewport();
     }
 
     // --- Helpers ---
