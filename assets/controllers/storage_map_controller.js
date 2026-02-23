@@ -74,33 +74,6 @@ export default class extends Controller {
         this.bgLayer.add(this.bgRect);
         this.bgLayer.draw();
 
-        // Wheel zoom
-        this.stage.on('wheel', (e) => {
-            e.evt.preventDefault();
-            const oldScale = this.stage.scaleX();
-            const pointer = this.stage.getPointerPosition();
-
-            const mousePointTo = {
-                x: (pointer.x - this.stage.x()) / oldScale,
-                y: (pointer.y - this.stage.y()) / oldScale,
-            };
-
-            const direction = e.evt.deltaY < 0 ? 1 : -1;
-            const factor = 1.15;
-            let newScale = direction > 0 ? oldScale * factor : oldScale / factor;
-            newScale = Math.max(0.5, Math.min(5, newScale));
-
-            this.stage.scale({ x: newScale, y: newScale });
-            this.stage.position({
-                x: pointer.x - mousePointTo.x * newScale,
-                y: pointer.y - mousePointTo.y * newScale,
-            });
-
-            this.zoomLevel = newScale;
-            this.updateZoomLabel();
-            this.updateMinimap();
-        });
-
         // Pan via middle-click or Ctrl/Cmd+drag
         this.stage.on('mousedown', (e) => {
             if (e.evt.button === 1 || (e.evt.button === 0 && (e.evt.ctrlKey || e.evt.metaKey))) {
@@ -444,6 +417,9 @@ export default class extends Controller {
         const color = this.getStorageColor(storage);
         const isHighlighted = this.highlightStorageValue && storage.id === this.highlightStorageValue;
 
+        // Scale font size with storage dimensions (matching editor approach)
+        const baseFontSize = Math.min(14, Math.max(8, Math.min(coords.width, coords.height) * 0.3));
+
         const group = new Konva.Group({
             x: coords.x + coords.width / 2,
             y: coords.y + coords.height / 2,
@@ -460,19 +436,11 @@ export default class extends Controller {
             y: -coords.height / 2,
             width: coords.width,
             height: coords.height,
-            fill: isHighlighted ? color + 'dd' : color + '99',
+            fill: isHighlighted ? color + 'aa' : color + '80',
             stroke: isHighlighted ? '#1e3a5f' : color,
             strokeWidth: isHighlighted ? 3 : 2,
             cornerRadius: 2,
         });
-
-        if (isHighlighted) {
-            rect.shadowColor('rgba(0, 0, 0, 0.4)');
-            rect.shadowBlur(12);
-            rect.shadowOffsetX(2);
-            rect.shadowOffsetY(2);
-            rect.shadowEnabled(true);
-        }
 
         const text = new Konva.Text({
             x: -coords.width / 2,
@@ -480,7 +448,7 @@ export default class extends Controller {
             width: coords.width,
             height: coords.height,
             text: storage.number,
-            fontSize: isHighlighted ? 16 : 14,
+            fontSize: baseFontSize,
             fontStyle: 'bold',
             fontFamily: 'sans-serif',
             fill: '#1f2937',
@@ -497,15 +465,9 @@ export default class extends Controller {
             this.hoveredStorage = storage;
             this.stage.container().style.cursor = 'pointer';
 
-            rect.fill(color + 'cc');
-            rect.stroke('#1f2937');
-            rect.strokeWidth(3);
-            rect.shadowColor('rgba(0, 0, 0, 0.3)');
-            rect.shadowBlur(10);
-            rect.shadowOffsetX(2);
-            rect.shadowOffsetY(2);
-            rect.shadowEnabled(true);
-            text.fontSize(16);
+            rect.fill(color + 'aa');
+            rect.stroke(color);
+            rect.strokeWidth(2.5);
             this.storageLayer.draw();
 
             this.updateTooltip(storage);
@@ -517,11 +479,9 @@ export default class extends Controller {
                 this.stage.container().style.cursor = 'default';
             }
 
-            rect.fill(isHighlighted ? color + 'dd' : color + '99');
+            rect.fill(isHighlighted ? color + 'aa' : color + '80');
             rect.stroke(isHighlighted ? '#1e3a5f' : color);
             rect.strokeWidth(isHighlighted ? 3 : 2);
-            rect.shadowEnabled(isHighlighted);
-            text.fontSize(isHighlighted ? 16 : 14);
             this.storageLayer.draw();
 
             this.hideTooltip();

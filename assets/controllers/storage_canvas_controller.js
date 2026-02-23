@@ -345,6 +345,9 @@ export default class extends Controller {
         const storageType = this.storageTypesValue.find(t => t.id === storage.storageTypeId);
         const color = this.getStorageColor(storage, storageType);
 
+        // Scale font size with storage dimensions
+        const fontSize = Math.min(14, Math.max(8, Math.min(coords.width, coords.height) * 0.3));
+
         const group = new Konva.Group({
             x: coords.x + coords.width / 2,
             y: coords.y + coords.height / 2,
@@ -373,7 +376,7 @@ export default class extends Controller {
             width: coords.width,
             height: coords.height,
             text: storage.number || '?',
-            fontSize: 14,
+            fontSize: fontSize,
             fontStyle: 'bold',
             fontFamily: 'sans-serif',
             fill: '#1f2937',
