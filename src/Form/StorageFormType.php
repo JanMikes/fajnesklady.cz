@@ -43,17 +43,21 @@ class StorageFormType extends AbstractType
 
         if (!$options['is_edit']) {
             $builder->add('placeId', ChoiceType::class, [
-                'label' => 'Misto',
+                'label' => 'Místo',
                 'choices' => $this->getPlaceChoices(),
-                'placeholder' => '-- Vyberte misto --',
-            ]);
-
-            $builder->add('storageTypeId', ChoiceType::class, [
-                'label' => 'Typ skladu',
-                'choices' => $this->getStorageTypeChoices(),
-                'placeholder' => '-- Vyberte typ skladu --',
+                'placeholder' => '-- Vyberte místo --',
             ]);
         }
+
+        $storageTypeChoices = $options['is_edit'] && $options['place'] !== null
+            ? $this->getStorageTypeChoicesForPlace($options['place'])
+            : $this->getStorageTypeChoices();
+
+        $builder->add('storageTypeId', ChoiceType::class, [
+            'label' => 'Typ skladu',
+            'choices' => $storageTypeChoices,
+            'placeholder' => '-- Vyberte typ skladu --',
+        ]);
 
         if (!$options['is_edit']) {
             $builder->add('coordinateX', IntegerType::class, [
@@ -151,9 +155,11 @@ class StorageFormType extends AbstractType
             'data_class' => StorageFormData::class,
             'storage_type' => null,
             'is_edit' => false,
+            'place' => null,
         ]);
         $resolver->setAllowedTypes('storage_type', ['null', StorageType::class]);
         $resolver->setAllowedTypes('is_edit', 'bool');
+        $resolver->setAllowedTypes('place', ['null', \App\Entity\Place::class]);
     }
 
     /**
@@ -193,6 +199,22 @@ class StorageFormType extends AbstractType
         $choices = [];
         foreach ($storageTypes as $storageType) {
             $label = $storageType->name.' ('.$storageType->getDimensionsInMeters().') - '.$storageType->place->name;
+            $choices[$label] = $storageType->id->toRfc4122();
+        }
+
+        return $choices;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function getStorageTypeChoicesForPlace(\App\Entity\Place $place): array
+    {
+        $storageTypes = $this->storageTypeRepository->findActiveByPlace($place);
+
+        $choices = [];
+        foreach ($storageTypes as $storageType) {
+            $label = $storageType->name.' ('.$storageType->getDimensionsInMeters().')';
             $choices[$label] = $storageType->id->toRfc4122();
         }
 

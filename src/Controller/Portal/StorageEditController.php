@@ -39,6 +39,7 @@ final class StorageEditController extends AbstractController
         $form = $this->createForm(StorageFormType::class, $formData, [
             'storage_type' => $storage->storageType,
             'is_edit' => true,
+            'place' => $storage->place,
         ]);
         $form->handleRequest($request);
 
@@ -65,6 +66,7 @@ final class StorageEditController extends AbstractController
                 storageId: $storage->id,
                 number: $formData->number,
                 coordinates: $formData->getCoordinates(),
+                storageTypeId: null !== $formData->storageTypeId ? Uuid::fromString($formData->storageTypeId) : null,
                 pricePerWeek: $pricePerWeek,
                 pricePerMonth: $pricePerMonth,
                 updatePrices: !$storage->storageType->uniformStorages,

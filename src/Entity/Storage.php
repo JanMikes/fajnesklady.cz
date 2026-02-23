@@ -106,6 +106,12 @@ class Storage
         $this->updatedAt = $now;
     }
 
+    public function changeStorageType(StorageType $storageType, \DateTimeImmutable $now): void
+    {
+        $this->storageType = $storageType;
+        $this->updatedAt = $now;
+    }
+
     public function getPlace(): Place
     {
         return $this->place;

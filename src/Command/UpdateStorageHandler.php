@@ -6,6 +6,7 @@ namespace App\Command;
 
 use App\Entity\Storage;
 use App\Repository\StorageRepository;
+use App\Repository\StorageTypeRepository;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
@@ -14,6 +15,7 @@ final readonly class UpdateStorageHandler
 {
     public function __construct(
         private StorageRepository $storageRepository,
+        private StorageTypeRepository $storageTypeRepository,
         private ClockInterface $clock,
     ) {
     }
@@ -28,6 +30,11 @@ final readonly class UpdateStorageHandler
             coordinates: $command->coordinates,
             now: $now,
         );
+
+        if (null !== $command->storageTypeId && !$storage->storageType->id->equals($command->storageTypeId)) {
+            $storageType = $this->storageTypeRepository->get($command->storageTypeId);
+            $storage->changeStorageType($storageType, $now);
+        }
 
         if ($command->updatePrices) {
             $storage->updatePrices(
