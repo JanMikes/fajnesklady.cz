@@ -9,7 +9,7 @@ use Symfony\Component\Uid\Uuid;
 final readonly class CreateStorageCommand
 {
     /**
-     * @param array{x: int, y: int, width: int, height: int, rotation: int} $coordinates
+     * @param array{x: int|float, y: int|float, width: int|float, height: int|float, rotation: int|float, normalized?: bool} $coordinates
      */
     public function __construct(
         public string $number,

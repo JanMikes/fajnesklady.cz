@@ -65,11 +65,11 @@ final class StorageFormData
         $formData->number = $storage->number;
         $formData->storageTypeId = $storage->storageType->id->toRfc4122();
         $formData->placeId = $storage->place->id->toRfc4122();
-        $formData->coordinateX = $storage->coordinates['x'];
-        $formData->coordinateY = $storage->coordinates['y'];
-        $formData->coordinateWidth = $storage->coordinates['width'];
-        $formData->coordinateHeight = $storage->coordinates['height'];
-        $formData->coordinateRotation = $storage->coordinates['rotation'];
+        $formData->coordinateX = (int) $storage->coordinates['x'];
+        $formData->coordinateY = (int) $storage->coordinates['y'];
+        $formData->coordinateWidth = (int) $storage->coordinates['width'];
+        $formData->coordinateHeight = (int) $storage->coordinates['height'];
+        $formData->coordinateRotation = (int) $storage->coordinates['rotation'];
         $formData->pricePerWeek = null !== $storage->pricePerWeek ? $storage->pricePerWeek / 100 : null;
         $formData->pricePerMonth = null !== $storage->pricePerMonth ? $storage->pricePerMonth / 100 : null;
         // Cast through float to ensure numeric-string for bcmul

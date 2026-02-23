@@ -30,16 +30,22 @@ trait StorageApiValidationTrait
     /**
      * @param array<string, mixed> $coordinates
      *
-     * @return array{x: int, y: int, width: int, height: int, rotation: int}
+     * @return array{x: int|float, y: int|float, width: int|float, height: int|float, rotation: int|float, normalized?: bool}
      */
     private function sanitizeCoordinates(array $coordinates): array
     {
-        return [
-            'x' => (int) ($coordinates['x'] ?? 0),
-            'y' => (int) ($coordinates['y'] ?? 0),
-            'width' => (int) ($coordinates['width'] ?? 100),
-            'height' => (int) ($coordinates['height'] ?? 100),
-            'rotation' => (int) ($coordinates['rotation'] ?? 0),
+        $result = [
+            'x' => (float) ($coordinates['x'] ?? 0),
+            'y' => (float) ($coordinates['y'] ?? 0),
+            'width' => (float) ($coordinates['width'] ?? 100),
+            'height' => (float) ($coordinates['height'] ?? 100),
+            'rotation' => (float) ($coordinates['rotation'] ?? 0),
         ];
+
+        if (!empty($coordinates['normalized'])) {
+            $result['normalized'] = true;
+        }
+
+        return $result;
     }
 }

@@ -45,7 +45,9 @@ export default class extends Controller {
         this.initializeStage();
         this.initializeMinimap();
         this.loadMapImage();
-        this.renderStorages();
+        if (!this.mapImageValue) {
+            this.renderStorages();
+        }
         this.renderStorageList();
 
         this.boundKeyDown = this.onKeyDown.bind(this);
@@ -145,6 +147,8 @@ export default class extends Controller {
             img.onload = () => {
                 this.mapImg = img;
                 this.fitImageToStage();
+                this.denormalizeAllStorages();
+                this.renderStorages();
             };
             img.onerror = () => {
                 this.mapImg = null;
@@ -162,16 +166,16 @@ export default class extends Controller {
         const imgW = this.mapImg.width;
         const imgH = this.mapImg.height;
 
-        const scale = Math.min(stageW / imgW, stageH / imgH);
-        const offsetX = (stageW - imgW * scale) / 2;
-        const offsetY = (stageH - imgH * scale) / 2;
+        this.imgScale = Math.min(stageW / imgW, stageH / imgH);
+        this.imgOffsetX = (stageW - imgW * this.imgScale) / 2;
+        this.imgOffsetY = (stageH - imgH * this.imgScale) / 2;
 
         const konvaImg = new Konva.Image({
-            x: offsetX,
-            y: offsetY,
+            x: this.imgOffsetX,
+            y: this.imgOffsetY,
             image: this.mapImg,
-            width: imgW * scale,
-            height: imgH * scale,
+            width: imgW * this.imgScale,
+            height: imgH * this.imgScale,
         });
 
         this.bgLayer.add(konvaImg);
@@ -850,7 +854,7 @@ export default class extends Controller {
             const data = {
                 number: storage.number,
                 storageTypeId: storage.storageTypeId,
-                coordinates: storage.coordinates,
+                coordinates: this.normalizeCoords(storage.coordinates),
             };
 
             try {
@@ -903,7 +907,7 @@ export default class extends Controller {
         const data = {
             number: storage.number,
             storageTypeId: storage.storageTypeId,
-            coordinates: storage.coordinates,
+            coordinates: this.normalizeCoords(storage.coordinates),
         };
 
         try {
@@ -1074,20 +1078,12 @@ export default class extends Controller {
         }));
 
         if (this.mapImg) {
-            const stageW = this.stage.width();
-            const stageH = this.stage.height();
-            const imgW = this.mapImg.width;
-            const imgH = this.mapImg.height;
-            const imgScale = Math.min(stageW / imgW, stageH / imgH);
-            const offsetX = (stageW - imgW * imgScale) / 2;
-            const offsetY = (stageH - imgH * imgScale) / 2;
-
             this.minimapBgLayer.add(new Konva.Image({
-                x: offsetX * mmScale,
-                y: offsetY * mmScale,
+                x: this.imgOffsetX * mmScale,
+                y: this.imgOffsetY * mmScale,
                 image: this.mapImg,
-                width: imgW * imgScale * mmScale,
-                height: imgH * imgScale * mmScale,
+                width: this.mapImg.width * this.imgScale * mmScale,
+                height: this.mapImg.height * this.imgScale * mmScale,
                 opacity: 0.6,
             }));
         }
@@ -1177,6 +1173,39 @@ export default class extends Controller {
         this.stage.y(-(stageY - viewH / 2) * scale);
 
         this.updateMinimapViewport();
+    }
+
+    // --- Coordinate normalization (image-relative ↔ stage-space) ---
+
+    denormalizeAllStorages() {
+        if (!this.mapImg) return;
+        this.storages.forEach(storage => {
+            if (storage.coordinates.normalized) {
+                storage.coordinates = this.denormalizeCoords(storage.coordinates);
+            }
+        });
+    }
+
+    denormalizeCoords(coords) {
+        return {
+            x: Math.round(coords.x * this.imgScale + this.imgOffsetX),
+            y: Math.round(coords.y * this.imgScale + this.imgOffsetY),
+            width: Math.round(coords.width * this.imgScale),
+            height: Math.round(coords.height * this.imgScale),
+            rotation: coords.rotation || 0,
+        };
+    }
+
+    normalizeCoords(coords) {
+        if (!this.mapImg) return coords;
+        return {
+            x: (coords.x - this.imgOffsetX) / this.imgScale,
+            y: (coords.y - this.imgOffsetY) / this.imgScale,
+            width: coords.width / this.imgScale,
+            height: coords.height / this.imgScale,
+            rotation: coords.rotation || 0,
+            normalized: true,
+        };
     }
 
     // --- Helpers ---

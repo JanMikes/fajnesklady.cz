@@ -73,20 +73,31 @@ export default class extends Controller {
         const imgW = this.mapImg.width;
         const imgH = this.mapImg.height;
 
-        const scale = Math.min(stageW / imgW, stageH / imgH);
-        const offsetX = (stageW - imgW * scale) / 2;
-        const offsetY = (stageH - imgH * scale) / 2;
+        this.imgScale = Math.min(stageW / imgW, stageH / imgH);
+        this.imgOffsetX = (stageW - imgW * this.imgScale) / 2;
+        this.imgOffsetY = (stageH - imgH * this.imgScale) / 2;
 
         const konvaImg = new Konva.Image({
-            x: offsetX,
-            y: offsetY,
+            x: this.imgOffsetX,
+            y: this.imgOffsetY,
             image: this.mapImg,
-            width: imgW * scale,
-            height: imgH * scale,
+            width: imgW * this.imgScale,
+            height: imgH * this.imgScale,
         });
 
         this.bgLayer.add(konvaImg);
         this.bgLayer.draw();
+    }
+
+    denormalizeCoords(coords) {
+        if (!coords.normalized || !this.mapImg) return coords;
+        return {
+            x: coords.x * this.imgScale + this.imgOffsetX,
+            y: coords.y * this.imgScale + this.imgOffsetY,
+            width: coords.width * this.imgScale,
+            height: coords.height * this.imgScale,
+            rotation: coords.rotation || 0,
+        };
     }
 
     drawGrid() {
@@ -115,7 +126,11 @@ export default class extends Controller {
         this.storageLayer.destroyChildren();
 
         this.storagesValue.forEach(storage => {
-            const group = this.createStorageGroup(storage);
+            const displayStorage = {
+                ...storage,
+                _displayCoords: this.denormalizeCoords(storage.coordinates),
+            };
+            const group = this.createStorageGroup(displayStorage);
             this.storageLayer.add(group);
         });
 
@@ -123,7 +138,7 @@ export default class extends Controller {
     }
 
     createStorageGroup(storage) {
-        const coords = storage.coordinates;
+        const coords = storage._displayCoords || storage.coordinates;
         const color = this.getStorageColor(storage);
 
         const group = new Konva.Group({
@@ -296,7 +311,7 @@ export default class extends Controller {
         this.tooltipTarget.classList.remove('hidden');
         const tooltipRect = this.tooltipTarget.getBoundingClientRect();
 
-        const coords = storage.coordinates;
+        const coords = storage._displayCoords || this.denormalizeCoords(storage.coordinates);
         let left = coords.x + coords.width + 10;
         let top = stageOffsetTop + coords.y;
 

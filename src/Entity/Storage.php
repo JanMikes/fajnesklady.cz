@@ -43,7 +43,7 @@ class Storage
     private Collection $photos;
 
     /**
-     * @param array{x: int, y: int, width: int, height: int, rotation: int} $coordinates
+     * @param array{x: int|float, y: int|float, width: int|float, height: int|float, rotation: int|float, normalized?: bool} $coordinates
      */
     public function __construct(
         #[ORM\Id]
@@ -94,7 +94,7 @@ class Storage
     }
 
     /**
-     * @param array{x: int, y: int, width: int, height: int, rotation: int} $coordinates
+     * @param array{x: int|float, y: int|float, width: int|float, height: int|float, rotation: int|float, normalized?: bool} $coordinates
      */
     public function updateDetails(
         string $number,
