@@ -56,6 +56,10 @@ export default class extends Controller {
                 this.fitImageToStage();
                 this.renderStorages();
             };
+            img.onerror = () => {
+                this.drawGrid();
+                this.renderStorages();
+            };
             img.src = this.mapImageValue;
         } else {
             this.drawGrid();
