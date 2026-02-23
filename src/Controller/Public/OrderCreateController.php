@@ -155,6 +155,23 @@ final class OrderCreateController extends AbstractController
             $monthlyPrice = $storageType->getDefaultPricePerMonthInCzk();
         }
 
+        // Prepare storage data for the map
+        $storages = $this->storageRepository->findByPlace($place);
+        $storagesData = array_map(function ($s) {
+            return [
+                'id' => $s->id->toRfc4122(),
+                'number' => $s->number,
+                'storageTypeId' => $s->storageType->id->toRfc4122(),
+                'storageTypeName' => $s->storageType->name,
+                'coordinates' => $s->coordinates,
+                'status' => $s->status->value,
+                'dimensions' => $s->storageType->getDimensionsInMeters(),
+                'pricePerWeek' => $s->getEffectivePricePerWeekInCzk(),
+                'pricePerMonth' => $s->getEffectivePricePerMonthInCzk(),
+                'isUniform' => $s->storageType->uniformStorages,
+            ];
+        }, $storages);
+
         return $this->render('public/order_create.html.twig', [
             'storageType' => $storageType,
             'place' => $place,
@@ -163,6 +180,8 @@ final class OrderCreateController extends AbstractController
             'monthlyPrice' => $monthlyPrice,
             'minStartDate' => $this->calculateMinStartDate($place->daysInAdvance),
             'preSelectedStorage' => $preSelectedStorage,
+            'storagesJson' => json_encode($storagesData),
+            'highlightStorageId' => $preSelectedStorage?->id->toRfc4122(),
         ]);
     }
 

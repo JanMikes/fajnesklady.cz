@@ -2,21 +2,48 @@ import { Controller } from '@hotwired/stimulus';
 import Konva from 'konva';
 
 export default class extends Controller {
-    static targets = ['container', 'tooltip', 'modal', 'modalTitle', 'modalPhotos', 'modalDetails', 'modalOrderBtn'];
+    static targets = [
+        'container', 'tooltip', 'minimap',
+        'modal', 'modalTitle', 'modalPhotos', 'modalDetails', 'modalOrderBtn',
+        'zoomLabel',
+    ];
     static values = {
         mapImage: String,
         storages: Array,
         storageTypes: Array,
-        placeId: String
+        placeId: String,
+        highlightStorage: String,
     }
 
     connect() {
         this.hoveredStorage = null;
+        this.isPanning = false;
+        this.panLastPos = null;
+        this.boundPanMove = null;
+        this.boundPanUp = null;
+        this.zoomLevel = 1;
+
+        this.minimapStage = null;
+        this.minimapBgLayer = null;
+        this.minimapStorageLayer = null;
+        this.minimapViewportLayer = null;
+        this.minimapViewportRect = null;
+
         this.initializeStage();
+        this.initializeMinimap();
         this.loadMapImage();
     }
 
     disconnect() {
+        if (this.boundPanMove) {
+            window.removeEventListener('mousemove', this.boundPanMove);
+        }
+        if (this.boundPanUp) {
+            window.removeEventListener('mouseup', this.boundPanUp);
+        }
+        if (this.minimapStage) {
+            this.minimapStage.destroy();
+        }
         if (this.stage) {
             this.stage.destroy();
         }
@@ -46,7 +73,277 @@ export default class extends Controller {
         });
         this.bgLayer.add(this.bgRect);
         this.bgLayer.draw();
+
+        // Wheel zoom
+        this.stage.on('wheel', (e) => {
+            e.evt.preventDefault();
+            const oldScale = this.stage.scaleX();
+            const pointer = this.stage.getPointerPosition();
+
+            const mousePointTo = {
+                x: (pointer.x - this.stage.x()) / oldScale,
+                y: (pointer.y - this.stage.y()) / oldScale,
+            };
+
+            const direction = e.evt.deltaY < 0 ? 1 : -1;
+            const factor = 1.15;
+            let newScale = direction > 0 ? oldScale * factor : oldScale / factor;
+            newScale = Math.max(0.5, Math.min(5, newScale));
+
+            this.stage.scale({ x: newScale, y: newScale });
+            this.stage.position({
+                x: pointer.x - mousePointTo.x * newScale,
+                y: pointer.y - mousePointTo.y * newScale,
+            });
+
+            this.zoomLevel = newScale;
+            this.updateZoomLabel();
+            this.updateMinimap();
+        });
+
+        // Pan via middle-click or Ctrl/Cmd+drag
+        this.stage.on('mousedown', (e) => {
+            if (e.evt.button === 1 || (e.evt.button === 0 && (e.evt.ctrlKey || e.evt.metaKey))) {
+                this.isPanning = true;
+                this.panLastPos = { x: e.evt.clientX, y: e.evt.clientY };
+                this.stage.container().style.cursor = 'grabbing';
+                this.boundPanMove = this.onPanMove.bind(this);
+                this.boundPanUp = this.onPanUp.bind(this);
+                window.addEventListener('mousemove', this.boundPanMove);
+                window.addEventListener('mouseup', this.boundPanUp);
+                e.evt.preventDefault();
+            }
+        });
     }
+
+    // --- Zoom & Pan ---
+
+    zoomIn() {
+        this.applyZoom(this.stage.scaleX() * 1.2);
+    }
+
+    zoomOut() {
+        this.applyZoom(this.stage.scaleX() / 1.2);
+    }
+
+    zoomReset() {
+        this.stage.scale({ x: 1, y: 1 });
+        this.stage.position({ x: 0, y: 0 });
+        this.zoomLevel = 1;
+        this.updateZoomLabel();
+        this.updateMinimap();
+    }
+
+    applyZoom(newScale) {
+        newScale = Math.max(0.5, Math.min(5, newScale));
+
+        const centerX = this.stage.width() / 2;
+        const centerY = this.stage.height() / 2;
+        const oldScale = this.stage.scaleX();
+
+        const mousePointTo = {
+            x: (centerX - this.stage.x()) / oldScale,
+            y: (centerY - this.stage.y()) / oldScale,
+        };
+
+        this.stage.scale({ x: newScale, y: newScale });
+        this.stage.position({
+            x: centerX - mousePointTo.x * newScale,
+            y: centerY - mousePointTo.y * newScale,
+        });
+
+        this.zoomLevel = newScale;
+        this.updateZoomLabel();
+        this.updateMinimap();
+    }
+
+    updateZoomLabel() {
+        if (this.hasZoomLabelTarget) {
+            this.zoomLabelTarget.textContent = Math.round(this.zoomLevel * 100) + '%';
+        }
+    }
+
+    onPanMove(e) {
+        if (!this.isPanning) return;
+        const dx = e.clientX - this.panLastPos.x;
+        const dy = e.clientY - this.panLastPos.y;
+        this.stage.x(this.stage.x() + dx);
+        this.stage.y(this.stage.y() + dy);
+        this.panLastPos = { x: e.clientX, y: e.clientY };
+        this.updateMinimap();
+    }
+
+    onPanUp() {
+        this.isPanning = false;
+        this.stage.container().style.cursor = 'default';
+        window.removeEventListener('mousemove', this.boundPanMove);
+        window.removeEventListener('mouseup', this.boundPanUp);
+        this.boundPanMove = null;
+        this.boundPanUp = null;
+    }
+
+    // --- Minimap ---
+
+    initializeMinimap() {
+        if (!this.hasMinimapTarget) return;
+
+        const minimapW = 180;
+        const minimapH = 120;
+
+        this.minimapStage = new Konva.Stage({
+            container: this.minimapTarget,
+            width: minimapW,
+            height: minimapH,
+        });
+
+        this.minimapBgLayer = new Konva.Layer({ listening: false });
+        this.minimapStorageLayer = new Konva.Layer({ listening: false });
+        this.minimapViewportLayer = new Konva.Layer();
+
+        this.minimapStage.add(this.minimapBgLayer);
+        this.minimapStage.add(this.minimapStorageLayer);
+        this.minimapStage.add(this.minimapViewportLayer);
+
+        this.minimapBgLayer.add(new Konva.Rect({
+            x: 0, y: 0,
+            width: minimapW, height: minimapH,
+            fill: '#f3f4f6',
+        }));
+
+        this.minimapViewportRect = new Konva.Rect({
+            x: 0, y: 0,
+            width: minimapW, height: minimapH,
+            fill: 'rgba(59, 130, 246, 0.15)',
+            stroke: '#3b82f6',
+            strokeWidth: 1.5,
+            draggable: true,
+        });
+        this.minimapViewportLayer.add(this.minimapViewportRect);
+
+        this.minimapViewportRect.on('dragmove', () => this.onMinimapViewportDrag());
+
+        this.minimapStage.on('click', (e) => {
+            if (e.target === this.minimapViewportRect) return;
+            this.onMinimapClick(e);
+        });
+
+        this.minimapBgLayer.draw();
+    }
+
+    getMinimapScale() {
+        const stageW = this.stage.width();
+        const stageH = this.stage.height();
+        return Math.min(180 / stageW, 120 / stageH);
+    }
+
+    renderMinimap() {
+        if (!this.minimapStage) return;
+
+        const mmScale = this.getMinimapScale();
+
+        this.minimapBgLayer.destroyChildren();
+        this.minimapBgLayer.add(new Konva.Rect({
+            x: 0, y: 0,
+            width: 180, height: 120,
+            fill: '#f3f4f6',
+        }));
+
+        if (this.mapImg) {
+            this.minimapBgLayer.add(new Konva.Image({
+                x: this.imgOffsetX * mmScale,
+                y: this.imgOffsetY * mmScale,
+                image: this.mapImg,
+                width: this.mapImg.width * this.imgScale * mmScale,
+                height: this.mapImg.height * this.imgScale * mmScale,
+                opacity: 0.6,
+            }));
+        }
+        this.minimapBgLayer.draw();
+
+        // Storage rects
+        this.minimapStorageLayer.destroyChildren();
+        this.storagesValue.forEach(storage => {
+            const c = this.denormalizeCoords(storage.coordinates);
+            const color = this.getStorageColor(storage);
+
+            this.minimapStorageLayer.add(new Konva.Rect({
+                x: (c.x + c.width / 2) * mmScale,
+                y: (c.y + c.height / 2) * mmScale,
+                offsetX: Math.max(3, c.width * mmScale) / 2,
+                offsetY: Math.max(3, c.height * mmScale) / 2,
+                width: Math.max(3, c.width * mmScale),
+                height: Math.max(3, c.height * mmScale),
+                rotation: c.rotation || 0,
+                fill: color,
+                opacity: 0.8,
+            }));
+        });
+        this.minimapStorageLayer.draw();
+
+        this.updateMinimapViewport();
+    }
+
+    updateMinimapViewport() {
+        if (!this.minimapStage || !this.minimapViewportRect) return;
+
+        const mmScale = this.getMinimapScale();
+        const scale = this.stage.scaleX();
+
+        const viewX = -this.stage.x() / scale;
+        const viewY = -this.stage.y() / scale;
+        const viewW = this.stage.width() / scale;
+        const viewH = this.stage.height() / scale;
+
+        this.minimapViewportRect.setAttrs({
+            x: viewX * mmScale,
+            y: viewY * mmScale,
+            width: viewW * mmScale,
+            height: viewH * mmScale,
+        });
+        this.minimapViewportLayer.draw();
+    }
+
+    updateMinimap() {
+        if (!this.minimapStage) return;
+
+        const scale = this.stage.scaleX();
+        if (scale > 1.05) {
+            this.minimapTarget.style.display = 'block';
+            this.updateMinimapViewport();
+        } else {
+            this.minimapTarget.style.display = 'none';
+        }
+    }
+
+    onMinimapViewportDrag() {
+        const mmScale = this.getMinimapScale();
+        const scale = this.stage.scaleX();
+
+        const viewX = this.minimapViewportRect.x() / mmScale;
+        const viewY = this.minimapViewportRect.y() / mmScale;
+
+        this.stage.x(-viewX * scale);
+        this.stage.y(-viewY * scale);
+    }
+
+    onMinimapClick(e) {
+        const mmScale = this.getMinimapScale();
+        const scale = this.stage.scaleX();
+
+        const pos = this.minimapStage.getPointerPosition();
+        const stageX = pos.x / mmScale;
+        const stageY = pos.y / mmScale;
+
+        const viewW = this.stage.width() / scale;
+        const viewH = this.stage.height() / scale;
+
+        this.stage.x(-(stageX - viewW / 2) * scale);
+        this.stage.y(-(stageY - viewH / 2) * scale);
+
+        this.updateMinimapViewport();
+    }
+
+    // --- Map Image ---
 
     loadMapImage() {
         if (this.mapImageValue) {
@@ -55,15 +352,18 @@ export default class extends Controller {
                 this.mapImg = img;
                 this.fitImageToStage();
                 this.renderStorages();
+                this.renderMinimap();
             };
             img.onerror = () => {
                 this.drawGrid();
                 this.renderStorages();
+                this.renderMinimap();
             };
             img.src = this.mapImageValue;
         } else {
             this.drawGrid();
             this.renderStorages();
+            this.renderMinimap();
         }
     }
 
@@ -122,6 +422,8 @@ export default class extends Controller {
         this.bgLayer.draw();
     }
 
+    // --- Storages ---
+
     renderStorages() {
         this.storageLayer.destroyChildren();
 
@@ -140,6 +442,7 @@ export default class extends Controller {
     createStorageGroup(storage) {
         const coords = storage._displayCoords || storage.coordinates;
         const color = this.getStorageColor(storage);
+        const isHighlighted = this.highlightStorageValue && storage.id === this.highlightStorageValue;
 
         const group = new Konva.Group({
             x: coords.x + coords.width / 2,
@@ -157,11 +460,19 @@ export default class extends Controller {
             y: -coords.height / 2,
             width: coords.width,
             height: coords.height,
-            fill: color + '99',
-            stroke: color,
-            strokeWidth: 2,
+            fill: isHighlighted ? color + 'dd' : color + '99',
+            stroke: isHighlighted ? '#1e3a5f' : color,
+            strokeWidth: isHighlighted ? 3 : 2,
             cornerRadius: 2,
         });
+
+        if (isHighlighted) {
+            rect.shadowColor('rgba(0, 0, 0, 0.4)');
+            rect.shadowBlur(12);
+            rect.shadowOffsetX(2);
+            rect.shadowOffsetY(2);
+            rect.shadowEnabled(true);
+        }
 
         const text = new Konva.Text({
             x: -coords.width / 2,
@@ -169,7 +480,7 @@ export default class extends Controller {
             width: coords.width,
             height: coords.height,
             text: storage.number,
-            fontSize: 14,
+            fontSize: isHighlighted ? 16 : 14,
             fontStyle: 'bold',
             fontFamily: 'sans-serif',
             fill: '#1f2937',
@@ -182,6 +493,7 @@ export default class extends Controller {
 
         // Events
         group.on('mouseenter', () => {
+            if (this.isPanning) return;
             this.hoveredStorage = storage;
             this.stage.container().style.cursor = 'pointer';
 
@@ -201,19 +513,22 @@ export default class extends Controller {
 
         group.on('mouseleave', () => {
             this.hoveredStorage = null;
-            this.stage.container().style.cursor = 'default';
+            if (!this.isPanning) {
+                this.stage.container().style.cursor = 'default';
+            }
 
-            rect.fill(color + '99');
-            rect.stroke(color);
-            rect.strokeWidth(2);
-            rect.shadowEnabled(false);
-            text.fontSize(14);
+            rect.fill(isHighlighted ? color + 'dd' : color + '99');
+            rect.stroke(isHighlighted ? '#1e3a5f' : color);
+            rect.strokeWidth(isHighlighted ? 3 : 2);
+            rect.shadowEnabled(isHighlighted);
+            text.fontSize(isHighlighted ? 16 : 14);
             this.storageLayer.draw();
 
             this.hideTooltip();
         });
 
         group.on('click tap', () => {
+            if (this.isPanning) return;
             if (storage.status === 'available') {
                 if (storage.isUniform) {
                     const orderBtn = document.querySelector(`[data-storage-type-id="${storage.storageTypeId}"]`);
@@ -300,7 +615,7 @@ export default class extends Controller {
             </div>
         `;
 
-        // Position tooltip using pointer position
+        // Position tooltip near pointer, accounting for zoom/pan
         const pointerPos = this.stage.getPointerPosition();
         if (!pointerPos) return;
 
@@ -311,24 +626,20 @@ export default class extends Controller {
         this.tooltipTarget.classList.remove('hidden');
         const tooltipRect = this.tooltipTarget.getBoundingClientRect();
 
-        const coords = storage._displayCoords || this.denormalizeCoords(storage.coordinates);
-        let left = coords.x + coords.width + 10;
-        let top = stageOffsetTop + coords.y;
+        let left = pointerPos.x + 15;
+        let top = stageOffsetTop + pointerPos.y - 10;
 
-        // Overflow right → position left
+        // Overflow right
         if (left + tooltipRect.width > containerRect.width - 10) {
-            left = coords.x - tooltipRect.width - 10;
+            left = pointerPos.x - tooltipRect.width - 15;
         }
 
-        // Overflow left → center
-        if (left < 10) {
-            left = coords.x + (coords.width - tooltipRect.width) / 2;
-            left = Math.max(10, Math.min(left, containerRect.width - tooltipRect.width - 10));
-        }
+        // Overflow left
+        left = Math.max(10, left);
 
         // Overflow bottom
         if (top + tooltipRect.height > stageRect.bottom - containerRect.top - 10) {
-            top = stageOffsetTop + coords.y + coords.height - tooltipRect.height;
+            top = stageOffsetTop + pointerPos.y - tooltipRect.height - 10;
         }
 
         top = Math.max(stageOffsetTop + 10, top);
