@@ -841,8 +841,14 @@ export default class extends Controller {
     // --- Save / Delete / Cancel ---
 
     async saveAllStorages() {
+        // Include storages that need coordinate normalization (legacy data)
+        const needsNormalization = this.mapImg
+            ? this.storages.filter(s => s.id && !s.isNew && !s.modified && !s._normalized)
+            : [];
         const modified = this.storages.filter(s => s.modified || s.isNew);
-        if (modified.length === 0) {
+        const toSave = [...modified, ...needsNormalization];
+
+        if (toSave.length === 0) {
             this.showNotification('Žádné změny k uložení');
             return;
         }
@@ -850,7 +856,7 @@ export default class extends Controller {
         let saved = 0;
         let errors = 0;
 
-        for (const storage of modified) {
+        for (const storage of toSave) {
             const data = {
                 number: storage.number,
                 storageTypeId: storage.storageTypeId,
@@ -878,6 +884,7 @@ export default class extends Controller {
                 storage.id = result.id;
                 storage.isNew = false;
                 storage.modified = false;
+                storage._normalized = true;
                 saved++;
             } catch {
                 errors++;
@@ -1182,6 +1189,7 @@ export default class extends Controller {
         this.storages.forEach(storage => {
             if (storage.coordinates.normalized) {
                 storage.coordinates = this.denormalizeCoords(storage.coordinates);
+                storage._normalized = true;
             }
         });
     }
