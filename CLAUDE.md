@@ -289,6 +289,7 @@ Available: `UserAlreadyExists`, `UserNotFound`, `PlaceNotFound`, `StorageTypeNot
 - Enums over magic strings: `UserRole::ADMIN->value` not `'ROLE_ADMIN'`
 - All entity IDs: UUID v7 via `ProvideIdentity` interface
 - ID generation: Production uses `RandomIdentityProvider`, tests use `PredictableIdentityProvider`
+- **Logging exceptions**: Always use `'exception' => $e` in logger context, never `$e->getMessage()`. Monolog extracts the message, trace, and class automatically from the `exception` key.
 
 ## Frontend
 

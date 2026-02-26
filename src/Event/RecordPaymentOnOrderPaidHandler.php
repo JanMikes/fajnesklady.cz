@@ -24,6 +24,10 @@ final readonly class RecordPaymentOnOrderPaidHandler
     {
         $order = $this->orderRepository->get($event->orderId);
 
+        if (null !== $this->paymentRepository->findByOrder($order)) {
+            return;
+        }
+
         $payment = new Payment(
             id: $this->identityProvider->next(),
             order: $order,

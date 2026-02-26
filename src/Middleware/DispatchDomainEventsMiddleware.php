@@ -11,6 +11,7 @@ use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Messenger\Middleware\MiddlewareInterface;
 use Symfony\Component\Messenger\Middleware\StackInterface;
+use Symfony\Component\Messenger\Stamp\TransportNamesStamp;
 
 /**
  * Dispatches buffered domain events AFTER the command bus transaction commits.
@@ -42,10 +43,13 @@ final readonly class DispatchDomainEventsMiddleware implements MiddlewareInterfa
                 try {
                     $this->eventBus->dispatch($event);
                 } catch (\Throwable $e) {
-                    $this->logger->error('Failed to handle domain event', [
+                    $this->logger->error('Domain event failed, dispatching to async for retry', [
                         'event' => $event::class,
-                        'error' => $e->getMessage(),
+                        'exception' => $e,
                     ]);
+                    $this->eventBus->dispatch(
+                        Envelope::wrap($event)->with(new TransportNamesStamp(['async'])),
+                    );
                 }
             }
         }

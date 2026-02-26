@@ -60,7 +60,7 @@ readonly class InvoicingService
         } catch (\Throwable $e) {
             $this->logger->warning('Failed to download invoice PDF, email will be sent without attachment', [
                 'invoice_id' => $fakturoidInvoice->id,
-                'error' => $e->getMessage(),
+                'exception' => $e,
             ]);
         }
 

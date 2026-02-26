@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Repository;
 
+use App\Entity\Contract;
+use App\Entity\Order;
 use App\Entity\Payment;
 use App\Entity\SelfBillingInvoice;
 use App\Entity\User;
@@ -25,6 +27,30 @@ class PaymentRepository
     public function find(Uuid $id): ?Payment
     {
         return $this->entityManager->find(Payment::class, $id);
+    }
+
+    public function findByOrder(Order $order): ?Payment
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('p')
+            ->from(Payment::class, 'p')
+            ->where('p.order = :order')
+            ->setParameter('order', $order)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
+    public function findByContractAndPaidAt(Contract $contract, \DateTimeImmutable $paidAt): ?Payment
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('p')
+            ->from(Payment::class, 'p')
+            ->where('p.contract = :contract')
+            ->andWhere('p.paidAt = :paidAt')
+            ->setParameter('contract', $contract)
+            ->setParameter('paidAt', $paidAt)
+            ->getQuery()
+            ->getOneOrNullResult();
     }
 
     /**

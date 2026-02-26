@@ -12,11 +12,11 @@ use App\Entity\User;
 use App\Enum\RentalType;
 use App\Event\IssueInvoiceOnPaymentHandler;
 use App\Event\OrderPaid;
+use App\Repository\InvoiceRepository;
 use App\Repository\OrderRepository;
 use App\Service\InvoicingService;
 use PHPUnit\Framework\TestCase;
 use Psr\Clock\ClockInterface;
-use Psr\Log\NullLogger;
 use Symfony\Component\Uid\Uuid;
 
 class IssueInvoiceOnPaymentHandlerTest extends TestCase
@@ -34,6 +34,9 @@ class IssueInvoiceOnPaymentHandlerTest extends TestCase
             ->with($orderId)
             ->willReturn($order);
 
+        $invoiceRepository = $this->createMock(InvoiceRepository::class);
+        $invoiceRepository->method('findByOrder')->willReturn(null);
+
         $invoicingService = $this->createMock(InvoicingService::class);
         $invoicingService->expects($this->once())
             ->method('issueInvoiceForOrder')
@@ -44,9 +47,9 @@ class IssueInvoiceOnPaymentHandlerTest extends TestCase
 
         $handler = new IssueInvoiceOnPaymentHandler(
             $orderRepository,
+            $invoiceRepository,
             $invoicingService,
             $clock,
-            new NullLogger(),
         );
 
         $handler($event);
@@ -63,6 +66,9 @@ class IssueInvoiceOnPaymentHandlerTest extends TestCase
         $orderRepository = $this->createMock(OrderRepository::class);
         $orderRepository->method('get')->willReturn($order);
 
+        $invoiceRepository = $this->createMock(InvoiceRepository::class);
+        $invoiceRepository->method('findByOrder')->willReturn(null);
+
         $invoicingService = $this->createMock(InvoicingService::class);
         $invoicingService->expects($this->once())
             ->method('issueInvoiceForOrder')
@@ -73,9 +79,9 @@ class IssueInvoiceOnPaymentHandlerTest extends TestCase
 
         $handler = new IssueInvoiceOnPaymentHandler(
             $orderRepository,
+            $invoiceRepository,
             $invoicingService,
             $clock,
-            new NullLogger(),
         );
 
         $handler($event);

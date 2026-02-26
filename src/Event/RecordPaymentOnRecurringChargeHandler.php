@@ -24,6 +24,10 @@ final readonly class RecordPaymentOnRecurringChargeHandler
     {
         $contract = $this->contractRepository->get($event->contractId);
 
+        if (null !== $this->paymentRepository->findByContractAndPaidAt($contract, $event->occurredOn)) {
+            return;
+        }
+
         $payment = new Payment(
             id: $this->identityProvider->next(),
             order: null,

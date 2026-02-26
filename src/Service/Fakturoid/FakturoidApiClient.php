@@ -98,7 +98,7 @@ final readonly class FakturoidApiClient implements FakturoidClient
             $context = [
                 'subject_id' => $subjectId,
                 'order_id' => $order->id->toRfc4122(),
-                'error' => $e->getMessage(),
+                'exception' => $e,
             ];
 
             if ($e instanceof RequestException) {
@@ -134,7 +134,7 @@ final readonly class FakturoidApiClient implements FakturoidClient
         } catch (\Throwable $e) {
             $this->logger->error('Failed to mark Fakturoid invoice as paid', [
                 'invoice_id' => $invoiceId,
-                'error' => $e->getMessage(),
+                'exception' => $e,
             ]);
         }
     }

@@ -42,6 +42,7 @@ return App::config([
                         'allow_no_handlers' => true,
                     ],
                     'middleware' => [
+                        'App\\Middleware\\DispatchDomainEventsMiddleware',
                         'doctrine_transaction',
                         'validation',
                     ],
