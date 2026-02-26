@@ -25,6 +25,12 @@ final readonly class SendVerificationEmailHandler
     {
         $user = $this->userRepository->get($event->userId);
 
+        // Passwordless users (e.g. created during guest checkout) cannot log in,
+        // so sending a verification email would be confusing and pointless.
+        if (!$user->hasPassword()) {
+            return;
+        }
+
         // Generate verification token/URL
         $signatureComponents = $this->verifyEmailHelper->generateSignature(
             routeName: 'app_verify_email',
