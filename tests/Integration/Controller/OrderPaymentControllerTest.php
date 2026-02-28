@@ -46,35 +46,113 @@ class OrderPaymentControllerTest extends WebTestCase
         $this->assertResponseIsSuccessful();
         $this->assertSelectorTextContains('h1', 'Přijetí smluvních podmínek');
         $this->assertSelectorExists('input[name="accept_contract"]');
+        $this->assertSelectorExists('input[name="signature_data"]');
+        $this->assertSelectorExists('input[name="signing_method"]');
+        $this->assertSelectorExists('input[name="signature_consent"]');
     }
 
-    public function testAcceptPageRedirectsToPaymentWhenTermsAlreadyAccepted(): void
+    public function testAcceptPageRedirectsToPaymentWhenTermsAndSignatureComplete(): void
     {
-        // The PAID order in fixtures has termsAcceptedAt set
-        $order = $this->findOrderByStatus(OrderStatus::PAID);
+        $order = $this->findOrderByStatus(OrderStatus::RESERVED);
         $orderId = $order->id->toRfc4122();
 
+        // Accept terms and sign
+        $this->acceptTermsWithSignature($orderId);
+
+        // Visiting accept page again should redirect to payment
         $this->client->request('GET', '/objednavka/'.$orderId.'/prijmout');
 
-        // Terms already accepted, should redirect to payment (or complete for PAID)
         $this->assertResponseRedirects('/objednavka/'.$orderId.'/platba');
     }
 
-    public function testAcceptTermsRedirectsToPayment(): void
+    public function testAcceptTermsWithSignatureRedirectsToPayment(): void
     {
         $order = $this->findOrderByStatus(OrderStatus::RESERVED);
         $orderId = $order->id->toRfc4122();
 
         $this->client->request('POST', '/objednavka/'.$orderId.'/prijmout', [
             'accept_contract' => '1',
+            'signature_data' => $this->createValidPngDataUrl(),
+            'signing_method' => 'draw',
+            'signature_consent' => '1',
         ]);
 
         $this->assertResponseRedirects('/objednavka/'.$orderId.'/platba');
 
-        // Verify terms were accepted
+        // Verify terms were accepted and signature attached
         $this->entityManager->clear();
         $updatedOrder = $this->entityManager->find(Order::class, $order->id);
         $this->assertNotNull($updatedOrder->termsAcceptedAt);
+        $this->assertTrue($updatedOrder->hasSignature());
+        $this->assertNotNull($updatedOrder->signaturePath);
+        $this->assertNotNull($updatedOrder->signedAt);
+    }
+
+    public function testAcceptWithoutSignatureShowsError(): void
+    {
+        $order = $this->findOrderByStatus(OrderStatus::RESERVED);
+        $orderId = $order->id->toRfc4122();
+
+        $this->client->request('POST', '/objednavka/'.$orderId.'/prijmout', [
+            'accept_contract' => '1',
+            'signature_data' => '',
+            'signing_method' => 'draw',
+            'signature_consent' => '1',
+        ]);
+
+        $this->assertResponseIsSuccessful(); // Re-renders form with error
+    }
+
+    public function testAcceptWithoutConsentShowsError(): void
+    {
+        $order = $this->findOrderByStatus(OrderStatus::RESERVED);
+        $orderId = $order->id->toRfc4122();
+
+        $this->client->request('POST', '/objednavka/'.$orderId.'/prijmout', [
+            'accept_contract' => '1',
+            'signature_data' => $this->createValidPngDataUrl(),
+            'signing_method' => 'draw',
+            // missing signature_consent
+        ]);
+
+        $this->assertResponseIsSuccessful(); // Re-renders form with error
+    }
+
+    public function testAcceptWithoutContractCheckboxShowsError(): void
+    {
+        $order = $this->findOrderByStatus(OrderStatus::RESERVED);
+        $orderId = $order->id->toRfc4122();
+
+        $this->client->request('POST', '/objednavka/'.$orderId.'/prijmout', [
+            // missing accept_contract
+            'signature_data' => $this->createValidPngDataUrl(),
+            'signing_method' => 'draw',
+            'signature_consent' => '1',
+        ]);
+
+        $this->assertResponseIsSuccessful(); // Re-renders form with error
+    }
+
+    public function testAcceptWithTypedSignature(): void
+    {
+        $order = $this->findOrderByStatus(OrderStatus::RESERVED);
+        $orderId = $order->id->toRfc4122();
+
+        $this->client->request('POST', '/objednavka/'.$orderId.'/prijmout', [
+            'accept_contract' => '1',
+            'signature_data' => $this->createValidPngDataUrl(),
+            'signing_method' => 'typed',
+            'typed_name' => 'Jan Novák',
+            'style_id' => 'dancing-script',
+            'signature_consent' => '1',
+        ]);
+
+        $this->assertResponseRedirects('/objednavka/'.$orderId.'/platba');
+
+        $this->entityManager->clear();
+        $updatedOrder = $this->entityManager->find(Order::class, $order->id);
+        $this->assertSame('Jan Novák', $updatedOrder->signatureTypedName);
+        $this->assertSame('dancing-script', $updatedOrder->signatureStyleId);
     }
 
     public function testPaymentPageRedirectsToAcceptWhenTermsNotAccepted(): void
@@ -93,10 +171,8 @@ class OrderPaymentControllerTest extends WebTestCase
         $order = $this->findOrderByStatus(OrderStatus::RESERVED);
         $orderId = $order->id->toRfc4122();
 
-        // Accept terms first
-        $this->client->request('POST', '/objednavka/'.$orderId.'/prijmout', [
-            'accept_contract' => '1',
-        ]);
+        // Accept terms and sign
+        $this->acceptTermsWithSignature($orderId);
 
         // Now access payment page
         $crawler = $this->client->request('GET', '/objednavka/'.$orderId.'/platba');
@@ -111,10 +187,8 @@ class OrderPaymentControllerTest extends WebTestCase
         $order = $this->findOrderByStatus(OrderStatus::RESERVED);
         $orderId = $order->id->toRfc4122();
 
-        // Accept terms first
-        $this->client->request('POST', '/objednavka/'.$orderId.'/prijmout', [
-            'accept_contract' => '1',
-        ]);
+        // Accept terms and sign
+        $this->acceptTermsWithSignature($orderId);
 
         $this->client->request('POST', '/objednavka/'.$orderId.'/platba/iniciovat', [], [], [
             'HTTP_X-Requested-With' => 'XMLHttpRequest',
@@ -139,10 +213,8 @@ class OrderPaymentControllerTest extends WebTestCase
         $order = $this->findOrderByStatus(OrderStatus::RESERVED);
         $orderId = $order->id->toRfc4122();
 
-        // Accept terms first
-        $this->client->request('POST', '/objednavka/'.$orderId.'/prijmout', [
-            'accept_contract' => '1',
-        ]);
+        // Accept terms and sign
+        $this->acceptTermsWithSignature($orderId);
 
         // Then initiate payment
         $this->client->request('POST', '/objednavka/'.$orderId.'/platba/iniciovat', [], [], [
@@ -177,10 +249,8 @@ class OrderPaymentControllerTest extends WebTestCase
         $order = $this->findOrderByStatus(OrderStatus::RESERVED);
         $orderId = $order->id->toRfc4122();
 
-        // Accept terms first
-        $this->client->request('POST', '/objednavka/'.$orderId.'/prijmout', [
-            'accept_contract' => '1',
-        ]);
+        // Accept terms and sign
+        $this->acceptTermsWithSignature($orderId);
 
         // Initiate payment but don't complete it
         $this->client->request('POST', '/objednavka/'.$orderId.'/platba/iniciovat', [], [], [
@@ -199,10 +269,23 @@ class OrderPaymentControllerTest extends WebTestCase
         $order = $this->findOrderByStatus(OrderStatus::RESERVED);
         $orderId = $order->id->toRfc4122();
 
-        // Accept terms first
-        $this->client->request('POST', '/objednavka/'.$orderId.'/prijmout', [
-            'accept_contract' => '1',
-        ]);
+        // Set termsAcceptedAt and signature directly via DQL to avoid
+        // multi-request PredictableIdentityProvider UUID collision
+        $this->entityManager->createQueryBuilder()
+            ->update(Order::class, 'o')
+            ->set('o.termsAcceptedAt', ':termsAcceptedAt')
+            ->set('o.signaturePath', ':path')
+            ->set('o.signingMethod', ':method')
+            ->set('o.signedAt', ':signedAt')
+            ->where('o.id = :id')
+            ->setParameter('termsAcceptedAt', new \DateTimeImmutable())
+            ->setParameter('path', '/tmp/test_signature.png')
+            ->setParameter('method', 'draw')
+            ->setParameter('signedAt', new \DateTimeImmutable())
+            ->setParameter('id', $order->id)
+            ->getQuery()
+            ->execute();
+        $this->entityManager->clear();
 
         // Submit cancellation from payment page
         $this->client->request('POST', '/objednavka/'.$orderId.'/platba', [
@@ -218,6 +301,43 @@ class OrderPaymentControllerTest extends WebTestCase
         // Verify order is now CANCELLED
         $updatedOrder = $this->entityManager->find(Order::class, $order->id);
         $this->assertSame(OrderStatus::CANCELLED, $updatedOrder->status, 'Order should be in CANCELLED status after cancellation');
+    }
+
+    public function testPaymentPageRedirectsToAcceptWhenNoSignature(): void
+    {
+        // The PAID order in fixtures has termsAcceptedAt set but no signature
+        $order = $this->findOrderByStatus(OrderStatus::PAID);
+        $orderId = $order->id->toRfc4122();
+
+        $this->client->request('GET', '/objednavka/'.$orderId.'/platba');
+
+        // No signature -> redirect to accept page
+        $this->assertResponseRedirects('/objednavka/'.$orderId.'/prijmout');
+    }
+
+    private function acceptTermsWithSignature(string $orderId): void
+    {
+        $this->client->request('POST', '/objednavka/'.$orderId.'/prijmout', [
+            'accept_contract' => '1',
+            'signature_data' => $this->createValidPngDataUrl(),
+            'signing_method' => 'draw',
+            'signature_consent' => '1',
+        ]);
+    }
+
+    private function createValidPngDataUrl(): string
+    {
+        $image = imagecreatetruecolor(1, 1);
+        $white = imagecolorallocate($image, 255, 255, 255);
+        \assert($white !== false);
+        imagefill($image, 0, 0, $white);
+
+        ob_start();
+        imagepng($image);
+        $pngData = ob_get_clean();
+        \assert($pngData !== false);
+
+        return 'data:image/png;base64,'.base64_encode($pngData);
     }
 
     private function findUserByEmail(string $email): User

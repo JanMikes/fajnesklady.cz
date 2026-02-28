@@ -35,7 +35,7 @@ final readonly class ContractDocumentGenerator
      *
      * @return string Path to the generated document
      */
-    public function generate(Contract $contract, string $templatePath): string
+    public function generate(Contract $contract, string $templatePath, ?string $signaturePath = null): string
     {
         if (!file_exists($templatePath)) {
             throw new \RuntimeException(sprintf('Contract template not found: %s', $templatePath));
@@ -45,6 +45,9 @@ final readonly class ContractDocumentGenerator
 
         // Replace all placeholders
         $this->replacePlaceholders($templateProcessor, $contract);
+
+        // Embed signature image if available
+        $this->embedSignature($templateProcessor, $signaturePath);
 
         // Generate unique filename
         $filename = $this->generateFilename($contract);
@@ -101,6 +104,20 @@ final readonly class ContractDocumentGenerator
         // Contract metadata
         $processor->setValue('CONTRACT_DATE', $contract->createdAt->format('d.m.Y'));
         $processor->setValue('CONTRACT_NUMBER', $this->formatContractNumber($contract));
+    }
+
+    private function embedSignature(TemplateProcessor $processor, ?string $signaturePath): void
+    {
+        if (null !== $signaturePath && file_exists($signaturePath)) {
+            $processor->setImageValue('SIGNATURE', [
+                'path' => $signaturePath,
+                'width' => 200,
+                'height' => 80,
+                'ratio' => true,
+            ]);
+        } else {
+            $processor->setValue('SIGNATURE', '');
+        }
     }
 
     private function formatDimensions(\App\Entity\StorageType $storageType): string

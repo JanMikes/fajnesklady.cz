@@ -43,6 +43,11 @@ final class OrderPaymentController extends AbstractController
             return $this->redirectToRoute('public_order_accept', ['id' => $order->id]);
         }
 
+        // Signature must be present before payment
+        if (!$order->hasSignature()) {
+            return $this->redirectToRoute('public_order_accept', ['id' => $order->id]);
+        }
+
         // Check if order can be paid
         if (!$order->canBePaid()) {
             if (OrderStatus::COMPLETED === $order->status) {

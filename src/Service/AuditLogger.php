@@ -102,6 +102,19 @@ final readonly class AuditLogger
         );
     }
 
+    public function logOrderSigned(Order $order): void
+    {
+        $this->log(
+            entityType: 'order',
+            entityId: $order->id->toRfc4122(),
+            eventType: 'signed',
+            payload: [
+                'signed_at' => $order->signedAt?->format('Y-m-d H:i:s'),
+                'signing_method' => $order->signingMethod?->value,
+            ],
+        );
+    }
+
     public function logOrderExpired(Order $order): void
     {
         $this->log(

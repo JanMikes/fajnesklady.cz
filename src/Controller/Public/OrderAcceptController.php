@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Controller\Public;
 
 use App\Command\AcceptOrderTermsCommand;
+use App\Command\SignOrderCommand;
 use App\Enum\OrderStatus;
+use App\Enum\SigningMethod;
 use App\Repository\OrderRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -41,8 +43,8 @@ final class OrderAcceptController extends AbstractController
             return $this->redirectToRoute('public_order_complete', ['id' => $order->id]);
         }
 
-        // Terms already accepted - go to payment
-        if ($order->hasAcceptedTerms()) {
+        // Terms already accepted and signed - go to payment
+        if ($order->hasAcceptedTerms() && $order->hasSignature()) {
             return $this->redirectToRoute('public_order_payment', ['id' => $order->id]);
         }
 
@@ -57,12 +59,33 @@ final class OrderAcceptController extends AbstractController
         $storageType = $storage->storageType;
         $place = $storage->getPlace();
 
-        // Handle contract acceptance
+        // Handle contract acceptance + signature
         if ($request->isMethod('POST')) {
             $accepted = $request->request->getBoolean('accept_contract');
+            $signatureData = $request->request->getString('signature_data');
+            $signingMethodValue = $request->request->getString('signing_method');
+            $signatureConsent = $request->request->getBoolean('signature_consent');
 
+            $errors = [];
             if (!$accepted) {
-                $this->addFlash('error', 'Pro pokračování k platbě je nutné souhlasit se smluvními podmínkami.');
+                $errors[] = 'Pro pokračování k platbě je nutné souhlasit se smluvními podmínkami.';
+            }
+            if ('' === $signatureData) {
+                $errors[] = 'Pro pokračování je nutné přidat podpis.';
+            }
+            if (!$signatureConsent) {
+                $errors[] = 'Pro pokračování je nutné potvrdit souhlas s elektronickým podpisem.';
+            }
+
+            $signingMethod = SigningMethod::tryFrom($signingMethodValue);
+            if ('' !== $signingMethodValue && null === $signingMethod) {
+                $errors[] = 'Neplatná metoda podpisu.';
+            }
+
+            if ([] !== $errors) {
+                foreach ($errors as $error) {
+                    $this->addFlash('error', $error);
+                }
 
                 return $this->render('public/order_accept.html.twig', [
                     'order' => $order,
@@ -72,9 +95,21 @@ final class OrderAcceptController extends AbstractController
                 ]);
             }
 
+            /** @var SigningMethod $signingMethod */
+            $typedName = $request->request->getString('typed_name') ?: null;
+            $styleId = $request->request->getString('style_id') ?: null;
+
+            $this->commandBus->dispatch(new SignOrderCommand(
+                order: $order,
+                signatureDataUrl: $signatureData,
+                signingMethod: $signingMethod,
+                typedName: $typedName,
+                styleId: $styleId,
+            ));
+
             $this->commandBus->dispatch(new AcceptOrderTermsCommand($order));
 
-            $this->addFlash('success', 'Smluvní podmínky byly přijaty. Pokračujte k platbě.');
+            $this->addFlash('success', 'Smluvní podmínky byly přijaty a smlouva podepsána. Pokračujte k platbě.');
 
             return $this->redirectToRoute('public_order_payment', ['id' => $order->id]);
         }

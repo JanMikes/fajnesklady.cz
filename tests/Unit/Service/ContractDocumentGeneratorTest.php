@@ -205,4 +205,89 @@ class ContractDocumentGeneratorTest extends TestCase
         $this->assertDirectoryExists($nestedDir);
         $this->assertFileExists($outputPath);
     }
+
+    public function testGenerateWithSignaturePathCreatesDocument(): void
+    {
+        $tenant = $this->createUser();
+        $storage = $this->createStorage();
+        $order = $this->createOrder($tenant, $storage);
+        $contract = $this->createContract($order);
+
+        $templatePath = $this->createTestTemplateWithSignature();
+        $signaturePath = $this->createTestSignatureImage();
+
+        $outputPath = $this->generator->generate($contract, $templatePath, $signaturePath);
+
+        $this->assertFileExists($outputPath);
+        $this->assertStringEndsWith('.docx', $outputPath);
+    }
+
+    public function testGenerateWithNullSignaturePathCreatesDocument(): void
+    {
+        $tenant = $this->createUser();
+        $storage = $this->createStorage();
+        $order = $this->createOrder($tenant, $storage);
+        $contract = $this->createContract($order);
+
+        $templatePath = $this->createTestTemplateWithSignature();
+
+        $outputPath = $this->generator->generate($contract, $templatePath, null);
+
+        $this->assertFileExists($outputPath);
+    }
+
+    public function testGenerateWithNonexistentSignaturePathCreatesDocument(): void
+    {
+        $tenant = $this->createUser();
+        $storage = $this->createStorage();
+        $order = $this->createOrder($tenant, $storage);
+        $contract = $this->createContract($order);
+
+        $templatePath = $this->createTestTemplateWithSignature();
+
+        $outputPath = $this->generator->generate($contract, $templatePath, '/nonexistent/signature.png');
+
+        $this->assertFileExists($outputPath);
+    }
+
+    private function createTestTemplateWithSignature(): string
+    {
+        $templatePath = $this->tempDir.'/template_with_signature.docx';
+
+        $phpWord = new \PhpOffice\PhpWord\PhpWord();
+        $section = $phpWord->addSection();
+        $section->addText('Smlouva o pronájmu');
+        $section->addText('Nájemce: ${TENANT_NAME}');
+        $section->addText('Email: ${TENANT_EMAIL}');
+        $section->addText('Telefon: ${TENANT_PHONE}');
+        $section->addText('Box: ${STORAGE_NUMBER}');
+        $section->addText('Typ: ${STORAGE_TYPE}');
+        $section->addText('Rozměry: ${STORAGE_DIMENSIONS}');
+        $section->addText('Místo: ${PLACE_NAME}');
+        $section->addText('Adresa: ${PLACE_ADDRESS}');
+        $section->addText('Od: ${START_DATE}');
+        $section->addText('Do: ${END_DATE}');
+        $section->addText('Typ nájmu: ${RENTAL_TYPE}');
+        $section->addText('Cena: ${PRICE}');
+        $section->addText('Datum smlouvy: ${CONTRACT_DATE}');
+        $section->addText('Číslo smlouvy: ${CONTRACT_NUMBER}');
+        $section->addText('Podpis: ${SIGNATURE}');
+
+        $objWriter = \PhpOffice\PhpWord\IOFactory::createWriter($phpWord, 'Word2007');
+        $objWriter->save($templatePath);
+
+        return $templatePath;
+    }
+
+    private function createTestSignatureImage(): string
+    {
+        $signaturePath = $this->tempDir.'/test_signature.png';
+        $image = imagecreatetruecolor(200, 80);
+        $white = imagecolorallocate($image, 255, 255, 255);
+        \assert($white !== false);
+        imagefill($image, 0, 0, $white);
+        imagepng($image, $signaturePath);
+
+        return $signaturePath;
+    }
 }

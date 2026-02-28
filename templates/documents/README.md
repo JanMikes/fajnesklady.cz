@@ -53,6 +53,12 @@ Use `${PLACEHOLDER}` syntax in the DOCX template.
 | `${CONTRACT_DATE}` | Contract creation date | 01.01.2024 |
 | `${CONTRACT_NUMBER}` | Generated contract number | 2024-0101-A1B2C3D4 |
 
+### Signature
+
+| Placeholder | Description | Notes |
+|-------------|-------------|-------|
+| `${SIGNATURE}` | Tenant's electronic signature image | Embedded as PNG (200×80px). If no signature, placeholder is cleared. |
+
 ## Editing the Template
 
 1. Open `contract_template.docx` in Microsoft Word or LibreOffice

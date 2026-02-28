@@ -12,6 +12,7 @@ use App\Entity\User;
 use App\Enum\OrderStatus;
 use App\Enum\PaymentFrequency;
 use App\Enum\RentalType;
+use App\Enum\SigningMethod;
 use App\Event\OrderCancelled;
 use App\Event\OrderCompleted;
 use App\Event\OrderCreated;
@@ -487,5 +488,98 @@ class OrderTest extends TestCase
         $this->assertCount(2, $events);
         $this->assertInstanceOf(OrderPaid::class, $events[0]);
         $this->assertInstanceOf(OrderCompleted::class, $events[1]);
+    }
+
+    public function testHasSignatureReturnsFalseByDefault(): void
+    {
+        $order = $this->createOrder();
+
+        $this->assertFalse($order->hasSignature());
+        $this->assertNull($order->signaturePath);
+        $this->assertNull($order->signingMethod);
+        $this->assertNull($order->signatureTypedName);
+        $this->assertNull($order->signatureStyleId);
+        $this->assertNull($order->signedAt);
+    }
+
+    public function testAttachSignatureWithDrawMethod(): void
+    {
+        $order = $this->createOrder();
+        $now = new \DateTimeImmutable();
+
+        $order->attachSignature(
+            signaturePath: '/var/signatures/signature_test.png',
+            signingMethod: SigningMethod::DRAW,
+            typedName: null,
+            styleId: null,
+            now: $now,
+        );
+
+        $this->assertTrue($order->hasSignature());
+        $this->assertSame('/var/signatures/signature_test.png', $order->signaturePath);
+        $this->assertSame(SigningMethod::DRAW, $order->signingMethod);
+        $this->assertNull($order->signatureTypedName);
+        $this->assertNull($order->signatureStyleId);
+        $this->assertSame($now, $order->signedAt);
+    }
+
+    public function testAttachSignatureWithTypedMethod(): void
+    {
+        $order = $this->createOrder();
+        $now = new \DateTimeImmutable();
+
+        $order->attachSignature(
+            signaturePath: '/var/signatures/signature_test.png',
+            signingMethod: SigningMethod::TYPED,
+            typedName: 'Jan Novák',
+            styleId: 'dancing-script',
+            now: $now,
+        );
+
+        $this->assertTrue($order->hasSignature());
+        $this->assertSame(SigningMethod::TYPED, $order->signingMethod);
+        $this->assertSame('Jan Novák', $order->signatureTypedName);
+        $this->assertSame('dancing-script', $order->signatureStyleId);
+    }
+
+    public function testHasSignatureRequiresBothPathAndTimestamp(): void
+    {
+        $order = $this->createOrder();
+
+        // Neither set - no signature
+        $this->assertFalse($order->hasSignature());
+
+        // After attach - both are set
+        $order->attachSignature(
+            signaturePath: '/var/signatures/test.png',
+            signingMethod: SigningMethod::DRAW,
+            typedName: null,
+            styleId: null,
+            now: new \DateTimeImmutable(),
+        );
+        $this->assertTrue($order->hasSignature());
+    }
+
+    public function testAcceptTermsAndSignatureAreIndependent(): void
+    {
+        $order = $this->createOrder();
+        $now = new \DateTimeImmutable();
+
+        $this->assertFalse($order->hasAcceptedTerms());
+        $this->assertFalse($order->hasSignature());
+
+        $order->acceptTerms($now);
+        $this->assertTrue($order->hasAcceptedTerms());
+        $this->assertFalse($order->hasSignature());
+
+        $order->attachSignature(
+            signaturePath: '/var/signatures/test.png',
+            signingMethod: SigningMethod::DRAW,
+            typedName: null,
+            styleId: null,
+            now: $now,
+        );
+        $this->assertTrue($order->hasAcceptedTerms());
+        $this->assertTrue($order->hasSignature());
     }
 }

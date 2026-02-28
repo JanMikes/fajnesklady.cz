@@ -74,6 +74,11 @@ return App::config([
                 ['authClientCredentials', []],
             ],
         ],
+        'App\\Service\\SignatureStorage' => [
+            'arguments' => [
+                '$signaturesDirectory' => '%kernel.project_dir%/var/signatures',
+            ],
+        ],
         'App\\Service\\ContractDocumentGenerator' => [
             'arguments' => [
                 '$contractsDirectory' => '%kernel.project_dir%/var/contracts',

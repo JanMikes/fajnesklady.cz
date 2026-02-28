@@ -7,6 +7,7 @@ namespace App\Entity;
 use App\Enum\OrderStatus;
 use App\Enum\PaymentFrequency;
 use App\Enum\RentalType;
+use App\Enum\SigningMethod;
 use App\Event\OrderCancelled;
 use App\Event\OrderCompleted;
 use App\Event\OrderCreated;
@@ -40,6 +41,21 @@ class Order implements EntityWithEvents
 
     #[ORM\Column(nullable: true)]
     public private(set) ?string $goPayParentPaymentId = null;
+
+    #[ORM\Column(length: 500, nullable: true)]
+    public private(set) ?string $signaturePath = null;
+
+    #[ORM\Column(length: 10, nullable: true, enumType: SigningMethod::class)]
+    public private(set) ?SigningMethod $signingMethod = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    public private(set) ?string $signatureTypedName = null;
+
+    #[ORM\Column(length: 50, nullable: true)]
+    public private(set) ?string $signatureStyleId = null;
+
+    #[ORM\Column(nullable: true)]
+    public private(set) ?\DateTimeImmutable $signedAt = null;
 
     public function __construct(
         #[ORM\Id]
@@ -172,6 +188,25 @@ class Order implements EntityWithEvents
     public function getTotalPriceInCzk(): float
     {
         return $this->totalPrice / 100;
+    }
+
+    public function attachSignature(
+        string $signaturePath,
+        SigningMethod $signingMethod,
+        ?string $typedName,
+        ?string $styleId,
+        \DateTimeImmutable $now,
+    ): void {
+        $this->signaturePath = $signaturePath;
+        $this->signingMethod = $signingMethod;
+        $this->signatureTypedName = $typedName;
+        $this->signatureStyleId = $styleId;
+        $this->signedAt = $now;
+    }
+
+    public function hasSignature(): bool
+    {
+        return null !== $this->signaturePath && null !== $this->signedAt;
     }
 
     public function setGoPayPaymentId(string $paymentId): void
