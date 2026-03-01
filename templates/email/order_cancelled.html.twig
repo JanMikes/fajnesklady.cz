@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Potvrzení objednávky</title>
+    <title>Objednávka zrušena</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -14,7 +14,7 @@
             padding: 20px;
         }
         .header {
-            background-color: #570df8;
+            background-color: #dc2626;
             color: white;
             padding: 20px;
             text-align: center;
@@ -25,22 +25,6 @@
             padding: 30px;
             border: 1px solid #ddd;
             border-top: none;
-        }
-        .button {
-            display: inline-block;
-            background-color: #570df8;
-            color: white !important;
-            padding: 12px 30px;
-            text-decoration: none;
-            border-radius: 5px;
-            margin: 20px 0;
-            font-weight: bold;
-        }
-        .footer {
-            text-align: center;
-            padding: 20px;
-            font-size: 12px;
-            color: #666;
         }
         .order-details {
             background-color: white;
@@ -65,27 +49,33 @@
         .order-details tr:last-child td {
             border-bottom: none;
         }
-        .warning {
-            background-color: #fff3cd;
-            border: 1px solid #ffc107;
+        .info-box {
+            background-color: #eff6ff;
+            border: 1px solid #3b82f6;
             padding: 15px;
             border-radius: 5px;
             margin: 20px 0;
         }
-        .warning strong {
-            color: #856404;
+        .info-box strong {
+            color: #1d4ed8;
+        }
+        .footer {
+            text-align: center;
+            padding: 20px;
+            font-size: 12px;
+            color: #666;
         }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>Potvrzení objednávky</h1>
+        <h1>Objednávka zrušena</h1>
     </div>
 
     <div class="content">
         <h2>Dobrý den, {{ name }}!</h2>
 
-        <p>Děkujeme za Vaši objednávku. Vaše rezervace skladu byla úspěšně vytvořena.</p>
+        <p>Vaše objednávka byla zrušena. Níže najdete shrnutí zrušené objednávky.</p>
 
         <div class="order-details">
             <table>
@@ -109,32 +99,12 @@
                     <td>Číslo boxu:</td>
                     <td>{{ storageNumber }}</td>
                 </tr>
-                <tr>
-                    <td>Datum zahájení:</td>
-                    <td>{{ startDate }}</td>
-                </tr>
-                <tr>
-                    <td>Datum ukončení:</td>
-                    <td>{{ endDate }}</td>
-                </tr>
-                <tr>
-                    <td>Celková cena:</td>
-                    <td><strong>{{ totalPrice }}</strong></td>
-                </tr>
             </table>
         </div>
 
-        <div class="warning">
-            <strong>Důležité:</strong> Vaše rezervace je platná do <strong>{{ expiresAt }}</strong>.
-            Pokud do tohoto data neprovedete platbu, rezervace bude automaticky zrušena.
-        </div>
-
-        <p>Pro dokončení objednávky a zobrazení platebních údajů se prosím přihlaste do svého účtu:</p>
-
-        <div style="text-align: center;">
-            <a href="{{ portalUrl }}" class="button">Zobrazit objednávku</a>
-            <br><br>
-            <a href="{{ cancelUrl }}" style="color: #666; font-size: 13px;">Chci objednávku zrušit</a>
+        <div class="info-box">
+            <strong>Tip:</strong> Pokud si přejete vytvořit novou objednávku, navštivte naše stránky
+            a vyberte si z dostupných skladových jednotek.
         </div>
 
         <p>Pokud máte jakékoli dotazy, neváhejte nás kontaktovat.</p>

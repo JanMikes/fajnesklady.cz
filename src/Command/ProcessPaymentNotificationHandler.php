@@ -48,8 +48,8 @@ final readonly class ProcessPaymentNotificationHandler
             if ($order->hasAcceptedTerms()) {
                 $this->commandBus->dispatch(new CompleteOrderCommand($order));
             }
-        } elseif ($status->isCanceled() && $order->canBeCancelled()) {
-            $this->orderService->cancelOrder($order, $now);
+        } elseif ($status->isCanceled() && !$order->status->isTerminal()) {
+            $order->cancel($now);
         }
     }
 }

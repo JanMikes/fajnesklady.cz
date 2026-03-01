@@ -208,4 +208,89 @@ class OrderVoterTest extends TestCase
 
         $this->assertSame(1, $result);
     }
+
+    public function testUserCannotCancelOtherUserOrder(): void
+    {
+        $orderOwner = $this->createUser();
+        $otherUser = new User(
+            Uuid::v7(),
+            'other@example.com',
+            'password',
+            'Other',
+            'User',
+            new \DateTimeImmutable(),
+        );
+        $landlord = $this->createUser(['ROLE_LANDLORD']);
+        $order = $this->createOrder($orderOwner, $landlord);
+        $token = $this->createToken($otherUser);
+
+        $result = $this->voter->vote($token, $order, [OrderVoter::CANCEL]);
+
+        $this->assertSame(-1, $result);
+    }
+
+    public function testLandlordCanCancelOrderForOwnStorage(): void
+    {
+        $tenant = $this->createUser();
+        $landlord = new User(
+            Uuid::v7(),
+            'landlord@example.com',
+            'password',
+            'Landlord',
+            'User',
+            new \DateTimeImmutable(),
+        );
+        $landlord->changeRole(\App\Enum\UserRole::LANDLORD, new \DateTimeImmutable());
+
+        $order = $this->createOrder($tenant, $landlord);
+        $token = $this->createToken($landlord);
+
+        $result = $this->voter->vote($token, $order, [OrderVoter::CANCEL]);
+
+        $this->assertSame(1, $result);
+    }
+
+    public function testLandlordCannotCancelOrderForOtherLandlordStorage(): void
+    {
+        $tenant = $this->createUser();
+        $otherLandlord = new User(
+            Uuid::v7(),
+            'otherlandlord@example.com',
+            'password',
+            'Other',
+            'Landlord',
+            new \DateTimeImmutable(),
+        );
+        $otherLandlord->changeRole(\App\Enum\UserRole::LANDLORD, new \DateTimeImmutable());
+
+        $landlord = $this->createUser(['ROLE_LANDLORD']);
+        $order = $this->createOrder($tenant, $landlord);
+        $token = $this->createToken($otherLandlord);
+
+        $result = $this->voter->vote($token, $order, [OrderVoter::CANCEL]);
+
+        $this->assertSame(-1, $result);
+    }
+
+    public function testAdminCanCancelAnyOrder(): void
+    {
+        $tenant = $this->createUser();
+        $landlord = $this->createUser(['ROLE_LANDLORD']);
+        $admin = new User(
+            Uuid::v7(),
+            'admin@example.com',
+            'password',
+            'Admin',
+            'User',
+            new \DateTimeImmutable(),
+        );
+        $admin->changeRole(\App\Enum\UserRole::ADMIN, new \DateTimeImmutable());
+
+        $order = $this->createOrder($tenant, $landlord);
+        $token = $this->createToken($admin);
+
+        $result = $this->voter->vote($token, $order, [OrderVoter::CANCEL]);
+
+        $this->assertSame(1, $result);
+    }
 }

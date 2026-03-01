@@ -313,6 +313,28 @@
     </div>
     {% endif %}
 
+    {# Cancel Order Section #}
+    {% if order.canBeCancelled() %}
+    <div class="mt-6 bg-white shadow overflow-hidden sm:rounded-lg border border-red-200">
+        <div class="px-4 py-5 sm:p-6">
+            <h3 class="text-lg font-medium text-red-900">Zrušit objednávku</h3>
+            <p class="mt-1 text-sm text-gray-600">
+                Objednávku můžete zrušit, dokud nebyla zaplacena. Po zrušení bude skladová jednotka uvolněna.
+            </p>
+            <div class="mt-4">
+                <form action="{{ path('portal_landlord_order_cancel', {id: order.id}) }}" method="post" onsubmit="return confirm('Opravdu chcete zrušit tuto objednávku? Tato akce je nevratná.');">
+                    <button type="submit" class="inline-flex items-center px-4 py-2 border border-red-300 shadow-sm text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50">
+                        <svg class="h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        Zrušit objednávku
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     {# Termination Section for Unlimited Contracts #}
     {% if canTerminate %}
     <div class="mt-6 bg-white shadow overflow-hidden sm:rounded-lg border border-red-200">

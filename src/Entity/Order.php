@@ -176,7 +176,23 @@ class Order implements EntityWithEvents
 
     public function canBeCancelled(): bool
     {
-        return !$this->status->isTerminal();
+        return in_array($this->status, [OrderStatus::CREATED, OrderStatus::RESERVED], true);
+    }
+
+    public function cancellationBlockedReason(): ?string
+    {
+        if ($this->canBeCancelled()) {
+            return null;
+        }
+
+        return match ($this->status) {
+            OrderStatus::AWAITING_PAYMENT => 'Objednávku nelze zrušit, protože probíhá platba.',
+            OrderStatus::PAID => 'Objednávku nelze zrušit, protože je již zaplacena.',
+            OrderStatus::COMPLETED => 'Objednávku nelze zrušit, protože je již dokončena.',
+            OrderStatus::CANCELLED => 'Objednávka je již zrušena.',
+            OrderStatus::EXPIRED => 'Objednávka je již expirovaná.',
+            default => 'Objednávku nelze zrušit.',
+        };
     }
 
     public function canBeCompleted(): bool

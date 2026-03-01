@@ -78,9 +78,11 @@ class ExpireOrdersCommandTest extends KernelTestCase
             $pastDate,
         );
 
+        $order1->reserve($pastDate);
+        $order2->reserve($pastDate);
         $this->entityManager->flush();
 
-        // Both orders should be expired but not yet marked as expired
+        // Both orders should be reserved but not yet marked as expired
         $this->assertSame(OrderStatus::RESERVED, $order1->status);
         $this->assertSame(OrderStatus::RESERVED, $order2->status);
 
