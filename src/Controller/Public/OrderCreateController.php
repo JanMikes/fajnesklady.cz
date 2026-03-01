@@ -14,6 +14,7 @@ use App\Form\OrderFormType;
 use App\Repository\PlaceRepository;
 use App\Repository\StorageRepository;
 use App\Repository\StorageTypeRepository;
+use App\Service\StorageAssignment;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -31,6 +32,7 @@ final class OrderCreateController extends AbstractController
         private readonly PlaceRepository $placeRepository,
         private readonly StorageTypeRepository $storageTypeRepository,
         private readonly StorageRepository $storageRepository,
+        private readonly StorageAssignment $storageAssignment,
         private readonly MessageBusInterface $commandBus,
     ) {
     }
@@ -57,30 +59,44 @@ final class OrderCreateController extends AbstractController
             throw new NotFoundHttpException('Typ skladové jednotky nenalezen.');
         }
 
-        // Handle storage selection for non-uniform storage types
-        $preSelectedStorage = null;
-        if (!$storageType->uniformStorages) {
-            // Non-uniform storage type requires a specific storage to be selected
-            if (null === $storageId || !Uuid::isValid($storageId)) {
-                throw new BadRequestHttpException('Pro tento typ skladu je nutné vybrat konkrétní úložiště z mapy.');
+        // Auto-select storage if not provided
+        if (null === $storageId) {
+            $startDate = new \DateTimeImmutable('tomorrow');
+            $endDate = $startDate->modify('+30 days');
+            $firstAvailable = $this->storageAssignment->findFirstAvailableStorage($storageType, $place, $startDate, $endDate);
+
+            if (null === $firstAvailable) {
+                $this->addFlash('error', 'Omlouváme se, ale tento typ skladové jednotky není momentálně dostupný.');
+
+                return $this->redirectToRoute(
+                    $this->getUser() ? 'portal_browse_place_detail' : 'public_place_detail',
+                    ['id' => $placeId],
+                );
             }
-            $preSelectedStorage = $this->storageRepository->find(Uuid::fromString($storageId));
-            if (null === $preSelectedStorage) {
-                throw new NotFoundHttpException('Skladová jednotka nenalezena.');
-            }
-            // Validate that storage belongs to the correct type and place
-            if (!$preSelectedStorage->storageType->id->equals($storageType->id)) {
-                throw new BadRequestHttpException('Vybraná skladová jednotka nepatří k vybranému typu.');
-            }
-            if (!$preSelectedStorage->place->id->equals($place->id)) {
-                throw new BadRequestHttpException('Vybraná skladová jednotka nepatří k vybrané pobočce.');
-            }
-            if (!$preSelectedStorage->isAvailable()) {
-                throw new BadRequestHttpException('Vybraná skladová jednotka již není dostupná.');
-            }
-        } elseif (null !== $storageId) {
-            // Uniform storage type should not have a storage pre-selected
-            throw new BadRequestHttpException('Pro tento typ skladu nelze vybrat konkrétní úložiště.');
+
+            return $this->redirectToRoute('public_order_create', [
+                'placeId' => $placeId,
+                'storageTypeId' => $storageTypeId,
+                'storageId' => $firstAvailable->id->toRfc4122(),
+            ]);
+        }
+
+        // Validate provided storageId
+        if (!Uuid::isValid($storageId)) {
+            throw new NotFoundHttpException('Skladová jednotka nenalezena.');
+        }
+        $preSelectedStorage = $this->storageRepository->find(Uuid::fromString($storageId));
+        if (null === $preSelectedStorage) {
+            throw new NotFoundHttpException('Skladová jednotka nenalezena.');
+        }
+        if (!$preSelectedStorage->storageType->id->equals($storageType->id)) {
+            throw new BadRequestHttpException('Vybraná skladová jednotka nepatří k vybranému typu.');
+        }
+        if (!$preSelectedStorage->place->id->equals($place->id)) {
+            throw new BadRequestHttpException('Vybraná skladová jednotka nepatří k vybrané pobočce.');
+        }
+        if (!$preSelectedStorage->isAvailable()) {
+            throw new BadRequestHttpException('Vybraná skladová jednotka již není dostupná.');
         }
 
         $user = $this->getUser();
@@ -146,14 +162,9 @@ final class OrderCreateController extends AbstractController
             }
         }
 
-        // Calculate example prices for display (use storage's effective prices if pre-selected)
-        if (null !== $preSelectedStorage) {
-            $weeklyPrice = $preSelectedStorage->getEffectivePricePerWeekInCzk();
-            $monthlyPrice = $preSelectedStorage->getEffectivePricePerMonthInCzk();
-        } else {
-            $weeklyPrice = $storageType->getDefaultPricePerWeekInCzk();
-            $monthlyPrice = $storageType->getDefaultPricePerMonthInCzk();
-        }
+        // Calculate example prices for display (use storage's effective prices)
+        $weeklyPrice = $preSelectedStorage->getEffectivePricePerWeekInCzk();
+        $monthlyPrice = $preSelectedStorage->getEffectivePricePerMonthInCzk();
 
         // Prepare storage data for the map
         $storages = $this->storageRepository->findByPlace($place);
@@ -181,7 +192,7 @@ final class OrderCreateController extends AbstractController
             'minStartDate' => $this->calculateMinStartDate($place->daysInAdvance),
             'preSelectedStorage' => $preSelectedStorage,
             'storagesJson' => json_encode($storagesData),
-            'highlightStorageId' => $preSelectedStorage?->id->toRfc4122(),
+            'highlightStorageId' => $preSelectedStorage->id->toRfc4122(),
         ]);
     }
 

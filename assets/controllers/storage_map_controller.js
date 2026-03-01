@@ -13,6 +13,8 @@ export default class extends Controller {
         storageTypes: Array,
         placeId: String,
         highlightStorage: String,
+        currentStorageTypeId: String,
+        orderBaseUrl: String,
     }
 
     connect() {
@@ -459,11 +461,18 @@ export default class extends Controller {
         group.add(rect);
         group.add(text);
 
+        // Determine if this storage is clickable
+        const isClickable = this.hasOrderBaseUrlValue && this.orderBaseUrlValue
+            ? storage.status === 'available'
+                && storage.storageTypeId === this.currentStorageTypeIdValue
+                && storage.id !== this.highlightStorageValue
+            : storage.status === 'available';
+
         // Events
         group.on('mouseenter', () => {
             if (this.isPanning) return;
             this.hoveredStorage = storage;
-            this.stage.container().style.cursor = 'pointer';
+            this.stage.container().style.cursor = isClickable ? 'pointer' : 'default';
 
             rect.fill(color + 'aa');
             rect.stroke(color);
@@ -489,6 +498,16 @@ export default class extends Controller {
 
         group.on('click tap', () => {
             if (this.isPanning) return;
+
+            // In order mode: navigate to change storage
+            if (this.hasOrderBaseUrlValue && this.orderBaseUrlValue) {
+                if (isClickable) {
+                    window.location.href = this.orderBaseUrlValue.replace('__STORAGE_ID__', storage.id);
+                }
+                return;
+            }
+
+            // Legacy: place detail behavior
             if (storage.status === 'available') {
                 if (storage.isUniform) {
                     const orderBtn = document.querySelector(`[data-storage-type-id="${storage.storageTypeId}"]`);
@@ -560,8 +579,8 @@ export default class extends Controller {
     updateTooltip(storage) {
         if (!this.hasTooltipTarget) return;
 
-        const statusText = this.getStatusText(storage.status);
-        const statusClass = this.getStatusClass(storage.status);
+        const statusText = this.getStatusText(storage.status, storage);
+        const statusClass = this.getStatusClass(storage.status, storage);
 
         this.tooltipTarget.innerHTML = `
             <div class="space-y-1">
@@ -613,7 +632,15 @@ export default class extends Controller {
         this.tooltipTarget.classList.add('hidden');
     }
 
-    getStatusText(status) {
+    getStatusText(status, storage) {
+        // Simplified labels in order mode
+        if (this.hasCurrentStorageTypeIdValue && this.currentStorageTypeIdValue) {
+            if (storage && storage.storageTypeId === this.currentStorageTypeIdValue && status === 'available') {
+                return 'Volný';
+            }
+            return 'Nedostupný';
+        }
+
         switch (status) {
             case 'available': return 'Volný';
             case 'reserved': return 'Rezervovaný';
@@ -623,7 +650,15 @@ export default class extends Controller {
         }
     }
 
-    getStatusClass(status) {
+    getStatusClass(status, storage) {
+        // Simplified classes in order mode
+        if (this.hasCurrentStorageTypeIdValue && this.currentStorageTypeIdValue) {
+            if (storage && storage.storageTypeId === this.currentStorageTypeIdValue && status === 'available') {
+                return 'badge-success';
+            }
+            return 'badge-ghost';
+        }
+
         switch (status) {
             case 'available': return 'badge-success';
             case 'reserved': return 'badge-warning';
@@ -634,6 +669,15 @@ export default class extends Controller {
     }
 
     getStorageColor(storage) {
+        // In order mode: only available storages of the current type are green
+        if (this.hasCurrentStorageTypeIdValue && this.currentStorageTypeIdValue) {
+            if (storage.storageTypeId === this.currentStorageTypeIdValue && storage.status === 'available') {
+                return '#22c55e';
+            }
+            return '#9ca3af';
+        }
+
+        // Default mode
         switch (storage.status) {
             case 'available': return '#22c55e';
             case 'reserved': return '#f59e0b';

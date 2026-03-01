@@ -99,7 +99,7 @@ final readonly class StorageAssignment
     /**
      * Find the first available storage of the given type at the given place.
      */
-    private function findFirstAvailableStorage(
+    public function findFirstAvailableStorage(
         StorageType $storageType,
         Place $place,
         \DateTimeImmutable $startDate,

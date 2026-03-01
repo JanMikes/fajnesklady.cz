@@ -300,6 +300,8 @@
              data-storage-map-map-image-value="{{ place.mapImagePath ? asset('uploads/' ~ place.mapImagePath) : '' }}"
              data-storage-map-storages-value="{{ storagesJson|e('html_attr') }}"
              data-storage-map-place-id-value="{{ place.id }}"
+             data-storage-map-current-storage-type-id-value="{{ storageType.id }}"
+             data-storage-map-order-base-url-value="{{ path('public_order_create', {placeId: place.id, storageTypeId: storageType.id, storageId: '__STORAGE_ID__'}) }}"
              {% if highlightStorageId %}data-storage-map-highlight-storage-value="{{ highlightStorageId }}"{% endif %}>
             <div class="card-header bg-gray-50 px-4 py-3 border-b">
                 <div class="flex items-center justify-between">
@@ -324,12 +326,8 @@
                                 <span class="text-gray-600">Volný</span>
                             </div>
                             <div class="flex items-center gap-1">
-                                <div class="w-3 h-3 rounded bg-yellow-500"></div>
-                                <span class="text-gray-600">Rezervovaný</span>
-                            </div>
-                            <div class="flex items-center gap-1">
-                                <div class="w-3 h-3 rounded bg-red-500"></div>
-                                <span class="text-gray-600">Obsazený</span>
+                                <div class="w-3 h-3 rounded bg-gray-400"></div>
+                                <span class="text-gray-600">Nedostupný</span>
                             </div>
                         </div>
                     </div>

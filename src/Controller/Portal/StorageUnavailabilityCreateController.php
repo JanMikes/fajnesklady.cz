@@ -6,12 +6,14 @@ namespace App\Controller\Portal;
 
 use App\Command\CreateStorageUnavailabilityCommand;
 use App\Entity\User;
+use App\Exception\StorageHasActiveRental;
 use App\Form\StorageUnavailabilityFormData;
 use App\Form\StorageUnavailabilityFormType;
 use Psr\Clock\ClockInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Messenger\Exception\HandlerFailedException;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
@@ -48,7 +50,20 @@ final class StorageUnavailabilityCreateController extends AbstractController
                 createdById: $user->id,
             );
 
-            $this->commandBus->dispatch($command);
+            try {
+                $this->commandBus->dispatch($command);
+            } catch (HandlerFailedException $e) {
+                $nested = $e->getPrevious();
+                if ($nested instanceof StorageHasActiveRental) {
+                    $this->addFlash('error', $nested->getMessage());
+
+                    return $this->render('portal/unavailability/create.html.twig', [
+                        'form' => $form,
+                    ]);
+                }
+
+                throw $e;
+            }
 
             $this->addFlash('success', 'Blokování skladu bylo úspěšně vytvořeno.');
 
