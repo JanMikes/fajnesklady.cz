@@ -65,7 +65,7 @@ class OrderRepository
     }
 
     /**
-     * Find orders that block a storage (reserved, awaiting payment, or paid).
+     * Find orders that block a storage (created, reserved, awaiting payment, or paid).
      *
      * @return Order[]
      */
@@ -78,6 +78,7 @@ class OrderRepository
             ->andWhere('o.status IN (:statuses)')
             ->setParameter('storage', $storage)
             ->setParameter('statuses', [
+                OrderStatus::CREATED,
                 OrderStatus::RESERVED,
                 OrderStatus::AWAITING_PAYMENT,
                 OrderStatus::PAID,
@@ -123,7 +124,7 @@ class OrderRepository
 
     /**
      * Find orders that overlap with a given period and block the storage.
-     * Only considers orders in reserving states (reserved, awaiting_payment, paid).
+     * Considers orders in active states (created, reserved, awaiting_payment, paid).
      *
      * @return Order[]
      */
@@ -140,6 +141,7 @@ class OrderRepository
             ->andWhere('o.status IN (:statuses)')
             ->setParameter('storage', $storage)
             ->setParameter('statuses', [
+                OrderStatus::CREATED,
                 OrderStatus::RESERVED,
                 OrderStatus::AWAITING_PAYMENT,
                 OrderStatus::PAID,
@@ -244,6 +246,7 @@ class OrderRepository
             ->andWhere('o.endDate IS NULL OR o.endDate >= :startDate')
             ->setParameter('storageType', $storageType)
             ->setParameter('statuses', [
+                OrderStatus::CREATED,
                 OrderStatus::RESERVED,
                 OrderStatus::AWAITING_PAYMENT,
                 OrderStatus::PAID,
@@ -280,6 +283,7 @@ class OrderRepository
             ->andWhere('o.endDate IS NULL OR o.endDate >= :startDate')
             ->setParameter('storages', $storages)
             ->setParameter('statuses', [
+                OrderStatus::CREATED,
                 OrderStatus::RESERVED,
                 OrderStatus::AWAITING_PAYMENT,
                 OrderStatus::PAID,

@@ -40,7 +40,25 @@ final readonly class FakturoidApiClient implements FakturoidClient
                 : $user->bankAccountNumber;
         }
 
-        $response = $this->manager->getSubjectsProvider()->create($data);
+        try {
+            $response = $this->manager->getSubjectsProvider()->create($data);
+        } catch (\Throwable $e) {
+            $context = [
+                'user_email' => $user->email,
+                'exception' => $e,
+            ];
+
+            if ($e instanceof RequestException) {
+                $body = $e->getResponse()->getBody();
+                $body->rewind();
+                $context['status'] = $e->getResponse()->getStatusCode();
+                $context['body'] = $body->getContents();
+            }
+
+            $this->logger->error('Fakturoid subject creation failed', $context);
+
+            throw $e;
+        }
 
         /** @var \stdClass $body */
         $body = $response->getBody();
@@ -68,7 +86,26 @@ final readonly class FakturoidApiClient implements FakturoidClient
                 : null,
         ];
 
-        $this->manager->getSubjectsProvider()->update($subjectId, $data);
+        try {
+            $this->manager->getSubjectsProvider()->update($subjectId, $data);
+        } catch (\Throwable $e) {
+            $context = [
+                'subject_id' => $subjectId,
+                'user_email' => $user->email,
+                'exception' => $e,
+            ];
+
+            if ($e instanceof RequestException) {
+                $body = $e->getResponse()->getBody();
+                $body->rewind();
+                $context['status'] = $e->getResponse()->getStatusCode();
+                $context['body'] = $body->getContents();
+            }
+
+            $this->logger->error('Fakturoid subject update failed', $context);
+
+            throw $e;
+        }
     }
 
     public function createInvoice(int $subjectId, Order $order): FakturoidInvoice

@@ -48,8 +48,8 @@ final class OrderAcceptController extends AbstractController
             return $this->redirectToRoute('public_order_payment', ['id' => $order->id]);
         }
 
-        // Only reserved orders can accept terms
-        if (OrderStatus::RESERVED !== $order->status) {
+        // Only created orders can accept terms (signing the contract)
+        if (OrderStatus::CREATED !== $order->status) {
             $this->addFlash('error', 'Tuto objednávku nelze dokončit.');
 
             return $this->redirectToRoute($this->getUser() ? 'portal_browse_places' : 'app_home');

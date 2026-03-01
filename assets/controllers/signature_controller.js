@@ -10,7 +10,7 @@ const FONT_STYLES = [
 
 export default class extends Controller {
     static targets = [
-        'drawCanvas', 'typedCanvas', 'typedInput',
+        'drawCanvas', 'typedCanvas',
         'preview', 'previewImage',
         'dataField', 'methodField', 'typedNameField', 'styleIdField',
         'drawTab', 'typedTab', 'drawPanel', 'typedPanel',
@@ -20,11 +20,11 @@ export default class extends Controller {
     static values = {
         mode: { type: String, default: 'draw' },
         styleId: { type: String, default: 'dancing-script' },
+        customerName: { type: String, default: '' },
     };
 
     connect() {
         this.signaturePad = null;
-        this._initDrawCanvas();
     }
 
     disconnect() {
@@ -32,6 +32,17 @@ export default class extends Controller {
             this.signaturePad.off();
             this.signaturePad = null;
         }
+    }
+
+    open() {
+        // Re-init canvas after modal becomes visible (next frame)
+        requestAnimationFrame(() => {
+            if (this.modeValue === 'draw') {
+                this._initDrawCanvas();
+            } else {
+                this._renderTypedSignature();
+            }
+        });
     }
 
     switchToDraw() {
@@ -70,16 +81,9 @@ export default class extends Controller {
         this._renderTypedSignature();
     }
 
-    onTypedInput() {
-        this._renderTypedSignature();
-    }
-
     clear() {
         if (this.modeValue === 'draw' && this.signaturePad) {
             this.signaturePad.clear();
-        } else if (this.modeValue === 'typed') {
-            this.typedInputTarget.value = '';
-            this._renderTypedSignature();
         }
     }
 
@@ -105,7 +109,7 @@ export default class extends Controller {
         // Set hidden fields
         this.dataFieldTarget.value = dataUrl;
         this.methodFieldTarget.value = this.modeValue;
-        this.typedNameFieldTarget.value = this.modeValue === 'typed' ? this.typedInputTarget.value : '';
+        this.typedNameFieldTarget.value = this.modeValue === 'typed' ? this.customerNameValue : '';
         this.styleIdFieldTarget.value = this.modeValue === 'typed' ? this.styleIdValue : '';
 
         // Show preview
@@ -141,11 +145,11 @@ export default class extends Controller {
     }
 
     _renderTypedSignature() {
-        if (!this.hasTypedCanvasTarget || !this.hasTypedInputTarget) return;
+        if (!this.hasTypedCanvasTarget) return;
 
         const canvas = this.typedCanvasTarget;
         const ctx = canvas.getContext('2d');
-        const text = this.typedInputTarget.value.trim();
+        const text = this.customerNameValue.trim();
         const style = FONT_STYLES.find(s => s.id === this.styleIdValue) || FONT_STYLES[0];
 
         // Set canvas size

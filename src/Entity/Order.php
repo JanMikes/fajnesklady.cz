@@ -141,7 +141,9 @@ class Order implements EntityWithEvents
     {
         $this->status = OrderStatus::CANCELLED;
         $this->cancelledAt = $now;
-        $this->storage->release($now);
+        if ($this->storage->isReserved()) {
+            $this->storage->release($now);
+        }
 
         $this->recordThat(new OrderCancelled(
             orderId: $this->id,
@@ -152,7 +154,9 @@ class Order implements EntityWithEvents
     public function expire(\DateTimeImmutable $now): void
     {
         $this->status = OrderStatus::EXPIRED;
-        $this->storage->release($now);
+        if ($this->storage->isReserved()) {
+            $this->storage->release($now);
+        }
 
         $this->recordThat(new OrderExpired(
             orderId: $this->id,

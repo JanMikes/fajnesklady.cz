@@ -93,13 +93,8 @@ final readonly class OrderService
             createdAt: $now,
         );
 
-        // Reserve the order and storage
-        $order->reserve($now);
-
         $this->orderRepository->save($order);
         $this->auditLogger->logOrderCreated($order);
-        $this->auditLogger->logOrderReserved($order);
-        $this->auditLogger->logStorageReserved($storage, $order);
 
         return $order;
     }
@@ -170,9 +165,12 @@ final readonly class OrderService
             throw new \DomainException('Order cannot be cancelled in its current state.');
         }
 
+        $storageWasReserved = $order->storage->isReserved();
         $order->cancel($now);
         $this->auditLogger->logOrderCancelled($order);
-        $this->auditLogger->logStorageReleased($order->storage, 'Order cancelled');
+        if ($storageWasReserved) {
+            $this->auditLogger->logStorageReleased($order->storage, 'Order cancelled');
+        }
     }
 
     /**
@@ -184,9 +182,12 @@ final readonly class OrderService
             throw new \DomainException('Order has not expired yet.');
         }
 
+        $storageWasReserved = $order->storage->isReserved();
         $order->expire($now);
         $this->auditLogger->logOrderExpired($order);
-        $this->auditLogger->logStorageReleased($order->storage, 'Order expired');
+        if ($storageWasReserved) {
+            $this->auditLogger->logStorageReleased($order->storage, 'Order expired');
+        }
     }
 
     /**
@@ -200,9 +201,12 @@ final readonly class OrderService
         $count = 0;
 
         foreach ($expiredOrders as $order) {
+            $storageWasReserved = $order->storage->isReserved();
             $order->expire($now);
             $this->auditLogger->logOrderExpired($order);
-            $this->auditLogger->logStorageReleased($order->storage, 'Order expired');
+            if ($storageWasReserved) {
+                $this->auditLogger->logStorageReleased($order->storage, 'Order expired');
+            }
             ++$count;
         }
 

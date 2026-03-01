@@ -8,6 +8,7 @@ use App\Repository\InvoiceRepository;
 use App\Repository\OrderRepository;
 use App\Service\InvoicingService;
 use Psr\Clock\ClockInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]
@@ -18,6 +19,7 @@ final readonly class IssueInvoiceOnPaymentHandler
         private InvoiceRepository $invoiceRepository,
         private InvoicingService $invoicingService,
         private ClockInterface $clock,
+        private LoggerInterface $logger,
     ) {
     }
 
@@ -29,6 +31,13 @@ final readonly class IssueInvoiceOnPaymentHandler
             return;
         }
 
-        $this->invoicingService->issueInvoiceForOrder($order, $this->clock->now());
+        try {
+            $this->invoicingService->issueInvoiceForOrder($order, $this->clock->now());
+        } catch (\Throwable $e) {
+            $this->logger->error('Failed to issue invoice for order', [
+                'order_id' => $order->id->toRfc4122(),
+                'exception' => $e,
+            ]);
+        }
     }
 }

@@ -315,7 +315,13 @@
     </div>
     {% endif %}
 
-    {% if order.status.value == 'reserved' or order.status.value == 'awaiting_payment' %}
+    {% if order.status.value == 'created' %}
+    <div class="mt-6 flex justify-end">
+        <a href="{{ path('public_order_accept', {id: order.id}) }}" class="btn btn-primary">
+            Podepsat smlouvu
+        </a>
+    </div>
+    {% elseif order.status.value == 'reserved' or order.status.value == 'awaiting_payment' %}
     <div class="mt-6 flex justify-end">
         <a href="{{ path('public_order_payment', {id: order.id}) }}" class="btn btn-primary">
             Pokračovat k platbě

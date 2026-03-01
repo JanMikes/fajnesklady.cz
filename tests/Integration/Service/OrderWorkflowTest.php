@@ -35,7 +35,7 @@ class OrderWorkflowTest extends KernelTestCase
         $this->clock = $container->get(ClockInterface::class);
     }
 
-    public function testOrderCreationReservesStorage(): void
+    public function testOrderCreationKeepsStorageAvailable(): void
     {
         [$tenant, $storageType, $place] = $this->getFixtures();
 
@@ -53,8 +53,8 @@ class OrderWorkflowTest extends KernelTestCase
             $now,
         );
 
-        $this->assertSame(OrderStatus::RESERVED, $order->status);
-        $this->assertSame(StorageStatus::RESERVED, $order->storage->status);
+        $this->assertSame(OrderStatus::CREATED, $order->status);
+        $this->assertSame(StorageStatus::AVAILABLE, $order->storage->status);
     }
 
     public function testOrderExpiresAfterSevenDays(): void
@@ -132,7 +132,7 @@ class OrderWorkflowTest extends KernelTestCase
         $this->assertSame(OrderStatus::EXPIRED, $order2->status);
     }
 
-    public function testCancelledOrderReleasesStorage(): void
+    public function testCancelledCreatedOrderKeepsStorageAvailable(): void
     {
         [$tenant, $storageType, $place] = $this->getFixtures();
 
@@ -150,6 +150,35 @@ class OrderWorkflowTest extends KernelTestCase
             $now,
         );
 
+        $this->assertSame(StorageStatus::AVAILABLE, $order->storage->status);
+
+        // Cancel the order (not yet reserved)
+        $this->orderService->cancelOrder($order);
+
+        $this->assertSame(OrderStatus::CANCELLED, $order->status);
+        $this->assertSame(StorageStatus::AVAILABLE, $order->storage->status);
+    }
+
+    public function testCancelledReservedOrderReleasesStorage(): void
+    {
+        [$tenant, $storageType, $place] = $this->getFixtures();
+
+        $now = $this->clock->now();
+        $startDate = $now->modify('+1 day');
+        $endDate = $now->modify('+30 days');
+
+        $order = $this->orderService->createOrder(
+            $tenant,
+            $storageType,
+            $place,
+            RentalType::LIMITED,
+            $startDate,
+            $endDate,
+            $now,
+        );
+
+        // Reserve the order (simulates contract signing)
+        $order->reserve($now);
         $this->assertSame(StorageStatus::RESERVED, $order->storage->status);
 
         // Cancel the order
@@ -176,6 +205,10 @@ class OrderWorkflowTest extends KernelTestCase
             $endDate,
             $now,
         );
+
+        // Reserve the order (simulates contract signing)
+        $order->reserve($now);
+        $this->assertSame(OrderStatus::RESERVED, $order->status);
 
         // Process payment
         $this->orderService->processPayment($order);
@@ -218,6 +251,8 @@ class OrderWorkflowTest extends KernelTestCase
             $now,
         );
 
+        $order->reserve($now);
+
         // Try to complete without payment - should throw
         $this->expectException(\DomainException::class);
         $this->expectExceptionMessage('Order must be paid before it can be completed.');
@@ -241,6 +276,8 @@ class OrderWorkflowTest extends KernelTestCase
             $endDate,
             $now,
         );
+
+        $order->reserve($now);
 
         // Pay and complete
         $this->orderService->confirmPayment($order);
@@ -269,6 +306,8 @@ class OrderWorkflowTest extends KernelTestCase
             $endDate,
             $now,
         );
+
+        $order->reserve($now);
 
         // Cancel first
         $this->orderService->cancelOrder($order);

@@ -43,13 +43,21 @@ final readonly class DispatchDomainEventsMiddleware implements MiddlewareInterfa
                 try {
                     $this->eventBus->dispatch($event);
                 } catch (\Throwable $e) {
-                    $this->logger->error('Domain event failed, dispatching to async for retry', [
+                    $this->logger->error('Domain event handler failed', [
                         'event' => $event::class,
                         'exception' => $e,
                     ]);
-                    $this->eventBus->dispatch(
-                        Envelope::wrap($event)->with(new TransportNamesStamp(['async'])),
-                    );
+
+                    try {
+                        $this->eventBus->dispatch(
+                            Envelope::wrap($event)->with(new TransportNamesStamp(['async'])),
+                        );
+                    } catch (\Throwable $retryException) {
+                        $this->logger->error('Domain event async retry also failed', [
+                            'event' => $event::class,
+                            'exception' => $retryException,
+                        ]);
+                    }
                 }
             }
         }
