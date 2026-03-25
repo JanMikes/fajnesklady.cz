@@ -41,7 +41,7 @@ final readonly class ChargeRecurringPaymentHandler
         $parentPaymentId = $contract->goPayParentPaymentId;
 
         // Calculate amount (full month or prorated for last billing cycle)
-        $amount = $this->calculateBillingAmount($contract, $now);
+        $amount = $this->calculateBillingAmount($contract);
 
         if ($amount <= 0) {
             $this->logger->info('Skipping billing — zero or negative amount', [
@@ -60,17 +60,22 @@ final readonly class ChargeRecurringPaymentHandler
                 $this->buildDescription($contract, $now),
             );
 
+            // Only record success if GoPay confirms the payment
             if ('PAID' !== $payment->state) {
-                $this->logger->warning('Recurring payment not immediately confirmed', [
+                $this->logger->error('Recurring payment not confirmed by GoPay', [
                     'gopay_payment_id' => $payment->id,
                     'state' => $payment->state,
                     'contract_id' => $contract->id->toRfc4122(),
                 ]);
+
+                throw new GoPayException(sprintf('GoPay returned non-PAID state: %s for payment %s', $payment->state, $payment->id));
             }
 
-            // Calculate next billing date and paid-through date
+            // Use nextBillingDate as billing period start for deterministic proration
+            /** @var \DateTimeImmutable $billingPeriodStart */
+            $billingPeriodStart = $contract->nextBillingDate ?? $now;
             $effectiveEndDate = $contract->getEffectiveEndDate();
-            $nextBillingDate = $now->modify('+1 month');
+            $nextBillingDate = $billingPeriodStart->modify('+1 month');
             $paidThroughDate = $nextBillingDate;
 
             // If this was the last billing cycle, stop future charges
@@ -103,25 +108,25 @@ final readonly class ChargeRecurringPaymentHandler
         }
     }
 
-    private function calculateBillingAmount(Contract $contract, \DateTimeImmutable $now): int
+    private function calculateBillingAmount(Contract $contract): int
     {
         $monthlyRate = $contract->storage->getEffectivePricePerMonth();
         $effectiveEndDate = $contract->getEffectiveEndDate();
 
         if (null === $effectiveEndDate) {
-            // No end date — charge full month
             return $monthlyRate;
         }
 
-        $nextFullPeriodEnd = $now->modify('+1 month');
+        // Use nextBillingDate as the canonical billing period start (deterministic)
+        $billingPeriodStart = $contract->nextBillingDate ?? new \DateTimeImmutable();
+        $nextFullPeriodEnd = $billingPeriodStart->modify('+1 month');
 
         if ($nextFullPeriodEnd <= $effectiveEndDate) {
-            // Full month fits before end date
             return $monthlyRate;
         }
 
         // Prorate: only charge for remaining days until end
-        $remainingDays = max(1, (int) $now->diff($effectiveEndDate)->days);
+        $remainingDays = max(1, (int) $billingPeriodStart->diff($effectiveEndDate)->days);
         $dailyRate = $monthlyRate / self::DAYS_PER_MONTH;
 
         return max(1, (int) round($remainingDays * $dailyRate));

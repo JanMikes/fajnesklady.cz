@@ -62,8 +62,8 @@ class ChargeRecurringPaymentHandlerTest extends KernelTestCase
         // Verify billing was recorded
         $this->assertNotNull($refreshedContract->lastBilledAt);
         $this->assertEquals($now->format('Y-m-d H:i:s'), $refreshedContract->lastBilledAt->format('Y-m-d H:i:s'));
-        // Next billing date should be set to now + 1 month (monthly frequency)
-        $expectedNextBilling = $now->modify('+1 month');
+        // Next billing date should advance by 1 month from the previous nextBillingDate
+        $expectedNextBilling = $now->modify('+2 months'); // setup sets nextBillingDate to now+1m, charge advances to now+2m
         $this->assertEquals($expectedNextBilling->format('Y-m-d H:i:s'), $refreshedContract->nextBillingDate->format('Y-m-d H:i:s'));
         $this->assertSame(0, $refreshedContract->failedBillingAttempts);
     }

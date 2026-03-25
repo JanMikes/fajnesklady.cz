@@ -8,6 +8,7 @@ use App\Event\ContractTerminated;
 use App\Repository\ContractRepository;
 use App\Service\ContractService;
 use Psr\Clock\ClockInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -28,6 +29,7 @@ final class ProcessContractTerminationsCommand extends Command
         #[Autowire(service: 'event.bus')]
         private readonly MessageBusInterface $eventBus,
         private readonly ClockInterface $clock,
+        private readonly LoggerInterface $logger,
     ) {
         parent::__construct();
     }
@@ -61,6 +63,10 @@ final class ProcessContractTerminationsCommand extends Command
                 ++$terminatedCount;
                 $io->text(sprintf('  [OK] Contract %s terminated.', $contract->id));
             } catch (\Exception $e) {
+                $this->logger->error('Contract termination failed', [
+                    'contract_id' => $contract->id->toRfc4122(),
+                    'exception' => $e,
+                ]);
                 $io->error(sprintf('  [ERROR] Contract %s: %s', $contract->id, $e->getMessage()));
             }
         }

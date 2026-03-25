@@ -30,6 +30,17 @@ final readonly class CompleteOrderHandler
         if (null !== $order->goPayParentPaymentId) {
             $nextBillingDate = $now->modify('+1 month');
             $paidThroughDate = $nextBillingDate;
+
+            // Cap paidThroughDate to endDate for LIMITED contracts
+            if (null !== $contract->endDate && $paidThroughDate > $contract->endDate) {
+                $paidThroughDate = $contract->endDate;
+            }
+
+            // If contract ends before next billing, this is the only billing cycle
+            if (null !== $contract->endDate && $nextBillingDate >= $contract->endDate) {
+                $nextBillingDate = null;
+            }
+
             $contract->setRecurringPayment($order->goPayParentPaymentId, $nextBillingDate, $paidThroughDate);
         }
 

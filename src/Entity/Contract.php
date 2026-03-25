@@ -119,7 +119,7 @@ class Contract
         return null !== $this->documentPath;
     }
 
-    public function setRecurringPayment(string $parentPaymentId, \DateTimeImmutable $nextBillingDate, \DateTimeImmutable $paidThroughDate): void
+    public function setRecurringPayment(string $parentPaymentId, ?\DateTimeImmutable $nextBillingDate, \DateTimeImmutable $paidThroughDate): void
     {
         $this->goPayParentPaymentId = $parentPaymentId;
         $this->nextBillingDate = $nextBillingDate;

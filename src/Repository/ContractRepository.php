@@ -223,8 +223,8 @@ class ContractRepository
             ->andWhere('c.nextBillingDate IS NOT NULL')
             ->andWhere('c.nextBillingDate <= :now')
             ->andWhere('c.failedBillingAttempts = 0')
-            ->andWhere('c.endDate IS NULL OR c.endDate > :now')
-            ->andWhere('c.terminatesAt IS NULL OR c.terminatesAt > :now')
+            ->andWhere('c.endDate IS NULL OR c.endDate >= :now')
+            ->andWhere('c.terminatesAt IS NULL OR c.terminatesAt >= :now')
             ->setParameter('now', $now)
             ->getQuery()
             ->getResult();
