@@ -39,6 +39,9 @@ final readonly class SendOrderCancelledEmailHandler
                 'placeAddress' => sprintf('%s, %s %s', $place->address, $place->postalCode, $place->city),
                 'storageType' => $storageType->name,
                 'storageNumber' => $storage->number,
+                'startDate' => $order->startDate->format('d.m.Y'),
+                'endDate' => $order->endDate?->format('d.m.Y') ?? 'Na dobu neurčitou',
+                'totalPrice' => number_format($order->getTotalPriceInCzk(), 2, ',', ' ').' Kč',
             ]);
 
         $this->mailer->send($email);

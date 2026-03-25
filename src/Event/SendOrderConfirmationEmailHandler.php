@@ -29,13 +29,7 @@ final readonly class SendOrderConfirmationEmailHandler
         $storageType = $storage->storageType;
         $place = $storage->getPlace();
 
-        $portalUrl = $this->urlGenerator->generate(
-            'portal_dashboard',
-            [],
-            UrlGeneratorInterface::ABSOLUTE_URL
-        );
-
-        $cancelUrl = $this->urlGenerator->generate(
+        $manageUrl = $this->urlGenerator->generate(
             'portal_user_order_detail',
             ['id' => $order->id->toRfc4122()],
             UrlGeneratorInterface::ABSOLUTE_URL
@@ -57,8 +51,7 @@ final readonly class SendOrderConfirmationEmailHandler
                 'endDate' => $order->endDate?->format('d.m.Y') ?? 'Na dobu neurčitou',
                 'totalPrice' => number_format($order->getTotalPriceInCzk(), 2, ',', ' ').' Kč',
                 'expiresAt' => $order->expiresAt->format('d.m.Y H:i'),
-                'portalUrl' => $portalUrl,
-                'cancelUrl' => $cancelUrl,
+                'manageUrl' => $manageUrl,
             ]);
 
         $this->mailer->send($email);
