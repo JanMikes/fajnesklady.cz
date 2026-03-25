@@ -4,11 +4,6 @@ declare(strict_types=1);
 
 namespace App\Controller\Public;
 
-use App\Command\CreateOrderCommand;
-use App\Command\GetOrCreateUserByEmailCommand;
-use App\Enum\PaymentFrequency;
-use App\Entity\Order;
-use App\Entity\Storage;
 use App\Entity\User;
 use App\Form\OrderFormData;
 use App\Form\OrderFormType;
@@ -16,14 +11,11 @@ use App\Repository\PlaceRepository;
 use App\Repository\StorageRepository;
 use App\Repository\StorageTypeRepository;
 use App\Service\StorageAssignment;
-use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\Messenger\MessageBusInterface;
-use Symfony\Component\Messenger\Stamp\HandledStamp;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Uid\Uuid;
 
@@ -35,8 +27,6 @@ final class OrderCreateController extends AbstractController
         private readonly StorageTypeRepository $storageTypeRepository,
         private readonly StorageRepository $storageRepository,
         private readonly StorageAssignment $storageAssignment,
-        private readonly MessageBusInterface $commandBus,
-        private readonly LoggerInterface $logger,
     ) {
     }
 
@@ -121,71 +111,27 @@ final class OrderCreateController extends AbstractController
         }
 
         $user = $this->getUser();
-        if ($user instanceof User) {
+        $sessionData = $request->getSession()->get('order_form_data');
+        if (is_array($sessionData)) {
+            $formData = OrderFormData::fromSessionArray($sessionData);
+        } elseif ($user instanceof User) {
             $formData = OrderFormData::fromUser($user);
         } else {
             $formData = new OrderFormData();
         }
-        $formData->startDate = $this->calculateMinStartDate($place->daysInAdvance);
+        $formData->startDate ??= $this->calculateMinStartDate($place->daysInAdvance);
 
         $form = $this->createForm(OrderFormType::class, $formData);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            try {
-                // Get or create user
-                $envelope = $this->commandBus->dispatch(new GetOrCreateUserByEmailCommand(
-                    email: $formData->email,
-                    firstName: $formData->firstName,
-                    lastName: $formData->lastName,
-                    phone: $formData->phone,
-                    plainPassword: $formData->plainPassword,
-                ));
+            $request->getSession()->set('order_form_data', $formData->toSessionArray());
 
-                $handledStamp = $envelope->last(HandledStamp::class);
-                $user = $handledStamp?->getResult();
-
-                if (null === $user) {
-                    throw new \RuntimeException('Failed to create user.');
-                }
-
-                // Validated by the form, but PHPStan needs explicit check
-                if (null === $formData->rentalType) {
-                    throw new \RuntimeException('Invalid form data.');
-                }
-
-                // Create order
-                $orderEnvelope = $this->commandBus->dispatch(new CreateOrderCommand(
-                    user: $user,
-                    storageType: $storageType,
-                    place: $place,
-                    rentalType: $formData->rentalType,
-                    startDate: $formData->startDate,
-                    endDate: $formData->endDate,
-                    paymentFrequency: PaymentFrequency::MONTHLY,
-                    preSelectedStorage: $preSelectedStorage,
-                ));
-
-                $orderHandledStamp = $orderEnvelope->last(HandledStamp::class);
-                $order = $orderHandledStamp?->getResult();
-
-                if (!$order instanceof Order) {
-                    throw new \RuntimeException('Failed to create order.');
-                }
-
-                $this->addFlash('success', 'Objednávka byla vytvořena. Přijměte prosím smluvní podmínky.');
-
-                return $this->redirectToRoute('public_order_accept', ['id' => $order->id]);
-            } catch (\App\Exception\NoStorageAvailable $e) {
-                $this->addFlash('error', 'Omlouváme se, ale vybraný typ skladové jednotky již není pro zvolené období dostupný.');
-            } catch (\Exception $e) {
-                $this->logger->error('Order creation failed', [
-                    'place_id' => $placeId,
-                    'storage_type_id' => $storageTypeId,
-                    'exception' => $e,
-                ]);
-                $this->addFlash('error', 'Při vytváření objednávky došlo k chybě. Zkuste to prosím znovu.');
-            }
+            return $this->redirectToRoute('public_order_accept', [
+                'placeId' => $placeId,
+                'storageTypeId' => $storageTypeId,
+                'storageId' => $storageId,
+            ]);
         }
 
         // Calculate example prices for display (use storage's effective prices)

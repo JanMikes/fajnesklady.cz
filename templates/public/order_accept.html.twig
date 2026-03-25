@@ -1,5 +1,7 @@
 {% extends app.user ? 'portal/layout.html.twig' : 'user/layout.html.twig' %}
 
+{% set customerFullName = (formData.firstName ~ ' ' ~ formData.lastName)|trim %}
+
 {% block title %}Přijetí smlouvy - Fajné Sklady{% endblock %}
 
 {% block stylesheets %}
@@ -24,19 +26,19 @@
     <div class="max-w-2xl mx-auto"
          x-data="{
              modalOpen: false,
-             signed: {{ order.hasSignature ? 'true' : 'false' }},
+             signed: false,
              acceptContract: false,
              signatureConsent: false,
          }"
          @signature:signed.window="signed = true; modalOpen = false"
          data-controller="signature"
-         data-signature-customer-name-value="{{ order.user.fullName }}">
+         data-signature-customer-name-value="{{ customerFullName }}">
         <div class="card">
             <div class="card-body">
-                <h1 class="text-2xl font-bold text-gray-900 mb-6">Přijetí smluvních podmínek</h1>
+                <h1 class="text-2xl font-bold text-gray-900 mb-6">Rekapitulace a přijetí smlouvy</h1>
 
                 <p class="text-sm text-gray-600 mb-6">
-                    Před pokračováním k platbě si prosím přečtěte a odsouhlaste smluvní podmínky pronájmu.
+                    Zkontrolujte prosím údaje objednávky. Pokud chcete něco změnit, vraťte se zpět na formulář.
                 </p>
 
                 {# Order Summary #}
@@ -63,10 +65,10 @@
                         <div class="flex justify-between">
                             <span class="text-gray-600">Období pronájmu</span>
                             <span class="font-medium">
-                                {{ order.startDate|date('d.m.Y') }}
+                                {{ formData.startDate|date('d.m.Y') }}
                                 -
-                                {% if order.endDate %}
-                                    {{ order.endDate|date('d.m.Y') }}
+                                {% if formData.endDate %}
+                                    {{ formData.endDate|date('d.m.Y') }}
                                 {% else %}
                                     neurčito
                                 {% endif %}
@@ -74,9 +76,50 @@
                         </div>
                         <div class="flex justify-between">
                             <span class="text-gray-600">Cena</span>
-                            <span class="font-medium text-accent">{{ order.totalPriceInCzk|number_format(2, ',', ' ') }} Kč</span>
+                            <span class="font-medium text-accent">{{ (totalPrice / 100)|number_format(2, ',', ' ') }} Kč</span>
                         </div>
                     </div>
+                </div>
+
+                {# Customer Info #}
+                <div class="bg-blue-50 rounded-lg p-4 mb-6">
+                    <h2 class="font-semibold text-gray-900 mb-3">Vaše údaje</h2>
+
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Jméno</span>
+                            <span class="font-medium">{{ customerFullName }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">E-mail</span>
+                            <span class="font-medium">{{ formData.email }}</span>
+                        </div>
+                        {% if formData.phone %}
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Telefon</span>
+                                <span class="font-medium">{{ formData.phone }}</span>
+                            </div>
+                        {% endif %}
+                        {% if formData.companyName %}
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Společnost</span>
+                                <span class="font-medium">{{ formData.companyName }}</span>
+                            </div>
+                            {% if formData.companyId %}
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600">IČO</span>
+                                    <span class="font-medium">{{ formData.companyId }}</span>
+                                </div>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+
+                    <p class="text-xs text-gray-500 mt-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Na e-mail <strong>{{ formData.email }}</strong> vám budou zasílány informace o objednávce a přístupové údaje.
+                    </p>
                 </div>
 
                 {# Contract Terms #}
@@ -89,16 +132,16 @@
                            v objektu {{ place.name }}, {{ place.address }}, {{ place.city }}.</p>
 
                         <p><strong>2. Doba pronájmu</strong></p>
-                        <p>Pronájem začíná dnem {{ order.startDate|date('d.m.Y') }}
-                           {% if order.endDate %}
-                               a končí dnem {{ order.endDate|date('d.m.Y') }}.
+                        <p>Pronájem začíná dnem {{ formData.startDate|date('d.m.Y') }}
+                           {% if formData.endDate %}
+                               a končí dnem {{ formData.endDate|date('d.m.Y') }}.
                            {% else %}
                                a trvá na dobu neurčitou. Obě strany mohou smlouvu vypovědět s měsíční výpovědní lhůtou.
                            {% endif %}
                         </p>
 
                         <p><strong>3. Cena pronájmu</strong></p>
-                        <p>Cena pronájmu činí {{ order.totalPriceInCzk|number_format(2, ',', ' ') }} Kč.</p>
+                        <p>Cena pronájmu činí {{ (totalPrice / 100)|number_format(2, ',', ' ') }} Kč.</p>
 
                         <p><strong>4. Pravidla užívání</strong></p>
                         <ul>
@@ -146,11 +189,10 @@
                             </svg>
                             <span class="text-sm font-medium text-green-700">Podepsáno</span>
                         </div>
-                        <div data-signature-target="preview" class="{{ order.hasSignature ? '' : 'hidden' }}">
+                        <div data-signature-target="preview" class="hidden">
                             <img data-signature-target="previewImage"
                                  class="max-h-20 border border-gray-200 rounded bg-white p-1"
-                                 alt="Podpis"
-                                 {% if order.hasSignature %}src=""{% endif %}>
+                                 alt="Podpis">
                         </div>
                         <button type="button"
                                 @click="modalOpen = true"
@@ -224,7 +266,7 @@
                                             data-style-btn
                                             class="p-3 border border-gray-200 rounded-lg text-center hover:border-accent ring-2 ring-accent"
                                             style="font-family: 'Dancing Script', cursive; font-size: 20px;">
-                                        {{ order.user.fullName }}
+                                        {{ customerFullName }}
                                     </button>
                                     <button type="button"
                                             data-action="click->signature#selectStyle"
@@ -232,7 +274,7 @@
                                             data-style-btn
                                             class="p-3 border border-gray-200 rounded-lg text-center hover:border-accent"
                                             style="font-family: 'Great Vibes', cursive; font-size: 20px;">
-                                        {{ order.user.fullName }}
+                                        {{ customerFullName }}
                                     </button>
                                     <button type="button"
                                             data-action="click->signature#selectStyle"
@@ -240,7 +282,7 @@
                                             data-style-btn
                                             class="p-3 border border-gray-200 rounded-lg text-center hover:border-accent"
                                             style="font-family: 'Satisfy', cursive; font-size: 20px;">
-                                        {{ order.user.fullName }}
+                                        {{ customerFullName }}
                                     </button>
                                     <button type="button"
                                             data-action="click->signature#selectStyle"
@@ -248,7 +290,7 @@
                                             data-style-btn
                                             class="p-3 border border-gray-200 rounded-lg text-center hover:border-accent"
                                             style="font-family: 'Pacifico', cursive; font-size: 20px;">
-                                        {{ order.user.fullName }}
+                                        {{ customerFullName }}
                                     </button>
                                 </div>
 
@@ -308,15 +350,23 @@
                         </label>
                     </div>
 
-                    <button type="submit"
-                            class="btn btn-primary btn-lg w-full"
-                            :disabled="!(signed && acceptContract && signatureConsent)"
-                            :class="{'opacity-50 cursor-not-allowed': !(signed && acceptContract && signatureConsent)}">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        Souhlasím a pokračuji k platbě
-                    </button>
+                    <div class="flex items-center justify-between pt-2">
+                        <a href="{{ path('public_order_create', {placeId: place.id, storageTypeId: storageType.id, storageId: storage.id}) }}" class="inline-flex items-center text-gray-600 hover:text-gray-900">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                            </svg>
+                            Zpět na formulář
+                        </a>
+                        <button type="submit"
+                                class="btn btn-primary btn-lg"
+                                :disabled="!(signed && acceptContract && signatureConsent)"
+                                :class="{'opacity-50 cursor-not-allowed': !(signed && acceptContract && signatureConsent)}">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Souhlasím a pokračuji k platbě
+                        </button>
+                    </div>
                 </form>
             </div>
         </div>

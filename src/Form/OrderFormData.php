@@ -168,4 +168,53 @@ final class OrderFormData
 
         return $formData;
     }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function toSessionArray(): array
+    {
+        return [
+            'email' => $this->email,
+            'firstName' => $this->firstName,
+            'lastName' => $this->lastName,
+            'phone' => $this->phone,
+            'plainPassword' => $this->plainPassword,
+            'invoiceToCompany' => $this->invoiceToCompany,
+            'companyName' => $this->companyName,
+            'companyId' => $this->companyId,
+            'companyVatId' => $this->companyVatId,
+            'billingStreet' => $this->billingStreet,
+            'billingCity' => $this->billingCity,
+            'billingPostalCode' => $this->billingPostalCode,
+            'rentalType' => $this->rentalType?->value,
+            'startDate' => $this->startDate?->format('Y-m-d'),
+            'endDate' => $this->endDate?->format('Y-m-d'),
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public static function fromSessionArray(array $data): self
+    {
+        $formData = new self();
+        $formData->email = (string) ($data['email'] ?? '');
+        $formData->firstName = (string) ($data['firstName'] ?? '');
+        $formData->lastName = (string) ($data['lastName'] ?? '');
+        $formData->phone = $data['phone'] ?? null;
+        $formData->plainPassword = $data['plainPassword'] ?? null;
+        $formData->invoiceToCompany = (bool) ($data['invoiceToCompany'] ?? false);
+        $formData->companyName = $data['companyName'] ?? null;
+        $formData->companyId = $data['companyId'] ?? null;
+        $formData->companyVatId = $data['companyVatId'] ?? null;
+        $formData->billingStreet = $data['billingStreet'] ?? null;
+        $formData->billingCity = $data['billingCity'] ?? null;
+        $formData->billingPostalCode = $data['billingPostalCode'] ?? null;
+        $formData->rentalType = isset($data['rentalType']) ? RentalType::tryFrom($data['rentalType']) : RentalType::LIMITED;
+        $formData->startDate = isset($data['startDate']) ? new \DateTimeImmutable($data['startDate']) : null;
+        $formData->endDate = isset($data['endDate']) ? new \DateTimeImmutable($data['endDate']) : null;
+
+        return $formData;
+    }
 }

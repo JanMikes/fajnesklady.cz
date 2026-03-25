@@ -40,14 +40,16 @@ final class OrderPaymentController extends AbstractController
             throw new NotFoundHttpException('Objednávka nenalezena.');
         }
 
-        // Terms must be accepted before payment
-        if (!$order->hasAcceptedTerms()) {
-            return $this->redirectToRoute('public_order_accept', ['id' => $order->id]);
-        }
+        // Terms and signature must be present before payment
+        if (!$order->hasAcceptedTerms() || !$order->hasSignature()) {
+            $storage = $order->storage;
+            $this->addFlash('error', 'Objednávka nebyla dokončena. Prosím vytvořte ji znovu.');
 
-        // Signature must be present before payment
-        if (!$order->hasSignature()) {
-            return $this->redirectToRoute('public_order_accept', ['id' => $order->id]);
+            return $this->redirectToRoute('public_order_create', [
+                'placeId' => $storage->place->id,
+                'storageTypeId' => $storage->storageType->id,
+                'storageId' => $storage->id,
+            ]);
         }
 
         // Check if order can be paid
