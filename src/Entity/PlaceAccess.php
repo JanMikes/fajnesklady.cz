@@ -24,5 +24,6 @@ class PlaceAccess
         private(set) User $user,
         #[ORM\Column]
         private(set) \DateTimeImmutable $grantedAt,
-    ) {}
+    ) {
+    }
 }

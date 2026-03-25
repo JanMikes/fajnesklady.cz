@@ -39,17 +39,14 @@ class LandlordInvoiceSequence
 
     /**
      * Format: {PREFIX}-{YEAR}-{XXXX}
-     * Example: P001-2026-0001
+     * Example: P001-2026-0001.
      */
     public function formatInvoiceNumber(): string
     {
         $prefix = $this->landlord->selfBillingPrefix;
 
         if (null === $prefix) {
-            throw new \LogicException(sprintf(
-                'Landlord "%s" must have a selfBillingPrefix to generate invoice numbers.',
-                $this->landlord->fullName,
-            ));
+            throw new \LogicException(sprintf('Landlord "%s" must have a selfBillingPrefix to generate invoice numbers.', $this->landlord->fullName));
         }
 
         return sprintf('%s-%d-%04d', $prefix, $this->year, $this->getNextNumber());

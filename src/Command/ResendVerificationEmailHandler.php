@@ -27,7 +27,7 @@ final readonly class ResendVerificationEmailHandler
 
         // Silently ignore if user doesn't exist or is already verified
         // This prevents email enumeration attacks
-        if ($user === null || $user->isVerified()) {
+        if (null === $user || $user->isVerified()) {
             return;
         }
 

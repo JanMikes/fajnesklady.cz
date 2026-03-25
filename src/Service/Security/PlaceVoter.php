@@ -22,7 +22,8 @@ final class PlaceVoter extends Voter
 
     public function __construct(
         private readonly PlaceAccessRepository $placeAccessRepository,
-    ) {}
+    ) {
+    }
 
     protected function supports(string $attribute, mixed $subject): bool
     {

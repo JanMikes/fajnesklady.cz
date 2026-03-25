@@ -13,7 +13,8 @@ class StoragePhotoRepository
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
-    ) {}
+    ) {
+    }
 
     public function save(StoragePhoto $photo): void
     {

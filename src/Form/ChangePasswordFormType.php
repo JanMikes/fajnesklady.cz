@@ -32,7 +32,7 @@ final class ChangePasswordFormType extends AbstractType
                 'label' => 'Nové heslo',
                 'attr' => [
                     'placeholder' => 'Zadejte nové heslo',
-    
+
                     'autocomplete' => 'new-password',
                 ],
             ],
@@ -40,7 +40,7 @@ final class ChangePasswordFormType extends AbstractType
                 'label' => 'Potvrzení nového hesla',
                 'attr' => [
                     'placeholder' => 'Zopakujte nové heslo',
-    
+
                     'autocomplete' => 'new-password',
                 ],
             ],

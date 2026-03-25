@@ -82,7 +82,7 @@ final class PlaceFormData
         $formData->currentMapImagePath = $place->mapImagePath;
         $formData->latitude = $place->latitude;
         $formData->longitude = $place->longitude;
-        $formData->useMapLocation = !$place->hasAddress() && $place->latitude !== null;
+        $formData->useMapLocation = !$place->hasAddress() && null !== $place->latitude;
 
         return $formData;
     }

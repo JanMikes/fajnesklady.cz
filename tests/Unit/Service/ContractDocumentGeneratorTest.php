@@ -284,7 +284,7 @@ class ContractDocumentGeneratorTest extends TestCase
         $signaturePath = $this->tempDir.'/test_signature.png';
         $image = imagecreatetruecolor(200, 80);
         $white = imagecolorallocate($image, 255, 255, 255);
-        \assert($white !== false);
+        \assert(false !== $white);
         imagefill($image, 0, 0, $white);
         imagepng($image, $signaturePath);
 

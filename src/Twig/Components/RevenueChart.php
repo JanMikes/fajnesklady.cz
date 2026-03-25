@@ -46,7 +46,7 @@ final class RevenueChart
 
         $chart = $this->chartBuilder->createChart(Chart::TYPE_BAR);
 
-        $revenuesInCzk = array_map(static fn(int $h): float => $h / 100, $result->revenues);
+        $revenuesInCzk = array_map(static fn (int $h): float => $h / 100, $result->revenues);
 
         $chart->setData([
             'labels' => $result->labels,

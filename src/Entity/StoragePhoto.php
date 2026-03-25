@@ -24,7 +24,8 @@ class StoragePhoto
         public private(set) int $position,
         #[ORM\Column]
         private(set) \DateTimeImmutable $createdAt,
-    ) {}
+    ) {
+    }
 
     public function updatePosition(int $position): void
     {

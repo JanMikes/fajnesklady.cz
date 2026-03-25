@@ -17,7 +17,8 @@ class StorageRepository
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
-    ) {}
+    ) {
+    }
 
     public function save(Storage $storage): void
     {

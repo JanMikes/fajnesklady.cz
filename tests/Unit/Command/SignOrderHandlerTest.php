@@ -189,13 +189,13 @@ class SignOrderHandlerTest extends TestCase
     {
         $image = imagecreatetruecolor(1, 1);
         $white = imagecolorallocate($image, 255, 255, 255);
-        \assert($white !== false);
+        \assert(false !== $white);
         imagefill($image, 0, 0, $white);
 
         ob_start();
         imagepng($image);
         $pngData = ob_get_clean();
-        \assert($pngData !== false);
+        \assert(false !== $pngData);
 
         return 'data:image/png;base64,'.base64_encode($pngData);
     }

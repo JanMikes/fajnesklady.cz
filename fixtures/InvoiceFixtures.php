@@ -133,7 +133,7 @@ final class InvoiceFixtures extends Fixture implements DependentFixtureInterface
         $content .= sprintf("0000000270 00000 n \n0000000%03d 00000 n \n", 320 + $streamLength);
         $content .= "trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n";
         $content .= sprintf("%d\n", 370 + $streamLength);
-        $content .= "%%EOF";
+        $content .= '%%EOF';
 
         return $content;
     }

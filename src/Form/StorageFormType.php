@@ -49,7 +49,7 @@ class StorageFormType extends AbstractType
             ]);
         }
 
-        $storageTypeChoices = $options['is_edit'] && $options['place'] !== null
+        $storageTypeChoices = $options['is_edit'] && null !== $options['place']
             ? $this->getStorageTypeChoicesForPlace($options['place'])
             : $this->getStorageTypeChoices();
 

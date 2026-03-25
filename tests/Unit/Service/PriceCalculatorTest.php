@@ -7,7 +7,6 @@ namespace App\Tests\Unit\Service;
 use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
-use App\Entity\User;
 use App\Service\PriceCalculator;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;

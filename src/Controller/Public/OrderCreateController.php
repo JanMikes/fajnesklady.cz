@@ -96,7 +96,25 @@ final class OrderCreateController extends AbstractController
             throw new BadRequestHttpException('Vybraná skladová jednotka nepatří k vybrané pobočce.');
         }
         if (!$preSelectedStorage->isAvailable()) {
-            throw new BadRequestHttpException('Vybraná skladová jednotka již není dostupná.');
+            // Try to find another available storage of the same type
+            $startDate = new \DateTimeImmutable('tomorrow');
+            $endDate = $startDate->modify('+30 days');
+            $alternative = $this->storageAssignment->findFirstAvailableStorage($storageType, $place, $startDate, $endDate);
+
+            if (null !== $alternative) {
+                return $this->redirectToRoute('public_order_create', [
+                    'placeId' => $placeId,
+                    'storageTypeId' => $storageTypeId,
+                    'storageId' => $alternative->id->toRfc4122(),
+                ]);
+            }
+
+            $this->addFlash('error', 'Omlouváme se, ale tento typ skladové jednotky není momentálně dostupný.');
+
+            return $this->redirectToRoute(
+                $this->getUser() ? 'portal_browse_place_detail' : 'public_place_detail',
+                ['id' => $placeId],
+            );
         }
 
         $user = $this->getUser();

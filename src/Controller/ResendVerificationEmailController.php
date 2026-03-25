@@ -28,7 +28,7 @@ final class ResendVerificationEmailController extends AbstractController
     {
         $email = $request->getSession()->get('unverified_user_email');
 
-        if ($email === null) {
+        if (null === $email) {
             $this->addFlash('error', 'Neplatný požadavek.');
 
             return $this->redirectToRoute('app_login');

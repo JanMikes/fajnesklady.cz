@@ -16,7 +16,8 @@ class PlaceChangeRequestRepository
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
-    ) {}
+    ) {
+    }
 
     public function save(PlaceChangeRequest $request): void
     {

@@ -46,7 +46,7 @@ final readonly class GetLandlordRevenueChartQuery
         $monthsData = $this->fillMissingMonths($data, $query->months, $now);
 
         foreach ($monthsData as $row) {
-            $labels[] = self::MONTH_NAMES[$row['month']] . ' ' . $row['year'];
+            $labels[] = self::MONTH_NAMES[$row['month']].' '.$row['year'];
             $revenues[] = $row['total'];
         }
 

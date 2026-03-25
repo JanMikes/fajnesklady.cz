@@ -4,16 +4,12 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Console;
 
-use App\Entity\Contract;
-use App\Entity\Order;
 use App\Entity\Payment;
 use App\Entity\Place;
 use App\Entity\SelfBillingInvoice;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
-use App\Enum\OrderStatus;
-use App\Enum\RentalType;
 use App\Enum\UserRole;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ManagerRegistry;

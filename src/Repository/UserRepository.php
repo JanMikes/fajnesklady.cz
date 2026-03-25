@@ -180,10 +180,10 @@ class UserRepository
         $connection = $this->entityManager->getConnection();
 
         $result = $connection->executeQuery(
-            "SELECT self_billing_prefix FROM users
+            'SELECT self_billing_prefix FROM users
              WHERE self_billing_prefix IS NOT NULL
              ORDER BY self_billing_prefix DESC
-             LIMIT 1"
+             LIMIT 1'
         )->fetchOne();
 
         if (false === $result || null === $result) {

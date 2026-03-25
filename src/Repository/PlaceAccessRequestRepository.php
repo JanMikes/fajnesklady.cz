@@ -16,7 +16,8 @@ class PlaceAccessRequestRepository
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
-    ) {}
+    ) {
+    }
 
     public function save(PlaceAccessRequest $request): void
     {

@@ -55,7 +55,7 @@ class Place
 
     public function hasAddress(): bool
     {
-        return $this->address !== null;
+        return null !== $this->address;
     }
 
     public function updateDetails(
