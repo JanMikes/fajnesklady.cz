@@ -9,6 +9,7 @@ use App\Event\RecurringPaymentCharged;
 use App\Event\RecurringPaymentFailed;
 use App\Service\GoPay\GoPayClient;
 use App\Service\GoPay\GoPayException;
+use App\Service\GoPay\PaymentNotConfirmedException;
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -68,7 +69,7 @@ final readonly class ChargeRecurringPaymentHandler
                     'contract_id' => $contract->id->toRfc4122(),
                 ]);
 
-                throw new GoPayException(sprintf('GoPay returned non-PAID state: %s for payment %s', $payment->state, $payment->id));
+                throw PaymentNotConfirmedException::withState($payment->id, $payment->state);
             }
 
             // Use nextBillingDate as billing period start for deterministic proration
@@ -93,8 +94,8 @@ final readonly class ChargeRecurringPaymentHandler
                 amount: $amount,
                 occurredOn: $now,
             ));
-        } catch (GoPayException $e) {
-            // Record failed attempt
+        } catch (GoPayException|PaymentNotConfirmedException $e) {
+            // Record failed attempt (both API errors and non-confirmed payments)
             $contract->recordFailedBillingAttempt($now);
 
             $this->eventBus->dispatch(new RecurringPaymentFailed(
