@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service\Fakturoid;
 
+use App\Entity\Contract;
 use App\Entity\Order;
 use App\Entity\SelfBillingInvoice;
 use App\Entity\User;
@@ -146,6 +147,59 @@ final readonly class FakturoidApiClient implements FakturoidClient
             }
 
             $this->logger->error('Fakturoid invoice creation failed', $context);
+
+            throw $e;
+        }
+
+        /** @var \stdClass $body */
+        $body = $response->getBody();
+
+        return new FakturoidInvoice(
+            id: (int) $body->id,
+            number: (string) $body->number,
+            total: (int) round((float) $body->total * 100),
+        );
+    }
+
+    public function createRecurringInvoice(int $subjectId, Contract $contract, int $amount, \DateTimeImmutable $billingDate): FakturoidInvoice
+    {
+        $storage = $contract->storage;
+        $storageType = $storage->storageType;
+        $place = $storage->getPlace();
+
+        try {
+            $response = $this->manager->getInvoicesProvider()->create([
+                'subject_id' => $subjectId,
+                'lines' => [
+                    [
+                        'name' => sprintf(
+                            'Pravidelná platba - %s, box %s (%s) - %s',
+                            $storageType->name,
+                            $storage->number,
+                            $place->name,
+                            $billingDate->format('m/Y'),
+                        ),
+                        'quantity' => 1,
+                        'unit_price' => $amount / 100,
+                        'vat_rate' => $this->vatRate,
+                    ],
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            $context = [
+                'subject_id' => $subjectId,
+                'contract_id' => $contract->id->toRfc4122(),
+                'exception' => $e,
+            ];
+
+            if ($e instanceof RequestException) {
+                $body = $e->getResponse()->getBody();
+                $body->rewind();
+                $context['status'] = $e->getResponse()->getStatusCode();
+                $context['body'] = $body->getContents();
+            }
+
+            $this->logger->error('Fakturoid recurring invoice creation failed', $context);
 
             throw $e;
         }

@@ -53,13 +53,17 @@ final class RetryFailedPaymentsCommand extends Command
                 ++$successCount;
                 $io->text(sprintf('  [OK] Contract %s retry successful.', $contract->id));
             } catch (\Exception) {
-                // Second failure - cancel recurring payment
-                try {
-                    $this->commandBus->dispatch(new CancelRecurringPaymentCommand($contract));
-                    ++$cancelledCount;
-                    $io->warning(sprintf('  [CANCELLED] Contract %s recurring payment cancelled after 2 failures.', $contract->id));
-                } catch (\Exception $e) {
-                    $io->error(sprintf('  [ERROR] Contract %s: Failed to cancel recurring: %s', $contract->id, $e->getMessage()));
+                if ($contract->failedBillingAttempts >= 3) {
+                    // Third failure — cancel recurring payment
+                    try {
+                        $this->commandBus->dispatch(new CancelRecurringPaymentCommand($contract));
+                        ++$cancelledCount;
+                        $io->warning(sprintf('  [CANCELLED] Contract %s recurring payment cancelled after 3 failures.', $contract->id));
+                    } catch (\Exception $e) {
+                        $io->error(sprintf('  [ERROR] Contract %s: Failed to cancel recurring: %s', $contract->id, $e->getMessage()));
+                    }
+                } else {
+                    $io->text(sprintf('  [RETRY LATER] Contract %s failed attempt %d, will retry later.', $contract->id, $contract->failedBillingAttempts));
                 }
             }
         }

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neúspěšná platba - Admin upozornění</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #dc2626; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
+        .content { background-color: #f9f9f9; padding: 30px; border: 1px solid #ddd; border-top: none; }
+        .footer { text-align: center; padding: 20px; font-size: 12px; color: #666; }
+        .alert-box { background-color: #fef2f2; border: 1px solid #dc2626; padding: 20px; border-radius: 5px; margin: 20px 0; }
+        .details { background-color: white; border: 1px solid #ddd; padding: 20px; margin: 20px 0; border-radius: 5px; }
+        .details table { width: 100%; border-collapse: collapse; }
+        .details td { padding: 10px 0; border-bottom: 1px solid #eee; }
+        .details td:first-child { font-weight: bold; color: #666; width: 40%; }
+        .details tr:last-child td { border-bottom: none; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Neúspěšná platba</h1>
+    </div>
+
+    <div class="content">
+        <h2>{{ adminName }},</h2>
+
+        <div class="alert-box">
+            <p><strong>Pokus {{ attempt }}{% if attempt >= 3 %} (POSLEDNÍ - platba bude zrušena){% endif %}</strong></p>
+            <p>Opakovaná platba za pronájem selhala.</p>
+        </div>
+
+        <div class="details">
+            <table>
+                <tr>
+                    <td>Zákazník:</td>
+                    <td>{{ userName }} ({{ userEmail }})</td>
+                </tr>
+                <tr>
+                    <td>Místo:</td>
+                    <td>{{ placeName }}</td>
+                </tr>
+                <tr>
+                    <td>Typ skladu:</td>
+                    <td>{{ storageType }}</td>
+                </tr>
+                <tr>
+                    <td>Číslo boxu:</td>
+                    <td>{{ storageNumber }}</td>
+                </tr>
+                <tr>
+                    <td>Důvod:</td>
+                    <td>{{ reason }}</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>Automatické upozornění systému Fajné Sklady</p>
+    </div>
+</body>
+</html>

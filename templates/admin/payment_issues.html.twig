@@ -1,0 +1,77 @@
+{% extends 'portal/layout.html.twig' %}
+
+{% block title %}Problémové platby - Admin{% endblock %}
+
+{% block content %}
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold text-gray-900">Problémové platby</h1>
+    </div>
+
+    {% if contracts is empty %}
+        <div class="card bg-green-50 border-green-200">
+            <div class="card-body text-center">
+                <p class="text-green-700 text-lg">Žádné problémy s platbami.</p>
+            </div>
+        </div>
+    {% else %}
+        <div class="card">
+            <div class="overflow-x-auto">
+                <table class="table table-zebra">
+                    <thead>
+                        <tr>
+                            <th>Zákazník</th>
+                            <th>Sklad</th>
+                            <th>Pobočka</th>
+                            <th>Neúspěšné pokusy</th>
+                            <th>Poslední selhání</th>
+                            <th>Další platba</th>
+                            <th>Stav</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for contract in contracts %}
+                            <tr>
+                                <td>
+                                    <div class="font-semibold">{{ contract.user.fullName }}</div>
+                                    <div class="text-sm text-gray-500">{{ contract.user.email }}</div>
+                                </td>
+                                <td>{{ contract.storage.storageType.name }} #{{ contract.storage.number }}</td>
+                                <td>{{ contract.storage.place.name }}</td>
+                                <td>
+                                    {% if contract.failedBillingAttempts > 0 %}
+                                        <span class="badge badge-error">{{ contract.failedBillingAttempts }}x</span>
+                                    {% else %}
+                                        <span class="badge badge-warning">zpožděno</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if contract.lastBillingFailedAt %}
+                                        {{ contract.lastBillingFailedAt|date('d.m.Y H:i') }}
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if contract.nextBillingDate %}
+                                        {{ contract.nextBillingDate|date('d.m.Y') }}
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if contract.hasPendingTermination() %}
+                                        <span class="badge badge-warning">výpověď k {{ contract.terminatesAt|date('d.m.Y') }}</span>
+                                    {% elseif contract.failedBillingAttempts >= 3 %}
+                                        <span class="badge badge-error">k zrušení</span>
+                                    {% else %}
+                                        <span class="badge badge-warning">problém</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% endif %}
+{% endblock %}

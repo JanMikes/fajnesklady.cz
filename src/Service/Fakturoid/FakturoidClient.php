@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service\Fakturoid;
 
+use App\Entity\Contract;
 use App\Entity\Order;
 use App\Entity\SelfBillingInvoice;
 use App\Entity\User;
@@ -17,6 +18,8 @@ interface FakturoidClient
     public function updateSubject(int $subjectId, User $user): void;
 
     public function createInvoice(int $subjectId, Order $order): FakturoidInvoice;
+
+    public function createRecurringInvoice(int $subjectId, Contract $contract, int $amount, \DateTimeImmutable $billingDate): FakturoidInvoice;
 
     public function downloadInvoicePdf(int $invoiceId): string;
 

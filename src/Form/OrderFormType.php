@@ -125,6 +125,7 @@ final class OrderFormType extends AbstractType
                 'label' => 'Frekvence plateb',
                 'required' => false,
                 'placeholder' => false,
+                'choices' => [PaymentFrequency::MONTHLY],
                 'choice_label' => fn (PaymentFrequency $freq) => match ($freq) {
                     PaymentFrequency::MONTHLY => 'Měsíčně',
                     PaymentFrequency::YEARLY => 'Ročně',

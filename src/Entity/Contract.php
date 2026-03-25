@@ -37,6 +37,15 @@ class Contract
     #[ORM\Column(nullable: true)]
     public private(set) ?\DateTimeImmutable $lastBillingFailedAt = null;
 
+    #[ORM\Column(nullable: true)]
+    public private(set) ?\DateTimeImmutable $terminationNoticedAt = null;
+
+    #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
+    public private(set) ?\DateTimeImmutable $terminatesAt = null;
+
+    #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
+    public private(set) ?\DateTimeImmutable $paidThroughDate = null;
+
     public function __construct(
         #[ORM\Id]
         #[ORM\Column(type: UuidType::NAME, unique: true)]
@@ -110,16 +119,18 @@ class Contract
         return null !== $this->documentPath;
     }
 
-    public function setRecurringPayment(string $parentPaymentId, \DateTimeImmutable $nextBillingDate): void
+    public function setRecurringPayment(string $parentPaymentId, \DateTimeImmutable $nextBillingDate, \DateTimeImmutable $paidThroughDate): void
     {
         $this->goPayParentPaymentId = $parentPaymentId;
         $this->nextBillingDate = $nextBillingDate;
+        $this->paidThroughDate = $paidThroughDate;
     }
 
-    public function recordBillingCharge(\DateTimeImmutable $chargedAt, \DateTimeImmutable $nextBillingDate): void
+    public function recordBillingCharge(\DateTimeImmutable $chargedAt, ?\DateTimeImmutable $nextBillingDate, \DateTimeImmutable $paidThroughDate): void
     {
         $this->lastBilledAt = $chargedAt;
         $this->nextBillingDate = $nextBillingDate;
+        $this->paidThroughDate = $paidThroughDate;
         $this->failedBillingAttempts = 0;
         $this->lastBillingFailedAt = null;
     }
@@ -155,17 +166,43 @@ class Contract
             return false;
         }
 
-        if (1 !== $this->failedBillingAttempts) {
-            return false;
-        }
-
         if (null === $this->lastBillingFailedAt) {
             return false;
         }
 
-        // Retry after 3 days
-        $retryDate = $this->lastBillingFailedAt->modify('+3 days');
+        return match ($this->failedBillingAttempts) {
+            1 => $now >= $this->lastBillingFailedAt->modify('+3 days'),
+            2 => $now >= $this->lastBillingFailedAt->modify('+7 days'),
+            default => false,
+        };
+    }
 
-        return $now >= $retryDate;
+    public function requestTermination(\DateTimeImmutable $noticedAt, \DateTimeImmutable $terminatesAt): void
+    {
+        if ($this->isTerminated()) {
+            throw new \DomainException('Contract is already terminated.');
+        }
+
+        if ($this->hasPendingTermination()) {
+            throw new \DomainException('Termination notice has already been submitted.');
+        }
+
+        $this->terminationNoticedAt = $noticedAt;
+        $this->terminatesAt = $terminatesAt;
+    }
+
+    public function hasPendingTermination(): bool
+    {
+        return null !== $this->terminatesAt && null === $this->terminatedAt;
+    }
+
+    public function isTerminationDue(\DateTimeImmutable $now): bool
+    {
+        return $this->hasPendingTermination() && $now >= $this->terminatesAt;
+    }
+
+    public function getEffectiveEndDate(): ?\DateTimeImmutable
+    {
+        return $this->terminatesAt ?? $this->endDate;
     }
 }

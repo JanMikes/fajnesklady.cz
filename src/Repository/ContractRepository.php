@@ -223,6 +223,8 @@ class ContractRepository
             ->andWhere('c.nextBillingDate IS NOT NULL')
             ->andWhere('c.nextBillingDate <= :now')
             ->andWhere('c.failedBillingAttempts = 0')
+            ->andWhere('c.endDate IS NULL OR c.endDate > :now')
+            ->andWhere('c.terminatesAt IS NULL OR c.terminatesAt > :now')
             ->setParameter('now', $now)
             ->getQuery()
             ->getResult();
@@ -233,19 +235,71 @@ class ContractRepository
      *
      * @return Contract[]
      */
+    /**
+     * Find contracts needing retry: attempt 1 after 3 days, attempt 2 after 7 days.
+     *
+     * @return Contract[]
+     */
     public function findNeedingRetry(\DateTimeImmutable $now): array
     {
-        $retryAfter = $now->modify('-3 days');
+        $retryAfter3Days = $now->modify('-3 days');
+        $retryAfter7Days = $now->modify('-7 days');
 
         return $this->entityManager->createQueryBuilder()
             ->select('c')
             ->from(Contract::class, 'c')
             ->where('c.goPayParentPaymentId IS NOT NULL')
             ->andWhere('c.terminatedAt IS NULL')
-            ->andWhere('c.failedBillingAttempts = 1')
             ->andWhere('c.lastBillingFailedAt IS NOT NULL')
-            ->andWhere('c.lastBillingFailedAt <= :retryAfter')
-            ->setParameter('retryAfter', $retryAfter)
+            ->andWhere(
+                '(c.failedBillingAttempts = 1 AND c.lastBillingFailedAt <= :retryAfter3Days) OR '
+                .'(c.failedBillingAttempts = 2 AND c.lastBillingFailedAt <= :retryAfter7Days)'
+            )
+            ->setParameter('retryAfter3Days', $retryAfter3Days)
+            ->setParameter('retryAfter7Days', $retryAfter7Days)
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Find contracts due for termination:
+     * - UNLIMITED with terminatesAt <= now and not yet terminated
+     * - LIMITED with endDate <= now and not yet terminated
+     *
+     * @return Contract[]
+     */
+    public function findDueForTermination(\DateTimeImmutable $now): array
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('c')
+            ->from(Contract::class, 'c')
+            ->where('c.terminatedAt IS NULL')
+            ->andWhere(
+                '(c.terminatesAt IS NOT NULL AND c.terminatesAt <= :now) OR '
+                .'(c.endDate IS NOT NULL AND c.endDate <= :now)'
+            )
+            ->setParameter('now', $now)
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Find contracts with payment issues for admin dashboard.
+     *
+     * @return Contract[]
+     */
+    public function findWithPaymentIssues(\DateTimeImmutable $now): array
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('c')
+            ->from(Contract::class, 'c')
+            ->where('c.terminatedAt IS NULL')
+            ->andWhere(
+                'c.failedBillingAttempts > 0 OR '
+                .'(c.nextBillingDate IS NOT NULL AND c.nextBillingDate < :overdueThreshold)'
+            )
+            ->setParameter('overdueThreshold', $now->modify('-1 day'))
+            ->orderBy('c.failedBillingAttempts', 'DESC')
             ->getQuery()
             ->getResult();
     }

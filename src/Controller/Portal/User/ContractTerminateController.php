@@ -4,15 +4,16 @@ declare(strict_types=1);
 
 namespace App\Controller\Portal\User;
 
+use App\Command\RequestTerminationNoticeCommand;
 use App\Entity\User;
 use App\Repository\ContractRepository;
 use App\Service\ContractService;
-use Psr\Clock\ClockInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Uid\Uuid;
@@ -24,7 +25,7 @@ final class ContractTerminateController extends AbstractController
     public function __construct(
         private readonly ContractRepository $contractRepository,
         private readonly ContractService $contractService,
-        private readonly ClockInterface $clock,
+        private readonly MessageBusInterface $commandBus,
     ) {
     }
 
@@ -59,9 +60,19 @@ final class ContractTerminateController extends AbstractController
             return $this->redirectToRoute('portal_user_order_detail', ['id' => $contract->order->id]);
         }
 
-        $this->contractService->terminateContract($contract, $this->clock->now());
+        if ($contract->hasPendingTermination()) {
+            $this->addFlash('error', 'Výpověď smlouvy již byla podána.');
 
-        $this->addFlash('success', 'Smlouva byla úspěšně ukončena.');
+            return $this->redirectToRoute('portal_user_order_detail', ['id' => $contract->order->id]);
+        }
+
+        // Submit termination notice with 1-month notice period
+        $this->commandBus->dispatch(new RequestTerminationNoticeCommand($contract));
+
+        $this->addFlash('success', sprintf(
+            'Výpověď smlouvy byla přijata. Smlouva bude ukončena k %s.',
+            $contract->terminatesAt?->format('d.m.Y') ?? '',
+        ));
 
         return $this->redirectToRoute('portal_user_order_detail', ['id' => $contract->order->id]);
     }

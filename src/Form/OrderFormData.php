@@ -141,6 +141,15 @@ final class OrderFormData
                 $context->buildViolation('Datum konce musí být po datu začátku.')
                     ->atPath('endDate')
                     ->addViolation();
+
+                return;
+            }
+
+            $maxEnd = $this->startDate->modify('+1 year');
+            if ($this->endDate > $maxEnd) {
+                $context->buildViolation('Doba určitá může být maximálně 1 rok. Pro delší pronájem zvolte dobu neurčitou.')
+                    ->atPath('endDate')
+                    ->addViolation();
             }
         }
     }

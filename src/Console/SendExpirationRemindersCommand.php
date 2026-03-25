@@ -30,7 +30,7 @@ final class SendExpirationRemindersCommand extends Command
     /**
      * Days before expiration to send reminders.
      */
-    private const array REMINDER_DAYS = [7, 1];
+    private const array REMINDER_DAYS = [30, 7, 1];
 
     public function __construct(
         private readonly ContractService $contractService,

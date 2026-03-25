@@ -6,6 +6,7 @@ namespace App\Command;
 
 use App\Service\GoPay\GoPayClient;
 use App\Service\OrderService;
+use App\Service\PriceCalculator;
 use App\Value\GoPayPayment;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -16,6 +17,7 @@ final readonly class InitiatePaymentHandler
     public function __construct(
         private GoPayClient $goPayClient,
         private OrderService $orderService,
+        private PriceCalculator $priceCalculator,
         private ClockInterface $clock,
     ) {
     }
@@ -28,8 +30,10 @@ final readonly class InitiatePaymentHandler
         // Mark order as awaiting payment
         $this->orderService->processPayment($order, $now);
 
-        // Create payment in GoPay
-        if ($order->isUnlimited()) {
+        // Create payment in GoPay - recurring for all orders >= 1 month
+        $needsRecurring = $this->priceCalculator->needsRecurringBilling($order->startDate, $order->endDate);
+
+        if ($needsRecurring) {
             $payment = $this->goPayClient->createRecurringPayment(
                 $order,
                 $command->returnUrl,

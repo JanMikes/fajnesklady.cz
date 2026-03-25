@@ -39,7 +39,7 @@ final readonly class OrderService
     /**
      * Create a new order with automatic or pre-selected storage assignment.
      *
-     * @throws NoStorageAvailable When no storage is available for the requested period
+     * @throws NoStorageAvailable        When no storage is available for the requested period
      * @throws \InvalidArgumentException When pre-selected storage is invalid
      */
     public function createOrder(
@@ -76,8 +76,8 @@ final readonly class OrderService
             );
         }
 
-        // Calculate price using storage's effective prices (may differ from type defaults)
-        $totalPrice = $this->priceCalculator->calculatePriceForStorage($storage, $startDate, $endDate);
+        // Calculate first payment price (monthly recurring or full for short rentals)
+        $totalPrice = $this->priceCalculator->calculateFirstPaymentPrice($storage, $startDate, $endDate);
 
         // Create order
         $order = new Order(

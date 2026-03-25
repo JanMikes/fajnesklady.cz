@@ -51,6 +51,19 @@ docker compose exec web bin/console make:migration
 docker compose exec web composer tailwind:watch
 ```
 
+## Scheduled Tasks (Cron Jobs)
+
+All cron jobs run inside the Docker container on the production server.
+
+| Command | Schedule | Description |
+|---------|----------|-------------|
+| `app:expire-orders` | Every hour | Expires orders past their reservation deadline (7 days) |
+| `app:process-recurring-payments` | Daily at 7:00 | Charges due recurring payments via GoPay |
+| `app:retry-failed-payments` | Daily at 12:00 | Retries failed payments (3 days / 7 days after failure) |
+| `app:process-contract-terminations` | Daily at 6:00 | Terminates contracts at end date or after notice period |
+| `app:send-expiration-reminders` | Daily at 8:00 | Sends reminder emails 30, 7, and 1 day before contract expiry |
+| `app:generate-self-billing-invoices` | 1st of month at 3:00 | Generates self-billing invoices for landlords |
+
 ## Tech Stack
 
 - **Backend**: Symfony 8, PHP 8.5, FrankenPHP

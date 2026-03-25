@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Mock;
 
+use App\Entity\Contract;
 use App\Entity\Order;
 use App\Entity\SelfBillingInvoice;
 use App\Entity\User;
@@ -48,6 +49,20 @@ final class MockFakturoidClient implements FakturoidClient
             id: $invoiceId,
             number: 'FV-'.date('Y').'-'.str_pad((string) $invoiceId, 4, '0', STR_PAD_LEFT),
             total: $order->totalPrice,
+        );
+
+        $this->createdInvoices[$invoice->id] = $invoice;
+
+        return $invoice;
+    }
+
+    public function createRecurringInvoice(int $subjectId, Contract $contract, int $amount, \DateTimeImmutable $billingDate): FakturoidInvoice
+    {
+        $invoiceId = $this->nextInvoiceId++;
+        $invoice = new FakturoidInvoice(
+            id: $invoiceId,
+            number: 'FV-'.date('Y').'-'.str_pad((string) $invoiceId, 4, '0', STR_PAD_LEFT),
+            total: $amount,
         );
 
         $this->createdInvoices[$invoice->id] = $invoice;

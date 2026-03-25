@@ -117,6 +117,47 @@ final readonly class PriceCalculator
     }
 
     /**
+     * Calculate the first payment price for an order.
+     *
+     * For rentals < 28 days: full price (no recurring).
+     * For rentals >= 28 days or unlimited: first month's price.
+     *
+     * @return int Price in halire
+     */
+    public function calculateFirstPaymentPrice(
+        Storage $storage,
+        \DateTimeImmutable $startDate,
+        ?\DateTimeImmutable $endDate,
+    ): int {
+        // UNLIMITED: first month
+        if (null === $endDate) {
+            return $storage->getEffectivePricePerMonth();
+        }
+
+        $days = $this->calculateDays($startDate, $endDate);
+
+        // Short rental: full price, no recurring
+        if ($days < self::WEEKLY_THRESHOLD_DAYS) {
+            return $this->calculatePriceForStorage($storage, $startDate, $endDate);
+        }
+
+        // LIMITED >= 1 month: first month price
+        return $storage->getEffectivePricePerMonth();
+    }
+
+    /**
+     * Check if a rental duration requires recurring billing.
+     */
+    public function needsRecurringBilling(\DateTimeImmutable $startDate, ?\DateTimeImmutable $endDate): bool
+    {
+        if (null === $endDate) {
+            return true; // UNLIMITED always needs recurring
+        }
+
+        return $this->calculateDays($startDate, $endDate) >= self::WEEKLY_THRESHOLD_DAYS;
+    }
+
+    /**
      * Get price breakdown for display purposes.
      *
      * @return array{

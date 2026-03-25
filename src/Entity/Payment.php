@@ -15,6 +15,9 @@ class Payment
     #[ORM\JoinColumn(nullable: true)]
     public private(set) ?SelfBillingInvoice $selfBillingInvoice = null;
 
+    #[ORM\Column(length: 50, nullable: true)]
+    public private(set) ?string $goPayPaymentId = null;
+
     public function __construct(
         #[ORM\Id]
         #[ORM\Column(type: UuidType::NAME, unique: true)]
@@ -35,6 +38,11 @@ class Payment
         #[ORM\Column]
         private(set) \DateTimeImmutable $createdAt,
     ) {
+    }
+
+    public function setGoPayPaymentId(string $goPayPaymentId): void
+    {
+        $this->goPayPaymentId = $goPayPaymentId;
     }
 
     public function linkToSelfBillingInvoice(SelfBillingInvoice $invoice): void

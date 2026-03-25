@@ -38,6 +38,8 @@ final readonly class RecordPaymentOnRecurringChargeHandler
             createdAt: $event->occurredOn,
         );
 
+        $payment->setGoPayPaymentId($event->paymentId);
+
         $this->paymentRepository->save($payment);
     }
 }

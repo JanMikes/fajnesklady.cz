@@ -40,6 +40,17 @@ class PaymentRepository
             ->getOneOrNullResult();
     }
 
+    public function findByGoPayPaymentId(string $goPayPaymentId): ?Payment
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('p')
+            ->from(Payment::class, 'p')
+            ->where('p.goPayPaymentId = :goPayPaymentId')
+            ->setParameter('goPayPaymentId', $goPayPaymentId)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
     public function findByContractAndPaidAt(Contract $contract, \DateTimeImmutable $paidAt): ?Payment
     {
         return $this->entityManager->createQueryBuilder()
@@ -198,6 +209,7 @@ class PaymentRepository
      * Group payments by year and month.
      *
      * @param Payment[] $payments
+     *
      * @return array<array{year: int, month: int, total: int}>
      */
     private function groupPaymentsByMonth(array $payments): array
@@ -216,7 +228,7 @@ class PaymentRepository
             $grouped[$key]['total'] += $payment->amount;
         }
 
-        usort($grouped, static fn(array $a, array $b): int => ($a['year'] <=> $b['year']) ?: ($a['month'] <=> $b['month']));
+        usort($grouped, static fn (array $a, array $b): int => ($a['year'] <=> $b['year']) ?: ($a['month'] <=> $b['month']));
 
         return $grouped;
     }

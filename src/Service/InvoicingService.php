@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Entity\Contract;
 use App\Entity\Invoice;
 use App\Entity\Order;
 use App\Entity\User;
@@ -59,6 +60,45 @@ readonly class InvoicingService
             $invoice->attachPdf($pdfPath);
         } catch (\Throwable $e) {
             $this->logger->warning('Failed to download invoice PDF, email will be sent without attachment', [
+                'invoice_id' => $fakturoidInvoice->id,
+                'exception' => $e,
+            ]);
+        }
+
+        return $invoice;
+    }
+
+    public function issueInvoiceForRecurringPayment(Contract $contract, int $amount, \DateTimeImmutable $chargedAt): Invoice
+    {
+        $user = $contract->user;
+
+        $subjectId = $this->ensureFakturoidSubject($user, $chargedAt);
+
+        $fakturoidInvoice = $this->fakturoidClient->createRecurringInvoice($subjectId, $contract, $amount, $chargedAt);
+
+        // Recurring payments are charged immediately, so mark as paid
+        $this->fakturoidClient->markInvoiceAsPaid($fakturoidInvoice->id, $chargedAt);
+
+        $invoice = new Invoice(
+            id: $this->identityProvider->next(),
+            order: $contract->order,
+            user: $user,
+            fakturoidInvoiceId: $fakturoidInvoice->id,
+            invoiceNumber: $fakturoidInvoice->number,
+            amount: $fakturoidInvoice->total,
+            issuedAt: $chargedAt,
+            createdAt: $chargedAt,
+        );
+
+        $this->invoiceRepository->save($invoice);
+
+        // PDF download is best-effort
+        try {
+            $pdfContent = $this->fakturoidClient->downloadInvoicePdf($fakturoidInvoice->id);
+            $pdfPath = $this->storePdf($invoice, $pdfContent);
+            $invoice->attachPdf($pdfPath);
+        } catch (\Throwable $e) {
+            $this->logger->warning('Failed to download recurring invoice PDF', [
                 'invoice_id' => $fakturoidInvoice->id,
                 'exception' => $e,
             ]);

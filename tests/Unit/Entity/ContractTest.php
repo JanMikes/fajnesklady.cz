@@ -358,7 +358,7 @@ class ContractTest extends TestCase
         $contract = $this->createContract(rentalType: RentalType::UNLIMITED, endDate: null);
         $nextBillingDate = new \DateTimeImmutable('2024-02-01');
 
-        $contract->setRecurringPayment('12345', $nextBillingDate);
+        $contract->setRecurringPayment('12345', $nextBillingDate, $nextBillingDate);
 
         $this->assertSame('12345', $contract->goPayParentPaymentId);
         $this->assertEquals($nextBillingDate, $contract->nextBillingDate);
@@ -375,7 +375,7 @@ class ContractTest extends TestCase
     public function testRecordBillingCharge(): void
     {
         $contract = $this->createContract(rentalType: RentalType::UNLIMITED, endDate: null);
-        $contract->setRecurringPayment('12345', new \DateTimeImmutable('2024-02-01'));
+        $contract->setRecurringPayment('12345', new \DateTimeImmutable('2024-02-01'), new \DateTimeImmutable('2024-02-01'));
 
         // Simulate a failed attempt first
         $contract->recordFailedBillingAttempt(new \DateTimeImmutable());
@@ -385,7 +385,7 @@ class ContractTest extends TestCase
         $chargedAt = new \DateTimeImmutable('2024-02-01');
         $nextBillingDate = new \DateTimeImmutable('2024-03-01');
 
-        $contract->recordBillingCharge($chargedAt, $nextBillingDate);
+        $contract->recordBillingCharge($chargedAt, $nextBillingDate, $nextBillingDate);
 
         $this->assertEquals($chargedAt, $contract->lastBilledAt);
         $this->assertEquals($nextBillingDate, $contract->nextBillingDate);
@@ -395,7 +395,7 @@ class ContractTest extends TestCase
     public function testRecordFailedBillingAttempt(): void
     {
         $contract = $this->createContract(rentalType: RentalType::UNLIMITED, endDate: null);
-        $contract->setRecurringPayment('12345', new \DateTimeImmutable('2024-02-01'));
+        $contract->setRecurringPayment('12345', new \DateTimeImmutable('2024-02-01'), new \DateTimeImmutable('2024-02-01'));
 
         $contract->recordFailedBillingAttempt(new \DateTimeImmutable());
 
@@ -410,7 +410,7 @@ class ContractTest extends TestCase
     public function testCancelRecurringPayment(): void
     {
         $contract = $this->createContract(rentalType: RentalType::UNLIMITED, endDate: null);
-        $contract->setRecurringPayment('12345', new \DateTimeImmutable('2024-02-01'));
+        $contract->setRecurringPayment('12345', new \DateTimeImmutable('2024-02-01'), new \DateTimeImmutable('2024-02-01'));
 
         $this->assertTrue($contract->hasActiveRecurringPayment());
 
@@ -424,7 +424,7 @@ class ContractTest extends TestCase
     public function testIsDueBilling(): void
     {
         $contract = $this->createContract(rentalType: RentalType::UNLIMITED, endDate: null);
-        $contract->setRecurringPayment('12345', new \DateTimeImmutable('2024-02-01'));
+        $contract->setRecurringPayment('12345', new \DateTimeImmutable('2024-02-01'), new \DateTimeImmutable('2024-02-01'));
 
         // Before due date
         $this->assertFalse($contract->isDueBilling(new \DateTimeImmutable('2024-01-31')));
@@ -446,7 +446,7 @@ class ContractTest extends TestCase
     public function testNeedsRetry(): void
     {
         $contract = $this->createContract(rentalType: RentalType::UNLIMITED, endDate: null);
-        $contract->setRecurringPayment('12345', new \DateTimeImmutable('2024-02-01'));
+        $contract->setRecurringPayment('12345', new \DateTimeImmutable('2024-02-01'), new \DateTimeImmutable('2024-02-01'));
 
         // Before failure
         $this->assertFalse($contract->needsRetry(new \DateTimeImmutable()));
@@ -461,15 +461,32 @@ class ContractTest extends TestCase
         $this->assertTrue($contract->needsRetry(new \DateTimeImmutable('+4 days')));
     }
 
-    public function testNeedsRetryReturnsFalseAfterSecondFailure(): void
+    public function testNeedsRetryAfterSecondFailure(): void
     {
         $contract = $this->createContract(rentalType: RentalType::UNLIMITED, endDate: null);
-        $contract->setRecurringPayment('12345', new \DateTimeImmutable('2024-02-01'));
+        $contract->setRecurringPayment('12345', new \DateTimeImmutable('2024-02-01'), new \DateTimeImmutable('2024-02-01'));
+
+        $failedAt = new \DateTimeImmutable('2024-02-01');
+        $contract->recordFailedBillingAttempt($failedAt);
+        $contract->recordFailedBillingAttempt($failedAt);
+
+        // Within 7 days - no retry yet
+        $this->assertFalse($contract->needsRetry($failedAt->modify('+5 days')));
+
+        // After 7 days - retry (2nd attempt)
+        $this->assertTrue($contract->needsRetry($failedAt->modify('+8 days')));
+    }
+
+    public function testNeedsRetryReturnsFalseAfterThirdFailure(): void
+    {
+        $contract = $this->createContract(rentalType: RentalType::UNLIMITED, endDate: null);
+        $contract->setRecurringPayment('12345', new \DateTimeImmutable('2024-02-01'), new \DateTimeImmutable('2024-02-01'));
 
         $contract->recordFailedBillingAttempt(new \DateTimeImmutable());
         $contract->recordFailedBillingAttempt(new \DateTimeImmutable());
+        $contract->recordFailedBillingAttempt(new \DateTimeImmutable());
 
-        // Even after 3 days, no more retries
-        $this->assertFalse($contract->needsRetry(new \DateTimeImmutable('+5 days')));
+        // After 3 failures, no more retries
+        $this->assertFalse($contract->needsRetry(new \DateTimeImmutable('+30 days')));
     }
 }

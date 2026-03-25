@@ -18,7 +18,7 @@ services:
         depends_on:
             - postgres
         ports:
-            - "8080:80"
+            - "${WEB_PORT:-8080}:80"
         environment:
             FRANKENPHP_WORKER: "1"
             FRANKENPHP_WATCH: "1"
@@ -33,7 +33,7 @@ services:
             POSTGRES_PASSWORD: postgres
             POSTGRES_DB: fajnesklady
         ports:
-            - "5432:5432"
+            - "${POSTGRES_PORT:-5432}:5432"
         volumes:
             - postgres_data:/var/lib/postgresql/data
         healthcheck:
@@ -45,8 +45,8 @@ services:
     mailpit:
         image: axllent/mailpit
         ports:
-            - "1025:1025"
-            - "8025:8025"
+            - "${MAILPIT_SMTP_PORT:-1025}:1025"
+            - "${MAILPIT_UI_PORT:-8025}:8025"
         environment:
             MP_SMTP_AUTH_ACCEPT_ANY: 1
             MP_SMTP_AUTH_ALLOW_INSECURE: 1
@@ -57,7 +57,7 @@ services:
     adminer:
         image: adminer:5.4.1
         ports:
-            - "8000:8080"
+            - "${ADMINER_PORT:-8000}:8080"
         environment:
             ADMINER_DEFAULT_SERVER: postgres
         depends_on:
