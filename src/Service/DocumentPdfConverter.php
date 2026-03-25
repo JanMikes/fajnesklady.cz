@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use Psr\Log\LoggerInterface;
 use Symfony\Component\Process\Process;
 
 final readonly class DocumentPdfConverter
 {
     public function __construct(
         private string $cacheDirectory,
+        private LoggerInterface $logger,
     ) {
     }
 
@@ -43,7 +45,12 @@ final readonly class DocumentPdfConverter
 
         try {
             $process->run();
-        } catch (\Exception) {
+        } catch (\Exception $e) {
+            $this->logger->error('PDF conversion failed', [
+                'docx_path' => $docxPath,
+                'exception' => $e,
+            ]);
+
             return null;
         }
 
@@ -68,7 +75,11 @@ final readonly class DocumentPdfConverter
             $process->run();
 
             return $process->isSuccessful() && '' !== trim($process->getOutput());
-        } catch (\Exception) {
+        } catch (\Exception $e) {
+            $this->logger->warning('LibreOffice availability check failed', [
+                'exception' => $e,
+            ]);
+
             return false;
         }
     }

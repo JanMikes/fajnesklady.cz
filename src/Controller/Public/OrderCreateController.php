@@ -15,6 +15,7 @@ use App\Repository\PlaceRepository;
 use App\Repository\StorageRepository;
 use App\Repository\StorageTypeRepository;
 use App\Service\StorageAssignment;
+use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -34,6 +35,7 @@ final class OrderCreateController extends AbstractController
         private readonly StorageRepository $storageRepository,
         private readonly StorageAssignment $storageAssignment,
         private readonly MessageBusInterface $commandBus,
+        private readonly LoggerInterface $logger,
     ) {
     }
 
@@ -176,6 +178,11 @@ final class OrderCreateController extends AbstractController
             } catch (\App\Exception\NoStorageAvailable $e) {
                 $this->addFlash('error', 'Omlouváme se, ale vybraný typ skladové jednotky již není pro zvolené období dostupný.');
             } catch (\Exception $e) {
+                $this->logger->error('Order creation failed', [
+                    'place_id' => $placeId,
+                    'storage_type_id' => $storageTypeId,
+                    'exception' => $e,
+                ]);
                 $this->addFlash('error', 'Při vytváření objednávky došlo k chybě. Zkuste to prosím znovu.');
             }
         }

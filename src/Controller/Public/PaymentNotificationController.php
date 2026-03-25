@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller\Public;
 
 use App\Command\ProcessPaymentNotificationCommand;
+use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -16,6 +17,7 @@ final class PaymentNotificationController extends AbstractController
 {
     public function __construct(
         private readonly MessageBusInterface $commandBus,
+        private readonly LoggerInterface $logger,
     ) {
     }
 
@@ -34,9 +36,13 @@ final class PaymentNotificationController extends AbstractController
             ));
 
             return new Response('OK', Response::HTTP_OK);
-        } catch (\Exception) {
+        } catch (\Exception $e) {
+            $this->logger->error('GoPay payment notification processing failed', [
+                'gopay_payment_id' => $paymentId,
+                'exception' => $e,
+            ]);
+
             // Return 200 to prevent GoPay retries for invalid payments
-            // Errors are logged internally
             return new Response('Processed', Response::HTTP_OK);
         }
     }

@@ -12,6 +12,7 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 use Symfony\Component\Routing\Attribute\Route;
@@ -23,6 +24,7 @@ final class RegisterController extends AbstractController
         private readonly MessageBusInterface $commandBus,
         #[Autowire(service: 'limiter.registration')]
         private readonly RateLimiterFactoryInterface $registrationLimiter,
+        private readonly LoggerInterface $logger,
     ) {
     }
 
@@ -63,6 +65,9 @@ final class RegisterController extends AbstractController
             } catch (\DomainException $e) {
                 $this->addFlash('error', $e->getMessage());
             } catch (\Exception $e) {
+                $this->logger->error('User registration failed', [
+                    'exception' => $e,
+                ]);
                 $this->addFlash('error', 'Při registraci došlo k chybě. Zkuste to prosím znovu.');
             }
         }

@@ -6,6 +6,7 @@ namespace App\Tests\Unit\Service;
 
 use App\Service\AresService;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\NullLogger;
 use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\MockResponse;
 
@@ -29,7 +30,7 @@ class AresServiceTest extends TestCase
         $mockResponse = new MockResponse($responseBody, ['http_code' => 200]);
         $httpClient = new MockHttpClient($mockResponse);
 
-        $service = new AresService($httpClient);
+        $service = new AresService($httpClient, new NullLogger());
         $result = $service->loadByCompanyId('11678631');
 
         self::assertNotNull($result);
@@ -60,7 +61,7 @@ class AresServiceTest extends TestCase
         $mockResponse = new MockResponse($responseBody, ['http_code' => 200]);
         $httpClient = new MockHttpClient($mockResponse);
 
-        $service = new AresService($httpClient);
+        $service = new AresService($httpClient, new NullLogger());
         $result = $service->loadByCompanyId('27082440');
 
         self::assertNotNull($result);
@@ -82,7 +83,7 @@ class AresServiceTest extends TestCase
         $mockResponse = new MockResponse($responseBody, ['http_code' => 404]);
         $httpClient = new MockHttpClient($mockResponse);
 
-        $service = new AresService($httpClient);
+        $service = new AresService($httpClient, new NullLogger());
         $result = $service->loadByCompanyId('12345678');
 
         self::assertNull($result);
@@ -93,7 +94,7 @@ class AresServiceTest extends TestCase
         $mockResponse = new MockResponse('Internal Server Error', ['http_code' => 500]);
         $httpClient = new MockHttpClient($mockResponse);
 
-        $service = new AresService($httpClient);
+        $service = new AresService($httpClient, new NullLogger());
         $result = $service->loadByCompanyId('11678631');
 
         self::assertNull($result);
@@ -104,7 +105,7 @@ class AresServiceTest extends TestCase
         $mockResponse = new MockResponse('invalid json', ['http_code' => 200]);
         $httpClient = new MockHttpClient($mockResponse);
 
-        $service = new AresService($httpClient);
+        $service = new AresService($httpClient, new NullLogger());
         $result = $service->loadByCompanyId('11678631');
 
         self::assertNull($result);
@@ -126,7 +127,7 @@ class AresServiceTest extends TestCase
         $mockResponse = new MockResponse($responseBody, ['http_code' => 200]);
         $httpClient = new MockHttpClient($mockResponse);
 
-        $service = new AresService($httpClient);
+        $service = new AresService($httpClient, new NullLogger());
         $result = $service->loadByCompanyId('12345678');
 
         self::assertNotNull($result);

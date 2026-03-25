@@ -8,6 +8,7 @@ use App\Command\CancelOrderCommand;
 use App\Enum\OrderStatus;
 use App\Repository\OrderRepository;
 use App\Service\GoPay\GoPayClient;
+use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -23,6 +24,7 @@ final class OrderPaymentController extends AbstractController
         private readonly OrderRepository $orderRepository,
         private readonly MessageBusInterface $commandBus,
         private readonly GoPayClient $goPayClient,
+        private readonly LoggerInterface $logger,
     ) {
     }
 
@@ -74,6 +76,10 @@ final class OrderPaymentController extends AbstractController
 
                     return $this->redirectToRoute($this->getUser() ? 'portal_browse_places' : 'app_home');
                 } catch (\Exception $e) {
+                    $this->logger->error('Order cancellation failed', [
+                        'order_id' => $id,
+                        'exception' => $e,
+                    ]);
                     $this->addFlash('error', 'Při rušení objednávky došlo k chybě.');
                 }
             }

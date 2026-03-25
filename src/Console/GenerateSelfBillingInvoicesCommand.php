@@ -10,6 +10,7 @@ use App\Exception\NoPaymentsForPeriod;
 use App\Repository\SelfBillingInvoiceRepository;
 use App\Repository\UserRepository;
 use Psr\Clock\ClockInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -37,6 +38,7 @@ final class GenerateSelfBillingInvoicesCommand extends Command
         private readonly SelfBillingInvoiceRepository $selfBillingInvoiceRepository,
         private readonly MessageBusInterface $commandBus,
         private readonly ClockInterface $clock,
+        private readonly LoggerInterface $logger,
     ) {
         parent::__construct();
     }
@@ -138,6 +140,10 @@ final class GenerateSelfBillingInvoicesCommand extends Command
                     ));
                 } else {
                     ++$errors;
+                    $this->logger->error('Self-billing invoice generation failed', [
+                        'landlord_id' => $landlord->id->toRfc4122(),
+                        'exception' => $previous ?? $e,
+                    ]);
                     $io->writeln(sprintf(
                         '  <error>[ERROR]</error> %s: %s',
                         $landlord->fullName,
@@ -146,6 +152,10 @@ final class GenerateSelfBillingInvoicesCommand extends Command
                 }
             } catch (\Throwable $e) {
                 ++$errors;
+                $this->logger->error('Self-billing invoice generation failed', [
+                    'landlord_id' => $landlord->id->toRfc4122(),
+                    'exception' => $e,
+                ]);
                 $io->writeln(sprintf(
                     '  <error>[ERROR]</error> %s: %s',
                     $landlord->fullName,

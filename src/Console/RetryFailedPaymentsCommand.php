@@ -11,6 +11,7 @@ use App\Event\ContractTerminatedDueToPaymentFailure;
 use App\Repository\ContractRepository;
 use App\Service\ContractService;
 use Psr\Clock\ClockInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -32,6 +33,7 @@ final class RetryFailedPaymentsCommand extends Command
         #[Autowire(service: 'event.bus')]
         private readonly MessageBusInterface $eventBus,
         private readonly ClockInterface $clock,
+        private readonly LoggerInterface $logger,
     ) {
         parent::__construct();
     }
@@ -65,7 +67,14 @@ final class RetryFailedPaymentsCommand extends Command
                 $this->commandBus->dispatch(new ChargeRecurringPaymentCommand($contract));
                 ++$successCount;
                 $io->text(sprintf('  [OK] Contract %s retry successful.', $contract->id));
-            } catch (\Exception) {
+            } catch (\Exception $e) {
+                $this->logger->error('Recurring payment retry failed', [
+                    'contract_id' => $contract->id->toRfc4122(),
+                    'attempt' => $attemptsBefore + 1,
+                    'is_last_attempt' => $isLastAttempt,
+                    'exception' => $e,
+                ]);
+
                 if ($isLastAttempt) {
                     // Third failure — cancel recurring, terminate with debt tracking
                     try {
@@ -91,6 +100,10 @@ final class RetryFailedPaymentsCommand extends Command
                             number_format($outstandingDebt / 100, 2, ',', ' '),
                         ));
                     } catch (\Exception $e) {
+                        $this->logger->error('Failed to cancel/terminate contract after payment failure', [
+                            'contract_id' => $contract->id->toRfc4122(),
+                            'exception' => $e,
+                        ]);
                         $io->error(sprintf('  [ERROR] Contract %s: Failed to cancel/terminate: %s', $contract->id, $e->getMessage()));
                     }
                 } else {

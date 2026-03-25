@@ -6,6 +6,7 @@ namespace App\Service;
 
 use App\Value\AresResult;
 use App\Value\AresSubject;
+use Psr\Log\LoggerInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 final readonly class AresService implements AresLookup
@@ -14,6 +15,7 @@ final readonly class AresService implements AresLookup
 
     public function __construct(
         private HttpClientInterface $httpClient,
+        private LoggerInterface $logger,
     ) {
     }
 
@@ -29,7 +31,12 @@ final readonly class AresService implements AresLookup
             $subject = AresSubject::fromArray($response->toArray());
 
             return $subject->toResult();
-        } catch (\Throwable) {
+        } catch (\Throwable $e) {
+            $this->logger->error('ARES lookup failed', [
+                'company_id' => $companyId,
+                'exception' => $e,
+            ]);
+
             return null;
         }
     }

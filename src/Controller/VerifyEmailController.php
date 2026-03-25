@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Command\VerifyEmailCommand;
+use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -18,6 +19,7 @@ final class VerifyEmailController extends AbstractController
 {
     public function __construct(
         private readonly MessageBusInterface $commandBus,
+        private readonly LoggerInterface $logger,
     ) {
     }
 
@@ -49,6 +51,10 @@ final class VerifyEmailController extends AbstractController
 
             return $this->redirectToRoute('app_register');
         } catch (\Exception $e) {
+            $this->logger->error('Email verification failed', [
+                'user_id' => $userId,
+                'exception' => $e,
+            ]);
             $this->addFlash('error', 'Při ověřování emailu došlo k chybě. Zkuste to prosím znovu.');
 
             return $this->redirectToRoute('app_register');

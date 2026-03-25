@@ -7,6 +7,7 @@ namespace App\Console;
 use App\Command\ChargeRecurringPaymentCommand;
 use App\Repository\ContractRepository;
 use Psr\Clock\ClockInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -24,6 +25,7 @@ final class ProcessRecurringPaymentsCommand extends Command
         private readonly ContractRepository $contractRepository,
         private readonly MessageBusInterface $commandBus,
         private readonly ClockInterface $clock,
+        private readonly LoggerInterface $logger,
     ) {
         parent::__construct();
     }
@@ -53,6 +55,10 @@ final class ProcessRecurringPaymentsCommand extends Command
                 $io->text(sprintf('  [OK] Contract %s charged successfully.', $contract->id));
             } catch (\Exception $e) {
                 ++$failureCount;
+                $this->logger->error('Recurring payment processing failed', [
+                    'contract_id' => $contract->id->toRfc4122(),
+                    'exception' => $e,
+                ]);
                 $io->error(sprintf('  [FAIL] Contract %s: %s', $contract->id, $e->getMessage()));
             }
         }

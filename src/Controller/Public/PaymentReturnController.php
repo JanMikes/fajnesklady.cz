@@ -7,6 +7,7 @@ namespace App\Controller\Public;
 use App\Command\ProcessPaymentNotificationCommand;
 use App\Enum\OrderStatus;
 use App\Repository\OrderRepository;
+use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -20,6 +21,7 @@ final class PaymentReturnController extends AbstractController
     public function __construct(
         private readonly OrderRepository $orderRepository,
         private readonly MessageBusInterface $commandBus,
+        private readonly LoggerInterface $logger,
     ) {
     }
 
@@ -41,8 +43,12 @@ final class PaymentReturnController extends AbstractController
                 $this->commandBus->dispatch(new ProcessPaymentNotificationCommand(
                     goPayPaymentId: $order->goPayPaymentId,
                 ));
-            } catch (\Exception) {
-                // Ignore errors - status will be checked below
+            } catch (\Exception $e) {
+                $this->logger->error('Payment status check failed on return', [
+                    'order_id' => $id,
+                    'gopay_payment_id' => $order->goPayPaymentId,
+                    'exception' => $e,
+                ]);
             }
 
             // Refresh order from database

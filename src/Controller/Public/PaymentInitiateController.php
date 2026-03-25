@@ -8,6 +8,7 @@ use App\Command\InitiatePaymentCommand;
 use App\Repository\OrderRepository;
 use App\Service\GoPay\GoPayException;
 use App\Value\GoPayPayment;
+use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -25,6 +26,7 @@ final class PaymentInitiateController extends AbstractController
         private readonly OrderRepository $orderRepository,
         private readonly MessageBusInterface $commandBus,
         private readonly UrlGeneratorInterface $urlGenerator,
+        private readonly LoggerInterface $logger,
     ) {
     }
 
@@ -74,6 +76,11 @@ final class PaymentInitiateController extends AbstractController
                 'gwUrl' => $payment->gwUrl,
             ]);
         } catch (GoPayException $e) {
+            $this->logger->error('GoPay payment initiation failed', [
+                'order_id' => $id,
+                'exception' => $e,
+            ]);
+
             return new JsonResponse(
                 ['error' => 'Chyba při vytváření platby. Zkuste to prosím znovu.'],
                 Response::HTTP_INTERNAL_SERVER_ERROR,
