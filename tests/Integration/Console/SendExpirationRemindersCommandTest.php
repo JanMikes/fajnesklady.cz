@@ -183,25 +183,25 @@ class SendExpirationRemindersCommandTest extends KernelTestCase
     {
         $now = $this->clock->now();
 
-        // Remove fixture contracts that would interfere with this test
+        // Remove fixture contracts that would interfere with this test (within 30 days)
         $this->entityManager->createQueryBuilder()
             ->delete(Contract::class, 'c')
             ->where('c.endDate IS NOT NULL')
             ->andWhere('c.endDate > :now')
             ->andWhere('c.endDate <= :maxDate')
             ->setParameter('now', $now)
-            ->setParameter('maxDate', $now->modify('+7 days'))
+            ->setParameter('maxDate', $now->modify('+30 days'))
             ->getQuery()
             ->execute();
 
-        // Create contract that expires in 30 days (not 7 or 1)
+        // Create contract that expires in 60 days (not 30, 7, or 1)
         $tenant = $this->createUser('tenant-noreminder@test.com');
         $place = $this->createPlace();
         $storageType = $this->createStorageType();
         $storage = $this->createStorage($storageType, $place, 'NOREM1');
 
-        $thirtyDaysFromNow = $now->modify('+30 days')->setTime(12, 0, 0);
-        $order = $this->createCompletedOrder($tenant, $storage, $thirtyDaysFromNow);
+        $sixtyDaysFromNow = $now->modify('+60 days')->setTime(12, 0, 0);
+        $order = $this->createCompletedOrder($tenant, $storage, $sixtyDaysFromNow);
         $this->createContract($order);
 
         $this->entityManager->flush();
@@ -226,7 +226,7 @@ class SendExpirationRemindersCommandTest extends KernelTestCase
             ->andWhere('c.endDate > :now')
             ->andWhere('c.endDate <= :maxDate')
             ->setParameter('now', $now)
-            ->setParameter('maxDate', $now->modify('+7 days'))
+            ->setParameter('maxDate', $now->modify('+30 days'))
             ->getQuery()
             ->execute();
 
