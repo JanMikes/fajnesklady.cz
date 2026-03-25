@@ -7,6 +7,22 @@
         <h1 class="text-3xl font-bold text-gray-900">Problémové platby</h1>
     </div>
 
+    {% if totalDebt > 0 %}
+        <div class="card bg-red-50 border-red-300 mb-6">
+            <div class="card-body">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h2 class="text-xl font-bold text-red-800">Celkový dluh</h2>
+                        <p class="text-sm text-red-600">{{ debtCount }} {{ debtCount == 1 ? 'smlouva' : (debtCount < 5 ? 'smlouvy' : 'smluv') }} s neuhrazeným dluhem</p>
+                    </div>
+                    <div class="text-3xl font-bold text-red-700">
+                        {{ (totalDebt / 100)|number_format(0, ',', ' ') }} Kč
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
     {% if contracts is empty %}
         <div class="card bg-green-50 border-green-200">
             <div class="card-body text-center">
@@ -23,48 +39,47 @@
                             <th>Sklad</th>
                             <th>Pobočka</th>
                             <th>Neúspěšné pokusy</th>
-                            <th>Poslední selhání</th>
-                            <th>Další platba</th>
+                            <th>Dluh</th>
                             <th>Stav</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for contract in contracts %}
-                            <tr>
+                            <tr{% if contract.isTerminatedDueToPaymentFailure() %} class="bg-red-50"{% endif %}>
                                 <td>
                                     <div class="font-semibold">{{ contract.user.fullName }}</div>
                                     <div class="text-sm text-gray-500">{{ contract.user.email }}</div>
+                                    {% if contract.user.phone %}
+                                        <div class="text-sm text-gray-500">{{ contract.user.phone }}</div>
+                                    {% endif %}
                                 </td>
                                 <td>{{ contract.storage.storageType.name }} #{{ contract.storage.number }}</td>
                                 <td>{{ contract.storage.place.name }}</td>
                                 <td>
                                     {% if contract.failedBillingAttempts > 0 %}
                                         <span class="badge badge-error">{{ contract.failedBillingAttempts }}x</span>
+                                    {% elseif contract.isTerminatedDueToPaymentFailure() %}
+                                        <span class="badge badge-error">ukončeno</span>
                                     {% else %}
                                         <span class="badge badge-warning">zpožděno</span>
                                     {% endif %}
                                 </td>
                                 <td>
-                                    {% if contract.lastBillingFailedAt %}
-                                        {{ contract.lastBillingFailedAt|date('d.m.Y H:i') }}
+                                    {% if contract.hasOutstandingDebt() %}
+                                        <span class="text-red-600 font-bold">{{ (contract.outstandingDebtAmount / 100)|number_format(0, ',', ' ') }} Kč</span>
                                     {% else %}
                                         —
                                     {% endif %}
                                 </td>
                                 <td>
-                                    {% if contract.nextBillingDate %}
-                                        {{ contract.nextBillingDate|date('d.m.Y') }}
-                                    {% else %}
-                                        —
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% if contract.hasPendingTermination() %}
+                                    {% if contract.isTerminatedDueToPaymentFailure() %}
+                                        <span class="badge badge-error">DLUH - ukončeno {{ contract.terminatedAt|date('d.m.Y') }}</span>
+                                    {% elseif contract.hasPendingTermination() %}
                                         <span class="badge badge-warning">výpověď k {{ contract.terminatesAt|date('d.m.Y') }}</span>
-                                    {% elseif contract.failedBillingAttempts >= 3 %}
-                                        <span class="badge badge-error">k zrušení</span>
+                                    {% elseif contract.failedBillingAttempts >= 2 %}
+                                        <span class="badge badge-error">poslední pokus</span>
                                     {% else %}
-                                        <span class="badge badge-warning">problém</span>
+                                        <span class="badge badge-warning">selhání platby</span>
                                     {% endif %}
                                 </td>
                             </tr>

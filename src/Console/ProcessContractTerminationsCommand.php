@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console;
 
+use App\Enum\TerminationReason;
 use App\Event\ContractTerminated;
 use App\Repository\ContractRepository;
 use App\Service\ContractService;
@@ -53,7 +54,12 @@ final class ProcessContractTerminationsCommand extends Command
 
         foreach ($contracts as $contract) {
             try {
-                $this->contractService->terminateContract($contract, $now);
+                // Determine termination reason
+                $reason = null !== $contract->terminatesAt
+                    ? TerminationReason::TENANT_NOTICE  // User requested termination
+                    : TerminationReason::EXPIRED;        // LIMITED contract reached endDate
+
+                $this->contractService->terminateContract($contract, $now, $reason);
 
                 $this->eventBus->dispatch(new ContractTerminated(
                     contractId: $contract->id,

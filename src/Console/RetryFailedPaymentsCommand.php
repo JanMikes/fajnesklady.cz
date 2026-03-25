@@ -6,7 +6,8 @@ namespace App\Console;
 
 use App\Command\CancelRecurringPaymentCommand;
 use App\Command\ChargeRecurringPaymentCommand;
-use App\Event\ContractTerminated;
+use App\Enum\TerminationReason;
+use App\Event\ContractTerminatedDueToPaymentFailure;
 use App\Repository\ContractRepository;
 use App\Service\ContractService;
 use Psr\Clock\ClockInterface;
@@ -66,16 +67,29 @@ final class RetryFailedPaymentsCommand extends Command
                 $io->text(sprintf('  [OK] Contract %s retry successful.', $contract->id));
             } catch (\Exception) {
                 if ($isLastAttempt) {
-                    // Third failure — cancel recurring payment and terminate contract
+                    // Third failure — cancel recurring, terminate with debt tracking
                     try {
                         $this->commandBus->dispatch(new CancelRecurringPaymentCommand($contract));
-                        $this->contractService->terminateContract($contract, $now);
-                        $this->eventBus->dispatch(new ContractTerminated(
+
+                        // Calculate outstanding debt before termination
+                        $outstandingDebt = $this->contractService->calculateOutstandingDebt($contract, $now);
+                        if ($outstandingDebt > 0) {
+                            $contract->setOutstandingDebt($outstandingDebt);
+                        }
+
+                        $this->contractService->terminateContract($contract, $now, TerminationReason::PAYMENT_FAILURE);
+
+                        $this->eventBus->dispatch(new ContractTerminatedDueToPaymentFailure(
                             contractId: $contract->id,
+                            outstandingDebtAmount: $outstandingDebt,
                             occurredOn: $now,
                         ));
                         ++$cancelledCount;
-                        $io->warning(sprintf('  [TERMINATED] Contract %s terminated after 3 payment failures.', $contract->id));
+                        $io->warning(sprintf(
+                            '  [PAYMENT DEFAULT] Contract %s terminated. Outstanding debt: %s Kč',
+                            $contract->id,
+                            number_format($outstandingDebt / 100, 2, ',', ' '),
+                        ));
                     } catch (\Exception $e) {
                         $io->error(sprintf('  [ERROR] Contract %s: Failed to cancel/terminate: %s', $contract->id, $e->getMessage()));
                     }

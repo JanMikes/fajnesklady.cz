@@ -12,6 +12,7 @@ use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\PaymentFrequency;
 use App\Enum\RentalType;
+use App\Enum\TerminationReason;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
@@ -488,5 +489,117 @@ class ContractTest extends TestCase
 
         // After 3 failures, no more retries
         $this->assertFalse($contract->needsRetry(new \DateTimeImmutable('+30 days')));
+    }
+
+    public function testTerminateWithReason(): void
+    {
+        $contract = $this->createContract(rentalType: RentalType::UNLIMITED, endDate: null);
+        $now = new \DateTimeImmutable();
+
+        $contract->terminate($now, TerminationReason::PAYMENT_FAILURE);
+
+        $this->assertTrue($contract->isTerminated());
+        $this->assertSame(TerminationReason::PAYMENT_FAILURE, $contract->terminationReason);
+        $this->assertTrue($contract->isTerminatedDueToPaymentFailure());
+    }
+
+    public function testTerminateDefaultReasonIsExpired(): void
+    {
+        $contract = $this->createContract(endDate: new \DateTimeImmutable('+30 days'));
+        $now = new \DateTimeImmutable();
+
+        $contract->terminate($now);
+
+        $this->assertSame(TerminationReason::EXPIRED, $contract->terminationReason);
+        $this->assertFalse($contract->isTerminatedDueToPaymentFailure());
+    }
+
+    public function testOutstandingDebt(): void
+    {
+        $contract = $this->createContract(rentalType: RentalType::UNLIMITED, endDate: null);
+
+        $this->assertFalse($contract->hasOutstandingDebt());
+
+        $contract->setOutstandingDebt(150000); // 1500 CZK
+
+        $this->assertTrue($contract->hasOutstandingDebt());
+        $this->assertSame(150000, $contract->outstandingDebtAmount);
+    }
+
+    public function testOutstandingDebtZeroIsNotDebt(): void
+    {
+        $contract = $this->createContract(rentalType: RentalType::UNLIMITED, endDate: null);
+        $contract->setOutstandingDebt(0);
+
+        $this->assertFalse($contract->hasOutstandingDebt());
+    }
+
+    public function testRequestTermination(): void
+    {
+        $contract = $this->createContract(rentalType: RentalType::UNLIMITED, endDate: null);
+        $noticedAt = new \DateTimeImmutable('2024-03-01');
+        $terminatesAt = new \DateTimeImmutable('2024-04-01');
+
+        $contract->requestTermination($noticedAt, $terminatesAt);
+
+        $this->assertTrue($contract->hasPendingTermination());
+        $this->assertEquals($noticedAt, $contract->terminationNoticedAt);
+        $this->assertEquals($terminatesAt, $contract->terminatesAt);
+        $this->assertFalse($contract->isTerminated());
+    }
+
+    public function testRequestTerminationThrowsIfAlreadyTerminated(): void
+    {
+        $contract = $this->createContract(rentalType: RentalType::UNLIMITED, endDate: null);
+        $contract->terminate(new \DateTimeImmutable());
+
+        $this->expectException(\DomainException::class);
+        $contract->requestTermination(new \DateTimeImmutable(), new \DateTimeImmutable('+1 month'));
+    }
+
+    public function testRequestTerminationThrowsIfAlreadyPending(): void
+    {
+        $contract = $this->createContract(rentalType: RentalType::UNLIMITED, endDate: null);
+        $contract->requestTermination(new \DateTimeImmutable(), new \DateTimeImmutable('+1 month'));
+
+        $this->expectException(\DomainException::class);
+        $contract->requestTermination(new \DateTimeImmutable(), new \DateTimeImmutable('+1 month'));
+    }
+
+    public function testIsTerminationDue(): void
+    {
+        $contract = $this->createContract(rentalType: RentalType::UNLIMITED, endDate: null);
+        $contract->requestTermination(
+            new \DateTimeImmutable('2024-03-01'),
+            new \DateTimeImmutable('2024-04-01'),
+        );
+
+        $this->assertFalse($contract->isTerminationDue(new \DateTimeImmutable('2024-03-15')));
+        $this->assertTrue($contract->isTerminationDue(new \DateTimeImmutable('2024-04-01')));
+        $this->assertTrue($contract->isTerminationDue(new \DateTimeImmutable('2024-04-15')));
+    }
+
+    public function testEffectiveEndDateForLimited(): void
+    {
+        $endDate = new \DateTimeImmutable('+30 days');
+        $contract = $this->createContract(endDate: $endDate);
+
+        $this->assertEquals($endDate, $contract->getEffectiveEndDate());
+    }
+
+    public function testEffectiveEndDateForUnlimitedWithTerminationNotice(): void
+    {
+        $contract = $this->createContract(rentalType: RentalType::UNLIMITED, endDate: null);
+        $terminatesAt = new \DateTimeImmutable('2024-04-01');
+        $contract->requestTermination(new \DateTimeImmutable('2024-03-01'), $terminatesAt);
+
+        $this->assertEquals($terminatesAt, $contract->getEffectiveEndDate());
+    }
+
+    public function testEffectiveEndDateForUnlimitedWithoutNotice(): void
+    {
+        $contract = $this->createContract(rentalType: RentalType::UNLIMITED, endDate: null);
+
+        $this->assertNull($contract->getEffectiveEndDate());
     }
 }

@@ -25,9 +25,13 @@ final class AdminPaymentIssuesController extends AbstractController
     {
         $now = $this->clock->now();
         $contracts = $this->contractRepository->findWithPaymentIssues($now);
+        $totalDebt = $this->contractRepository->sumOutstandingDebt();
+        $debtCount = $this->contractRepository->countWithOutstandingDebt();
 
         return $this->render('admin/payment_issues.html.twig', [
             'contracts' => $contracts,
+            'totalDebt' => $totalDebt,
+            'debtCount' => $debtCount,
         ]);
     }
 }

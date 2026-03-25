@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Enum\RentalType;
+use App\Enum\TerminationReason;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Types\UuidType;
@@ -21,6 +22,12 @@ class Contract
 
     #[ORM\Column(nullable: true)]
     public private(set) ?\DateTimeImmutable $terminatedAt = null;
+
+    #[ORM\Column(length: 20, nullable: true, enumType: TerminationReason::class)]
+    public private(set) ?TerminationReason $terminationReason = null;
+
+    #[ORM\Column(nullable: true)]
+    public private(set) ?int $outstandingDebtAmount = null;
 
     #[ORM\Column(nullable: true)]
     public private(set) ?string $goPayParentPaymentId = null;
@@ -75,10 +82,26 @@ class Contract
         $this->signedAt = $now;
     }
 
-    public function terminate(\DateTimeImmutable $now): void
+    public function terminate(\DateTimeImmutable $now, TerminationReason $reason = TerminationReason::EXPIRED): void
     {
         $this->terminatedAt = $now;
+        $this->terminationReason = $reason;
         $this->storage->release($now);
+    }
+
+    public function setOutstandingDebt(int $amount): void
+    {
+        $this->outstandingDebtAmount = $amount;
+    }
+
+    public function hasOutstandingDebt(): bool
+    {
+        return null !== $this->outstandingDebtAmount && $this->outstandingDebtAmount > 0;
+    }
+
+    public function isTerminatedDueToPaymentFailure(): bool
+    {
+        return TerminationReason::PAYMENT_FAILURE === $this->terminationReason;
     }
 
     public function attachDocument(string $path, \DateTimeImmutable $now): void

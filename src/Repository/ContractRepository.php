@@ -293,15 +293,65 @@ class ContractRepository
         return $this->entityManager->createQueryBuilder()
             ->select('c')
             ->from(Contract::class, 'c')
-            ->where('c.terminatedAt IS NULL')
-            ->andWhere(
-                'c.failedBillingAttempts > 0 OR '
-                .'(c.nextBillingDate IS NOT NULL AND c.nextBillingDate < :overdueThreshold)'
+            ->where(
+                // Active contracts with billing problems
+                '(c.terminatedAt IS NULL AND (c.failedBillingAttempts > 0 OR '
+                .'(c.nextBillingDate IS NOT NULL AND c.nextBillingDate < :overdueThreshold))) OR '
+                // Terminated contracts with outstanding debt
+                .'(c.outstandingDebtAmount IS NOT NULL AND c.outstandingDebtAmount > 0)'
             )
             ->setParameter('overdueThreshold', $now->modify('-1 day'))
-            ->orderBy('c.failedBillingAttempts', 'DESC')
+            ->orderBy('c.outstandingDebtAmount', 'DESC')
+            ->addOrderBy('c.failedBillingAttempts', 'DESC')
             ->getQuery()
             ->getResult();
+    }
+
+    /**
+     * Find all contracts with outstanding debt (terminated due to payment failure).
+     *
+     * @return Contract[]
+     */
+    public function findWithOutstandingDebt(): array
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('c')
+            ->from(Contract::class, 'c')
+            ->where('c.outstandingDebtAmount IS NOT NULL')
+            ->andWhere('c.outstandingDebtAmount > 0')
+            ->orderBy('c.terminatedAt', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Sum total outstanding debt across all contracts.
+     */
+    public function sumOutstandingDebt(): int
+    {
+        $result = $this->entityManager->createQueryBuilder()
+            ->select('SUM(c.outstandingDebtAmount)')
+            ->from(Contract::class, 'c')
+            ->where('c.outstandingDebtAmount IS NOT NULL')
+            ->andWhere('c.outstandingDebtAmount > 0')
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return (int) ($result ?? 0);
+    }
+
+    /**
+     * Count contracts with outstanding debt.
+     */
+    public function countWithOutstandingDebt(): int
+    {
+        return (int) $this->entityManager->createQueryBuilder()
+            ->select('COUNT(c.id)')
+            ->from(Contract::class, 'c')
+            ->where('c.outstandingDebtAmount IS NOT NULL')
+            ->andWhere('c.outstandingDebtAmount > 0')
+            ->getQuery()
+            ->getSingleScalarResult();
     }
 
     public function findByGoPayParentPaymentId(string $parentPaymentId): ?Contract

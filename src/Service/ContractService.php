@@ -6,6 +6,7 @@ namespace App\Service;
 
 use App\Entity\Contract;
 use App\Entity\Order;
+use App\Enum\TerminationReason;
 use App\Repository\ContractRepository;
 use App\Service\GoPay\GoPayClient;
 
@@ -54,7 +55,7 @@ final readonly class ContractService
     /**
      * Terminate a contract (for unlimited rentals or early termination).
      */
-    public function terminateContract(Contract $contract, \DateTimeImmutable $now): void
+    public function terminateContract(Contract $contract, \DateTimeImmutable $now, TerminationReason $reason = TerminationReason::EXPIRED): void
     {
         if ($contract->isTerminated()) {
             throw new \DomainException('Contract is already terminated.');
@@ -68,9 +69,36 @@ final readonly class ContractService
             $contract->cancelRecurringPayment();
         }
 
-        $contract->terminate($now);
+        $contract->terminate($now, $reason);
         $this->auditLogger->logContractTerminated($contract);
-        $this->auditLogger->logStorageReleased($contract->storage, 'Contract terminated');
+        $this->auditLogger->logStorageReleased($contract->storage, sprintf('Contract terminated (%s)', $reason->value));
+    }
+
+    /**
+     * Calculate outstanding debt: period between paidThroughDate and termination date.
+     *
+     * @return int Amount in haléře (cents), 0 if no debt
+     */
+    public function calculateOutstandingDebt(Contract $contract, \DateTimeImmutable $terminationDate): int
+    {
+        if (null === $contract->paidThroughDate) {
+            return 0;
+        }
+
+        if ($contract->paidThroughDate >= $terminationDate) {
+            return 0; // Paid through or past the termination date
+        }
+
+        $unpaidDays = (int) $contract->paidThroughDate->diff($terminationDate)->days;
+
+        if ($unpaidDays <= 0) {
+            return 0;
+        }
+
+        $monthlyRate = $contract->storage->getEffectivePricePerMonth();
+        $dailyRate = $monthlyRate / 30;
+
+        return (int) round($unpaidDays * $dailyRate);
     }
 
     /**
