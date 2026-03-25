@@ -35,7 +35,7 @@ class IssueInvoiceOnPaymentHandlerTest extends TestCase
             ->with($orderId)
             ->willReturn($order);
 
-        $invoiceRepository = $this->createMock(InvoiceRepository::class);
+        $invoiceRepository = $this->createStub(InvoiceRepository::class);
         $invoiceRepository->method('findByOrder')->willReturn(null);
 
         $invoicingService = $this->createMock(InvoicingService::class);
@@ -43,7 +43,7 @@ class IssueInvoiceOnPaymentHandlerTest extends TestCase
             ->method('issueInvoiceForOrder')
             ->with($order, $now);
 
-        $clock = $this->createMock(ClockInterface::class);
+        $clock = $this->createStub(ClockInterface::class);
         $clock->method('now')->willReturn($now);
 
         $handler = new IssueInvoiceOnPaymentHandler(
@@ -65,10 +65,10 @@ class IssueInvoiceOnPaymentHandlerTest extends TestCase
         $order = $this->createOrder($orderId);
         $event = new OrderPaid($orderId, $eventTime);
 
-        $orderRepository = $this->createMock(OrderRepository::class);
+        $orderRepository = $this->createStub(OrderRepository::class);
         $orderRepository->method('get')->willReturn($order);
 
-        $invoiceRepository = $this->createMock(InvoiceRepository::class);
+        $invoiceRepository = $this->createStub(InvoiceRepository::class);
         $invoiceRepository->method('findByOrder')->willReturn(null);
 
         $invoicingService = $this->createMock(InvoicingService::class);
@@ -76,7 +76,7 @@ class IssueInvoiceOnPaymentHandlerTest extends TestCase
             ->method('issueInvoiceForOrder')
             ->with($order, $clockTime);
 
-        $clock = $this->createMock(ClockInterface::class);
+        $clock = $this->createStub(ClockInterface::class);
         $clock->method('now')->willReturn($clockTime);
 
         $handler = new IssueInvoiceOnPaymentHandler(

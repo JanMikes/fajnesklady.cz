@@ -13,13 +13,22 @@
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-3xl font-bold">Detail uživatele</h1>
         <div class="flex gap-2">
-            {% if user.id != app.user.id %}
+            {% if user.id != app.user.id and not user.isDeactivated %}
                 <a href="{{ path('portal_dashboard', {'_switch_user': user.email}) }}" class="btn btn-secondary">Přihlásit se jako</a>
             {% endif %}
             {% if not user.isVerified %}
                 <form action="{{ path('portal_users_verify', {id: user.id}) }}" method="post" class="inline">
                     <button type="submit" class="btn btn-success">Ověřit uživatele</button>
                 </form>
+            {% endif %}
+            {% if user.id != app.user.id %}
+                {% if user.isDeactivated %}
+                    <form action="{{ path('portal_users_activate', {id: user.id}) }}" method="post" class="inline">
+                        <button type="submit" class="btn btn-success">Aktivovat účet</button>
+                    </form>
+                {% else %}
+                    <button type="button" class="btn btn-error" onclick="document.getElementById('deactivateModal').showModal()">Deaktivovat účet</button>
+                {% endif %}
             {% endif %}
             <a href="{{ path('portal_users_edit', {id: user.id}) }}" class="btn btn-primary">Upravit</a>
         </div>
@@ -55,6 +64,15 @@
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-2">Jméno</label>
                     <div class="text-sm text-gray-900">{{ user.fullName }}</div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Stav účtu</label>
+                    {% if user.isDeactivated %}
+                        <div class="badge badge-error gap-2">Deaktivován</div>
+                    {% else %}
+                        <div class="badge badge-success gap-2">Aktivní</div>
+                    {% endif %}
                 </div>
 
                 <div>
@@ -99,6 +117,48 @@
                     <div class="text-sm text-gray-900">{{ user.updatedAt|date('d.m.Y H:i') }}</div>
                 </div>
             </div>
+
+            {% if user.isDeactivated %}
+                <div class="alert alert-error mt-6">
+                    <div>
+                        <strong>Účet deaktivován</strong> dne {{ user.deactivatedAt|date('d.m.Y H:i') }}
+                        {% if user.deactivationReason %}
+                            <p class="mt-1">Důvod: {{ user.deactivationReason }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+
+            {% if user.adminNote %}
+                <div class="alert alert-info mt-6">
+                    <div>
+                        <strong>Interní poznámka:</strong>
+                        <p class="mt-1">{{ user.adminNote }}</p>
+                    </div>
+                </div>
+            {% endif %}
         </div>
     </div>
+
+    {% if not user.isDeactivated and user.id != app.user.id %}
+        <dialog id="deactivateModal" class="modal">
+            <div class="modal-box">
+                <h3 class="text-lg font-bold">Deaktivovat uživatele</h3>
+                <p class="py-2 text-gray-600">Uživatel se nebude moci přihlásit. Volitelně můžete zadat důvod, který se mu zobrazí.</p>
+                <form action="{{ path('portal_users_deactivate', {id: user.id}) }}" method="post">
+                    <div class="form-group mt-4">
+                        <label class="form-label">Důvod deaktivace (volitelný)</label>
+                        <textarea name="reason" class="textarea textarea-bordered w-full" rows="3" placeholder="Např. Porušení podmínek služby..."></textarea>
+                    </div>
+                    <div class="modal-action">
+                        <button type="button" class="btn btn-ghost" onclick="document.getElementById('deactivateModal').close()">Zrušit</button>
+                        <button type="submit" class="btn btn-error">Deaktivovat</button>
+                    </div>
+                </form>
+            </div>
+            <form method="dialog" class="modal-backdrop">
+                <button>close</button>
+            </form>
+        </dialog>
+    {% endif %}
 {% endblock %}

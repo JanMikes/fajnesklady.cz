@@ -9,6 +9,7 @@ use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\EnumType;
 use Symfony\Component\Form\Extension\Core\Type\NumberType;
 use Symfony\Component\Form\Extension\Core\Type\TelType;
+use Symfony\Component\Form\Extension\Core\Type\TextareaType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
@@ -124,6 +125,15 @@ final class AdminUserFormType extends AbstractType
                 'maxlength' => 10,
             ],
             'help' => 'Prefix pro samofakturacni doklady (napr. P001). Povinne pro samofakturaci.',
+        ]);
+
+        $builder->add('adminNote', TextareaType::class, [
+            'label' => 'Interní poznámka (pouze pro adminy)',
+            'required' => false,
+            'attr' => [
+                'rows' => 4,
+                'placeholder' => 'Poznámka viditelná pouze administrátorům...',
+            ],
         ]);
     }
 

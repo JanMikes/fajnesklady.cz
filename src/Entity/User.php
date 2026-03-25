@@ -67,6 +67,15 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, EntityW
     #[ORM\Column(length: 4, nullable: true)]
     public private(set) ?string $bankCode = null;
 
+    #[ORM\Column(nullable: true)]
+    public private(set) ?\DateTimeImmutable $deactivatedAt = null;
+
+    #[ORM\Column(length: 500, nullable: true)]
+    public private(set) ?string $deactivationReason = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    public private(set) ?string $adminNote = null;
+
     public string $fullName {
         get => trim($this->firstName.' '.$this->lastName);
     }
@@ -233,6 +242,31 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, EntityW
     {
         $this->bankAccountNumber = $bankAccountNumber;
         $this->bankCode = $bankCode;
+        $this->updatedAt = $now;
+    }
+
+    public function deactivate(?string $reason, \DateTimeImmutable $now): void
+    {
+        $this->deactivatedAt = $now;
+        $this->deactivationReason = $reason;
+        $this->updatedAt = $now;
+    }
+
+    public function activate(\DateTimeImmutable $now): void
+    {
+        $this->deactivatedAt = null;
+        $this->deactivationReason = null;
+        $this->updatedAt = $now;
+    }
+
+    public function isDeactivated(): bool
+    {
+        return null !== $this->deactivatedAt;
+    }
+
+    public function updateAdminNote(?string $adminNote, \DateTimeImmutable $now): void
+    {
+        $this->adminNote = $adminNote;
         $this->updatedAt = $now;
     }
 

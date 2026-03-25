@@ -45,6 +45,8 @@ final readonly class AdminUpdateUserHandler
         $user->updateCommissionRate($command->commissionRate, $now);
         $user->setSelfBillingPrefix($command->selfBillingPrefix, $now);
 
+        $user->updateAdminNote($command->adminNote, $now);
+
         $this->userRepository->save($user);
     }
 }

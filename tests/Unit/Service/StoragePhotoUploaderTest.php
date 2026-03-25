@@ -55,7 +55,7 @@ class StoragePhotoUploaderTest extends TestCase
         $filesystemOperator = $this->createMock(FilesystemOperator::class);
         $filesystemOperator->expects($this->once())->method('writeStream');
 
-        $identityProvider = $this->createMock(ProvideIdentity::class);
+        $identityProvider = $this->createStub(ProvideIdentity::class);
         $identityProvider->method('next')->willReturn($fileUuid);
 
         $file = $this->createTempUploadedFile('Můj sklad číslo 5.png');

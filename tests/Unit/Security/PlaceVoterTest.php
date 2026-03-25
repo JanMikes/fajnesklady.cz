@@ -8,7 +8,6 @@ use App\Entity\Place;
 use App\Entity\User;
 use App\Repository\PlaceAccessRepository;
 use App\Service\Security\PlaceVoter;
-use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Authorization\Voter\VoterInterface;
@@ -16,13 +15,11 @@ use Symfony\Component\Uid\Uuid;
 
 class PlaceVoterTest extends TestCase
 {
-    private PlaceAccessRepository&MockObject $placeAccessRepository;
     private PlaceVoter $voter;
 
     protected function setUp(): void
     {
-        $this->placeAccessRepository = $this->createMock(PlaceAccessRepository::class);
-        $this->voter = new PlaceVoter($this->placeAccessRepository);
+        $this->voter = new PlaceVoter($this->createStub(PlaceAccessRepository::class));
     }
 
     private function createUser(string $email = 'user@example.com'): User
@@ -140,13 +137,15 @@ class PlaceVoterTest extends TestCase
 
         $place = $this->createPlace();
 
-        $this->placeAccessRepository
+        $placeAccessRepository = $this->createMock(PlaceAccessRepository::class);
+        $placeAccessRepository
             ->expects($this->once())
             ->method('hasAccess')
             ->with($landlord, $place)
             ->willReturn(true);
 
-        $result = $this->voter->vote($this->createToken($landlord), $place, [PlaceVoter::REQUEST_CHANGE]);
+        $voter = new PlaceVoter($placeAccessRepository);
+        $result = $voter->vote($this->createToken($landlord), $place, [PlaceVoter::REQUEST_CHANGE]);
 
         $this->assertSame(VoterInterface::ACCESS_GRANTED, $result);
     }
@@ -158,13 +157,15 @@ class PlaceVoterTest extends TestCase
 
         $place = $this->createPlace();
 
-        $this->placeAccessRepository
+        $placeAccessRepository = $this->createMock(PlaceAccessRepository::class);
+        $placeAccessRepository
             ->expects($this->once())
             ->method('hasAccess')
             ->with($landlord, $place)
             ->willReturn(false);
 
-        $result = $this->voter->vote($this->createToken($landlord), $place, [PlaceVoter::REQUEST_CHANGE]);
+        $voter = new PlaceVoter($placeAccessRepository);
+        $result = $voter->vote($this->createToken($landlord), $place, [PlaceVoter::REQUEST_CHANGE]);
 
         $this->assertSame(VoterInterface::ACCESS_DENIED, $result);
     }

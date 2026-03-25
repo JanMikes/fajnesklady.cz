@@ -23,6 +23,7 @@ final readonly class AdminUpdateUserCommand
         public UserRole $role,
         public ?string $commissionRate = null,
         public ?string $selfBillingPrefix = null,
+        public ?string $adminNote = null,
     ) {
     }
 }

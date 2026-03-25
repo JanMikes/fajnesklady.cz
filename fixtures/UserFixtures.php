@@ -21,6 +21,7 @@ final class UserFixtures extends Fixture
     public const LANDLORD2_EMAIL = 'landlord2@example.com';
     public const TENANT_EMAIL = 'tenant@example.com';
     public const ADMIN_EMAIL = 'admin@example.com';
+    public const DEACTIVATED_EMAIL = 'deactivated@example.com';
 
     // Reference constants
     public const REF_USER = 'user-regular';
@@ -29,6 +30,7 @@ final class UserFixtures extends Fixture
     public const REF_LANDLORD2 = 'user-landlord2';
     public const REF_TENANT = 'user-tenant';
     public const REF_ADMIN = 'user-admin';
+    public const REF_DEACTIVATED = 'user-deactivated';
 
     public function __construct(
         private UserPasswordHasherInterface $passwordHasher,
@@ -134,6 +136,22 @@ final class UserFixtures extends Fixture
         $admin->popEvents();
         $manager->persist($admin);
         $this->addReference(self::REF_ADMIN, $admin);
+
+        // Deactivated user
+        $deactivated = new User(
+            id: Uuid::v7(),
+            email: self::DEACTIVATED_EMAIL,
+            password: '',
+            firstName: 'Karel',
+            lastName: 'Blokovan',
+            createdAt: $now,
+        );
+        $deactivated->changePassword($this->passwordHasher->hashPassword($deactivated, 'password'), $now);
+        $deactivated->markAsVerified($now);
+        $deactivated->deactivate('Porušení podmínek služby', $now);
+        $deactivated->popEvents();
+        $manager->persist($deactivated);
+        $this->addReference(self::REF_DEACTIVATED, $deactivated);
 
         $manager->flush();
     }

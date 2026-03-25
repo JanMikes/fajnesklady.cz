@@ -123,13 +123,12 @@
                             </div>
 
                             <div class="mt-4 p-4 bg-accent/10 border border-accent/20 rounded-lg" x-show="rentalType === 'unlimited'" x-cloak>
-                                <p class="text-sm text-gray-700 mb-3">
+                                <p class="text-sm text-gray-700">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
                                     Pronájem na dobu neurčitou s možností ukončení kdykoliv.
                                 </p>
-                                {{ form_row(form.paymentFrequency) }}
                             </div>
                         </div>
 
@@ -301,7 +300,7 @@
              data-storage-map-storages-value="{{ storagesJson|e('html_attr') }}"
              data-storage-map-place-id-value="{{ place.id }}"
              data-storage-map-current-storage-type-id-value="{{ storageType.id }}"
-             data-storage-map-order-base-url-value="{{ path('public_order_create', {placeId: place.id, storageTypeId: storageType.id, storageId: '__STORAGE_ID__'}) }}"
+             data-storage-map-order-base-url-value="{{ path('public_order_create', {placeId: place.id, storageTypeId: storageType.id}) }}/__STORAGE_ID__"
              {% if highlightStorageId %}data-storage-map-highlight-storage-value="{{ highlightStorageId }}"{% endif %}>
             <div class="card-header bg-gray-50 px-4 py-3 border-b">
                 <div class="flex items-center justify-between">

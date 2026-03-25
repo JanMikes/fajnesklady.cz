@@ -21,8 +21,8 @@ class SendVerificationEmailHandlerTest extends TestCase
         $userId = Uuid::v7();
         $user = new User($userId, 'user@example.com', 'hashed_password', 'Jan', 'Novak', new \DateTimeImmutable());
 
-        $userRepository = $this->createMock(UserRepository::class);
-        $userRepository->method('get')->with($userId)->willReturn($user);
+        $userRepository = $this->createStub(UserRepository::class);
+        $userRepository->method('get')->willReturn($user);
 
         $verifyEmailHelper = $this->createMock(VerifyEmailHelperInterface::class);
         $verifyEmailHelper->expects($this->once())
@@ -45,8 +45,8 @@ class SendVerificationEmailHandlerTest extends TestCase
         $userId = Uuid::v7();
         $user = new User($userId, 'guest@example.com', null, 'Guest', 'User', new \DateTimeImmutable());
 
-        $userRepository = $this->createMock(UserRepository::class);
-        $userRepository->method('get')->with($userId)->willReturn($user);
+        $userRepository = $this->createStub(UserRepository::class);
+        $userRepository->method('get')->willReturn($user);
 
         $verifyEmailHelper = $this->createMock(VerifyEmailHelperInterface::class);
         $verifyEmailHelper->expects($this->never())->method('generateSignature');

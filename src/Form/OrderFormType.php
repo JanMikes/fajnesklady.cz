@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Form;
 
-use App\Enum\PaymentFrequency;
 use App\Enum\RentalType;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
@@ -118,17 +117,6 @@ final class OrderFormType extends AbstractType
                 'choice_label' => fn (RentalType $type) => match ($type) {
                     RentalType::LIMITED => 'Na dobu určitou',
                     RentalType::UNLIMITED => 'Na dobu neurčitou',
-                },
-            ])
-            ->add('paymentFrequency', EnumType::class, [
-                'class' => PaymentFrequency::class,
-                'label' => 'Frekvence plateb',
-                'required' => false,
-                'placeholder' => false,
-                'choices' => [PaymentFrequency::MONTHLY],
-                'choice_label' => fn (PaymentFrequency $freq) => match ($freq) {
-                    PaymentFrequency::MONTHLY => 'Měsíčně',
-                    PaymentFrequency::YEARLY => 'Ročně',
                 },
             ])
             ->add('startDate', DateType::class, [

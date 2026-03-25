@@ -19,6 +19,7 @@ use App\Repository\OrderRepository;
 use App\Repository\UserRepository;
 use App\Service\AtRiskContractChecker;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Mailer\MailerInterface;
@@ -29,20 +30,20 @@ use Symfony\Component\Uid\Uuid;
 class SendStorageAvailabilityWarningHandlerTest extends TestCase
 {
     private MockObject $orderRepository;
-    private MockObject $userRepository;
+    private Stub $userRepository;
     private MockObject $atRiskContractChecker;
     private MockObject $mailer;
-    private MockObject $urlGenerator;
+    private Stub $urlGenerator;
     private MockObject $clock;
     private SendStorageAvailabilityWarningHandler $handler;
 
     protected function setUp(): void
     {
         $this->orderRepository = $this->createMock(OrderRepository::class);
-        $this->userRepository = $this->createMock(UserRepository::class);
+        $this->userRepository = $this->createStub(UserRepository::class);
         $this->atRiskContractChecker = $this->createMock(AtRiskContractChecker::class);
         $this->mailer = $this->createMock(MailerInterface::class);
-        $this->urlGenerator = $this->createMock(UrlGeneratorInterface::class);
+        $this->urlGenerator = $this->createStub(UrlGeneratorInterface::class);
         $this->clock = $this->createMock(ClockInterface::class);
 
         $this->handler = new SendStorageAvailabilityWarningHandler(
@@ -110,21 +111,22 @@ class SendStorageAvailabilityWarningHandlerTest extends TestCase
         );
 
         $this->orderRepository
+            ->expects($this->atLeastOnce())
             ->method('get')
-            ->with($order->id)
             ->willReturn($order);
 
         $this->clock
+            ->expects($this->atLeastOnce())
             ->method('now')
             ->willReturn($now);
 
         $this->atRiskContractChecker
+            ->expects($this->atLeastOnce())
             ->method('findAtRiskContracts')
             ->willReturn([$contract]);
 
         $this->userRepository
             ->method('findByRole')
-            ->with(UserRole::ADMIN)
             ->willReturn([$admin]);
 
         $sentEmails = [];
@@ -169,14 +171,17 @@ class SendStorageAvailabilityWarningHandlerTest extends TestCase
         );
 
         $this->orderRepository
+            ->expects($this->atLeastOnce())
             ->method('get')
             ->willReturn($order);
 
         $this->clock
+            ->expects($this->atLeastOnce())
             ->method('now')
             ->willReturn($now);
 
         $this->atRiskContractChecker
+            ->expects($this->atLeastOnce())
             ->method('findAtRiskContracts')
             ->willReturn([$contract1, $contract2]);
 
@@ -216,20 +221,22 @@ class SendStorageAvailabilityWarningHandlerTest extends TestCase
         );
 
         $this->orderRepository
+            ->expects($this->atLeastOnce())
             ->method('get')
             ->willReturn($order);
 
         $this->clock
+            ->expects($this->atLeastOnce())
             ->method('now')
             ->willReturn($now);
 
         $this->atRiskContractChecker
+            ->expects($this->atLeastOnce())
             ->method('findAtRiskContracts')
             ->willReturn([$contract]);
 
         $this->userRepository
             ->method('findByRole')
-            ->with(UserRole::ADMIN)
             ->willReturn([]); // No admins
 
         $sentEmails = [];

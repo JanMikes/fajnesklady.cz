@@ -1,0 +1,85 @@
+<?xml version="1.0"?>
+<files version="1">
+ <file path="vendor/phpoffice/phpword/src/PhpWord/Style.php">
+  <line number="181" hash="500675872edcab37fb6c03048164169cb9f7f867">
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+   <issue><![CDATA[Using null as an array offset is deprecated, use an empty string instead]]></issue>
+  </line>
+ </file>
+</files>

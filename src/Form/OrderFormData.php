@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Form;
 
 use App\Entity\User;
-use App\Enum\PaymentFrequency;
 use App\Enum\RentalType;
 use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Component\Validator\Context\ExecutionContextInterface;
@@ -53,8 +52,6 @@ final class OrderFormData
 
     #[Assert\NotNull(message: 'Vyberte typ pronájmu.')]
     public ?RentalType $rentalType = RentalType::LIMITED;
-
-    public ?PaymentFrequency $paymentFrequency = PaymentFrequency::MONTHLY;
 
     #[Assert\NotNull(message: 'Vyberte datum začátku.')]
     public ?\DateTimeImmutable $startDate = null;

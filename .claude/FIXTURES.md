@@ -36,6 +36,7 @@ StorageUnavailabilityFixtures
 | `UserFixtures::REF_LANDLORD2` | landlord2@example.com | LANDLORD | Yes | Isolation tests |
 | `UserFixtures::REF_TENANT` | tenant@example.com | USER | Yes | Order tests |
 | `UserFixtures::REF_ADMIN` | admin@example.com | ADMIN | Yes | Admin access |
+| `UserFixtures::REF_DEACTIVATED` | deactivated@example.com | USER | Yes (deactivated) | Deactivation tests |
 
 **Email constants:** `UserFixtures::USER_EMAIL`, `UserFixtures::LANDLORD_EMAIL`, etc.
 

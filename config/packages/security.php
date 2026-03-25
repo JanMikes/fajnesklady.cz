@@ -27,6 +27,7 @@ return App::config([
             'main' => [
                 'lazy' => true,
                 'provider' => 'app_user_provider',
+                'user_checker' => \App\Service\Security\DeactivatedUserChecker::class,
                 'form_login' => [
                     'login_path' => 'app_login',
                     'check_path' => 'app_login',

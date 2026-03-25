@@ -17,7 +17,7 @@ use App\Repository\AuditLogRepository;
 use App\Service\AuditLogger;
 use App\Service\Identity\ProvideIdentity;
 use App\Service\SignatureStorage;
-use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 use Psr\Clock\ClockInterface;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -27,20 +27,20 @@ use Symfony\Component\Uid\Uuid;
 class SignOrderHandlerTest extends TestCase
 {
     private string $tempDir;
-    private ClockInterface&MockObject $clock;
+    private ClockInterface&Stub $clock;
     private SignOrderHandler $handler;
 
     protected function setUp(): void
     {
         $this->tempDir = sys_get_temp_dir().'/signature_handler_test_'.uniqid();
-        $this->clock = $this->createMock(ClockInterface::class);
+        $this->clock = $this->createStub(ClockInterface::class);
 
         $signatureStorage = new SignatureStorage($this->tempDir);
 
-        $auditLogRepository = $this->createMock(AuditLogRepository::class);
-        $identityProvider = $this->createMock(ProvideIdentity::class);
+        $auditLogRepository = $this->createStub(AuditLogRepository::class);
+        $identityProvider = $this->createStub(ProvideIdentity::class);
         $identityProvider->method('next')->willReturn(Uuid::v7());
-        $security = $this->createMock(Security::class);
+        $security = $this->createStub(Security::class);
         $requestStack = new RequestStack();
 
         $auditLogger = new AuditLogger(

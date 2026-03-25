@@ -54,11 +54,11 @@ class SendOrderCancelledEmailHandlerTest extends TestCase
         $order = $this->createOrder();
         $event = new OrderCancelled($order->id, new \DateTimeImmutable());
 
-        $orderRepository = $this->createMock(OrderRepository::class);
+        $orderRepository = $this->createStub(OrderRepository::class);
         $orderRepository->method('get')->willReturn($order);
 
         $sentEmail = null;
-        $mailer = $this->createMock(MailerInterface::class);
+        $mailer = $this->createStub(MailerInterface::class);
         $mailer->method('send')->willReturnCallback(function (Email $email) use (&$sentEmail) {
             $sentEmail = $email;
         });

@@ -72,7 +72,7 @@ class InvoicingServiceTest extends TestCase
             ->with(99999)
             ->willReturn('%PDF-1.4 mock content');
 
-        $identityProvider = $this->createMock(ProvideIdentity::class);
+        $identityProvider = $this->createStub(ProvideIdentity::class);
         $identityProvider->method('next')->willReturn($invoiceId);
 
         $invoiceRepository = $this->createMock(InvoiceRepository::class);
@@ -123,7 +123,7 @@ class InvoicingServiceTest extends TestCase
             ->with(88888)
             ->willReturn('%PDF-1.4 mock content');
 
-        $identityProvider = $this->createMock(ProvideIdentity::class);
+        $identityProvider = $this->createStub(ProvideIdentity::class);
         $identityProvider->method('next')->willReturn($invoiceId);
 
         $invoiceRepository = $this->createMock(InvoiceRepository::class);
@@ -155,17 +155,17 @@ class InvoicingServiceTest extends TestCase
         $invoiceId = Uuid::v7();
         $pdfContent = '%PDF-1.4 test pdf content';
 
-        $fakturoidClient = $this->createMock(FakturoidClient::class);
+        $fakturoidClient = $this->createStub(FakturoidClient::class);
         $fakturoidClient->method('createInvoice')
             ->willReturn(new FakturoidInvoice(77777, 'FV-2025-0003', 35000));
         $fakturoidClient->method('downloadInvoicePdf')
             ->willReturn($pdfContent);
 
-        $identityProvider = $this->createMock(ProvideIdentity::class);
+        $identityProvider = $this->createStub(ProvideIdentity::class);
         $identityProvider->method('next')->willReturn($invoiceId);
 
-        $invoiceRepository = $this->createMock(InvoiceRepository::class);
-        $userRepository = $this->createMock(UserRepository::class);
+        $invoiceRepository = $this->createStub(InvoiceRepository::class);
+        $userRepository = $this->createStub(UserRepository::class);
 
         $service = new InvoicingService(
             $fakturoidClient,
@@ -193,17 +193,17 @@ class InvoicingServiceTest extends TestCase
         $now = new \DateTimeImmutable('2025-06-15 12:00:00');
         $invoiceId = Uuid::v7();
 
-        $fakturoidClient = $this->createMock(FakturoidClient::class);
+        $fakturoidClient = $this->createStub(FakturoidClient::class);
         $fakturoidClient->method('createInvoice')
             ->willReturn(new FakturoidInvoice(66666, 'FV-2025-0004', 35000));
         $fakturoidClient->method('downloadInvoicePdf')
             ->willReturn('%PDF-1.4 content');
 
-        $identityProvider = $this->createMock(ProvideIdentity::class);
+        $identityProvider = $this->createStub(ProvideIdentity::class);
         $identityProvider->method('next')->willReturn($invoiceId);
 
-        $invoiceRepository = $this->createMock(InvoiceRepository::class);
-        $userRepository = $this->createMock(UserRepository::class);
+        $invoiceRepository = $this->createStub(InvoiceRepository::class);
+        $userRepository = $this->createStub(UserRepository::class);
 
         $service = new InvoicingService(
             $fakturoidClient,

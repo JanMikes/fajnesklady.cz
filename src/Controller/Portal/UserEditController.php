@@ -54,6 +54,7 @@ final class UserEditController extends AbstractController
                 role: $formData->role,
                 commissionRate: $commissionRate,
                 selfBillingPrefix: $formData->selfBillingPrefix,
+                adminNote: $formData->adminNote,
             ));
 
             $this->addFlash('success', 'Údaje uživatele byly aktualizovány.');

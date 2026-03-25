@@ -81,11 +81,11 @@ class SendInvoiceEmailHandlerTest extends TestCase
         $invoice = $this->createInvoice();
         $event = new InvoiceCreated($invoice->id, $invoice->order->id, new \DateTimeImmutable());
 
-        $invoiceRepository = $this->createMock(InvoiceRepository::class);
+        $invoiceRepository = $this->createStub(InvoiceRepository::class);
         $invoiceRepository->method('get')->willReturn($invoice);
 
         $sentEmail = null;
-        $mailer = $this->createMock(MailerInterface::class);
+        $mailer = $this->createStub(MailerInterface::class);
         $mailer->method('send')->willReturnCallback(function (Email $email) use (&$sentEmail) {
             $sentEmail = $email;
         });
@@ -107,11 +107,11 @@ class SendInvoiceEmailHandlerTest extends TestCase
 
         $event = new InvoiceCreated($invoice->id, $invoice->order->id, new \DateTimeImmutable());
 
-        $invoiceRepository = $this->createMock(InvoiceRepository::class);
+        $invoiceRepository = $this->createStub(InvoiceRepository::class);
         $invoiceRepository->method('get')->willReturn($invoice);
 
         $sentEmail = null;
-        $mailer = $this->createMock(MailerInterface::class);
+        $mailer = $this->createStub(MailerInterface::class);
         $mailer->method('send')->willReturnCallback(function (Email $email) use (&$sentEmail) {
             $sentEmail = $email;
         });
@@ -129,11 +129,11 @@ class SendInvoiceEmailHandlerTest extends TestCase
         $invoice = $this->createInvoice();
         $event = new InvoiceCreated($invoice->id, $invoice->order->id, new \DateTimeImmutable());
 
-        $invoiceRepository = $this->createMock(InvoiceRepository::class);
+        $invoiceRepository = $this->createStub(InvoiceRepository::class);
         $invoiceRepository->method('get')->willReturn($invoice);
 
         $sentEmail = null;
-        $mailer = $this->createMock(MailerInterface::class);
+        $mailer = $this->createStub(MailerInterface::class);
         $mailer->method('send')->willReturnCallback(function (Email $email) use (&$sentEmail) {
             $sentEmail = $email;
         });

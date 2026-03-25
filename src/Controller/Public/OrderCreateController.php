@@ -6,6 +6,7 @@ namespace App\Controller\Public;
 
 use App\Command\CreateOrderCommand;
 use App\Command\GetOrCreateUserByEmailCommand;
+use App\Enum\PaymentFrequency;
 use App\Entity\Order;
 use App\Entity\Storage;
 use App\Entity\User;
@@ -161,7 +162,7 @@ final class OrderCreateController extends AbstractController
                     rentalType: $formData->rentalType,
                     startDate: $formData->startDate,
                     endDate: $formData->endDate,
-                    paymentFrequency: $formData->paymentFrequency,
+                    paymentFrequency: PaymentFrequency::MONTHLY,
                     preSelectedStorage: $preSelectedStorage,
                 ));
 
