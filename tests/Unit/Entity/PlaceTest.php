@@ -217,6 +217,48 @@ class PlaceTest extends TestCase
         $this->assertFalse($withoutAddress->hasAddress());
     }
 
+    public function testDefaultOperatingRulesIsNull(): void
+    {
+        $now = new \DateTimeImmutable();
+
+        $place = new Place(
+            id: Uuid::v7(),
+            name: 'Test Place',
+            address: 'Test Address',
+            city: 'Praha',
+            postalCode: '110 00',
+            description: null,
+            createdAt: $now,
+        );
+
+        $this->assertNull($place->operatingRulesPath);
+        $this->assertFalse($place->hasOperatingRules());
+    }
+
+    public function testUpdateOperatingRules(): void
+    {
+        $createdAt = new \DateTimeImmutable('2024-01-01 10:00:00');
+        $updatedAt = new \DateTimeImmutable('2024-01-01 11:00:00');
+
+        $place = new Place(
+            id: Uuid::v7(),
+            name: 'Test Place',
+            address: 'Test Address',
+            city: 'Praha',
+            postalCode: '110 00',
+            description: null,
+            createdAt: $createdAt,
+        );
+
+        $this->assertFalse($place->hasOperatingRules());
+
+        $place->updateOperatingRules('places/uuid/operating-rules/provozni-rad.pdf', $updatedAt);
+
+        $this->assertSame('places/uuid/operating-rules/provozni-rad.pdf', $place->operatingRulesPath);
+        $this->assertTrue($place->hasOperatingRules());
+        $this->assertSame($updatedAt, $place->updatedAt);
+    }
+
     public function testActivateDeactivate(): void
     {
         $createdAt = new \DateTimeImmutable('2024-01-01 10:00:00');

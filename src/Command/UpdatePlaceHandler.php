@@ -36,6 +36,10 @@ final readonly class UpdatePlaceHandler
             $place->updateMapImage($command->mapImagePath, $now);
         }
 
+        if (null !== $command->operatingRulesPath) {
+            $place->updateOperatingRules($command->operatingRulesPath, $now);
+        }
+
         $place->updateLocation($command->latitude, $command->longitude, $now);
 
         $this->placeRepository->save($place);

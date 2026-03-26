@@ -108,10 +108,14 @@ final class OrderAcceptController extends AbstractController
         $signatureData = $request->request->getString('signature_data');
         $signingMethodValue = $request->request->getString('signing_method');
         $signatureConsent = $request->request->getBoolean('signature_consent');
+        $acceptOperatingRules = $request->request->getBoolean('accept_operating_rules');
 
         $errors = [];
         if (!$accepted) {
             $errors[] = 'Pro pokračování k platbě je nutné souhlasit se smluvními podmínkami.';
+        }
+        if (null !== $place->operatingRulesPath && !$acceptOperatingRules) {
+            $errors[] = 'Pro pokračování je nutné souhlasit s provozním řádem.';
         }
         if ('' === $signatureData) {
             $errors[] = 'Pro pokračování je nutné přidat podpis.';

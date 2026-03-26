@@ -18,6 +18,7 @@ final readonly class SendContractReadyEmailHandler
         private ContractRepository $contractRepository,
         private MailerInterface $mailer,
         private UrlGeneratorInterface $urlGenerator,
+        private string $uploadsDirectory,
     ) {
     }
 
@@ -58,6 +59,18 @@ final readonly class SendContractReadyEmailHandler
                 $contract->documentPath,
                 sprintf('smlouva_%s.docx', $this->formatContractNumber($contract)),
             );
+        }
+
+        // Attach operating rules document if available for this place
+        if ($place->hasOperatingRules() && null !== $place->operatingRulesPath) {
+            $operatingRulesFullPath = $this->uploadsDirectory.'/'.$place->operatingRulesPath;
+            if (file_exists($operatingRulesFullPath)) {
+                $extension = pathinfo($operatingRulesFullPath, PATHINFO_EXTENSION);
+                $email->attachFromPath(
+                    $operatingRulesFullPath,
+                    'provozni_rad.'.$extension,
+                );
+            }
         }
 
         $this->mailer->send($email);

@@ -97,6 +97,15 @@ class PlaceFormType extends AbstractType
             ],
             'help' => 'Obrazek mapy skladu (JPEG, PNG, WebP, max 5 MB)',
         ]);
+
+        $builder->add('operatingRulesDocument', FileType::class, [
+            'label' => 'Provozní řád',
+            'required' => false,
+            'attr' => [
+                'accept' => 'application/pdf,.pdf,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            ],
+            'help' => 'Dokument provozního řádu (PDF nebo DOCX, max 10 MB)',
+        ]);
     }
 
     public function configureOptions(OptionsResolver $resolver): void

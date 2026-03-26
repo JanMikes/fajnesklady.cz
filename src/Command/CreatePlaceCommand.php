@@ -18,6 +18,7 @@ final readonly class CreatePlaceCommand
         public ?string $description,
         public PlaceType $type = PlaceType::FAJNE_SKLADY,
         public ?string $mapImagePath = null,
+        public ?string $operatingRulesPath = null,
         public ?string $latitude = null,
         public ?string $longitude = null,
     ) {

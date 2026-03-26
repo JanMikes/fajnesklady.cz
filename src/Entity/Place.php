@@ -25,6 +25,9 @@ class Place
     #[ORM\Column(length: 500, nullable: true)]
     public private(set) ?string $mapImagePath = null;
 
+    #[ORM\Column(length: 500, nullable: true)]
+    public private(set) ?string $operatingRulesPath = null;
+
     #[ORM\Column]
     public private(set) int $daysInAdvance = 0;
 
@@ -89,6 +92,17 @@ class Place
     public function updateMapImage(?string $mapImagePath, \DateTimeImmutable $now): void
     {
         $this->mapImagePath = $mapImagePath;
+        $this->updatedAt = $now;
+    }
+
+    public function hasOperatingRules(): bool
+    {
+        return null !== $this->operatingRulesPath;
+    }
+
+    public function updateOperatingRules(?string $operatingRulesPath, \DateTimeImmutable $now): void
+    {
+        $this->operatingRulesPath = $operatingRulesPath;
         $this->updatedAt = $now;
     }
 

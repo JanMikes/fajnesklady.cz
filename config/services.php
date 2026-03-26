@@ -94,6 +94,11 @@ return App::config([
                 '$contractTemplatePath' => '%kernel.project_dir%/templates/documents/contract_template.docx',
             ],
         ],
+        'App\\Event\\SendContractReadyEmailHandler' => [
+            'arguments' => [
+                '$uploadsDirectory' => '%kernel.project_dir%/public/uploads',
+            ],
+        ],
         'App\\Service\\PlaceFileUploader' => [
             'arguments' => [
                 '$uploadsDirectory' => '%kernel.project_dir%/public/uploads',

@@ -48,6 +48,13 @@ final class PlaceEditController extends AbstractController
                 $mapImagePath = $this->fileUploader->uploadMapImage($formData->mapImage, $place->id);
             }
 
+            // Handle operating rules upload
+            $operatingRulesPath = null;
+            if (null !== $formData->operatingRulesDocument) {
+                $this->fileUploader->deleteFile($place->operatingRulesPath);
+                $operatingRulesPath = $this->fileUploader->uploadOperatingRules($formData->operatingRulesDocument, $place->id);
+            }
+
             $command = new UpdatePlaceCommand(
                 placeId: $place->id,
                 name: $formData->name,
@@ -57,6 +64,7 @@ final class PlaceEditController extends AbstractController
                 description: $formData->description,
                 type: $formData->type,
                 mapImagePath: $mapImagePath,
+                operatingRulesPath: $operatingRulesPath,
                 latitude: $formData->latitude,
                 longitude: $formData->longitude,
             );

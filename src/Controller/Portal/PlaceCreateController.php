@@ -45,6 +45,12 @@ final class PlaceCreateController extends AbstractController
                 $mapImagePath = $this->fileUploader->uploadMapImage($formData->mapImage, $placeId);
             }
 
+            // Handle operating rules upload
+            $operatingRulesPath = null;
+            if (null !== $formData->operatingRulesDocument) {
+                $operatingRulesPath = $this->fileUploader->uploadOperatingRules($formData->operatingRulesDocument, $placeId);
+            }
+
             $command = new CreatePlaceCommand(
                 placeId: $placeId,
                 name: $formData->name,
@@ -54,6 +60,7 @@ final class PlaceCreateController extends AbstractController
                 description: $formData->description,
                 type: $formData->type,
                 mapImagePath: $mapImagePath,
+                operatingRulesPath: $operatingRulesPath,
                 latitude: $formData->latitude,
                 longitude: $formData->longitude,
             );
