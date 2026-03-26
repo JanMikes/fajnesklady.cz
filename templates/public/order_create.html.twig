@@ -14,6 +14,66 @@
         </ol>
     </nav>
 
+    <script>
+    function orderForm() {
+        return {
+            rentalType: '',
+            invoiceToCompany: false,
+            startDate: '',
+            endDate: '',
+            weeklyPrice: 0,
+            monthlyPrice: 0,
+            init() {
+                this.weeklyPrice = parseFloat(this.$el.dataset.weeklyPrice) || 0;
+                this.monthlyPrice = parseFloat(this.$el.dataset.monthlyPrice) || 0;
+
+                const startEl = document.getElementById(this.$el.dataset.startDateId);
+                const endEl = document.getElementById(this.$el.dataset.endDateId);
+
+                // Read from actual inputs first (handles pre-filled forms & browser autofill), then data attributes
+                this.startDate = (startEl && startEl.value) || this.$el.dataset.initialStartDate || '';
+                this.endDate = (endEl && endEl.value) || this.$el.dataset.initialEndDate || '';
+
+                // Check actual radio button state (browser may restore selection on back/refresh)
+                const checkedRadio = this.$el.querySelector('input[name*="rentalType"]:checked');
+                this.rentalType = checkedRadio ? checkedRadio.value : (this.$el.dataset.initialRentalType || 'limited');
+
+                const invoiceCheckbox = this.$el.querySelector('input[name*="invoiceToCompany"]');
+                this.invoiceToCompany = invoiceCheckbox ? invoiceCheckbox.checked : this.$el.dataset.initialInvoice === '1';
+
+                if (startEl) startEl.addEventListener('change', () => { this.startDate = startEl.value });
+                if (endEl) endEl.addEventListener('change', () => { this.endDate = endEl.value });
+            },
+            get days() {
+                if (!this.startDate || !this.endDate || this.rentalType === 'unlimited') return 0;
+                const s = new Date(this.startDate);
+                const e = new Date(this.endDate);
+                const diff = Math.round((e - s) / 86400000);
+                return diff > 0 ? diff : 0;
+            },
+            get priceInfo() {
+                if (this.rentalType === 'unlimited') {
+                    return { type: 'monthly', monthly: this.monthlyPrice };
+                }
+                if (this.days <= 0) return null;
+                if (this.days < 28) {
+                    const fw = Math.floor(this.days / 7);
+                    const rd = this.days % 7;
+                    const total = Math.round(fw * this.weeklyPrice + rd * this.weeklyPrice / 7);
+                    return { type: 'oneTime', total: total, days: this.days };
+                }
+                const fm = Math.floor(this.days / 30);
+                const rd = this.days % 30;
+                const total = Math.round(fm * this.monthlyPrice + rd * this.monthlyPrice / 30);
+                return { type: 'recurring', monthly: this.monthlyPrice, total: total, days: this.days };
+            },
+            formatPrice(n) {
+                return new Intl.NumberFormat('cs-CZ', { maximumFractionDigits: 0 }).format(n);
+            }
+        };
+    }
+    </script>
+
     <div class="grid lg:grid-cols-3 gap-8">
         {# Order Form #}
         <div class="lg:col-span-2 order-2 lg:order-1">
@@ -21,10 +81,16 @@
                 <div class="card-body">
                     <h1 class="text-2xl font-bold text-gray-900 mb-6">Vytvořit objednávku</h1>
 
-                    {{ form_start(form, {attr: {class: 'space-y-8', 'x-data': '{
-                        rentalType: "' ~ (form.vars.data.rentalType ? form.vars.data.rentalType.value : 'limited') ~ '",
-                        invoiceToCompany: ' ~ (form.vars.data.invoiceToCompany ? 'true' : 'false') ~ '
-                    }'}}) }}
+                    <div x-data="orderForm()"
+                         data-weekly-price="{{ weeklyPrice }}"
+                         data-monthly-price="{{ monthlyPrice }}"
+                         data-start-date-id="{{ form.startDate.vars.id }}"
+                         data-end-date-id="{{ form.endDate.vars.id }}"
+                         data-initial-rental-type="{{ form.vars.data.rentalType ? form.vars.data.rentalType.value : 'limited' }}"
+                         data-initial-invoice="{{ form.vars.data.invoiceToCompany ? '1' : '0' }}"
+                         data-initial-start-date="{{ form.vars.data.startDate ? form.vars.data.startDate|date('Y-m-d') : '' }}"
+                         data-initial-end-date="{{ form.vars.data.endDate ? form.vars.data.endDate|date('Y-m-d') : '' }}">
+                    {{ form_start(form, {attr: {class: 'space-y-8'}}) }}
 
                         {# Contact Information #}
                         <div class="bg-gray-50 rounded-lg p-6">
@@ -118,7 +184,7 @@
                                 Typ pronájmu
                             </h2>
 
-                            <div x-on:change="rentalType = $event.target.value">
+                            <div x-on:change="rentalType = $event.target.value; if (rentalType === 'unlimited') { endDate = ''; document.getElementById('{{ form.endDate.vars.id }}').value = '' }">
                                 {{ form_widget(form.rentalType) }}
                             </div>
 
@@ -151,6 +217,36 @@
                             </div>
                         </div>
 
+                        {# Dynamic Pricing #}
+                        <div class="bg-accent/5 border border-accent/20 rounded-lg px-4 py-3 flex items-center justify-between" x-show="priceInfo" x-cloak x-transition>
+                            {# Unlimited: monthly price #}
+                            <template x-if="priceInfo && priceInfo.type === 'monthly'">
+                                <div class="flex items-center justify-between w-full">
+                                    <span class="text-sm text-gray-600">Měsíční platba</span>
+                                    <span class="text-lg font-bold text-accent" x-text="formatPrice(priceInfo.monthly) + ' Kč / měsíc'"></span>
+                                </div>
+                            </template>
+
+                            {# Limited < 28 days: one-time price #}
+                            <template x-if="priceInfo && priceInfo.type === 'oneTime'">
+                                <div class="flex items-center justify-between w-full">
+                                    <span class="text-sm text-gray-600">Jednorázová platba (<span x-text="priceInfo.days"></span> dní)</span>
+                                    <span class="text-lg font-bold text-accent" x-text="formatPrice(priceInfo.total) + ' Kč'"></span>
+                                </div>
+                            </template>
+
+                            {# Limited >= 28 days: monthly + total #}
+                            <template x-if="priceInfo && priceInfo.type === 'recurring'">
+                                <div class="flex items-center justify-between w-full gap-4">
+                                    <span class="text-sm text-gray-600"><span x-text="formatPrice(priceInfo.monthly) + ' Kč / měsíc'"></span></span>
+                                    <div class="text-right">
+                                        <span class="text-lg font-bold text-accent" x-text="formatPrice(priceInfo.total) + ' Kč'"></span>
+                                        <span class="text-xs text-gray-500 ml-1">celkem za <span x-text="priceInfo.days"></span> dní</span>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+
                         {# Submit #}
                         <div class="flex items-center justify-between pt-2 border-t border-gray-200">
                             <a href="{{ app.user ? path('portal_browse_place_detail', {id: place.id}) : path('public_place_detail', {id: place.id}) }}" class="inline-flex items-center text-gray-600 hover:text-gray-900">
@@ -168,6 +264,7 @@
                         </div>
 
                     {{ form_end(form) }}
+                    </div>
                 </div>
             </div>
         </div>

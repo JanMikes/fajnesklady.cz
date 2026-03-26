@@ -65,18 +65,21 @@
                         <div class="flex justify-between">
                             <span class="text-gray-600">Období pronájmu</span>
                             <span class="font-medium">
-                                {{ formData.startDate|date('d.m.Y') }}
-                                -
                                 {% if formData.endDate %}
-                                    {{ formData.endDate|date('d.m.Y') }}
+                                    {{ formData.startDate|date('d.m.Y') }} - {{ formData.endDate|date('d.m.Y') }}
                                 {% else %}
-                                    neurčito
+                                    Na dobu neurčitou, od {{ formData.startDate|date('d.m.Y') }}
                                 {% endif %}
                             </span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-gray-600">Cena</span>
-                            <span class="font-medium text-accent">{{ (totalPrice / 100)|number_format(2, ',', ' ') }} Kč</span>
+                            <span class="font-medium text-accent">
+                                {{ (totalPrice / 100)|number_format(2, ',', ' ') }} Kč
+                                {% if not formData.endDate %}
+                                    / měsíc
+                                {% endif %}
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -141,7 +144,7 @@
                         </p>
 
                         <p><strong>3. Cena pronájmu</strong></p>
-                        <p>Cena pronájmu činí {{ (totalPrice / 100)|number_format(2, ',', ' ') }} Kč.</p>
+                        <p>Cena pronájmu činí {{ (totalPrice / 100)|number_format(2, ',', ' ') }} Kč{% if not formData.endDate %} měsíčně{% endif %}.</p>
 
                         <p><strong>4. Pravidla užívání</strong></p>
                         <ul>

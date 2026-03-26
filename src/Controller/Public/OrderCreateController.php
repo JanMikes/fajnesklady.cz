@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller\Public;
 
 use App\Entity\User;
+use App\Enum\RentalType;
 use App\Form\OrderFormData;
 use App\Form\OrderFormType;
 use App\Repository\PlaceRepository;
@@ -125,6 +126,11 @@ final class OrderCreateController extends AbstractController
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
+            // Clear endDate for unlimited rentals - the form field is only hidden, not removed
+            if (RentalType::UNLIMITED === $formData->rentalType) {
+                $formData->endDate = null;
+            }
+
             $request->getSession()->set('order_form_data', $formData->toSessionArray());
 
             return $this->redirectToRoute('public_order_accept', [

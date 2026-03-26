@@ -62,7 +62,13 @@
                     <hr class="my-4">
 
                     <div class="flex justify-between text-lg">
-                        <span class="font-semibold text-gray-900">Celková cena</span>
+                        <span class="font-semibold text-gray-900">
+                            {% if order.endDate %}
+                                Celková cena
+                            {% else %}
+                                Cena za první měsíc
+                            {% endif %}
+                        </span>
                         <span class="font-bold text-accent">{{ order.totalPriceInCzk|number_format(2, ',', ' ') }} Kč</span>
                     </div>
                 </div>
