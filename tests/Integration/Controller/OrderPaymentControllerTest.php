@@ -5,12 +5,16 @@ declare(strict_types=1);
 namespace App\Tests\Integration\Controller;
 
 use App\Entity\Order;
-use App\Entity\User;
+use App\Entity\Storage;
 use App\Enum\OrderStatus;
+use App\Enum\StorageStatus;
 use App\Tests\Mock\MockGoPayClient;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+use Symfony\Component\BrowserKit\Cookie;
+use Symfony\Component\HttpFoundation\Session\SessionFactoryInterface;
+use Symfony\Component\Uid\Uuid;
 
 class OrderPaymentControllerTest extends WebTestCase
 {
@@ -36,64 +40,58 @@ class OrderPaymentControllerTest extends WebTestCase
         static::ensureKernelShutdown();
     }
 
-    public function testAcceptPageShowsContractFormForReservedOrder(): void
+    public function testAcceptPageShowsContractForm(): void
     {
-        $order = $this->findOrderByStatus(OrderStatus::RESERVED);
-        $orderId = $order->id->toRfc4122();
+        $storage = $this->findAvailableStorage();
+        $this->setOrderSessionData();
 
-        $crawler = $this->client->request('GET', '/objednavka/'.$orderId.'/prijmout');
+        $this->client->request('GET', $this->buildAcceptUrl($storage));
 
         $this->assertResponseIsSuccessful();
-        $this->assertSelectorTextContains('h1', 'Přijetí smluvních podmínek');
+        $this->assertSelectorTextContains('h1', 'Rekapitulace a přijetí smlouvy');
         $this->assertSelectorExists('input[name="accept_contract"]');
         $this->assertSelectorExists('input[name="signature_data"]');
         $this->assertSelectorExists('input[name="signing_method"]');
         $this->assertSelectorExists('input[name="signature_consent"]');
     }
 
-    public function testAcceptPageRedirectsToPaymentWhenTermsAndSignatureComplete(): void
-    {
-        $order = $this->findOrderByStatus(OrderStatus::RESERVED);
-        $orderId = $order->id->toRfc4122();
-
-        // Accept terms and sign
-        $this->acceptTermsWithSignature($orderId);
-
-        // Visiting accept page again should redirect to payment
-        $this->client->request('GET', '/objednavka/'.$orderId.'/prijmout');
-
-        $this->assertResponseRedirects('/objednavka/'.$orderId.'/platba');
-    }
-
     public function testAcceptTermsWithSignatureRedirectsToPayment(): void
     {
-        $order = $this->findOrderByStatus(OrderStatus::RESERVED);
-        $orderId = $order->id->toRfc4122();
+        $storage = $this->findAvailableStorage();
+        $this->setOrderSessionData();
 
-        $this->client->request('POST', '/objednavka/'.$orderId.'/prijmout', [
+        $this->client->request('POST', $this->buildAcceptUrl($storage), [
             'accept_contract' => '1',
             'signature_data' => $this->createValidPngDataUrl(),
             'signing_method' => 'draw',
             'signature_consent' => '1',
         ]);
 
-        $this->assertResponseRedirects('/objednavka/'.$orderId.'/platba');
+        $response = $this->client->getResponse();
+        $this->assertTrue($response->isRedirect());
+        $location = $response->headers->get('Location');
+        $this->assertNotNull($location);
+        $this->assertMatchesRegularExpression('#/objednavka/[0-9a-f-]{36}/platba$#', $location);
 
-        // Verify terms were accepted and signature attached
+        // Extract order ID and verify state
+        preg_match('#/objednavka/([0-9a-f-]{36})/platba$#', $location, $matches);
+        $newOrderId = Uuid::fromString($matches[1]);
+
         $this->entityManager->clear();
-        $updatedOrder = $this->entityManager->find(Order::class, $order->id);
-        $this->assertNotNull($updatedOrder->termsAcceptedAt);
-        $this->assertTrue($updatedOrder->hasSignature());
-        $this->assertNotNull($updatedOrder->signaturePath);
-        $this->assertNotNull($updatedOrder->signedAt);
+        $newOrder = $this->entityManager->find(Order::class, $newOrderId);
+        $this->assertNotNull($newOrder);
+        $this->assertNotNull($newOrder->termsAcceptedAt);
+        $this->assertTrue($newOrder->hasSignature());
+        $this->assertNotNull($newOrder->signaturePath);
+        $this->assertNotNull($newOrder->signedAt);
     }
 
     public function testAcceptWithoutSignatureShowsError(): void
     {
-        $order = $this->findOrderByStatus(OrderStatus::RESERVED);
-        $orderId = $order->id->toRfc4122();
+        $storage = $this->findAvailableStorage();
+        $this->setOrderSessionData();
 
-        $this->client->request('POST', '/objednavka/'.$orderId.'/prijmout', [
+        $this->client->request('POST', $this->buildAcceptUrl($storage), [
             'accept_contract' => '1',
             'signature_data' => '',
             'signing_method' => 'draw',
@@ -105,10 +103,10 @@ class OrderPaymentControllerTest extends WebTestCase
 
     public function testAcceptWithoutConsentShowsError(): void
     {
-        $order = $this->findOrderByStatus(OrderStatus::RESERVED);
-        $orderId = $order->id->toRfc4122();
+        $storage = $this->findAvailableStorage();
+        $this->setOrderSessionData();
 
-        $this->client->request('POST', '/objednavka/'.$orderId.'/prijmout', [
+        $this->client->request('POST', $this->buildAcceptUrl($storage), [
             'accept_contract' => '1',
             'signature_data' => $this->createValidPngDataUrl(),
             'signing_method' => 'draw',
@@ -120,10 +118,10 @@ class OrderPaymentControllerTest extends WebTestCase
 
     public function testAcceptWithoutContractCheckboxShowsError(): void
     {
-        $order = $this->findOrderByStatus(OrderStatus::RESERVED);
-        $orderId = $order->id->toRfc4122();
+        $storage = $this->findAvailableStorage();
+        $this->setOrderSessionData();
 
-        $this->client->request('POST', '/objednavka/'.$orderId.'/prijmout', [
+        $this->client->request('POST', $this->buildAcceptUrl($storage), [
             // missing accept_contract
             'signature_data' => $this->createValidPngDataUrl(),
             'signing_method' => 'draw',
@@ -135,10 +133,10 @@ class OrderPaymentControllerTest extends WebTestCase
 
     public function testAcceptWithTypedSignature(): void
     {
-        $order = $this->findOrderByStatus(OrderStatus::RESERVED);
-        $orderId = $order->id->toRfc4122();
+        $storage = $this->findAvailableStorage();
+        $this->setOrderSessionData();
 
-        $this->client->request('POST', '/objednavka/'.$orderId.'/prijmout', [
+        $this->client->request('POST', $this->buildAcceptUrl($storage), [
             'accept_contract' => '1',
             'signature_data' => $this->createValidPngDataUrl(),
             'signing_method' => 'typed',
@@ -147,23 +145,35 @@ class OrderPaymentControllerTest extends WebTestCase
             'signature_consent' => '1',
         ]);
 
-        $this->assertResponseRedirects('/objednavka/'.$orderId.'/platba');
+        $response = $this->client->getResponse();
+        $this->assertTrue($response->isRedirect());
+        $location = $response->headers->get('Location');
+        $this->assertNotNull($location);
+        $this->assertMatchesRegularExpression('#/objednavka/[0-9a-f-]{36}/platba$#', $location);
+
+        preg_match('#/objednavka/([0-9a-f-]{36})/platba$#', $location, $matches);
+        $newOrderId = Uuid::fromString($matches[1]);
 
         $this->entityManager->clear();
-        $updatedOrder = $this->entityManager->find(Order::class, $order->id);
-        $this->assertSame('Jan Novák', $updatedOrder->signatureTypedName);
-        $this->assertSame('dancing-script', $updatedOrder->signatureStyleId);
+        $newOrder = $this->entityManager->find(Order::class, $newOrderId);
+        $this->assertSame('Jan Novák', $newOrder->signatureTypedName);
+        $this->assertSame('dancing-script', $newOrder->signatureStyleId);
     }
 
-    public function testPaymentPageRedirectsToAcceptWhenTermsNotAccepted(): void
+    public function testPaymentPageRedirectsToOrderCreateWhenTermsNotAccepted(): void
     {
         $order = $this->findOrderByStatus(OrderStatus::RESERVED);
         $orderId = $order->id->toRfc4122();
+        $storage = $order->storage;
 
         $this->client->request('GET', '/objednavka/'.$orderId.'/platba');
 
-        // Should redirect to accept page since terms not yet accepted
-        $this->assertResponseRedirects('/objednavka/'.$orderId.'/prijmout');
+        $expectedUrl = sprintf('/objednavka/%s/%s/%s',
+            $storage->place->id->toRfc4122(),
+            $storage->storageType->id->toRfc4122(),
+            $storage->id->toRfc4122()
+        );
+        $this->assertResponseRedirects($expectedUrl);
     }
 
     public function testPaymentPageShowsOrderDetailsAfterTermsAccepted(): void
@@ -171,11 +181,9 @@ class OrderPaymentControllerTest extends WebTestCase
         $order = $this->findOrderByStatus(OrderStatus::RESERVED);
         $orderId = $order->id->toRfc4122();
 
-        // Accept terms and sign
-        $this->acceptTermsWithSignature($orderId);
+        $this->setTermsAndSignatureViaDb($order);
 
-        // Now access payment page
-        $crawler = $this->client->request('GET', '/objednavka/'.$orderId.'/platba');
+        $this->client->request('GET', '/objednavka/'.$orderId.'/platba');
 
         $this->assertResponseIsSuccessful();
         $this->assertSelectorTextContains('h1', 'Platba objednávky');
@@ -187,8 +195,7 @@ class OrderPaymentControllerTest extends WebTestCase
         $order = $this->findOrderByStatus(OrderStatus::RESERVED);
         $orderId = $order->id->toRfc4122();
 
-        // Accept terms and sign
-        $this->acceptTermsWithSignature($orderId);
+        $this->setTermsAndSignatureViaDb($order);
 
         $this->client->request('POST', '/objednavka/'.$orderId.'/platba/iniciovat', [], [], [
             'HTTP_X-Requested-With' => 'XMLHttpRequest',
@@ -213,10 +220,9 @@ class OrderPaymentControllerTest extends WebTestCase
         $order = $this->findOrderByStatus(OrderStatus::RESERVED);
         $orderId = $order->id->toRfc4122();
 
-        // Accept terms and sign
-        $this->acceptTermsWithSignature($orderId);
+        $this->setTermsAndSignatureViaDb($order);
 
-        // Then initiate payment
+        // Initiate payment
         $this->client->request('POST', '/objednavka/'.$orderId.'/platba/iniciovat', [], [], [
             'HTTP_X-Requested-With' => 'XMLHttpRequest',
             'CONTENT_TYPE' => 'application/json',
@@ -249,8 +255,7 @@ class OrderPaymentControllerTest extends WebTestCase
         $order = $this->findOrderByStatus(OrderStatus::RESERVED);
         $orderId = $order->id->toRfc4122();
 
-        // Accept terms and sign
-        $this->acceptTermsWithSignature($orderId);
+        $this->setTermsAndSignatureViaDb($order);
 
         // Initiate payment but don't complete it
         $this->client->request('POST', '/objednavka/'.$orderId.'/platba/iniciovat', [], [], [
@@ -269,23 +274,7 @@ class OrderPaymentControllerTest extends WebTestCase
         $order = $this->findOrderByStatus(OrderStatus::RESERVED);
         $orderId = $order->id->toRfc4122();
 
-        // Set termsAcceptedAt and signature directly via DQL to avoid
-        // multi-request PredictableIdentityProvider UUID collision
-        $this->entityManager->createQueryBuilder()
-            ->update(Order::class, 'o')
-            ->set('o.termsAcceptedAt', ':termsAcceptedAt')
-            ->set('o.signaturePath', ':path')
-            ->set('o.signingMethod', ':method')
-            ->set('o.signedAt', ':signedAt')
-            ->where('o.id = :id')
-            ->setParameter('termsAcceptedAt', new \DateTimeImmutable())
-            ->setParameter('path', '/tmp/test_signature.png')
-            ->setParameter('method', 'draw')
-            ->setParameter('signedAt', new \DateTimeImmutable())
-            ->setParameter('id', $order->id)
-            ->getQuery()
-            ->execute();
-        $this->entityManager->clear();
+        $this->setTermsAndSignatureViaDb($order);
 
         // Submit cancellation from payment page
         $this->client->request('POST', '/objednavka/'.$orderId.'/platba', [
@@ -303,26 +292,99 @@ class OrderPaymentControllerTest extends WebTestCase
         $this->assertSame(OrderStatus::CANCELLED, $updatedOrder->status, 'Order should be in CANCELLED status after cancellation');
     }
 
-    public function testPaymentPageRedirectsToAcceptWhenNoSignature(): void
+    public function testPaymentPageRedirectsToOrderCreateWhenNoSignature(): void
     {
         // The PAID order in fixtures has termsAcceptedAt set but no signature
         $order = $this->findOrderByStatus(OrderStatus::PAID);
         $orderId = $order->id->toRfc4122();
+        $storage = $order->storage;
 
         $this->client->request('GET', '/objednavka/'.$orderId.'/platba');
 
-        // No signature -> redirect to accept page
-        $this->assertResponseRedirects('/objednavka/'.$orderId.'/prijmout');
+        $expectedUrl = sprintf('/objednavka/%s/%s/%s',
+            $storage->place->id->toRfc4122(),
+            $storage->storageType->id->toRfc4122(),
+            $storage->id->toRfc4122()
+        );
+        // No signature -> redirect to order create page
+        $this->assertResponseRedirects($expectedUrl);
     }
 
-    private function acceptTermsWithSignature(string $orderId): void
+    private function setTermsAndSignatureViaDb(Order $order): void
     {
-        $this->client->request('POST', '/objednavka/'.$orderId.'/prijmout', [
-            'accept_contract' => '1',
-            'signature_data' => $this->createValidPngDataUrl(),
-            'signing_method' => 'draw',
-            'signature_consent' => '1',
+        $this->entityManager->createQueryBuilder()
+            ->update(Order::class, 'o')
+            ->set('o.termsAcceptedAt', ':termsAcceptedAt')
+            ->set('o.signaturePath', ':path')
+            ->set('o.signingMethod', ':method')
+            ->set('o.signedAt', ':signedAt')
+            ->where('o.id = :id')
+            ->setParameter('termsAcceptedAt', new \DateTimeImmutable())
+            ->setParameter('path', '/tmp/test_signature.png')
+            ->setParameter('method', 'draw')
+            ->setParameter('signedAt', new \DateTimeImmutable())
+            ->setParameter('id', $order->id)
+            ->getQuery()
+            ->execute();
+        $this->entityManager->clear();
+    }
+
+    private function setOrderSessionData(): void
+    {
+        /** @var SessionFactoryInterface $sessionFactory */
+        $sessionFactory = static::getContainer()->get('session.factory');
+        $session = $sessionFactory->createSession();
+        $session->set('order_form_data', [
+            'email' => 'test-new-order@example.com',
+            'firstName' => 'Test',
+            'lastName' => 'Objednávka',
+            'phone' => '+420123456789',
+            'plainPassword' => 'password123',
+            'invoiceToCompany' => false,
+            'companyName' => null,
+            'companyId' => null,
+            'companyVatId' => null,
+            'billingStreet' => null,
+            'billingCity' => null,
+            'billingPostalCode' => null,
+            'rentalType' => 'limited',
+            'startDate' => '2025-06-22',
+            'endDate' => '2025-07-22',
         ]);
+        $session->save();
+
+        $this->client->getCookieJar()->set(
+            new Cookie($session->getName(), $session->getId())
+        );
+    }
+
+    private function buildAcceptUrl(Storage $storage): string
+    {
+        return sprintf('/objednavka/%s/%s/%s/prijmout',
+            $storage->place->id->toRfc4122(),
+            $storage->storageType->id->toRfc4122(),
+            $storage->id->toRfc4122()
+        );
+    }
+
+    private function findAvailableStorage(): Storage
+    {
+        $storage = $this->entityManager->createQueryBuilder()
+            ->select('s')
+            ->from(Storage::class, 's')
+            ->join('s.place', 'p')
+            ->join('s.storageType', 'st')
+            ->where('s.status = :status')
+            ->andWhere('p.isActive = true')
+            ->andWhere('st.isActive = true')
+            ->setParameter('status', StorageStatus::AVAILABLE)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+
+        \assert($storage instanceof Storage, 'No available storage found in fixtures');
+
+        return $storage;
     }
 
     private function createValidPngDataUrl(): string
@@ -338,14 +400,6 @@ class OrderPaymentControllerTest extends WebTestCase
         \assert(false !== $pngData);
 
         return 'data:image/png;base64,'.base64_encode($pngData);
-    }
-
-    private function findUserByEmail(string $email): User
-    {
-        $user = $this->entityManager->getRepository(User::class)->findOneBy(['email' => $email]);
-        \assert($user instanceof User, sprintf('User with email "%s" not found in fixtures', $email));
-
-        return $user;
     }
 
     private function findOrderByStatus(OrderStatus $status): Order
