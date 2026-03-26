@@ -251,32 +251,65 @@
         </div>
     </section>
 
-    {# Map Section #}
-    <section id="pobocky" class="pt-20 pb-0 relative bg-white">
+    {# Combined Map + Places Section #}
+    <section id="pobocky" class="pt-20 pb-20 relative section-gradient-light"
+             data-controller="map"
+             data-map-places-value="{{ placesData|json_encode|e('html_attr') }}">
         {# Light gradient fade at top #}
-        <div class="absolute top-0 left-0 right-0 h-40 pointer-events-none z-10" style="background: linear-gradient(180deg, #f1f5f9 0%, #f8fafc 40%, #ffffff 100%)"></div>
+        <div class="absolute top-0 left-0 right-0 h-40 pointer-events-none z-10" style="background: linear-gradient(180deg, #f1f5f9 0%, #f8fafc 40%, transparent 100%)"></div>
 
-        <div class="text-center mb-12 px-4 relative z-20">
-            <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Naše pobočky</h2>
-            <p class="text-gray-600 max-w-2xl mx-auto text-lg">Najděte nejbližší pobočku a zjistěte dostupnost kontejnerů</p>
+        <div class="text-center mb-10 px-4 relative z-20">
+            <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Přehled poboček a cen</h2>
+            <p class="text-gray-600 max-w-2xl mx-auto text-lg">Najděte nejbližší pobočku a porovnejte ceny kontejnerů</p>
         </div>
 
-        {% include 'partials/places_map.html.twig' %}
-    </section>
+        <div class="relative z-20">
+            <div class="places-layout">
+                {# Place cards list #}
+                {% if placesWithStorageTypes|length > 0 %}
+                <div class="places-list-col" data-map-target="placeList">
+                    {% for item in placesWithStorageTypes %}
+                    <div class="place-card"
+                         data-map-target="placeCard"
+                         data-place-id="{{ item.place.id }}">
+                        <div class="flex items-start justify-between mb-2">
+                            <h3 class="font-bold text-gray-900 text-base leading-tight">{{ item.place.name }}</h3>
+                            {% if item.lowestPrice %}
+                                <span class="text-accent font-bold text-base whitespace-nowrap ml-3">{{ item.lowestPrice|number_format(0, ',', ' ') }} Kč<span class="text-gray-400 font-normal text-xs">/měs</span></span>
+                            {% endif %}
+                        </div>
+                        <p class="text-gray-500 text-sm mb-3">
+                            {% if item.place.address %}
+                                {{ item.place.address }}, {{ item.place.city }}
+                            {% else %}
+                                {{ item.place.city }}
+                            {% endif %}
+                        </p>
+                        {% if item.storageTypes|length > 0 %}
+                            <div class="flex flex-wrap gap-1 mb-3">
+                                {% for type in item.storageTypes %}
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">{{ type.name }}</span>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <a href="{{ path('public_place_detail', {id: item.place.id}) }}" class="btn btn-primary btn-sm w-full">
+                            Zobrazit detail
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                            </svg>
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
 
-    {# Places Table #}
-    {% if placesWithStorageTypes|length > 0 %}
-    <section class="section-gradient-light">
-        <div class="py-20 max-w-6xl mx-auto px-4">
-            <div class="text-center mb-12">
-                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Přehled poboček a cen</h2>
-                <p class="text-gray-600 max-w-2xl mx-auto text-lg">Porovnejte ceny a dostupnost kontejnerů na všech pobočkách</p>
+                {# Map #}
+                <div class="places-map-col">
+                    <div data-map-target="mapContainer" class="map-container overflow-hidden" style="height: 100%; min-height: 500px;"></div>
+                </div>
             </div>
-
-            {% include 'partials/places_table.html.twig' with {placeDetailRouteName: 'public_place_detail'} %}
         </div>
     </section>
-    {% endif %}
 
     {# Benefits Section #}
     <section class="py-20">

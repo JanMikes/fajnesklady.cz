@@ -221,6 +221,61 @@ label:has(~ input[required], ~ select[required], ~ textarea[required])::after {
     @apply bg-gray-50;
 }
 
+/* Map + Places side-by-side layout */
+.places-layout {
+    @apply flex flex-col;
+}
+
+@media (min-width: 1024px) {
+    .places-layout {
+        @apply flex-row;
+        height: 620px;
+    }
+
+    .places-map-col {
+        @apply flex-1 min-w-0;
+    }
+
+    .places-list-col {
+        width: 380px;
+        flex-shrink: 0;
+        @apply overflow-y-auto py-4 pl-6 pr-4;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(0,0,0,0.15) transparent;
+    }
+}
+
+@media (max-width: 1023px) {
+    .places-map-col {
+        height: 400px;
+    }
+
+    .places-list-col {
+        @apply flex flex-col gap-3 px-4 py-4;
+    }
+}
+
+/* Place card */
+.place-card {
+    @apply bg-white rounded-xl p-4 shadow-sm border border-gray-100 cursor-pointer;
+    transition: all 0.2s ease;
+}
+
+.place-card + .place-card {
+    @apply mt-3;
+}
+
+.place-card:hover {
+    @apply shadow-md border-gray-200;
+    transform: translateY(-1px);
+}
+
+.place-card--highlighted {
+    @apply shadow-lg ring-2 ring-offset-1;
+    --tw-ring-color: var(--color-accent);
+    border-color: var(--color-accent) !important;
+}
+
 /* Map component styles */
 .map-container {
     @apply relative z-0;
