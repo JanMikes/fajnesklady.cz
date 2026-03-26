@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Event;
 
 use App\Repository\ContractRepository;
+use Psr\Log\LoggerInterface;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -18,6 +19,7 @@ final readonly class SendContractExpiringReminderHandler
         private ContractRepository $contractRepository,
         private MailerInterface $mailer,
         private UrlGeneratorInterface $urlGenerator,
+        private LoggerInterface $logger,
     ) {
     }
 
@@ -56,7 +58,14 @@ final readonly class SendContractExpiringReminderHandler
                 'portalUrl' => $portalUrl,
             ]);
 
-        $this->mailer->send($email);
+        try {
+            $this->mailer->send($email);
+        } catch (\Throwable $e) {
+            $this->logger->error('Failed to send contract expiring reminder email', [
+                'contract_id' => $event->contractId->toRfc4122(),
+                'exception' => $e,
+            ]);
+        }
     }
 
     private function formatContractNumber(\App\Entity\Contract $contract): string

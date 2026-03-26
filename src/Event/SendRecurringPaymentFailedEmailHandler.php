@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Event;
 
 use App\Repository\ContractRepository;
+use Psr\Log\LoggerInterface;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -16,6 +17,7 @@ final readonly class SendRecurringPaymentFailedEmailHandler
     public function __construct(
         private ContractRepository $contractRepository,
         private MailerInterface $mailer,
+        private LoggerInterface $logger,
     ) {
     }
 
@@ -35,7 +37,7 @@ final readonly class SendRecurringPaymentFailedEmailHandler
         $isFirstAttempt = 1 === $event->attempt;
 
         $email = (new TemplatedEmail())
-            ->from(new Address('noreply@fajnesklady.cz', 'Fajne Sklady'))
+            ->from(new Address('noreply@fajnesklady.cz', 'Fajné Sklady'))
             ->to(new Address($user->email, $user->fullName))
             ->subject($subject)
             ->htmlTemplate('email/recurring_payment_failed.html.twig')
@@ -49,6 +51,13 @@ final readonly class SendRecurringPaymentFailedEmailHandler
                 'reason' => $event->reason,
             ]);
 
-        $this->mailer->send($email);
+        try {
+            $this->mailer->send($email);
+        } catch (\Throwable $e) {
+            $this->logger->error('Failed to send recurring payment failed email to tenant', [
+                'contract_id' => $event->contractId->toRfc4122(),
+                'exception' => $e,
+            ]);
+        }
     }
 }

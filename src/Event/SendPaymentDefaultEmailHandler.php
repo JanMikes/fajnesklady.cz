@@ -7,6 +7,7 @@ namespace App\Event;
 use App\Enum\UserRole;
 use App\Repository\ContractRepository;
 use App\Repository\UserRepository;
+use Psr\Log\LoggerInterface;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -19,6 +20,7 @@ final readonly class SendPaymentDefaultEmailHandler
         private ContractRepository $contractRepository,
         private UserRepository $userRepository,
         private MailerInterface $mailer,
+        private LoggerInterface $logger,
     ) {
     }
 
@@ -46,7 +48,14 @@ final readonly class SendPaymentDefaultEmailHandler
                 'hasDebt' => $event->outstandingDebtAmount > 0,
             ]);
 
-        $this->mailer->send($tenantEmail);
+        try {
+            $this->mailer->send($tenantEmail);
+        } catch (\Throwable $e) {
+            $this->logger->error('Failed to send payment default email to tenant', [
+                'contract_id' => $event->contractId->toRfc4122(),
+                'exception' => $e,
+            ]);
+        }
 
         // Email to all admins
         $admins = $this->userRepository->findByRole(UserRole::ADMIN);
@@ -71,7 +80,15 @@ final readonly class SendPaymentDefaultEmailHandler
                     'terminatedAt' => $contract->terminatedAt,
                 ]);
 
-            $this->mailer->send($adminEmail);
+            try {
+                $this->mailer->send($adminEmail);
+            } catch (\Throwable $e) {
+                $this->logger->error('Failed to send payment default email to admin', [
+                    'contract_id' => $event->contractId->toRfc4122(),
+                    'admin_email' => $admin->email,
+                    'exception' => $e,
+                ]);
+            }
         }
     }
 }

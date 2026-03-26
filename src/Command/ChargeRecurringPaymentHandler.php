@@ -6,7 +6,6 @@ namespace App\Command;
 
 use App\Entity\Contract;
 use App\Event\RecurringPaymentCharged;
-use App\Event\RecurringPaymentFailed;
 use App\Service\GoPay\GoPayClient;
 use App\Service\GoPay\GoPayException;
 use App\Service\GoPay\PaymentNotConfirmedException;
@@ -42,7 +41,7 @@ final readonly class ChargeRecurringPaymentHandler
         $parentPaymentId = $contract->goPayParentPaymentId;
 
         // Calculate amount (full month or prorated for last billing cycle)
-        $amount = $this->calculateBillingAmount($contract);
+        $amount = $this->calculateBillingAmount($contract, $now);
 
         if ($amount <= 0) {
             $this->logger->info('Skipping billing — zero or negative amount', [
@@ -95,21 +94,13 @@ final readonly class ChargeRecurringPaymentHandler
                 occurredOn: $now,
             ));
         } catch (GoPayException|PaymentNotConfirmedException $e) {
-            // Record failed attempt (both API errors and non-confirmed payments)
-            $contract->recordFailedBillingAttempt($now);
-
-            $this->eventBus->dispatch(new RecurringPaymentFailed(
-                contractId: $contract->id,
-                attempt: $contract->failedBillingAttempts,
-                reason: $e->getMessage(),
-                occurredOn: $now,
-            ));
-
+            // Re-throw — failure recording is handled by the calling console command
+            // outside the doctrine_transaction (which rolls back on exception).
             throw $e;
         }
     }
 
-    private function calculateBillingAmount(Contract $contract): int
+    private function calculateBillingAmount(Contract $contract, \DateTimeImmutable $now): int
     {
         $monthlyRate = $contract->storage->getEffectivePricePerMonth();
         $effectiveEndDate = $contract->getEffectiveEndDate();
@@ -119,7 +110,7 @@ final readonly class ChargeRecurringPaymentHandler
         }
 
         // Use nextBillingDate as the canonical billing period start (deterministic)
-        $billingPeriodStart = $contract->nextBillingDate ?? new \DateTimeImmutable();
+        $billingPeriodStart = $contract->nextBillingDate ?? $now;
         $nextFullPeriodEnd = $billingPeriodStart->modify('+1 month');
 
         if ($nextFullPeriodEnd <= $effectiveEndDate) {

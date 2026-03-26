@@ -5,7 +5,11 @@ declare(strict_types=1);
 namespace App\Console;
 
 use App\Command\ChargeRecurringPaymentCommand;
+use App\Event\RecurringPaymentFailed;
 use App\Repository\ContractRepository;
+use App\Service\GoPay\GoPayException;
+use App\Service\GoPay\PaymentNotConfirmedException;
+use Doctrine\ORM\EntityManagerInterface;
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -13,6 +17,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Messenger\MessageBusInterface;
 
 #[AsCommand(
@@ -23,7 +28,10 @@ final class ProcessRecurringPaymentsCommand extends Command
 {
     public function __construct(
         private readonly ContractRepository $contractRepository,
+        private readonly EntityManagerInterface $entityManager,
         private readonly MessageBusInterface $commandBus,
+        #[Autowire(service: 'event.bus')]
+        private readonly MessageBusInterface $eventBus,
         private readonly ClockInterface $clock,
         private readonly LoggerInterface $logger,
     ) {
@@ -53,9 +61,29 @@ final class ProcessRecurringPaymentsCommand extends Command
                 $this->commandBus->dispatch(new ChargeRecurringPaymentCommand($contract));
                 ++$successCount;
                 $io->text(sprintf('  [OK] Contract %s charged successfully.', $contract->id));
+            } catch (GoPayException|PaymentNotConfirmedException $e) {
+                ++$failureCount;
+
+                // Record failure outside the rolled-back command bus transaction
+                $contract->recordFailedBillingAttempt($now);
+                $this->entityManager->flush();
+
+                $this->eventBus->dispatch(new RecurringPaymentFailed(
+                    contractId: $contract->id,
+                    attempt: $contract->failedBillingAttempts,
+                    reason: $e->getMessage(),
+                    occurredOn: $now,
+                ));
+
+                $this->logger->error('Recurring payment processing failed', [
+                    'contract_id' => $contract->id->toRfc4122(),
+                    'attempt' => $contract->failedBillingAttempts,
+                    'exception' => $e,
+                ]);
+                $io->error(sprintf('  [FAIL] Contract %s: %s', $contract->id, $e->getMessage()));
             } catch (\Exception $e) {
                 ++$failureCount;
-                $this->logger->error('Recurring payment processing failed', [
+                $this->logger->error('Recurring payment processing failed (unexpected)', [
                     'contract_id' => $contract->id->toRfc4122(),
                     'exception' => $e,
                 ]);

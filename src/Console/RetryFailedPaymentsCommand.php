@@ -8,8 +8,12 @@ use App\Command\CancelRecurringPaymentCommand;
 use App\Command\ChargeRecurringPaymentCommand;
 use App\Enum\TerminationReason;
 use App\Event\ContractTerminatedDueToPaymentFailure;
+use App\Event\RecurringPaymentFailed;
 use App\Repository\ContractRepository;
 use App\Service\ContractService;
+use App\Service\GoPay\GoPayException;
+use App\Service\GoPay\PaymentNotConfirmedException;
+use Doctrine\ORM\EntityManagerInterface;
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -29,6 +33,7 @@ final class RetryFailedPaymentsCommand extends Command
     public function __construct(
         private readonly ContractRepository $contractRepository,
         private readonly ContractService $contractService,
+        private readonly EntityManagerInterface $entityManager,
         private readonly MessageBusInterface $commandBus,
         #[Autowire(service: 'event.bus')]
         private readonly MessageBusInterface $eventBus,
@@ -57,9 +62,6 @@ final class RetryFailedPaymentsCommand extends Command
         $cancelledCount = 0;
 
         foreach ($contracts as $contract) {
-            // Check attempt count BEFORE dispatch — the handler increments it in-memory
-            // but doctrine_transaction middleware rolls back on exception, so the DB value
-            // stays at the pre-dispatch level. We use the DB value to decide next action.
             $attemptsBefore = $contract->failedBillingAttempts;
             $isLastAttempt = $attemptsBefore >= 2; // 2 in DB = this is the 3rd attempt
 
@@ -67,10 +69,21 @@ final class RetryFailedPaymentsCommand extends Command
                 $this->commandBus->dispatch(new ChargeRecurringPaymentCommand($contract));
                 ++$successCount;
                 $io->text(sprintf('  [OK] Contract %s retry successful.', $contract->id));
-            } catch (\Exception $e) {
+            } catch (GoPayException|PaymentNotConfirmedException $e) {
+                // Record failure outside the rolled-back command bus transaction
+                $contract->recordFailedBillingAttempt($now);
+                $this->entityManager->flush();
+
+                $this->eventBus->dispatch(new RecurringPaymentFailed(
+                    contractId: $contract->id,
+                    attempt: $contract->failedBillingAttempts,
+                    reason: $e->getMessage(),
+                    occurredOn: $now,
+                ));
+
                 $this->logger->error('Recurring payment retry failed', [
                     'contract_id' => $contract->id->toRfc4122(),
-                    'attempt' => $attemptsBefore + 1,
+                    'attempt' => $contract->failedBillingAttempts,
                     'is_last_attempt' => $isLastAttempt,
                     'exception' => $e,
                 ]);
@@ -80,13 +93,13 @@ final class RetryFailedPaymentsCommand extends Command
                     try {
                         $this->commandBus->dispatch(new CancelRecurringPaymentCommand($contract));
 
-                        // Calculate outstanding debt before termination
                         $outstandingDebt = $this->contractService->calculateOutstandingDebt($contract, $now);
                         if ($outstandingDebt > 0) {
                             $contract->setOutstandingDebt($outstandingDebt);
                         }
 
                         $this->contractService->terminateContract($contract, $now, TerminationReason::PAYMENT_FAILURE);
+                        $this->entityManager->flush();
 
                         $this->eventBus->dispatch(new ContractTerminatedDueToPaymentFailure(
                             contractId: $contract->id,
@@ -99,16 +112,22 @@ final class RetryFailedPaymentsCommand extends Command
                             $contract->id,
                             number_format($outstandingDebt / 100, 2, ',', ' '),
                         ));
-                    } catch (\Exception $e) {
+                    } catch (\Exception $cancelException) {
                         $this->logger->error('Failed to cancel/terminate contract after payment failure', [
                             'contract_id' => $contract->id->toRfc4122(),
-                            'exception' => $e,
+                            'exception' => $cancelException,
                         ]);
-                        $io->error(sprintf('  [ERROR] Contract %s: Failed to cancel/terminate: %s', $contract->id, $e->getMessage()));
+                        $io->error(sprintf('  [ERROR] Contract %s: Failed to cancel/terminate: %s', $contract->id, $cancelException->getMessage()));
                     }
                 } else {
-                    $io->text(sprintf('  [RETRY LATER] Contract %s failed attempt %d, will retry later.', $contract->id, $attemptsBefore + 1));
+                    $io->text(sprintf('  [RETRY LATER] Contract %s failed attempt %d, will retry later.', $contract->id, $contract->failedBillingAttempts));
                 }
+            } catch (\Exception $e) {
+                $this->logger->error('Recurring payment retry failed (unexpected)', [
+                    'contract_id' => $contract->id->toRfc4122(),
+                    'exception' => $e,
+                ]);
+                $io->error(sprintf('  [ERROR] Contract %s: %s', $contract->id, $e->getMessage()));
             }
         }
 
