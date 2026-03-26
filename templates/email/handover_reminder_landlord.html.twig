@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Připomínka - předávací protokol</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #f59e0b; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
+        .header-urgent { background-color: #ef4444; }
+        .content { background-color: #f9f9f9; padding: 30px; border: 1px solid #ddd; border-top: none; }
+        .button { display: inline-block; background-color: #570df8; color: white !important; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; font-weight: bold; }
+        .footer { text-align: center; padding: 20px; font-size: 12px; color: #666; }
+        .warning-message { background-color: #fef3c7; border: 1px solid #f59e0b; padding: 15px; border-radius: 5px; margin: 20px 0; text-align: center; }
+        .urgent-message { background-color: #fee2e2; border: 1px solid #ef4444; }
+        .warning-message strong { color: #92400e; }
+        .urgent-message strong { color: #991b1b; }
+    </style>
+</head>
+<body>
+    <div class="header{% if isUrgent %} header-urgent{% endif %}">
+        <h1>Připomínka</h1>
+    </div>
+
+    <div class="content">
+        <h2>Dobrý den, {{ name }}!</h2>
+
+        <div class="warning-message{% if isUrgent %} urgent-message{% endif %}">
+            <strong>
+                {% if isUrgent %}
+                    Předávací protokol stále čeká na Vaše potvrzení!
+                {% else %}
+                    Nezapomeňte potvrdit předávací protokol.
+                {% endif %}
+            </strong>
+        </div>
+
+        <p>Prosím vyplňte předávací protokol pro sklad č. <strong>{{ storageNumber }}</strong> v lokalitě <strong>{{ placeName }}</strong> (nájemce: {{ tenantName }}).</p>
+
+        <p>Je potřeba zkontrolovat sklad, nahrát fotografie, zadat nový kód zámku a potvrdit převzetí.</p>
+
+        <div style="text-align: center;">
+            <a href="{{ handoverUrl }}" class="button">Vyplnit předávací protokol</a>
+        </div>
+
+        <p>S pozdravem,<br>
+        <strong>Tým Fajné Sklady</strong></p>
+    </div>
+
+    <div class="footer">
+        <p>Toto je automaticky generovaný email. Prosím neodpovídejte na tuto zprávu.</p>
+        <p>&copy; {{ 'now'|date('Y') }} Fajné Sklady. Všechna práva vyhrazena.</p>
+    </div>
+</body>
+</html>

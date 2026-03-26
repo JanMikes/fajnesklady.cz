@@ -8,6 +8,7 @@ use App\Entity\Contract;
 use App\Entity\Order;
 use App\Enum\TerminationReason;
 use App\Repository\ContractRepository;
+use App\Repository\HandoverProtocolRepository;
 use App\Service\GoPay\GoPayClient;
 
 /**
@@ -19,6 +20,7 @@ final readonly class ContractService
 {
     public function __construct(
         private ContractRepository $contractRepository,
+        private HandoverProtocolRepository $handoverProtocolRepository,
         private ContractDocumentGenerator $documentGenerator,
         private AuditLogger $auditLogger,
         private GoPayClient $goPayClient,
@@ -69,9 +71,15 @@ final readonly class ContractService
             $contract->cancelRecurringPayment();
         }
 
-        $contract->terminate($now, $reason);
+        $handover = $this->handoverProtocolRepository->findByContract($contract);
+        $hasIncompleteHandover = null !== $handover && !$handover->isFullyCompleted();
+
+        $contract->terminate($now, $reason, !$hasIncompleteHandover);
         $this->auditLogger->logContractTerminated($contract);
-        $this->auditLogger->logStorageReleased($contract->storage, sprintf('Contract terminated (%s)', $reason->value));
+
+        if (!$hasIncompleteHandover) {
+            $this->auditLogger->logStorageReleased($contract->storage, sprintf('Contract terminated (%s)', $reason->value));
+        }
     }
 
     /**

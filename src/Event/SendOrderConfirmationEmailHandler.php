@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Event;
 
 use App\Repository\OrderRepository;
+use App\Service\StorageMapImageGenerator;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -18,6 +19,7 @@ final readonly class SendOrderConfirmationEmailHandler
         private OrderRepository $orderRepository,
         private MailerInterface $mailer,
         private UrlGeneratorInterface $urlGenerator,
+        private StorageMapImageGenerator $mapImageGenerator,
     ) {
     }
 
@@ -51,8 +53,15 @@ final readonly class SendOrderConfirmationEmailHandler
                 'endDate' => $order->endDate?->format('d.m.Y') ?? 'Na dobu neurčitou',
                 'totalPrice' => number_format($order->getTotalPriceInCzk(), 2, ',', ' ').' Kč',
                 'expiresAt' => $order->expiresAt->format('d.m.Y H:i'),
+                'lockCode' => $storage->lockCode,
                 'manageUrl' => $manageUrl,
             ]);
+
+        $mapImageData = $this->mapImageGenerator->generate($storage);
+
+        if (null !== $mapImageData) {
+            $email->attach($mapImageData, 'mapa-skladu.png', 'image/png');
+        }
 
         $this->mailer->send($email);
     }

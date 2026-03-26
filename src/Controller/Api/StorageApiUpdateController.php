@@ -49,6 +49,8 @@ final class StorageApiUpdateController extends AbstractController
             number: $data['number'],
             coordinates: $this->sanitizeCoordinates($data['coordinates']),
             storageTypeId: isset($data['storageTypeId']) ? Uuid::fromString($data['storageTypeId']) : null,
+            lockCode: isset($data['lockCode']) ? ('' !== $data['lockCode'] ? $data['lockCode'] : null) : null,
+            updateLockCode: array_key_exists('lockCode', $data),
         );
 
         $this->commandBus->dispatch($command);

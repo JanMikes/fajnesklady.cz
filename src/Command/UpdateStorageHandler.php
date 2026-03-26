@@ -51,6 +51,13 @@ final readonly class UpdateStorageHandler
             );
         }
 
+        if ($command->updateLockCode) {
+            $storage->updateLockCode(
+                lockCode: $command->lockCode,
+                now: $now,
+            );
+        }
+
         $this->storageRepository->save($storage);
 
         return $storage;

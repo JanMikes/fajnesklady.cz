@@ -21,6 +21,8 @@ final readonly class UpdateStorageCommand
         public bool $updatePrices = false,
         public ?string $commissionRate = null,
         public bool $updateCommissionRate = false,
+        public ?string $lockCode = null,
+        public bool $updateLockCode = false,
     ) {
     }
 }

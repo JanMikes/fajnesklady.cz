@@ -104,6 +104,9 @@ return App::config([
                 '$uploadsDirectory' => '%kernel.project_dir%/public/uploads',
             ],
         ],
+        'Intervention\\Image\\ImageManager' => [
+            'factory' => ['Intervention\\Image\\ImageManager', 'gd'],
+        ],
         'App\\Service\\StoragePhotoUploader' => null,
         'App\\Middleware\\DispatchDomainEventsMiddleware' => null,
         'App\\Twig\\' => [

@@ -7,6 +7,7 @@ namespace App\Controller\Portal\User;
 use App\Entity\StorageType;
 use App\Repository\PlaceRepository;
 use App\Repository\StorageTypeRepository;
+use App\Service\StorageAssignment;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -20,6 +21,7 @@ final class PlaceBrowseListController extends AbstractController
     public function __construct(
         private readonly PlaceRepository $placeRepository,
         private readonly StorageTypeRepository $storageTypeRepository,
+        private readonly StorageAssignment $storageAssignment,
         private readonly UrlGeneratorInterface $urlGenerator,
     ) {
     }
@@ -30,6 +32,8 @@ final class PlaceBrowseListController extends AbstractController
 
         $placesWithStorageTypes = [];
         $placesData = [];
+        $startDate = new \DateTimeImmutable('tomorrow');
+        $endDate = $startDate->modify('+30 days');
 
         foreach ($places as $place) {
             $storageTypes = $this->storageTypeRepository->findActiveByPlace($place);
@@ -57,6 +61,11 @@ final class PlaceBrowseListController extends AbstractController
                         'name' => $type->name,
                         'dimensions' => $type->getDimensions(),
                         'pricePerMonth' => $type->getDefaultPricePerMonthInCzk(),
+                        'availableCount' => $this->storageAssignment->countAvailableStorages($type, $place, $startDate, $endDate),
+                        'orderUrl' => $this->urlGenerator->generate('public_order_create', [
+                            'placeId' => $place->id,
+                            'storageTypeId' => $type->id,
+                        ]),
                     ],
                     $storageTypes
                 ),

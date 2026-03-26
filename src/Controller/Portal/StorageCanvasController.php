@@ -61,6 +61,7 @@ final class StorageCanvasController extends AbstractController
             'storageTypeId' => $s->storageType->id->toRfc4122(),
             'coordinates' => $s->coordinates,
             'status' => $s->status->value,
+            'lockCode' => $s->lockCode,
         ], $storages);
 
         return $this->render('portal/storage/canvas.html.twig', [

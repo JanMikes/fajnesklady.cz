@@ -10,5 +10,8 @@ return App::config([
         'form_themes' => [
             'form/tailwind_theme.html.twig',
         ],
+        'date' => [
+            'timezone' => 'Europe/Prague',
+        ],
     ],
 ]);

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Předávací protokol - čeká na potvrzení</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #570df8; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
+        .content { background-color: #f9f9f9; padding: 30px; border: 1px solid #ddd; border-top: none; }
+        .button { display: inline-block; background-color: #570df8; color: white !important; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin: 20px 0; font-weight: bold; }
+        .footer { text-align: center; padding: 20px; font-size: 12px; color: #666; }
+        .details { background-color: white; border: 1px solid #ddd; padding: 20px; margin: 20px 0; border-radius: 5px; }
+        .details table { width: 100%; border-collapse: collapse; }
+        .details td { padding: 10px 0; border-bottom: 1px solid #eee; }
+        .details td:first-child { font-weight: bold; color: #666; width: 40%; }
+        .details tr:last-child td { border-bottom: none; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Předávací protokol</h1>
+    </div>
+
+    <div class="content">
+        <h2>Dobrý den, {{ name }}!</h2>
+
+        <p>Blíží se konec pronájmu skladu nájemcem <strong>{{ tenantName }}</strong>. Je potřeba vyplnit předávací protokol a převzít sklad zpět.</p>
+
+        <div class="details">
+            <table>
+                <tr>
+                    <td>Místo:</td>
+                    <td>{{ placeName }}</td>
+                </tr>
+                <tr>
+                    <td>Číslo skladu:</td>
+                    <td>{{ storageNumber }}</td>
+                </tr>
+                <tr>
+                    <td>Nájemce:</td>
+                    <td>{{ tenantName }}</td>
+                </tr>
+                <tr>
+                    <td>Konec pronájmu:</td>
+                    <td><strong>{{ endDate ?? 'Neurčito' }}</strong></td>
+                </tr>
+            </table>
+        </div>
+
+        <h3>Co je potřeba udělat?</h3>
+        <ul>
+            <li>Zkontrolovat a vyfotit stav skladu</li>
+            <li>Napsat komentář k převzetí</li>
+            <li>Zadat nový kód zámku (bude automaticky použit pro dalšího nájemce)</li>
+        </ul>
+
+        <div style="text-align: center;">
+            <a href="{{ handoverUrl }}" class="button">Vyplnit předávací protokol</a>
+        </div>
+
+        <p>S pozdravem,<br>
+        <strong>Tým Fajné Sklady</strong></p>
+    </div>
+
+    <div class="footer">
+        <p>Toto je automaticky generovaný email. Prosím neodpovídejte na tuto zprávu.</p>
+        <p>&copy; {{ 'now'|date('Y') }} Fajné Sklady. Všechna práva vyhrazena.</p>
+    </div>
+</body>
+</html>

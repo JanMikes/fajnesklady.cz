@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Předávací protokol dokončen</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #22c55e; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
+        .content { background-color: #f9f9f9; padding: 30px; border: 1px solid #ddd; border-top: none; }
+        .footer { text-align: center; padding: 20px; font-size: 12px; color: #666; }
+        .success-message { background-color: #dcfce7; border: 1px solid #22c55e; padding: 15px; border-radius: 5px; margin: 20px 0; text-align: center; }
+        .success-message strong { color: #166534; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Předávací protokol dokončen</h1>
+    </div>
+
+    <div class="content">
+        <h2>Dobrý den, {{ name }}!</h2>
+
+        <div class="success-message">
+            <strong>Předávací protokol byl úspěšně dokončen.</strong>
+        </div>
+
+        <p>Obě strany vyplnily předávací protokol pro sklad č. <strong>{{ storageNumber }}</strong> v lokalitě <strong>{{ placeName }}</strong>.</p>
+
+        <p>Sklad byl uvolněn a je připraven pro dalšího nájemce.</p>
+
+        <p>Děkujeme za spolupráci.</p>
+
+        <p>S pozdravem,<br>
+        <strong>Tým Fajné Sklady</strong></p>
+    </div>
+
+    <div class="footer">
+        <p>Toto je automaticky generovaný email. Prosím neodpovídejte na tuto zprávu.</p>
+        <p>&copy; {{ 'now'|date('Y') }} Fajné Sklady. Všechna práva vyhrazena.</p>
+    </div>
+</body>
+</html>

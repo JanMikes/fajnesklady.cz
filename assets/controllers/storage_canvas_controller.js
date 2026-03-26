@@ -4,7 +4,7 @@ import Konva from 'konva';
 export default class extends Controller {
     static targets = [
         'container', 'sidebar', 'storageList', 'form',
-        'numberInput', 'typeSelect', 'saveBtn', 'deleteBtn', 'cancelBtn',
+        'numberInput', 'typeSelect', 'lockCodeInput', 'saveBtn', 'deleteBtn', 'cancelBtn',
         'addBtn', 'copyBtn', 'snapCheckbox',
         'coordX', 'coordY', 'coordW', 'coordH', 'coordR',
         'zoomLabel', 'minimap',
@@ -527,6 +527,7 @@ export default class extends Controller {
         this.formTarget.classList.remove('hidden');
         this.numberInputTarget.value = storage.number || '';
         this.typeSelectTarget.value = storage.storageTypeId || '';
+        this.lockCodeInputTarget.value = storage.lockCode || '';
 
         if (storage.isNew) {
             this.deleteBtnTarget.classList.add('hidden');
@@ -864,6 +865,7 @@ export default class extends Controller {
                 number: storage.number,
                 storageTypeId: storage.storageTypeId,
                 coordinates: this.normalizeCoords(storage.coordinates),
+                lockCode: storage.lockCode || null,
             };
 
             try {
@@ -913,11 +915,13 @@ export default class extends Controller {
 
         storage.number = this.numberInputTarget.value;
         storage.storageTypeId = this.typeSelectTarget.value;
+        storage.lockCode = this.lockCodeInputTarget.value || null;
 
         const data = {
             number: storage.number,
             storageTypeId: storage.storageTypeId,
             coordinates: this.normalizeCoords(storage.coordinates),
+            lockCode: storage.lockCode,
         };
 
         try {

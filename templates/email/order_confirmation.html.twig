@@ -124,6 +124,12 @@
             </table>
         </div>
 
+        {% if lockCode is not null %}
+        <div style="background-color: #d1fae5; border: 1px solid #34d399; padding: 15px; border-radius: 5px; margin: 20px 0;">
+            <strong style="color: #065f46;">Váš přístupový kód: {{ lockCode }}</strong>
+        </div>
+        {% endif %}
+
         <div class="warning">
             <strong>Důležité:</strong> Vaše rezervace je platná do <strong>{{ expiresAt }}</strong>.
             Pokud do tohoto data neprovedete platbu, rezervace bude automaticky zrušena.

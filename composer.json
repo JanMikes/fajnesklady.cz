@@ -15,6 +15,7 @@
         "doctrine/orm": "^3.6.2",
         "fakturoid/fakturoid-php": "^4.0",
         "gopay/payments-sdk-php": "^1.10.4",
+        "intervention/image": "^3.11",
         "league/flysystem-bundle": "^3.6.2",
         "phpdocumentor/reflection-docblock": "^6.0",
         "phpoffice/phpword": "^1.4",

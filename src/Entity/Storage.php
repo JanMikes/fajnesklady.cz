@@ -33,6 +33,9 @@ class Storage
     #[ORM\Column(type: Types::DECIMAL, precision: 5, scale: 2, nullable: true)]
     public private(set) ?string $commissionRate = null;
 
+    #[ORM\Column(length: 50, nullable: true)]
+    public private(set) ?string $lockCode = null;
+
     #[ORM\ManyToOne(targetEntity: User::class)]
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     public private(set) ?User $owner = null;
@@ -149,6 +152,12 @@ class Storage
     public function updateCommissionRate(?string $commissionRate, \DateTimeImmutable $now): void
     {
         $this->commissionRate = $commissionRate;
+        $this->updatedAt = $now;
+    }
+
+    public function updateLockCode(?string $lockCode, \DateTimeImmutable $now): void
+    {
+        $this->lockCode = $lockCode;
         $this->updatedAt = $now;
     }
 

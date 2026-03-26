@@ -1,0 +1,128 @@
+{% extends 'portal/layout.html.twig' %}
+
+{% block title %}Předávací protokol - Portal{% endblock %}
+
+{% block breadcrumb %}
+    {% include 'components/breadcrumb.html.twig' with {breadcrumb_items: [
+        {label: 'Objednávky', url: path('portal_landlord_orders')},
+        {label: 'Předávací protokol'},
+    ]} %}
+{% endblock %}
+
+{% block content %}
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">Předávací protokol</h1>
+        <p class="mt-2 text-gray-600">{{ place.name }} - Sklad č. {{ storage.number }}</p>
+    </div>
+
+    {% set statusClass = {
+        'pending': 'bg-yellow-100 text-yellow-800',
+        'tenant_completed': 'bg-blue-100 text-blue-800',
+        'landlord_completed': 'bg-blue-100 text-blue-800',
+        'completed': 'bg-green-100 text-green-800',
+    } %}
+    {% set statusLabel = {
+        'pending': 'Čeká na vyplnění',
+        'tenant_completed': 'Vyplněno nájemcem',
+        'landlord_completed': 'Vyplněno pronajímatelem',
+        'completed': 'Dokončeno',
+    } %}
+
+    <div class="mb-6">
+        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium {{ statusClass[protocol.status.value] ?? 'bg-gray-100 text-gray-800' }}">
+            {{ statusLabel[protocol.status.value] ?? protocol.status.value }}
+        </span>
+        <span class="ml-3 text-sm text-gray-500">Nájemce: {{ contract.user.fullName }}</span>
+    </div>
+
+    {# Tenant's part (read-only) #}
+    {% if protocol.tenantCompletedAt %}
+        <div class="bg-white rounded-lg shadow-sm border border-green-200 p-6 mb-6">
+            <h2 class="text-lg font-semibold text-gray-900 mb-4">
+                <span class="text-green-600">✓</span> Nájemce vyplnil
+                <span class="text-sm font-normal text-gray-500 ml-2">{{ protocol.tenantCompletedAt|date('d.m.Y H:i') }}</span>
+            </h2>
+            <div class="prose prose-sm max-w-none text-gray-700">
+                {{ protocol.tenantComment }}
+            </div>
+            {% if protocol.tenantPhotos|length > 0 %}
+                <div class="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {% for photo in protocol.tenantPhotos %}
+                        <img src="{{ asset(photo.path) }}" alt="Foto nájemce" class="rounded-lg object-cover w-full h-32">
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+    {% else %}
+        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+            <p class="text-sm text-yellow-800">Nájemce zatím svou část nevyplnil.</p>
+        </div>
+    {% endif %}
+
+    {# Landlord form or completed view #}
+    {% if protocol.landlordCompletedAt %}
+        <div class="bg-white rounded-lg shadow-sm border border-green-200 p-6 mb-6">
+            <h2 class="text-lg font-semibold text-gray-900 mb-4">
+                <span class="text-green-600">✓</span> Vaše část
+                <span class="text-sm font-normal text-gray-500 ml-2">{{ protocol.landlordCompletedAt|date('d.m.Y H:i') }}</span>
+            </h2>
+            <div class="prose prose-sm max-w-none text-gray-700">
+                {{ protocol.landlordComment }}
+            </div>
+            {% if protocol.newLockCode %}
+                <div class="mt-3 text-sm">
+                    <span class="font-medium text-gray-700">Nový kód zámku:</span>
+                    <span class="ml-1 font-mono bg-gray-100 px-2 py-1 rounded">{{ protocol.newLockCode }}</span>
+                </div>
+            {% endif %}
+            {% if protocol.landlordPhotos|length > 0 %}
+                <div class="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {% for photo in protocol.landlordPhotos %}
+                        <img src="{{ asset(photo.path) }}" alt="Vaše foto" class="rounded-lg object-cover w-full h-32">
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+    {% elseif canComplete %}
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+            <h2 class="text-lg font-semibold text-gray-900 mb-4">Vaše část předávacího protokolu</h2>
+            <p class="text-sm text-gray-600 mb-4">Nahrajte fotografie stavu skladu, zadejte nový kód zámku a potvrďte převzetí.</p>
+
+            {{ form_start(form, {'attr': {'enctype': 'multipart/form-data'}}) }}
+                <div class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Fotografie</label>
+                        <input type="file" name="photos[]" multiple accept="image/*"
+                               class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100">
+                        <p class="mt-1 text-xs text-gray-500">Můžete nahrát více fotografií najednou.</p>
+                    </div>
+
+                    <div>
+                        {{ form_row(form.comment) }}
+                    </div>
+
+                    <div>
+                        {{ form_row(form.newLockCode) }}
+                        <p class="mt-1 text-xs text-gray-500">Tento kód bude automaticky použit pro dalšího nájemce.</p>
+                    </div>
+
+                    <div>
+                        <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500">
+                            Potvrdit převzetí skladu
+                        </button>
+                    </div>
+                </div>
+            {{ form_end(form) }}
+        </div>
+    {% else %}
+        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-6">
+            <p class="text-sm text-yellow-800">Čeká se na vyplnění Vaší části předávacího protokolu.</p>
+        </div>
+    {% endif %}
+
+    {% for message in app.flashes('success') %}
+        <div class="rounded-md bg-green-50 p-4 mb-6">
+            <p class="text-sm font-medium text-green-800">{{ message }}</p>
+        </div>
+    {% endfor %}
+{% endblock %}

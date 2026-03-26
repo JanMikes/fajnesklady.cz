@@ -82,11 +82,14 @@ class Contract
         $this->signedAt = $now;
     }
 
-    public function terminate(\DateTimeImmutable $now, TerminationReason $reason = TerminationReason::EXPIRED): void
+    public function terminate(\DateTimeImmutable $now, TerminationReason $reason = TerminationReason::EXPIRED, bool $releaseStorage = true): void
     {
         $this->terminatedAt = $now;
         $this->terminationReason = $reason;
-        $this->storage->release($now);
+
+        if ($releaseStorage) {
+            $this->storage->release($now);
+        }
     }
 
     public function setOutstandingDebt(int $amount): void
