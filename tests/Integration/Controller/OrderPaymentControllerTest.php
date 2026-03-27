@@ -71,6 +71,8 @@ class OrderPaymentControllerTest extends WebTestCase
             'signature_data' => $this->createValidPngDataUrl(),
             'signing_method' => 'draw',
             'signature_consent' => '1',
+            'signing_place' => 'Praha',
+            'accept_early_start_waiver' => '1',
         ]);
 
         $response = $this->client->getResponse();
@@ -233,6 +235,8 @@ class OrderPaymentControllerTest extends WebTestCase
             'signature_data' => $this->createValidPngDataUrl(),
             'signing_method' => 'draw',
             'signature_consent' => '1',
+            'signing_place' => 'Praha',
+            'accept_early_start_waiver' => '1',
         ]);
 
         $response = $this->client->getResponse();
@@ -254,6 +258,8 @@ class OrderPaymentControllerTest extends WebTestCase
             'typed_name' => 'Jan Novák',
             'style_id' => 'dancing-script',
             'signature_consent' => '1',
+            'signing_place' => 'Praha',
+            'accept_early_start_waiver' => '1',
         ]);
 
         $response = $this->client->getResponse();
