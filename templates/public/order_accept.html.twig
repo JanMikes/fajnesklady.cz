@@ -126,42 +126,60 @@
                     </p>
                 </div>
 
-                {# Contract Terms #}
-                <div class="border border-gray-200 rounded-lg p-4 mb-6 max-h-64 overflow-y-auto bg-white">
-                    <h3 class="font-semibold text-gray-900 mb-3">Smluvní podmínky</h3>
+                {# Contract Terms - matches the real Smlouva.docx #}
+                <div class="border border-gray-200 rounded-lg p-4 mb-6 max-h-96 overflow-y-auto bg-white">
+                    <h3 class="font-semibold text-gray-900 mb-3">Smlouva o nájmu</h3>
 
                     <div class="prose prose-sm text-gray-600">
-                        <p><strong>1. Předmět smlouvy</strong></p>
-                        <p>Pronajímatel přenechává nájemci do užívání skladovou jednotku č. {{ storage.number }}
-                           v objektu {{ place.name }}, {{ place.address }}, {{ place.city }}.</p>
+                        <p><strong>Pronajímatel:</strong></p>
+                        <p>Obchodní firma: Mekmann s.r.o.<br>
+                           IČO: 11678631<br>
+                           DIČ: CZ11678631<br>
+                           Sídlem: Dvořákova 780, Frýdlant, 739 11 Frýdlant nad Ostravicí<br>
+                           Zapsána: Krajský soud v Ostravě, C 86521</p>
 
-                        <p><strong>2. Doba pronájmu</strong></p>
-                        <p>Pronájem začíná dnem {{ formData.startDate|date('d.m.Y') }}
-                           {% if formData.endDate %}
-                               a končí dnem {{ formData.endDate|date('d.m.Y') }}.
-                           {% else %}
-                               a trvá na dobu neurčitou. Obě strany mohou smlouvu vypovědět s měsíční výpovědní lhůtou.
-                           {% endif %}
+                        <p><strong>Nájemce:</strong></p>
+                        <p>Jméno: {{ customerFullName }}<br>
+                           Email: {{ formData.email }}</p>
+
+                        <p><strong>I. Předmět smlouvy</strong></p>
+                        <p>Pronajímatel výslovně prohlašuje, že je výlučným vlastníkem níže specifikované movité věci:</p>
+                        <p><strong>{{ storageType.name }} č. {{ storage.number }} ({{ storageType.innerWidth }} × {{ storageType.innerHeight }} × {{ storageType.innerLength }} cm)</strong>, a to v počtu 1 Ks (dále jen „Předmět nájmu")</p>
+                        <p>Pronajímatel tímto přenechává Nájemci Předmět nájmu k dočasnému užívání za úplatu, a to za podmínek dále stanovených zde v této Smlouvě nebo ve všeobecných obchodních podmínkách Pronajímatele (dále jen „VOP"), které tvoří nedílnou součást této Smlouvy.</p>
+
+                        <p><strong>II. Doba nájmu a předání</strong></p>
+                        <p>
+                            {% if formData.endDate %}
+                                Nájem se sjednává na dobu určitou, a to od {{ formData.startDate|date('d.m.Y') }} do {{ formData.endDate|date('d.m.Y') }}
+                            {% else %}
+                                Nájem se sjednává na dobu neurčitou, a to od {{ formData.startDate|date('d.m.Y') }}
+                            {% endif %}
                         </p>
+                        <p>Pokud nájem má začít okamžitě, respektive v době před uplynutím 14 dní, ve kterých může Nájemce, který je spotřebitelem od Smlouvy odstoupit, pak tímto Nájemce výslovně žádá, aby bylo započato s plněním. Současně prohlašuje, že rozumí a chápe, že ztrácí právo na odstoupení od Smlouvy.</p>
+                        <p>Nájemce je povinen nejpozději ke dni skončení nájmu zaslat fotografii zachycující stav Předmětu nájmu, který musí být vyklizený a čistý. Do okamžiku zaslání fotografie se má za to, že Předmět nájmu není řádně předaný.</p>
 
-                        <p><strong>3. Cena pronájmu</strong></p>
-                        <p>Cena pronájmu činí {{ (totalPrice / 100)|number_format(2, ',', ' ') }} Kč{% if not formData.endDate %} měsíčně{% endif %}.</p>
+                        <p><strong>III. Cena nájmu a splatnost</strong></p>
+                        <p>Smluvní strany se dohodly, že cena za nájem Předmět nájmu je určena Ceníkem, který je nedílnou součástí této Smlouvy (dále jen „cena nájmu" nebo „nájemné").</p>
 
-                        <p><strong>4. Pravidla užívání</strong></p>
+                        <p><strong>IV. Smluvní sankce</strong></p>
+                        <p>Pokud Nájemce Předmět nájmu vrátí znečištěný, je Pronajímatel oprávněn požadovat po Nájemci smluvní pokutu ve výši 6 000,- Kč.</p>
+                        <p>Pokud Nájemce Předmět nájmu nevrátí nejpozději ke dni skončení nájmu, je Pronajímatel oprávněn požadovat po Nájemci smluvní pokutu ve výši 2 000,- Kč denně.</p>
+                        <p>V případě prodlení Nájemce s úhradou jakéhokoliv peněžitého závazku, je Nájemce povinen uhradit Pronajímateli smluvní pokutu ve výši 0,25 % denně dlužné částky za každý, byť jen započatý, den prodlení, a to až do úplného zaplacení, minimálně však částku 250,- Kč denně.</p>
+
+                        <p><strong>V. Jistota</strong></p>
+                        <p>Po Nájemci není požadována žádná jistota.</p>
+                        <p>Pronajímatel je oprávněn jistotu jednostranně započítat oproti všem finančním nárokům vůči Nájemci vyplývajícím ze Smlouvy.</p>
+
+                        <p><strong>VI. Závěrečná ustanovení</strong></p>
+                        <p>Smlouva je vyhotovena ve 2 stejnopisech, každý s platností originálu, z nichž každá smluvní strana obdrží jedno vyhotovení.</p>
+                        <p>Nedílnou součástí Smlouvy jsou i následující přílohy:</p>
                         <ul>
-                            <li>Nájemce se zavazuje užívat skladovou jednotku pouze k uskladnění vlastních věcí.</li>
-                            <li>Je zakázáno skladovat hořlavé, výbušné nebo nebezpečné látky.</li>
-                            <li>Je zakázáno skladovat potraviny a jiné zboží podléhající zkáze.</li>
-                            <li>Nájemce má přístup ke skladové jednotce 24 hodin denně, 7 dní v týdnu.</li>
+                            <li>VOP</li>
+                            <li>Spotřebitelská poučení a formuláře</li>
+                            <li>Provozní řád areálu</li>
+                            <li>Ceník</li>
                         </ul>
-
-                        <p><strong>5. Odpovědnost</strong></p>
-                        <p>Pronajímatel nenese odpovědnost za škody způsobené vyšší mocí. Nájemce je povinen
-                           uzamykat skladovou jednotku vlastním zámkem.</p>
-
-                        <p><strong>6. Závěrečná ustanovení</strong></p>
-                        <p>Přijetím těchto podmínek nájemce potvrzuje, že se seznámil s provozním řádem
-                           a zavazuje se jej dodržovat.</p>
+                        <p>Smluvní strany prohlašují, že Smlouva byla sepsána na základě jejich svobodné, shodné a vážné vůle, nebyla sepsána v tísni za nápadně nevýhodných podmínek, že si smlouvu před podpisem přečetly, že byla sepsána podle pravdivých údajů a že souhlasí s jejím obsahem.</p>
                     </div>
                 </div>
 

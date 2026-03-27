@@ -48,7 +48,7 @@ class ContractDocumentGeneratorTest extends TestCase
 
     private function createUser(): User
     {
-        $user = new User(
+        return new User(
             Uuid::v7(),
             'tenant@example.com',
             'password',
@@ -56,8 +56,6 @@ class ContractDocumentGeneratorTest extends TestCase
             'Novák',
             new \DateTimeImmutable(),
         );
-
-        return $user;
     }
 
     private function createPlace(): Place
@@ -100,16 +98,16 @@ class ContractDocumentGeneratorTest extends TestCase
         );
     }
 
-    private function createOrder(User $user, Storage $storage): Order
+    private function createOrder(User $user, Storage $storage, RentalType $rentalType = RentalType::LIMITED): Order
     {
         return new Order(
             id: Uuid::v7(),
             user: $user,
             storage: $storage,
-            rentalType: RentalType::LIMITED,
+            rentalType: $rentalType,
             paymentFrequency: null,
             startDate: new \DateTimeImmutable('2024-01-15'),
-            endDate: new \DateTimeImmutable('2024-02-15'),
+            endDate: RentalType::LIMITED === $rentalType ? new \DateTimeImmutable('2024-02-15') : null,
             totalPrice: 35000,
             expiresAt: new \DateTimeImmutable('+7 days'),
             createdAt: new \DateTimeImmutable('2024-01-01'),
@@ -134,24 +132,17 @@ class ContractDocumentGeneratorTest extends TestCase
     {
         $templatePath = $this->tempDir.'/template.docx';
 
-        // Create a simple DOCX template using PhpWord
         $phpWord = new \PhpOffice\PhpWord\PhpWord();
         $section = $phpWord->addSection();
-        $section->addText('Smlouva o pronájmu');
+        $section->addText('Smlouva o nájmu');
         $section->addText('Nájemce: ${TENANT_NAME}');
+        $section->addText('Nar.: ${TENANT_BIRTH_DATE}');
+        $section->addText('Bytem: ${TENANT_ADDRESS}');
         $section->addText('Email: ${TENANT_EMAIL}');
-        $section->addText('Telefon: ${TENANT_PHONE}');
-        $section->addText('Box: ${STORAGE_NUMBER}');
-        $section->addText('Typ: ${STORAGE_TYPE}');
-        $section->addText('Rozměry: ${STORAGE_DIMENSIONS}');
-        $section->addText('Místo: ${PLACE_NAME}');
-        $section->addText('Adresa: ${PLACE_ADDRESS}');
-        $section->addText('Od: ${START_DATE}');
-        $section->addText('Do: ${END_DATE}');
-        $section->addText('Typ nájmu: ${RENTAL_TYPE}');
-        $section->addText('Cena: ${PRICE}');
-        $section->addText('Datum smlouvy: ${CONTRACT_DATE}');
-        $section->addText('Číslo smlouvy: ${CONTRACT_NUMBER}');
+        $section->addText('Č. ${CONTRACT_NUMBER}');
+        $section->addText('Předmět: ${STORAGE_DESCRIPTION}');
+        $section->addText('${RENTAL_DURATION_TEXT}');
+        $section->addText('V ${CONTRACT_CITY} dne ${CONTRACT_DATE}');
 
         $objWriter = \PhpOffice\PhpWord\IOFactory::createWriter($phpWord, 'Word2007');
         $objWriter->save($templatePath);
@@ -250,27 +241,34 @@ class ContractDocumentGeneratorTest extends TestCase
         $this->assertFileExists($outputPath);
     }
 
+    public function testGenerateUnlimitedContractCreatesDocument(): void
+    {
+        $tenant = $this->createUser();
+        $storage = $this->createStorage();
+        $order = $this->createOrder($tenant, $storage, RentalType::UNLIMITED);
+        $contract = $this->createContract($order);
+
+        $templatePath = $this->createTestTemplate();
+        $outputPath = $this->generator->generate($contract, $templatePath);
+
+        $this->assertFileExists($outputPath);
+    }
+
     private function createTestTemplateWithSignature(): string
     {
         $templatePath = $this->tempDir.'/template_with_signature.docx';
 
         $phpWord = new \PhpOffice\PhpWord\PhpWord();
         $section = $phpWord->addSection();
-        $section->addText('Smlouva o pronájmu');
+        $section->addText('Smlouva o nájmu');
         $section->addText('Nájemce: ${TENANT_NAME}');
+        $section->addText('Nar.: ${TENANT_BIRTH_DATE}');
+        $section->addText('Bytem: ${TENANT_ADDRESS}');
         $section->addText('Email: ${TENANT_EMAIL}');
-        $section->addText('Telefon: ${TENANT_PHONE}');
-        $section->addText('Box: ${STORAGE_NUMBER}');
-        $section->addText('Typ: ${STORAGE_TYPE}');
-        $section->addText('Rozměry: ${STORAGE_DIMENSIONS}');
-        $section->addText('Místo: ${PLACE_NAME}');
-        $section->addText('Adresa: ${PLACE_ADDRESS}');
-        $section->addText('Od: ${START_DATE}');
-        $section->addText('Do: ${END_DATE}');
-        $section->addText('Typ nájmu: ${RENTAL_TYPE}');
-        $section->addText('Cena: ${PRICE}');
-        $section->addText('Datum smlouvy: ${CONTRACT_DATE}');
-        $section->addText('Číslo smlouvy: ${CONTRACT_NUMBER}');
+        $section->addText('Č. ${CONTRACT_NUMBER}');
+        $section->addText('Předmět: ${STORAGE_DESCRIPTION}');
+        $section->addText('${RENTAL_DURATION_TEXT}');
+        $section->addText('V ${CONTRACT_CITY} dne ${CONTRACT_DATE}');
         $section->addText('Podpis: ${SIGNATURE}');
 
         $objWriter = \PhpOffice\PhpWord\IOFactory::createWriter($phpWord, 'Word2007');

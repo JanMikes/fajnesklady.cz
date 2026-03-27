@@ -150,6 +150,7 @@ final class OrderAcceptController extends AbstractController
                 firstName: $formData->firstName,
                 lastName: $formData->lastName,
                 phone: $formData->phone,
+                birthDate: $formData->birthDate,
                 plainPassword: $formData->plainPassword,
             ));
 

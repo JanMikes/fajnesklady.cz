@@ -53,6 +53,15 @@ final class OrderFormType extends AbstractType
                     'autocomplete' => 'tel',
                 ],
             ])
+            ->add('birthDate', DateType::class, [
+                'label' => 'Datum narození',
+                'widget' => 'single_text',
+                'input' => 'datetime_immutable',
+                'help' => 'Vyžadováno pro účely nájemní smlouvy.',
+                'attr' => [
+                    'autocomplete' => 'bday',
+                ],
+            ])
             ->add('plainPassword', PasswordType::class, [
                 'label' => 'Heslo (nepovinné)',
                 'required' => false,

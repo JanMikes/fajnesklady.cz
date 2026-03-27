@@ -52,6 +52,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, EntityW
     #[ORM\Column(length: 10, nullable: true)]
     public private(set) ?string $billingPostalCode = null;
 
+    #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
+    public private(set) ?\DateTimeImmutable $birthDate = null;
+
     #[ORM\Column(nullable: true)]
     public private(set) ?int $fakturoidSubjectId = null;
 
@@ -175,6 +178,12 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, EntityW
         $this->firstName = $firstName;
         $this->lastName = $lastName;
         $this->phone = $phone;
+        $this->updatedAt = $now;
+    }
+
+    public function updateBirthDate(?\DateTimeImmutable $birthDate, \DateTimeImmutable $now): void
+    {
+        $this->birthDate = $birthDate;
         $this->updatedAt = $now;
     }
 

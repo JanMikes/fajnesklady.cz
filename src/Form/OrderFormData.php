@@ -26,6 +26,9 @@ final class OrderFormData
     #[Assert\Length(max: 20, maxMessage: 'Telefon může mít maximálně {{ limit }} znaků.')]
     public ?string $phone = null;
 
+    #[Assert\NotNull(message: 'Zadejte datum narození.')]
+    public ?\DateTimeImmutable $birthDate = null;
+
     public ?string $plainPassword = null;
 
     public bool $invoiceToCompany = false;
@@ -158,6 +161,7 @@ final class OrderFormData
         $formData->firstName = $user->firstName;
         $formData->lastName = $user->lastName;
         $formData->phone = $user->phone;
+        $formData->birthDate = $user->birthDate;
         $formData->companyName = $user->companyName;
         $formData->companyId = $user->companyId;
         $formData->companyVatId = $user->companyVatId;
@@ -179,6 +183,7 @@ final class OrderFormData
             'firstName' => $this->firstName,
             'lastName' => $this->lastName,
             'phone' => $this->phone,
+            'birthDate' => $this->birthDate?->format('Y-m-d'),
             'plainPassword' => $this->plainPassword,
             'invoiceToCompany' => $this->invoiceToCompany,
             'companyName' => $this->companyName,
@@ -203,6 +208,7 @@ final class OrderFormData
         $formData->firstName = (string) ($data['firstName'] ?? '');
         $formData->lastName = (string) ($data['lastName'] ?? '');
         $formData->phone = $data['phone'] ?? null;
+        $formData->birthDate = isset($data['birthDate']) ? new \DateTimeImmutable($data['birthDate']) : null;
         $formData->plainPassword = $data['plainPassword'] ?? null;
         $formData->invoiceToCompany = (bool) ($data['invoiceToCompany'] ?? false);
         $formData->companyName = $data['companyName'] ?? null;

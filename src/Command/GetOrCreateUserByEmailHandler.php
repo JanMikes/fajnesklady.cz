@@ -49,6 +49,10 @@ final readonly class GetOrCreateUserByEmailHandler
             $user->updateProfile($command->firstName, $command->lastName, $command->phone, $now);
         }
 
+        if (null !== $command->birthDate) {
+            $user->updateBirthDate($command->birthDate, $now);
+        }
+
         // If password provided, hash it and auto-verify the user
         if (null !== $command->plainPassword && '' !== $command->plainPassword) {
             $hashedPassword = $this->passwordHasher->hashPassword($user, $command->plainPassword);

@@ -12,13 +12,11 @@ use PhpOffice\PhpWord\TemplateProcessor;
  * Service for generating contract documents from DOCX templates.
  *
  * Replaces placeholders in the template with contract data:
- * - {{TENANT_NAME}}, {{TENANT_EMAIL}}, {{TENANT_PHONE}}
- * - {{TENANT_COMPANY}}, {{TENANT_ICO}}, {{TENANT_DIC}}, {{TENANT_BILLING_ADDRESS}}
- * - {{STORAGE_NUMBER}}, {{STORAGE_TYPE}}, {{STORAGE_DIMENSIONS}}
- * - {{PLACE_NAME}}, {{PLACE_ADDRESS}}
- * - {{START_DATE}}, {{END_DATE}} (or "Na dobu neurčitou" for unlimited)
- * - {{RENTAL_TYPE}}, {{PRICE}}
- * - {{CONTRACT_DATE}}, {{CONTRACT_NUMBER}}
+ * - ${TENANT_NAME}, ${TENANT_BIRTH_DATE}, ${TENANT_ADDRESS}, ${TENANT_EMAIL}
+ * - ${CONTRACT_NUMBER}, ${STORAGE_DESCRIPTION}
+ * - ${RENTAL_DURATION_TEXT}
+ * - ${CONTRACT_CITY}, ${CONTRACT_DATE}
+ * - ${SIGNATURE} (image)
  */
 final readonly class ContractDocumentGenerator
 {
@@ -71,39 +69,23 @@ final readonly class ContractDocumentGenerator
         $storage = $contract->storage;
         $storageType = $storage->storageType;
         $place = $storage->getPlace();
-        $order = $contract->order;
 
         // Tenant information
         $processor->setValue('TENANT_NAME', $user->fullName);
+        $processor->setValue('TENANT_BIRTH_DATE', $user->birthDate?->format('d.m.Y') ?? '-');
+        $processor->setValue('TENANT_ADDRESS', $this->formatBillingAddress($user));
         $processor->setValue('TENANT_EMAIL', $user->email);
-        $processor->setValue('TENANT_PHONE', $user->phone ?? '-');
 
-        // Tenant billing information
-        $processor->setValue('TENANT_COMPANY', $user->companyName ?? '-');
-        $processor->setValue('TENANT_ICO', $user->companyId ?? '-');
-        $processor->setValue('TENANT_DIC', $user->companyVatId ?? '-');
-        $processor->setValue('TENANT_BILLING_ADDRESS', $this->formatBillingAddress($user));
+        // Storage description
+        $processor->setValue('STORAGE_DESCRIPTION', $this->formatStorageDescription($storage, $storageType));
 
-        // Storage information
-        $processor->setValue('STORAGE_NUMBER', $storage->number);
-        $processor->setValue('STORAGE_TYPE', $storageType->name);
-        $processor->setValue('STORAGE_DIMENSIONS', $this->formatDimensions($storageType));
-
-        // Place information
-        $processor->setValue('PLACE_NAME', $place->name);
-        $processor->setValue('PLACE_ADDRESS', $this->formatAddress($place));
-
-        // Dates
-        $processor->setValue('START_DATE', $contract->startDate->format('d.m.Y'));
-        $processor->setValue('END_DATE', $this->formatEndDate($contract));
-
-        // Rental information
-        $processor->setValue('RENTAL_TYPE', $this->formatRentalType($contract->rentalType));
-        $processor->setValue('PRICE', $this->formatPrice($order->totalPrice));
+        // Rental duration (full sentence)
+        $processor->setValue('RENTAL_DURATION_TEXT', $this->formatRentalDuration($contract));
 
         // Contract metadata
-        $processor->setValue('CONTRACT_DATE', $contract->createdAt->format('d.m.Y'));
         $processor->setValue('CONTRACT_NUMBER', $this->formatContractNumber($contract));
+        $processor->setValue('CONTRACT_CITY', $place->city);
+        $processor->setValue('CONTRACT_DATE', $contract->createdAt->format('d.m.Y'));
     }
 
     private function embedSignature(TemplateProcessor $processor, ?string $signaturePath): void
@@ -120,24 +102,30 @@ final readonly class ContractDocumentGenerator
         }
     }
 
-    private function formatDimensions(\App\Entity\StorageType $storageType): string
+    private function formatStorageDescription(\App\Entity\Storage $storage, \App\Entity\StorageType $storageType): string
     {
-        // Dimensions are stored in centimeters, display in cm
         return sprintf(
-            '%d × %d × %d cm',
+            '%s č. %s (%d × %d × %d cm)',
+            $storageType->name,
+            $storage->number,
             $storageType->innerWidth,
             $storageType->innerHeight,
             $storageType->innerLength,
         );
     }
 
-    private function formatAddress(\App\Entity\Place $place): string
+    private function formatRentalDuration(Contract $contract): string
     {
+        $startDate = $contract->startDate->format('d.m.Y');
+
+        if (RentalType::UNLIMITED === $contract->rentalType || null === $contract->endDate) {
+            return sprintf('Nájem se sjednává na dobu neurčitou, a to od %s', $startDate);
+        }
+
         return sprintf(
-            '%s, %s %s',
-            $place->address,
-            $place->postalCode,
-            $place->city,
+            'Nájem se sjednává na dobu určitou, a to od %s do %s',
+            $startDate,
+            $contract->endDate->format('d.m.Y'),
         );
     }
 
@@ -155,33 +143,9 @@ final readonly class ContractDocumentGenerator
         );
     }
 
-    private function formatEndDate(Contract $contract): string
-    {
-        if (null === $contract->endDate) {
-            return 'Na dobu neurčitou';
-        }
-
-        return $contract->endDate->format('d.m.Y');
-    }
-
-    private function formatRentalType(RentalType $rentalType): string
-    {
-        return match ($rentalType) {
-            RentalType::LIMITED => 'Doba určitá',
-            RentalType::UNLIMITED => 'Doba neurčitá',
-        };
-    }
-
-    private function formatPrice(int $priceInHalire): string
-    {
-        $priceInCzk = $priceInHalire / 100;
-
-        return number_format($priceInCzk, 2, ',', ' ').' Kč';
-    }
-
     private function formatContractNumber(Contract $contract): string
     {
-        // Format: YYYY-MMDD-XXXXX (year-monthday-first 5 chars of UUID)
+        // Format: YYYY-MMDD-XXXXX (year-monthday-first 8 chars of UUID)
         $date = $contract->createdAt;
         $uuidShort = substr($contract->id->toRfc4122(), 0, 8);
 

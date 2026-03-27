@@ -119,6 +119,12 @@
                                 </div>
                             </div>
 
+                            <div class="grid md:grid-cols-2 gap-4">
+                                <div>
+                                    {{ form_row(form.birthDate) }}
+                                </div>
+                            </div>
+
                             {% if not app.user %}
                                 <div class="mt-4">
                                     {{ form_row(form.plainPassword) }}
