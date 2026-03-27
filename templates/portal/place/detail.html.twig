@@ -42,6 +42,20 @@
         </div>
     </div>
 
+    {% if not place.hasOperatingRules %}
+        <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 flex items-center gap-3">
+            <div class="bg-amber-100 text-amber-600 rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4.5c-.77-.833-2.694-.833-3.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+            </div>
+            <div class="flex-1">
+                <p class="text-sm font-medium text-amber-800">Chybí nahrát provozní řád</p>
+                <p class="text-xs text-amber-600">Provozní řád je vyžadován při objednávce. Nahrajte ho v <a href="{{ path('portal_places_edit', {id: place.id}) }}" class="underline font-medium">nastavení místa</a>.</p>
+            </div>
+        </div>
+    {% endif %}
+
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {% if hasAccess %}
             <a href="{{ path('portal_storages_list', {placeId: place.id}) }}" class="card hover:shadow-lg transition-shadow border-2 border-transparent hover:border-blue-300">

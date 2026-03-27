@@ -278,41 +278,40 @@
     </div>
     {% endif %}
 
-    {# Invoice Download #}
+    {# Invoices #}
     {% if order.status.value in ['paid', 'completed'] %}
     <div class="mt-6 bg-white shadow overflow-hidden sm:rounded-lg">
         <div class="px-4 py-5 sm:p-6">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center">
-                    <svg class="h-10 w-10 {{ invoice and invoice.hasPdf() ? 'text-accent' : 'text-gray-400' }}" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    <div class="ml-4">
-                        {% if invoice %}
-                            <h3 class="text-lg font-medium text-gray-900">Faktura {{ invoice.invoiceNumber }}</h3>
-                            <p class="text-sm text-gray-500">Vystaveno {{ invoice.issuedAt|date('d.m.Y') }} - {{ (invoice.amount / 100)|number_format(2, ',', ' ') }} Kč</p>
-                        {% else %}
-                            <h3 class="text-lg font-medium text-gray-900">Faktura</h3>
-                            <p class="text-sm text-yellow-600">Faktura zatím není k dispozici</p>
-                        {% endif %}
-                    </div>
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Faktury</h3>
+            {% if invoices|length > 0 %}
+                <div class="space-y-3">
+                    {% for invoice in invoices %}
+                        <div class="flex items-center justify-between py-3 {{ not loop.last ? 'border-b border-gray-100' : '' }}">
+                            <div class="flex items-center">
+                                <svg class="h-8 w-8 {{ invoice.hasPdf() ? 'text-accent' : 'text-gray-400' }} flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                <div class="ml-3">
+                                    <p class="text-sm font-medium text-gray-900">{{ invoice.invoiceNumber }}</p>
+                                    <p class="text-xs text-gray-500">{{ invoice.issuedAt|date('d.m.Y') }} - {{ (invoice.amount / 100)|number_format(2, ',', ' ') }} Kč</p>
+                                </div>
+                            </div>
+                            {% if invoice.hasPdf() %}
+                                <a href="{{ path('portal_user_invoice_pdf', {id: invoice.id}) }}" class="btn btn-primary btn-sm">
+                                    <svg class="h-4 w-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                    </svg>
+                                    PDF
+                                </a>
+                            {% else %}
+                                <span class="text-xs text-gray-400">PDF není k dispozici</span>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
                 </div>
-                {% if invoice and invoice.hasPdf() %}
-                    <a href="{{ path('portal_user_invoice_pdf', {id: invoice.id}) }}" class="btn btn-primary">
-                        <svg class="h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                        </svg>
-                        Stáhnout PDF
-                    </a>
-                {% else %}
-                    <span class="inline-flex items-center px-4 py-2 border border-gray-200 text-sm font-medium rounded-md text-gray-400 bg-gray-50 cursor-not-allowed">
-                        <svg class="h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                        </svg>
-                        Není k dispozici
-                    </span>
-                {% endif %}
-            </div>
+            {% else %}
+                <p class="text-sm text-yellow-600">Faktura zatím není k dispozici</p>
+            {% endif %}
         </div>
     </div>
     {% endif %}

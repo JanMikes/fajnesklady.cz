@@ -23,6 +23,11 @@ final readonly class AcceptOrderTermsHandler
         $order = $command->order;
 
         $order->acceptTerms($now);
+
+        if ($command->earlyStartWaiverAccepted) {
+            $order->acceptEarlyStartWaiver($now);
+        }
+
         $order->reserve($now);
 
         $this->auditLogger->logOrderReserved($order);

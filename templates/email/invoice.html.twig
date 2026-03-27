@@ -108,7 +108,11 @@
             </table>
         </div>
 
-        <p>Faktura je přiložena k tomuto emailu ve formátu PDF.</p>
+        {% if hasPdfAttachment %}
+            <p>Faktura je přiložena k tomuto emailu ve formátu PDF.</p>
+        {% else %}
+            <p>Faktura bude k dispozici ke stažení ve Vašem účtu.</p>
+        {% endif %}
 
         <p>Děkujeme za důvěru!</p>
 

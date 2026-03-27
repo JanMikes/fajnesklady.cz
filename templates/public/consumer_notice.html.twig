@@ -1,0 +1,23 @@
+{% extends 'user/layout.html.twig' %}
+
+{% block title %}Poučení o právech Spotřebitele - Fajné Sklady{% endblock %}
+{% block meta_description %}Poučení o právech spotřebitele při pronájmu skladovacích kontejnerů od společnosti Mekmann s.r.o. provozující službu Fajné Sklady.{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    {# Back Link #}
+    <div class="mb-6">
+        <a href="{{ path('app_home') }}" class="text-primary-600 hover:text-primary-700">
+            &larr; Zpět na hlavní stránku
+        </a>
+    </div>
+
+    <article class="card">
+        <div class="card-body prose prose-gray max-w-none">
+            <h1 class="text-3xl font-bold text-gray-900 mb-6 pb-4 border-b">Poučení o právech Spotřebitele</h1>
+
+            {% include 'public/_consumer_notice_content.html.twig' %}
+        </div>
+    </article>
+</div>
+{% endblock %}

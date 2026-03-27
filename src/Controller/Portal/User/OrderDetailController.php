@@ -52,7 +52,7 @@ final class OrderDetailController extends AbstractController
         }
 
         $contract = $this->contractRepository->findByOrder($order);
-        $invoice = $this->invoiceRepository->findByOrder($order);
+        $invoices = $this->invoiceRepository->findAllByOrder($order);
 
         $daysRemaining = null;
         $canTerminate = false;
@@ -66,7 +66,7 @@ final class OrderDetailController extends AbstractController
         return $this->render('portal/user/order/detail.html.twig', [
             'order' => $order,
             'contract' => $contract,
-            'invoice' => $invoice,
+            'invoices' => $invoices,
             'storage' => $order->storage,
             'storageType' => $order->storage->storageType,
             'place' => $order->storage->getPlace(),

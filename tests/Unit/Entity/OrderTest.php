@@ -548,6 +548,7 @@ class OrderTest extends TestCase
             signingMethod: SigningMethod::DRAW,
             typedName: null,
             styleId: null,
+            signingPlace: 'Praha',
             now: $now,
         );
 
@@ -556,6 +557,7 @@ class OrderTest extends TestCase
         $this->assertSame(SigningMethod::DRAW, $order->signingMethod);
         $this->assertNull($order->signatureTypedName);
         $this->assertNull($order->signatureStyleId);
+        $this->assertSame('Praha', $order->signingPlace);
         $this->assertSame($now, $order->signedAt);
     }
 
@@ -569,6 +571,7 @@ class OrderTest extends TestCase
             signingMethod: SigningMethod::TYPED,
             typedName: 'Jan Novák',
             styleId: 'dancing-script',
+            signingPlace: 'Brno',
             now: $now,
         );
 
@@ -576,6 +579,7 @@ class OrderTest extends TestCase
         $this->assertSame(SigningMethod::TYPED, $order->signingMethod);
         $this->assertSame('Jan Novák', $order->signatureTypedName);
         $this->assertSame('dancing-script', $order->signatureStyleId);
+        $this->assertSame('Brno', $order->signingPlace);
     }
 
     public function testHasSignatureRequiresBothPathAndTimestamp(): void
@@ -591,9 +595,40 @@ class OrderTest extends TestCase
             signingMethod: SigningMethod::DRAW,
             typedName: null,
             styleId: null,
+            signingPlace: 'Praha',
             now: new \DateTimeImmutable(),
         );
         $this->assertTrue($order->hasSignature());
+    }
+
+    public function testEarlyStartWaiverNotAcceptedByDefault(): void
+    {
+        $order = $this->createOrder();
+
+        $this->assertFalse($order->hasAcceptedEarlyStartWaiver());
+        $this->assertNull($order->earlyStartWaiverAcceptedAt);
+    }
+
+    public function testAcceptEarlyStartWaiver(): void
+    {
+        $order = $this->createOrder();
+        $now = new \DateTimeImmutable();
+
+        $order->acceptEarlyStartWaiver($now);
+
+        $this->assertTrue($order->hasAcceptedEarlyStartWaiver());
+        $this->assertSame($now, $order->earlyStartWaiverAcceptedAt);
+    }
+
+    public function testEarlyStartWaiverAndTermsAreIndependent(): void
+    {
+        $order = $this->createOrder();
+        $now = new \DateTimeImmutable();
+
+        $order->acceptEarlyStartWaiver($now);
+
+        $this->assertTrue($order->hasAcceptedEarlyStartWaiver());
+        $this->assertFalse($order->hasAcceptedTerms());
     }
 
     public function testAcceptTermsAndSignatureAreIndependent(): void
@@ -613,6 +648,7 @@ class OrderTest extends TestCase
             signingMethod: SigningMethod::DRAW,
             typedName: null,
             styleId: null,
+            signingPlace: 'Praha',
             now: $now,
         );
         $this->assertTrue($order->hasAcceptedTerms());

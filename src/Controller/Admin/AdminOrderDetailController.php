@@ -38,7 +38,7 @@ final class AdminOrderDetailController extends AbstractController
         $storageType = $storage->storageType;
         $place = $storage->getPlace();
         $contract = $this->contractRepository->findByOrder($order);
-        $invoice = $this->invoiceRepository->findByOrder($order);
+        $invoices = $this->invoiceRepository->findAllByOrder($order);
 
         $daysRemaining = null;
         $canTerminate = false;
@@ -55,7 +55,7 @@ final class AdminOrderDetailController extends AbstractController
             'storageType' => $storageType,
             'place' => $place,
             'contract' => $contract,
-            'invoice' => $invoice,
+            'invoices' => $invoices,
             'daysRemaining' => $daysRemaining,
             'canTerminate' => $canTerminate,
         ]);

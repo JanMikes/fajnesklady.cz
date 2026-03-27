@@ -82,9 +82,10 @@ final class OrderAcceptController extends AbstractController
         }
 
         $totalPrice = $this->priceCalculator->calculateFirstPaymentPrice($storage, $formData->startDate, $formData->endDate);
+        $requiresEarlyStartWaiver = $formData->startDate < (new \DateTimeImmutable('today'))->modify('+14 days');
 
         if ($request->isMethod('POST')) {
-            return $this->handlePost($request, $formData, $formData->startDate, $place, $storageType, $storage);
+            return $this->handlePost($request, $formData, $formData->startDate, $place, $storageType, $storage, $requiresEarlyStartWaiver);
         }
 
         return $this->render('public/order_accept.html.twig', [
@@ -93,6 +94,8 @@ final class OrderAcceptController extends AbstractController
             'storageType' => $storageType,
             'place' => $place,
             'totalPrice' => $totalPrice,
+            'isRecurring' => null === $formData->endDate,
+            'requiresEarlyStartWaiver' => $requiresEarlyStartWaiver,
         ]);
     }
 
@@ -103,22 +106,49 @@ final class OrderAcceptController extends AbstractController
         \App\Entity\Place $place,
         \App\Entity\StorageType $storageType,
         \App\Entity\Storage $storage,
+        bool $requiresEarlyStartWaiver,
     ): Response {
         $accepted = $request->request->getBoolean('accept_contract');
         $signatureData = $request->request->getString('signature_data');
         $signingMethodValue = $request->request->getString('signing_method');
         $signatureConsent = $request->request->getBoolean('signature_consent');
         $acceptOperatingRules = $request->request->getBoolean('accept_operating_rules');
+        $acceptVop = $request->request->getBoolean('accept_vop');
+        $acceptConsumerNotice = $request->request->getBoolean('accept_consumer_notice');
+        $acceptGdpr = $request->request->getBoolean('accept_gdpr');
+        $acceptRecurringPayments = $request->request->getBoolean('accept_recurring_payments');
+        $acceptEarlyStartWaiver = $request->request->getBoolean('accept_early_start_waiver');
+        $signingPlace = trim($request->request->getString('signing_place'));
+
+        $isRecurring = null === $formData->endDate;
 
         $errors = [];
         if (!$accepted) {
             $errors[] = 'Pro pokračování k platbě je nutné souhlasit se smluvními podmínkami.';
         }
+        if (!$acceptVop) {
+            $errors[] = 'Pro pokračování je nutné souhlasit s všeobecnými obchodními podmínkami.';
+        }
         if (null !== $place->operatingRulesPath && !$acceptOperatingRules) {
             $errors[] = 'Pro pokračování je nutné souhlasit s provozním řádem.';
         }
+        if (!$acceptConsumerNotice) {
+            $errors[] = 'Pro pokračování je nutné souhlasit s poučením o právech spotřebitele.';
+        }
+        if (!$acceptGdpr) {
+            $errors[] = 'Pro pokračování je nutné souhlasit se zpracováním osobních údajů.';
+        }
+        if ($isRecurring && !$acceptRecurringPayments) {
+            $errors[] = 'Pro pokračování je nutné souhlasit s podmínkami opakovaných plateb.';
+        }
+        if ($requiresEarlyStartWaiver && !$acceptEarlyStartWaiver) {
+            $errors[] = 'Pro pokračování je nutné souhlasit se vzdáním se práva na odstoupení od smlouvy ve 14denní lhůtě.';
+        }
         if ('' === $signatureData) {
             $errors[] = 'Pro pokračování je nutné přidat podpis.';
+        }
+        if ('' === $signingPlace) {
+            $errors[] = 'Pro pokračování je nutné vyplnit místo podpisu.';
         }
         if (!$signatureConsent) {
             $errors[] = 'Pro pokračování je nutné potvrdit souhlas s elektronickým podpisem.';
@@ -140,6 +170,8 @@ final class OrderAcceptController extends AbstractController
                 'storageType' => $storageType,
                 'place' => $place,
                 'totalPrice' => $this->priceCalculator->calculateFirstPaymentPrice($storage, $startDate, $formData->endDate),
+                'isRecurring' => null === $formData->endDate,
+                'requiresEarlyStartWaiver' => $requiresEarlyStartWaiver,
             ]);
         }
 
@@ -193,12 +225,16 @@ final class OrderAcceptController extends AbstractController
                 order: $order,
                 signatureDataUrl: $signatureData,
                 signingMethod: $signingMethod,
+                signingPlace: $signingPlace,
                 typedName: $typedName,
                 styleId: $styleId,
             ));
 
             // 4. Accept terms + reserve storage
-            $this->commandBus->dispatch(new AcceptOrderTermsCommand($order));
+            $this->commandBus->dispatch(new AcceptOrderTermsCommand(
+                order: $order,
+                earlyStartWaiverAccepted: $requiresEarlyStartWaiver && $acceptEarlyStartWaiver,
+            ));
 
             // Clear session data
             $request->getSession()->remove('order_form_data');
@@ -228,6 +264,8 @@ final class OrderAcceptController extends AbstractController
                 'storageType' => $storageType,
                 'place' => $place,
                 'totalPrice' => $this->priceCalculator->calculateFirstPaymentPrice($storage, $startDate, $formData->endDate),
+                'isRecurring' => null === $formData->endDate,
+                'requiresEarlyStartWaiver' => $requiresEarlyStartWaiver,
             ]);
         }
     }

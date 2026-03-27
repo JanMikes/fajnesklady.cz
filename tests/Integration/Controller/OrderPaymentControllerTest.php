@@ -50,6 +50,9 @@ class OrderPaymentControllerTest extends WebTestCase
         $this->assertResponseIsSuccessful();
         $this->assertSelectorTextContains('h1', 'Rekapitulace a přijetí smlouvy');
         $this->assertSelectorExists('input[name="accept_contract"]');
+        $this->assertSelectorExists('input[name="accept_vop"]');
+        $this->assertSelectorExists('input[name="accept_consumer_notice"]');
+        $this->assertSelectorExists('input[name="accept_gdpr"]');
         $this->assertSelectorExists('input[name="signature_data"]');
         $this->assertSelectorExists('input[name="signing_method"]');
         $this->assertSelectorExists('input[name="signature_consent"]');
@@ -62,6 +65,9 @@ class OrderPaymentControllerTest extends WebTestCase
 
         $this->client->request('POST', $this->buildAcceptUrl($storage), [
             'accept_contract' => '1',
+            'accept_vop' => '1',
+            'accept_consumer_notice' => '1',
+            'accept_gdpr' => '1',
             'signature_data' => $this->createValidPngDataUrl(),
             'signing_method' => 'draw',
             'signature_consent' => '1',
@@ -93,6 +99,9 @@ class OrderPaymentControllerTest extends WebTestCase
 
         $this->client->request('POST', $this->buildAcceptUrl($storage), [
             'accept_contract' => '1',
+            'accept_vop' => '1',
+            'accept_consumer_notice' => '1',
+            'accept_gdpr' => '1',
             'signature_data' => '',
             'signing_method' => 'draw',
             'signature_consent' => '1',
@@ -108,6 +117,9 @@ class OrderPaymentControllerTest extends WebTestCase
 
         $this->client->request('POST', $this->buildAcceptUrl($storage), [
             'accept_contract' => '1',
+            'accept_vop' => '1',
+            'accept_consumer_notice' => '1',
+            'accept_gdpr' => '1',
             'signature_data' => $this->createValidPngDataUrl(),
             'signing_method' => 'draw',
             // missing signature_consent
@@ -123,12 +135,108 @@ class OrderPaymentControllerTest extends WebTestCase
 
         $this->client->request('POST', $this->buildAcceptUrl($storage), [
             // missing accept_contract
+            'accept_vop' => '1',
+            'accept_consumer_notice' => '1',
+            'accept_gdpr' => '1',
             'signature_data' => $this->createValidPngDataUrl(),
             'signing_method' => 'draw',
             'signature_consent' => '1',
         ]);
 
         $this->assertResponseIsSuccessful(); // Re-renders form with error
+    }
+
+    public function testAcceptWithoutVopCheckboxShowsError(): void
+    {
+        $storage = $this->findAvailableStorage();
+        $this->setOrderSessionData();
+
+        $this->client->request('POST', $this->buildAcceptUrl($storage), [
+            'accept_contract' => '1',
+            // missing accept_vop
+            'accept_consumer_notice' => '1',
+            'accept_gdpr' => '1',
+            'signature_data' => $this->createValidPngDataUrl(),
+            'signing_method' => 'draw',
+            'signature_consent' => '1',
+        ]);
+
+        $this->assertResponseIsSuccessful(); // Re-renders form with error
+    }
+
+    public function testAcceptWithoutConsumerNoticeCheckboxShowsError(): void
+    {
+        $storage = $this->findAvailableStorage();
+        $this->setOrderSessionData();
+
+        $this->client->request('POST', $this->buildAcceptUrl($storage), [
+            'accept_contract' => '1',
+            'accept_vop' => '1',
+            // missing accept_consumer_notice
+            'accept_gdpr' => '1',
+            'signature_data' => $this->createValidPngDataUrl(),
+            'signing_method' => 'draw',
+            'signature_consent' => '1',
+        ]);
+
+        $this->assertResponseIsSuccessful(); // Re-renders form with error
+    }
+
+    public function testAcceptWithoutGdprCheckboxShowsError(): void
+    {
+        $storage = $this->findAvailableStorage();
+        $this->setOrderSessionData();
+
+        $this->client->request('POST', $this->buildAcceptUrl($storage), [
+            'accept_contract' => '1',
+            'accept_vop' => '1',
+            'accept_consumer_notice' => '1',
+            // missing accept_gdpr
+            'signature_data' => $this->createValidPngDataUrl(),
+            'signing_method' => 'draw',
+            'signature_consent' => '1',
+        ]);
+
+        $this->assertResponseIsSuccessful(); // Re-renders form with error
+    }
+
+    public function testAcceptWithoutRecurringPaymentsCheckboxShowsErrorForUnlimitedRental(): void
+    {
+        $storage = $this->findAvailableStorage();
+        $this->setOrderSessionData(unlimited: true);
+
+        $this->client->request('POST', $this->buildAcceptUrl($storage), [
+            'accept_contract' => '1',
+            'accept_vop' => '1',
+            'accept_consumer_notice' => '1',
+            'accept_gdpr' => '1',
+            // missing accept_recurring_payments
+            'signature_data' => $this->createValidPngDataUrl(),
+            'signing_method' => 'draw',
+            'signature_consent' => '1',
+        ]);
+
+        $this->assertResponseIsSuccessful(); // Re-renders form with error
+    }
+
+    public function testAcceptRecurringPaymentsNotRequiredForLimitedRental(): void
+    {
+        $storage = $this->findAvailableStorage();
+        $this->setOrderSessionData(); // limited rental
+
+        $this->client->request('POST', $this->buildAcceptUrl($storage), [
+            'accept_contract' => '1',
+            'accept_vop' => '1',
+            'accept_consumer_notice' => '1',
+            'accept_gdpr' => '1',
+            // no accept_recurring_payments - not required for limited rental
+            'signature_data' => $this->createValidPngDataUrl(),
+            'signing_method' => 'draw',
+            'signature_consent' => '1',
+        ]);
+
+        $response = $this->client->getResponse();
+        $this->assertTrue($response->isRedirect()); // Should succeed
     }
 
     public function testAcceptWithTypedSignature(): void
@@ -138,6 +246,9 @@ class OrderPaymentControllerTest extends WebTestCase
 
         $this->client->request('POST', $this->buildAcceptUrl($storage), [
             'accept_contract' => '1',
+            'accept_vop' => '1',
+            'accept_consumer_notice' => '1',
+            'accept_gdpr' => '1',
             'signature_data' => $this->createValidPngDataUrl(),
             'signing_method' => 'typed',
             'typed_name' => 'Jan Novák',
@@ -329,7 +440,7 @@ class OrderPaymentControllerTest extends WebTestCase
         $this->entityManager->clear();
     }
 
-    private function setOrderSessionData(): void
+    private function setOrderSessionData(bool $unlimited = false): void
     {
         /** @var SessionFactoryInterface $sessionFactory */
         $sessionFactory = static::getContainer()->get('session.factory');
@@ -347,9 +458,9 @@ class OrderPaymentControllerTest extends WebTestCase
             'billingStreet' => null,
             'billingCity' => null,
             'billingPostalCode' => null,
-            'rentalType' => 'limited',
+            'rentalType' => $unlimited ? 'unlimited' : 'limited',
             'startDate' => '2025-06-22',
-            'endDate' => '2025-07-22',
+            'endDate' => $unlimited ? null : '2025-07-22',
         ]);
         $session->save();
 

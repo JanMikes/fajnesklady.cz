@@ -40,6 +40,8 @@ class InvoiceRepository
             ->from(Invoice::class, 'i')
             ->where('i.order = :order')
             ->setParameter('order', $order)
+            ->orderBy('i.issuedAt', 'ASC')
+            ->setMaxResults(1)
             ->getQuery()
             ->getOneOrNullResult();
     }

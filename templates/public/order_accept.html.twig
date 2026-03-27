@@ -30,6 +30,16 @@
              acceptContract: false,
              acceptOperatingRules: {{ place.operatingRulesPath ? 'false' : 'true' }},
              signatureConsent: false,
+             signingPlace: '',
+             acceptVop: false,
+             acceptConsumerNotice: false,
+             acceptGdpr: false,
+             acceptRecurringPayments: {{ isRecurring ? 'false' : 'true' }},
+             acceptEarlyStartWaiver: {{ requiresEarlyStartWaiver ? 'false' : 'true' }},
+             vopModalOpen: false,
+             consumerNoticeModalOpen: false,
+             recurringPaymentsModalOpen: false,
+             gdprModalOpen: false,
          }"
          @signature:signed.window="signed = true; modalOpen = false"
          data-controller="signature"
@@ -85,6 +95,58 @@
                     </div>
                 </div>
 
+                {# Recurring Payment Parameters (visible, separated from T&C - GoPay requirement) #}
+                {% if isRecurring %}
+                <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+                    <h2 class="font-semibold text-gray-900 mb-3 flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-amber-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Parametry opakované platby
+                    </h2>
+
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Účel platby</span>
+                            <span class="font-medium">Pronájem skladového kontejneru</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Výše platby</span>
+                            <span class="font-medium">{{ (totalPrice / 100)|number_format(2, ',', ' ') }} Kč</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Typ částky</span>
+                            <span class="font-medium">Fixní (dle ceníku)</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Maximální částka</span>
+                            <span class="font-medium">15 000 Kč</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Frekvence</span>
+                            <span class="font-medium">Měsíční</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Den stržení</span>
+                            <span class="font-medium">Shodný s dnem první platby</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Variabilita frekvence</span>
+                            <span class="font-medium">Neměnná</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Kontakt pro změny</span>
+                            <span class="font-medium"><a href="mailto:simek@fajnesklady.cz" class="text-accent hover:underline">simek@fajnesklady.cz</a></span>
+                        </div>
+                    </div>
+
+                    <p class="text-xs text-gray-500 mt-3">
+                        Opakovanou platbu můžete kdykoli zrušit kontaktováním pronajímatele.
+                        Podrobnosti v <button type="button" @click.prevent="recurringPaymentsModalOpen = true" class="text-accent hover:underline font-medium">podmínkách opakovaných plateb</button>.
+                    </p>
+                </div>
+                {% endif %}
+
                 {# Customer Info #}
                 <div class="bg-blue-50 rounded-lg p-4 mb-6">
                     <h2 class="font-semibold text-gray-900 mb-3">Vaše údaje</h2>
@@ -130,15 +192,15 @@
                 <div class="border border-gray-200 rounded-lg p-4 mb-6 max-h-96 overflow-y-auto bg-white">
                     <h3 class="font-semibold text-gray-900 mb-3">Smlouva o nájmu</h3>
 
-                    <div class="prose prose-sm text-gray-600">
-                        <p><strong>Pronajímatel:</strong></p>
+                    <div class="text-xs text-gray-600 [&>h4]:mt-4 [&>h4]:mb-1 [&>h4]:text-sm [&>h4]:font-bold [&>h4]:text-gray-900 [&>p]:my-1 [&>ul]:my-1 [&>ul]:list-disc [&>ul]:pl-5">
+                        <h4>Pronajímatel:</h4>
                         <p>Obchodní firma: Mekmann s.r.o.<br>
                            IČO: 11678631<br>
                            DIČ: CZ11678631<br>
                            Sídlem: Dvořákova 780, Frýdlant, 739 11 Frýdlant nad Ostravicí<br>
                            Zapsána: Krajský soud v Ostravě, C 86521</p>
 
-                        <p><strong>Nájemce:</strong></p>
+                        <h4>Nájemce:</h4>
                         {% if formData.invoiceToCompany and formData.companyName %}
                             <p>Společnost: {{ formData.companyName }}, zastoupena {{ customerFullName }}<br>
                                IČO: {{ formData.companyId }}<br>
@@ -152,12 +214,12 @@
                                Email: {{ formData.email }}</p>
                         {% endif %}
 
-                        <p><strong>I. Předmět smlouvy</strong></p>
+                        <h4>I. Předmět smlouvy</h4>
                         <p>Pronajímatel výslovně prohlašuje, že je výlučným vlastníkem níže specifikované movité věci:</p>
                         <p><strong>{{ storageType.name }} č. {{ storage.number }} ({{ storageType.innerWidth }} × {{ storageType.innerHeight }} × {{ storageType.innerLength }} cm)</strong>, a to v počtu 1 Ks (dále jen „Předmět nájmu")</p>
                         <p>Pronajímatel tímto přenechává Nájemci Předmět nájmu k dočasnému užívání za úplatu, a to za podmínek dále stanovených zde v této Smlouvě nebo ve všeobecných obchodních podmínkách Pronajímatele (dále jen „VOP"), které tvoří nedílnou součást této Smlouvy.</p>
 
-                        <p><strong>II. Doba nájmu a předání</strong></p>
+                        <h4>II. Doba nájmu a předání</h4>
                         <p>
                             {% if formData.endDate %}
                                 Nájem se sjednává na dobu určitou, a to od {{ formData.startDate|date('d.m.Y') }} do {{ formData.endDate|date('d.m.Y') }}
@@ -168,19 +230,19 @@
                         <p>Pokud nájem má začít okamžitě, respektive v době před uplynutím 14 dní, ve kterých může Nájemce, který je spotřebitelem od Smlouvy odstoupit, pak tímto Nájemce výslovně žádá, aby bylo započato s plněním. Současně prohlašuje, že rozumí a chápe, že ztrácí právo na odstoupení od Smlouvy.</p>
                         <p>Nájemce je povinen nejpozději ke dni skončení nájmu zaslat fotografii zachycující stav Předmětu nájmu, který musí být vyklizený a čistý. Do okamžiku zaslání fotografie se má za to, že Předmět nájmu není řádně předaný.</p>
 
-                        <p><strong>III. Cena nájmu a splatnost</strong></p>
+                        <h4>III. Cena nájmu a splatnost</h4>
                         <p>Smluvní strany se dohodly, že cena za nájem Předmět nájmu je určena Ceníkem, který je nedílnou součástí této Smlouvy (dále jen „cena nájmu" nebo „nájemné").</p>
 
-                        <p><strong>IV. Smluvní sankce</strong></p>
+                        <h4>IV. Smluvní sankce</h4>
                         <p>Pokud Nájemce Předmět nájmu vrátí znečištěný, je Pronajímatel oprávněn požadovat po Nájemci smluvní pokutu ve výši 6 000,- Kč.</p>
                         <p>Pokud Nájemce Předmět nájmu nevrátí nejpozději ke dni skončení nájmu, je Pronajímatel oprávněn požadovat po Nájemci smluvní pokutu ve výši 2 000,- Kč denně.</p>
                         <p>V případě prodlení Nájemce s úhradou jakéhokoliv peněžitého závazku, je Nájemce povinen uhradit Pronajímateli smluvní pokutu ve výši 0,25 % denně dlužné částky za každý, byť jen započatý, den prodlení, a to až do úplného zaplacení, minimálně však částku 250,- Kč denně.</p>
 
-                        <p><strong>V. Jistota</strong></p>
+                        <h4>V. Jistota</h4>
                         <p>Po Nájemci není požadována žádná jistota.</p>
                         <p>Pronajímatel je oprávněn jistotu jednostranně započítat oproti všem finančním nárokům vůči Nájemci vyplývajícím ze Smlouvy.</p>
 
-                        <p><strong>VI. Závěrečná ustanovení</strong></p>
+                        <h4>VI. Závěrečná ustanovení</h4>
                         <p>Smlouva je vyhotovena ve 2 stejnopisech, každý s platností originálu, z nichž každá smluvní strana obdrží jedno vyhotovení.</p>
                         <p>Nedílnou součástí Smlouvy jsou i následující přílohy:</p>
                         <ul>
@@ -190,6 +252,30 @@
                             <li>Ceník</li>
                         </ul>
                         <p>Smluvní strany prohlašují, že Smlouva byla sepsána na základě jejich svobodné, shodné a vážné vůle, nebyla sepsána v tísni za nápadně nevýhodných podmínek, že si smlouvu před podpisem přečetly, že byla sepsána podle pravdivých údajů a že souhlasí s jejím obsahem.</p>
+                    </div>
+                </div>
+
+                {# Signing Date & Place #}
+                <div class="border border-gray-200 rounded-lg p-4 mb-6">
+                    <h3 class="font-semibold text-gray-900 mb-3">Datum a místo podpisu</h3>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Datum podpisu</label>
+                            <div class="px-3 py-2 bg-gray-100 border border-gray-200 rounded-md text-sm text-gray-900">
+                                {{ "now"|date('d.m.Y') }}
+                            </div>
+                        </div>
+                        <div>
+                            <label for="signing_place" class="block text-sm font-medium text-gray-700 mb-1">Místo podpisu <span class="text-red-500">*</span></label>
+                            <input type="text"
+                                   id="signing_place"
+                                   name="signing_place"
+                                   x-model="signingPlace"
+                                   placeholder="např. Praha"
+                                   required
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-accent focus:border-accent">
+                        </div>
                     </div>
                 </div>
 
@@ -283,7 +369,7 @@
                             <div data-signature-target="drawPanel">
                                 <p class="text-xs text-gray-500 mb-2">Nakreslete svůj podpis do pole níže:</p>
                                 <canvas data-signature-target="drawCanvas"
-                                        class="w-full h-40 border border-gray-300 rounded-lg cursor-crosshair bg-white"></canvas>
+                                        class="w-full h-52 border border-gray-300 rounded-lg cursor-crosshair bg-white"></canvas>
                             </div>
 
                             {# Typed panel #}
@@ -327,7 +413,7 @@
                                 </div>
 
                                 <canvas data-signature-target="typedCanvas"
-                                        class="w-full h-24 border border-gray-300 rounded-lg bg-white"></canvas>
+                                        class="w-full h-36 border border-gray-300 rounded-lg bg-white"></canvas>
                             </div>
 
                             {# Modal footer #}
@@ -357,6 +443,7 @@
                     <input type="hidden" name="style_id" data-signature-target="styleIdField" value="">
 
                     <div class="space-y-4 mb-6">
+                        {# Contract terms checkbox #}
                         <label class="flex items-start cursor-pointer">
                             <input type="checkbox"
                                    name="accept_contract"
@@ -369,6 +456,19 @@
                             </span>
                         </label>
 
+                        {# VOP checkbox with modal link #}
+                        <label class="flex items-start cursor-pointer">
+                            <input type="checkbox"
+                                   name="accept_vop"
+                                   value="1"
+                                   x-model="acceptVop"
+                                   class="mt-1 mr-3 h-4 w-4 text-accent border-gray-300 rounded focus:ring-accent">
+                            <span class="text-sm text-gray-700">
+                                Souhlasím s <button type="button" @click.prevent="vopModalOpen = true" class="text-accent hover:underline font-medium">všeobecnými obchodními podmínkami</button>
+                            </span>
+                        </label>
+
+                        {# Operating rules checkbox (conditional) #}
                         {% if place.operatingRulesPath %}
                             <label class="flex items-start cursor-pointer">
                                 <input type="checkbox"
@@ -382,6 +482,61 @@
                             </label>
                         {% endif %}
 
+                        {# Consumer notice checkbox with modal link #}
+                        <label class="flex items-start cursor-pointer">
+                            <input type="checkbox"
+                                   name="accept_consumer_notice"
+                                   value="1"
+                                   x-model="acceptConsumerNotice"
+                                   class="mt-1 mr-3 h-4 w-4 text-accent border-gray-300 rounded focus:ring-accent">
+                            <span class="text-sm text-gray-700">
+                                Souhlasím s <button type="button" @click.prevent="consumerNoticeModalOpen = true" class="text-accent hover:underline font-medium">poučením o právech spotřebitele</button>
+                            </span>
+                        </label>
+
+                        {# Early start withdrawal waiver checkbox (conditional - only when start < 14 days from now) #}
+                        {% if requiresEarlyStartWaiver %}
+                            <label class="flex items-start cursor-pointer">
+                                <input type="checkbox"
+                                       name="accept_early_start_waiver"
+                                       value="1"
+                                       x-model="acceptEarlyStartWaiver"
+                                       class="mt-1 mr-3 h-4 w-4 text-accent border-gray-300 rounded focus:ring-accent">
+                                <span class="text-sm text-gray-700">
+                                    Výslovně žádám o započetí plnění před uplynutím lhůty pro odstoupení od smlouvy
+                                    a beru na vědomí, že tím ztrácím právo na odstoupení od smlouvy ve 14denní lhůtě.
+                                </span>
+                            </label>
+                        {% endif %}
+
+                        {# GDPR checkbox with modal link #}
+                        <label class="flex items-start cursor-pointer">
+                            <input type="checkbox"
+                                   name="accept_gdpr"
+                                   value="1"
+                                   x-model="acceptGdpr"
+                                   class="mt-1 mr-3 h-4 w-4 text-accent border-gray-300 rounded focus:ring-accent">
+                            <span class="text-sm text-gray-700">
+                                Souhlasím se <button type="button" @click.prevent="gdprModalOpen = true" class="text-accent hover:underline font-medium">zpracováním osobních údajů</button> pro obchodní účely
+                            </span>
+                        </label>
+
+                        {# Recurring payments checkbox (conditional - only for unlimited/recurring rentals) #}
+                        {% if isRecurring %}
+                            <label class="flex items-start cursor-pointer">
+                                <input type="checkbox"
+                                       name="accept_recurring_payments"
+                                       value="1"
+                                       x-model="acceptRecurringPayments"
+                                       class="mt-1 mr-3 h-4 w-4 text-accent border-gray-300 rounded focus:ring-accent">
+                                <span class="text-sm text-gray-700">
+                                    Souhlasím se založením a parametry opakované platby a s uložením platebních údajů
+                                    na platební bráně GoPay. Podrobnosti v <button type="button" @click.prevent="recurringPaymentsModalOpen = true" class="text-accent hover:underline font-medium">podmínkách opakovaných plateb</button>.
+                                </span>
+                            </label>
+                        {% endif %}
+
+                        {# Signature consent checkbox #}
                         <label class="flex items-start cursor-pointer">
                             <input type="checkbox"
                                    name="signature_consent"
@@ -395,6 +550,19 @@
                         </label>
                     </div>
 
+                    {# Price + billing cadence directly above button (Visa/Mastercard requirement) #}
+                    {% if isRecurring %}
+                    <div class="bg-gray-100 rounded-lg p-3 text-center text-sm text-gray-700">
+                        <strong>{{ (totalPrice / 100)|number_format(2, ',', ' ') }} Kč / měsíc</strong>
+                        — opakovaná měsíční platba po dobu trvání nájmu
+                    </div>
+                    {% endif %}
+
+                    {# Payment card logos (GoPay compliance) #}
+                    <div class="flex justify-center py-2">
+                        {% include 'components/payment_logos.html.twig' %}
+                    </div>
+
                     <div class="flex items-center justify-between pt-2">
                         <a href="{{ path('public_order_create', {placeId: place.id, storageTypeId: storageType.id, storageId: storage.id}) }}" class="inline-flex items-center text-gray-600 hover:text-gray-900">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -404,16 +572,129 @@
                         </a>
                         <button type="submit"
                                 class="btn btn-primary btn-lg"
-                                :disabled="!(signed && acceptContract && acceptOperatingRules && signatureConsent)"
-                                :class="{'opacity-50 cursor-not-allowed': !(signed && acceptContract && acceptOperatingRules && signatureConsent)}">
+                                :disabled="!(signed && acceptContract && acceptVop && acceptOperatingRules && acceptConsumerNotice && acceptGdpr && acceptRecurringPayments && acceptEarlyStartWaiver && signatureConsent && signingPlace.trim())"
+                                :class="{'opacity-50 cursor-not-allowed': !(signed && acceptContract && acceptVop && acceptOperatingRules && acceptConsumerNotice && acceptGdpr && acceptRecurringPayments && acceptEarlyStartWaiver && signatureConsent && signingPlace.trim())}">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                             </svg>
-                            Souhlasím a pokračuji k platbě
+                            Objednat a zaplatit
                         </button>
                     </div>
                 </form>
             </div>
         </div>
+        {# VOP Modal #}
+        <div x-show="vopModalOpen"
+             x-cloak
+             class="fixed inset-0 z-50 overflow-y-auto"
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition ease-in duration-150"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0">
+            <div class="flex items-start justify-center min-h-screen px-4 py-8">
+                <div class="fixed inset-0 bg-black/70" @click="vopModalOpen = false"></div>
+                <div class="relative bg-white rounded-xl shadow-xl max-w-3xl w-full p-6 z-10 max-h-[85vh] overflow-y-auto" @click.stop>
+                    <div class="flex items-center justify-between mb-4 sticky top-0 bg-white pb-2 border-b">
+                        <h3 class="text-lg font-semibold text-gray-900">Všeobecné obchodní podmínky</h3>
+                        <button type="button" @click="vopModalOpen = false" class="text-gray-400 hover:text-gray-600">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="prose prose-sm prose-gray max-w-none">
+                        {% include 'public/_terms_and_conditions_content.html.twig' %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# Consumer Notice Modal #}
+        <div x-show="consumerNoticeModalOpen"
+             x-cloak
+             class="fixed inset-0 z-50 overflow-y-auto"
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition ease-in duration-150"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0">
+            <div class="flex items-start justify-center min-h-screen px-4 py-8">
+                <div class="fixed inset-0 bg-black/70" @click="consumerNoticeModalOpen = false"></div>
+                <div class="relative bg-white rounded-xl shadow-xl max-w-3xl w-full p-6 z-10 max-h-[85vh] overflow-y-auto" @click.stop>
+                    <div class="flex items-center justify-between mb-4 sticky top-0 bg-white pb-2 border-b">
+                        <h3 class="text-lg font-semibold text-gray-900">Poučení o právech Spotřebitele</h3>
+                        <button type="button" @click="consumerNoticeModalOpen = false" class="text-gray-400 hover:text-gray-600">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="prose prose-sm prose-gray max-w-none">
+                        {% include 'public/_consumer_notice_content.html.twig' %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# GDPR Modal #}
+        <div x-show="gdprModalOpen"
+             x-cloak
+             class="fixed inset-0 z-50 overflow-y-auto"
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition ease-in duration-150"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0">
+            <div class="flex items-start justify-center min-h-screen px-4 py-8">
+                <div class="fixed inset-0 bg-black/70" @click="gdprModalOpen = false"></div>
+                <div class="relative bg-white rounded-xl shadow-xl max-w-3xl w-full p-6 z-10 max-h-[85vh] overflow-y-auto" @click.stop>
+                    <div class="flex items-center justify-between mb-4 sticky top-0 bg-white pb-2 border-b">
+                        <h3 class="text-lg font-semibold text-gray-900">Ochrana osobních údajů</h3>
+                        <button type="button" @click="gdprModalOpen = false" class="text-gray-400 hover:text-gray-600">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="prose prose-sm prose-gray max-w-none">
+                        {% include 'public/_privacy_policy_content.html.twig' %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# Recurring Payments Modal #}
+        {% if isRecurring %}
+        <div x-show="recurringPaymentsModalOpen"
+             x-cloak
+             class="fixed inset-0 z-50 overflow-y-auto"
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition ease-in duration-150"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0">
+            <div class="flex items-start justify-center min-h-screen px-4 py-8">
+                <div class="fixed inset-0 bg-black/70" @click="recurringPaymentsModalOpen = false"></div>
+                <div class="relative bg-white rounded-xl shadow-xl max-w-3xl w-full p-6 z-10 max-h-[85vh] overflow-y-auto" @click.stop>
+                    <div class="flex items-center justify-between mb-4 sticky top-0 bg-white pb-2 border-b">
+                        <h3 class="text-lg font-semibold text-gray-900">Podmínky opakovaných plateb</h3>
+                        <button type="button" @click="recurringPaymentsModalOpen = false" class="text-gray-400 hover:text-gray-600">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="prose prose-sm prose-gray max-w-none">
+                        {% include 'public/_recurring_payments_terms_content.html.twig' %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
     </div>
 {% endblock %}

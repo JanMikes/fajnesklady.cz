@@ -122,6 +122,10 @@ class SendInvoiceEmailHandlerTest extends TestCase
         $this->assertNotNull($sentEmail);
         $attachments = $sentEmail->getAttachments();
         $this->assertCount(1, $attachments);
+
+        /** @var \Symfony\Bridge\Twig\Mime\TemplatedEmail $sentEmail */
+        $context = $sentEmail->getContext();
+        $this->assertTrue($context['hasPdfAttachment']);
     }
 
     public function testHandlerDoesNotAttachPdfWhenNotAvailable(): void
@@ -144,6 +148,10 @@ class SendInvoiceEmailHandlerTest extends TestCase
         $this->assertNotNull($sentEmail);
         $attachments = $sentEmail->getAttachments();
         $this->assertCount(0, $attachments);
+
+        /** @var \Symfony\Bridge\Twig\Mime\TemplatedEmail $sentEmail */
+        $context = $sentEmail->getContext();
+        $this->assertFalse($context['hasPdfAttachment']);
     }
 
     private function createInvoice(): Invoice

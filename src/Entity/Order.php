@@ -37,6 +37,9 @@ class Order implements EntityWithEvents
     public private(set) ?\DateTimeImmutable $termsAcceptedAt = null;
 
     #[ORM\Column(nullable: true)]
+    public private(set) ?\DateTimeImmutable $earlyStartWaiverAcceptedAt = null;
+
+    #[ORM\Column(nullable: true)]
     public private(set) ?string $goPayPaymentId = null;
 
     #[ORM\Column(nullable: true)]
@@ -56,6 +59,9 @@ class Order implements EntityWithEvents
 
     #[ORM\Column(nullable: true)]
     public private(set) ?\DateTimeImmutable $signedAt = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    public private(set) ?string $signingPlace = null;
 
     public function __construct(
         #[ORM\Id]
@@ -107,6 +113,16 @@ class Order implements EntityWithEvents
     public function hasAcceptedTerms(): bool
     {
         return null !== $this->termsAcceptedAt;
+    }
+
+    public function acceptEarlyStartWaiver(\DateTimeImmutable $now): void
+    {
+        $this->earlyStartWaiverAcceptedAt = $now;
+    }
+
+    public function hasAcceptedEarlyStartWaiver(): bool
+    {
+        return null !== $this->earlyStartWaiverAcceptedAt;
     }
 
     public function markAwaitingPayment(\DateTimeImmutable $now): void
@@ -215,12 +231,14 @@ class Order implements EntityWithEvents
         SigningMethod $signingMethod,
         ?string $typedName,
         ?string $styleId,
+        string $signingPlace,
         \DateTimeImmutable $now,
     ): void {
         $this->signaturePath = $signaturePath;
         $this->signingMethod = $signingMethod;
         $this->signatureTypedName = $typedName;
         $this->signatureStyleId = $styleId;
+        $this->signingPlace = $signingPlace;
         $this->signedAt = $now;
     }
 

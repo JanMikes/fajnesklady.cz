@@ -10,6 +10,7 @@ final readonly class AcceptOrderTermsCommand
 {
     public function __construct(
         public Order $order,
+        public bool $earlyStartWaiverAccepted = false,
     ) {
     }
 }

@@ -28,6 +28,8 @@ final readonly class SendInvoiceEmailHandler
         $storageType = $storage->storageType;
         $place = $storage->getPlace();
 
+        $hasPdfAttachment = $invoice->hasPdf() && null !== $invoice->pdfPath && file_exists($invoice->pdfPath);
+
         $email = (new TemplatedEmail())
             ->from(new Address('noreply@fajnesklady.cz', 'Fajné Sklady'))
             ->to(new Address($user->email, $user->fullName))
@@ -41,9 +43,10 @@ final readonly class SendInvoiceEmailHandler
                 'placeName' => $place->name,
                 'storageType' => $storageType->name,
                 'storageNumber' => $storage->number,
+                'hasPdfAttachment' => $hasPdfAttachment,
             ]);
 
-        if ($invoice->hasPdf() && null !== $invoice->pdfPath && file_exists($invoice->pdfPath)) {
+        if ($hasPdfAttachment) {
             $email->attachFromPath(
                 $invoice->pdfPath,
                 sprintf('faktura_%s.pdf', $invoice->invoiceNumber),
