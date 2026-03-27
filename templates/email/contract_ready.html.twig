@@ -125,6 +125,37 @@
             </table>
         </div>
 
+        {% if isRecurring %}
+        <div style="background-color: #fef3c7; border: 1px solid #f59e0b; padding: 20px; border-radius: 5px; margin: 20px 0;">
+            <h3 style="margin-top: 0; color: #92400e;">Potvrzení opakované platby</h3>
+            <p style="margin-bottom: 5px;">Tímto potvrzujeme, že byla úspěšně založena opakovaná platba:</p>
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                    <td style="padding: 5px 0; color: #666; width: 40%;"><strong>Frekvence:</strong></td>
+                    <td style="padding: 5px 0;">Měsíční</td>
+                </tr>
+                <tr>
+                    <td style="padding: 5px 0; color: #666;"><strong>Výše platby:</strong></td>
+                    <td style="padding: 5px 0;">{{ monthlyAmount }}</td>
+                </tr>
+                {% if nextBillingDate %}
+                <tr>
+                    <td style="padding: 5px 0; color: #666;"><strong>Příští platba:</strong></td>
+                    <td style="padding: 5px 0;">{{ nextBillingDate }}</td>
+                </tr>
+                {% endif %}
+                <tr>
+                    <td style="padding: 5px 0; color: #666;"><strong>Zrušení:</strong></td>
+                    <td style="padding: 5px 0;">
+                        {% if cancelUrl %}<a href="{{ cancelUrl }}" style="color: #570df8; font-weight: bold;">Zrušit opakovanou platbu</a> nebo kontaktujte{% else %}Kontaktujte nás na{% endif %}
+                        <a href="mailto:simek@fajnesklady.cz" style="color: #570df8;">simek@fajnesklady.cz</a>
+                    </td>
+                </tr>
+            </table>
+            <p style="font-size: 12px; color: #92400e; margin-bottom: 0;">Platební údaje jsou bezpečně uloženy u poskytovatele platební brány GoPay (PCI DSS Level 1).</p>
+        </div>
+        {% endif %}
+
         <p>Smlouvu ve formátu DOCX si můžete stáhnout ve svém účtu:</p>
 
         <div style="text-align: center;">

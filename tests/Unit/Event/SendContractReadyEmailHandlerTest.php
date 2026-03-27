@@ -14,6 +14,7 @@ use App\Enum\RentalType;
 use App\Event\OrderCompleted;
 use App\Event\SendContractReadyEmailHandler;
 use App\Repository\ContractRepository;
+use App\Service\RecurringPaymentCancelUrlGenerator;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Email;
@@ -137,10 +138,14 @@ class SendContractReadyEmailHandlerTest extends TestCase
         $urlGenerator = $this->createStub(UrlGeneratorInterface::class);
         $urlGenerator->method('generate')->willReturn('https://example.com/portal');
 
+        $uriSigner = new \Symfony\Component\HttpFoundation\UriSigner('test-secret');
+        $cancelUrlGenerator = new RecurringPaymentCancelUrlGenerator($urlGenerator, $uriSigner);
+
         return new SendContractReadyEmailHandler(
             $contractRepository,
             $mailer,
             $urlGenerator,
+            $cancelUrlGenerator,
             $this->tempDir,
         );
     }

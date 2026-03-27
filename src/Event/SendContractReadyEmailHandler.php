@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Event;
 
 use App\Repository\ContractRepository;
+use App\Service\RecurringPaymentCancelUrlGenerator;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -18,6 +19,7 @@ final readonly class SendContractReadyEmailHandler
         private ContractRepository $contractRepository,
         private MailerInterface $mailer,
         private UrlGeneratorInterface $urlGenerator,
+        private RecurringPaymentCancelUrlGenerator $cancelUrlGenerator,
         private string $uploadsDirectory,
     ) {
     }
@@ -36,6 +38,8 @@ final readonly class SendContractReadyEmailHandler
             UrlGeneratorInterface::ABSOLUTE_URL
         );
 
+        $isRecurring = $contract->hasActiveRecurringPayment();
+
         $email = (new TemplatedEmail())
             ->from(new Address('noreply@fajnesklady.cz', 'Fajné Sklady'))
             ->to(new Address($user->email, $user->fullName))
@@ -51,6 +55,10 @@ final readonly class SendContractReadyEmailHandler
                 'startDate' => $contract->startDate->format('d.m.Y'),
                 'endDate' => $contract->endDate?->format('d.m.Y') ?? 'Na dobu neurčitou',
                 'portalUrl' => $portalUrl,
+                'isRecurring' => $isRecurring,
+                'monthlyAmount' => $isRecurring ? number_format($contract->order->getTotalPriceInCzk(), 2, ',', ' ').' Kč' : null,
+                'nextBillingDate' => $isRecurring && null !== $contract->nextBillingDate ? $contract->nextBillingDate->format('d.m.Y') : null,
+                'cancelUrl' => $isRecurring ? $this->cancelUrlGenerator->generate($contract) : null,
             ]);
 
         // Attach the contract document if available

@@ -45,7 +45,7 @@ final readonly class CompleteOrderHandler
         }
 
         // Generate contract document and sign
-        $this->contractService->generateDocument($contract, $order->signaturePath, $now);
+        $this->contractService->generateDocument($contract, $order->signaturePath, $now, $order->signingPlace, $order->signedAt);
         $this->contractService->signContract($contract, $now);
 
         return $contract;

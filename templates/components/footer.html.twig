@@ -85,8 +85,16 @@
             </div>
         </div>
 
-        {# Footer bottom #}
+        {# Payment methods & security (GoPay compliance) #}
         <div class="pt-8 border-t border-white/10">
+            <div class="flex flex-col items-center gap-3">
+                {% include 'components/payment_logos.html.twig' with { textClass: 'text-white/50' } %}
+                <p class="text-xs text-white/40">Komunikace je zabezpečena šifrováním SSL/TLS</p>
+            </div>
+        </div>
+
+        {# Footer bottom #}
+        <div class="pt-6 border-t border-white/10 mt-6">
             <div class="flex flex-col md:flex-row justify-between items-center gap-4">
                 <p class="text-sm text-white/50">
                     © {{ 'now'|date('Y') }} Fajné Sklady. Všechna práva vyhrazena.
@@ -95,6 +103,8 @@
                     <a href="{{ path('app_home') }}" class="text-sm text-white/50 hover:text-white transition-colors">Domů</a>
                     <a href="{{ path('public_terms_and_conditions') }}" class="text-sm text-white/50 hover:text-white transition-colors">Obchodní podmínky</a>
                     <a href="{{ path('public_privacy_policy') }}" class="text-sm text-white/50 hover:text-white transition-colors">Ochrana osobních údajů</a>
+                    <a href="{{ path('public_recurring_payments_terms') }}" class="text-sm text-white/50 hover:text-white transition-colors">Podmínky opakovaných plateb</a>
+                    <a href="{{ path('public_consumer_notice') }}" class="text-sm text-white/50 hover:text-white transition-colors">Poučení spotřebitele</a>
                     {% if not app.user %}
                         <a href="{{ path('app_login') }}" class="text-sm text-white/50 hover:text-white transition-colors">Přihlášení</a>
                         <a href="{{ path('app_register') }}" class="text-sm text-white/50 hover:text-white transition-colors">Registrace</a>

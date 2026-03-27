@@ -16,6 +16,7 @@ use PhpOffice\PhpWord\TemplateProcessor;
  * - ${CONTRACT_NUMBER}, ${STORAGE_DESCRIPTION}
  * - ${RENTAL_DURATION_TEXT}
  * - ${CONTRACT_CITY}, ${CONTRACT_DATE}
+ * - ${SIGNING_PLACE}, ${SIGNING_DATE}
  * - ${SIGNATURE} (image)
  */
 final readonly class ContractDocumentGenerator
@@ -33,7 +34,7 @@ final readonly class ContractDocumentGenerator
      *
      * @return string Path to the generated document
      */
-    public function generate(Contract $contract, string $templatePath, ?string $signaturePath = null): string
+    public function generate(Contract $contract, string $templatePath, ?string $signaturePath = null, ?string $signingPlace = null, ?\DateTimeImmutable $signedAt = null): string
     {
         if (!file_exists($templatePath)) {
             throw new \RuntimeException(sprintf('Contract template not found: %s', $templatePath));
@@ -42,7 +43,7 @@ final readonly class ContractDocumentGenerator
         $templateProcessor = new TemplateProcessor($templatePath);
 
         // Replace all placeholders
-        $this->replacePlaceholders($templateProcessor, $contract);
+        $this->replacePlaceholders($templateProcessor, $contract, $signingPlace, $signedAt);
 
         // Embed signature image if available
         $this->embedSignature($templateProcessor, $signaturePath);
@@ -63,7 +64,7 @@ final readonly class ContractDocumentGenerator
         return $outputPath;
     }
 
-    private function replacePlaceholders(TemplateProcessor $processor, Contract $contract): void
+    private function replacePlaceholders(TemplateProcessor $processor, Contract $contract, ?string $signingPlace, ?\DateTimeImmutable $signedAt): void
     {
         $user = $contract->user;
         $storage = $contract->storage;
@@ -83,6 +84,10 @@ final readonly class ContractDocumentGenerator
         $processor->setValue('CONTRACT_NUMBER', $this->formatContractNumber($contract));
         $processor->setValue('CONTRACT_CITY', $place->city);
         $processor->setValue('CONTRACT_DATE', $contract->createdAt->format('d.m.Y'));
+
+        // Signing metadata
+        $processor->setValue('SIGNING_PLACE', $signingPlace ?? $place->city);
+        $processor->setValue('SIGNING_DATE', $signedAt?->format('d.m.Y') ?? $contract->createdAt->format('d.m.Y'));
     }
 
     private function embedSignature(TemplateProcessor $processor, ?string $signaturePath): void
@@ -90,8 +95,8 @@ final readonly class ContractDocumentGenerator
         if (null !== $signaturePath && file_exists($signaturePath)) {
             $processor->setImageValue('SIGNATURE', [
                 'path' => $signaturePath,
-                'width' => 200,
-                'height' => 80,
+                'width' => 250,
+                'height' => 100,
                 'ratio' => true,
             ]);
         } else {

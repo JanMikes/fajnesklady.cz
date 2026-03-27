@@ -33,9 +33,9 @@ final readonly class ContractService
      *
      * @return string Path to the generated document
      */
-    public function generateDocument(Contract $contract, ?string $signaturePath, \DateTimeImmutable $now): string
+    public function generateDocument(Contract $contract, ?string $signaturePath, \DateTimeImmutable $now, ?string $signingPlace = null, ?\DateTimeImmutable $signedAt = null): string
     {
-        $documentPath = $this->documentGenerator->generate($contract, $this->contractTemplatePath, $signaturePath);
+        $documentPath = $this->documentGenerator->generate($contract, $this->contractTemplatePath, $signaturePath, $signingPlace, $signedAt);
         $contract->attachDocument($documentPath, $now);
 
         return $documentPath;

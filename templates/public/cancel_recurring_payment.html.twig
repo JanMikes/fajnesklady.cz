@@ -1,0 +1,96 @@
+{% extends 'user/layout.html.twig' %}
+
+{% block title %}Zrušení opakované platby - Fajné Sklady{% endblock %}
+
+{% block content %}
+<div class="max-w-lg mx-auto">
+    <div class="card">
+        <div class="card-body">
+            {% if alreadyCancelled is defined and alreadyCancelled %}
+                {# Already cancelled state #}
+                <div class="text-center">
+                    <div class="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <h1 class="text-2xl font-bold text-gray-900 mb-2">Opakovaná platba již byla zrušena</h1>
+                    <p class="text-gray-600">
+                        Opakovaná platba pro tuto smlouvu již byla dříve zrušena. Žádná další akce není potřeba.
+                    </p>
+                </div>
+
+            {% elseif success is defined and success %}
+                {# Success state #}
+                <div class="text-center">
+                    <div class="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                    </div>
+                    <h1 class="text-2xl font-bold text-gray-900 mb-2">Opakovaná platba zrušena</h1>
+                    <p class="text-gray-600 mb-4">
+                        Vaše opakovaná platba byla úspěšně zrušena. Již nebudou prováděny žádné další automatické platby.
+                    </p>
+                    <p class="text-sm text-gray-500">
+                        Toto nemá vliv na povinnost úhrady za již poskytnuté služby.
+                        V případě dotazů nás kontaktujte na <a href="mailto:simek@fajnesklady.cz" class="text-accent hover:underline">simek@fajnesklady.cz</a>.
+                    </p>
+                </div>
+
+            {% elseif error is defined and error %}
+                {# Error state #}
+                <div class="text-center">
+                    <div class="inline-flex items-center justify-center w-16 h-16 bg-red-100 rounded-full mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <h1 class="text-2xl font-bold text-gray-900 mb-2">Něco se pokazilo</h1>
+                    <p class="text-gray-600 mb-4">
+                        Při rušení opakované platby došlo k chybě. Zkuste to prosím znovu nebo nás kontaktujte.
+                    </p>
+                    <p class="text-sm text-gray-500">
+                        Kontakt: <a href="mailto:simek@fajnesklady.cz" class="text-accent hover:underline">simek@fajnesklady.cz</a>, tel: 774 302 684
+                    </p>
+                </div>
+
+            {% else %}
+                {# Confirmation form #}
+                <div class="text-center mb-6">
+                    <div class="inline-flex items-center justify-center w-16 h-16 bg-amber-100 rounded-full mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                        </svg>
+                    </div>
+                    <h1 class="text-2xl font-bold text-gray-900 mb-2">Zrušit opakovanou platbu?</h1>
+                    <p class="text-gray-600">
+                        Opravdu chcete zrušit opakovanou platbu pro skladovou jednotku
+                        <strong>{{ contract.storage.storageType.name }} č. {{ contract.storage.number }}</strong>?
+                    </p>
+                </div>
+
+                <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 text-sm text-gray-700">
+                    <p>Po zrušení opakované platby:</p>
+                    <ul class="list-disc pl-5 mt-2 space-y-1">
+                        <li>Nebudou prováděny žádné další automatické platby</li>
+                        <li>Povinnost úhrady za již poskytnuté služby zůstává</li>
+                        <li>Pro obnovení platby kontaktujte pronajímatele</li>
+                    </ul>
+                </div>
+
+                <div class="flex gap-4">
+                    <a href="{{ path('app_home') }}" class="btn btn-secondary flex-1 justify-center">
+                        Zpět
+                    </a>
+                    <form method="post" class="flex-1">
+                        <button type="submit" class="btn btn-primary w-full bg-red-600 hover:bg-red-700 border-red-600 hover:border-red-700">
+                            Zrušit opakovanou platbu
+                        </button>
+                    </form>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

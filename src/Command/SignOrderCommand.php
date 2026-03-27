@@ -13,6 +13,7 @@ final readonly class SignOrderCommand
         public Order $order,
         public string $signatureDataUrl,
         public SigningMethod $signingMethod,
+        public string $signingPlace,
         public ?string $typedName = null,
         public ?string $styleId = null,
     ) {

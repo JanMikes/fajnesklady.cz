@@ -31,6 +31,7 @@ final readonly class SignOrderHandler
             signingMethod: $command->signingMethod,
             typedName: $command->typedName,
             styleId: $command->styleId,
+            signingPlace: $command->signingPlace,
             now: $now,
         );
 

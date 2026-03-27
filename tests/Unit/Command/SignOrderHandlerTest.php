@@ -75,6 +75,7 @@ class SignOrderHandlerTest extends TestCase
             order: $order,
             signatureDataUrl: $dataUrl,
             signingMethod: SigningMethod::DRAW,
+            signingPlace: 'Praha',
         );
 
         ($this->handler)($command);
@@ -85,6 +86,7 @@ class SignOrderHandlerTest extends TestCase
         $this->assertSame(SigningMethod::DRAW, $order->signingMethod);
         $this->assertNull($order->signatureTypedName);
         $this->assertNull($order->signatureStyleId);
+        $this->assertSame('Praha', $order->signingPlace);
         $this->assertSame($now, $order->signedAt);
     }
 
@@ -100,6 +102,7 @@ class SignOrderHandlerTest extends TestCase
             order: $order,
             signatureDataUrl: $dataUrl,
             signingMethod: SigningMethod::TYPED,
+            signingPlace: 'Brno',
             typedName: 'Jan Novák',
             styleId: 'dancing-script',
         );
@@ -110,6 +113,7 @@ class SignOrderHandlerTest extends TestCase
         $this->assertSame(SigningMethod::TYPED, $order->signingMethod);
         $this->assertSame('Jan Novák', $order->signatureTypedName);
         $this->assertSame('dancing-script', $order->signatureStyleId);
+        $this->assertSame('Brno', $order->signingPlace);
     }
 
     public function testHandleCreatesSignatureFile(): void
@@ -124,6 +128,7 @@ class SignOrderHandlerTest extends TestCase
             order: $order,
             signatureDataUrl: $dataUrl,
             signingMethod: SigningMethod::DRAW,
+            signingPlace: 'Praha',
         );
 
         ($this->handler)($command);
