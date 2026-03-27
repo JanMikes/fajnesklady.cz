@@ -12,7 +12,7 @@ use PhpOffice\PhpWord\TemplateProcessor;
  * Service for generating contract documents from DOCX templates.
  *
  * Replaces placeholders in the template with contract data:
- * - ${TENANT_NAME}, ${TENANT_BIRTH_DATE}, ${TENANT_ADDRESS}, ${TENANT_EMAIL}
+ * - ${TENANT_INFO} (multiline: person or company details)
  * - ${CONTRACT_NUMBER}, ${STORAGE_DESCRIPTION}
  * - ${RENTAL_DURATION_TEXT}
  * - ${CONTRACT_CITY}, ${CONTRACT_DATE}
@@ -70,11 +70,8 @@ final readonly class ContractDocumentGenerator
         $storageType = $storage->storageType;
         $place = $storage->getPlace();
 
-        // Tenant information
-        $processor->setValue('TENANT_NAME', $user->fullName);
-        $processor->setValue('TENANT_BIRTH_DATE', $user->birthDate?->format('d.m.Y') ?? '-');
-        $processor->setValue('TENANT_ADDRESS', $this->formatBillingAddress($user));
-        $processor->setValue('TENANT_EMAIL', $user->email);
+        // Tenant information (multiline, adapts to person vs company)
+        $processor->setValue('TENANT_INFO', $this->formatTenantInfo($user));
 
         // Storage description
         $processor->setValue('STORAGE_DESCRIPTION', $this->formatStorageDescription($storage, $storageType));
@@ -100,6 +97,38 @@ final readonly class ContractDocumentGenerator
         } else {
             $processor->setValue('SIGNATURE', '');
         }
+    }
+
+    private function formatTenantInfo(\App\Entity\User $user): string
+    {
+        $address = $this->formatAddress($user);
+
+        if (null !== $user->companyName && null !== $user->companyId) {
+            // Company tenant
+            $lines = [
+                sprintf('Společnost: %s, zastoupena %s', $user->companyName, $user->fullName),
+                sprintf('IČO: %s', $user->companyId),
+            ];
+
+            if (null !== $user->companyVatId && '' !== $user->companyVatId) {
+                $lines[] = sprintf('DIČ: %s', $user->companyVatId);
+            }
+
+            $lines[] = sprintf('Sídlem: %s', $address);
+            $lines[] = sprintf('Email: %s', $user->email);
+
+            return implode("\n", $lines);
+        }
+
+        // Physical person
+        $lines = [
+            sprintf('Jméno: %s', $user->fullName),
+            sprintf('Nar. %s', $user->birthDate?->format('d.m.Y') ?? '-'),
+            sprintf('Bytem: %s', $address),
+            sprintf('Email: %s', $user->email),
+        ];
+
+        return implode("\n", $lines);
     }
 
     private function formatStorageDescription(\App\Entity\Storage $storage, \App\Entity\StorageType $storageType): string
@@ -129,7 +158,7 @@ final readonly class ContractDocumentGenerator
         );
     }
 
-    private function formatBillingAddress(\App\Entity\User $user): string
+    private function formatAddress(\App\Entity\User $user): string
     {
         if (null === $user->billingStreet || null === $user->billingCity || null === $user->billingPostalCode) {
             return '-';
@@ -145,7 +174,6 @@ final readonly class ContractDocumentGenerator
 
     private function formatContractNumber(Contract $contract): string
     {
-        // Format: YYYY-MMDD-XXXXX (year-monthday-first 8 chars of UUID)
         $date = $contract->createdAt;
         $uuidShort = substr($contract->id->toRfc4122(), 0, 8);
 

@@ -139,8 +139,18 @@
                            Zapsána: Krajský soud v Ostravě, C 86521</p>
 
                         <p><strong>Nájemce:</strong></p>
-                        <p>Jméno: {{ customerFullName }}<br>
-                           Email: {{ formData.email }}</p>
+                        {% if formData.invoiceToCompany and formData.companyName %}
+                            <p>Společnost: {{ formData.companyName }}, zastoupena {{ customerFullName }}<br>
+                               IČO: {{ formData.companyId }}<br>
+                               {% if formData.companyVatId %}DIČ: {{ formData.companyVatId }}<br>{% endif %}
+                               Sídlem: {{ formData.billingStreet }}, {{ formData.billingPostalCode }} {{ formData.billingCity }}<br>
+                               Email: {{ formData.email }}</p>
+                        {% else %}
+                            <p>Jméno: {{ customerFullName }}<br>
+                               {% if formData.birthDate %}Nar. {{ formData.birthDate|date('d.m.Y') }}<br>{% endif %}
+                               Bytem: {{ formData.billingStreet }}, {{ formData.billingPostalCode }} {{ formData.billingCity }}<br>
+                               Email: {{ formData.email }}</p>
+                        {% endif %}
 
                         <p><strong>I. Předmět smlouvy</strong></p>
                         <p>Pronajímatel výslovně prohlašuje, že je výlučným vlastníkem níže specifikované movité věci:</p>

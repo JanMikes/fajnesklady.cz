@@ -135,10 +135,7 @@ class ContractDocumentGeneratorTest extends TestCase
         $phpWord = new \PhpOffice\PhpWord\PhpWord();
         $section = $phpWord->addSection();
         $section->addText('Smlouva o nájmu');
-        $section->addText('Nájemce: ${TENANT_NAME}');
-        $section->addText('Nar.: ${TENANT_BIRTH_DATE}');
-        $section->addText('Bytem: ${TENANT_ADDRESS}');
-        $section->addText('Email: ${TENANT_EMAIL}');
+        $section->addText('${TENANT_INFO}');
         $section->addText('Č. ${CONTRACT_NUMBER}');
         $section->addText('Předmět: ${STORAGE_DESCRIPTION}');
         $section->addText('${RENTAL_DURATION_TEXT}');
@@ -261,10 +258,7 @@ class ContractDocumentGeneratorTest extends TestCase
         $phpWord = new \PhpOffice\PhpWord\PhpWord();
         $section = $phpWord->addSection();
         $section->addText('Smlouva o nájmu');
-        $section->addText('Nájemce: ${TENANT_NAME}');
-        $section->addText('Nar.: ${TENANT_BIRTH_DATE}');
-        $section->addText('Bytem: ${TENANT_ADDRESS}');
-        $section->addText('Email: ${TENANT_EMAIL}');
+        $section->addText('${TENANT_INFO}');
         $section->addText('Č. ${CONTRACT_NUMBER}');
         $section->addText('Předmět: ${STORAGE_DESCRIPTION}');
         $section->addText('${RENTAL_DURATION_TEXT}');

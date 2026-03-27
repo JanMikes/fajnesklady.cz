@@ -119,7 +119,7 @@
                                 </div>
                             </div>
 
-                            <div class="grid md:grid-cols-2 gap-4">
+                            <div class="grid md:grid-cols-2 gap-4" x-show="!invoiceToCompany">
                                 <div>
                                     {{ form_row(form.birthDate) }}
                                 </div>
@@ -134,19 +134,45 @@
                             {% endif %}
                         </div>
 
-                        {# Billing Information #}
+                        {# Address - always required for the contract #}
+                        <div class="bg-gray-50 rounded-lg p-6">
+                            <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                                <span x-text="invoiceToCompany ? 'Sídlo společnosti' : 'Adresa bydliště'">Adresa bydliště</span>
+                            </h2>
+
+                            <p class="text-xs text-gray-500 mb-4">Vyžadováno pro účely nájemní smlouvy.</p>
+
+                            <div>
+                                {{ form_row(form.billingStreet) }}
+                            </div>
+
+                            <div class="grid md:grid-cols-2 gap-4">
+                                <div>
+                                    {{ form_row(form.billingCity) }}
+                                </div>
+                                <div>
+                                    {{ form_row(form.billingPostalCode) }}
+                                </div>
+                            </div>
+                        </div>
+
+                        {# Company Information #}
                         <div class="bg-gray-50 rounded-lg p-6">
                             <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                                 </svg>
-                                Fakturační údaje
+                                Firemní údaje
                             </h2>
 
                             <div class="mb-4">
                                 <label class="flex items-center cursor-pointer">
                                     {{ form_widget(form.invoiceToCompany, {attr: {'x-model': 'invoiceToCompany', 'class': 'mr-3'}}) }}
-                                    <span class="text-sm font-medium text-gray-700">Fakturovat na společnost</span>
+                                    <span class="text-sm font-medium text-gray-700">Nájemce je společnost / OSVČ</span>
                                 </label>
                             </div>
 
@@ -155,27 +181,12 @@
                                     {{ form_row(form.companyId) }}
                                 </div>
 
-                                {# Company name and VAT ID #}
                                 <div class="grid md:grid-cols-2 gap-4">
                                     <div>
                                         {{ form_row(form.companyName) }}
                                     </div>
                                     <div>
                                         {{ form_row(form.companyVatId) }}
-                                    </div>
-                                </div>
-
-                                {# Billing address #}
-                                <div>
-                                    {{ form_row(form.billingStreet) }}
-                                </div>
-
-                                <div class="grid md:grid-cols-2 gap-4">
-                                    <div>
-                                        {{ form_row(form.billingCity) }}
-                                    </div>
-                                    <div>
-                                        {{ form_row(form.billingPostalCode) }}
                                     </div>
                                 </div>
                             </div>

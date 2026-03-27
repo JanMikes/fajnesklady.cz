@@ -26,7 +26,6 @@ final class OrderFormData
     #[Assert\Length(max: 20, maxMessage: 'Telefon může mít maximálně {{ limit }} znaků.')]
     public ?string $phone = null;
 
-    #[Assert\NotNull(message: 'Zadejte datum narození.')]
     public ?\DateTimeImmutable $birthDate = null;
 
     public ?string $plainPassword = null;
@@ -76,6 +75,28 @@ final class OrderFormData
     }
 
     #[Assert\Callback]
+    public function validateAddress(ExecutionContextInterface $context): void
+    {
+        if (null === $this->billingStreet || '' === $this->billingStreet) {
+            $context->buildViolation('Zadejte ulici.')
+                ->atPath('billingStreet')
+                ->addViolation();
+        }
+
+        if (null === $this->billingCity || '' === $this->billingCity) {
+            $context->buildViolation('Zadejte město.')
+                ->atPath('billingCity')
+                ->addViolation();
+        }
+
+        if (null === $this->billingPostalCode || '' === $this->billingPostalCode) {
+            $context->buildViolation('Zadejte PSČ.')
+                ->atPath('billingPostalCode')
+                ->addViolation();
+        }
+    }
+
+    #[Assert\Callback]
     public function validateCompanyInfo(ExecutionContextInterface $context): void
     {
         if (!$this->invoiceToCompany) {
@@ -93,22 +114,18 @@ final class OrderFormData
                 ->atPath('companyName')
                 ->addViolation();
         }
+    }
 
-        if (null === $this->billingStreet || '' === $this->billingStreet) {
-            $context->buildViolation('Zadejte fakturační ulici.')
-                ->atPath('billingStreet')
-                ->addViolation();
+    #[Assert\Callback]
+    public function validateBirthDate(ExecutionContextInterface $context): void
+    {
+        if ($this->invoiceToCompany) {
+            return;
         }
 
-        if (null === $this->billingCity || '' === $this->billingCity) {
-            $context->buildViolation('Zadejte fakturační město.')
-                ->atPath('billingCity')
-                ->addViolation();
-        }
-
-        if (null === $this->billingPostalCode || '' === $this->billingPostalCode) {
-            $context->buildViolation('Zadejte fakturační PSČ.')
-                ->atPath('billingPostalCode')
+        if (null === $this->birthDate) {
+            $context->buildViolation('Zadejte datum narození.')
+                ->atPath('birthDate')
                 ->addViolation();
         }
     }
