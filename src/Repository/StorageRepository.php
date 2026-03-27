@@ -128,6 +128,22 @@ class StorageRepository
     /**
      * @return Storage[]
      */
+    public function findAllAvailable(): array
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('s')
+            ->from(Storage::class, 's')
+            ->where('s.status = :status')
+            ->andWhere('s.deletedAt IS NULL')
+            ->setParameter('status', StorageStatus::AVAILABLE)
+            ->orderBy('s.number', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * @return Storage[]
+     */
     public function findAvailableByStorageType(StorageType $storageType): array
     {
         return $this->entityManager->createQueryBuilder()

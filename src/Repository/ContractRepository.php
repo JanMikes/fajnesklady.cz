@@ -105,6 +105,7 @@ class ContractRepository
             ->andWhere('c.endDate IS NULL OR c.endDate >= :now')
             ->setParameter('storage', $storage)
             ->setParameter('now', $now)
+            ->orderBy('c.startDate', 'ASC')
             ->getQuery()
             ->getResult();
     }
@@ -403,6 +404,7 @@ class ContractRepository
             ->andWhere('c.goPayParentPaymentId IS NOT NULL')
             ->andWhere('c.terminatedAt IS NULL')
             ->setParameter('landlord', $landlord)
+            ->orderBy('c.createdAt', 'DESC')
             ->getQuery()
             ->getResult();
     }

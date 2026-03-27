@@ -62,6 +62,7 @@ class StorageUnavailabilityRepository
             ->andWhere('su.endDate IS NULL OR su.endDate >= :date')
             ->setParameter('storage', $storage)
             ->setParameter('date', $date)
+            ->orderBy('su.startDate', 'ASC')
             ->getQuery()
             ->getResult();
     }
@@ -117,6 +118,7 @@ class StorageUnavailabilityRepository
             ->setParameter('storageType', $storageType)
             ->setParameter('startDate', $startDate)
             ->setParameter('endDate', $endDate)
+            ->orderBy('su.startDate', 'ASC')
             ->getQuery()
             ->getResult();
     }
@@ -146,6 +148,7 @@ class StorageUnavailabilityRepository
             ->setParameter('storages', $storages)
             ->setParameter('startDate', $startDate)
             ->setParameter('endDate', $endDate)
+            ->orderBy('su.startDate', 'ASC')
             ->getQuery()
             ->getResult();
     }

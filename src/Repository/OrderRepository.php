@@ -83,6 +83,7 @@ class OrderRepository
                 OrderStatus::AWAITING_PAYMENT,
                 OrderStatus::PAID,
             ])
+            ->orderBy('o.startDate', 'ASC')
             ->getQuery()
             ->getResult();
     }
@@ -254,6 +255,7 @@ class OrderRepository
             ])
             ->setParameter('startDate', $startDate)
             ->setParameter('endDate', $endDate)
+            ->orderBy('o.startDate', 'ASC')
             ->getQuery()
             ->getResult();
     }
@@ -291,6 +293,7 @@ class OrderRepository
             ])
             ->setParameter('startDate', $startDate)
             ->setParameter('endDate', $endDate)
+            ->orderBy('o.startDate', 'ASC')
             ->getQuery()
             ->getResult();
     }
@@ -319,6 +322,17 @@ class OrderRepository
             ->from(Order::class, 'o')
             ->getQuery()
             ->getSingleScalarResult();
+    }
+
+    public function findBySigningToken(string $token): ?Order
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('o')
+            ->from(Order::class, 'o')
+            ->where('o.signingToken = :token')
+            ->setParameter('token', $token)
+            ->getQuery()
+            ->getOneOrNullResult();
     }
 
     public function findByGoPayPaymentId(string $paymentId): ?Order

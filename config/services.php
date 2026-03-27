@@ -79,6 +79,11 @@ return App::config([
                 '$signaturesDirectory' => '%kernel.project_dir%/var/signatures',
             ],
         ],
+        'App\\Command\\AdminMigrateCustomerHandler' => [
+            'arguments' => [
+                '$contractsDirectory' => '%kernel.project_dir%/var/contracts',
+            ],
+        ],
         'App\\Service\\ContractDocumentGenerator' => [
             'arguments' => [
                 '$contractsDirectory' => '%kernel.project_dir%/var/contracts',

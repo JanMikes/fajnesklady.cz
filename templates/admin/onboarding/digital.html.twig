@@ -1,0 +1,152 @@
+{% extends 'portal/layout.html.twig' %}
+
+{% block title %}Digitální onboarding - Admin{% endblock %}
+
+{% block breadcrumb %}
+    {% include 'components/breadcrumb.html.twig' with {breadcrumb_items: [
+        {label: 'Onboarding', url: path('admin_onboarding')},
+        {label: 'Digitální onboarding'},
+    ]} %}
+{% endblock %}
+
+{% block content %}
+    <h1 class="text-3xl font-bold mb-2">Digitální onboarding</h1>
+    <p class="text-gray-600 mb-6">Připravte objednávku a pošlete zákazníkovi odkaz k elektronickému podpisu smlouvy.</p>
+
+    <div class="max-w-2xl">
+        <div class="card">
+            <div class="card-body">
+                {{ form_start(form, {'attr': {'novalidate': 'novalidate'}}) }}
+
+                    <h3 class="text-lg font-semibold mb-4">Údaje zákazníka</h3>
+                    <div class="grid md:grid-cols-2 gap-4 mb-6">
+                        <div class="md:col-span-2">
+                            {{ form_label(form.email) }}
+                            {{ form_widget(form.email) }}
+                            {{ form_errors(form.email) }}
+                        </div>
+                        <div>
+                            {{ form_label(form.firstName) }}
+                            {{ form_widget(form.firstName) }}
+                            {{ form_errors(form.firstName) }}
+                        </div>
+                        <div>
+                            {{ form_label(form.lastName) }}
+                            {{ form_widget(form.lastName) }}
+                            {{ form_errors(form.lastName) }}
+                        </div>
+                        <div>
+                            {{ form_label(form.phone) }}
+                            {{ form_widget(form.phone) }}
+                            {{ form_errors(form.phone) }}
+                        </div>
+                        <div>
+                            {{ form_label(form.birthDate) }}
+                            {{ form_widget(form.birthDate) }}
+                            {{ form_errors(form.birthDate) }}
+                        </div>
+                    </div>
+
+                    <hr class="my-6 border-t border-gray-200">
+
+                    <h3 class="text-lg font-semibold mb-4">Fakturační údaje</h3>
+                    <div class="mb-4">
+                        <label class="flex items-center cursor-pointer gap-3">
+                            {{ form_widget(form.invoiceToCompany, {'attr': {'class': 'h-4 w-4 text-accent focus:ring-accent border-gray-300'}}) }}
+                            <span class="text-sm text-gray-700">Fakturovat na firmu</span>
+                        </label>
+                    </div>
+                    <div class="grid md:grid-cols-2 gap-4 mb-6">
+                        <div>
+                            {{ form_label(form.companyName) }}
+                            {{ form_widget(form.companyName) }}
+                            {{ form_errors(form.companyName) }}
+                        </div>
+                        <div>
+                            {{ form_label(form.companyId) }}
+                            {{ form_widget(form.companyId) }}
+                            {{ form_errors(form.companyId) }}
+                        </div>
+                        <div class="md:col-span-2">
+                            {{ form_label(form.companyVatId) }}
+                            {{ form_widget(form.companyVatId) }}
+                            {{ form_errors(form.companyVatId) }}
+                        </div>
+                        <div class="md:col-span-2">
+                            {{ form_label(form.billingStreet) }}
+                            {{ form_widget(form.billingStreet) }}
+                            {{ form_errors(form.billingStreet) }}
+                        </div>
+                        <div>
+                            {{ form_label(form.billingCity) }}
+                            {{ form_widget(form.billingCity) }}
+                            {{ form_errors(form.billingCity) }}
+                        </div>
+                        <div>
+                            {{ form_label(form.billingPostalCode) }}
+                            {{ form_widget(form.billingPostalCode) }}
+                            {{ form_errors(form.billingPostalCode) }}
+                        </div>
+                    </div>
+
+                    <hr class="my-6 border-t border-gray-200">
+
+                    <h3 class="text-lg font-semibold mb-4">Skladová jednotka a pronájem</h3>
+                    <div class="grid md:grid-cols-2 gap-4 mb-6">
+                        <div class="md:col-span-2">
+                            {{ form_label(form.storageId) }}
+                            {{ form_widget(form.storageId) }}
+                            {{ form_errors(form.storageId) }}
+                        </div>
+                        <div class="md:col-span-2">
+                            {{ form_label(form.rentalType) }}
+                            <div class="flex gap-4 mt-1">
+                                {% for choice in form.rentalType %}
+                                    <label class="flex items-center cursor-pointer gap-2">
+                                        {{ form_widget(choice, {'attr': {'class': 'h-4 w-4 text-accent focus:ring-accent border-gray-300'}}) }}
+                                        <span class="text-sm text-gray-700">{{ choice.vars.label }}</span>
+                                    </label>
+                                {% endfor %}
+                            </div>
+                            {{ form_errors(form.rentalType) }}
+                        </div>
+                        <div>
+                            {{ form_label(form.startDate) }}
+                            {{ form_widget(form.startDate) }}
+                            {{ form_errors(form.startDate) }}
+                        </div>
+                        <div>
+                            {{ form_label(form.endDate) }}
+                            {{ form_widget(form.endDate) }}
+                            {{ form_errors(form.endDate) }}
+                            <p class="mt-1 text-xs text-gray-500">Pouze pro dobu určitou.</p>
+                        </div>
+                    </div>
+
+                    <hr class="my-6 border-t border-gray-200">
+
+                    <h3 class="text-lg font-semibold mb-4">Způsob platby</h3>
+                    <div class="mb-6">
+                        <div class="space-y-2">
+                            {% for choice in form.paymentMethod %}
+                                <div class="flex items-center">
+                                    <label class="flex items-center cursor-pointer gap-3">
+                                        {{ form_widget(choice, {'attr': {'class': 'h-4 w-4 text-accent focus:ring-accent border-gray-300'}}) }}
+                                        <span class="text-sm text-gray-700">{{ choice.vars.label }}</span>
+                                    </label>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        {{ form_errors(form.paymentMethod) }}
+                    </div>
+
+                    <div class="flex justify-end gap-2">
+                        <a href="{{ path('admin_onboarding') }}" class="btn btn-ghost">Zrušit</a>
+                        <button type="submit" class="btn btn-primary">Odeslat odkaz k podpisu</button>
+                    </div>
+
+                {{ form_end(form) }}
+            </div>
+        </div>
+    </div>
+{% endblock %}

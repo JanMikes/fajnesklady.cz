@@ -12,7 +12,6 @@ use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\PaymentFrequency;
 use App\Enum\RentalType;
-use App\Enum\UserRole;
 use App\Event\OrderCreated;
 use App\Event\SendStorageAvailabilityWarningHandler;
 use App\Repository\OrderRepository;

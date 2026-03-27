@@ -285,7 +285,8 @@ class OrderPaymentControllerTest extends WebTestCase
 
         $this->client->request('GET', '/objednavka/'.$orderId.'/platba');
 
-        $expectedUrl = sprintf('/objednavka/%s/%s/%s',
+        $expectedUrl = sprintf(
+            '/objednavka/%s/%s/%s',
             $storage->place->id->toRfc4122(),
             $storage->storageType->id->toRfc4122(),
             $storage->id->toRfc4122()
@@ -418,7 +419,8 @@ class OrderPaymentControllerTest extends WebTestCase
 
         $this->client->request('GET', '/objednavka/'.$orderId.'/platba');
 
-        $expectedUrl = sprintf('/objednavka/%s/%s/%s',
+        $expectedUrl = sprintf(
+            '/objednavka/%s/%s/%s',
             $storage->place->id->toRfc4122(),
             $storage->storageType->id->toRfc4122(),
             $storage->id->toRfc4122()
@@ -477,7 +479,8 @@ class OrderPaymentControllerTest extends WebTestCase
 
     private function buildAcceptUrl(Storage $storage): string
     {
-        return sprintf('/objednavka/%s/%s/%s/prijmout',
+        return sprintf(
+            '/objednavka/%s/%s/%s/prijmout',
             $storage->place->id->toRfc4122(),
             $storage->storageType->id->toRfc4122(),
             $storage->id->toRfc4122()

@@ -1,0 +1,50 @@
+{% extends 'portal/layout.html.twig' %}
+
+{% block title %}Onboarding zákazníků - Admin{% endblock %}
+
+{% block breadcrumb %}
+    {% include 'components/breadcrumb.html.twig' with {breadcrumb_items: [
+        {label: 'Onboarding zákazníků'},
+    ]} %}
+{% endblock %}
+
+{% block content %}
+    <h1 class="text-3xl font-bold mb-6">Onboarding zákazníků</h1>
+    <p class="text-gray-600 mb-8">Vyberte způsob onboardingu stávajícího zákazníka do systému.</p>
+
+    <div class="grid md:grid-cols-2 gap-6 max-w-4xl">
+        <a href="{{ path('admin_onboarding_migrate') }}" class="card hover:shadow-lg transition-shadow">
+            <div class="card-body">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="bg-blue-100 text-blue-600 rounded-lg p-3">
+                        <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                    </div>
+                    <h2 class="text-xl font-semibold">Migrace papírové smlouvy</h2>
+                </div>
+                <p class="text-gray-600 text-sm">
+                    Zákazník již má podepsanou smlouvu na papíře. Nahrajte ji do systému a vytvořte vše automaticky.
+                    Zákazník nemusí nic dělat.
+                </p>
+            </div>
+        </a>
+
+        <a href="{{ path('admin_onboarding_digital') }}" class="card hover:shadow-lg transition-shadow">
+            <div class="card-body">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="bg-green-100 text-green-600 rounded-lg p-3">
+                        <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                        </svg>
+                    </div>
+                    <h2 class="text-xl font-semibold">Digitální onboarding</h2>
+                </div>
+                <p class="text-gray-600 text-sm">
+                    Připravte objednávku a pošlete zákazníkovi odkaz k podpisu smlouvy online.
+                    Zákazník pouze klikne na odkaz a podepíše.
+                </p>
+            </div>
+        </a>
+    </div>
+{% endblock %}
