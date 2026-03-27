@@ -9,6 +9,7 @@ use App\Event\RecurringPaymentCharged;
 use App\Service\GoPay\GoPayClient;
 use App\Service\GoPay\GoPayException;
 use App\Service\GoPay\PaymentNotConfirmedException;
+use App\Value\GoPayPayment;
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -19,12 +20,15 @@ use Symfony\Component\Uid\Uuid;
 final readonly class ChargeRecurringPaymentHandler
 {
     private const int DAYS_PER_MONTH = 30;
+    private const int MAX_STATUS_POLLS = 5;
+    private const int POLL_INTERVAL_MICROSECONDS = 2_000_000; // 2 seconds
 
     public function __construct(
         private GoPayClient $goPayClient,
         private ClockInterface $clock,
         private MessageBusInterface $eventBus,
         private LoggerInterface $logger,
+        private int $pollIntervalMicroseconds = self::POLL_INTERVAL_MICROSECONDS,
     ) {
     }
 
@@ -60,9 +64,14 @@ final readonly class ChargeRecurringPaymentHandler
                 $this->buildDescription($contract, $now),
             );
 
-            // Only record success if GoPay confirms the payment
+            // GoPay may return CREATED while the card charge is still processing.
+            // Poll for confirmation before giving up.
             if ('PAID' !== $payment->state) {
-                $this->logger->error('Recurring payment not confirmed by GoPay', [
+                $payment = $this->pollForConfirmation($payment);
+            }
+
+            if ('PAID' !== $payment->state) {
+                $this->logger->error('Recurring payment not confirmed by GoPay after polling', [
                     'gopay_payment_id' => $payment->id,
                     'state' => $payment->state,
                     'contract_id' => $contract->id->toRfc4122(),
@@ -98,6 +107,26 @@ final readonly class ChargeRecurringPaymentHandler
             // outside the doctrine_transaction (which rolls back on exception).
             throw $e;
         }
+    }
+
+    /**
+     * Poll GoPay for payment confirmation. Returns updated payment state.
+     */
+    private function pollForConfirmation(GoPayPayment $payment): GoPayPayment
+    {
+        for ($i = 0; $i < self::MAX_STATUS_POLLS; ++$i) {
+            if ($this->pollIntervalMicroseconds > 0) {
+                usleep($this->pollIntervalMicroseconds);
+            }
+
+            $status = $this->goPayClient->getStatus($payment->id);
+
+            if (!$status->isPending()) {
+                return new GoPayPayment($status->id, $payment->gwUrl, $status->state);
+            }
+        }
+
+        return $payment;
     }
 
     private function calculateBillingAmount(Contract $contract, \DateTimeImmutable $now): int

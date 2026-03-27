@@ -10,6 +10,7 @@ final readonly class GoPayPaymentStatus
         public string $id,
         public string $state,
         public ?string $parentId,
+        public ?int $amount = null,
     ) {
     }
 

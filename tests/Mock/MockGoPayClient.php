@@ -27,6 +27,8 @@ final class MockGoPayClient implements GoPayClient
 
     private bool $shouldFailNextRecurrence = false;
 
+    private bool $recurrenceReturnsCreated = false;
+
     public function createPayment(Order $order, string $returnUrl, string $notificationUrl): GoPayPayment
     {
         return $this->doCreatePayment();
@@ -46,10 +48,19 @@ final class MockGoPayClient implements GoPayClient
         }
 
         $paymentId = 'gp_'.$this->nextPaymentId++;
+
+        // Return CREATED state if configured (simulates async processing)
+        // but store as PAID for getStatus (simulates GoPay confirming after a moment)
+        $returnState = 'PAID';
+        if ($this->recurrenceReturnsCreated) {
+            $this->recurrenceReturnsCreated = false;
+            $returnState = 'CREATED';
+        }
+
         $payment = new GoPayPayment(
             id: $paymentId,
             gwUrl: '',
-            state: 'PAID',
+            state: $returnState,
         );
 
         $this->createdPayments[$paymentId] = $payment;
@@ -57,6 +68,7 @@ final class MockGoPayClient implements GoPayClient
             id: $paymentId,
             state: 'PAID',
             parentId: $parentPaymentId,
+            amount: $amount,
         );
 
         return $payment;
@@ -70,6 +82,7 @@ final class MockGoPayClient implements GoPayClient
                 id: $current->id,
                 state: 'CANCELED',
                 parentId: $current->parentId,
+                amount: $current->amount,
             );
         }
 
@@ -121,6 +134,7 @@ final class MockGoPayClient implements GoPayClient
             id: $paymentId,
             state: 'PAID',
             parentId: $current?->parentId,
+            amount: $current?->amount,
         );
     }
 
@@ -131,6 +145,7 @@ final class MockGoPayClient implements GoPayClient
             id: $paymentId,
             state: 'CANCELED',
             parentId: $current?->parentId,
+            amount: $current?->amount,
         );
     }
 
@@ -142,6 +157,15 @@ final class MockGoPayClient implements GoPayClient
     public function willFailNextRecurrence(): void
     {
         $this->shouldFailNextRecurrence = true;
+    }
+
+    /**
+     * Make the next createRecurrence return CREATED state instead of PAID.
+     * getStatus will still return PAID (simulating async confirmation).
+     */
+    public function willReturnCreatedForRecurrence(): void
+    {
+        $this->recurrenceReturnsCreated = true;
     }
 
     /**
@@ -165,5 +189,6 @@ final class MockGoPayClient implements GoPayClient
         $this->voidedRecurrences = [];
         $this->shouldFailNextPayment = false;
         $this->shouldFailNextRecurrence = false;
+        $this->recurrenceReturnsCreated = false;
     }
 }

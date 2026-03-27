@@ -68,6 +68,25 @@ class ChargeRecurringPaymentHandlerTest extends KernelTestCase
         $this->assertSame(0, $refreshedContract->failedBillingAttempts);
     }
 
+    public function testChargeRecurringPaymentSucceedsAfterPolling(): void
+    {
+        $contract = $this->createContractWithRecurringPayment();
+        $now = $this->clock->now();
+
+        // GoPay returns CREATED initially, but getStatus returns PAID (async confirmation)
+        $this->goPayClient->willReturnCreatedForRecurrence();
+
+        $this->commandBus->dispatch(new ChargeRecurringPaymentCommand($contract));
+
+        $this->entityManager->clear();
+        $refreshedContract = $this->entityManager->find(Contract::class, $contract->id);
+
+        // Verify billing was recorded despite initial CREATED state
+        $this->assertNotNull($refreshedContract->lastBilledAt);
+        $this->assertEquals($now->format('Y-m-d H:i:s'), $refreshedContract->lastBilledAt->format('Y-m-d H:i:s'));
+        $this->assertSame(0, $refreshedContract->failedBillingAttempts);
+    }
+
     public function testChargeRecurringPaymentThrowsOnError(): void
     {
         $contract = $this->createContractWithRecurringPayment();

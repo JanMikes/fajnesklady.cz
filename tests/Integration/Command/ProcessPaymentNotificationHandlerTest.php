@@ -102,6 +102,69 @@ class ProcessPaymentNotificationHandlerTest extends KernelTestCase
         $this->assertNotNull($refreshedOrder->goPayParentPaymentId);
     }
 
+    public function testProcessPaymentNotificationReconcileRecurringPayment(): void
+    {
+        // Set up a contract with recurring payment (same as ChargeRecurringPaymentHandlerTest)
+        $order = $this->createAndInitiatePayment(RentalType::UNLIMITED);
+        $paymentId = $order->goPayPaymentId;
+        \assert(null !== $paymentId);
+
+        // Complete the initial payment flow
+        $this->goPayClient->simulatePaymentPaid($paymentId);
+        $this->commandBus->dispatch(new ProcessPaymentNotificationCommand($paymentId));
+        $this->entityManager->flush();
+        $this->entityManager->clear();
+
+        // Find the contract created by auto-completion
+        $contract = $this->entityManager->createQueryBuilder()
+            ->select('c')
+            ->from(\App\Entity\Contract::class, 'c')
+            ->where('c.order = :order')
+            ->setParameter('order', $order->id)
+            ->getQuery()
+            ->getSingleResult();
+
+        $this->assertNotNull($contract->goPayParentPaymentId, 'Contract should have recurring payment set up');
+        $originalNextBillingDate = $contract->nextBillingDate;
+
+        // Simulate: a recurring charge was created by GoPay but handler didn't see PAID.
+        // GoPay later sends a webhook notification with the new payment ID.
+        $parentPaymentId = $contract->goPayParentPaymentId;
+        $recurringPaymentId = 'gp_recurring_99999';
+
+        // Register the recurring payment status in mock (as GoPay would return it)
+        $this->goPayClient->simulatePaymentPaid($recurringPaymentId);
+        // Override the status to include parent_id and amount
+        $reflection = new \ReflectionClass($this->goPayClient);
+        $prop = $reflection->getProperty('paymentStatuses');
+        $statuses = $prop->getValue($this->goPayClient);
+        $statuses[$recurringPaymentId] = new \App\Value\GoPayPaymentStatus(
+            id: $recurringPaymentId,
+            state: 'PAID',
+            parentId: $parentPaymentId,
+            amount: $contract->storage->getEffectivePricePerMonth(),
+        );
+        $prop->setValue($this->goPayClient, $statuses);
+
+        // Process the webhook notification
+        $this->commandBus->dispatch(new ProcessPaymentNotificationCommand($recurringPaymentId));
+
+        $this->entityManager->clear();
+        $refreshedContract = $this->entityManager->find(\App\Entity\Contract::class, $contract->id);
+
+        // Verify billing was reconciled
+        $this->assertNotNull($refreshedContract->lastBilledAt);
+        $this->assertSame(0, $refreshedContract->failedBillingAttempts);
+
+        // Next billing date should have advanced
+        if (null !== $originalNextBillingDate) {
+            $this->assertNotEquals(
+                $originalNextBillingDate->format('Y-m-d'),
+                $refreshedContract->nextBillingDate?->format('Y-m-d'),
+            );
+        }
+    }
+
     private function createAndInitiatePayment(RentalType $rentalType): \App\Entity\Order
     {
         /** @var User $tenant */

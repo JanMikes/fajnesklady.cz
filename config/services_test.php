@@ -39,6 +39,11 @@ return App::config([
         'App\\Service\\GoPay\\GoPayClient' => [
             'alias' => 'App\\Tests\\Mock\\MockGoPayClient',
         ],
+        'App\\Command\\ChargeRecurringPaymentHandler' => [
+            'arguments' => [
+                '$pollIntervalMicroseconds' => 0,
+            ],
+        ],
         'Symfony\\Component\\PasswordHasher\\Hasher\\UserPasswordHasherInterface' => [
             'alias' => 'security.user_password_hasher',
             'public' => true,

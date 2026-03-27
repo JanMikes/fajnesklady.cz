@@ -85,6 +85,7 @@ final readonly class GoPayApiClient implements GoPayClient
             id: (string) $response->json['id'],
             state: $response->json['state'],
             parentId: isset($response->json['parent_id']) ? (string) $response->json['parent_id'] : null,
+            amount: isset($response->json['amount']) ? (int) $response->json['amount'] : null,
         );
     }
 
