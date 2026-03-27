@@ -193,7 +193,7 @@ class OrderTest extends TestCase
 
         $this->assertSame(OrderStatus::AWAITING_PAYMENT, $order->status);
         $this->assertTrue($order->canBePaid());
-        $this->assertFalse($order->canBeCancelled());
+        $this->assertTrue($order->canBeCancelled());
     }
 
     public function testMarkPaid(): void
@@ -405,7 +405,7 @@ class OrderTest extends TestCase
         $this->assertFalse($order->canBePaid());
     }
 
-    public function testCanBeCancelledInPrePaymentState(): void
+    public function testCanBeCancelledBeforePayment(): void
     {
         $order = $this->createOrder();
         $this->assertTrue($order->canBeCancelled());
@@ -414,15 +414,18 @@ class OrderTest extends TestCase
         $this->assertTrue($order->canBeCancelled());
     }
 
-    public function testCannotBeCancelledAfterPaymentStarted(): void
+    public function testCanBeCancelledWhileAwaitingPayment(): void
     {
-        $order1 = $this->createOrder();
-        $order1->markAwaitingPayment(new \DateTimeImmutable());
-        $this->assertFalse($order1->canBeCancelled());
+        $order = $this->createOrder();
+        $order->markAwaitingPayment(new \DateTimeImmutable());
+        $this->assertTrue($order->canBeCancelled());
+    }
 
-        $order2 = $this->createOrder();
-        $order2->markPaid(new \DateTimeImmutable());
-        $this->assertFalse($order2->canBeCancelled());
+    public function testCannotBeCancelledAfterPaid(): void
+    {
+        $order = $this->createOrder();
+        $order->markPaid(new \DateTimeImmutable());
+        $this->assertFalse($order->canBeCancelled());
     }
 
     public function testCannotBeCancelledInTerminalState(): void
@@ -447,14 +450,14 @@ class OrderTest extends TestCase
 
         $order->reserve(new \DateTimeImmutable());
         $this->assertNull($order->cancellationBlockedReason());
+
+        $order2 = $this->createOrder();
+        $order2->markAwaitingPayment(new \DateTimeImmutable());
+        $this->assertNull($order2->cancellationBlockedReason());
     }
 
     public function testCancellationBlockedReasonReturnsMessageWhenNotCancellable(): void
     {
-        $order1 = $this->createOrder();
-        $order1->markAwaitingPayment(new \DateTimeImmutable());
-        $this->assertNotNull($order1->cancellationBlockedReason());
-
         $order2 = $this->createOrder();
         $order2->markPaid(new \DateTimeImmutable());
         $this->assertNotNull($order2->cancellationBlockedReason());

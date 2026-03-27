@@ -72,6 +72,12 @@ final class OrderPaymentController extends AbstractController
             $action = $request->request->getString('action');
 
             if ('cancel' === $action) {
+                if (!$order->canBeCancelled()) {
+                    $this->addFlash('error', $order->cancellationBlockedReason() ?? 'Objednávku nelze zrušit.');
+
+                    return $this->redirectToRoute($this->getUser() ? 'portal_browse_places' : 'app_home');
+                }
+
                 try {
                     $this->commandBus->dispatch(new CancelOrderCommand($order));
                     $this->addFlash('info', 'Objednávka byla zrušena.');

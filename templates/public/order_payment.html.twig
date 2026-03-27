@@ -146,6 +146,7 @@
                         Zaplatit {{ order.totalPriceInCzk|number_format(2, ',', ' ') }} Kč
                     </button>
 
+                    {% if order.canBeCancelled %}
                     <form method="post" class="flex-1 sm:flex-initial">
                         <input type="hidden" name="action" value="cancel">
                         <button type="submit"
@@ -154,6 +155,7 @@
                             Zrušit objednávku
                         </button>
                     </form>
+                    {% endif %}
                 </div>
             </div>
         </div>

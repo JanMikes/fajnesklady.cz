@@ -6,6 +6,7 @@ namespace App\Entity;
 
 use App\Enum\OrderStatus;
 use App\Enum\PaymentFrequency;
+use App\Enum\PaymentMethod;
 use App\Enum\RentalType;
 use App\Enum\SigningMethod;
 use App\Event\OrderCancelled;
@@ -62,6 +63,15 @@ class Order implements EntityWithEvents
 
     #[ORM\Column(length: 255, nullable: true)]
     public private(set) ?string $signingPlace = null;
+
+    #[ORM\Column(nullable: true)]
+    public private(set) ?bool $isAdminCreated = null;
+
+    #[ORM\Column(length: 128, nullable: true, unique: true)]
+    public private(set) ?string $signingToken = null;
+
+    #[ORM\Column(length: 10, nullable: true, enumType: PaymentMethod::class)]
+    public private(set) ?PaymentMethod $paymentMethod = null;
 
     public function __construct(
         #[ORM\Id]
@@ -192,7 +202,7 @@ class Order implements EntityWithEvents
 
     public function canBeCancelled(): bool
     {
-        return in_array($this->status, [OrderStatus::CREATED, OrderStatus::RESERVED], true);
+        return in_array($this->status, [OrderStatus::CREATED, OrderStatus::RESERVED, OrderStatus::AWAITING_PAYMENT], true);
     }
 
     public function cancellationBlockedReason(): ?string
@@ -202,7 +212,6 @@ class Order implements EntityWithEvents
         }
 
         return match ($this->status) {
-            OrderStatus::AWAITING_PAYMENT => 'Objednávku nelze zrušit, protože probíhá platba.',
             OrderStatus::PAID => 'Objednávku nelze zrušit, protože je již zaplacena.',
             OrderStatus::COMPLETED => 'Objednávku nelze zrušit, protože je již dokončena.',
             OrderStatus::CANCELLED => 'Objednávka je již zrušena.',
@@ -260,5 +269,35 @@ class Order implements EntityWithEvents
     public function hasRecurringPaymentSetup(): bool
     {
         return null !== $this->goPayParentPaymentId;
+    }
+
+    public function markAsAdminCreated(): void
+    {
+        $this->isAdminCreated = true;
+    }
+
+    public function setSigningToken(string $token): void
+    {
+        $this->signingToken = $token;
+    }
+
+    public function clearSigningToken(): void
+    {
+        $this->signingToken = null;
+    }
+
+    public function setPaymentMethod(PaymentMethod $method): void
+    {
+        $this->paymentMethod = $method;
+    }
+
+    public function overrideTotalPrice(int $price): void
+    {
+        $this->totalPrice = $price;
+    }
+
+    public function extendExpiration(\DateTimeImmutable $newExpiresAt): void
+    {
+        $this->expiresAt = $newExpiresAt;
     }
 }
