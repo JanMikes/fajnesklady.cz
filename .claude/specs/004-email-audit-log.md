@@ -1,6 +1,6 @@
 # 004 — Audit log of all outgoing emails
 
-**Status:** ready
+**Status:** done
 **Type:** feature (admin observability)
 **Scope:** large (~15 files: entity + migration + listener + repository + 2 controllers + 2 templates + nav update + tests)
 **Depends on:** none

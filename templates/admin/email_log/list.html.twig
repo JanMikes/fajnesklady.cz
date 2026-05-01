@@ -1,0 +1,139 @@
+{% extends 'portal/layout.html.twig' %}
+
+{% block title %}Odeslané e-maily - Admin{% endblock %}
+
+{% block content %}
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold text-gray-900">Odeslané e-maily</h1>
+    </div>
+
+    {# Filters #}
+    <div class="card mb-6">
+        <div class="card-body p-4">
+            <form method="get" class="flex flex-wrap gap-4 items-end">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Od data</label>
+                    <input type="date" name="date_from" value="{{ currentDateFrom }}" class="form-input text-sm py-1.5">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Do data</label>
+                    <input type="date" name="date_to" value="{{ currentDateTo }}" class="form-input text-sm py-1.5">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Příjemce</label>
+                    <input type="text" name="recipient" value="{{ currentRecipient }}" placeholder="e-mail nebo jméno" class="form-input text-sm py-1.5 w-56">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Předmět</label>
+                    <input type="text" name="subject" value="{{ currentSubject }}" placeholder="část předmětu" class="form-input text-sm py-1.5 w-56">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Šablona</label>
+                    <select name="template" class="form-input text-sm py-1.5">
+                        <option value="">Všechny šablony</option>
+                        {% for templateName in templateNames %}
+                            <option value="{{ templateName }}" {% if currentTemplate == templateName %}selected{% endif %}>{{ templateName }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Stav</label>
+                    <select name="status" class="form-input text-sm py-1.5">
+                        <option value="">Vše</option>
+                        {% for statusOption in statuses %}
+                            <option value="{{ statusOption.value }}" {% if currentStatus == statusOption.value %}selected{% endif %}>{{ statusOption.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <button type="submit" class="btn btn-primary btn-sm">Filtrovat</button>
+                    <a href="{{ path('admin_email_log') }}" class="btn btn-ghost btn-sm">Vymazat</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header bg-gray-50 px-4 py-3 border-b">
+            <span class="text-sm text-gray-600">Zobrazeno {{ logs|length }} z {{ totalLogs }} záznamů</span>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="table table-zebra text-sm">
+                <thead>
+                    <tr>
+                        <th>Čas</th>
+                        <th>Stav</th>
+                        <th>Příjemce</th>
+                        <th>Předmět</th>
+                        <th>Šablona</th>
+                        <th class="text-right">Akce</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                        {% set primaryRecipient = log.toAddresses|first %}
+                        {% set recipientTitle %}{% for addr in log.toAddresses %}{{ addr.name ? addr.name ~ ' <' ~ addr.email ~ '>' : addr.email }}{% if not loop.last %}, {% endif %}{% endfor %}{% if log.ccAddresses %} | CC: {% for addr in log.ccAddresses %}{{ addr.email }}{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}{% if log.bccAddresses %} | BCC: {% for addr in log.bccAddresses %}{{ addr.email }}{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}{% endset %}
+                        <tr>
+                            <td class="text-gray-500 whitespace-nowrap">{{ log.attemptedAt|date('d.m.Y H:i:s') }}</td>
+                            <td>
+                                {% if log.status.value == 'sent' %}
+                                    <span class="px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">{{ log.status.label }}</span>
+                                {% else %}
+                                    <span class="px-2 py-1 rounded text-xs font-medium bg-red-100 text-red-800">{{ log.status.label }}</span>
+                                {% endif %}
+                            </td>
+                            <td title="{{ recipientTitle }}">
+                                {% if primaryRecipient %}
+                                    <span class="text-gray-900">{{ primaryRecipient.email }}</span>
+                                    {% if log.toAddresses|length > 1 %}
+                                        <span class="text-xs text-gray-500">(+{{ log.toAddresses|length - 1 }})</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-gray-400">—</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if log.subject|length > 60 %}
+                                    <span title="{{ log.subject }}">{{ log.subject|slice(0, 60) }}…</span>
+                                {% else %}
+                                    {{ log.subject ?: '—' }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if log.templateName %}
+                                    {% set lastSegment = log.templateName|split('/')|last %}
+                                    <span class="badge badge-ghost" title="{{ log.templateName }}">{{ lastSegment }}</span>
+                                {% else %}
+                                    <span class="text-gray-400">—</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-right">
+                                <a href="{{ path('admin_email_log_detail', {id: log.id}) }}" class="link">Zobrazit</a>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center text-gray-500 py-8">Žádné e-maily nenalezeny</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if totalPages > 1 %}
+            {% include 'components/pagination.html.twig' with {
+                currentPage: currentPage,
+                totalPages: totalPages,
+                route: 'admin_email_log',
+                routeParams: {
+                    date_from: currentDateFrom,
+                    date_to: currentDateTo,
+                    recipient: currentRecipient,
+                    subject: currentSubject,
+                    template: currentTemplate,
+                    status: currentStatus,
+                }
+            } %}
+        {% endif %}
+    </div>
+{% endblock %}

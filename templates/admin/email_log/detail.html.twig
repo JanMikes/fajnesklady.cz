@@ -1,0 +1,156 @@
+{% extends 'portal/layout.html.twig' %}
+
+{% block title %}E-mail: {{ log.subject|slice(0, 60) }} - Admin{% endblock %}
+
+{% macro format_bytes(size) %}
+    {%- if size >= 1024 -%}
+        {{ (size / 1024)|number_format(1, ',', ' ') }} kB
+    {%- else -%}
+        {{ size }} B
+    {%- endif -%}
+{% endmacro %}
+
+{% macro format_address_list(addresses) %}
+    {%- for addr in addresses -%}
+        {%- if addr.name -%}{{ addr.name }} &lt;{{ addr.email }}&gt;{%- else -%}{{ addr.email }}{%- endif -%}
+        {%- if not loop.last -%}, {% endif -%}
+    {%- endfor -%}
+{% endmacro %}
+
+{% block breadcrumb %}
+    <nav class="text-sm mb-4">
+        <a href="{{ path('admin_email_log') }}" class="link">Odeslané e-maily</a>
+        <span class="text-gray-400 mx-1">→</span>
+        <span class="text-gray-700">{{ log.subject|slice(0, 40) ?: '(bez předmětu)' }}{% if log.subject|length > 40 %}…{% endif %}</span>
+    </nav>
+{% endblock %}
+
+{% block content %}
+    {% import _self as helpers %}
+
+    <div class="mb-6">
+        <div class="flex flex-wrap items-center gap-3 mb-2">
+            {% if log.status.value == 'sent' %}
+                <span class="px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">{{ log.status.label }}</span>
+            {% else %}
+                <span class="px-2 py-1 rounded text-xs font-medium bg-red-100 text-red-800">{{ log.status.label }}</span>
+            {% endif %}
+            <span class="text-sm text-gray-500">{{ log.attemptedAt|date('d.m.Y H:i:s') }}</span>
+        </div>
+        <h1 class="text-2xl font-bold text-gray-900 break-words">{{ log.subject ?: '(bez předmětu)' }}</h1>
+    </div>
+
+    {% if log.status.value == 'failed' and log.errorMessage %}
+        <div class="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
+            <h3 class="text-sm font-semibold text-red-800 mb-1">Chyba odesílání</h3>
+            <pre class="text-sm text-red-700 whitespace-pre-wrap break-words">{{ log.errorMessage }}</pre>
+        </div>
+    {% endif %}
+
+    {# Metadata grid #}
+    <div class="card mb-6">
+        <div class="card-body p-4">
+            <dl class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                <div>
+                    <dt class="font-medium text-gray-500">Od</dt>
+                    <dd class="text-gray-900 break-words">
+                        {% if log.fromName %}{{ log.fromName }} &lt;{{ log.fromEmail }}&gt;{% else %}{{ log.fromEmail }}{% endif %}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-medium text-gray-500">Komu</dt>
+                    <dd class="text-gray-900 break-words">{{ helpers.format_address_list(log.toAddresses)|raw }}</dd>
+                </div>
+                {% if log.ccAddresses %}
+                    <div>
+                        <dt class="font-medium text-gray-500">CC</dt>
+                        <dd class="text-gray-900 break-words">{{ helpers.format_address_list(log.ccAddresses)|raw }}</dd>
+                    </div>
+                {% endif %}
+                {% if log.bccAddresses %}
+                    <div>
+                        <dt class="font-medium text-gray-500">BCC</dt>
+                        <dd class="text-gray-900 break-words">{{ helpers.format_address_list(log.bccAddresses)|raw }}</dd>
+                    </div>
+                {% endif %}
+                {% if log.replyToAddresses %}
+                    <div>
+                        <dt class="font-medium text-gray-500">Reply-To</dt>
+                        <dd class="text-gray-900 break-words">{{ helpers.format_address_list(log.replyToAddresses)|raw }}</dd>
+                    </div>
+                {% endif %}
+                <div>
+                    <dt class="font-medium text-gray-500">Šablona</dt>
+                    <dd class="text-gray-900 break-words">
+                        {% if log.templateName %}<code class="text-xs">{{ log.templateName }}</code>{% else %}<span class="text-gray-400">—</span>{% endif %}
+                    </dd>
+                </div>
+                <div>
+                    <dt class="font-medium text-gray-500">Message-ID</dt>
+                    <dd class="text-gray-900 break-all"><code class="text-xs">{{ log.messageId ?: '—' }}</code></dd>
+                </div>
+            </dl>
+        </div>
+    </div>
+
+    {# Body tabs #}
+    <div class="card mb-6" x-data="{ tab: '{{ log.htmlBody is not null ? 'preview' : (log.textBody is not null ? 'text' : 'preview') }}' }">
+        <div class="card-header bg-gray-50 px-4 py-2 border-b flex flex-wrap gap-2">
+            {% if log.htmlBody is not null %}
+                <button type="button" @click="tab = 'preview'" :class="tab === 'preview' ? 'bg-accent text-white' : 'bg-white text-gray-700 hover:bg-gray-100'" class="px-3 py-1 rounded-md border border-gray-300 text-sm font-medium">Náhled</button>
+                <button type="button" @click="tab = 'html'" :class="tab === 'html' ? 'bg-accent text-white' : 'bg-white text-gray-700 hover:bg-gray-100'" class="px-3 py-1 rounded-md border border-gray-300 text-sm font-medium">HTML zdroj</button>
+            {% endif %}
+            {% if log.textBody is not null %}
+                <button type="button" @click="tab = 'text'" :class="tab === 'text' ? 'bg-accent text-white' : 'bg-white text-gray-700 hover:bg-gray-100'" class="px-3 py-1 rounded-md border border-gray-300 text-sm font-medium">Textová verze</button>
+            {% endif %}
+        </div>
+        <div class="card-body p-4">
+            {% if log.htmlBody is not null %}
+                <div x-show="tab === 'preview'">
+                    <iframe sandbox="" srcdoc="{{ log.htmlBody|e('html_attr') }}" class="w-full h-[600px] border rounded"></iframe>
+                </div>
+                <div x-show="tab === 'html'" x-data="{ copied: false }" x-cloak>
+                    <div class="flex justify-end mb-2">
+                        <button type="button" @click="navigator.clipboard.writeText($refs.htmlSource.textContent); copied = true; setTimeout(() => copied = false, 2000)" class="btn btn-ghost btn-sm">
+                            <span x-show="!copied">Kopírovat</span>
+                            <span x-show="copied" x-cloak>Zkopírováno</span>
+                        </button>
+                    </div>
+                    <pre x-ref="htmlSource" class="bg-gray-50 border rounded p-3 text-xs overflow-x-auto whitespace-pre-wrap break-all">{{ log.htmlBody }}</pre>
+                </div>
+            {% endif %}
+            {% if log.textBody is not null %}
+                <div x-show="tab === 'text'" x-cloak>
+                    <pre class="bg-gray-50 border rounded p-3 text-sm whitespace-pre-wrap break-words">{{ log.textBody }}</pre>
+                </div>
+            {% endif %}
+            {% if log.htmlBody is null and log.textBody is null %}
+                <p class="text-gray-500 text-sm">Tělo zprávy není k dispozici.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    {# Attachments #}
+    {% if log.attachments %}
+        <div class="card mb-6">
+            <div class="card-header bg-gray-50 px-4 py-2 border-b">
+                <h3 class="text-sm font-semibold text-gray-700">Přílohy</h3>
+            </div>
+            <div class="card-body p-4">
+                <ul class="list-disc pl-5 text-sm space-y-1">
+                    {% for attachment in log.attachments %}
+                        <li>
+                            <span class="font-medium">{{ attachment.name }}</span>
+                            <span class="text-gray-500">({{ helpers.format_bytes(attachment.sizeBytes) }}, {{ attachment.mimeType }})</span>
+                        </li>
+                    {% endfor %}
+                </ul>
+                <p class="text-xs text-gray-400 mt-3">Obsah příloh není ukládán; uvedeny jsou pouze metadata.</p>
+            </div>
+        </div>
+    {% endif %}
+
+    <div>
+        <a href="{{ path('admin_email_log') }}" class="link">← Zpět na seznam</a>
+    </div>
+{% endblock %}
