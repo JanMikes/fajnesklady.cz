@@ -52,6 +52,9 @@ final class AdminCreateOnboardingFormType extends AbstractType
                 'label' => 'Datum narození',
                 'required' => false,
                 'widget' => 'single_text',
+                'attr' => [
+                    'data-datepicker-max-date-value' => (new \DateTimeImmutable('today'))->format('Y-m-d'),
+                ],
             ])
             ->add('invoiceToCompany', CheckboxType::class, [
                 'label' => 'Fakturovat na firmu',

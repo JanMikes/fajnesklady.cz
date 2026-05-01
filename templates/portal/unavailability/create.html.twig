@@ -74,9 +74,23 @@
             const endDateField = document.getElementById('{{ form.endDate.vars.id }}');
 
             function toggleEndDate() {
-                endDateField.disabled = indefiniteCheckbox.checked;
+                const fp = endDateField._flatpickr;
                 if (indefiniteCheckbox.checked) {
-                    endDateField.value = '';
+                    if (fp) {
+                        fp.clear();
+                        fp.altInput.disabled = true;
+                        fp.set('clickOpens', false);
+                    } else {
+                        endDateField.value = '';
+                        endDateField.disabled = true;
+                    }
+                } else {
+                    if (fp) {
+                        fp.altInput.disabled = false;
+                        fp.set('clickOpens', true);
+                    } else {
+                        endDateField.disabled = false;
+                    }
                 }
             }
 

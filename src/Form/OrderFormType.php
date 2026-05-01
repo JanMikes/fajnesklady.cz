@@ -60,6 +60,7 @@ final class OrderFormType extends AbstractType
                 'help' => 'Vyžadováno pro účely nájemní smlouvy.',
                 'attr' => [
                     'autocomplete' => 'bday',
+                    'data-datepicker-max-date-value' => (new \DateTimeImmutable('today'))->format('Y-m-d'),
                 ],
             ])
             ->add('plainPassword', PasswordType::class, [
@@ -133,7 +134,6 @@ final class OrderFormType extends AbstractType
                 'widget' => 'single_text',
                 'input' => 'datetime_immutable',
                 'attr' => [
-                    'data-controller' => 'datepicker',
                     'data-datepicker-min-date-value' => (new \DateTimeImmutable('tomorrow'))->format('Y-m-d'),
                 ],
             ])
@@ -143,7 +143,6 @@ final class OrderFormType extends AbstractType
                 'required' => false,
                 'input' => 'datetime_immutable',
                 'attr' => [
-                    'data-controller' => 'datepicker',
                     'data-datepicker-min-date-value' => (new \DateTimeImmutable('tomorrow'))->format('Y-m-d'),
                 ],
             ]);
