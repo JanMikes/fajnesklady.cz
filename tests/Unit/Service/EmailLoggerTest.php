@@ -15,6 +15,7 @@ use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Mailer\Envelope;
 use Symfony\Component\Mailer\Event\FailedMessageEvent;
+use Symfony\Component\Mailer\Event\MessageEvent;
 use Symfony\Component\Mailer\Event\SentMessageEvent;
 use Symfony\Component\Mailer\SentMessage;
 use Symfony\Component\Mime\Address;
@@ -54,6 +55,7 @@ class EmailLoggerTest extends TestCase
 
         $email->attach('PDFCONTENT', 'smlouva.pdf', 'application/pdf');
 
+        $logger->onMessage(new MessageEvent($email, Envelope::create($email), 'test'));
         $logger->onSent(new SentMessageEvent($this->buildSentMessage($email)));
 
         $this->assertCount(1, $captured);
@@ -69,7 +71,7 @@ class EmailLoggerTest extends TestCase
         $this->assertSame('Vítejte', $log->subject);
         $this->assertSame('<p>Hello</p>', $log->htmlBody);
         $this->assertSame('Hello', $log->textBody);
-        $this->assertSame('email/welcome.html.twig', $log->templateName);
+        $this->assertSame('email/welcome', $log->templateName);
         $this->assertNotNull($log->attachments);
         $this->assertCount(1, $log->attachments);
         $this->assertSame('smlouva.pdf', $log->attachments[0]['name']);
@@ -148,11 +150,12 @@ class EmailLoggerTest extends TestCase
             ->textTemplate('email/plain.txt.twig')
             ->text('Plain text body');
 
+        $logger->onMessage(new MessageEvent($email, Envelope::create($email), 'test'));
         $logger->onSent(new SentMessageEvent($this->buildSentMessage($email)));
 
         $this->assertCount(1, $captured);
         $log = $captured[0];
-        $this->assertSame('email/plain.txt.twig', $log->templateName);
+        $this->assertSame('email/plain', $log->templateName);
         $this->assertNull($log->htmlBody);
         $this->assertSame('Plain text body', $log->textBody);
     }
@@ -169,6 +172,29 @@ class EmailLoggerTest extends TestCase
             ->subject('No template')
             ->html('<p>Body</p>');
 
+        $logger->onSent(new SentMessageEvent($this->buildSentMessage($email)));
+
+        $this->assertCount(1, $captured);
+        $this->assertNull($captured[0]->templateName);
+    }
+
+    public function testQueuedMessageEventIsIgnoredSoTemplateIsCapturedOnlyOnRealSend(): void
+    {
+        $captured = [];
+        $repository = $this->createCapturingRepository($captured);
+        $logger = new EmailLogger($repository, $this->identity, $this->clock, $this->logger);
+
+        $email = (new TemplatedEmail())
+            ->from(new Address('noreply@fajnesklady.cz'))
+            ->to(new Address('user@example.com'))
+            ->subject('Hi')
+            ->htmlTemplate('email/welcome.html.twig')
+            ->html('<p>Hello</p>');
+
+        // The queued=true event fires in Mailer::send before async dispatch — the
+        // worker will receive a fresh deserialized Email instance, so capturing
+        // here would leak state. We assert the listener no-ops in that case.
+        $logger->onMessage(new MessageEvent($email, Envelope::create($email), 'test', true));
         $logger->onSent(new SentMessageEvent($this->buildSentMessage($email)));
 
         $this->assertCount(1, $captured);

@@ -13,6 +13,7 @@ use Psr\Log\LoggerInterface;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\Mailer\Event\FailedMessageEvent;
+use Symfony\Component\Mailer\Event\MessageEvent;
 use Symfony\Component\Mailer\Event\SentMessageEvent;
 use Symfony\Component\Mime\Address;
 use Symfony\Component\Mime\Email;
@@ -24,25 +25,57 @@ use Symfony\Component\Mime\RawMessage;
  * Failures inside this listener MUST NOT bubble up — logging is best-effort
  * and never blocks delivery. We log to monolog and move on.
  */
-final readonly class EmailLogger
+final class EmailLogger
 {
+    /** @var \SplObjectStorage<TemplatedEmail, string> */
+    private \SplObjectStorage $capturedTemplates;
+
     public function __construct(
-        private EmailLogRepository $repository,
-        private ProvideIdentity $identity,
-        private ClockInterface $clock,
-        private LoggerInterface $logger,
+        private readonly EmailLogRepository $repository,
+        private readonly ProvideIdentity $identity,
+        private readonly ClockInterface $clock,
+        private readonly LoggerInterface $logger,
     ) {
+        $this->capturedTemplates = new \SplObjectStorage();
+    }
+
+    /**
+     * Capture the template name BEFORE BodyRenderer runs and clears it via
+     * TemplatedEmail::markAsRendered(). Priority 256 puts us ahead of
+     * BodyRenderer (priority 0). We act only on the non-queued MessageEvent —
+     * the one that fires inside the actual transport, which is the same
+     * process where SentMessageEvent will fire on the same Email instance.
+     */
+    #[AsEventListener(priority: 256)]
+    public function onMessage(MessageEvent $event): void
+    {
+        if ($event->isQueued()) {
+            return;
+        }
+
+        $message = $event->getMessage();
+        if (!$message instanceof TemplatedEmail) {
+            return;
+        }
+
+        $template = $message->getHtmlTemplate() ?? $message->getTextTemplate();
+        if (null !== $template) {
+            $this->capturedTemplates[$message] = $template;
+        }
     }
 
     #[AsEventListener]
     public function onSent(SentMessageEvent $event): void
     {
-        // SentMessageEvent's getMessage() returns SentMessage; the original Email
-        // (with body, template, etc.) is on getOriginalMessage().
+        // SentMessage::getMessageId() is the canonical way to read Message-ID — Symfony
+        // only sets that header on a clone inside SentMessage's constructor, so reading
+        // it off getOriginalMessage()->getHeaders() is always null.
+        $sentMessage = $event->getMessage();
         $this->logSafely(
-            $event->getMessage()->getOriginalMessage(),
+            $sentMessage->getOriginalMessage(),
             EmailLogStatus::SENT,
             errorMessage: null,
+            messageId: $sentMessage->getMessageId(),
         );
     }
 
@@ -53,13 +86,14 @@ final readonly class EmailLogger
             $event->getMessage(),
             EmailLogStatus::FAILED,
             errorMessage: $event->getError()->getMessage(),
+            messageId: null,
         );
     }
 
-    private function logSafely(RawMessage $message, EmailLogStatus $status, ?string $errorMessage): void
+    private function logSafely(RawMessage $message, EmailLogStatus $status, ?string $errorMessage, ?string $messageId): void
     {
         try {
-            $log = $this->buildLog($message, $status, $errorMessage);
+            $log = $this->buildLog($message, $status, $errorMessage, $messageId);
             if (null !== $log) {
                 $this->repository->save($log);
             }
@@ -69,10 +103,14 @@ final readonly class EmailLogger
                 'exception' => $e,
                 'status' => $status->value,
             ]);
+        } finally {
+            if ($message instanceof TemplatedEmail) {
+                unset($this->capturedTemplates[$message]);
+            }
         }
     }
 
-    private function buildLog(RawMessage $message, EmailLogStatus $status, ?string $errorMessage): ?EmailLog
+    private function buildLog(RawMessage $message, EmailLogStatus $status, ?string $errorMessage, ?string $messageId): ?EmailLog
     {
         if (!$message instanceof Email) {
             // We do not log raw (non-Email) messages such as Notifier SMS.
@@ -83,12 +121,12 @@ final readonly class EmailLogger
         $firstFrom = $fromAddresses[0] ?? null;
 
         $templateName = null;
-        if ($message instanceof TemplatedEmail) {
-            $templateName = $message->getHtmlTemplate() ?? $message->getTextTemplate();
+        if ($message instanceof TemplatedEmail && isset($this->capturedTemplates[$message])) {
+            $rawTemplate = $this->capturedTemplates[$message];
+            $templateName = preg_replace('/\.(html|txt)\.twig$/', '', $rawTemplate);
         }
 
         $attachments = $this->extractAttachments($message);
-        $messageId = $message->getHeaders()->get('Message-ID')?->getBodyAsString();
 
         return new EmailLog(
             id: $this->identity->next(),
