@@ -11,13 +11,13 @@ final class StorageUnavailabilityFormData
     #[Assert\NotBlank(message: 'Vyberte sklad')]
     public ?string $storageId = null;
 
-    #[Assert\NotBlank(message: 'Zadejte datum zacatku')]
+    #[Assert\NotBlank(message: 'Zadejte datum začátku')]
     public ?\DateTimeImmutable $startDate = null;
 
     public ?\DateTimeImmutable $endDate = null;
 
-    #[Assert\NotBlank(message: 'Zadejte duvod blokovani')]
-    #[Assert\Length(max: 500, maxMessage: 'Duvod nemuze byt delsi nez {{ limit }} znaku')]
+    #[Assert\NotBlank(message: 'Zadejte důvod blokování')]
+    #[Assert\Length(max: 500, maxMessage: 'Důvod nemůže být delší než {{ limit }} znaků')]
     public string $reason = '';
 
     public bool $indefinite = false;

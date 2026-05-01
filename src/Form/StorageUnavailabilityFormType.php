@@ -37,7 +37,7 @@ class StorageUnavailabilityFormType extends AbstractType
         ]);
 
         $builder->add('startDate', DateType::class, [
-            'label' => 'Datum zacatku',
+            'label' => 'Datum začátku',
             'widget' => 'single_text',
         ]);
 
@@ -48,16 +48,16 @@ class StorageUnavailabilityFormType extends AbstractType
         ]);
 
         $builder->add('indefinite', CheckboxType::class, [
-            'label' => 'Neomezene (bez data konce)',
+            'label' => 'Neomezené (bez data konce)',
             'required' => false,
         ]);
 
         $builder->add('reason', TextareaType::class, [
-            'label' => 'Duvod blokovani',
+            'label' => 'Důvod blokování',
             'attr' => [
 
                 'rows' => 3,
-                'placeholder' => 'napr. udrzba, renovace, rezervace pro konkretniho zakaznika...',
+                'placeholder' => 'např. údržba, renovace, rezervace pro konkrétního zákazníka...',
             ],
         ]);
     }
