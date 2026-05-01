@@ -7,7 +7,7 @@ namespace App\Command;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Set password for a passwordless user account.
+ * Admin-driven password change for a user. Always emits PasswordChangedByAdmin domain event.
  */
 final readonly class SetUserPasswordCommand
 {

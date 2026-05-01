@@ -247,6 +247,17 @@ final readonly class AuditLogger
         );
     }
 
+    // User events
+    public function logUserPasswordChangedByAdmin(User $targetUser): void
+    {
+        $this->log(
+            entityType: 'user',
+            entityId: $targetUser->id->toRfc4122(),
+            eventType: 'password_changed_by_admin',
+            payload: ['target_email' => $targetUser->email],
+        );
+    }
+
     /**
      * Generic log method for custom events.
      *

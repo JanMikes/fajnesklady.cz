@@ -1,6 +1,6 @@
 # 002 — Admin: change user password
 
-**Status:** ready
+**Status:** done
 **Type:** feature (admin tooling)
 **Scope:** medium (~10 files: controller + form + template + entity tweak + command/handler reuse + event + email handler + audit log)
 **Depends on:** none. Works fine independently of spec 003 (which removes `PasswordStrength` from self-service forms).

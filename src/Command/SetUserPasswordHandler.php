@@ -6,6 +6,7 @@ namespace App\Command;
 
 use App\Exception\UserNotFound;
 use App\Repository\UserRepository;
+use App\Service\AuditLogger;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
@@ -17,6 +18,7 @@ final readonly class SetUserPasswordHandler
         private UserRepository $userRepository,
         private UserPasswordHasherInterface $passwordHasher,
         private ClockInterface $clock,
+        private AuditLogger $auditLogger,
     ) {
     }
 
@@ -29,7 +31,9 @@ final readonly class SetUserPasswordHandler
         }
 
         $hashedPassword = $this->passwordHasher->hashPassword($user, $command->plainPassword);
-        $user->changePassword($hashedPassword, $this->clock->now());
+        $user->changePasswordByAdmin($hashedPassword, $this->clock->now());
         $this->userRepository->save($user);
+
+        $this->auditLogger->logUserPasswordChangedByAdmin($user);
     }
 }

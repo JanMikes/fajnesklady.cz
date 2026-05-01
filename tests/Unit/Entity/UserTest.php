@@ -6,6 +6,7 @@ namespace App\Tests\Unit\Entity;
 
 use App\Entity\User;
 use App\Enum\UserRole;
+use App\Event\PasswordChangedByAdmin;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
@@ -79,6 +80,41 @@ class UserTest extends TestCase
         $this->assertSame($newPassword, $user->getPassword());
         $this->assertGreaterThan($originalUpdatedAt, $user->updatedAt);
         $this->assertSame($changedAt, $user->updatedAt);
+    }
+
+    public function testChangePasswordDoesNotRecordEvent(): void
+    {
+        $createdAt = new \DateTimeImmutable('2025-06-15 12:00:00');
+        $user = new User(Uuid::v7(), 'test@example.com', 'oldPassword', 'Test', 'User', $createdAt);
+        // Drain the UserRegistered event from construction
+        $user->popEvents();
+
+        $user->changePassword('newHashedPassword', $createdAt);
+
+        $this->assertSame([], $user->popEvents());
+    }
+
+    public function testChangePasswordByAdminRecordsEvent(): void
+    {
+        $createdAt = new \DateTimeImmutable('2025-06-15 12:00:00');
+        $changedAt = new \DateTimeImmutable('2025-06-15 12:00:00');
+        $user = new User(Uuid::v7(), 'admin-target@example.com', 'oldPassword', 'Test', 'User', $createdAt);
+        // Drain the UserRegistered event from construction
+        $user->popEvents();
+
+        $user->changePasswordByAdmin('newHashedPassword', $changedAt);
+
+        $this->assertSame('newHashedPassword', $user->getPassword());
+        $this->assertSame($changedAt, $user->updatedAt);
+
+        $events = $user->popEvents();
+        $this->assertCount(1, $events);
+
+        $event = $events[0];
+        $this->assertInstanceOf(PasswordChangedByAdmin::class, $event);
+        $this->assertSame($user->id, $event->userId);
+        $this->assertSame('admin-target@example.com', $event->email);
+        $this->assertSame($changedAt, $event->occurredOn);
     }
 
     public function testCreatedAtIsImmutable(): void

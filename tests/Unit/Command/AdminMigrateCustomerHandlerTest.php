@@ -7,7 +7,6 @@ namespace App\Tests\Unit\Command;
 use App\Command\AdminMigrateCustomerCommand;
 use App\Command\AdminMigrateCustomerHandler;
 use App\Entity\Contract;
-use App\Entity\Order;
 use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;

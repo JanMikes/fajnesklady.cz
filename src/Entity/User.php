@@ -6,6 +6,7 @@ namespace App\Entity;
 
 use App\Enum\UserRole;
 use App\Event\EmailVerified;
+use App\Event\PasswordChangedByAdmin;
 use App\Event\UserRegistered;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -134,6 +135,17 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, EntityW
     {
         $this->password = $hashedPassword;
         $this->updatedAt = $now;
+    }
+
+    public function changePasswordByAdmin(string $hashedPassword, \DateTimeImmutable $now): void
+    {
+        $this->changePassword($hashedPassword, $now);
+
+        $this->recordThat(new PasswordChangedByAdmin(
+            userId: $this->id,
+            email: $this->email,
+            occurredOn: $now,
+        ));
     }
 
     /**
