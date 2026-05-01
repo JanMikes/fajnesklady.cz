@@ -25,6 +25,12 @@ return App::config([
                 'limit' => 10,
                 'interval' => '1 hour',
             ],
+            // ARES lookup rate limiter - 60 attempts per hour per IP
+            'ares_lookup' => [
+                'policy' => 'sliding_window',
+                'limit' => 60,
+                'interval' => '1 hour',
+            ],
         ],
     ],
 ]);

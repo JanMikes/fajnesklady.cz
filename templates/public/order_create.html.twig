@@ -134,6 +134,7 @@
                             {% endif %}
                         </div>
 
+                        <div data-controller="ares-lookup" class="space-y-8">
                         {# Address - always required for the contract #}
                         <div class="bg-gray-50 rounded-lg p-6">
                             <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
@@ -179,6 +180,7 @@
                             <div x-show="invoiceToCompany" x-cloak class="space-y-4">
                                 <div>
                                     {{ form_row(form.companyId) }}
+                                    {% include 'components/ares_lookup_button.html.twig' %}
                                 </div>
 
                                 <div class="grid md:grid-cols-2 gap-4">
@@ -190,6 +192,7 @@
                                     </div>
                                 </div>
                             </div>
+                        </div>
                         </div>
 
                         {# Rental Type #}

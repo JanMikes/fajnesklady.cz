@@ -56,16 +56,17 @@
                             <span class="text-sm text-gray-700">Fakturovat na firmu</span>
                         </label>
                     </div>
-                    <div class="grid md:grid-cols-2 gap-4 mb-6">
-                        <div>
-                            {{ form_label(form.companyName) }}
-                            {{ form_widget(form.companyName) }}
-                            {{ form_errors(form.companyName) }}
-                        </div>
+                    <div class="grid md:grid-cols-2 gap-4 mb-6" data-controller="ares-lookup">
                         <div>
                             {{ form_label(form.companyId) }}
                             {{ form_widget(form.companyId) }}
                             {{ form_errors(form.companyId) }}
+                            {% include 'components/ares_lookup_button.html.twig' %}
+                        </div>
+                        <div>
+                            {{ form_label(form.companyName) }}
+                            {{ form_widget(form.companyName) }}
+                            {{ form_errors(form.companyName) }}
                         </div>
                         <div class="md:col-span-2">
                             {{ form_label(form.companyVatId) }}

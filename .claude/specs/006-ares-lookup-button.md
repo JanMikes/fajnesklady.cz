@@ -1,6 +1,6 @@
 # 006 — "Načíst z ARES" button next to every IČO field
 
-**Status:** ready
+**Status:** done
 **Type:** feature (UX + small backend refactor)
 **Scope:** medium (~12 files: refactor existing service + new exception + JSON endpoint + rate-limiter config + Stimulus controller + Twig partial + 7 template touches)
 **Depends on:** none. Spec 005 (password toggle) lives in the same form theme but doesn't conflict.

@@ -21,9 +21,10 @@
                         }) }}
                     </div>
 
-                    <div id="company-fields" class="hidden space-y-0">
-                        {{ form_row(registrationForm.companyName) }}
+                    <div id="company-fields" class="hidden space-y-0" data-controller="ares-lookup">
                         {{ form_row(registrationForm.companyId) }}
+                        {% include 'components/ares_lookup_button.html.twig' %}
+                        {{ form_row(registrationForm.companyName) }}
                         {{ form_row(registrationForm.companyVatId) }}
                         {{ form_row(registrationForm.billingStreet) }}
                         {{ form_row(registrationForm.billingCity) }}

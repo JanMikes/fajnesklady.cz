@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Service;
 
+use App\Exception\AresUnavailable;
 use App\Service\AresService;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
+use Symfony\Component\HttpClient\Exception\TransportException;
 use Symfony\Component\HttpClient\MockHttpClient;
 use Symfony\Component\HttpClient\Response\MockResponse;
 
@@ -89,26 +91,38 @@ class AresServiceTest extends TestCase
         self::assertNull($result);
     }
 
-    public function testLoadByCompanyIdReturnsNullOnHttpError(): void
+    public function testLoadByCompanyIdThrowsAresUnavailableOnHttpError(): void
     {
         $mockResponse = new MockResponse('Internal Server Error', ['http_code' => 500]);
         $httpClient = new MockHttpClient($mockResponse);
 
         $service = new AresService($httpClient, new NullLogger());
-        $result = $service->loadByCompanyId('11678631');
 
-        self::assertNull($result);
+        $this->expectException(AresUnavailable::class);
+        $service->loadByCompanyId('11678631');
     }
 
-    public function testLoadByCompanyIdReturnsNullOnInvalidJson(): void
+    public function testLoadByCompanyIdThrowsAresUnavailableOnInvalidJson(): void
     {
         $mockResponse = new MockResponse('invalid json', ['http_code' => 200]);
         $httpClient = new MockHttpClient($mockResponse);
 
         $service = new AresService($httpClient, new NullLogger());
-        $result = $service->loadByCompanyId('11678631');
 
-        self::assertNull($result);
+        $this->expectException(AresUnavailable::class);
+        $service->loadByCompanyId('11678631');
+    }
+
+    public function testLoadByCompanyIdThrowsAresUnavailableOnTransportException(): void
+    {
+        $httpClient = new MockHttpClient(static function (): MockResponse {
+            throw new TransportException('Network down');
+        });
+
+        $service = new AresService($httpClient, new NullLogger());
+
+        $this->expectException(AresUnavailable::class);
+        $service->loadByCompanyId('11678631');
     }
 
     public function testLoadByCompanyIdReturnsResultWithoutVatId(): void
