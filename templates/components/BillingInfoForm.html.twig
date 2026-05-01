@@ -3,7 +3,7 @@
         <div class="space-y-4" data-controller="ares-lookup">
             <div>
                 <label class="block text-sm font-semibold text-gray-700 mb-2">IČO</label>
-                <div class="flex flex-wrap">
+                <div class="flex">
                     {{ form_widget(form.companyId, {
                         attr: {
                             'placeholder': '12345678',
@@ -12,6 +12,7 @@
                     }) }}
                     {% include 'components/ares_lookup_button.html.twig' %}
                 </div>
+                <p data-ares-lookup-target="status" class="text-sm mt-1" aria-live="polite"></p>
                 {{ form_errors(form.companyId) }}
             </div>
 

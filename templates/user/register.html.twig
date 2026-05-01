@@ -24,10 +24,11 @@
                     <div id="company-fields" class="hidden space-y-0" data-controller="ares-lookup">
                         <div>
                             {{ form_label(registrationForm.companyId) }}
-                            <div class="flex flex-wrap">
+                            <div class="flex">
                                 {{ form_widget(registrationForm.companyId, {attr: {class: 'flex-1 min-w-0 rounded-r-none!'}}) }}
                                 {% include 'components/ares_lookup_button.html.twig' %}
                             </div>
+                            <p data-ares-lookup-target="status" class="text-sm mt-1" aria-live="polite"></p>
                             {{ form_errors(registrationForm.companyId) }}
                         </div>
                         {{ form_row(registrationForm.companyName) }}

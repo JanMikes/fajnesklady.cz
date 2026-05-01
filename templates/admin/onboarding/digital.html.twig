@@ -59,10 +59,11 @@
                     <div class="grid md:grid-cols-2 gap-4 mb-6" data-controller="ares-lookup">
                         <div>
                             {{ form_label(form.companyId) }}
-                            <div class="flex flex-wrap">
+                            <div class="flex">
                                 {{ form_widget(form.companyId, {attr: {class: 'flex-1 min-w-0 rounded-r-none!'}}) }}
                                 {% include 'components/ares_lookup_button.html.twig' %}
                             </div>
+                            <p data-ares-lookup-target="status" class="text-sm mt-1" aria-live="polite"></p>
                             {{ form_errors(form.companyId) }}
                         </div>
                         <div>

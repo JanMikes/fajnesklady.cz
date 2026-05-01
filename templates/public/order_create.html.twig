@@ -154,10 +154,11 @@
                             <div x-show="invoiceToCompany" x-cloak class="space-y-4">
                                 <div>
                                     {{ form_label(form.companyId) }}
-                                    <div class="flex flex-wrap">
+                                    <div class="flex">
                                         {{ form_widget(form.companyId, {attr: {class: 'flex-1 min-w-0 rounded-r-none!'}}) }}
                                         {% include 'components/ares_lookup_button.html.twig' %}
                                     </div>
+                                    <p data-ares-lookup-target="status" class="text-sm mt-1" aria-live="polite"></p>
                                     {{ form_errors(form.companyId) }}
                                 </div>
 
