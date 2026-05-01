@@ -104,27 +104,27 @@ final class AdminUserFormType extends AbstractType
 
         // Self-billing settings (for landlords)
         $builder->add('commissionRate', NumberType::class, [
-            'label' => 'Provize pro pronajimatele (%)',
+            'label' => 'Provize pro pronajímatele (%)',
             'required' => false,
             'scale' => 0,
             'attr' => [
-                'placeholder' => 'Vychozi 90%',
+                'placeholder' => 'Výchozí 90%',
 
                 'min' => 0,
                 'max' => 100,
             ],
-            'help' => 'Procento z platby, ktere obdrzi pronajimatel. Nechte prazdne pro 90%.',
+            'help' => 'Procento z platby, které obdrží pronajímatel. Nechte prázdné pro 90%.',
         ]);
 
         $builder->add('selfBillingPrefix', TextType::class, [
             'label' => 'Prefix samofakturace',
             'required' => false,
             'attr' => [
-                'placeholder' => 'napr. P001',
+                'placeholder' => 'např. P001',
 
                 'maxlength' => 10,
             ],
-            'help' => 'Prefix pro samofakturacni doklady (napr. P001). Povinne pro samofakturaci.',
+            'help' => 'Prefix pro samofakturační doklady (např. P001). Povinné pro samofakturaci.',
         ]);
 
         $builder->add('adminNote', TextareaType::class, [

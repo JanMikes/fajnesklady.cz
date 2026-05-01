@@ -12,22 +12,22 @@ use Symfony\Component\Validator\Context\ExecutionContextInterface;
 
 final class PlaceFormData
 {
-    #[Assert\NotNull(message: 'Vyberte typ mista')]
+    #[Assert\NotNull(message: 'Vyberte typ místa')]
     public PlaceType $type = PlaceType::FAJNE_SKLADY;
 
-    #[Assert\NotBlank(message: 'Zadejte nazev')]
-    #[Assert\Length(max: 255, maxMessage: 'Nazev nemuze byt delsi nez {{ limit }} znaku')]
+    #[Assert\NotBlank(message: 'Zadejte název')]
+    #[Assert\Length(max: 255, maxMessage: 'Název nemůže být delší než {{ limit }} znaků')]
     public string $name = '';
 
-    #[Assert\Length(max: 500, maxMessage: 'Adresa nemuze byt delsi nez {{ limit }} znaku')]
+    #[Assert\Length(max: 500, maxMessage: 'Adresa nemůže být delší než {{ limit }} znaků')]
     public ?string $address = null;
 
-    #[Assert\NotBlank(message: 'Zadejte mesto')]
-    #[Assert\Length(max: 100, maxMessage: 'Nazev mesta nemuze byt delsi nez {{ limit }} znaku')]
+    #[Assert\NotBlank(message: 'Zadejte město')]
+    #[Assert\Length(max: 100, maxMessage: 'Název města nemůže být delší než {{ limit }} znaků')]
     public string $city = '';
 
-    #[Assert\NotBlank(message: 'Zadejte PSC')]
-    #[Assert\Length(max: 20, maxMessage: 'PSC nemuze byt delsi nez {{ limit }} znaku')]
+    #[Assert\NotBlank(message: 'Zadejte PSČ')]
+    #[Assert\Length(max: 20, maxMessage: 'PSČ nemůže být delší než {{ limit }} znaků')]
     public string $postalCode = '';
 
     public ?string $description = null;
@@ -35,7 +35,7 @@ final class PlaceFormData
     #[Assert\Image(
         maxSize: '5M',
         mimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
-        mimeTypesMessage: 'Nahrajte obrazek ve formatu JPEG, PNG nebo WebP',
+        mimeTypesMessage: 'Nahrajte obrázek ve formátu JPEG, PNG nebo WebP',
     )]
     public ?UploadedFile $mapImage = null;
 
@@ -61,12 +61,12 @@ final class PlaceFormData
     {
         if ($this->useMapLocation) {
             if (null === $this->latitude || '' === $this->latitude) {
-                $context->buildViolation('Vyberte polohu na mape')
+                $context->buildViolation('Vyberte polohu na mapě')
                     ->atPath('latitude')
                     ->addViolation();
             }
             if (null === $this->longitude || '' === $this->longitude) {
-                $context->buildViolation('Vyberte polohu na mape')
+                $context->buildViolation('Vyberte polohu na mapě')
                     ->atPath('longitude')
                     ->addViolation();
             }

@@ -23,39 +23,39 @@ class PlaceFormType extends AbstractType
     {
         $builder->add('type', EnumType::class, [
             'class' => PlaceType::class,
-            'label' => 'Typ mista',
+            'label' => 'Typ místa',
             'choice_label' => fn (PlaceType $type) => $type->label(),
         ]);
 
         $builder->add('name', TextType::class, [
-            'label' => 'Nazev',
+            'label' => 'Název',
             'attr' => [
-                'placeholder' => 'Nazev mista',
+                'placeholder' => 'Název místa',
             ],
         ]);
 
         $builder->add('useMapLocation', CheckboxType::class, [
             'required' => false,
-            'label' => 'Misto nema adresu, vybrat na mape',
+            'label' => 'Místo nemá adresu, vybrat na mapě',
         ]);
 
         $builder->add('address', TextType::class, [
             'label' => 'Adresa',
             'required' => false,
             'attr' => [
-                'placeholder' => 'Ulice a čislo popisne',
+                'placeholder' => 'Ulice a číslo popisné',
             ],
         ]);
 
         $builder->add('city', TextType::class, [
-            'label' => 'Mesto',
+            'label' => 'Město',
             'attr' => [
                 'placeholder' => 'Praha',
             ],
         ]);
 
         $builder->add('postalCode', TextType::class, [
-            'label' => 'PSC',
+            'label' => 'PSČ',
             'attr' => [
                 'placeholder' => '110 00',
             ],
@@ -83,7 +83,7 @@ class PlaceFormType extends AbstractType
             'label' => 'Popis',
             'required' => false,
             'attr' => [
-                'placeholder' => 'Volitelny popis mista',
+                'placeholder' => 'Volitelný popis místa',
 
                 'rows' => 4,
             ],
@@ -95,7 +95,7 @@ class PlaceFormType extends AbstractType
             'attr' => [
                 'accept' => 'image/jpeg,image/png,image/webp',
             ],
-            'help' => 'Obrazek mapy skladu (JPEG, PNG, WebP, max 5 MB)',
+            'help' => 'Obrázek mapy skladu (JPEG, PNG, WebP, max 5 MB)',
         ]);
 
         $builder->add('operatingRulesDocument', FileType::class, [

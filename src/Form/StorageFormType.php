@@ -35,9 +35,9 @@ class StorageFormType extends AbstractType
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $builder->add('number', TextType::class, [
-            'label' => 'Cislo skladu',
+            'label' => 'Číslo skladu',
             'attr' => [
-                'placeholder' => 'napr. A1, B12',
+                'placeholder' => 'např. A1, B12',
             ],
         ]);
 
@@ -75,21 +75,21 @@ class StorageFormType extends AbstractType
             ]);
 
             $builder->add('coordinateWidth', IntegerType::class, [
-                'label' => 'Sirka',
+                'label' => 'Šířka',
                 'attr' => [
                     'min' => 1,
                 ],
             ]);
 
             $builder->add('coordinateHeight', IntegerType::class, [
-                'label' => 'Vyska',
+                'label' => 'Výška',
                 'attr' => [
                     'min' => 1,
                 ],
             ]);
 
             $builder->add('coordinateRotation', IntegerType::class, [
-                'label' => 'Rotace (stupne)',
+                'label' => 'Rotace (stupně)',
                 'attr' => [
                     'min' => 0,
                     'max' => 360,
@@ -101,25 +101,25 @@ class StorageFormType extends AbstractType
         $storageType = $options['storage_type'];
         if (null !== $storageType && !$storageType->uniformStorages) {
             $builder->add('pricePerWeek', NumberType::class, [
-                'label' => 'Vlastni cena za tyden (CZK)',
+                'label' => 'Vlastní cena za týden (CZK)',
                 'required' => false,
                 'scale' => 2,
                 'attr' => [
-                    'placeholder' => 'Pouzije se vychozi cena typu',
+                    'placeholder' => 'Použije se výchozí cena typu',
                     'step' => '0.01',
                 ],
-                'help' => 'Nechte prazdne pro pouziti vychozi ceny typu skladu',
+                'help' => 'Nechte prázdné pro použití výchozí ceny typu skladu',
             ]);
 
             $builder->add('pricePerMonth', NumberType::class, [
-                'label' => 'Vlastni cena za mesic (CZK)',
+                'label' => 'Vlastní cena za měsíc (CZK)',
                 'required' => false,
                 'scale' => 2,
                 'attr' => [
-                    'placeholder' => 'Pouzije se vychozi cena typu',
+                    'placeholder' => 'Použije se výchozí cena typu',
                     'step' => '0.01',
                 ],
-                'help' => 'Nechte prazdne pro pouziti vychozi ceny typu skladu',
+                'help' => 'Nechte prázdné pro použití výchozí ceny typu skladu',
             ]);
         }
 
@@ -130,21 +130,21 @@ class StorageFormType extends AbstractType
             'attr' => [
                 'accept' => 'image/jpeg,image/png,image/webp',
             ],
-            'help' => 'Nahrajte fotografie skladu (JPEG, PNG, WebP, max 5 MB kazda)',
+            'help' => 'Nahrajte fotografie skladu (JPEG, PNG, WebP, max 5 MB každá)',
         ]);
 
         // Commission rate - only for admins
         if ($this->authorizationChecker->isGranted('ROLE_ADMIN')) {
             $builder->add('commissionRate', NumberType::class, [
-                'label' => 'Provize pro pronajimatele (%)',
+                'label' => 'Provize pro pronajímatele (%)',
                 'required' => false,
                 'scale' => 0,
                 'attr' => [
-                    'placeholder' => 'Pouzije se vychozi provize pronajimatele',
+                    'placeholder' => 'Použije se výchozí provize pronajímatele',
                     'min' => 0,
                     'max' => 100,
                 ],
-                'help' => 'Nechte prazdne pro pouziti vychozi provize pronajimatele (nebo 90%)',
+                'help' => 'Nechte prázdné pro použití výchozí provize pronajímatele (nebo 90%)',
             ]);
         }
     }

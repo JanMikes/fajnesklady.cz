@@ -22,29 +22,29 @@ class StorageTypeFormType extends AbstractType
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $builder->add('name', TextType::class, [
-            'label' => 'Nazev',
+            'label' => 'Název',
             'attr' => [
-                'placeholder' => 'Nazev typu skladu',
+                'placeholder' => 'Název typu skladu',
             ],
         ]);
 
         // Inner dimensions (required)
         $builder->add('innerWidth', IntegerType::class, [
-            'label' => 'Vnitrni sirka (cm)',
+            'label' => 'Vnitřní šířka (cm)',
             'attr' => [
                 'placeholder' => '200',
             ],
         ]);
 
         $builder->add('innerHeight', IntegerType::class, [
-            'label' => 'Vnitrni vyska (cm)',
+            'label' => 'Vnitřní výška (cm)',
             'attr' => [
                 'placeholder' => '250',
             ],
         ]);
 
         $builder->add('innerLength', IntegerType::class, [
-            'label' => 'Vnitrni delka (cm)',
+            'label' => 'Vnitřní délka (cm)',
             'attr' => [
                 'placeholder' => '300',
             ],
@@ -52,7 +52,7 @@ class StorageTypeFormType extends AbstractType
 
         // Outer dimensions (optional)
         $builder->add('outerWidth', IntegerType::class, [
-            'label' => 'Vnejsi sirka (cm)',
+            'label' => 'Vnější šířka (cm)',
             'required' => false,
             'attr' => [
                 'placeholder' => '210',
@@ -60,7 +60,7 @@ class StorageTypeFormType extends AbstractType
         ]);
 
         $builder->add('outerHeight', IntegerType::class, [
-            'label' => 'Vnejsi vyska (cm)',
+            'label' => 'Vnější výška (cm)',
             'required' => false,
             'attr' => [
                 'placeholder' => '260',
@@ -68,7 +68,7 @@ class StorageTypeFormType extends AbstractType
         ]);
 
         $builder->add('outerLength', IntegerType::class, [
-            'label' => 'Vnejsi delka (cm)',
+            'label' => 'Vnější délka (cm)',
             'required' => false,
             'attr' => [
                 'placeholder' => '310',
@@ -76,7 +76,7 @@ class StorageTypeFormType extends AbstractType
         ]);
 
         $builder->add('defaultPricePerWeek', NumberType::class, [
-            'label' => 'Vychozi cena za tyden (CZK)',
+            'label' => 'Výchozí cena za týden (CZK)',
             'scale' => 2,
             'attr' => [
                 'placeholder' => '500.00',
@@ -86,7 +86,7 @@ class StorageTypeFormType extends AbstractType
         ]);
 
         $builder->add('defaultPricePerMonth', NumberType::class, [
-            'label' => 'Vychozi cena za mesic (CZK)',
+            'label' => 'Výchozí cena za měsíc (CZK)',
             'scale' => 2,
             'attr' => [
                 'placeholder' => '1500.00',
@@ -99,16 +99,16 @@ class StorageTypeFormType extends AbstractType
             'label' => 'Popis',
             'required' => false,
             'attr' => [
-                'placeholder' => 'Volitelny popis typu skladu',
+                'placeholder' => 'Volitelný popis typu skladu',
 
                 'rows' => 3,
             ],
         ]);
 
         $builder->add('uniformStorages', CheckboxType::class, [
-            'label' => 'Vsechna uloziste budou stejna',
+            'label' => 'Všechna úložiště budou stejná',
             'required' => false,
-            'help' => 'Nebude se zobrazovat mapa pro vyber konkretniho mista a maji jednotnou cenu',
+            'help' => 'Nebude se zobrazovat mapa pro výběr konkrétního místa a mají jednotnou cenu',
 
 
         ]);
@@ -120,7 +120,7 @@ class StorageTypeFormType extends AbstractType
             'attr' => [
                 'accept' => 'image/jpeg,image/png,image/webp',
             ],
-            'help' => 'Nahrajte fotografie skladu (JPEG, PNG, WebP, max 5 MB kazda)',
+            'help' => 'Nahrajte fotografie skladu (JPEG, PNG, WebP, max 5 MB každá)',
         ]);
     }
 

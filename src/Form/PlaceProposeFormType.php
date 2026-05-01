@@ -18,23 +18,23 @@ class PlaceProposeFormType extends AbstractType
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $builder->add('name', TextType::class, [
-            'label' => 'Nazev',
-            'attr' => ['placeholder' => 'Nazev mista'],
+            'label' => 'Název',
+            'attr' => ['placeholder' => 'Název místa'],
         ]);
 
         $builder->add('address', TextType::class, [
             'label' => 'Adresa',
             'required' => false,
-            'attr' => ['placeholder' => 'Ulice a čislo popisne'],
+            'attr' => ['placeholder' => 'Ulice a číslo popisné'],
         ]);
 
         $builder->add('city', TextType::class, [
-            'label' => 'Mesto',
+            'label' => 'Město',
             'attr' => ['placeholder' => 'Praha'],
         ]);
 
         $builder->add('postalCode', TextType::class, [
-            'label' => 'PSC',
+            'label' => 'PSČ',
             'attr' => ['placeholder' => '110 00'],
         ]);
 
@@ -42,7 +42,7 @@ class PlaceProposeFormType extends AbstractType
             'label' => 'Popis',
             'required' => false,
             'attr' => [
-                'placeholder' => 'Volitelny popis mista',
+                'placeholder' => 'Volitelný popis místa',
                 'rows' => 4,
             ],
         ]);

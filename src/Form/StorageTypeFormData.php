@@ -10,45 +10,45 @@ use Symfony\Component\Validator\Constraints as Assert;
 
 final class StorageTypeFormData
 {
-    #[Assert\NotBlank(message: 'Zadejte nazev')]
-    #[Assert\Length(max: 255, maxMessage: 'Nazev nemuze byt delsi nez {{ limit }} znaku')]
+    #[Assert\NotBlank(message: 'Zadejte název')]
+    #[Assert\Length(max: 255, maxMessage: 'Název nemůže být delší než {{ limit }} znaků')]
     public string $name = '';
 
     /** Inner width in centimeters */
-    #[Assert\NotNull(message: 'Zadejte vnitrni sirku')]
-    #[Assert\Positive(message: 'Sirka musi byt kladne cislo')]
+    #[Assert\NotNull(message: 'Zadejte vnitřní šířku')]
+    #[Assert\Positive(message: 'Šířka musí být kladné číslo')]
     public ?int $innerWidth = null;
 
     /** Inner height in centimeters */
-    #[Assert\NotNull(message: 'Zadejte vnitrni vysku')]
-    #[Assert\Positive(message: 'Vyska musi byt kladne cislo')]
+    #[Assert\NotNull(message: 'Zadejte vnitřní výšku')]
+    #[Assert\Positive(message: 'Výška musí být kladné číslo')]
     public ?int $innerHeight = null;
 
     /** Inner length in centimeters */
-    #[Assert\NotNull(message: 'Zadejte vnitrni delku')]
-    #[Assert\Positive(message: 'Delka musi byt kladne cislo')]
+    #[Assert\NotNull(message: 'Zadejte vnitřní délku')]
+    #[Assert\Positive(message: 'Délka musí být kladné číslo')]
     public ?int $innerLength = null;
 
     /** Outer width in centimeters (optional) */
-    #[Assert\Positive(message: 'Vnejsi sirka musi byt kladne cislo')]
+    #[Assert\Positive(message: 'Vnější šířka musí být kladné číslo')]
     public ?int $outerWidth = null;
 
     /** Outer height in centimeters (optional) */
-    #[Assert\Positive(message: 'Vnejsi vyska musi byt kladne cislo')]
+    #[Assert\Positive(message: 'Vnější výška musí být kladné číslo')]
     public ?int $outerHeight = null;
 
     /** Outer length in centimeters (optional) */
-    #[Assert\Positive(message: 'Vnejsi delka musi byt kladne cislo')]
+    #[Assert\Positive(message: 'Vnější délka musí být kladné číslo')]
     public ?int $outerLength = null;
 
     /** Default price in CZK (will be converted to halire in controller) */
-    #[Assert\NotNull(message: 'Zadejte cenu za tyden')]
-    #[Assert\PositiveOrZero(message: 'Cena za tyden musi byt nula nebo kladna')]
+    #[Assert\NotNull(message: 'Zadejte cenu za týden')]
+    #[Assert\PositiveOrZero(message: 'Cena za týden musí být nula nebo kladná')]
     public ?float $defaultPricePerWeek = null;
 
     /** Default price in CZK (will be converted to halire in controller) */
-    #[Assert\NotNull(message: 'Zadejte cenu za mesic')]
-    #[Assert\PositiveOrZero(message: 'Cena za mesic musi byt nula nebo kladna')]
+    #[Assert\NotNull(message: 'Zadejte cenu za měsíc')]
+    #[Assert\PositiveOrZero(message: 'Cena za měsíc musí být nula nebo kladná')]
     public ?float $defaultPricePerMonth = null;
 
     public ?string $description = null;
@@ -62,7 +62,7 @@ final class StorageTypeFormData
         new Assert\Image(
             maxSize: '5M',
             mimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
-            mimeTypesMessage: 'Nahrajte obrazek ve formatu JPEG, PNG nebo WebP',
+            mimeTypesMessage: 'Nahrajte obrázek ve formátu JPEG, PNG nebo WebP',
         ),
     ])]
     public array $photos = [];

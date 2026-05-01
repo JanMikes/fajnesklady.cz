@@ -44,15 +44,15 @@ final class AdminUserFormData
     public UserRole $role = UserRole::USER;
 
     /** Commission rate as percentage (0-100), e.g., 90 for 90% */
-    #[Assert\Range(min: 0, max: 100, notInRangeMessage: 'Provize musi byt mezi 0 a 100%')]
+    #[Assert\Range(min: 0, max: 100, notInRangeMessage: 'Provize musí být mezi 0 a 100%')]
     public ?float $commissionRate = null;
 
     #[Assert\Length(max: 5000, maxMessage: 'Interní poznámka může mít maximálně {{ limit }} znaků.')]
     public ?string $adminNote = null;
 
     /** Self-billing invoice prefix for landlords (e.g., P001) */
-    #[Assert\Length(max: 10, maxMessage: 'Prefix muze mit maximalne {{ limit }} znaku')]
-    #[Assert\Regex(pattern: '/^[A-Z]\d{3}$/', message: 'Prefix musi byt ve formatu P001, P002, ...')]
+    #[Assert\Length(max: 10, maxMessage: 'Prefix může mít maximálně {{ limit }} znaků')]
+    #[Assert\Regex(pattern: '/^[A-Z]\d{3}$/', message: 'Prefix musí být ve formátu P001, P002, ...')]
     public ?string $selfBillingPrefix = null;
 
     public static function fromUser(User $user): self
