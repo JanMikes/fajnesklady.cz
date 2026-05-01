@@ -1,6 +1,6 @@
 # 005 — Show/hide password toggle on every password input
 
-**Status:** ready
+**Status:** done
 **Type:** UX
 **Scope:** small (1 new Stimulus controller + 1 form-theme block + 1 hand-rolled template tweak)
 **Depends on:** none. Independent of spec 002 (which adds another password form that will automatically inherit the toggle once this is in place).
