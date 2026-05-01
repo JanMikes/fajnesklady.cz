@@ -2,6 +2,8 @@
 
 Reference for spec writing. Regenerate if structure drifts significantly. Generated 2026-04-22.
 
+Stack: PHP 8.5 (Docker image `ghcr.io/thedevs-cz/php:8.5-fajnesklady`) · Symfony · Postgres 17 · FrankenPHP · Tailwind · Stimulus.
+
 ## Routes
 
 ### Public (unauthenticated)
@@ -173,7 +175,7 @@ Test users: admin@/landlord@/landlord2@/user@/tenant@/unverified@example.com, pa
 - `declare(strict_types=1);` everywhere; `final readonly` for commands/events/DTOs
 - Repositories use `EntityManager` composition, never extend `ServiceEntityRepository`, never call `flush()`
 - Single-action controllers (`__invoke()`); route at class level
-- Entities use PHP 8.4 property hooks; UUIDs come from `ProvideIdentity`
+- Entities use property hooks (PHP 8.4+ syntax); UUIDs come from `ProvideIdentity`
 - Tests: MockClock fixed at `2025-06-15 12:00:00 UTC`
 - Czech UI text requires full diacritics
 - Turbo is disabled globally; opt-in with `data-turbo="true"`
