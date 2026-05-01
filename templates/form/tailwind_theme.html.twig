@@ -37,13 +37,13 @@
 {% block password_widget -%}
     {% set type = type|default('password') -%}
     {% set attr = attr|merge({
-        class: (attr.class|default('') ~ ' form-input pr-10' ~ (errors|length ? ' form-input-error' : ''))|trim
+        class: (attr.class|default('') ~ ' form-input pr-20' ~ (errors|length ? ' form-input-error' : ''))|trim
     }) -%}
     <div class="relative" data-controller="password-toggle">
         <input type="{{ type }}" {{ block('widget_attributes') }} {% if value is not empty %}value="{{ value }}" {% endif %}data-password-toggle-target="input" />
         <button type="button"
                 tabindex="-1"
-                class="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-600 focus:outline-none focus:text-gray-600"
+                class="absolute inset-y-0 right-10 flex items-center px-3 text-gray-400 hover:text-gray-600 focus:outline-none focus:text-gray-600"
                 aria-label="Zobrazit heslo"
                 data-action="click->password-toggle#toggle">
             {# Eye icon — visible when password is hidden #}
