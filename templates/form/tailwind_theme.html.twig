@@ -37,7 +37,7 @@
 {% block password_widget -%}
     {% set type = type|default('password') -%}
     {% set attr = attr|merge({
-        class: (attr.class|default('') ~ ' form-input flex-1 min-w-0 rounded-r-none' ~ (errors|length ? ' form-input-error' : ''))|trim
+        class: (attr.class|default('') ~ ' form-input flex-1 min-w-0 rounded-r-none!' ~ (errors|length ? ' form-input-error' : ''))|trim
     }) -%}
     <div class="flex" data-controller="password-toggle">
         <input type="{{ type }}" {{ block('widget_attributes') }} {% if value is not empty %}value="{{ value }}" {% endif %}data-password-toggle-target="input" />
