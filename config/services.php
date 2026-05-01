@@ -162,5 +162,14 @@ return App::config([
                 '$level' => \Monolog\Level::Info,
             ],
         ],
+        // Session storage in Postgres — reuses Doctrine's existing PDO connection
+        // so no second DB connection is opened per request.
+        \Symfony\Component\HttpFoundation\Session\Storage\Handler\PdoSessionHandler::class => [
+            'arguments' => [
+                inline_service(\PDO::class)
+                    ->factory([service('doctrine.dbal.default_connection'), 'getNativeConnection']),
+                ['db_table' => 'sessions'],
+            ],
+        ],
     ],
 ]);

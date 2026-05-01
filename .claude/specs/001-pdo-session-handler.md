@@ -1,6 +1,6 @@
 # 001 — Persistent sessions via `PdoSessionHandler`
 
-**Status:** ready
+**Status:** done
 **Type:** infra / config
 **Scope:** small (2-3 files + 1 migration)
 
