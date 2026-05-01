@@ -68,8 +68,12 @@
                         </h2>
 
                         <div class="mb-4">
-                            {{ form_row(form.companyId) }}
-                            {% include 'components/ares_lookup_button.html.twig' %}
+                            {{ form_label(form.companyId) }}
+                            <div class="flex flex-wrap">
+                                {{ form_widget(form.companyId, {attr: {class: 'flex-1 min-w-0 rounded-r-none!'}}) }}
+                                {% include 'components/ares_lookup_button.html.twig' %}
+                            </div>
+                            {{ form_errors(form.companyId) }}
                         </div>
 
                         {# Company name and VAT ID #}
