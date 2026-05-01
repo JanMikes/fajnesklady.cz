@@ -31,9 +31,9 @@ final readonly class SendInvoiceEmailHandler
         $hasPdfAttachment = $invoice->hasPdf() && null !== $invoice->pdfPath && file_exists($invoice->pdfPath);
 
         $email = (new TemplatedEmail())
-            ->from(new Address('noreply@fajnesklady.cz', 'Fajné Sklady'))
+            ->from(new Address('noreply@fajnesklady.cz', 'Fajnesklady.cz'))
             ->to(new Address($user->email, $user->fullName))
-            ->subject('Faktura '.$invoice->invoiceNumber.' - Fajné Sklady')
+            ->subject('Faktura '.$invoice->invoiceNumber.' - Fajnesklady.cz')
             ->htmlTemplate('email/invoice.html.twig')
             ->context([
                 'name' => $user->fullName,

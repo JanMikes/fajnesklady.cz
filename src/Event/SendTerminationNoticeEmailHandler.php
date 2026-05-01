@@ -28,9 +28,9 @@ final readonly class SendTerminationNoticeEmailHandler
         $place = $storage->getPlace();
 
         $email = (new TemplatedEmail())
-            ->from(new Address('noreply@fajnesklady.cz', 'Fajné Sklady'))
+            ->from(new Address('noreply@fajnesklady.cz', 'Fajnesklady.cz'))
             ->to(new Address($user->email, $user->fullName))
-            ->subject('Potvrzení výpovědi smlouvy - Fajné Sklady')
+            ->subject('Potvrzení výpovědi smlouvy - Fajnesklady.cz')
             ->htmlTemplate('email/termination_notice.html.twig')
             ->context([
                 'name' => $user->fullName,

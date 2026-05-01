@@ -41,7 +41,7 @@ final readonly class SendContractReadyEmailHandler
         $isRecurring = $contract->hasActiveRecurringPayment();
 
         $email = (new TemplatedEmail())
-            ->from(new Address('noreply@fajnesklady.cz', 'Fajné Sklady'))
+            ->from(new Address('noreply@fajnesklady.cz', 'Fajnesklady.cz'))
             ->to(new Address($user->email, $user->fullName))
             ->subject('Smlouva připravena - '.$place->name)
             ->htmlTemplate('email/contract_ready.html.twig')

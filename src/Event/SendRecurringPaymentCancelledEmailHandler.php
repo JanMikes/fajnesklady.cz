@@ -30,9 +30,9 @@ final readonly class SendRecurringPaymentCancelledEmailHandler
         $place = $storage->getPlace();
 
         $email = (new TemplatedEmail())
-            ->from(new Address('noreply@fajnesklady.cz', 'Fajné Sklady'))
+            ->from(new Address('noreply@fajnesklady.cz', 'Fajnesklady.cz'))
             ->to(new Address($user->email, $user->fullName))
-            ->subject('Pravidelná platba zrušena - Fajné Sklady')
+            ->subject('Pravidelná platba zrušena - Fajnesklady.cz')
             ->htmlTemplate('email/recurring_payment_cancelled.html.twig')
             ->context([
                 'name' => $user->fullName,

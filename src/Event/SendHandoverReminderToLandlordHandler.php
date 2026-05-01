@@ -52,7 +52,7 @@ final readonly class SendHandoverReminderToLandlordHandler
             : 'Připomínka: Předávací protokol čeká na potvrzení - '.$place->name;
 
         $email = (new TemplatedEmail())
-            ->from(new Address('noreply@fajnesklady.cz', 'Fajné Sklady'))
+            ->from(new Address('noreply@fajnesklady.cz', 'Fajnesklady.cz'))
             ->to(new Address($landlord->email, $landlord->fullName))
             ->subject($subject)
             ->htmlTemplate('email/handover_reminder_landlord.html.twig')

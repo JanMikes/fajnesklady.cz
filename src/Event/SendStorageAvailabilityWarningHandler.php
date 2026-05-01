@@ -72,7 +72,7 @@ final readonly class SendStorageAvailabilityWarningHandler
         );
 
         $email = (new TemplatedEmail())
-            ->from(new Address('noreply@fajnesklady.cz', 'Fajné Sklady'))
+            ->from(new Address('noreply@fajnesklady.cz', 'Fajnesklady.cz'))
             ->to(new Address($user->email, $user->fullName))
             ->subject(sprintf('Upozornění - Váš typ skladu je žádaný - %s', $place->name))
             ->htmlTemplate('email/storage_availability_warning.html.twig')
@@ -104,7 +104,7 @@ final readonly class SendStorageAvailabilityWarningHandler
 
         foreach ($admins as $admin) {
             $email = (new TemplatedEmail())
-                ->from(new Address('noreply@fajnesklady.cz', 'Fajné Sklady'))
+                ->from(new Address('noreply@fajnesklady.cz', 'Fajnesklady.cz'))
                 ->to(new Address($admin->email, $admin->fullName))
                 ->subject(sprintf('Oznámení o dostupnosti skladů - %d uživatelů upozorněno', $notificationCount))
                 ->htmlTemplate('email/storage_availability_warning_admin.html.twig')

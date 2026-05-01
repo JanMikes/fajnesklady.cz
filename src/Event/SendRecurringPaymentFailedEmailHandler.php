@@ -32,14 +32,14 @@ final readonly class SendRecurringPaymentFailedEmailHandler
         $place = $storage->getPlace();
 
         $subject = match ($event->attempt) {
-            1 => 'Platba za pronájem se nepodařila - Fajné Sklady',
-            2 => 'Druhá neúspěšná platba za pronájem - Fajné Sklady',
-            default => 'Opakovaná neúspěšná platba - pronájem bude zrušen - Fajné Sklady',
+            1 => 'Platba za pronájem se nepodařila - Fajnesklady.cz',
+            2 => 'Druhá neúspěšná platba za pronájem - Fajnesklady.cz',
+            default => 'Opakovaná neúspěšná platba - pronájem bude zrušen - Fajnesklady.cz',
         };
         $isFirstAttempt = 1 === $event->attempt;
 
         $email = (new TemplatedEmail())
-            ->from(new Address('noreply@fajnesklady.cz', 'Fajné Sklady'))
+            ->from(new Address('noreply@fajnesklady.cz', 'Fajnesklady.cz'))
             ->to(new Address($user->email, $user->fullName))
             ->subject($subject)
             ->htmlTemplate('email/recurring_payment_failed.html.twig')

@@ -1,4 +1,4 @@
-# Fajné Sklady
+# Fajnesklady.cz
 
 Warehouse management application built with Symfony 8, PHP 8.5, and PostgreSQL.
 

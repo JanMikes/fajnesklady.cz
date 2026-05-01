@@ -27,7 +27,7 @@ final readonly class SendPlaceAccessApprovedEmailHandler
         $place = $this->placeRepository->get($event->placeId);
 
         $email = (new TemplatedEmail())
-            ->from(new Address('noreply@fajnesklady.cz', 'Fajné Sklady'))
+            ->from(new Address('noreply@fajnesklady.cz', 'Fajnesklady.cz'))
             ->to(new Address($landlord->email, $landlord->fullName))
             ->subject('Přístup k místu '.$place->name.' byl schválen')
             ->htmlTemplate('email/place_access_approved.html.twig')

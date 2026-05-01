@@ -94,7 +94,7 @@ class SendInvoiceEmailHandlerTest extends TestCase
         $handler($event);
 
         $this->assertNotNull($sentEmail);
-        $this->assertSame('Faktura FV-2025-0001 - Fajné Sklady', $sentEmail->getSubject());
+        $this->assertSame('Faktura FV-2025-0001 - Fajnesklady.cz', $sentEmail->getSubject());
     }
 
     public function testHandlerAttachesPdfWhenAvailable(): void

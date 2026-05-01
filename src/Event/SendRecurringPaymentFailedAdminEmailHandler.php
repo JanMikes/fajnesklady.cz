@@ -40,7 +40,7 @@ final readonly class SendRecurringPaymentFailedAdminEmailHandler
 
         foreach ($admins as $admin) {
             $email = (new TemplatedEmail())
-                ->from(new Address('noreply@fajnesklady.cz', 'Fajné Sklady'))
+                ->from(new Address('noreply@fajnesklady.cz', 'Fajnesklady.cz'))
                 ->to(new Address($admin->email, $admin->fullName))
                 ->subject(sprintf('UPOZORNĚNÍ: Neúspěšná platba - %s (pokus %d)', $user->fullName, $event->attempt))
                 ->htmlTemplate('email/recurring_payment_failed_admin.html.twig')

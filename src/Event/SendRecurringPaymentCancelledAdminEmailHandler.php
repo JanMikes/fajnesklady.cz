@@ -40,7 +40,7 @@ final readonly class SendRecurringPaymentCancelledAdminEmailHandler
 
         foreach ($admins as $admin) {
             $email = (new TemplatedEmail())
-                ->from(new Address('noreply@fajnesklady.cz', 'Fajné Sklady'))
+                ->from(new Address('noreply@fajnesklady.cz', 'Fajnesklady.cz'))
                 ->to(new Address($admin->email, $admin->fullName))
                 ->subject(sprintf('Pravidelná platba zrušena - %s', $user->fullName))
                 ->htmlTemplate('email/recurring_payment_cancelled_admin.html.twig')

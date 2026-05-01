@@ -35,7 +35,7 @@ final readonly class SendPlaceAccessRequestEmailHandler
         );
 
         $email = (new TemplatedEmail())
-            ->from(new Address('noreply@fajnesklady.cz', 'Fajné Sklady'))
+            ->from(new Address('noreply@fajnesklady.cz', 'Fajnesklady.cz'))
             ->to(new Address('admin@fajnesklady.cz', 'Admin'))
             ->subject('Nová žádost o přístup k místu: '.$place->name)
             ->htmlTemplate('email/place_access_requested.html.twig')

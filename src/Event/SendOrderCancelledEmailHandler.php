@@ -28,7 +28,7 @@ final readonly class SendOrderCancelledEmailHandler
         $place = $storage->getPlace();
 
         $email = (new TemplatedEmail())
-            ->from(new Address('noreply@fajnesklady.cz', 'Fajné Sklady'))
+            ->from(new Address('noreply@fajnesklady.cz', 'Fajnesklady.cz'))
             ->to(new Address($user->email, $user->fullName))
             ->subject('Objednávka zrušena - '.$place->name)
             ->htmlTemplate('email/order_cancelled.html.twig')

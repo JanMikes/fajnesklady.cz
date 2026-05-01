@@ -39,7 +39,7 @@ final readonly class SendOrderConfirmationEmailHandler
         );
 
         $email = (new TemplatedEmail())
-            ->from(new Address('noreply@fajnesklady.cz', 'Fajné Sklady'))
+            ->from(new Address('noreply@fajnesklady.cz', 'Fajnesklady.cz'))
             ->to(new Address($user->email, $user->fullName))
             ->subject('Potvrzení objednávky - '.$place->name)
             ->htmlTemplate('email/order_confirmation.html.twig')

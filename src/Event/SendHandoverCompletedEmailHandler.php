@@ -61,7 +61,7 @@ final readonly class SendHandoverCompletedEmailHandler
     private function sendEmail(string $toEmail, string $toName, string $subject, array $context, HandoverCompleted $event): void
     {
         $email = (new TemplatedEmail())
-            ->from(new Address('noreply@fajnesklady.cz', 'Fajné Sklady'))
+            ->from(new Address('noreply@fajnesklady.cz', 'Fajnesklady.cz'))
             ->to(new Address($toEmail, $toName))
             ->subject($subject)
             ->htmlTemplate('email/handover_completed.html.twig')

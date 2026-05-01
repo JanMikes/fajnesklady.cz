@@ -27,7 +27,7 @@ final readonly class SendPlaceProposedEmailHandler
         $place = $this->placeRepository->get($event->placeId);
 
         $email = (new TemplatedEmail())
-            ->from(new Address('noreply@fajnesklady.cz', 'Fajné Sklady'))
+            ->from(new Address('noreply@fajnesklady.cz', 'Fajnesklady.cz'))
             ->to(new Address('admin@fajnesklady.cz', 'Admin'))
             ->subject('Nový návrh místa: '.$place->name)
             ->htmlTemplate('email/place_proposed.html.twig')

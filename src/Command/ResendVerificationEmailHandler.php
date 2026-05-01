@@ -39,7 +39,7 @@ final readonly class ResendVerificationEmailHandler
         );
 
         $email = (new TemplatedEmail())
-            ->from(new Address('noreply@fajnesklady.cz', 'Fajné Sklady'))
+            ->from(new Address('noreply@fajnesklady.cz', 'Fajnesklady.cz'))
             ->to(new Address($user->email, $user->fullName))
             ->subject('Ověřte prosím svou e-mailovou adresu')
             ->htmlTemplate('email/verification.html.twig')

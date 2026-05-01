@@ -44,7 +44,7 @@ final readonly class ForceReleaseStorageOnHandoverExpiredHandler
 
         foreach ($admins as $admin) {
             $email = (new TemplatedEmail())
-                ->from(new Address('noreply@fajnesklady.cz', 'Fajné Sklady'))
+                ->from(new Address('noreply@fajnesklady.cz', 'Fajnesklady.cz'))
                 ->to(new Address($admin->email, $admin->fullName))
                 ->subject('Předávací protokol nevyplněn - sklad uvolněn automaticky - '.$place->name)
                 ->htmlTemplate('email/handover_expired_admin.html.twig')

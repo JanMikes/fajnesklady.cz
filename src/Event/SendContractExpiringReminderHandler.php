@@ -42,7 +42,7 @@ final readonly class SendContractExpiringReminderHandler
             : sprintf('Vaše smlouva končí za %d dní - %s', $event->daysRemaining, $place->name);
 
         $email = (new TemplatedEmail())
-            ->from(new Address('noreply@fajnesklady.cz', 'Fajné Sklady'))
+            ->from(new Address('noreply@fajnesklady.cz', 'Fajnesklady.cz'))
             ->to(new Address($user->email, $user->fullName))
             ->subject($subject)
             ->htmlTemplate('email/contract_expiring.html.twig')

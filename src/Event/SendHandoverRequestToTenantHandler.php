@@ -38,7 +38,7 @@ final readonly class SendHandoverRequestToTenantHandler
         );
 
         $email = (new TemplatedEmail())
-            ->from(new Address('noreply@fajnesklady.cz', 'Fajné Sklady'))
+            ->from(new Address('noreply@fajnesklady.cz', 'Fajnesklady.cz'))
             ->to(new Address($user->email, $user->fullName))
             ->subject('Předávací protokol - prosím vyplňte - '.$place->name)
             ->htmlTemplate('email/handover_request_tenant.html.twig')

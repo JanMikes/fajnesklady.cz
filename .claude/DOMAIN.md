@@ -1,8 +1,8 @@
-# Domain Understanding: Fajné Sklady (Storage Rental Platform)
+# Domain Understanding: Fajnesklady.cz (Storage Rental Platform)
 
 ## Overview
 
-**Fajné Sklady** is a B2C marketplace for self-storage rental. It connects landlords (warehouse owners) with tenants (customers) who need storage space. The platform handles:
+**Fajnesklady.cz** is a B2C marketplace for self-storage rental. It connects landlords (warehouse owners) with tenants (customers) who need storage space. The platform handles:
 
 - Storage unit listings and availability
 - Order processing and payment (GoPay integration)

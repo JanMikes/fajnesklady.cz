@@ -20,7 +20,7 @@ enum PlaceType: string
     public function label(): string
     {
         return match ($this) {
-            self::FAJNE_SKLADY => 'Fajné Sklady',
+            self::FAJNE_SKLADY => 'Fajnesklady.cz',
             self::SAMOSTATNY_SKLAD => 'Samostatný sklad',
         };
     }

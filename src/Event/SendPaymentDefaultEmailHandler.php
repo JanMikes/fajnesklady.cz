@@ -35,9 +35,9 @@ final readonly class SendPaymentDefaultEmailHandler
 
         // Email to tenant
         $tenantEmail = (new TemplatedEmail())
-            ->from(new Address('noreply@fajnesklady.cz', 'Fajné Sklady'))
+            ->from(new Address('noreply@fajnesklady.cz', 'Fajnesklady.cz'))
             ->to(new Address($tenant->email, $tenant->fullName))
-            ->subject('Smlouva ukončena z důvodu neuhrazení platby - Fajné Sklady')
+            ->subject('Smlouva ukončena z důvodu neuhrazení platby - Fajnesklady.cz')
             ->htmlTemplate('email/payment_default_tenant.html.twig')
             ->context([
                 'name' => $tenant->fullName,
@@ -62,7 +62,7 @@ final readonly class SendPaymentDefaultEmailHandler
 
         foreach ($admins as $admin) {
             $adminEmail = (new TemplatedEmail())
-                ->from(new Address('noreply@fajnesklady.cz', 'Fajné Sklady'))
+                ->from(new Address('noreply@fajnesklady.cz', 'Fajnesklady.cz'))
                 ->to(new Address($admin->email, $admin->fullName))
                 ->subject(sprintf('DLUH: Smlouva ukončena - %s, dluh %.2f Kč', $tenant->fullName, $debtCzk))
                 ->htmlTemplate('email/payment_default_admin.html.twig')

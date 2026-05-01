@@ -27,7 +27,7 @@ final readonly class SendPlaceAccessDeniedEmailHandler
         $place = $this->placeRepository->get($event->placeId);
 
         $email = (new TemplatedEmail())
-            ->from(new Address('noreply@fajnesklady.cz', 'Fajné Sklady'))
+            ->from(new Address('noreply@fajnesklady.cz', 'Fajnesklady.cz'))
             ->to(new Address($landlord->email, $landlord->fullName))
             ->subject('Žádost o přístup k místu '.$place->name.' byla zamítnuta')
             ->htmlTemplate('email/place_access_denied.html.twig')

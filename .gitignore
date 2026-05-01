@@ -23,6 +23,7 @@ tests/.database.cache
 
 ###> Docker ###
 /docker/volumes/
+/compose.override.yaml
 ###< Docker ###
 
 .DS_Store

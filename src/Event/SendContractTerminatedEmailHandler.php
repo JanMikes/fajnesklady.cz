@@ -28,9 +28,9 @@ final readonly class SendContractTerminatedEmailHandler
         $place = $storage->getPlace();
 
         $email = (new TemplatedEmail())
-            ->from(new Address('noreply@fajnesklady.cz', 'Fajné Sklady'))
+            ->from(new Address('noreply@fajnesklady.cz', 'Fajnesklady.cz'))
             ->to(new Address($user->email, $user->fullName))
-            ->subject('Smlouva byla ukončena - Fajné Sklady')
+            ->subject('Smlouva byla ukončena - Fajnesklady.cz')
             ->htmlTemplate('email/contract_terminated.html.twig')
             ->context([
                 'name' => $user->fullName,

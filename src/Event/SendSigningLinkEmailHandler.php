@@ -36,9 +36,9 @@ final readonly class SendSigningLinkEmailHandler
         );
 
         $email = (new TemplatedEmail())
-            ->from(new Address('noreply@fajnesklady.cz', 'Fajné Sklady'))
+            ->from(new Address('noreply@fajnesklady.cz', 'Fajnesklady.cz'))
             ->to(new Address($event->customerEmail, $user->fullName))
-            ->subject('Podepište smlouvu - Fajné Sklady')
+            ->subject('Podepište smlouvu - Fajnesklady.cz')
             ->htmlTemplate('email/signing_link.html.twig')
             ->context([
                 'name' => $user->fullName,
