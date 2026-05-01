@@ -162,20 +162,14 @@ return App::config([
                 '$level' => \Monolog\Level::Info,
             ],
         ],
-        // Session storage in Postgres — reuses Doctrine's existing PDO connection
-        // so no second DB connection is opened per request.
-        // LOCK_ADVISORY is required when sharing the connection with Doctrine: the
-        // default LOCK_TRANSACTIONAL wraps each session read/write in its own
-        // transaction, which collides with the command bus's doctrine_transaction
-        // middleware ("There is already an active transaction").
+        // Session storage in Postgres — uses its own lazy PDO connection from
+        // DATABASE_URL (Symfony's documented pattern). Keeping it separate from
+        // Doctrine's connection means the default LOCK_TRANSACTIONAL works without
+        // colliding with the command bus's doctrine_transaction middleware.
         \Symfony\Component\HttpFoundation\Session\Storage\Handler\PdoSessionHandler::class => [
             'arguments' => [
-                inline_service(\PDO::class)
-                    ->factory([service('doctrine.dbal.default_connection'), 'getNativeConnection']),
-                [
-                    'db_table' => 'sessions',
-                    'lock_mode' => \Symfony\Component\HttpFoundation\Session\Storage\Handler\PdoSessionHandler::LOCK_ADVISORY,
-                ],
+                '%env(resolve:DATABASE_URL)%',
+                ['db_table' => 'sessions'],
             ],
         ],
     ],
