@@ -17,9 +17,5 @@ final class ChangePasswordFormData
         max: 4096,
         minMessage: 'Heslo musí mít alespoň {{ limit }} znaků.',
     )]
-    #[Assert\PasswordStrength(
-        minScore: Assert\PasswordStrength::STRENGTH_MEDIUM,
-        message: 'Heslo je příliš slabé. Použijte silnější heslo.',
-    )]
     public string $newPassword = '';
 }

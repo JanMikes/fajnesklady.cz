@@ -1,6 +1,6 @@
 # 003 — Drop `PasswordStrength` constraint, keep min 8 chars only
 
-**Status:** ready
+**Status:** done
 **Type:** validation tweak
 **Scope:** tiny (2 files)
 **Depends on:** none

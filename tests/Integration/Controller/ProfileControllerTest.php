@@ -144,11 +144,10 @@ class ProfileControllerTest extends WebTestCase
         $crawler = $this->client->request('GET', '/portal/profile/change-password');
         $this->assertResponseIsSuccessful();
 
-        // Use a strong password to pass validation (STRENGTH_MEDIUM requires mixed case, numbers, special chars)
         $form = $crawler->selectButton('Změnit heslo')->form([
             'change_password_form[currentPassword]' => 'wrong_password',
-            'change_password_form[newPassword][first]' => 'NewStr0ng!Pass#2024',
-            'change_password_form[newPassword][second]' => 'NewStr0ng!Pass#2024',
+            'change_password_form[newPassword][first]' => 'newpassword1',
+            'change_password_form[newPassword][second]' => 'newpassword1',
         ]);
 
         $this->client->submit($form);
