@@ -290,6 +290,7 @@ Available: `UserAlreadyExists`, `UserNotFound`, `PlaceNotFound`, `StorageTypeNot
 - All entity IDs: UUID v7 via `ProvideIdentity` interface
 - ID generation: Production uses `RandomIdentityProvider`, tests use `PredictableIdentityProvider`
 - **Logging exceptions**: Always use `'exception' => $e` in logger context, never `$e->getMessage()`. Monolog extracts the message, trace, and class automatically from the `exception` key.
+- **Migrations**: NEVER handwrite migration SQL. Always generate via `docker compose exec web bin/console make:migration` (or `doctrine:migrations:diff`) so the diff matches what `doctrine:schema:validate` expects. Handwritten DDL drifts from the runtime schema (entities + bundle-registered tables like `PdoSessionHandler`) and breaks the `migrations-up-to-date` CI job.
 
 ## Frontend
 
