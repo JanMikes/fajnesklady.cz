@@ -23,6 +23,7 @@
             endDate: '',
             weeklyPrice: 0,
             monthlyPrice: 0,
+            selectionMode: 'auto',
             init() {
                 this.weeklyPrice = parseFloat(this.$el.dataset.weeklyPrice) || 0;
                 this.monthlyPrice = parseFloat(this.$el.dataset.monthlyPrice) || 0;
@@ -43,6 +44,17 @@
 
                 if (startEl) startEl.addEventListener('change', () => { this.startDate = startEl.value });
                 if (endEl) endEl.addEventListener('change', () => { this.endDate = endEl.value });
+            },
+            chooseManual() {
+                this.selectionMode = 'manual';
+                this.$nextTick(() => {
+                    const mapEl = document.getElementById('storage-map-card');
+                    if (mapEl) {
+                        const offset = 96; // matches sidebar's `sticky top-24` clearance for the fixed navbar
+                        const top = mapEl.getBoundingClientRect().top + window.scrollY - offset;
+                        window.scrollTo({ top, behavior: 'smooth' });
+                    }
+                });
             },
             get days() {
                 if (!this.startDate || !this.endDate || this.rentalType === 'unlimited') return 0;
@@ -74,6 +86,15 @@
     }
     </script>
 
+    <div x-data="orderForm()"
+         data-weekly-price="{{ weeklyPrice }}"
+         data-monthly-price="{{ monthlyPrice }}"
+         data-start-date-id="{{ form.startDate.vars.id }}"
+         data-end-date-id="{{ form.endDate.vars.id }}"
+         data-initial-rental-type="{{ form.vars.data.rentalType ? form.vars.data.rentalType.value : 'limited' }}"
+         data-initial-invoice="{{ form.vars.data.invoiceToCompany ? '1' : '0' }}"
+         data-initial-start-date="{{ form.vars.data.startDate ? form.vars.data.startDate|date('Y-m-d') : '' }}"
+         data-initial-end-date="{{ form.vars.data.endDate ? form.vars.data.endDate|date('Y-m-d') : '' }}">
     <div class="grid lg:grid-cols-3 gap-8">
         {# Order Form #}
         <div class="lg:col-span-2 order-2 lg:order-1">
@@ -81,15 +102,6 @@
                 <div class="card-body">
                     <h1 class="text-2xl font-bold text-gray-900 mb-6">Vytvořit objednávku</h1>
 
-                    <div x-data="orderForm()"
-                         data-weekly-price="{{ weeklyPrice }}"
-                         data-monthly-price="{{ monthlyPrice }}"
-                         data-start-date-id="{{ form.startDate.vars.id }}"
-                         data-end-date-id="{{ form.endDate.vars.id }}"
-                         data-initial-rental-type="{{ form.vars.data.rentalType ? form.vars.data.rentalType.value : 'limited' }}"
-                         data-initial-invoice="{{ form.vars.data.invoiceToCompany ? '1' : '0' }}"
-                         data-initial-start-date="{{ form.vars.data.startDate ? form.vars.data.startDate|date('Y-m-d') : '' }}"
-                         data-initial-end-date="{{ form.vars.data.endDate ? form.vars.data.endDate|date('Y-m-d') : '' }}">
                     {{ form_start(form, {attr: {class: 'space-y-8'}}) }}
 
                         {# Contact Information #}
@@ -272,6 +284,39 @@
                             </template>
                         </div>
 
+                        {# Storage Selection Mode #}
+                        <div class="bg-gray-50 rounded-lg p-6">
+                            <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l5.447 2.724A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/>
+                                </svg>
+                                Výběr skladové jednotky
+                            </h2>
+
+                            <div class="space-y-3">
+                                <div class="flex items-center">
+                                    <input type="radio" id="selection-mode-auto" name="selection_mode" value="auto"
+                                           x-model="selectionMode" checked
+                                           class="h-4 w-4 text-accent focus:ring-accent border-gray-300">
+                                    <label for="selection-mode-auto" class="ml-3 text-sm text-gray-700 cursor-pointer">
+                                        Vybrat místo automaticky
+                                        <span class="block text-xs text-gray-500">Přidělíme vám první volnou skladovou jednotku tohoto typu.</span>
+                                    </label>
+                                </div>
+
+                                <div class="flex items-center">
+                                    <input type="radio" id="selection-mode-manual" name="selection_mode" value="manual"
+                                           x-model="selectionMode"
+                                           x-on:change="chooseManual()"
+                                           class="h-4 w-4 text-accent focus:ring-accent border-gray-300">
+                                    <label for="selection-mode-manual" class="ml-3 text-sm text-gray-700 cursor-pointer">
+                                        Chci si vybrat místo z mapy
+                                        <span class="block text-xs text-gray-500">Po výběru se zobrazí mapa pobočky s rozložením skladů.</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
                         {# Submit #}
                         <div class="flex items-center justify-between pt-2 border-t border-gray-200">
                             <a href="{{ app.user ? path('portal_browse_place_detail', {id: place.id}) : path('public_place_detail', {id: place.id}) }}" class="inline-flex items-center text-gray-600 hover:text-gray-900">
@@ -289,7 +334,6 @@
                         </div>
 
                     {{ form_end(form) }}
-                    </div>
                 </div>
             </div>
         </div>
@@ -416,7 +460,8 @@
 
     {# Storage Map #}
     {% if place.mapImagePath or storagesJson != '[]' %}
-        <div class="card mt-8"
+        <template x-if="selectionMode === 'manual'">
+        <div id="storage-map-card" class="card mt-8"
              data-controller="storage-map"
              data-storage-map-map-image-value="{{ place.mapImagePath ? asset('uploads/' ~ place.mapImagePath) : '' }}"
              data-storage-map-storages-value="{{ storagesJson|e('html_attr') }}"
@@ -462,5 +507,7 @@
                 <div data-storage-map-target="tooltip" class="hidden absolute z-10 bg-white border border-gray-200 shadow-lg rounded-lg p-3 text-sm pointer-events-none max-w-xs"></div>
             </div>
         </div>
+        </template>
     {% endif %}
+    </div>
 {% endblock %}

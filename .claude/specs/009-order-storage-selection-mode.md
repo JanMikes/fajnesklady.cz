@@ -1,6 +1,6 @@
 # 009 — Order form: storage selection mode (auto vs. pick from map)
 
-**Status:** in-progress
+**Status:** done
 **Type:** UX
 **Scope:** tiny (~1 file: order_create.html.twig template)
 **Depends on:** none. Compatible with spec 008 (Live Component refactor) — see "Compatibility" note.
@@ -14,7 +14,7 @@ The storage map on `/objednavka/{placeId}/{storageTypeId}/{storageId}` is always
 Replace the always-visible map with a clear two-option selection at the bottom of the form (same visual pattern as the existing "Typ pronájmu" radio):
 
 - **"Vybrat místo automaticky"** — default. Map stays hidden. The auto-picked storage is what the user gets.
-- **"Chci si vybrat místo sám z mapy"** — when picked, the map appears below and the page scrolls to it.
+- **"Chci si vybrat místo z mapy"** — when picked, the map appears below and the page scrolls to it.
 
 The auto-picked storage (already shown in the right-hand summary sidebar) is still the working selection regardless of which mode the user is in. Switching modes never changes which storage is selected — only whether the map is visible.
 
@@ -88,7 +88,7 @@ Two plain `<input type="radio">` controls bound to `selectionMode`. The "manual"
                    x-on:change="chooseManual()"
                    class="h-4 w-4 text-accent focus:ring-accent border-gray-300">
             <label for="selection-mode-manual" class="ml-3 text-sm text-gray-700 cursor-pointer">
-                Chci si vybrat místo sám z mapy
+                Chci si vybrat místo z mapy
                 <span class="block text-xs text-gray-500">Po výběru se zobrazí mapa pobočky s rozložením skladů.</span>
             </label>
         </div>
@@ -147,7 +147,7 @@ The right-hand summary sidebar already says *"Skladová jednotka bude přiřazen
   - The "Výběr skladové jednotky" radio card is visible at the bottom of the form, above "Rekapitulace".
   - "Vybrat místo automaticky" is selected by default.
   - **No storage map is visible on the page.** Scrolling to the bottom shows the submit row and the order-summary sidebar — that's it.
-- Click "Chci si vybrat místo sám z mapy":
+- Click "Chci si vybrat místo z mapy":
   - The map card appears below the form.
   - The page smoothly scrolls down so the map's top edge is visible.
   - The map renders at the correct width (no zero-width Konva stage). All storage rectangles are visible and clickable.
@@ -157,7 +157,7 @@ The right-hand summary sidebar already says *"Skladová jednotka bude přiřazen
   - The page does not scroll.
 - The "Typ pronájmu" radio still works as before (separate state; no regression).
 - Submitting the form with "Vybrat místo automaticky" selected still goes to `/objednavka/.../prijmout` with the storageId from the URL — i.e. the controller's auto-pick.
-- Submitting the form with "Chci si vybrat místo sám z mapy" selected behaves identically (the radio doesn't post anywhere; the storageId still comes from the URL).
+- Submitting the form with "Chci si vybrat místo z mapy" selected behaves identically (the radio doesn't post anywhere; the storageId still comes from the URL).
 - No JS console errors on either mode toggle.
 
 ## Out of scope

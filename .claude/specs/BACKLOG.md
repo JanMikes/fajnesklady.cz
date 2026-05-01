@@ -21,5 +21,5 @@ Small, independent tasks. Each row = one unit of work to hand to an implementati
 | 006 | "Načíst z ARES" button next to every IČO field (refactor + JSON endpoint + Stimulus) | done | [006-ares-lookup-button.md](006-ares-lookup-button.md) |
 | 007 | Flatpickr on every date input (form theme + filters + birthDate maxDate) | done | [007-flatpickr-everywhere.md](007-flatpickr-everywhere.md) |
 | 008 | Order form as a Live Component (preserve inputs across map clicks, novalidate, on-blur server validation) | ready | [008-order-form-live-component.md](008-order-form-live-component.md) |
-| 009 | Order: hide map by default, opt-in via "auto vs. pick from map" radio | ready | [009-order-storage-selection-mode.md](009-order-storage-selection-mode.md) |
+| 009 | Order: hide map by default, opt-in via "auto vs. pick from map" radio | done | [009-order-storage-selection-mode.md](009-order-storage-selection-mode.md) |
 
