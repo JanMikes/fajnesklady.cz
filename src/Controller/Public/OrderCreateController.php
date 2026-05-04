@@ -4,16 +4,11 @@ declare(strict_types=1);
 
 namespace App\Controller\Public;
 
-use App\Entity\User;
-use App\Enum\RentalType;
-use App\Form\OrderFormData;
-use App\Form\OrderFormType;
 use App\Repository\PlaceRepository;
 use App\Repository\StorageRepository;
 use App\Repository\StorageTypeRepository;
 use App\Service\StorageAssignment;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -31,7 +26,7 @@ final class OrderCreateController extends AbstractController
     ) {
     }
 
-    public function __invoke(string $placeId, string $storageTypeId, Request $request, ?string $storageId = null): Response
+    public function __invoke(string $placeId, string $storageTypeId, ?string $storageId = null): Response
     {
         if (!Uuid::isValid($placeId)) {
             throw new NotFoundHttpException('Pobočka nenalezena.');
@@ -90,7 +85,6 @@ final class OrderCreateController extends AbstractController
             throw new BadRequestHttpException('Vybraná skladová jednotka nepatří k vybrané pobočce.');
         }
         if (!$preSelectedStorage->isAvailable()) {
-            // Try to find another available storage of the same type
             $startDate = new \DateTimeImmutable('tomorrow');
             $endDate = $startDate->modify('+30 days');
             $alternative = $this->storageAssignment->findFirstAvailableStorage($storageType, $place, $startDate, $endDate);
@@ -111,77 +105,32 @@ final class OrderCreateController extends AbstractController
             );
         }
 
-        $user = $this->getUser();
-        $sessionData = $request->getSession()->get('order_form_data');
-        if (is_array($sessionData)) {
-            $formData = OrderFormData::fromSessionArray($sessionData);
-        } elseif ($user instanceof User) {
-            $formData = OrderFormData::fromUser($user);
-        } else {
-            $formData = new OrderFormData();
-        }
-        $formData->startDate ??= $this->calculateMinStartDate($place->daysInAdvance);
-
-        $form = $this->createForm(OrderFormType::class, $formData);
-        $form->handleRequest($request);
-
-        if ($form->isSubmitted() && $form->isValid()) {
-            // Clear endDate for unlimited rentals - the form field is only hidden, not removed
-            if (RentalType::UNLIMITED === $formData->rentalType) {
-                $formData->endDate = null;
-            }
-
-            $request->getSession()->set('order_form_data', $formData->toSessionArray());
-
-            return $this->redirectToRoute('public_order_accept', [
-                'placeId' => $placeId,
-                'storageTypeId' => $storageTypeId,
-                'storageId' => $storageId,
-            ]);
-        }
-
-        // Calculate example prices for display (use storage's effective prices)
+        // Initial pricing rendered into the Alpine pricing preview. The Live
+        // Component takes over once a different storage is picked from the map.
         $weeklyPrice = $preSelectedStorage->getEffectivePricePerWeekInCzk();
         $monthlyPrice = $preSelectedStorage->getEffectivePricePerMonthInCzk();
 
-        // Prepare storage data for the map
         $storages = $this->storageRepository->findByPlace($place);
-        $storagesData = array_map(function ($s) {
-            return [
-                'id' => $s->id->toRfc4122(),
-                'number' => $s->number,
-                'storageTypeId' => $s->storageType->id->toRfc4122(),
-                'storageTypeName' => $s->storageType->name,
-                'coordinates' => $s->coordinates,
-                'status' => $s->status->value,
-                'dimensions' => $s->storageType->getDimensionsInMeters(),
-                'pricePerWeek' => $s->getEffectivePricePerWeekInCzk(),
-                'pricePerMonth' => $s->getEffectivePricePerMonthInCzk(),
-                'isUniform' => $s->storageType->uniformStorages,
-            ];
-        }, $storages);
+        $storagesData = array_map(static fn ($s) => [
+            'id' => $s->id->toRfc4122(),
+            'number' => $s->number,
+            'storageTypeId' => $s->storageType->id->toRfc4122(),
+            'storageTypeName' => $s->storageType->name,
+            'coordinates' => $s->coordinates,
+            'status' => $s->status->value,
+            'dimensions' => $s->storageType->getDimensionsInMeters(),
+            'pricePerWeek' => $s->getEffectivePricePerWeekInCzk(),
+            'pricePerMonth' => $s->getEffectivePricePerMonthInCzk(),
+            'isUniform' => $s->storageType->uniformStorages,
+        ], $storages);
 
         return $this->render('public/order_create.html.twig', [
             'storageType' => $storageType,
             'place' => $place,
-            'form' => $form,
             'weeklyPrice' => $weeklyPrice,
             'monthlyPrice' => $monthlyPrice,
-            'minStartDate' => $this->calculateMinStartDate($place->daysInAdvance),
             'preSelectedStorage' => $preSelectedStorage,
             'storagesJson' => json_encode($storagesData),
-            'highlightStorageId' => $preSelectedStorage->id->toRfc4122(),
         ]);
-    }
-
-    private function calculateMinStartDate(int $daysInAdvance): \DateTimeImmutable
-    {
-        $minDate = new \DateTimeImmutable('tomorrow');
-
-        if ($daysInAdvance > 0) {
-            $minDate = $minDate->modify("+{$daysInAdvance} days");
-        }
-
-        return $minDate;
     }
 }

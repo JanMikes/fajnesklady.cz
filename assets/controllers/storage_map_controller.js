@@ -14,7 +14,7 @@ export default class extends Controller {
         placeId: String,
         highlightStorage: String,
         currentStorageTypeId: String,
-        orderBaseUrl: String,
+        selectMode: { type: Boolean, default: false },
     }
 
     connect() {
@@ -31,12 +31,49 @@ export default class extends Controller {
         this.minimapViewportLayer = null;
         this.minimapViewportRect = null;
 
+        this.initialized = false;
+
+        // Konva measures the container's clientWidth at init. When the controller's host
+        // element starts with display:none (e.g., the order page hides the map until the
+        // user picks "manual"), clientWidth is 0 and nothing renders. Defer setup until the
+        // container actually has layout.
+        if (this.containerTarget.clientWidth > 0) {
+            this.initializeMap();
+        } else {
+            this.resizeObserver = new ResizeObserver(() => {
+                if (!this.initialized && this.containerTarget.clientWidth > 0) {
+                    this.initializeMap();
+                }
+            });
+            this.resizeObserver.observe(this.containerTarget);
+        }
+    }
+
+    initializeMap() {
+        this.initialized = true;
+        if (this.resizeObserver) {
+            this.resizeObserver.disconnect();
+            this.resizeObserver = null;
+        }
         this.initializeStage();
         this.initializeMinimap();
         this.loadMapImage();
     }
 
+    // Stimulus fires this when data-storage-map-highlight-storage-value is updated
+    // (e.g., the order_map_bridge controller pushes the new storageId after a Live action).
+    // Re-render so the new selection visually replaces the old one.
+    highlightStorageValueChanged() {
+        if (!this.initialized) return;
+        this.renderStorages();
+        this.renderMinimap();
+    }
+
     disconnect() {
+        if (this.resizeObserver) {
+            this.resizeObserver.disconnect();
+            this.resizeObserver = null;
+        }
         if (this.boundPanMove) {
             window.removeEventListener('mousemove', this.boundPanMove);
         }
@@ -462,7 +499,7 @@ export default class extends Controller {
         group.add(text);
 
         // Determine if this storage is clickable
-        const isClickable = this.hasOrderBaseUrlValue && this.orderBaseUrlValue
+        const isClickable = this.selectModeValue
             ? storage.status === 'available'
                 && storage.storageTypeId === this.currentStorageTypeIdValue
                 && storage.id !== this.highlightStorageValue
@@ -499,10 +536,13 @@ export default class extends Controller {
         group.on('click tap', () => {
             if (this.isPanning) return;
 
-            // In order mode: navigate to change storage
-            if (this.hasOrderBaseUrlValue && this.orderBaseUrlValue) {
+            // Order-form select mode: dispatch a custom event so the live component can update its storageId
+            if (this.selectModeValue) {
                 if (isClickable) {
-                    window.location.href = this.orderBaseUrlValue.replace('__STORAGE_ID__', storage.id);
+                    this.element.dispatchEvent(new CustomEvent('storage-map:select', {
+                        detail: { storageId: storage.id },
+                        bubbles: true,
+                    }));
                 }
                 return;
             }

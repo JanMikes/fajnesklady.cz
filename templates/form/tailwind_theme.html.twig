@@ -59,14 +59,18 @@
     </div>
 {%- endblock password_widget %}
 
-{# Date widget — single_text variant gets the flatpickr Stimulus controller automatically #}
+{# Date widget — single_text variant gets the flatpickr Stimulus controller automatically.
+   The wrapper carries data-live-ignore so Symfony UX Live Component's morpher leaves the
+   subtree alone: flatpickr appends a visible alt-input as a sibling and toggles the original
+   input's display style on connect, and a morph-driven re-render would otherwise revert all
+   of that and break the picker. #}
 {% block date_widget -%}
     {% if widget == 'single_text' -%}
         {% set existing = attr['data-controller']|default('') %}
         {% set attr = attr|merge({
             'data-controller': (existing ~ ' datepicker')|trim,
         }) %}
-        {{- block('form_widget_simple') -}}
+        <div data-live-ignore>{{- block('form_widget_simple') -}}</div>
     {%- else -%}
         {{- parent() -}}
     {%- endif %}

@@ -38,7 +38,7 @@ final class AdminCreateOnboardingFormData
     public ?string $companyId = null;
 
     #[Assert\Length(max: 14, maxMessage: 'DIČ může mít maximálně {{ limit }} znaků.')]
-    #[Assert\Regex(pattern: '/^(CZ\d{8,10})?$/', message: 'DIČ musí být ve formátu CZxxxxxxxx.')]
+    #[Assert\Regex(pattern: '/^([A-Z]{2}[A-Z0-9]{2,12})?$/', message: 'Neplatný formát DIČ. Začněte kódem země (např. CZ12345678).')]
     public ?string $companyVatId = null;
 
     #[Assert\NotBlank(message: 'Zadejte ulici.')]

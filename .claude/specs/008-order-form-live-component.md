@@ -1,6 +1,6 @@
 # 008 — Order form as a Live Component (preserve inputs across map clicks, no HTML5 validation, live server validation)
 
-**Status:** ready
+**Status:** done
 **Type:** refactor (frontend wiring + Live Component extraction)
 **Scope:** medium (~5 files: new component class + template, refactor page template + controller, tweak storage-map Stimulus controller)
 **Depends on:** none. Compatible with 005 (password toggle), 006 (ARES lookup), 007 (flatpickr).

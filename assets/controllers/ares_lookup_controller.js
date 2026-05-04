@@ -7,18 +7,24 @@ export default class extends Controller {
 
     connect() {
         this.loading = false;
-        this.companyIdInput = this.element.querySelector('input[name$="[companyId]"]');
         this.boundUpdateButtonState = () => this.updateButtonState();
-        this.companyIdInput?.addEventListener('input', this.boundUpdateButtonState);
+        // The IČO input may not exist yet at connect time — the company section is rendered
+        // conditionally and toggled via the form's invoiceToCompany checkbox. Listen at the
+        // controller's root so the handler still fires once the input appears in the DOM.
+        this.element.addEventListener('input', this.boundUpdateButtonState);
         this.updateButtonState();
     }
 
     disconnect() {
-        this.companyIdInput?.removeEventListener('input', this.boundUpdateButtonState);
+        this.element.removeEventListener('input', this.boundUpdateButtonState);
+    }
+
+    companyIdInput() {
+        return this.element.querySelector('input[name$="[companyId]"]');
     }
 
     updateButtonState() {
-        const value = (this.companyIdInput?.value ?? '').trim();
+        const value = (this.companyIdInput()?.value ?? '').trim();
         const valid = /^\d{8}$/.test(value);
         if (this.hasButtonTarget) {
             this.buttonTarget.disabled = !valid || this.loading;
@@ -26,9 +32,10 @@ export default class extends Controller {
     }
 
     async lookup() {
-        if (!this.companyIdInput) return;
+        const input = this.companyIdInput();
+        if (!input) return;
 
-        const ico = this.companyIdInput.value.trim();
+        const ico = input.value.trim();
         if (!/^\d{8}$/.test(ico)) {
             this.setStatus('not_found', 'IČO musí mít přesně 8 číslic');
             return;

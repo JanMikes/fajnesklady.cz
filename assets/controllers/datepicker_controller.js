@@ -26,6 +26,10 @@ export default class extends Controller {
             dateFormat: 'Y-m-d',
             altInput: true,
             altFormat: 'j. n. Y',
+            // Match the project's base input styling so .form-group:has(> .form-error)
+            // CSS can apply error styling consistently across regular inputs and the
+            // visible flatpickr alt-input.
+            altInputClass: 'form-input',
             allowInput: true,
             disableMobile: true
         };

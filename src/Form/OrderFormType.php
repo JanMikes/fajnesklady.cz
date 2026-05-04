@@ -24,8 +24,14 @@ final class OrderFormType extends AbstractType
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $builder
+            // empty_data: '' is set explicitly on the three non-nullable string properties of
+            // OrderFormData. Without this, Symfony Forms binds an empty input to the FormType's
+            // default empty_data (null), and PropertyAccess fails to assign null to a `string`
+            // property. The default value matters because per-field live validation re-submits
+            // the form while other required fields are still empty.
             ->add('email', EmailType::class, [
                 'label' => 'E-mail',
+                'empty_data' => '',
                 'attr' => [
                     'placeholder' => 'vas@email.cz',
                     'autocomplete' => 'email',
@@ -33,6 +39,7 @@ final class OrderFormType extends AbstractType
             ])
             ->add('firstName', TextType::class, [
                 'label' => 'Jméno',
+                'empty_data' => '',
                 'attr' => [
                     'placeholder' => 'Jan',
                     'autocomplete' => 'given-name',
@@ -40,6 +47,7 @@ final class OrderFormType extends AbstractType
             ])
             ->add('lastName', TextType::class, [
                 'label' => 'Příjmení',
+                'empty_data' => '',
                 'attr' => [
                     'placeholder' => 'Novák',
                     'autocomplete' => 'family-name',

@@ -47,5 +47,10 @@ return App::config([
             'alias' => 'event.bus',
             'public' => true,
         ],
+        // Form factory for FormType integration tests (otherwise inlined out of the test container).
+        'test.form.factory' => [
+            'alias' => 'form.factory',
+            'public' => true,
+        ],
     ],
 ]);
