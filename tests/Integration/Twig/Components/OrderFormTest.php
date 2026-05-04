@@ -8,6 +8,7 @@ use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Repository\StorageRepository;
+use App\Service\PriceCalculator;
 use App\Twig\Components\OrderForm;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -19,6 +20,7 @@ final class OrderFormTest extends KernelTestCase
     private EntityManagerInterface $entityManager;
     private StorageRepository $storageRepository;
     private UrlGeneratorInterface $urlGenerator;
+    private PriceCalculator $priceCalculator;
 
     protected function setUp(): void
     {
@@ -29,6 +31,7 @@ final class OrderFormTest extends KernelTestCase
         // 'router' is publicly registered and implements UrlGeneratorInterface; the interface alias
         // is private and inlined out of the test container, so we fetch the concrete service id.
         $this->urlGenerator = $container->get('router');
+        $this->priceCalculator = $container->get(PriceCalculator::class);
     }
 
     public function testSelectStorageSwitchesToAnotherAvailableStorageOfSameTypeAndPlace(): void
@@ -102,7 +105,7 @@ final class OrderFormTest extends KernelTestCase
     private function makeComponent(Place $place, StorageType $storageType, Storage $storage): OrderForm
     {
         // selectStorage / getSelectedStorage do not need session state, so a fresh RequestStack is fine here.
-        $component = new OrderForm($this->storageRepository, new RequestStack(), $this->urlGenerator);
+        $component = new OrderForm($this->storageRepository, new RequestStack(), $this->urlGenerator, $this->priceCalculator);
         $component->place = $place;
         $component->storageType = $storageType;
         $component->storageId = $storage->id->toRfc4122();
