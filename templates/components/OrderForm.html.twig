@@ -260,14 +260,14 @@
                             <div class="bg-accent/5 border border-accent/20 rounded-lg px-4 py-3 flex items-center justify-between">
                                 {% if pricing.type == 'monthly' %}
                                     <span class="text-sm text-gray-600">Měsíční platba</span>
-                                    <span class="text-lg font-bold text-accent">{{ pricing.monthly|number_format(0, ',', ' ') }} Kč / měsíc</span>
+                                    <span class="text-lg font-bold text-accent">{{ pricing.monthly|number_format(0, ',', ' ') }} Kč / měsíc <span class="text-xs text-gray-500 font-normal">vč. DPH</span></span>
                                 {% elseif pricing.type == 'oneTime' %}
                                     <span class="text-sm text-gray-600">Jednorázová platba ({{ pricing.days }} dní)</span>
-                                    <span class="text-lg font-bold text-accent">{{ pricing.total|number_format(0, ',', ' ') }} Kč</span>
+                                    <span class="text-lg font-bold text-accent">{{ pricing.total|number_format(0, ',', ' ') }} Kč <span class="text-xs text-gray-500 font-normal">vč. DPH</span></span>
                                 {% elseif pricing.type == 'recurring' %}
                                     <span class="text-sm text-gray-600">{{ pricing.monthly|number_format(0, ',', ' ') }} Kč / měsíc</span>
                                     <div class="text-right">
-                                        <span class="text-lg font-bold text-accent">{{ pricing.total|number_format(0, ',', ' ') }} Kč</span>
+                                        <span class="text-lg font-bold text-accent">{{ pricing.total|number_format(0, ',', ' ') }} Kč <span class="text-xs text-gray-500 font-normal">vč. DPH</span></span>
                                         <span class="text-xs text-gray-500 ml-1">celkem za {{ pricing.days }} dní</span>
                                     </div>
                                 {% endif %}
@@ -316,7 +316,20 @@
                             </div>
                         </div>
 
-                        {# Submit #}
+                        {# Pre-purchase legal-doc links — GoPay underwriting requirement
+                           (consumer must reach VOP / withdrawal info / recurring T&C from
+                           any sale-describing page). Terse inline list. #}
+                        <p class="text-xs text-gray-500 pt-2">
+                            Před objednáním si přečtěte:
+                            <a href="{{ path('public_terms_and_conditions') }}" target="_blank" class="text-accent hover:underline">VOP</a> ·
+                            <a href="{{ path('public_consumer_notice') }}" target="_blank" class="text-accent hover:underline">Poučení spotřebitele</a> ·
+                            <a href="{{ path('public_recurring_payments_terms') }}" target="_blank" class="text-accent hover:underline">Podmínky opakovaných plateb</a> ·
+                            <a href="{{ path('public_privacy_policy') }}" target="_blank" class="text-accent hover:underline">Ochrana osobních údajů</a>.
+                            Ceny jsou uvedeny vč. DPH.
+                        </p>
+
+                        {# Submit — this button creates the order request only; binding to
+                           payment per § 1826a OZ happens on the next page (order_accept). #}
                         <div class="flex items-center justify-between pt-2 border-t border-gray-200">
                             <a href="{{ app.user ? path('portal_browse_place_detail', {id: place.id}) : path('public_place_detail', {id: place.id}) }}" class="inline-flex items-center text-gray-600 hover:text-gray-900">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -325,7 +338,7 @@
                                 Zpět na výběr
                             </a>
                             <button type="submit" class="btn btn-primary btn-lg">
-                                Podpis smlouvy
+                                Pokračovat k podpisu
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                                 </svg>
@@ -412,11 +425,11 @@
                         <h3 class="font-semibold text-gray-900">Ceník</h3>
                         <div class="flex justify-between text-sm">
                             <span class="text-gray-600">Týdenní sazba</span>
-                            <span class="font-semibold text-gray-900">{{ weeklyPrice|number_format(0, ',', ' ') }} Kč</span>
+                            <span class="font-semibold text-gray-900">{{ weeklyPrice|number_format(0, ',', ' ') }} Kč <span class="text-xs text-gray-500 font-normal">vč. DPH</span></span>
                         </div>
                         <div class="flex justify-between text-sm">
                             <span class="text-gray-600">Měsíční sazba</span>
-                            <span class="font-semibold text-accent">{{ monthlyPrice|number_format(0, ',', ' ') }} Kč</span>
+                            <span class="font-semibold text-accent">{{ monthlyPrice|number_format(0, ',', ' ') }} Kč <span class="text-xs text-gray-500 font-normal">vč. DPH</span></span>
                         </div>
                         <p class="text-xs text-gray-500 mt-2 bg-gray-50 p-2 rounded">
                             Pronájem kratší než 4 týdny se účtuje týdenní sazbou,

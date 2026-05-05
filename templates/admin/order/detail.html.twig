@@ -316,6 +316,56 @@
     </div>
     {% endif %}
 
+    {# Advance-notice trigger — visible only when the contract has an active
+       recurring payment. Use when changing the recurring price or frequency:
+       Podmínky opakovaných plateb čl. V requires informing the customer at
+       least 7 working days in advance. #}
+    {% if contract and contract.hasActiveRecurringPayment() %}
+    <div class="mt-6 bg-white shadow overflow-hidden sm:rounded-lg border border-blue-200">
+        <div class="px-4 py-5 sm:p-6">
+            <div class="flex items-start gap-3 mb-3">
+                <svg class="h-6 w-6 text-blue-500 flex-shrink-0 mt-0.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+                <div>
+                    <h3 class="text-lg font-medium text-gray-900">Upozornit zákazníka na změnu opakované platby</h3>
+                    <p class="mt-1 text-sm text-gray-600">
+                        Podmínky opakovaných plateb (čl. V) ukládají zákazníka informovat <strong>nejméně 7 pracovních dní předem</strong> o jakékoli změně parametrů opakované platby (cena, frekvence).
+                        Tímto formulářem odešlete zákazníkovi e-mail s informací o změně. Změnu samotnou (např. úpravu ceny v ceníku) proveďte zvlášť.
+                    </p>
+                </div>
+            </div>
+
+            {% if contract.lastAdvanceNoticeSentAt %}
+                <p class="text-xs text-gray-500 mb-4">Poslední upozornění bylo odesláno {{ contract.lastAdvanceNoticeSentAt|date('d.m.Y H:i') }}.</p>
+            {% endif %}
+
+            <form action="{{ path('admin_contract_advance_notice', {id: contract.id}) }}" method="post" onsubmit="return confirm('Opravdu chcete odeslat upozornění zákazníkovi?');" class="space-y-4">
+                <div>
+                    <label for="new_amount_czk" class="block text-sm font-medium text-gray-700">Nová částka opakované platby (Kč / měsíc, vč. DPH) <span class="text-gray-400">— volitelné</span></label>
+                    <input type="number" step="0.01" min="0" max="15000" name="new_amount_czk" id="new_amount_czk"
+                           placeholder="např. 3 500,00"
+                           class="mt-1 block w-full sm:w-1/2 rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring-accent text-sm">
+                    <p class="mt-1 text-xs text-gray-500">Pokud se mění cena, vyplňte. Maximální částka opakované platby je 15&nbsp;000&nbsp;Kč (Podmínky čl. III).</p>
+                </div>
+                <div>
+                    <label for="admin_note" class="block text-sm font-medium text-gray-700">Poznámka pro zákazníka <span class="text-gray-400">— volitelné, doporučené</span></label>
+                    <textarea name="admin_note" id="admin_note" rows="3"
+                              placeholder="např. Důvod změny ceny, datum účinnosti, …"
+                              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring-accent text-sm"></textarea>
+                    <p class="mt-1 text-xs text-gray-500">Krátký lidský komentář, který se objeví v e-mailu. Vyplňte alespoň částku nebo poznámku.</p>
+                </div>
+                <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                    <svg class="h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    Odeslat upozornění zákazníkovi
+                </button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
     {# Cancel Order Section #}
     {% if order.canBeCancelled() %}
     <div class="mt-6 bg-white shadow overflow-hidden sm:rounded-lg border border-red-200">

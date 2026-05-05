@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Command;
 
 use App\Event\RecurringPaymentCharged;
+use App\Event\RecurringPaymentEstablished;
 use App\Repository\ContractRepository;
 use App\Repository\OrderRepository;
 use App\Repository\PaymentRepository;
@@ -48,6 +49,15 @@ final readonly class ProcessPaymentNotificationHandler
                 $needsRecurring = $this->priceCalculator->needsRecurringBilling($order->startDate, $order->endDate);
                 if ($needsRecurring) {
                     $order->setGoPayParentPaymentId($status->id);
+
+                    // Confirmation e-mail required by Podmínky opakovaných plateb čl. IV
+                    // (within 2 working days of consent / first successful charge).
+                    $this->eventBus->dispatch(new RecurringPaymentEstablished(
+                        orderId: $order->id,
+                        goPayParentPaymentId: $status->id,
+                        amount: $order->totalPrice,
+                        occurredOn: $now,
+                    ));
                 }
 
                 $this->orderService->confirmPayment($order, $now);

@@ -324,3 +324,15 @@ Hotwire Turbo is installed but **disabled globally** via `data-turbo="false"` on
 - `ROLE_ADMIN` - Full access
 - `ROLE_LANDLORD` - Warehouse owner (Pronajímatel)
 - `ROLE_USER` - Tenant (Nájemce)
+
+## Compliance ruleset (READ BEFORE EDITING ORDER FLOW)
+
+Order flow, payment, and any consumer-facing legal text are governed by [.claude/COMPLIANCE.md](.claude/COMPLIANCE.md). It captures locked-in rules from Czech consumer law (OZ § 1826a "tlačítková novela"), GoPay merchant obligations, and our own VOP / Podmínky opakovaných plateb / Poučení spotřebitele. Examples:
+
+- Submit button MUST read exactly `OBJEDNÁVÁM a zaplatím`.
+- Recurring-payment consent MUST be a dedicated, visibly separate checkbox — never folded into a bundled "I agree" master.
+- Identification (Mekmann s.r.o., IČO 11678631, sídlo, …) MUST appear on every order-flow page.
+- Prices always display with `vč. DPH`.
+- Card + 3D Secure + GoPay-with-link logos MUST appear at every payment surface.
+
+When a rule conflicts with a feature request, stop and consult [.claude/COMPLIANCE.md](.claude/COMPLIANCE.md) and the source documents (`public/documents/*.pdf`) before deviating.

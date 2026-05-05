@@ -53,6 +53,15 @@ class Contract
     #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
     public private(set) ?\DateTimeImmutable $paidThroughDate = null;
 
+    /**
+     * When the customer was last notified about an upcoming recurring charge.
+     * Used to (a) prevent duplicate ≥6-month-gap notices firing every cron run
+     * inside the 7-day pre-charge window, and (b) record that an admin-triggered
+     * parameter-change notice has been sent. Required by Podmínky čl. V.
+     */
+    #[ORM\Column(nullable: true)]
+    public private(set) ?\DateTimeImmutable $lastAdvanceNoticeSentAt = null;
+
     public function __construct(
         #[ORM\Id]
         #[ORM\Column(type: UuidType::NAME, unique: true)]
@@ -230,5 +239,10 @@ class Contract
     public function getEffectiveEndDate(): ?\DateTimeImmutable
     {
         return $this->terminatesAt ?? $this->endDate;
+    }
+
+    public function recordAdvanceNoticeSent(\DateTimeImmutable $now): void
+    {
+        $this->lastAdvanceNoticeSentAt = $now;
     }
 }

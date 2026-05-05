@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Opakovaná platba nastavena</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #16a34a;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 5px 5px 0 0;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 22px;
+        }
+        .content {
+            background-color: #f9f9f9;
+            padding: 30px;
+            border: 1px solid #ddd;
+            border-top: none;
+        }
+        .lead {
+            margin-top: 0;
+        }
+        .params, .storage {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 16px 20px;
+            margin: 20px 0;
+        }
+        .params h3, .storage h3 {
+            margin-top: 0;
+            font-size: 14px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+        .params table, .storage table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .params td, .storage td {
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+            font-size: 14px;
+        }
+        .params td:first-child, .storage td:first-child {
+            font-weight: 600;
+            color: #555;
+            width: 55%;
+        }
+        .params tr:last-child td, .storage tr:last-child td {
+            border-bottom: none;
+        }
+        .legal-note {
+            font-size: 12px;
+            color: #666;
+            background-color: #fff;
+            border-left: 3px solid #16a34a;
+            padding: 12px 16px;
+            margin: 20px 0;
+        }
+        .footer {
+            text-align: center;
+            padding: 20px;
+            font-size: 12px;
+            color: #666;
+        }
+        a { color: #2563eb; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Opakovaná platba byla úspěšně nastavena</h1>
+    </div>
+
+    <div class="content">
+        <p class="lead">Dobrý den {{ name }},</p>
+
+        <p>potvrzujeme, že dne <strong>{{ establishedOn }}</strong> byla na bráně GoPay úspěšně nastavena vaše opakovaná měsíční platba za pronájem skladového kontejneru.</p>
+
+        <div class="storage">
+            <h3>Pronajatý sklad</h3>
+            <table>
+                <tr><td>Pobočka</td><td>{{ placeName }}</td></tr>
+                <tr><td>Typ skladu</td><td>{{ storageType }}</td></tr>
+                <tr><td>Číslo skladu</td><td>{{ storageNumber }}</td></tr>
+            </table>
+        </div>
+
+        <div class="params">
+            <h3>Parametry opakované platby</h3>
+            <table>
+                <tr><td>Účel</td><td>Pronájem skladového kontejneru</td></tr>
+                <tr><td>Pevná částka</td><td>{{ amountInCzk }} Kč / měsíc vč. DPH</td></tr>
+                <tr><td>Maximální částka opakované platby</td><td>15 000 Kč</td></tr>
+                <tr><td>Frekvence</td><td>Měsíční</td></tr>
+                <tr><td>Den stržení</td><td>{{ debitDay }} v měsíci (shodný s dnem první platby)</td></tr>
+                <tr><td>Doba trvání</td><td>Po celou dobu trvání nájmu / do odvolání souhlasu</td></tr>
+            </table>
+        </div>
+
+        <div class="legal-note">
+            <p style="margin: 0 0 8px 0;"><strong>Jak opakovanou platbu zrušit?</strong></p>
+            <p style="margin: 0;">Opakovanou platbu můžete kdykoli zrušit zasláním e-mailu na <a href="mailto:simek@fajnesklady.cz">simek@fajnesklady.cz</a>. Zrušení nemá vliv na povinnost uhradit již poskytnuté služby ani na další trvání nájemní smlouvy.</p>
+        </div>
+
+        <p>Detail objednávky najdete ve svém zákaznickém portálu:</p>
+        <p style="text-align: center;">
+            <a href="{{ manageUrl }}" style="display: inline-block; background-color: #2563eb; color: white; padding: 10px 24px; text-decoration: none; border-radius: 5px; font-size: 14px;">Otevřít detail objednávky</a>
+        </p>
+
+        <p>Plné znění Podmínek opakovaných plateb najdete na webu <a href="https://www.fajnesklady.cz">fajnesklady.cz</a>.</p>
+
+        <p>S pozdravem,<br><strong>Tým Fajnesklady.cz</strong></p>
+    </div>
+
+    <div class="footer">
+        <p>Mekmann s.r.o., IČO 11678631, Dvořákova 780, 739 11 Frýdlant nad Ostravicí</p>
+        <p>Toto je automaticky generovaný e-mail. Pokud máte dotazy, kontaktujte nás na <a href="mailto:skladmistr@fajnesklady.cz">skladmistr@fajnesklady.cz</a> nebo +420 605 522 566.</p>
+        <p>&copy; {{ 'now'|date('Y') }} Fajnesklady.cz. Všechna práva vyhrazena.</p>
+    </div>
+</body>
+</html>

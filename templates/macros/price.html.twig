@@ -1,0 +1,18 @@
+{# Price-display macros — central for VAT-suffix consistency.
+
+   GoPay rule: "Konečná cena s uvedením měny a stavu DPH."
+   VOP VI.10 / XV.1: "Ceny jsou uváděny včetně DPH."
+
+   `czk(amount, decimals)` — full price with currency and VAT suffix.
+   `vat_suffix(class)` — just the "vč. DPH" suffix span; for use next to
+     prices already formatted inline (avoids reflowing existing markup).
+
+   See .claude/COMPLIANCE.md (Pricing & VAT). #}
+
+{% macro czk(amount, decimals = 0) %}
+    {{- amount|number_format(decimals, ',', ' ') }} Kč <span class="text-xs text-gray-500 font-normal">vč. DPH</span>
+{%- endmacro %}
+
+{% macro vat_suffix(extra_class = '') %}
+    <span class="text-xs text-gray-500 font-normal {{ extra_class }}">vč. DPH</span>
+{%- endmacro %}

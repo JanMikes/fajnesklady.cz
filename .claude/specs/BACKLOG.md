@@ -28,4 +28,5 @@ Small, independent tasks. Each row = one unit of work to hand to an implementati
 | 013 | Price label reflects billing cadence (Celková cena vs Měsíční platba / měsíc) — fix in emails + UI | ready | [013-price-label-by-billing-cadence.md](013-price-label-by-billing-cadence.md) |
 | 014 | One-click "Prodloužit pronájem" from previous order (email CTA + portal CTA + prefilled form) | ready | [014-one-click-prolong-from-previous-order.md](014-one-click-prolong-from-previous-order.md) |
 | 015 | Order accept redesign — wider layout, smaller inline photos, inline signing (no modal, radios), single consolidated consent | done | [015-order-accept-redesign.md](015-order-accept-redesign.md) |
+| 016 | GoPay & VOP compliance pass — button label per § 1826a OZ, dedicated recurring consent, card/3DS logos, parameter card, identification, recurring confirmation + advance-notice e-mails | ready (P1+P2) / P3 deferred | [016-gopay-vop-compliance.md](016-gopay-vop-compliance.md) |
 

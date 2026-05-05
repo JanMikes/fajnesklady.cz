@@ -347,4 +347,155 @@ class ContractRepositoryTest extends KernelTestCase
         $this->assertCount(1, $activeContracts);
         $this->assertEquals($activeContract->id, $activeContracts[0]->id);
     }
+
+    /**
+     * Helper for findRequiringAdvanceNotice tests: builds an active recurring
+     * contract with caller-supplied billing state.
+     */
+    private function createRecurringContract(
+        string $emailSeed,
+        \DateTimeImmutable $lastBilledAt,
+        ?\DateTimeImmutable $nextBillingDate,
+        ?\DateTimeImmutable $lastAdvanceNoticeSentAt = null,
+        bool $terminated = false,
+        bool $hasParentPaymentId = true,
+    ): Contract {
+        $tenant = $this->createUser($emailSeed.'@test.com');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage = $this->createStorage($storageType, $place, strtoupper(substr($emailSeed, 0, 4)));
+        $order = $this->createOrder($tenant, $storage, $lastBilledAt->modify('-1 month'), null);
+        $contract = $this->createContract($order, $tenant, $storage, $order->startDate, null);
+
+        if ($hasParentPaymentId) {
+            $contract->setRecurringPayment(
+                'gp-parent-'.$emailSeed,
+                $nextBillingDate,
+                $nextBillingDate ?? $lastBilledAt,
+            );
+        }
+
+        $contract->recordBillingCharge(
+            $lastBilledAt,
+            $nextBillingDate,
+            $nextBillingDate ?? $lastBilledAt,
+        );
+
+        if (null !== $lastAdvanceNoticeSentAt) {
+            $contract->recordAdvanceNoticeSent($lastAdvanceNoticeSentAt);
+        }
+
+        if ($terminated) {
+            $contract->terminate(new \DateTimeImmutable('2025-01-01'), releaseStorage: false);
+        }
+
+        return $contract;
+    }
+
+    public function testFindRequiringAdvanceNoticeIncludesContractInWindowWithSixMonthGap(): void
+    {
+        $now = new \DateTimeImmutable('2026-05-05 12:00:00');
+
+        $contract = $this->createRecurringContract(
+            emailSeed: 'adv-included',
+            lastBilledAt: $now->modify('-7 months'),
+            nextBillingDate: $now->modify('+9 days'),
+        );
+
+        $this->entityManager->flush();
+
+        $found = $this->repository->findRequiringAdvanceNotice($now);
+
+        $foundIds = array_map(fn (Contract $c) => $c->id->toRfc4122(), $found);
+        $this->assertContains($contract->id->toRfc4122(), $foundIds);
+    }
+
+    public function testFindRequiringAdvanceNoticeExcludesRecentlyChargedContract(): void
+    {
+        $now = new \DateTimeImmutable('2026-05-05 12:00:00');
+
+        $contract = $this->createRecurringContract(
+            emailSeed: 'adv-recent',
+            lastBilledAt: $now->modify('-2 months'),
+            nextBillingDate: $now->modify('+9 days'),
+        );
+
+        $this->entityManager->flush();
+
+        $found = $this->repository->findRequiringAdvanceNotice($now);
+        $foundIds = array_map(fn (Contract $c) => $c->id->toRfc4122(), $found);
+        $this->assertNotContains($contract->id->toRfc4122(), $foundIds);
+    }
+
+    public function testFindRequiringAdvanceNoticeExcludesContractOutsideWindow(): void
+    {
+        $now = new \DateTimeImmutable('2026-05-05 12:00:00');
+
+        // Next billing in 3 days — well before the 8-10 day window.
+        $contract = $this->createRecurringContract(
+            emailSeed: 'adv-soon',
+            lastBilledAt: $now->modify('-7 months'),
+            nextBillingDate: $now->modify('+3 days'),
+        );
+
+        $this->entityManager->flush();
+
+        $found = $this->repository->findRequiringAdvanceNotice($now);
+        $foundIds = array_map(fn (Contract $c) => $c->id->toRfc4122(), $found);
+        $this->assertNotContains($contract->id->toRfc4122(), $foundIds);
+    }
+
+    public function testFindRequiringAdvanceNoticeExcludesContractWithRecentNotice(): void
+    {
+        $now = new \DateTimeImmutable('2026-05-05 12:00:00');
+
+        $contract = $this->createRecurringContract(
+            emailSeed: 'adv-notified',
+            lastBilledAt: $now->modify('-7 months'),
+            nextBillingDate: $now->modify('+9 days'),
+            lastAdvanceNoticeSentAt: $now->modify('-30 days'),
+        );
+
+        $this->entityManager->flush();
+
+        $found = $this->repository->findRequiringAdvanceNotice($now);
+        $foundIds = array_map(fn (Contract $c) => $c->id->toRfc4122(), $found);
+        $this->assertNotContains($contract->id->toRfc4122(), $foundIds);
+    }
+
+    public function testFindRequiringAdvanceNoticeExcludesTerminatedContract(): void
+    {
+        $now = new \DateTimeImmutable('2026-05-05 12:00:00');
+
+        $contract = $this->createRecurringContract(
+            emailSeed: 'adv-terminated',
+            lastBilledAt: $now->modify('-7 months'),
+            nextBillingDate: $now->modify('+9 days'),
+            terminated: true,
+        );
+
+        $this->entityManager->flush();
+
+        $found = $this->repository->findRequiringAdvanceNotice($now);
+        $foundIds = array_map(fn (Contract $c) => $c->id->toRfc4122(), $found);
+        $this->assertNotContains($contract->id->toRfc4122(), $foundIds);
+    }
+
+    public function testFindRequiringAdvanceNoticeExcludesContractWithoutRecurringSetup(): void
+    {
+        $now = new \DateTimeImmutable('2026-05-05 12:00:00');
+
+        $contract = $this->createRecurringContract(
+            emailSeed: 'adv-noparent',
+            lastBilledAt: $now->modify('-7 months'),
+            nextBillingDate: $now->modify('+9 days'),
+            hasParentPaymentId: false,
+        );
+
+        $this->entityManager->flush();
+
+        $found = $this->repository->findRequiringAdvanceNotice($now);
+        $foundIds = array_map(fn (Contract $c) => $c->id->toRfc4122(), $found);
+        $this->assertNotContains($contract->id->toRfc4122(), $foundIds);
+    }
 }

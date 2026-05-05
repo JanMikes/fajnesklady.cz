@@ -232,6 +232,44 @@ class ContractRepository
     }
 
     /**
+     * Find recurring contracts that need a 7-business-day advance notice
+     * because ≥6 months have elapsed since the last successful charge
+     * (Podmínky opakovaných plateb čl. V).
+     *
+     * Window: nextBillingDate is 8–10 calendar days away (covers 7 working
+     * days with margin even in a week with one Czech public holiday). Skip
+     * contracts that already received an advance notice in the last 90 days
+     * — that's the idempotency guard against the daily cron.
+     *
+     * @return Contract[]
+     */
+    public function findRequiringAdvanceNotice(\DateTimeImmutable $now): array
+    {
+        $windowStart = $now->modify('+8 days');
+        $windowEnd = $now->modify('+10 days');
+        $sixMonthsAgo = $now->modify('-6 months');
+        $idempotencyCutoff = $now->modify('-90 days');
+
+        return $this->entityManager->createQueryBuilder()
+            ->select('c')
+            ->from(Contract::class, 'c')
+            ->where('c.goPayParentPaymentId IS NOT NULL')
+            ->andWhere('c.terminatedAt IS NULL')
+            ->andWhere('c.nextBillingDate IS NOT NULL')
+            ->andWhere('c.nextBillingDate >= :windowStart')
+            ->andWhere('c.nextBillingDate <= :windowEnd')
+            ->andWhere('c.lastBilledAt IS NOT NULL')
+            ->andWhere('c.lastBilledAt <= :sixMonthsAgo')
+            ->andWhere('c.lastAdvanceNoticeSentAt IS NULL OR c.lastAdvanceNoticeSentAt <= :idempotencyCutoff')
+            ->setParameter('windowStart', $windowStart)
+            ->setParameter('windowEnd', $windowEnd)
+            ->setParameter('sixMonthsAgo', $sixMonthsAgo)
+            ->setParameter('idempotencyCutoff', $idempotencyCutoff)
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
      * Find contracts that need retry after failed billing (3 days later).
      *
      * @return Contract[]
