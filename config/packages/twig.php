@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Symfony\Component\DependencyInjection\Loader\Configurator;
 
+use App\Service\PriceCalculator;
+
 return App::config([
     'twig' => [
         'file_name_pattern' => '*.twig',
@@ -12,6 +14,11 @@ return App::config([
         ],
         'date' => [
             'timezone' => 'Europe/Prague',
+        ],
+        'globals' => [
+            // GoPay recurring-payment max-amount disclosure multiplier.
+            // See PriceCalculator::RECURRING_PAYMENT_MAX_MULTIPLIER for the rationale.
+            'recurring_payment_max_multiplier' => PriceCalculator::RECURRING_PAYMENT_MAX_MULTIPLIER,
         ],
     ],
 ]);

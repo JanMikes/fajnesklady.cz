@@ -54,7 +54,7 @@ final class GenerateFixturePhotosCommand extends Command
             return Command::FAILURE;
         }
 
-        $outputDir = $this->projectDir . '/fixtures/photos';
+        $outputDir = $this->projectDir.'/fixtures/photos';
         if (!is_dir($outputDir) && !mkdir($outputDir, 0755, true) && !is_dir($outputDir)) {
             $io->error(sprintf('Cannot create %s', $outputDir));
 
@@ -62,7 +62,7 @@ final class GenerateFixturePhotosCommand extends Command
         }
 
         foreach (self::PHOTOS as [$filename, $width, $height, $bgHex, $label]) {
-            $path = $outputDir . '/' . $filename;
+            $path = $outputDir.'/'.$filename;
             $this->generateJpeg($path, $width, $height, $bgHex, $label);
             $io->writeln(sprintf('Wrote %s (%d×%d)', $filename, $width, $height));
         }
@@ -75,11 +75,11 @@ final class GenerateFixturePhotosCommand extends Command
     private function generateJpeg(string $path, int $width, int $height, string $bgHex, string $label): void
     {
         $img = imagecreatetruecolor(max(1, $width), max(1, $height));
-        \assert($img !== false);
+        \assert(false !== $img);
 
         [$r, $g, $b] = $this->parseHexColour($bgHex);
         $bg = imagecolorallocate($img, $r, $g, $b);
-        \assert($bg !== false);
+        \assert(false !== $bg);
         imagefilledrectangle($img, 0, 0, $width - 1, $height - 1, $bg);
 
         // Subtle darker grid so the image isn't perfectly flat.
@@ -90,7 +90,7 @@ final class GenerateFixturePhotosCommand extends Command
             $this->clamp255($b - 40),
             80,
         );
-        \assert($grid !== false);
+        \assert(false !== $grid);
         $step = 80;
         for ($x = 0; $x < $width; $x += $step) {
             imageline($img, $x, 0, $x, $height - 1, $grid);
@@ -100,7 +100,7 @@ final class GenerateFixturePhotosCommand extends Command
         }
 
         $white = imagecolorallocate($img, 255, 255, 255);
-        \assert($white !== false);
+        \assert(false !== $white);
         $charW = imagefontwidth(5);
         $charH = imagefontheight(5);
         $textW = $charW * mb_strlen($label);

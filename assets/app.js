@@ -3,6 +3,15 @@ import Alpine from 'alpinejs';
 import GLightbox from 'glightbox';
 import 'glightbox/dist/css/glightbox.min.css';
 
+// Global modal state — used by the term modals on the order accept and
+// signing pages. A store sidesteps any nested-scope issues that occur when
+// the modal markup ends up outside the local x-data wrapper at runtime.
+Alpine.store('modal', {
+    open: '',
+    show(id) { this.open = id; },
+    close() { this.open = ''; },
+});
+
 Alpine.start();
 
 // Page-wide GLightbox. One instance handles every `.glightbox` anchor on the

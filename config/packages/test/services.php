@@ -52,5 +52,11 @@ return App::config([
             'alias' => 'form.factory',
             'public' => true,
         ],
+        // ARES rate limiter — exposed publicly so test setUp can reset it
+        // between cases (the rate-limit test exhausts the bucket).
+        'test.limiter.ares_lookup' => [
+            'alias' => 'limiter.ares_lookup',
+            'public' => true,
+        ],
     ],
 ]);

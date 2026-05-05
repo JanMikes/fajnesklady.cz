@@ -64,8 +64,8 @@ final class StorageCanvasController extends AbstractController
             'lockCode' => $s->lockCode,
             // Unit-specific photos first, then the generic storage-type photos.
             'photoUrls' => array_merge(
-                array_map(static fn ($p) => '/uploads/' . $p->path, $s->getPhotos()->toArray()),
-                array_map(static fn ($p) => '/uploads/' . $p->path, $s->storageType->getPhotos()->toArray()),
+                array_map(static fn ($p) => '/uploads/'.$p->path, $s->getPhotos()->toArray()),
+                array_map(static fn ($p) => '/uploads/'.$p->path, $s->storageType->getPhotos()->toArray()),
             ),
         ], $storages);
 

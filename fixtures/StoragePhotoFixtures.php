@@ -41,8 +41,8 @@ final class StoragePhotoFixtures extends Fixture implements DependentFixtureInte
     public function load(ObjectManager $manager): void
     {
         $now = $this->clock->now();
-        $sourceDir = __DIR__ . '/photos';
-        $uploadsDir = __DIR__ . '/../public/uploads';
+        $sourceDir = __DIR__.'/photos';
+        $uploadsDir = __DIR__.'/../public/uploads';
 
         foreach (self::PHOTOS as $ref => $filenames) {
             /** @var Storage $storage */
@@ -56,8 +56,8 @@ final class StoragePhotoFixtures extends Fixture implements DependentFixtureInte
                 );
 
                 $this->copyFixturePhoto(
-                    $sourceDir . '/' . $filename,
-                    $uploadsDir . '/' . $relativePath,
+                    $sourceDir.'/'.$filename,
+                    $uploadsDir.'/'.$relativePath,
                 );
 
                 $photo = new StoragePhoto(
@@ -88,10 +88,7 @@ final class StoragePhotoFixtures extends Fixture implements DependentFixtureInte
     private function copyFixturePhoto(string $source, string $destination): void
     {
         if (!is_file($source)) {
-            throw new \RuntimeException(sprintf(
-                'Fixture photo not found: %s. Run `docker compose exec web bin/console app:generate-fixture-photos` to (re)generate.',
-                $source,
-            ));
+            throw new \RuntimeException(sprintf('Fixture photo not found: %s. Run `docker compose exec web bin/console app:generate-fixture-photos` to (re)generate.', $source));
         }
 
         $directory = dirname($destination);

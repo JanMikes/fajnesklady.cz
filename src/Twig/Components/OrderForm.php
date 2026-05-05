@@ -102,9 +102,9 @@ final class OrderForm extends AbstractController
      * customer sees here is exactly what they'll pay.
      *
      * @return array{type: 'monthly', monthly: float}
-     *               |array{type: 'oneTime', days: int, total: float}
-     *               |array{type: 'recurring', days: int, total: float, monthly: float}
-     *               |null Null when the form data is incomplete (e.g. missing dates).
+     *                                                |array{type: 'oneTime', days: int, total: float}
+     *                                                |array{type: 'recurring', days: int, total: float, monthly: float}
+     *                                                |null Null when the form data is incomplete (e.g. missing dates).
      */
     public function getPricing(Storage $storage): ?array
     {

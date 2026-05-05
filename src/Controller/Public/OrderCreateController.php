@@ -125,8 +125,8 @@ final class OrderCreateController extends AbstractController
             // Unit-specific photos first ("show me this exact unit"), then the
             // generic storage-type photos ("…and what others of this type look like").
             'photoUrls' => array_merge(
-                array_map(static fn ($p) => '/uploads/' . $p->path, $s->getPhotos()->toArray()),
-                array_map(static fn ($p) => '/uploads/' . $p->path, $s->storageType->getPhotos()->toArray()),
+                array_map(static fn ($p) => '/uploads/'.$p->path, $s->getPhotos()->toArray()),
+                array_map(static fn ($p) => '/uploads/'.$p->path, $s->storageType->getPhotos()->toArray()),
             ),
         ], $storages);
 

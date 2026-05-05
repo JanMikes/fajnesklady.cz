@@ -9,6 +9,7 @@ use App\Tests\Mock\MockAresLookup;
 use App\Value\AresResult;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
 
 class AresLookupControllerTest extends WebTestCase
 {
@@ -24,6 +25,12 @@ class AresLookupControllerTest extends WebTestCase
         \assert($aresLookup instanceof MockAresLookup);
         $this->aresLookup = $aresLookup;
         $this->aresLookup->reset();
+
+        // Reset the ARES rate limiter so prior test runs (and the rate-limit
+        // test below, which intentionally exhausts it) don't bleed into this one.
+        $limiter = static::getContainer()->get('test.limiter.ares_lookup');
+        \assert($limiter instanceof RateLimiterFactoryInterface);
+        $limiter->create('127.0.0.1')->reset();
     }
 
     protected function tearDown(): void
@@ -110,6 +117,7 @@ class AresLookupControllerTest extends WebTestCase
             $this->client->request('GET', '/api/ares/12345678');
             if (429 === $this->client->getResponse()->getStatusCode()) {
                 $rateLimitedSeen = true;
+
                 break;
             }
         }

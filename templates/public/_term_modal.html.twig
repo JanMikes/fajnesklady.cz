@@ -1,0 +1,47 @@
+{# Reusable term modal. Driven by Alpine $store.modal.open (string id),
+   which is global so it works regardless of DOM scope.
+
+   Inputs:
+     id    — string identifier matched against $store.modal.open (e.g. 'vop').
+     title — heading text shown in the fixed header bar.
+
+   Yields:
+     body  — block where the caller injects the modal's HTML content.
+#}
+<div x-show="$store.modal.open === '{{ id }}'"
+     x-cloak
+     class="fixed inset-0 z-50"
+     x-transition:enter="transition ease-out duration-200"
+     x-transition:enter-start="opacity-0"
+     x-transition:enter-end="opacity-100"
+     x-transition:leave="transition ease-in duration-150"
+     x-transition:leave-start="opacity-100"
+     x-transition:leave-end="opacity-0">
+    <div class="flex items-start justify-center min-h-screen px-4 py-8">
+        <div class="fixed inset-0 bg-black/70" @click="$store.modal.close()"></div>
+        <div class="relative bg-white rounded-xl shadow-xl max-w-3xl w-full z-10 max-h-[85vh] flex flex-col" @click.stop>
+            <div class="flex items-center justify-between px-6 py-3 border-b shrink-0">
+                <h3 class="text-lg font-semibold text-gray-900">{{ title }}</h3>
+                <button type="button" @click="$store.modal.close()" class="text-gray-400 hover:text-gray-600" aria-label="Zavřít">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            {# Normalised typography so all term modals look the same regardless
+               of how the included content template happened to be authored. #}
+            <div class="overflow-y-auto p-6 text-sm text-gray-700 leading-relaxed
+                        [&_section]:mb-6 [&_section:last-child]:mb-0
+                        [&_h2]:text-base [&_h2]:font-semibold [&_h2]:text-gray-900 [&_h2]:mb-2 [&_h2]:mt-0
+                        [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:text-gray-900 [&_h3]:mt-3 [&_h3]:mb-1
+                        [&_p]:my-2 [&_p:first-child]:mt-0
+                        [&_ul]:my-2 [&_ul]:list-disc [&_ul]:ps-5 [&_ul]:space-y-1
+                        [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:ps-5 [&_ol]:space-y-1
+                        [&_a]:text-accent [&_a]:underline hover:[&_a]:no-underline
+                        [&_strong]:font-semibold [&_strong]:text-gray-900
+                        [&_h2_svg]:hidden">
+                {% block body %}{% endblock %}
+            </div>
+        </div>
+    </div>
+</div>

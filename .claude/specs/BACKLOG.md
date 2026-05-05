@@ -27,4 +27,5 @@ Small, independent tasks. Each row = one unit of work to hand to an implementati
 | 012 | Photos visible across the order journey (place card / form sidebar / map modal / recap) with GLightbox, never cropped | done | [012-photos-during-order.md](012-photos-during-order.md) |
 | 013 | Price label reflects billing cadence (Celková cena vs Měsíční platba / měsíc) — fix in emails + UI | ready | [013-price-label-by-billing-cadence.md](013-price-label-by-billing-cadence.md) |
 | 014 | One-click "Prodloužit pronájem" from previous order (email CTA + portal CTA + prefilled form) | ready | [014-one-click-prolong-from-previous-order.md](014-one-click-prolong-from-previous-order.md) |
+| 015 | Order accept redesign — wider layout, smaller inline photos, inline signing (no modal, radios), single consolidated consent | done | [015-order-accept-redesign.md](015-order-accept-redesign.md) |
 

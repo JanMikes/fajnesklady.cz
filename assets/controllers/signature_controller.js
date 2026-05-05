@@ -11,20 +11,22 @@ const FONT_STYLES = [
 export default class extends Controller {
     static targets = [
         'drawCanvas', 'typedCanvas',
-        'preview', 'previewImage',
         'dataField', 'methodField', 'typedNameField', 'styleIdField',
-        'drawTab', 'typedTab', 'drawPanel', 'typedPanel',
-        'confirmBtn',
     ];
 
     static values = {
-        mode: { type: String, default: 'draw' },
         styleId: { type: String, default: 'dancing-script' },
         customerName: { type: String, default: '' },
     };
 
     connect() {
         this.signaturePad = null;
+        // Both panels render in the same DOM pass; canvas sizes depend on
+        // layout being settled, so defer one frame.
+        requestAnimationFrame(() => {
+            this._initDrawCanvas();
+            this._renderTypedSignature();
+        });
     }
 
     disconnect() {
@@ -34,63 +36,38 @@ export default class extends Controller {
         }
     }
 
-    open() {
-        // Re-init canvas after modal becomes visible (next frame)
-        requestAnimationFrame(() => {
-            if (this.modeValue === 'draw') {
-                this._initDrawCanvas();
-            } else {
-                this._renderTypedSignature();
-            }
-        });
-    }
-
-    switchToDraw() {
-        this.modeValue = 'draw';
-        this.drawPanelTarget.classList.remove('hidden');
-        this.typedPanelTarget.classList.add('hidden');
-        this.drawTabTarget.classList.add('border-accent', 'text-accent');
-        this.drawTabTarget.classList.remove('border-transparent', 'text-gray-500');
-        this.typedTabTarget.classList.add('border-transparent', 'text-gray-500');
-        this.typedTabTarget.classList.remove('border-accent', 'text-accent');
-
-        this._initDrawCanvas();
-    }
-
-    switchToTyped() {
-        this.modeValue = 'typed';
-        this.typedPanelTarget.classList.remove('hidden');
-        this.drawPanelTarget.classList.add('hidden');
-        this.typedTabTarget.classList.add('border-accent', 'text-accent');
-        this.typedTabTarget.classList.remove('border-transparent', 'text-gray-500');
-        this.drawTabTarget.classList.add('border-transparent', 'text-gray-500');
-        this.drawTabTarget.classList.remove('border-accent', 'text-accent');
-
-        this._renderTypedSignature();
-    }
-
+    // Radio change on a typed-style option: render that style and capture
+    // immediately so the user doesn't need a separate "confirm" click.
     selectStyle(event) {
         this.styleIdValue = event.currentTarget.dataset.styleId;
-
-        // Update active style button
-        this.element.querySelectorAll('[data-style-btn]').forEach(btn => {
-            btn.classList.toggle('ring-2', btn.dataset.styleId === this.styleIdValue);
-            btn.classList.toggle('ring-accent', btn.dataset.styleId === this.styleIdValue);
-        });
-
         this._renderTypedSignature();
+        this._captureSignature('typed');
     }
 
-    clear() {
-        if (this.modeValue === 'draw' && this.signaturePad) {
-            this.signaturePad.clear();
+    // Radio change on the draw option: if the canvas already has strokes
+    // (user came back to draw after wandering off), keep them and capture;
+    // otherwise emit a cleared event so the submit button stays disabled
+    // until the user actually draws something.
+    selectDraw() {
+        if (this.signaturePad && !this.signaturePad.isEmpty()) {
+            this._captureSignature('draw');
+        } else {
+            this._clearHiddenFields();
         }
     }
 
-    confirm() {
+    clear(event) {
+        const mode = event.params?.mode ?? 'draw';
+        if (mode === 'draw' && this.signaturePad) {
+            this.signaturePad.clear();
+            this._clearHiddenFields();
+        }
+    }
+
+    _captureSignature(mode) {
         let dataUrl;
 
-        if (this.modeValue === 'draw') {
+        if (mode === 'draw') {
             if (!this.signaturePad || this.signaturePad.isEmpty()) {
                 return;
             }
@@ -106,18 +83,20 @@ export default class extends Controller {
             dataUrl = canvas.toDataURL('image/png');
         }
 
-        // Set hidden fields
         this.dataFieldTarget.value = dataUrl;
-        this.methodFieldTarget.value = this.modeValue;
-        this.typedNameFieldTarget.value = this.modeValue === 'typed' ? this.customerNameValue : '';
-        this.styleIdFieldTarget.value = this.modeValue === 'typed' ? this.styleIdValue : '';
+        this.methodFieldTarget.value = mode;
+        this.typedNameFieldTarget.value = mode === 'typed' ? this.customerNameValue : '';
+        this.styleIdFieldTarget.value = mode === 'typed' ? this.styleIdValue : '';
 
-        // Show preview
-        this.previewImageTarget.src = dataUrl;
-        this.previewTarget.classList.remove('hidden');
-
-        // Dispatch event for Alpine.js
         this.element.dispatchEvent(new CustomEvent('signature:signed', { bubbles: true }));
+    }
+
+    _clearHiddenFields() {
+        this.dataFieldTarget.value = '';
+        this.methodFieldTarget.value = '';
+        this.typedNameFieldTarget.value = '';
+        this.styleIdFieldTarget.value = '';
+        this.element.dispatchEvent(new CustomEvent('signature:cleared', { bubbles: true }));
     }
 
     _initDrawCanvas() {
@@ -126,7 +105,6 @@ export default class extends Controller {
         const canvas = this.drawCanvasTarget;
         const ratio = Math.max(window.devicePixelRatio || 1, 1);
 
-        // Set display size from CSS
         const rect = canvas.getBoundingClientRect();
         if (rect.width > 0) {
             canvas.width = rect.width * ratio;
@@ -142,6 +120,11 @@ export default class extends Controller {
             backgroundColor: 'rgb(255, 255, 255)',
             penColor: 'rgb(0, 0, 0)',
         });
+
+        // Capture after each stroke so the user doesn't need a "confirm" click.
+        this.signaturePad.addEventListener('endStroke', () => {
+            this._captureSignature('draw');
+        });
     }
 
     _renderTypedSignature() {
@@ -152,7 +135,6 @@ export default class extends Controller {
         const text = this.customerNameValue.trim();
         const style = FONT_STYLES.find(s => s.id === this.styleIdValue) || FONT_STYLES[0];
 
-        // Set canvas size
         const ratio = Math.max(window.devicePixelRatio || 1, 1);
         const rect = canvas.getBoundingClientRect();
         if (rect.width > 0) {
@@ -161,13 +143,11 @@ export default class extends Controller {
             ctx.scale(ratio, ratio);
         }
 
-        // Clear
         ctx.fillStyle = 'white';
         ctx.fillRect(0, 0, rect.width, rect.height);
 
         if (!text) return;
 
-        // Render text after fonts are ready
         document.fonts.ready.then(() => {
             ctx.fillStyle = 'white';
             ctx.fillRect(0, 0, rect.width, rect.height);

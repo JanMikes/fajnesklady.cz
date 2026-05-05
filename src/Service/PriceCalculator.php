@@ -14,6 +14,18 @@ final readonly class PriceCalculator
     private const int DAYS_PER_MONTH = 30;
 
     /**
+     * GoPay / Visa-Mastercard SCA recurring-payment compliance requires the
+     * merchant to disclose a maximum amount that may be charged in a single
+     * recurrence. We display "3× měsíční platba" both in the order recap and
+     * in the public recurring-payments terms — the cap is informational, not
+     * an enforced charge limit. Adjust here and both surfaces follow.
+     *
+     * Exposed to Twig via the `recurring_payment_max_multiplier` global
+     * (see config/packages/twig.php).
+     */
+    public const int RECURRING_PAYMENT_MAX_MULTIPLIER = 3;
+
+    /**
      * Calculate total rental price based on duration.
      *
      * Rule: Duration < 28 days uses weekly rate, >= 28 days uses monthly rate.
