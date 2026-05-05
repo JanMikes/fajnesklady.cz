@@ -23,6 +23,42 @@
         </ol>
     </nav>
 
+    {# Photos — last chance for the customer to visually confirm what they're paying for. #}
+    {% if storageType.hasPhotos or storage.hasPhotos %}
+        <div class="max-w-2xl mx-auto mb-6 space-y-4">
+            {% if storageType.hasPhotos %}
+                <div class="card">
+                    <div class="card-body">
+                        <h3 class="text-sm font-semibold text-gray-700 mb-2">Fotografie typu skladu — {{ storageType.name }}</h3>
+                        {% include 'partials/photo_gallery.html.twig' with {
+                            photos: storageType.photos,
+                            gallery_key: 'recap-type-' ~ storageType.id,
+                            caption: 'Typ skladu: ' ~ storageType.name,
+                            hero_max_h: 'max-h-56',
+                            thumb_max_h: 'max-h-16',
+                            alt: storageType.name,
+                        } only %}
+                    </div>
+                </div>
+            {% endif %}
+            {% if storage.hasPhotos %}
+                <div class="card">
+                    <div class="card-body">
+                        <h3 class="text-sm font-semibold text-gray-700 mb-2">Fotografie skladu č. {{ storage.number }}</h3>
+                        {% include 'partials/photo_gallery.html.twig' with {
+                            photos: storage.photos,
+                            gallery_key: 'recap-storage-' ~ storage.id,
+                            caption: 'Sklad č. ' ~ storage.number,
+                            hero_max_h: 'max-h-56',
+                            thumb_max_h: 'max-h-16',
+                            alt: 'Sklad ' ~ storage.number,
+                        } only %}
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    {% endif %}
+
     <div class="max-w-2xl mx-auto"
          x-data="{
              modalOpen: false,

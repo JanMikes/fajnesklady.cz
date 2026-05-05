@@ -55,13 +55,18 @@ final class StorageCanvasController extends AbstractController
             'dimensions' => $t->getDimensionsInMeters(),
         ], $allStorageTypes);
 
-        $storagesData = array_map(fn ($s) => [
+        $storagesData = array_map(static fn ($s) => [
             'id' => $s->id->toRfc4122(),
             'number' => $s->number,
             'storageTypeId' => $s->storageType->id->toRfc4122(),
             'coordinates' => $s->coordinates,
             'status' => $s->status->value,
             'lockCode' => $s->lockCode,
+            // Unit-specific photos first, then the generic storage-type photos.
+            'photoUrls' => array_merge(
+                array_map(static fn ($p) => '/uploads/' . $p->path, $s->getPhotos()->toArray()),
+                array_map(static fn ($p) => '/uploads/' . $p->path, $s->storageType->getPhotos()->toArray()),
+            ),
         ], $storages);
 
         return $this->render('portal/storage/canvas.html.twig', [

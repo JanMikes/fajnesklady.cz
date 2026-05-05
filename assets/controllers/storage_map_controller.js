@@ -573,17 +573,12 @@ export default class extends Controller {
         if (storage.photoUrls && storage.photoUrls.length > 0) {
             this.modalPhotosTarget.innerHTML = storage.photoUrls.map((url, index) =>
                 `<a href="${url}" class="glightbox" data-gallery="storage-${storage.id}">
-                    <img src="${url}" alt="Sklad ${storage.number}" class="${index === 0 ? 'w-full h-48' : 'w-full h-20'} object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity">
+                    <img src="${url}" alt="Sklad ${storage.number}" class="${index === 0 ? 'w-full max-h-48' : 'w-full max-h-20'} object-contain bg-gray-50 rounded-lg cursor-pointer hover:opacity-80 transition-opacity">
                 </a>`
             ).join('');
             this.modalPhotosTarget.className = storage.photoUrls.length > 1
                 ? 'grid grid-cols-3 gap-2 mb-4'
                 : 'mb-4';
-            this.modalPhotosTarget.classList.remove('hidden');
-        } else if (storage.photoUrl) {
-            this.modalPhotosTarget.innerHTML = `<img src="${storage.photoUrl}" alt="Sklad ${storage.number}" class="w-full h-48 object-cover rounded-lg">`;
-            this.modalPhotosTarget.className = 'mb-4';
-            this.modalPhotosTarget.classList.remove('hidden');
         } else {
             this.modalPhotosTarget.innerHTML = '';
             this.modalPhotosTarget.classList.add('hidden');

@@ -122,6 +122,12 @@ final class OrderCreateController extends AbstractController
             'pricePerWeek' => $s->getEffectivePricePerWeekInCzk(),
             'pricePerMonth' => $s->getEffectivePricePerMonthInCzk(),
             'isUniform' => $s->storageType->uniformStorages,
+            // Unit-specific photos first ("show me this exact unit"), then the
+            // generic storage-type photos ("…and what others of this type look like").
+            'photoUrls' => array_merge(
+                array_map(static fn ($p) => '/uploads/' . $p->path, $s->getPhotos()->toArray()),
+                array_map(static fn ($p) => '/uploads/' . $p->path, $s->storageType->getPhotos()->toArray()),
+            ),
         ], $storages);
 
         return $this->render('public/order_create.html.twig', [

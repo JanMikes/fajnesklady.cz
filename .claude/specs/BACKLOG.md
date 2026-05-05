@@ -24,4 +24,7 @@ Small, independent tasks. Each row = one unit of work to hand to an implementati
 | 009 | Order: hide map by default, opt-in via "auto vs. pick from map" radio | done | [009-order-storage-selection-mode.md](009-order-storage-selection-mode.md) |
 | 010 | Customer documents after successful payment (success page + email link + new docs index) | ready | [010-customer-documents-after-payment.md](010-customer-documents-after-payment.md) |
 | 011 | Move highlighted-storage map from pre-payment to post-payment email (attachment, once at finalization) | ready | [011-move-storage-map-to-post-payment-email.md](011-move-storage-map-to-post-payment-email.md) |
+| 012 | Photos visible across the order journey (place card / form sidebar / map modal / recap) with GLightbox, never cropped | done | [012-photos-during-order.md](012-photos-during-order.md) |
+| 013 | Price label reflects billing cadence (Celková cena vs Měsíční platba / měsíc) — fix in emails + UI | ready | [013-price-label-by-billing-cadence.md](013-price-label-by-billing-cadence.md) |
+| 014 | One-click "Prodloužit pronájem" from previous order (email CTA + portal CTA + prefilled form) | ready | [014-one-click-prolong-from-previous-order.md](014-one-click-prolong-from-previous-order.md) |
 

@@ -1,0 +1,81 @@
+{# Reusable photo gallery: GLightbox + no-crop, in three layouts.
+   Photos are never cropped — object-contain + neutral letterbox fill.
+
+   The page-wide GLightbox initialised in assets/app.js picks up the
+   .glightbox anchors emitted here; gallery_key is set as data-gallery so
+   multiple galleries on the same page navigate independently.
+
+   Inputs:
+     photos      — iterable of StoragePhoto|StorageTypePhoto (each has .path).
+     gallery_key — string, used as data-gallery so multiple galleries on the
+                   same page don't merge.
+     caption     — string, optional. Shown as the lightbox title.
+     hero_max_h  — Tailwind class for hero height cap. Default max-h-64.
+     thumb_max_h — Tailwind class for thumb / strip height cap. Default max-h-20.
+     layout      — 'hero' (default), 'hero-only', or 'strip':
+                     hero      — first photo as hero + rest as a thumb strip.
+                     hero-only — first photo as hero; remaining photos
+                                 reachable only via the lightbox (compact card).
+                     strip     — all photos at thumb size in a flex row,
+                                 no hero (sidebar / dense lists).
+     alt         — string, optional <img alt>. Default ''.
+#}
+{% set hero_max_h = hero_max_h ?? 'max-h-64' %}
+{% set thumb_max_h = thumb_max_h ?? 'max-h-20' %}
+{% set layout = layout ?? 'hero' %}
+{% set alt = alt ?? '' %}
+{% set caption = caption ?? '' %}
+{% if photos|length > 0 %}
+    {% if layout == 'strip' %}
+        <div class="flex flex-wrap gap-2">
+            {% for photo in photos %}
+                <a href="{{ asset('uploads/' ~ photo.path) }}"
+                   class="glightbox bg-gray-50 rounded overflow-hidden flex-shrink-0"
+                   data-gallery="{{ gallery_key }}"
+                   {% if caption %}data-glightbox="title: {{ caption|e('html_attr') }}"{% endif %}
+                   aria-label="Otevřít v plné velikosti">
+                    <img src="{{ asset('uploads/' ~ photo.path) }}"
+                         alt="{{ alt }}"
+                         class="{{ thumb_max_h }} w-auto object-contain">
+                </a>
+            {% endfor %}
+        </div>
+    {% else %}
+        {# Hero — first photo, full image visible. #}
+        <a href="{{ asset('uploads/' ~ photos|first.path) }}"
+           class="glightbox block bg-gray-50 rounded-lg overflow-hidden"
+           data-gallery="{{ gallery_key }}"
+           {% if caption %}data-glightbox="title: {{ caption|e('html_attr') }}"{% endif %}
+           aria-label="Otevřít v plné velikosti">
+            <img src="{{ asset('uploads/' ~ photos|first.path) }}"
+                 alt="{{ alt }}"
+                 class="w-full {{ hero_max_h }} object-contain mx-auto">
+        </a>
+
+        {% if layout == 'hero' and photos|length > 1 %}
+            <div class="mt-2 flex flex-wrap gap-2">
+                {% for photo in photos|slice(1) %}
+                    <a href="{{ asset('uploads/' ~ photo.path) }}"
+                       class="glightbox bg-gray-50 rounded overflow-hidden flex-shrink-0"
+                       data-gallery="{{ gallery_key }}"
+                       {% if caption %}data-glightbox="title: {{ caption|e('html_attr') }}"{% endif %}
+                       aria-label="Otevřít v plné velikosti">
+                        <img src="{{ asset('uploads/' ~ photo.path) }}"
+                             alt="{{ alt }}"
+                             class="{{ thumb_max_h }} w-auto object-contain">
+                    </a>
+                {% endfor %}
+            </div>
+        {% elseif layout == 'hero-only' %}
+            {# Strip hidden — keep remaining photos reachable from the hero via the lightbox. #}
+            {% for photo in photos|slice(1) %}
+                <a href="{{ asset('uploads/' ~ photo.path) }}"
+                   class="glightbox hidden"
+                   data-gallery="{{ gallery_key }}"
+                   {% if caption %}data-glightbox="title: {{ caption|e('html_attr') }}"{% endif %}
+                   aria-hidden="true"
+                   tabindex="-1"></a>
+            {% endfor %}
+        {% endif %}
+    {% endif %}
+{% endif %}
