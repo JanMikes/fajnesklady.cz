@@ -16,9 +16,10 @@ return App::config([
             'timezone' => 'Europe/Prague',
         ],
         'globals' => [
-            // GoPay recurring-payment max-amount disclosure multiplier.
-            // See PriceCalculator::RECURRING_PAYMENT_MAX_MULTIPLIER for the rationale.
-            'recurring_payment_max_multiplier' => PriceCalculator::RECURRING_PAYMENT_MAX_MULTIPLIER,
+            // Legal ceiling for any single recurring charge (CZK) — disclosed
+            // verbatim in Podmínky opakovaných plateb čl. III.
+            // See PriceCalculator::MAX_RECURRING_PAYMENT_AMOUNT_IN_HALER.
+            'recurring_payment_legal_max_in_czk' => PriceCalculator::MAX_RECURRING_PAYMENT_AMOUNT_IN_HALER / 100,
         ],
     ],
 ]);

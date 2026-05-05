@@ -22,16 +22,23 @@ Tento dokument neupravuje obsah práv či povinností smluvních stran — pouze
 
 V dokumentech jsou ponechána zástupná pole („____www____", podobně), která je nutné nahradit konkrétními URL a daty.
 
-| Dokument | Článek | Aktuální text v PDF | Co doplnit |
-|---|---|---|---|
-| VOP | I. Definice „Ceník" | „dostupný z _____www_____" | URL stránky s ceníkem (např. `https://www.fajnesklady.cz/cenik`) |
-| VOP | I. Definice „Provozní řád" | „dostupný z ____www_____ a také u vstupu do Areálu" | URL stránky s provozním řádem nebo odkaz na PDF |
-| VOP | VI. odst. 9 | „Podmínky opakovaných plateb dostupných z: _____www_____" | URL na stránku s Podmínkami opakovaných plateb |
-| VOP | XII. odst. 1 | „Zásady ochrany osobních údajů … dostupných na webových stránkách www._____.cz" | URL stránky s ochranou osobních údajů |
-| VOP | XVI. odst. 4 | „VOP nabývají účinnosti dnem jejich zveřejnění, konkrétně pak dnem ____" | Konkrétní datum účinnosti VOP |
-| Podmínky opakovaných plateb | VIII. | „Smlouvě a VOP, které jsou dostupné zde: _____www_____" | URL na VOP |
+**Pro urychlení připravujeme DRAFT verze PDF s předvyplněnými URL** v adresáři `.claude/specs/lawyer-drafts/`:
 
-> **Webové URL k vyplnění (pokud bude potřeba):** doporučujeme stálé adresy:
+- `vop-DRAFT.pdf` — VOP s předvyplněnými 3 URL placeholdery
+- `podminky-opakovanych-plateb-DRAFT.pdf` — Podmínky s předvyplněným 1 URL placeholderem
+
+Drafty jsou výchozím bodem pro vaši kontrolu a finální úpravu — **prosíme zkontrolovat formátování, případně doopravit a podepsat finální verzi**, kterou poté nahradíme na webu.
+
+| Dokument | Článek | Aktuální text v PDF | Status | Co doplnit |
+|---|---|---|---|---|
+| VOP | I. Definice „Ceník" | „dostupný z _____www_____" | ✅ V draftu | `https://www.fajnesklady.cz/cenik` |
+| VOP | I. Definice „Provozní řád" | „dostupný z ____www_____ a také u vstupu do Areálu" | ⏳ Vyžaduje lawyer | URL stránky s provozním řádem nebo odkaz na PDF (provozní řád je per-pobočka, prosím navrhnout) |
+| VOP | VI. odst. 9 | „Podmínky opakovaných plateb dostupných z: _____www_____" | ✅ V draftu | `https://www.fajnesklady.cz/podminky-opakovanych-plateb` |
+| VOP | XII. odst. 1 | „Zásady ochrany osobních údajů … dostupných na webových stránkách www._____.cz" | ✅ V draftu | `www.fajnesklady.cz/ochrana-osobnich-udaju` |
+| VOP | XVI. odst. 4 | „VOP nabývají účinnosti dnem jejich zveřejnění, konkrétně pak dnem ____" | ⏳ Vyžaduje lawyer | Konkrétní datum účinnosti VOP |
+| Podmínky opakovaných plateb | VIII. | „Smlouvě a VOP, které jsou dostupné zde: _____www_____" | ✅ V draftu | `https://www.fajnesklady.cz/obchodni-podminky` |
+
+> **Použité kanonické URL na webu (pro úplnost):**
 > - `https://www.fajnesklady.cz/obchodni-podminky` (VOP)
 > - `https://www.fajnesklady.cz/podminky-opakovanych-plateb` (Podmínky opakovaných plateb)
 > - `https://www.fajnesklady.cz/pouceni-spotrebitele` (Poučení spotřebitele)
