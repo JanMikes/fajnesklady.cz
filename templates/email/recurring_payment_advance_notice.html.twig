@@ -134,7 +134,7 @@
                 {% else %}
                     <tr><td>Pevná částka</td><td>{{ currentAmount }} Kč / měsíc vč. DPH</td></tr>
                 {% endif %}
-                <tr><td>Maximální částka opakované platby</td><td>15 000 Kč</td></tr>
+                <tr><td>Maximální částka opakované platby</td><td>{{ recurringPaymentLegalMaxInCzk|number_format(0, ',', ' ') }} Kč</td></tr>
                 <tr><td>Frekvence</td><td>Měsíční</td></tr>
                 {% if nextBillingDate %}
                     <tr><td>Datum příštího stržení</td><td>{{ nextBillingDate }}</td></tr>

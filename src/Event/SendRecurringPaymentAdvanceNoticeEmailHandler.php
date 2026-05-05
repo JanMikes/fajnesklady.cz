@@ -6,6 +6,7 @@ namespace App\Event;
 
 use App\Enum\AdvanceNoticeReason;
 use App\Repository\ContractRepository;
+use App\Service\PriceCalculator;
 use App\Service\RecurringPaymentCancelUrlGenerator;
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
@@ -64,6 +65,7 @@ final readonly class SendRecurringPaymentAdvanceNoticeEmailHandler
                 'reason' => $event->reason,
                 'currentAmount' => number_format($currentAmountInCzk, 2, ',', ' '),
                 'newAmount' => null !== $newAmountInCzk ? number_format($newAmountInCzk, 2, ',', ' ') : null,
+                'recurringPaymentLegalMaxInCzk' => intdiv(PriceCalculator::MAX_RECURRING_PAYMENT_AMOUNT_IN_HALER, 100),
                 'nextBillingDate' => $contract->nextBillingDate?->format('d.m.Y'),
                 'lastBilledAt' => $contract->lastBilledAt?->format('d.m.Y'),
                 'adminNote' => $event->adminNote,

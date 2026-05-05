@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Event;
 
 use App\Repository\OrderRepository;
+use App\Service\PriceCalculator;
 use Psr\Log\LoggerInterface;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\Mailer\MailerInterface;
@@ -57,6 +58,7 @@ final readonly class SendRecurringPaymentEstablishedEmailHandler
                 'storageType' => $storageType->name,
                 'storageNumber' => $storage->number,
                 'amountInCzk' => number_format($event->amount / 100, 2, ',', ' '),
+                'recurringPaymentLegalMaxInCzk' => intdiv(PriceCalculator::MAX_RECURRING_PAYMENT_AMOUNT_IN_HALER, 100),
                 'debitDay' => $event->occurredOn->format('j.'),
                 'establishedOn' => $event->occurredOn->format('d.m.Y'),
                 'manageUrl' => $manageUrl,

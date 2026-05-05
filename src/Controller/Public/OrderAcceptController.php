@@ -96,6 +96,7 @@ final class OrderAcceptController extends AbstractController
             'totalPrice' => $totalPrice,
             'isRecurring' => null === $formData->endDate,
             'requiresEarlyStartWaiver' => $requiresEarlyStartWaiver,
+            'recurringPaymentLegalMaxInCzk' => intdiv(PriceCalculator::MAX_RECURRING_PAYMENT_AMOUNT_IN_HALER, 100),
         ]);
     }
 
@@ -172,6 +173,7 @@ final class OrderAcceptController extends AbstractController
                 'totalPrice' => $this->priceCalculator->calculateFirstPaymentPrice($storage, $startDate, $formData->endDate),
                 'isRecurring' => null === $formData->endDate,
                 'requiresEarlyStartWaiver' => $requiresEarlyStartWaiver,
+                'recurringPaymentLegalMaxInCzk' => intdiv(PriceCalculator::MAX_RECURRING_PAYMENT_AMOUNT_IN_HALER, 100),
             ]);
         }
 
@@ -266,6 +268,7 @@ final class OrderAcceptController extends AbstractController
                 'totalPrice' => $this->priceCalculator->calculateFirstPaymentPrice($storage, $startDate, $formData->endDate),
                 'isRecurring' => null === $formData->endDate,
                 'requiresEarlyStartWaiver' => $requiresEarlyStartWaiver,
+                'recurringPaymentLegalMaxInCzk' => intdiv(PriceCalculator::MAX_RECURRING_PAYMENT_AMOUNT_IN_HALER, 100),
             ]);
         }
     }

@@ -14,16 +14,33 @@ final readonly class PriceCalculator
     private const int DAYS_PER_MONTH = 30;
 
     /**
-     * GoPay / Visa-Mastercard SCA recurring-payment compliance requires the
-     * merchant to disclose a maximum amount that may be charged in a single
-     * recurrence. We display "3× měsíční platba" both in the order recap and
-     * in the public recurring-payments terms — the cap is informational, not
-     * an enforced charge limit. Adjust here and both surfaces follow.
+     * Internal informational multiplier — exposed to the public legal partial
+     * `_recurring_payments_terms_content.html.twig` only. Not used in any
+     * customer-facing checkout/email surface (those reference the legal
+     * ceiling MAX_RECURRING_PAYMENT_AMOUNT_IN_HALER below).
      *
      * Exposed to Twig via the `recurring_payment_max_multiplier` global
      * (see config/packages/twig.php).
      */
     public const int RECURRING_PAYMENT_MAX_MULTIPLIER = 3;
+
+    /**
+     * Legal maximum for any single recurring (ON_DEMAND) GoPay charge, in
+     * halere (CZK × 100). It is **disclosed to the customer** in the
+     * dedicated recurring-payment consent block at checkout, in the
+     * confirmation e-mail sent within 2 working days, and in the
+     * 7-business-day advance notice — Podmínky opakovaných plateb čl. III
+     * states verbatim:
+     *
+     *     „Maximální částka opakované platby činí: 15 000 Kč."
+     *
+     * Source of truth: `public/documents/podminky-opakovanych-plateb.pdf`.
+     * Changing this value in code WITHOUT first re-issuing the Podmínky PDF
+     * (and notifying customers per čl. V at least 7 working days in
+     * advance) is a compliance breach — see .claude/COMPLIANCE.md
+     * (Recurring payments).
+     */
+    public const int MAX_RECURRING_PAYMENT_AMOUNT_IN_HALER = 1_500_000;
 
     /**
      * Calculate total rental price based on duration.
