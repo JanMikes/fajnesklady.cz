@@ -31,9 +31,18 @@
 
     {# acceptRecurring defaults to true when there's no recurring payment so the
        submit gating expression stays a single conjunction; the dedicated
-       checkbox flips it to false on render only when isRecurring. #}
+       checkbox flips it to false on render only when isRecurring.
+
+       Submitted values flow back through `submitted` so a server-side
+       validation re-render keeps the user's typed place and ticked
+       checkboxes — they shouldn't have to refill the form. #}
     <div class="max-w-4xl mx-auto"
-         x-data="{ signed: false, signingPlace: '', acceptAll: false, acceptRecurring: {{ isRecurring ? 'false' : 'true' }} }"
+         x-data="{
+            signed: false,
+            signingPlace: {{ (submitted.signingPlace ?? '')|json_encode|raw }},
+            acceptAll: {{ (submitted.acceptAll ?? false) ? 'true' : 'false' }},
+            acceptRecurring: {{ isRecurring ? ((submitted.acceptRecurring ?? false) ? 'true' : 'false') : 'true' }}
+         }"
          @signature:signed.window="signed = true"
          @signature:cleared.window="signed = false">
       <div data-controller="signature"
@@ -116,69 +125,6 @@
                         </div>
                     {% endif %}
                 </div>
-
-                {# Recurring-payment block — parameters + dedicated consent in one
-                   visually unified card. GoPay rule: parameters MUST sit on a
-                   visible place SEPARATE from the general T&C, and the consent
-                   for recurring payments MUST be a dedicated checkbox (not folded
-                   into a master "I agree" checkbox). See .claude/COMPLIANCE.md. #}
-                {% if isRecurring %}
-                <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
-                    <h2 class="font-semibold text-gray-900 mb-3 flex items-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-amber-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
-                        Parametry opakované platby
-                    </h2>
-
-                    <div class="space-y-2 text-sm">
-                        <div class="flex justify-between">
-                            <span class="text-gray-600">Účel platby</span>
-                            <span class="font-medium">Pronájem skladového kontejneru</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-600">Pevná částka pro tuto smlouvu</span>
-                            <span class="font-medium">{{ (totalPrice / 100)|number_format(2, ',', ' ') }} Kč <span class="text-xs text-gray-500 font-normal">vč. DPH</span></span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-600">Maximální částka opakované platby</span>
-                            <span class="font-medium">{{ recurringPaymentLegalMaxInCzk|number_format(0, ',', ' ') }} Kč</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-600">Frekvence</span>
-                            <span class="font-medium">Měsíční</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-600">Den stržení</span>
-                            <span class="font-medium">Shodný s dnem první platby</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-600">Doba trvání</span>
-                            <span class="font-medium">Po celou dobu trvání nájmu / do odvolání souhlasu</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-600">Zrušení</span>
-                            <span class="font-medium"><a href="mailto:simek@fajnesklady.cz" class="text-accent hover:underline">simek@fajnesklady.cz</a></span>
-                        </div>
-                    </div>
-
-                    <p class="text-xs text-gray-500 mt-3">
-                        Úplné znění naleznete v <button type="button" @click.prevent="$store.modal.show('recurring')" class="text-accent hover:underline font-medium">Podmínkách opakovaných plateb</button>.
-                        Souhlas potvrzujete zaškrtnutím pole níže — ten je dle pravidel GoPay vyžadován samostatně.
-                    </p>
-
-                    {# Dedicated consent checkbox — REQUIRED to be separate from
-                       the master T&C consent below (GoPay rule + Podmínky čl. I). #}
-                    <label class="mt-4 pt-3 border-t border-amber-200 flex items-start gap-3 cursor-pointer">
-                        <input type="checkbox" x-model="acceptRecurring"
-                               class="mt-0.5 h-5 w-5 text-accent border-amber-300 rounded focus:ring-accent shrink-0">
-                        <span class="text-sm text-gray-800">
-                            <strong>Souhlasím s opakovanou platbou</strong> v parametrech uvedených výše a s uložením platebních údajů na bráně GoPay.
-                        </span>
-                    </label>
-                    <input type="hidden" name="accept_recurring_payments" value="1" :disabled="!acceptRecurring">
-                </div>
-                {% endif %}
 
                 {# Customer Info #}
                 <div class="bg-blue-50 rounded-lg p-4 mb-6">
@@ -422,17 +368,76 @@
                         {% if place.operatingRulesPath %}
                             <input type="hidden" name="accept_operating_rules" value="1" :disabled="!acceptAll">
                         {% endif %}
-                        {# accept_recurring_payments hidden input lives inside the dedicated recurring card above. #}
+                        {# accept_recurring_payments hidden input lives inside the dedicated recurring card below. #}
                         {% if requiresEarlyStartWaiver %}
                             <input type="hidden" name="accept_early_start_waiver" value="1" :disabled="!acceptAll">
                         {% endif %}
                     </div>
 
-                    {# Price + billing cadence directly above button (Visa/Mastercard requirement) #}
+                    {# Recurring-payment block — parameters + dedicated consent in one
+                       visually unified card. Placed here, just above the submit
+                       button, so the dedicated checkbox sits adjacent to the master
+                       T&C checkbox and the price/cadence is visible right above the
+                       payment button (Visa/Mastercard requirement). GoPay rule:
+                       parameters MUST sit on a visible place SEPARATE from the
+                       general T&C, and consent for recurring payments MUST be a
+                       dedicated checkbox (not folded into the master "I agree").
+                       See .claude/COMPLIANCE.md. #}
                     {% if isRecurring %}
-                    <div class="bg-gray-100 rounded-lg p-3 text-center text-sm text-gray-700">
-                        <strong>{{ (totalPrice / 100)|number_format(2, ',', ' ') }} Kč / měsíc <span class="text-xs text-gray-500 font-normal">vč. DPH</span></strong>
-                        — opakovaná měsíční platba po dobu trvání nájmu
+                    <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+                        <h2 class="font-semibold text-gray-900 mb-3 flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-amber-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            Parametry opakované platby
+                        </h2>
+
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Účel platby</span>
+                                <span class="font-medium">Pronájem skladového kontejneru</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Pevná částka pro tuto smlouvu</span>
+                                <span class="font-medium">{{ (totalPrice / 100)|number_format(2, ',', ' ') }} Kč <span class="text-xs text-gray-500 font-normal">vč. DPH</span></span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Maximální částka opakované platby</span>
+                                <span class="font-medium">{{ recurringPaymentLegalMaxInCzk|number_format(0, ',', ' ') }} Kč</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Frekvence</span>
+                                <span class="font-medium">Měsíční</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Den stržení</span>
+                                <span class="font-medium">Shodný s dnem první platby</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Doba trvání</span>
+                                <span class="font-medium">Po celou dobu trvání nájmu / do odvolání souhlasu</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Zrušení</span>
+                                <span class="font-medium"><a href="mailto:simek@fajnesklady.cz" class="text-accent hover:underline">simek@fajnesklady.cz</a></span>
+                            </div>
+                        </div>
+
+                        <p class="text-xs text-gray-500 mt-3">
+                            Úplné znění naleznete v <button type="button" @click.prevent="$store.modal.show('recurring')" class="text-accent hover:underline font-medium">Podmínkách opakovaných plateb</button>.
+                            Souhlas potvrzujete zaškrtnutím pole níže — ten je dle pravidel GoPay vyžadován samostatně.
+                        </p>
+
+                        {# Dedicated consent checkbox — REQUIRED to be separate from
+                           the master T&C consent above (GoPay rule + Podmínky čl. I). #}
+                        <label class="mt-4 pt-3 border-t border-amber-200 flex items-start gap-3 cursor-pointer">
+                            <input type="checkbox" x-model="acceptRecurring"
+                                   class="mt-0.5 h-5 w-5 text-accent border-amber-300 rounded focus:ring-accent shrink-0">
+                            <span class="text-sm text-gray-800">
+                                <strong>Souhlasím s opakovanou platbou</strong> v parametrech uvedených výše a s uložením platebních údajů na bráně GoPay.
+                            </span>
+                        </label>
+                        <input type="hidden" name="accept_recurring_payments" value="1" :disabled="!acceptRecurring">
                     </div>
                     {% endif %}
 

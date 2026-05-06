@@ -97,7 +97,16 @@ final class OrderAcceptController extends AbstractController
             'isRecurring' => null === $formData->endDate,
             'requiresEarlyStartWaiver' => $requiresEarlyStartWaiver,
             'recurringPaymentLegalMaxInCzk' => intdiv(PriceCalculator::MAX_RECURRING_PAYMENT_AMOUNT_IN_HALER, 100),
+            'submitted' => self::emptySubmittedValues(),
         ]);
+    }
+
+    /**
+     * @return array{signingPlace: string, acceptAll: bool, acceptRecurring: bool}
+     */
+    private static function emptySubmittedValues(): array
+    {
+        return ['signingPlace' => '', 'acceptAll' => false, 'acceptRecurring' => false];
     }
 
     private function handlePost(
@@ -174,6 +183,13 @@ final class OrderAcceptController extends AbstractController
                 'isRecurring' => null === $formData->endDate,
                 'requiresEarlyStartWaiver' => $requiresEarlyStartWaiver,
                 'recurringPaymentLegalMaxInCzk' => intdiv(PriceCalculator::MAX_RECURRING_PAYMENT_AMOUNT_IN_HALER, 100),
+                'submitted' => [
+                    'signingPlace' => $signingPlace,
+                    'acceptAll' => $accepted && $acceptVop && $acceptConsumerNotice && $acceptGdpr && $signatureConsent
+                        && (null === $place->operatingRulesPath || $acceptOperatingRules)
+                        && (!$requiresEarlyStartWaiver || $acceptEarlyStartWaiver),
+                    'acceptRecurring' => $acceptRecurringPayments,
+                ],
             ]);
         }
 
@@ -269,6 +285,7 @@ final class OrderAcceptController extends AbstractController
                 'isRecurring' => null === $formData->endDate,
                 'requiresEarlyStartWaiver' => $requiresEarlyStartWaiver,
                 'recurringPaymentLegalMaxInCzk' => intdiv(PriceCalculator::MAX_RECURRING_PAYMENT_AMOUNT_IN_HALER, 100),
+                'submitted' => self::emptySubmittedValues(),
             ]);
         }
     }
