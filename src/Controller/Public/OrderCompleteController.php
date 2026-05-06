@@ -6,7 +6,9 @@ namespace App\Controller\Public;
 
 use App\Enum\OrderStatus;
 use App\Repository\ContractRepository;
+use App\Repository\InvoiceRepository;
 use App\Repository\OrderRepository;
+use App\Service\PriceCalculator;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -19,6 +21,8 @@ final class OrderCompleteController extends AbstractController
     public function __construct(
         private readonly OrderRepository $orderRepository,
         private readonly ContractRepository $contractRepository,
+        private readonly InvoiceRepository $invoiceRepository,
+        private readonly PriceCalculator $priceCalculator,
     ) {
     }
 
@@ -34,7 +38,10 @@ final class OrderCompleteController extends AbstractController
             throw new NotFoundHttpException('Objednávka nenalezena.');
         }
 
-        // Only show completion page for completed orders
+        // DB is the source of truth: COMPLETED can be reached via GoPay (webhook
+        // already verified the payment with GoPay before flipping status), via
+        // admin manual completion, or via the onboarding flow — none of which
+        // need re-verification at view time.
         if (OrderStatus::COMPLETED !== $order->status) {
             $this->addFlash('error', 'Tato objednávka nebyla dokončena.');
 
@@ -45,15 +52,19 @@ final class OrderCompleteController extends AbstractController
         $storageType = $storage->storageType;
         $place = $storage->getPlace();
 
-        // Get the contract
         $contract = $this->contractRepository->findByOrder($order);
+        $invoice = $this->invoiceRepository->findByOrder($order);
+
+        $isRecurring = $this->priceCalculator->needsRecurringBilling($order->startDate, $order->endDate);
 
         return $this->render('public/order_complete.html.twig', [
             'order' => $order,
             'contract' => $contract,
+            'invoice' => $invoice,
             'storage' => $storage,
             'storageType' => $storageType,
             'place' => $place,
+            'isRecurring' => $isRecurring,
         ]);
     }
 }
