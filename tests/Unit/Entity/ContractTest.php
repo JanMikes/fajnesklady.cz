@@ -81,7 +81,7 @@ class ContractTest extends TestCase
             paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: $createdAt->modify('+1 day'),
             endDate: $createdAt->modify('+30 days'),
-            totalPrice: 50000,
+            firstPaymentPrice: 50000,
             expiresAt: $createdAt->modify('+7 days'),
             createdAt: $createdAt,
         );

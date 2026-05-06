@@ -105,7 +105,7 @@ class AtRiskContractCheckerTest extends KernelTestCase
             paymentFrequency: RentalType::UNLIMITED === $rentalType ? PaymentFrequency::MONTHLY : null,
             startDate: $startDate,
             endDate: $endDate,
-            totalPrice: 50000,
+            firstPaymentPrice: 50000,
             expiresAt: (new \DateTimeImmutable())->modify('+7 days'),
             createdAt: new \DateTimeImmutable(),
         );

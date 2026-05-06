@@ -109,7 +109,7 @@ final readonly class GoPayApiClient implements GoPayClient
                     'email' => $order->user->email,
                 ],
             ],
-            'amount' => $order->totalPrice,
+            'amount' => $order->firstPaymentPrice,
             'currency' => Currency::CZECH_CROWNS,
             'order_number' => $order->id->toRfc4122(),
             'order_description' => sprintf(

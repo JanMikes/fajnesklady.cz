@@ -115,7 +115,7 @@ class AdminMigrateCustomerHandlerTest extends TestCase
         $this->assertSame(OrderStatus::COMPLETED, $result->order->status);
         $this->assertTrue($result->order->isAdminCreated);
         $this->assertSame(PaymentMethod::EXTERNAL, $result->order->paymentMethod);
-        $this->assertSame(50000, $result->order->totalPrice);
+        $this->assertSame(50000, $result->order->firstPaymentPrice);
         $this->assertTrue($result->order->hasAcceptedTerms());
         $this->assertNotNull($result->documentPath);
         $this->assertTrue($result->isSigned());
@@ -205,7 +205,7 @@ class AdminMigrateCustomerHandlerTest extends TestCase
 
         $result = ($this->handler)($command);
 
-        $this->assertSame($adminPrice, $result->order->totalPrice);
+        $this->assertSame($adminPrice, $result->order->firstPaymentPrice);
     }
 
     public function testMovesContractDocument(): void

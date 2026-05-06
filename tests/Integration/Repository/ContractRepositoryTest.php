@@ -101,7 +101,7 @@ class ContractRepositoryTest extends KernelTestCase
             paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: $startDate,
             endDate: $endDate,
-            totalPrice: 10000,
+            firstPaymentPrice: 10000,
             expiresAt: new \DateTimeImmutable('+7 days'),
             createdAt: new \DateTimeImmutable(),
         );

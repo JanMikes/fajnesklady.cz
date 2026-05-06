@@ -55,7 +55,7 @@ final readonly class ProcessPaymentNotificationHandler
                     $this->eventBus->dispatch(new RecurringPaymentEstablished(
                         orderId: $order->id,
                         goPayParentPaymentId: $status->id,
-                        amount: $order->totalPrice,
+                        amount: $order->firstPaymentPrice,
                         occurredOn: $now,
                     ));
                 }

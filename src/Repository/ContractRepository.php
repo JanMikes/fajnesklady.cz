@@ -448,12 +448,12 @@ class ContractRepository
     }
 
     /**
-     * Sum expected recurring revenue for a landlord (sum of order.totalPrice for active recurring contracts).
+     * Sum expected recurring revenue for a landlord (sum of order.firstPaymentPrice for active recurring contracts).
      */
     public function sumExpectedRecurringByLandlord(User $landlord): int
     {
         $result = $this->entityManager->createQueryBuilder()
-            ->select('SUM(o.totalPrice)')
+            ->select('SUM(o.firstPaymentPrice)')
             ->from(Contract::class, 'c')
             ->join('c.storage', 's')
             ->join('c.order', 'o')
@@ -473,7 +473,7 @@ class ContractRepository
     public function sumExpectedRecurringAll(): int
     {
         $result = $this->entityManager->createQueryBuilder()
-            ->select('SUM(o.totalPrice)')
+            ->select('SUM(o.firstPaymentPrice)')
             ->from(Contract::class, 'c')
             ->join('c.order', 'o')
             ->where('c.goPayParentPaymentId IS NOT NULL')

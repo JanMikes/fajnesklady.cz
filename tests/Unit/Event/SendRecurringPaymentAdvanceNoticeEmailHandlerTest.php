@@ -170,7 +170,7 @@ class SendRecurringPaymentAdvanceNoticeEmailHandlerTest extends TestCase
             paymentFrequency: null,
             startDate: new \DateTimeImmutable('2025-06-15'),
             endDate: null,
-            totalPrice: 350000,
+            firstPaymentPrice: 350000,
             expiresAt: new \DateTimeImmutable('+7 days'),
             createdAt: new \DateTimeImmutable('2025-06-10'),
         );

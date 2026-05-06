@@ -277,7 +277,7 @@ class CreateStorageUnavailabilityHandlerTest extends TestCase
             paymentFrequency: null,
             startDate: $startDate,
             endDate: $endDate,
-            totalPrice: 35000,
+            firstPaymentPrice: 35000,
             expiresAt: new \DateTimeImmutable('+7 days'),
             createdAt: new \DateTimeImmutable(),
         );

@@ -238,7 +238,7 @@ class SendOrderConfirmationEmailHandlerTest extends TestCase
             paymentFrequency: null,
             startDate: new \DateTimeImmutable(),
             endDate: $endDate,
-            totalPrice: 35000,
+            firstPaymentPrice: 35000,
             expiresAt: new \DateTimeImmutable('+7 days'),
             createdAt: new \DateTimeImmutable(),
         );

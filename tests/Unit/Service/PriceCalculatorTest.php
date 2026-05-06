@@ -440,7 +440,7 @@ class PriceCalculatorTest extends TestCase
     {
         // Belt-and-braces: the legacy method must always agree with the schedule
         // it now delegates to, otherwise OrderAcceptController would persist a
-        // totalPrice different from what the schedule promises.
+        // firstPaymentPrice different from what the schedule promises.
         $storageType = $this->createStorageType(50000, 180000);
         $place = $this->createPlace();
         $storage = $this->createStorage($storageType, $place);
@@ -459,7 +459,7 @@ class PriceCalculatorTest extends TestCase
             rentalType: RentalType::LIMITED,
             startDate: new \DateTimeImmutable('2025-06-15'),
             endDate: new \DateTimeImmutable('2025-06-29'), // 14 days
-            totalPrice: 180000,
+            firstPaymentPrice: 180000,
         );
 
         $schedule = $this->calculator->buildScheduleFromOrder($order);
@@ -478,7 +478,7 @@ class PriceCalculatorTest extends TestCase
             rentalType: RentalType::LIMITED,
             startDate: new \DateTimeImmutable('2025-06-15'),
             endDate: new \DateTimeImmutable('2025-09-13'),
-            totalPrice: 500000,
+            firstPaymentPrice: 500000,
         );
 
         $schedule = $this->calculator->buildScheduleFromOrder($order);
@@ -496,7 +496,7 @@ class PriceCalculatorTest extends TestCase
             rentalType: RentalType::UNLIMITED,
             startDate: new \DateTimeImmutable('2025-06-15'),
             endDate: null,
-            totalPrice: 500000,
+            firstPaymentPrice: 500000,
         );
 
         $schedule = $this->calculator->buildScheduleFromOrder($order);
@@ -511,7 +511,7 @@ class PriceCalculatorTest extends TestCase
     /**
      * The locked-in invariant: once an order is created, subsequent changes
      * to Storage.pricePerMonth must NOT influence the schedule rendered for
-     * that order (the order's totalPrice is the locked anchor).
+     * that order (the order's firstPaymentPrice is the locked anchor).
      */
     public function testBuildScheduleFromOrderIgnoresStoragePriceChanges(): void
     {
@@ -524,7 +524,7 @@ class PriceCalculatorTest extends TestCase
             rentalType: RentalType::UNLIMITED,
             startDate: new \DateTimeImmutable('2025-06-15'),
             endDate: null,
-            totalPrice: 500000,
+            firstPaymentPrice: 500000,
         );
 
         // Storage price hike *after* the order is placed.
@@ -552,13 +552,13 @@ class PriceCalculatorTest extends TestCase
         RentalType $rentalType,
         \DateTimeImmutable $startDate,
         ?\DateTimeImmutable $endDate,
-        int $totalPrice,
+        int $firstPaymentPrice,
     ): Order {
         $storageType = $this->createStorageType(50000, 180000);
         $place = $this->createPlace();
         $storage = $this->createStorage($storageType, $place);
 
-        return $this->createOrderWithStorage($storage, $rentalType, $startDate, $endDate, $totalPrice);
+        return $this->createOrderWithStorage($storage, $rentalType, $startDate, $endDate, $firstPaymentPrice);
     }
 
     private function createOrderWithStorage(
@@ -566,7 +566,7 @@ class PriceCalculatorTest extends TestCase
         RentalType $rentalType,
         \DateTimeImmutable $startDate,
         ?\DateTimeImmutable $endDate,
-        int $totalPrice,
+        int $firstPaymentPrice,
     ): Order {
         $createdAt = new \DateTimeImmutable('2025-06-01');
 
@@ -578,7 +578,7 @@ class PriceCalculatorTest extends TestCase
             paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: $startDate,
             endDate: $endDate,
-            totalPrice: $totalPrice,
+            firstPaymentPrice: $firstPaymentPrice,
             expiresAt: $createdAt->modify('+7 days'),
             createdAt: $createdAt,
         );

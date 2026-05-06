@@ -82,7 +82,7 @@ class OrderTest extends TestCase
         ?PaymentFrequency $paymentFrequency = null,
         ?\DateTimeImmutable $startDate = null,
         ?\DateTimeImmutable $endDate = null,
-        int $totalPrice = 50000,
+        int $firstPaymentPrice = 50000,
         ?\DateTimeImmutable $createdAt = null,
     ): Order {
         $owner = $this->createOwner();
@@ -100,7 +100,7 @@ class OrderTest extends TestCase
             paymentFrequency: $paymentFrequency,
             startDate: $startDate,
             endDate: $endDate,
-            totalPrice: $totalPrice,
+            firstPaymentPrice: $firstPaymentPrice,
             expiresAt: $expiresAt,
             createdAt: $createdAt,
         );
@@ -124,7 +124,7 @@ class OrderTest extends TestCase
             paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: $startDate,
             endDate: $endDate,
-            totalPrice: 50000,
+            firstPaymentPrice: 50000,
             expiresAt: $expiresAt,
             createdAt: $now,
         );
@@ -136,7 +136,7 @@ class OrderTest extends TestCase
         $this->assertSame(PaymentFrequency::MONTHLY, $order->paymentFrequency);
         $this->assertSame($startDate, $order->startDate);
         $this->assertSame($endDate, $order->endDate);
-        $this->assertSame(50000, $order->totalPrice);
+        $this->assertSame(50000, $order->firstPaymentPrice);
         $this->assertSame($expiresAt, $order->expiresAt);
         $this->assertSame($now, $order->createdAt);
         $this->assertSame(OrderStatus::CREATED, $order->status);
@@ -576,18 +576,18 @@ class OrderTest extends TestCase
 
     public function testGetTotalPriceInCzk(): void
     {
-        $order = $this->createOrder(totalPrice: 50000);
+        $order = $this->createOrder(firstPaymentPrice: 50000);
 
-        $this->assertSame(500.0, $order->getTotalPriceInCzk());
+        $this->assertSame(500.0, $order->getFirstPaymentPriceInCzk());
     }
 
     public function testPriceStoredInHalire(): void
     {
         // 150 Kč = 15000 halířů
-        $order = $this->createOrder(totalPrice: 15000);
+        $order = $this->createOrder(firstPaymentPrice: 15000);
 
-        $this->assertSame(15000, $order->totalPrice);
-        $this->assertSame(150.0, $order->getTotalPriceInCzk());
+        $this->assertSame(15000, $order->firstPaymentPrice);
+        $this->assertSame(150.0, $order->getFirstPaymentPriceInCzk());
     }
 
     public function testOrderStateTransitionFlow(): void

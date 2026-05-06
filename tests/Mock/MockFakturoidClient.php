@@ -48,7 +48,7 @@ final class MockFakturoidClient implements FakturoidClient
         $invoice = new FakturoidInvoice(
             id: $invoiceId,
             number: 'FV-'.date('Y').'-'.str_pad((string) $invoiceId, 4, '0', STR_PAD_LEFT),
-            total: $order->totalPrice,
+            total: $order->firstPaymentPrice,
         );
 
         $this->createdInvoices[$invoice->id] = $invoice;

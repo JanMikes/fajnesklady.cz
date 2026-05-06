@@ -141,7 +141,7 @@ class SendRecurringPaymentAdvanceNoticeCommandTest extends KernelTestCase
             paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: $lastBilledAt->modify('-1 month'),
             endDate: null,
-            totalPrice: 35000,
+            firstPaymentPrice: 35000,
             expiresAt: $now->modify('+7 days'),
             createdAt: $lastBilledAt->modify('-1 month'),
         );

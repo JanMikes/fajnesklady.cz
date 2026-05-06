@@ -12,7 +12,7 @@ final readonly class OrderCreated
         public Uuid $orderId,
         public Uuid $userId,
         public Uuid $storageId,
-        public int $totalPrice,
+        public int $firstPaymentPrice,
         public \DateTimeImmutable $occurredOn,
     ) {
     }

@@ -66,7 +66,7 @@
                         <hr class="border-gray-200 my-2">
                         <div class="flex justify-between font-semibold">
                             <span>{{ isRecurring ? 'Měsíční platba:' : 'Celková cena:' }}</span>
-                            <span>{{ (totalPrice / 100)|number_format(0, ',', ' ') }} Kč{% if isRecurring %} / měsíc{% endif %}</span>
+                            <span>{{ (firstPaymentPrice / 100)|number_format(0, ',', ' ') }} Kč{% if isRecurring %} / měsíc{% endif %}</span>
                         </div>
                     </div>
 

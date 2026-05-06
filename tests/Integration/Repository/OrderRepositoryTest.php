@@ -107,7 +107,7 @@ class OrderRepositoryTest extends KernelTestCase
             paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: $startDate,
             endDate: $endDate,
-            totalPrice: $price,
+            firstPaymentPrice: $price,
             expiresAt: new \DateTimeImmutable('+7 days'),
             createdAt: new \DateTimeImmutable(),
         );
@@ -316,7 +316,7 @@ class OrderRepositoryTest extends KernelTestCase
             paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: new \DateTimeImmutable('+30 days'),
             endDate: new \DateTimeImmutable('+60 days'),
-            totalPrice: 10000,
+            firstPaymentPrice: 10000,
             expiresAt: new \DateTimeImmutable('-1 day'), // Already expired
             createdAt: new \DateTimeImmutable(),
         );
@@ -347,7 +347,7 @@ class OrderRepositoryTest extends KernelTestCase
             paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: new \DateTimeImmutable('+30 days'),
             endDate: new \DateTimeImmutable('+60 days'),
-            totalPrice: 10000,
+            firstPaymentPrice: 10000,
             expiresAt: new \DateTimeImmutable('-1 day'),
             createdAt: new \DateTimeImmutable(),
         );
@@ -378,7 +378,7 @@ class OrderRepositoryTest extends KernelTestCase
             paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: new \DateTimeImmutable('+30 days'),
             endDate: new \DateTimeImmutable('+60 days'),
-            totalPrice: 10000,
+            firstPaymentPrice: 10000,
             expiresAt: new \DateTimeImmutable('-1 day'),
             createdAt: new \DateTimeImmutable(),
         );

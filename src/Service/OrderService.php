@@ -75,7 +75,7 @@ final readonly class OrderService
         }
 
         // Calculate first payment price (monthly recurring or full for short rentals)
-        $totalPrice = $this->priceCalculator->calculateFirstPaymentPrice($storage, $startDate, $endDate);
+        $firstPaymentPrice = $this->priceCalculator->calculateFirstPaymentPrice($storage, $startDate, $endDate);
 
         // Create order
         $order = new Order(
@@ -86,7 +86,7 @@ final readonly class OrderService
             paymentFrequency: $paymentFrequency,
             startDate: $startDate,
             endDate: $endDate,
-            totalPrice: $totalPrice,
+            firstPaymentPrice: $firstPaymentPrice,
             expiresAt: $now->modify('+'.$place->orderExpirationDays.' days'),
             createdAt: $now,
         );

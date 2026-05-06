@@ -135,7 +135,7 @@ final class ContractFixtures extends Fixture implements DependentFixtureInterfac
             paymentFrequency: null,
             startDate: $now->modify('-60 days'),
             endDate: $now->modify('-30 days'),
-            totalPrice: 100000,
+            firstPaymentPrice: 100000,
             expiresAt: $now->modify('-67 days'),
             createdAt: $now->modify('-67 days'),
         );

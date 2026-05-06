@@ -1376,7 +1376,7 @@ class ControllerAccessTest extends WebTestCase
             paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: $now,
             endDate: $now->modify('+1 month'),
-            totalPrice: 35000,
+            firstPaymentPrice: 35000,
             expiresAt: $now->modify('+1 hour'),
             createdAt: $now,
         );

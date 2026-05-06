@@ -70,15 +70,15 @@ class OrderOnboardingTest extends TestCase
         $this->assertSame(PaymentMethod::GOPAY, $order->paymentMethod);
     }
 
-    public function testOverrideTotalPrice(): void
+    public function testOverrideFirstPaymentPrice(): void
     {
         $order = $this->createOrder();
 
-        $this->assertSame(35000, $order->totalPrice);
+        $this->assertSame(35000, $order->firstPaymentPrice);
 
-        $order->overrideTotalPrice(50000);
+        $order->overrideFirstPaymentPrice(50000);
 
-        $this->assertSame(50000, $order->totalPrice);
+        $this->assertSame(50000, $order->firstPaymentPrice);
     }
 
     public function testExtendExpiration(): void
@@ -138,7 +138,7 @@ class OrderOnboardingTest extends TestCase
             paymentFrequency: null,
             startDate: new \DateTimeImmutable('+1 day'),
             endDate: new \DateTimeImmutable('+30 days'),
-            totalPrice: 35000,
+            firstPaymentPrice: 35000,
             expiresAt: new \DateTimeImmutable('+7 days'),
             createdAt: new \DateTimeImmutable(),
         );

@@ -336,7 +336,7 @@ class OrderWorkflowTest extends KernelTestCase
         $this->assertTrue($order->isUnlimited());
         $this->assertNull($order->endDate);
         // Maly box has pricePerMonth = 500 CZK = 50000 halere
-        $this->assertSame(50000, $order->totalPrice);
+        $this->assertSame(50000, $order->firstPaymentPrice);
     }
 
     public function testPriceCalculationForLimitedRental(): void
@@ -357,7 +357,7 @@ class OrderWorkflowTest extends KernelTestCase
         );
 
         // Maly box has pricePerWeek = 150 CZK = 15000 halere
-        $this->assertSame(15000, $order->totalPrice);
+        $this->assertSame(15000, $order->firstPaymentPrice);
     }
 
     private function countExpirableOrders(\DateTimeImmutable $now): int

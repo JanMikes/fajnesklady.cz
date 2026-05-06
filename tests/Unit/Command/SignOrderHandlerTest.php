@@ -184,7 +184,7 @@ class SignOrderHandlerTest extends TestCase
             paymentFrequency: null,
             startDate: new \DateTimeImmutable('+1 day'),
             endDate: new \DateTimeImmutable('+30 days'),
-            totalPrice: 35000,
+            firstPaymentPrice: 35000,
             expiresAt: new \DateTimeImmutable('+7 days'),
             createdAt: new \DateTimeImmutable(),
         );

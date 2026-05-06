@@ -91,7 +91,7 @@ class ContractVoterTest extends TestCase
             paymentFrequency: null,
             startDate: new \DateTimeImmutable('2024-01-15'),
             endDate: RentalType::UNLIMITED === $rentalType ? null : new \DateTimeImmutable('2024-02-15'),
-            totalPrice: 35000,
+            firstPaymentPrice: 35000,
             expiresAt: new \DateTimeImmutable('+7 days'),
             createdAt: new \DateTimeImmutable('2024-01-01'),
         );

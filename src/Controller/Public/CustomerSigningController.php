@@ -47,7 +47,7 @@ final class CustomerSigningController extends AbstractController
             ]);
         }
 
-        $totalPrice = $this->priceCalculator->calculateFirstPaymentPrice(
+        $firstPaymentPrice = $this->priceCalculator->calculateFirstPaymentPrice(
             $order->storage,
             $order->startDate,
             $order->endDate,
@@ -62,7 +62,7 @@ final class CustomerSigningController extends AbstractController
             'storage' => $order->storage,
             'storageType' => $order->storage->storageType,
             'place' => $order->storage->place,
-            'totalPrice' => $totalPrice,
+            'firstPaymentPrice' => $firstPaymentPrice,
             'isRecurring' => null === $order->endDate,
         ]);
     }
@@ -107,7 +107,7 @@ final class CustomerSigningController extends AbstractController
                 $this->addFlash('error', $error);
             }
 
-            $totalPrice = $this->priceCalculator->calculateFirstPaymentPrice(
+            $firstPaymentPrice = $this->priceCalculator->calculateFirstPaymentPrice(
                 $order->storage,
                 $order->startDate,
                 $order->endDate,
@@ -118,7 +118,7 @@ final class CustomerSigningController extends AbstractController
                 'storage' => $order->storage,
                 'storageType' => $order->storage->storageType,
                 'place' => $order->storage->place,
-                'totalPrice' => $totalPrice,
+                'firstPaymentPrice' => $firstPaymentPrice,
                 'isRecurring' => null === $order->endDate,
             ]);
         }
@@ -147,7 +147,7 @@ final class CustomerSigningController extends AbstractController
             $this->logger->error('Customer signing failed', ['exception' => $e]);
             $this->addFlash('error', 'Při podpisu smlouvy došlo k chybě. Zkuste to prosím znovu.');
 
-            $totalPrice = $this->priceCalculator->calculateFirstPaymentPrice(
+            $firstPaymentPrice = $this->priceCalculator->calculateFirstPaymentPrice(
                 $order->storage,
                 $order->startDate,
                 $order->endDate,
@@ -158,7 +158,7 @@ final class CustomerSigningController extends AbstractController
                 'storage' => $order->storage,
                 'storageType' => $order->storage->storageType,
                 'place' => $order->storage->place,
-                'totalPrice' => $totalPrice,
+                'firstPaymentPrice' => $firstPaymentPrice,
                 'isRecurring' => null === $order->endDate,
             ]);
         }

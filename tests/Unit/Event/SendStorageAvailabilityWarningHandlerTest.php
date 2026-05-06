@@ -66,7 +66,7 @@ class SendStorageAvailabilityWarningHandlerTest extends TestCase
             $order->id,
             $order->user->id,
             $order->storage->id,
-            $order->totalPrice,
+            $order->firstPaymentPrice,
             new \DateTimeImmutable(),
         );
 
@@ -105,7 +105,7 @@ class SendStorageAvailabilityWarningHandlerTest extends TestCase
             $order->id,
             $order->user->id,
             $order->storage->id,
-            $order->totalPrice,
+            $order->firstPaymentPrice,
             new \DateTimeImmutable(),
         );
 
@@ -165,7 +165,7 @@ class SendStorageAvailabilityWarningHandlerTest extends TestCase
             $order->id,
             $order->user->id,
             $order->storage->id,
-            $order->totalPrice,
+            $order->firstPaymentPrice,
             new \DateTimeImmutable(),
         );
 
@@ -215,7 +215,7 @@ class SendStorageAvailabilityWarningHandlerTest extends TestCase
             $order->id,
             $order->user->id,
             $order->storage->id,
-            $order->totalPrice,
+            $order->firstPaymentPrice,
             new \DateTimeImmutable(),
         );
 
@@ -302,7 +302,7 @@ class SendStorageAvailabilityWarningHandlerTest extends TestCase
             paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: new \DateTimeImmutable('2025-08-01'),
             endDate: new \DateTimeImmutable('2025-09-01'),
-            totalPrice: 35000,
+            firstPaymentPrice: 35000,
             expiresAt: new \DateTimeImmutable('+7 days'),
             createdAt: new \DateTimeImmutable('2025-06-15'),
         );
@@ -346,7 +346,7 @@ class SendStorageAvailabilityWarningHandlerTest extends TestCase
             paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: new \DateTimeImmutable('2025-06-01'),
             endDate: new \DateTimeImmutable('2025-07-31'),
-            totalPrice: 35000,
+            firstPaymentPrice: 35000,
             expiresAt: new \DateTimeImmutable('+7 days'),
             createdAt: new \DateTimeImmutable(),
         );

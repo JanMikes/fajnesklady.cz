@@ -69,7 +69,7 @@ final readonly class SendContractReadyEmailHandler
                 'endDate' => $contract->endDate?->format('d.m.Y') ?? 'Na dobu neurčitou',
                 'orderUrl' => $orderUrl,
                 'isRecurring' => $isRecurring,
-                'monthlyAmount' => $isRecurring ? number_format($contract->order->getTotalPriceInCzk(), 2, ',', ' ').' Kč' : null,
+                'monthlyAmount' => $isRecurring ? number_format($contract->order->getFirstPaymentPriceInCzk(), 2, ',', ' ').' Kč' : null,
                 'nextBillingDate' => $isRecurring && null !== $contract->nextBillingDate ? $contract->nextBillingDate->format('d.m.Y') : null,
                 'cancelUrl' => $isRecurring ? $this->cancelUrlGenerator->generate($contract) : null,
                 'hasMapAttachment' => null !== $mapImageData,

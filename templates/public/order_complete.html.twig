@@ -69,7 +69,7 @@
                             <div class="sm:col-span-2 pt-3 mt-1 border-t border-gray-100">
                                 <dt class="text-gray-500">{{ order.isRecurring ? 'Měsíční platba' : 'Zaplaceno' }}</dt>
                                 <dd class="font-bold text-lg text-green-600">
-                                    {{ order.totalPriceInCzk|number_format(2, ',', ' ') }} Kč{% if order.isRecurring %} / měsíc{% endif %}
+                                    {{ order.firstPaymentPriceInCzk|number_format(2, ',', ' ') }} Kč{% if order.isRecurring %} / měsíc{% endif %}
                                     <span class="text-xs font-normal text-gray-500 ml-1">vč. DPH</span>
                                 </dd>
                             </div>

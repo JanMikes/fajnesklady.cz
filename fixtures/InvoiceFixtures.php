@@ -56,7 +56,7 @@ final class InvoiceFixtures extends Fixture implements DependentFixtureInterface
             user: $user,
             fakturoidInvoiceId: 12345001,
             invoiceNumber: '2025-0001',
-            amount: $orderCompleted->totalPrice,
+            amount: $orderCompleted->firstPaymentPrice,
             issuedAt: $now->modify('-5 days'),
             createdAt: $now->modify('-5 days'),
         );
@@ -72,7 +72,7 @@ final class InvoiceFixtures extends Fixture implements DependentFixtureInterface
             user: $user,
             fakturoidInvoiceId: 12345002,
             invoiceNumber: '2025-0002',
-            amount: $orderUnlimited->totalPrice,
+            amount: $orderUnlimited->firstPaymentPrice,
             issuedAt: $now->modify('-34 days'),
             createdAt: $now->modify('-34 days'),
         );
@@ -88,7 +88,7 @@ final class InvoiceFixtures extends Fixture implements DependentFixtureInterface
             user: $tenant,
             fakturoidInvoiceId: 12345003,
             invoiceNumber: '2025-0003',
-            amount: $orderExpiringSoon->totalPrice,
+            amount: $orderExpiringSoon->firstPaymentPrice,
             issuedAt: $now->modify('-27 days'),
             createdAt: $now->modify('-27 days'),
         );

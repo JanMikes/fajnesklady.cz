@@ -92,8 +92,8 @@ class Order implements EntityWithEvents
         private(set) \DateTimeImmutable $startDate,
         #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
         private(set) ?\DateTimeImmutable $endDate,
-        #[ORM\Column]
-        private(set) int $totalPrice,
+        #[ORM\Column(name: 'total_price')]
+        private(set) int $firstPaymentPrice,
         #[ORM\Column]
         private(set) \DateTimeImmutable $expiresAt,
         #[ORM\Column]
@@ -105,7 +105,7 @@ class Order implements EntityWithEvents
             orderId: $this->id,
             userId: $this->user->id,
             storageId: $this->storage->id,
-            totalPrice: $this->totalPrice,
+            firstPaymentPrice: $this->firstPaymentPrice,
             occurredOn: $this->createdAt,
         ));
     }
@@ -265,9 +265,9 @@ class Order implements EntityWithEvents
         return !$this->isRecurring();
     }
 
-    public function getTotalPriceInCzk(): float
+    public function getFirstPaymentPriceInCzk(): float
     {
-        return $this->totalPrice / 100;
+        return $this->firstPaymentPrice / 100;
     }
 
     public function attachSignature(
@@ -326,9 +326,9 @@ class Order implements EntityWithEvents
         $this->paymentMethod = $method;
     }
 
-    public function overrideTotalPrice(int $price): void
+    public function overrideFirstPaymentPrice(int $price): void
     {
-        $this->totalPrice = $price;
+        $this->firstPaymentPrice = $price;
     }
 
     public function extendExpiration(\DateTimeImmutable $newExpiresAt): void

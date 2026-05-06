@@ -45,7 +45,7 @@ final readonly class AuditLogger
                 'user_id' => $order->user->id->toRfc4122(),
                 'storage_id' => $order->storage->id->toRfc4122(),
                 'rental_type' => $order->rentalType->value,
-                'total_price' => $order->totalPrice,
+                'total_price' => $order->firstPaymentPrice,
                 'start_date' => $order->startDate->format('Y-m-d'),
                 'end_date' => $order->endDate?->format('Y-m-d'),
             ],
@@ -73,7 +73,7 @@ final readonly class AuditLogger
             eventType: 'paid',
             payload: [
                 'paid_at' => $order->paidAt?->format('Y-m-d H:i:s'),
-                'total_price' => $order->totalPrice,
+                'total_price' => $order->firstPaymentPrice,
             ],
         );
     }

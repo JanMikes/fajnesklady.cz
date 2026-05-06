@@ -222,11 +222,72 @@ final readonly class PriceCalculator
             );
         }
 
-        // LONG fixed-end (>= 28 days): monthly cadence with prorated tail.
-        // Mirrors `ChargeRecurringPaymentHandler::calculateBillingAmount`:
-        // a full month is charged whenever the next calendar-month boundary
-        // is still within the contract; only the trailing partial period
-        // gets prorated by 30-day daily rate.
+        return new PaymentSchedule(
+            entries: $this->walkMonthsFromAnchor($monthlyRate, $startDate, $endDate),
+            isRecurring: true,
+            isOpenEnded: false,
+            monthlyAmount: $monthlyRate,
+        );
+    }
+
+    /**
+     * Build the locked-in payment schedule for an *existing* order, using
+     * Order.firstPaymentPrice as the monthly anchor (NOT the current Storage price).
+     *
+     * Why a separate method: buildPaymentSchedule(Storage, ...) reads the
+     * *current* Storage price. After an order is placed the storage price
+     * may change; the order's monthly stays. For displaying a schedule on
+     * portal/admin/landlord detail pages we must respect that lock.
+     */
+    public function buildScheduleFromOrder(Order $order): PaymentSchedule
+    {
+        if ($order->isUnlimited()) {
+            return new PaymentSchedule(
+                entries: [new PaymentScheduleEntry($order->startDate, $order->firstPaymentPrice)],
+                isRecurring: true,
+                isOpenEnded: true,
+                monthlyAmount: $order->firstPaymentPrice,
+            );
+        }
+
+        $endDate = $order->endDate;
+        \assert(null !== $endDate);
+
+        $days = $this->calculateDays($order->startDate, $endDate);
+
+        if ($days < self::WEEKLY_THRESHOLD_DAYS) {
+            return new PaymentSchedule(
+                entries: [new PaymentScheduleEntry($order->startDate, $order->firstPaymentPrice)],
+                isRecurring: false,
+                isOpenEnded: false,
+                monthlyAmount: null,
+            );
+        }
+
+        $monthlyRate = $order->firstPaymentPrice;
+
+        return new PaymentSchedule(
+            entries: $this->walkMonthsFromAnchor($monthlyRate, $order->startDate, $endDate),
+            isRecurring: true,
+            isOpenEnded: false,
+            monthlyAmount: $monthlyRate,
+        );
+    }
+
+    /**
+     * Walk calendar months from start to end at a fixed monthly rate, charging
+     * a full month whenever the next month boundary still fits, then prorating
+     * the trailing partial period at the 30-day daily rate.
+     *
+     * Mirrors `ChargeRecurringPaymentHandler::calculateBillingAmount`. The
+     * "no surprises" promise — order_create / order_accept / order_payment
+     * surfaces, the post-creation order detail, and the recurring-billing
+     * cron all walk identically. Any divergence here breaks that promise.
+     *
+     * @return list<PaymentScheduleEntry>
+     */
+    private function walkMonthsFromAnchor(int $monthlyRate, \DateTimeImmutable $startDate, \DateTimeImmutable $endDate): array
+    {
         $entries = [];
         $billingDate = $startDate;
         while ($billingDate < $endDate) {
@@ -245,73 +306,7 @@ final readonly class PriceCalculator
             break;
         }
 
-        return new PaymentSchedule(
-            entries: $entries,
-            isRecurring: true,
-            isOpenEnded: false,
-            monthlyAmount: $monthlyRate,
-        );
-    }
-
-    /**
-     * Build the locked-in payment schedule for an *existing* order, using
-     * Order.totalPrice as the monthly anchor (NOT the current Storage price).
-     *
-     * Why a separate method: buildPaymentSchedule(Storage, ...) reads the
-     * *current* Storage price. After an order is placed the storage price
-     * may change; the order's monthly stays. For displaying a schedule on
-     * portal/admin/landlord detail pages we must respect that lock.
-     */
-    public function buildScheduleFromOrder(Order $order): PaymentSchedule
-    {
-        if ($order->isUnlimited()) {
-            return new PaymentSchedule(
-                entries: [new PaymentScheduleEntry($order->startDate, $order->totalPrice)],
-                isRecurring: true,
-                isOpenEnded: true,
-                monthlyAmount: $order->totalPrice,
-            );
-        }
-
-        $endDate = $order->endDate;
-        \assert(null !== $endDate);
-
-        $days = $this->calculateDays($order->startDate, $endDate);
-
-        if ($days < self::WEEKLY_THRESHOLD_DAYS) {
-            return new PaymentSchedule(
-                entries: [new PaymentScheduleEntry($order->startDate, $order->totalPrice)],
-                isRecurring: false,
-                isOpenEnded: false,
-                monthlyAmount: null,
-            );
-        }
-
-        $monthlyRate = $order->totalPrice;
-        $entries = [];
-        $billingDate = $order->startDate;
-        while ($billingDate < $endDate) {
-            $nextBillingDate = $billingDate->modify('+1 month');
-            if ($nextBillingDate <= $endDate) {
-                $entries[] = new PaymentScheduleEntry($billingDate, $monthlyRate);
-                $billingDate = $nextBillingDate;
-
-                continue;
-            }
-            $remainingDays = max(1, $this->calculateDays($billingDate, $endDate));
-            $dailyRate = $monthlyRate / self::DAYS_PER_MONTH;
-            $proratedAmount = max(1, (int) round($remainingDays * $dailyRate));
-            $entries[] = new PaymentScheduleEntry($billingDate, $proratedAmount);
-
-            break;
-        }
-
-        return new PaymentSchedule(
-            entries: $entries,
-            isRecurring: true,
-            isOpenEnded: false,
-            monthlyAmount: $monthlyRate,
-        );
+        return $entries;
     }
 
     /**

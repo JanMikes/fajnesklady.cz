@@ -119,7 +119,7 @@ class SendOrderConfirmationEmailHandlerTest extends KernelTestCase
             paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: $start,
             endDate: $end,
-            totalPrice: 180_000,
+            firstPaymentPrice: 180_000,
             expiresAt: $now->modify('+7 days'),
             createdAt: $now,
         );

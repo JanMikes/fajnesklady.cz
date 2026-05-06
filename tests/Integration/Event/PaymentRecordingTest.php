@@ -119,7 +119,7 @@ class PaymentRecordingTest extends KernelTestCase
         // Verify payment details
         $payment = $this->getLastPaymentForStorage($assignedStorage);
         $this->assertNotNull($payment);
-        $this->assertSame($order->totalPrice, $payment->amount);
+        $this->assertSame($order->firstPaymentPrice, $payment->amount);
         $this->assertNotNull($payment->order);
         $this->assertTrue($payment->order->id->equals($order->id));
     }

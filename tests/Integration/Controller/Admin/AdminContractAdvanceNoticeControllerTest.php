@@ -199,7 +199,7 @@ class AdminContractAdvanceNoticeControllerTest extends WebTestCase
             paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: $now->modify('-2 months'),
             endDate: null,
-            totalPrice: 35000,
+            firstPaymentPrice: 35000,
             expiresAt: $now->modify('+7 days'),
             createdAt: $now->modify('-2 months'),
         );

@@ -110,7 +110,7 @@ class SendExpirationRemindersCommandTest extends KernelTestCase
             paymentFrequency: null,
             startDate: $now->modify('-30 days'),
             endDate: $endDate,
-            totalPrice: 35000,
+            firstPaymentPrice: 35000,
             expiresAt: $now->modify('+7 days'),
             createdAt: $now->modify('-30 days'),
         );
@@ -244,7 +244,7 @@ class SendExpirationRemindersCommandTest extends KernelTestCase
             paymentFrequency: null,
             startDate: $now->modify('-30 days'),
             endDate: null, // Unlimited
-            totalPrice: 35000,
+            firstPaymentPrice: 35000,
             expiresAt: $now->modify('+7 days'),
             createdAt: $now->modify('-30 days'),
         );

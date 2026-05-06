@@ -83,7 +83,7 @@ final class OrderFixtures extends Fixture implements DependentFixtureInterface
             paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: $now->modify('+7 days'),
             endDate: $now->modify('+37 days'),
-            totalPrice: 120000, // 1200 CZK
+            firstPaymentPrice: 120000, // 1200 CZK
             expiresAt: $now->modify('+7 days'), // Expires in 7 days if not paid
             createdAt: $now,
         );
@@ -101,7 +101,7 @@ final class OrderFixtures extends Fixture implements DependentFixtureInterface
             paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: $now->modify('+14 days'),
             endDate: $now->modify('+44 days'),
-            totalPrice: 120000,
+            firstPaymentPrice: 120000,
             expiresAt: $now->modify('+7 days'),
             createdAt: $now,
         );
@@ -124,7 +124,7 @@ final class OrderFixtures extends Fixture implements DependentFixtureInterface
             paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: $now->modify('-1 day'),
             endDate: $now->modify('+29 days'),
-            totalPrice: 120000,
+            firstPaymentPrice: 120000,
             expiresAt: $now->modify('-8 days'), // Already expired, but was paid
             createdAt: $now->modify('-8 days'),
         );
@@ -147,7 +147,7 @@ final class OrderFixtures extends Fixture implements DependentFixtureInterface
             paymentFrequency: null,
             startDate: $now->modify('-30 days'),
             endDate: null, // Unlimited
-            totalPrice: 280000, // First month
+            firstPaymentPrice: 280000, // First month
             expiresAt: $now->modify('-37 days'),
             createdAt: $now->modify('-37 days'),
         );
@@ -169,7 +169,7 @@ final class OrderFixtures extends Fixture implements DependentFixtureInterface
             paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: $now->modify('+7 days'),
             endDate: $now->modify('+37 days'),
-            totalPrice: 40000, // 400 CZK
+            firstPaymentPrice: 40000, // 400 CZK
             expiresAt: $now->modify('+7 days'),
             createdAt: $now->modify('-2 days'),
         );
@@ -188,7 +188,7 @@ final class OrderFixtures extends Fixture implements DependentFixtureInterface
             paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: $now->modify('+7 days'),
             endDate: $now->modify('+37 days'),
-            totalPrice: 40000,
+            firstPaymentPrice: 40000,
             expiresAt: $now->modify('-1 day'), // Already expired
             createdAt: $now->modify('-8 days'),
         );
@@ -209,7 +209,7 @@ final class OrderFixtures extends Fixture implements DependentFixtureInterface
             paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: $now->modify('-23 days'),
             endDate: $now->modify('+7 days'), // Expires in 7 days
-            totalPrice: 40000,
+            firstPaymentPrice: 40000,
             expiresAt: $now->modify('-30 days'),
             createdAt: $now->modify('-30 days'),
         );

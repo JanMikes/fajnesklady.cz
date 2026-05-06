@@ -41,7 +41,7 @@ final readonly class SendOrderCancelledEmailHandler
                 'storageNumber' => $storage->number,
                 'startDate' => $order->startDate->format('d.m.Y'),
                 'endDate' => $order->endDate?->format('d.m.Y') ?? 'Na dobu neurčitou',
-                'priceCzk' => $order->getTotalPriceInCzk(),
+                'priceCzk' => $order->getFirstPaymentPriceInCzk(),
                 'isRecurring' => $order->isRecurring(),
             ]);
 

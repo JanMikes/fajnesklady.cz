@@ -64,7 +64,7 @@ final readonly class AdminMigrateCustomerHandler
         // 4. Mark as admin-created with external payment
         $order->markAsAdminCreated();
         $order->setPaymentMethod(PaymentMethod::EXTERNAL);
-        $order->overrideTotalPrice($command->totalPrice);
+        $order->overrideFirstPaymentPrice($command->totalPrice);
 
         // 5. Accept terms + reserve storage
         $order->acceptTerms($now);

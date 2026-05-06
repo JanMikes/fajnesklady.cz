@@ -140,7 +140,7 @@ class IssueInvoiceOnPaymentHandlerTest extends TestCase
             paymentFrequency: null,
             startDate: new \DateTimeImmutable('2025-06-20'),
             endDate: new \DateTimeImmutable('2025-07-20'),
-            totalPrice: 35000,
+            firstPaymentPrice: 35000,
             expiresAt: new \DateTimeImmutable('+7 days'),
             createdAt: new \DateTimeImmutable('2025-06-15'),
         );

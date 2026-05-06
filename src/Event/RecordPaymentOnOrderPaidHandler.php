@@ -33,7 +33,7 @@ final readonly class RecordPaymentOnOrderPaidHandler
             order: $order,
             contract: null,
             storage: $order->storage,
-            amount: $order->totalPrice,
+            amount: $order->firstPaymentPrice,
             paidAt: $event->occurredOn,
             createdAt: $event->occurredOn,
         );

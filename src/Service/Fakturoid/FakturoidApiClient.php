@@ -127,7 +127,7 @@ final readonly class FakturoidApiClient implements FakturoidClient
                             $place->name,
                         ),
                         'quantity' => 1,
-                        'unit_price' => $order->getTotalPriceInCzk(),
+                        'unit_price' => $order->getFirstPaymentPriceInCzk(),
                         'vat_rate' => $this->vatRate,
                     ],
                 ],
