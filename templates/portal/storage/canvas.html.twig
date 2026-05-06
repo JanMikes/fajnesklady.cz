@@ -104,7 +104,8 @@
              data-storage-canvas-map-image-value="{{ place.mapImagePath ? asset('uploads/' ~ place.mapImagePath) : '' }}"
              data-storage-canvas-storages-value="{{ storagesJson|e('html_attr') }}"
              data-storage-canvas-storage-types-value="{{ storageTypesJson|e('html_attr') }}"
-             data-storage-canvas-api-url-value="{{ path('api_storages_create', {placeId: place.id}) }}">
+             data-storage-canvas-api-url-value="{{ path('api_storages_create', {placeId: place.id}) }}"
+             data-storage-canvas-generate-code-url-value="{{ place.storageCodesEnabled ? path('api_storages_generate_code', {placeId: place.id}) : '' }}">
 
             {# Canvas area #}
             <div class="lg:col-span-3">
@@ -244,8 +245,18 @@
 
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Kód k zámku</label>
-                                <input type="text" data-storage-canvas-target="lockCodeInput"
-                                       class="form-input" placeholder="volitelné">
+                                <div class="flex gap-2">
+                                    <input type="text" data-storage-canvas-target="lockCodeInput"
+                                           class="form-input flex-1"
+                                           placeholder="{% if place.storageCodesEnabled %}{{ place.storageCodeDigits }} číslic{% else %}volitelné{% endif %}">
+                                    {% if place.storageCodesEnabled %}
+                                        <button type="button" data-storage-canvas-target="lockCodeGenerateBtn"
+                                                data-action="click->storage-canvas#generateLockCode"
+                                                class="btn btn-secondary whitespace-nowrap" title="Vygenerovat náhodný kód">
+                                            Vygenerovat
+                                        </button>
+                                    {% endif %}
+                                </div>
                             </div>
 
                             {# Coordinate inputs #}

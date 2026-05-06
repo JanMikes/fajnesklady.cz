@@ -6,14 +6,19 @@ namespace App\Controller\Portal;
 
 use App\Command\AddHandoverPhotoCommand;
 use App\Command\CompleteLandlordHandoverCommand;
+use App\Exception\InvalidStorageCode;
+use App\Exception\StorageCodeRangeExhausted;
 use App\Form\LandlordHandoverFormData;
 use App\Form\LandlordHandoverFormType;
 use App\Repository\HandoverProtocolRepository;
 use App\Service\Security\HandoverProtocolVoter;
+use App\Service\StorageCodeGenerator;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\Form\FormError;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Messenger\Exception\HandlerFailedException;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
@@ -27,6 +32,7 @@ final class LandlordHandoverViewController extends AbstractController
         private readonly HandoverProtocolRepository $handoverProtocolRepository,
         #[Autowire(service: 'command.bus')]
         private readonly MessageBusInterface $commandBus,
+        private readonly StorageCodeGenerator $codeGenerator,
     ) {
     }
 
@@ -40,6 +46,14 @@ final class LandlordHandoverViewController extends AbstractController
         $place = $storage->getPlace();
 
         $formData = new LandlordHandoverFormData();
+        if ($place->storageCodesEnabled && $protocol->needsLandlordCompletion() && !$request->isMethod('POST')) {
+            try {
+                $formData->newLockCode = $this->codeGenerator->propose($place);
+            } catch (StorageCodeRangeExhausted $e) {
+                $this->addFlash('warning', $e->getMessage());
+            }
+        }
+
         $form = $this->createForm(LandlordHandoverFormType::class, $formData);
         $form->handleRequest($request);
 
@@ -56,11 +70,29 @@ final class LandlordHandoverViewController extends AbstractController
                 ));
             }
 
-            $this->commandBus->dispatch(new CompleteLandlordHandoverCommand(
-                handoverProtocolId: $protocol->id,
-                comment: $formData->comment,
-                newLockCode: $formData->newLockCode,
-            ));
+            try {
+                $this->commandBus->dispatch(new CompleteLandlordHandoverCommand(
+                    handoverProtocolId: $protocol->id,
+                    comment: $formData->comment,
+                    newLockCode: $formData->newLockCode,
+                ));
+            } catch (HandlerFailedException $e) {
+                $nested = $e->getPrevious();
+                if ($nested instanceof InvalidStorageCode) {
+                    $form->get('newLockCode')->addError(new FormError($nested->getMessage()));
+
+                    return $this->render('portal/landlord/handover/view.html.twig', [
+                        'protocol' => $protocol,
+                        'contract' => $contract,
+                        'storage' => $storage,
+                        'place' => $place,
+                        'form' => $form,
+                        'canComplete' => $this->isGranted(HandoverProtocolVoter::COMPLETE_LANDLORD, $protocol),
+                    ]);
+                }
+
+                throw $e;
+            }
 
             $this->addFlash('success', 'Předávací protokol byl úspěšně vyplněn.');
 

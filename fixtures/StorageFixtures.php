@@ -110,6 +110,8 @@ final class StorageFixtures extends Fixture implements DependentFixtureInterface
 
         // Small boxes A1-A5 in Praha Centrum (owned by landlord)
         $smallRefs = [self::REF_SMALL_A1, self::REF_SMALL_A2, self::REF_SMALL_A3, self::REF_SMALL_A4, self::REF_SMALL_A5];
+        // A1 gets a deterministic access code so the codes feature is visible end-to-end on Praha Centrum.
+        $smallLockCodes = ['0042', null, null, null, null];
         for ($i = 1; $i <= 5; ++$i) {
             $storage = new Storage(
                 id: Uuid::v7(),
@@ -120,6 +122,9 @@ final class StorageFixtures extends Fixture implements DependentFixtureInterface
                 createdAt: $now,
                 owner: $landlord,
             );
+            if (null !== $smallLockCodes[$i - 1]) {
+                $storage->updateLockCode($smallLockCodes[$i - 1], $now);
+            }
             $manager->persist($storage);
             $this->addReference($smallRefs[$i - 1], $storage);
         }
@@ -142,6 +147,7 @@ final class StorageFixtures extends Fixture implements DependentFixtureInterface
 
         // Large boxes C1-C2 in Praha Centrum (owned by landlord)
         $largeRefs = [self::REF_LARGE_C1, self::REF_LARGE_C2];
+        $largeLockCodes = ['0577', null];
         for ($i = 1; $i <= 2; ++$i) {
             $storage = new Storage(
                 id: Uuid::v7(),
@@ -152,6 +158,9 @@ final class StorageFixtures extends Fixture implements DependentFixtureInterface
                 createdAt: $now,
                 owner: $landlord,
             );
+            if (null !== $largeLockCodes[$i - 1]) {
+                $storage->updateLockCode($largeLockCodes[$i - 1], $now);
+            }
             $manager->persist($storage);
             $this->addReference($largeRefs[$i - 1], $storage);
         }

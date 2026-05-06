@@ -85,7 +85,9 @@
         </div>
     {% endif %}
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    {% include 'components/order_access_code.html.twig' with {storage: storage, contract: contract} only %}
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
         {# Order Details #}
         <div class="bg-white shadow overflow-hidden sm:rounded-lg">
             <div class="px-4 py-5 sm:px-6 border-b border-gray-200">

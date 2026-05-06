@@ -132,10 +132,56 @@ class PlaceTest extends TestCase
         $this->assertTrue($place->isActive);
         $this->assertSame(0, $place->daysInAdvance);
         $this->assertSame(3, $place->orderExpirationDays);
+        $this->assertFalse($place->storageCodesEnabled);
+        $this->assertSame(4, $place->storageCodeDigits);
+        $this->assertSame(0, $place->storageCodeFrom);
+        $this->assertSame(9999, $place->storageCodeTo);
         $this->assertNull($place->latitude);
         $this->assertNull($place->longitude);
         $this->assertNull($place->mapImagePath);
         $this->assertSame(PlaceType::FAJNE_SKLADY, $place->type);
+    }
+
+    public function testUpdateStorageCodeConfig(): void
+    {
+        $createdAt = new \DateTimeImmutable('2024-01-01 10:00:00');
+        $updatedAt = new \DateTimeImmutable('2024-01-01 11:00:00');
+
+        $place = new Place(
+            id: Uuid::v7(),
+            name: 'Test Place',
+            address: 'Test Address',
+            city: 'Praha',
+            postalCode: '110 00',
+            description: null,
+            createdAt: $createdAt,
+        );
+
+        $place->updateStorageCodeConfig(true, 5, 100, 999, $updatedAt);
+
+        $this->assertTrue($place->storageCodesEnabled);
+        $this->assertSame(5, $place->storageCodeDigits);
+        $this->assertSame(100, $place->storageCodeFrom);
+        $this->assertSame(999, $place->storageCodeTo);
+        $this->assertSame($updatedAt, $place->updatedAt);
+    }
+
+    public function testStorageCodeRangeSize(): void
+    {
+        $place = new Place(
+            id: Uuid::v7(),
+            name: 'Test Place',
+            address: 'Test Address',
+            city: 'Praha',
+            postalCode: '110 00',
+            description: null,
+            createdAt: new \DateTimeImmutable(),
+        );
+
+        $this->assertSame(10000, $place->storageCodeRangeSize());
+
+        $place->updateStorageCodeConfig(true, 4, 100, 200, new \DateTimeImmutable());
+        $this->assertSame(101, $place->storageCodeRangeSize());
     }
 
     public function testUpdateOrderExpirationDays(): void

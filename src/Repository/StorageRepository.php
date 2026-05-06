@@ -132,6 +132,57 @@ class StorageRepository
     /**
      * @return Storage[]
      */
+    public function findByPlaceWithoutLockCode(Place $place): array
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('s')
+            ->from(Storage::class, 's')
+            ->where('s.place = :place')
+            ->andWhere('s.deletedAt IS NULL')
+            ->andWhere('s.lockCode IS NULL')
+            ->setParameter('place', $place)
+            ->orderBy('s.number', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * @return string[]
+     */
+    public function findActiveLockCodesByPlace(Place $place): array
+    {
+        $rows = $this->entityManager->createQueryBuilder()
+            ->select('s.lockCode')
+            ->from(Storage::class, 's')
+            ->where('s.place = :place')
+            ->andWhere('s.deletedAt IS NULL')
+            ->andWhere('s.lockCode IS NOT NULL')
+            ->setParameter('place', $place)
+            ->getQuery()
+            ->getArrayResult();
+
+        return array_map(static fn (array $r): string => (string) $r['lockCode'], $rows);
+    }
+
+    public function countByPlaceWithCodeExcludingStorage(Place $place, string $lockCode, Storage $storage): int
+    {
+        return (int) $this->entityManager->createQueryBuilder()
+            ->select('COUNT(s.id)')
+            ->from(Storage::class, 's')
+            ->where('s.place = :place')
+            ->andWhere('s.lockCode = :code')
+            ->andWhere('s.deletedAt IS NULL')
+            ->andWhere('s.id != :selfId')
+            ->setParameter('place', $place)
+            ->setParameter('code', $lockCode)
+            ->setParameter('selfId', $storage->id)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    /**
+     * @return Storage[]
+     */
     public function findByOwner(User $owner): array
     {
         return $this->entityManager->createQueryBuilder()

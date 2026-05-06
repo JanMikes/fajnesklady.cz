@@ -34,6 +34,18 @@ class Place
     #[ORM\Column]
     public private(set) int $orderExpirationDays = 3;
 
+    #[ORM\Column(options: ['default' => false])]
+    public private(set) bool $storageCodesEnabled = false;
+
+    #[ORM\Column(options: ['default' => 4])]
+    public private(set) int $storageCodeDigits = 4;
+
+    #[ORM\Column(options: ['default' => 0])]
+    public private(set) int $storageCodeFrom = 0;
+
+    #[ORM\Column(options: ['default' => 9999])]
+    public private(set) int $storageCodeTo = 9999;
+
     #[ORM\Column]
     public private(set) bool $isActive = true;
 
@@ -119,6 +131,25 @@ class Place
     {
         $this->orderExpirationDays = $orderExpirationDays;
         $this->updatedAt = $now;
+    }
+
+    public function updateStorageCodeConfig(
+        bool $enabled,
+        int $digits,
+        int $from,
+        int $to,
+        \DateTimeImmutable $now,
+    ): void {
+        $this->storageCodesEnabled = $enabled;
+        $this->storageCodeDigits = $digits;
+        $this->storageCodeFrom = $from;
+        $this->storageCodeTo = $to;
+        $this->updatedAt = $now;
+    }
+
+    public function storageCodeRangeSize(): int
+    {
+        return $this->storageCodeTo - $this->storageCodeFrom + 1;
     }
 
     public function activate(\DateTimeImmutable $now): void

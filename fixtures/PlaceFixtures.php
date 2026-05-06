@@ -47,6 +47,7 @@ final class PlaceFixtures extends Fixture
         );
         $place1->updateLocation('50.0904272', '14.4314139', $now);
         $place1->updateMapImage($this->generatePlainMap($place1->id), $now);
+        $place1->updateStorageCodeConfig(true, 4, 0, 9999, $now);
         $manager->persist($place1);
         $this->addReference(self::REF_PRAHA_CENTRUM, $place1);
 

@@ -74,6 +74,20 @@ class OrderStatusControllerTest extends WebTestCase
         );
     }
 
+    public function testActiveContractRendersAccessCodeBlockWhenStorageHasLockCode(): void
+    {
+        // REF_ORDER_COMPLETED_UNLIMITED uses storage C1 in Praha Centrum which is
+        // seeded with lock code 0577 in fixtures. Contract is active (not terminated).
+        $order = $this->findOrderByReference(OrderFixtures::REF_ORDER_COMPLETED_UNLIMITED);
+
+        $this->requestSigned($this->urlGenerator->generate($order));
+
+        $this->assertResponseIsSuccessful();
+        $body = (string) $this->client->getResponse()->getContent();
+        $this->assertStringContainsString('Váš přístupový kód', $body);
+        $this->assertStringContainsString('0577', $body);
+    }
+
     public function testReservedOrderRendersAwaitingPaymentBadgeAndPayCta(): void
     {
         $order = $this->findOrderByStatus(OrderStatus::RESERVED);

@@ -4,7 +4,8 @@ import Konva from 'konva';
 export default class extends Controller {
     static targets = [
         'container', 'sidebar', 'storageList', 'form',
-        'numberInput', 'typeSelect', 'lockCodeInput', 'saveBtn', 'deleteBtn', 'cancelBtn',
+        'numberInput', 'typeSelect', 'lockCodeInput', 'lockCodeGenerateBtn',
+        'saveBtn', 'deleteBtn', 'cancelBtn',
         'addBtn', 'copyBtn', 'snapCheckbox',
         'coordX', 'coordY', 'coordW', 'coordH', 'coordR',
         'zoomLabel', 'minimap',
@@ -13,7 +14,8 @@ export default class extends Controller {
         mapImage: String,
         storages: Array,
         storageTypes: Array,
-        apiUrl: String
+        apiUrl: String,
+        generateCodeUrl: String,
     }
 
     GRID_SIZE = 10;
@@ -957,6 +959,27 @@ export default class extends Controller {
         } catch (err) {
             console.error('Save error:', err);
             alert('Chyba při ukládání skladu');
+        }
+    }
+
+    async generateLockCode() {
+        if (!this.generateCodeUrlValue) return;
+
+        try {
+            const response = await fetch(this.generateCodeUrlValue, { method: 'POST' });
+            const result = await response.json();
+
+            if (!response.ok) {
+                alert(result.message || 'Nepodařilo se vygenerovat kód.');
+                return;
+            }
+
+            this.lockCodeInputTarget.value = result.code;
+            this.lockCodeInputTarget.dispatchEvent(new Event('input', { bubbles: true }));
+            this.lockCodeInputTarget.dispatchEvent(new Event('change', { bubbles: true }));
+        } catch (err) {
+            console.error('Generate code error:', err);
+            alert('Nepodařilo se vygenerovat kód.');
         }
     }
 

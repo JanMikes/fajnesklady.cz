@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Controller\Api;
 
 use App\Command\UpdateStorageCommand;
+use App\Exception\InvalidStorageCode;
 use App\Repository\StorageRepository;
 use App\Service\Security\StorageVoter;
+use App\Service\StorageCodeGenerator;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -25,6 +27,7 @@ final class StorageApiUpdateController extends AbstractController
     public function __construct(
         private readonly StorageRepository $storageRepository,
         private readonly MessageBusInterface $commandBus,
+        private readonly StorageCodeGenerator $codeGenerator,
     ) {
     }
 
@@ -42,6 +45,15 @@ final class StorageApiUpdateController extends AbstractController
 
         if (!$this->validateStorageData($data)) {
             return new JsonResponse(['message' => 'Neplatna data'], Response::HTTP_BAD_REQUEST);
+        }
+
+        $place = $storage->getPlace();
+        if ($place->storageCodesEnabled && isset($data['lockCode']) && '' !== $data['lockCode']) {
+            try {
+                $this->codeGenerator->validateForStorage($place, $storage, $data['lockCode']);
+            } catch (InvalidStorageCode $e) {
+                return new JsonResponse(['message' => $e->getMessage()], Response::HTTP_UNPROCESSABLE_ENTITY);
+            }
         }
 
         $command = new UpdateStorageCommand(

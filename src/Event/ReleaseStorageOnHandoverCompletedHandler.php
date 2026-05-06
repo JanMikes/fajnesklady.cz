@@ -6,6 +6,7 @@ namespace App\Event;
 
 use App\Repository\ContractRepository;
 use App\Service\AuditLogger;
+use App\Service\StorageCodeGenerator;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
@@ -15,6 +16,7 @@ final readonly class ReleaseStorageOnHandoverCompletedHandler
     public function __construct(
         private ContractRepository $contractRepository,
         private AuditLogger $auditLogger,
+        private StorageCodeGenerator $codeGenerator,
         private ClockInterface $clock,
     ) {
     }
@@ -27,6 +29,10 @@ final readonly class ReleaseStorageOnHandoverCompletedHandler
 
         if (null !== $event->newLockCode) {
             $storage->updateLockCode($event->newLockCode, $now);
+
+            if ($storage->getPlace()->storageCodesEnabled) {
+                $this->codeGenerator->markUsed($storage->getPlace(), $event->newLockCode);
+            }
         }
 
         if ($contract->isTerminated() && $storage->isOccupied()) {

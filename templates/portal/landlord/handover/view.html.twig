@@ -102,7 +102,31 @@
                     </div>
 
                     <div>
-                        {{ form_row(form.newLockCode) }}
+                        {% if place.storageCodesEnabled %}
+                            <div data-controller="handover-code"
+                                 data-handover-code-url-value="{{ path('portal_landlord_handover_generate_code', {id: protocol.id}) }}">
+                                {{ form_label(form.newLockCode) }}
+                                <div class="flex gap-2">
+                                    {{ form_widget(form.newLockCode, {
+                                        attr: {
+                                            'data-handover-code-target': 'input',
+                                            'class': 'form-input flex-1',
+                                            'inputmode': 'numeric',
+                                            'placeholder': place.storageCodeDigits ~ ' číslic'
+                                        }
+                                    }) }}
+                                    <button type="button"
+                                            data-action="click->handover-code#generate"
+                                            class="btn btn-secondary whitespace-nowrap"
+                                            title="Vygenerovat jiný kód">
+                                        Vygenerovat jiný
+                                    </button>
+                                </div>
+                                {{ form_errors(form.newLockCode) }}
+                            </div>
+                        {% else %}
+                            {{ form_row(form.newLockCode) }}
+                        {% endif %}
                         <p class="mt-1 text-xs text-gray-500">Tento kód bude automaticky použit pro dalšího nájemce.</p>
                     </div>
 

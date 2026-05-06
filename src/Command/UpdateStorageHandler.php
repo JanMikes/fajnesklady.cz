@@ -7,6 +7,7 @@ namespace App\Command;
 use App\Entity\Storage;
 use App\Repository\StorageRepository;
 use App\Repository\StorageTypeRepository;
+use App\Service\StorageCodeGenerator;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
@@ -16,6 +17,7 @@ final readonly class UpdateStorageHandler
     public function __construct(
         private StorageRepository $storageRepository,
         private StorageTypeRepository $storageTypeRepository,
+        private StorageCodeGenerator $codeGenerator,
         private ClockInterface $clock,
     ) {
     }
@@ -56,6 +58,10 @@ final readonly class UpdateStorageHandler
                 lockCode: $command->lockCode,
                 now: $now,
             );
+
+            if (null !== $command->lockCode && $storage->getPlace()->storageCodesEnabled) {
+                $this->codeGenerator->markUsed($storage->getPlace(), $command->lockCode);
+            }
         }
 
         $this->storageRepository->save($storage);
