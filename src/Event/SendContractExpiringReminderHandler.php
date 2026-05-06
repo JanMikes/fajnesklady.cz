@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Event;
 
+use App\Enum\RentalType;
 use App\Repository\ContractRepository;
 use Psr\Log\LoggerInterface;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
@@ -37,6 +38,12 @@ final readonly class SendContractExpiringReminderHandler
             UrlGeneratorInterface::ABSOLUTE_URL
         );
 
+        $renewalUrl = $this->urlGenerator->generate(
+            'public_order_renew',
+            ['previousOrderId' => $contract->order->id->toRfc4122()],
+            UrlGeneratorInterface::ABSOLUTE_URL,
+        );
+
         $subject = 1 === $event->daysRemaining
             ? 'Zítra končí Vaše smlouva - '.$place->name
             : sprintf('Vaše smlouva končí za %d dní - %s', $event->daysRemaining, $place->name);
@@ -56,6 +63,8 @@ final readonly class SendContractExpiringReminderHandler
                 'endDate' => $contract->endDate?->format('d.m.Y'),
                 'daysRemaining' => $event->daysRemaining,
                 'portalUrl' => $portalUrl,
+                'renewalUrl' => $renewalUrl,
+                'isLimited' => RentalType::LIMITED === $contract->rentalType,
             ]);
 
         try {

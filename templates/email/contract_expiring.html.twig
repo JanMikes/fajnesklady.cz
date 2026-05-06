@@ -158,15 +158,15 @@
             </table>
         </div>
 
-        <h3>Co můžete udělat?</h3>
-        <ul>
-            <li><strong>Prodloužit smlouvu</strong> - Pokud chcete pokračovat v pronájmu, navštivte svůj účet a vytvořte novou objednávku</li>
-            <li><strong>Vyklidit sklad</strong> - Prosím, vykliďte sklad do data ukončení smlouvy</li>
-            <li><strong>Kontaktovat nás</strong> - V případě dotazů jsme Vám k dispozici</li>
-        </ul>
+        <h3>Pokračovat v pronájmu?</h3>
+        <p>Stačí jeden klik — všechny údaje doplníme za Vás. Stejný sklad (pokud bude volný), stejné období, stejné fakturační údaje.</p>
 
         <div style="text-align: center;">
-            <a href="{{ portalUrl }}" class="button button-extend">Zobrazit smlouvu</a>
+            {% if isLimited %}
+                <a href="{{ renewalUrl }}" class="button button-extend">Prodloužit pronájem</a>
+                <br>
+            {% endif %}
+            <a href="{{ portalUrl }}" style="color: #570df8; text-decoration: underline; font-size: 14px;">Zobrazit smlouvu v portálu</a>
         </div>
 
         <p>Děkujeme za pochopení.</p>

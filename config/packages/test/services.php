@@ -58,5 +58,12 @@ return App::config([
             'alias' => 'limiter.ares_lookup',
             'public' => true,
         ],
+        // Twig rendering exposed for tests that capture an Email and need to
+        // render its template (e.g. asserting email body content for a handler
+        // invoked outside an HTTP request).
+        'test.twig' => [
+            'alias' => 'twig',
+            'public' => true,
+        ],
     ],
 ]);

@@ -1,6 +1,6 @@
 # 014 — One-click "Prodloužit pronájem" from previous order
 
-**Status:** ready
+**Status:** done
 **Type:** UX / feature
 **Scope:** small (~5 files: 1 new single-action controller; 1 email template + handler updated; 1 portal template updated; 1 integration test)
 **Depends on:** none. Independent of 010/011/012/013.
