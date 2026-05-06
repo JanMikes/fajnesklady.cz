@@ -88,7 +88,7 @@
                                     </h2>
                                     <p class="text-sm text-gray-500">Vaše skladová jednotka <strong>{{ storage.number }}</strong> v rámci pobočky.</p>
                                 </div>
-                                <a href="{{ path('public_order_map_download', {id: order.id}) }}"
+                                <a href="{{ path('public_order_map_download', {id: order.id, download: 1}) }}"
                                    class="btn btn-ghost btn-sm shrink-0"
                                    title="Stáhnout obrázek mapy">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -97,10 +97,10 @@
                                     Stáhnout
                                 </a>
                             </div>
-                            <a href="{{ upload_url(place.mapImagePath) }}" target="_blank" class="block group">
+                            <a href="{{ path('public_order_map_download', {id: order.id}) }}" target="_blank" class="block group">
                                 <div class="rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
-                                    <img src="{{ upload_url(place.mapImagePath) }}"
-                                         alt="Mapa pobočky {{ place.name }}"
+                                    <img src="{{ path('public_order_map_download', {id: order.id}) }}"
+                                         alt="Mapa pobočky {{ place.name }} s vyznačenou skladovou jednotkou"
                                          class="w-full h-auto group-hover:opacity-95 transition-opacity">
                                 </div>
                             </a>
@@ -164,7 +164,7 @@
                                     {% endif %}
                                     {% if place.mapImagePath %}
                                         {{ _self.documentRow(
-                                            path('public_order_map_download', {id: order.id}),
+                                            path('public_order_map_download', {id: order.id, download: 1}),
                                             'Mapa pobočky',
                                             'Vaše skladová jednotka vyznačená v mapě',
                                             'image'

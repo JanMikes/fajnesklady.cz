@@ -6,10 +6,11 @@ namespace App\Controller\Public;
 
 use App\Enum\OrderStatus;
 use App\Repository\OrderRepository;
+use App\Service\StorageMapImageGenerator;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
-use Symfony\Component\HttpFoundation\ResponseHeaderBag;
+use Symfony\Component\HttpFoundation\HeaderUtils;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Uid\Uuid;
@@ -19,12 +20,11 @@ final class OrderMapDownloadController extends AbstractController
 {
     public function __construct(
         private readonly OrderRepository $orderRepository,
-        #[Autowire('%kernel.project_dir%/public/uploads')]
-        private readonly string $uploadsDirectory,
+        private readonly StorageMapImageGenerator $mapImageGenerator,
     ) {
     }
 
-    public function __invoke(string $id): BinaryFileResponse
+    public function __invoke(string $id, Request $request): Response
     {
         if (!Uuid::isValid($id)) {
             throw new NotFoundHttpException('Objednávka nenalezena.');
@@ -36,26 +36,23 @@ final class OrderMapDownloadController extends AbstractController
             throw new NotFoundHttpException('Objednávka nenalezena.');
         }
 
-        $place = $order->storage->getPlace();
-        $mapImagePath = $place->mapImagePath;
+        $pngBytes = $this->mapImageGenerator->generate($order->storage);
 
-        if (null === $mapImagePath) {
+        if (null === $pngBytes) {
             throw new NotFoundHttpException('Mapa není k dispozici.');
         }
 
-        $filePath = $this->uploadsDirectory.'/'.$mapImagePath;
-        $realPath = realpath($filePath);
+        $disposition = $request->query->getBoolean('download')
+            ? HeaderUtils::DISPOSITION_ATTACHMENT
+            : HeaderUtils::DISPOSITION_INLINE;
 
-        if (false === $realPath || !str_starts_with($realPath, realpath($this->uploadsDirectory).'/')) {
-            throw new NotFoundHttpException('Mapa nebyla nalezena.');
-        }
+        $filename = sprintf('mapa-pobocka-%s.png', $order->storage->getPlace()->id->toBase32());
 
-        $extension = pathinfo($realPath, PATHINFO_EXTENSION) ?: 'png';
-
-        $response = new BinaryFileResponse($realPath);
-        $response->setContentDisposition(
-            ResponseHeaderBag::DISPOSITION_ATTACHMENT,
-            sprintf('mapa-pobocka-%s.%s', $place->id->toBase32(), $extension),
+        $response = new Response($pngBytes);
+        $response->headers->set('Content-Type', 'image/png');
+        $response->headers->set(
+            'Content-Disposition',
+            HeaderUtils::makeDisposition($disposition, $filename),
         );
 
         return $response;
