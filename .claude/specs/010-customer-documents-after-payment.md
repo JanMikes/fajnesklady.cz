@@ -1,6 +1,6 @@
 # 010 — Customer documents available after successful payment (success page + email link)
 
-**Status:** ready
+**Status:** in-progress
 **Type:** feature (UI section + new map-download endpoint + email tweak + documentation)
 **Scope:** medium (~8 files: 1 new partial, 1 new controller, 1 new docs file; modifications to success page + portal order detail + contract_ready email handler & template)
 **Depends on:** none

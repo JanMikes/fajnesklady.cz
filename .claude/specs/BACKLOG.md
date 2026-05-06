@@ -22,7 +22,7 @@ Small, independent tasks. Each row = one unit of work to hand to an implementati
 | 007 | Flatpickr on every date input (form theme + filters + birthDate maxDate) | done | [007-flatpickr-everywhere.md](007-flatpickr-everywhere.md) |
 | 008 | Order form as a Live Component (preserve inputs across map clicks, novalidate, on-blur server validation) | done | [008-order-form-live-component.md](008-order-form-live-component.md) |
 | 009 | Order: hide map by default, opt-in via "auto vs. pick from map" radio | done | [009-order-storage-selection-mode.md](009-order-storage-selection-mode.md) |
-| 010 | Customer documents after successful payment (success page + email link + new docs index) | ready | [010-customer-documents-after-payment.md](010-customer-documents-after-payment.md) |
+| 010 | Customer documents after successful payment (success page + email link + new docs index) | in-progress | [010-customer-documents-after-payment.md](010-customer-documents-after-payment.md) |
 | 011 | Move highlighted-storage map from pre-payment to post-payment email (attachment, once at finalization) | done | [011-move-storage-map-to-post-payment-email.md](011-move-storage-map-to-post-payment-email.md) |
 | 012 | Photos visible across the order journey (place card / form sidebar / map modal / recap) with GLightbox, never cropped | done | [012-photos-during-order.md](012-photos-during-order.md) |
 | 013 | Price label reflects billing cadence (Celková cena vs Měsíční platba / měsíc) — fix in emails + UI | superseded by 021 | [013-price-label-by-billing-cadence.md](013-price-label-by-billing-cadence.md) |
