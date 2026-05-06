@@ -85,14 +85,19 @@ class OrderDetailControllerTest extends WebTestCase
 
     private function findCompletedOrder(): Order
     {
-        $orders = $this->entityManager->getRepository(Order::class)->findBy(['status' => OrderStatus::COMPLETED]);
+        // Pin to USER so non-owner tests using TENANT are deterministic.
+        $user = $this->findUserByEmail(UserFixtures::USER_EMAIL);
+        $orders = $this->entityManager->getRepository(Order::class)->findBy([
+            'status' => OrderStatus::COMPLETED,
+            'user' => $user,
+        ]);
         foreach ($orders as $order) {
             if (null !== $order->endDate) {
                 return $order;
             }
         }
 
-        throw new \LogicException('No completed limited-term order in fixtures.');
+        throw new \LogicException('No completed limited-term order owned by USER fixture.');
     }
 
     private function findUserByEmail(string $email): User

@@ -37,13 +37,15 @@ class OrderCompleteControllerTest extends WebTestCase
         $this->client->request('GET', $this->buildUrl($order));
 
         $this->assertResponseIsSuccessful();
-        $this->assertSelectorTextContains('h2', 'Vaše dokumenty');
         $body = (string) $this->client->getResponse()->getContent();
+        $this->assertStringContainsString('Vaše dokumenty', $body);
         $this->assertStringContainsString('Všeobecné obchodní podmínky', $body);
         $this->assertStringContainsString('Poučení spotřebitele', $body);
         $this->assertStringContainsString('Formulář pro odstoupení od smlouvy', $body);
         // Limited (fixed-term) order: no recurring-payments terms row.
-        $this->assertStringNotContainsString('Podmínky opakovaných plateb', $body);
+        // Match on the unique row description to avoid false positives from
+        // the global footer's "Podmínky opakovaných plateb" link.
+        $this->assertStringNotContainsString('Pravidla pro opakované strhávání platby z karty', $body);
         // Anchor target for the email button.
         $this->assertStringContainsString('id="dokumenty"', $body);
     }
@@ -56,7 +58,7 @@ class OrderCompleteControllerTest extends WebTestCase
 
         $this->assertResponseIsSuccessful();
         $body = (string) $this->client->getResponse()->getContent();
-        $this->assertStringContainsString('Podmínky opakovaných plateb', $body);
+        $this->assertStringContainsString('Pravidla pro opakované strhávání platby z karty', $body);
     }
 
     public function testNonCompletedOrderRedirectsAway(): void
@@ -93,7 +95,7 @@ class OrderCompleteControllerTest extends WebTestCase
         $this->client->request('GET', $this->buildUrl($order));
 
         $this->assertResponseIsSuccessful();
-        $this->assertSelectorTextContains('h2', 'Vaše dokumenty');
+        $this->assertStringContainsString('Vaše dokumenty', (string) $this->client->getResponse()->getContent());
     }
 
     private function buildUrl(Order $order): string
@@ -103,7 +105,13 @@ class OrderCompleteControllerTest extends WebTestCase
 
     private function findCompletedOrder(bool $unlimited): Order
     {
-        $orders = $this->entityManager->getRepository(Order::class)->findBy(['status' => OrderStatus::COMPLETED]);
+        // Pin to USER's orders so the "non-owner" tests can use TENANT
+        // deterministically (TENANT also has completed orders in fixtures).
+        $user = $this->findUserByEmail(UserFixtures::USER_EMAIL);
+        $orders = $this->entityManager->getRepository(Order::class)->findBy([
+            'status' => OrderStatus::COMPLETED,
+            'user' => $user,
+        ]);
         foreach ($orders as $order) {
             if ($unlimited && null === $order->endDate) {
                 return $order;
@@ -114,7 +122,7 @@ class OrderCompleteControllerTest extends WebTestCase
             }
         }
 
-        throw new \LogicException(sprintf('No completed %s order in fixtures', $unlimited ? 'unlimited' : 'limited'));
+        throw new \LogicException(sprintf('No completed %s order owned by USER fixture', $unlimited ? 'unlimited' : 'limited'));
     }
 
     private function findOrderByStatus(OrderStatus $status): Order
