@@ -102,6 +102,7 @@ return App::config([
         'App\\Event\\SendOrderConfirmationEmailHandler' => [
             'arguments' => [
                 '$projectDir' => '%kernel.project_dir%',
+                '$contractTemplatePath' => '%kernel.project_dir%/templates/documents/contract_template.docx',
             ],
         ],
         'App\\Event\\SendContractReadyEmailHandler' => [

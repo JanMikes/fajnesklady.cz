@@ -15,6 +15,7 @@ use App\Event\OrderCompleted;
 use App\Event\SendContractReadyEmailHandler;
 use App\Repository\ContractRepository;
 use App\Service\RecurringPaymentCancelUrlGenerator;
+use App\Service\StorageMapImageGenerator;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Email;
@@ -97,6 +98,19 @@ class SendContractReadyEmailHandlerTest extends TestCase
         $this->assertCount(0, $attachments);
     }
 
+    public function testHandlerAttachesMapWhenAvailable(): void
+    {
+        $contract = $this->createContract();
+        $event = new OrderCompleted($contract->order->id, $contract->id, new \DateTimeImmutable());
+
+        $handler = $this->createHandler($contract, $sentEmail, mapBytes: 'fake png bytes');
+        $handler($event);
+
+        $this->assertNotNull($sentEmail);
+        $names = array_map(fn ($a) => $a->getFilename(), $sentEmail->getAttachments());
+        $this->assertContains('mapa-skladu.png', $names);
+    }
+
     public function testHandlerAttachesBothContractDocumentAndOperatingRules(): void
     {
         // Create contract document
@@ -125,7 +139,7 @@ class SendContractReadyEmailHandlerTest extends TestCase
     /**
      * @param Email|null $sentEmail Captured email reference
      */
-    private function createHandler(Contract $contract, ?Email &$sentEmail): SendContractReadyEmailHandler
+    private function createHandler(Contract $contract, ?Email &$sentEmail, ?string $mapBytes = null): SendContractReadyEmailHandler
     {
         $contractRepository = $this->createStub(ContractRepository::class);
         $contractRepository->method('get')->willReturn($contract);
@@ -141,11 +155,15 @@ class SendContractReadyEmailHandlerTest extends TestCase
         $uriSigner = new \Symfony\Component\HttpFoundation\UriSigner('test-secret');
         $cancelUrlGenerator = new RecurringPaymentCancelUrlGenerator($urlGenerator, $uriSigner);
 
+        $mapImageGenerator = $this->createStub(StorageMapImageGenerator::class);
+        $mapImageGenerator->method('generate')->willReturn($mapBytes);
+
         return new SendContractReadyEmailHandler(
             $contractRepository,
             $mailer,
             $urlGenerator,
             $cancelUrlGenerator,
+            $mapImageGenerator,
             $this->tempDir,
         );
     }

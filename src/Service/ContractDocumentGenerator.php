@@ -5,8 +5,13 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Entity\Contract;
+use App\Entity\Order;
+use App\Entity\Storage;
+use App\Entity\StorageType;
+use App\Entity\User;
 use App\Enum\RentalType;
 use PhpOffice\PhpWord\TemplateProcessor;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * Service for generating contract documents from DOCX templates.
@@ -19,7 +24,7 @@ use PhpOffice\PhpWord\TemplateProcessor;
  * - ${SIGNING_PLACE}, ${SIGNING_DATE}
  * - ${SIGNATURE} (image)
  */
-final readonly class ContractDocumentGenerator
+readonly class ContractDocumentGenerator
 {
     public function __construct(
         private string $contractsDirectory,
@@ -27,67 +32,112 @@ final readonly class ContractDocumentGenerator
     }
 
     /**
-     * Generate a contract document from template.
-     *
-     * @param Contract $contract     The contract to generate document for
-     * @param string   $templatePath Path to the DOCX template file
+     * Generate a contract document from template and persist it on disk.
      *
      * @return string Path to the generated document
      */
     public function generate(Contract $contract, string $templatePath, ?string $signaturePath = null, ?string $signingPlace = null, ?\DateTimeImmutable $signedAt = null): string
     {
-        if (!file_exists($templatePath)) {
-            throw new \RuntimeException(sprintf('Contract template not found: %s', $templatePath));
-        }
+        $bytes = $this->renderBytes(
+            templatePath: $templatePath,
+            documentNumberId: $contract->order->id,
+            documentNumberDate: $contract->order->createdAt,
+            user: $contract->user,
+            storage: $contract->storage,
+            rentalType: $contract->rentalType,
+            startDate: $contract->startDate,
+            endDate: $contract->endDate,
+            documentDate: $contract->createdAt,
+            signaturePath: $signaturePath,
+            signingPlace: $signingPlace,
+            signedAt: $signedAt,
+        );
 
-        $templateProcessor = new TemplateProcessor($templatePath);
+        $outputPath = $this->contractsDirectory.'/'.$this->generateFilename($contract);
 
-        // Replace all placeholders
-        $this->replacePlaceholders($templateProcessor, $contract, $signingPlace, $signedAt);
-
-        // Embed signature image if available
-        $this->embedSignature($templateProcessor, $signaturePath);
-
-        // Generate unique filename
-        $filename = $this->generateFilename($contract);
-        $outputPath = $this->contractsDirectory.'/'.$filename;
-
-        // Ensure directory exists
         $directory = dirname($outputPath);
         if (!is_dir($directory)) {
             mkdir($directory, 0755, true);
         }
 
-        // Save the document
-        $templateProcessor->saveAs($outputPath);
+        file_put_contents($outputPath, $bytes);
 
         return $outputPath;
     }
 
-    private function replacePlaceholders(TemplateProcessor $processor, Contract $contract, ?string $signingPlace, ?\DateTimeImmutable $signedAt): void
+    /**
+     * Render a contract document for an order and return the DOCX bytes (not persisted).
+     *
+     * Used to attach the signed contract to the order-placement email — at that point a
+     * Contract entity does not yet exist (it's created post-payment), but the order is
+     * already legally binding (signed + terms accepted).
+     */
+    public function renderBytesForOrder(Order $order, string $templatePath): string
     {
-        $user = $contract->user;
-        $storage = $contract->storage;
-        $storageType = $storage->storageType;
+        return $this->renderBytes(
+            templatePath: $templatePath,
+            documentNumberId: $order->id,
+            documentNumberDate: $order->createdAt,
+            user: $order->user,
+            storage: $order->storage,
+            rentalType: $order->rentalType,
+            startDate: $order->startDate,
+            endDate: $order->endDate,
+            documentDate: $order->createdAt,
+            signaturePath: $order->signaturePath,
+            signingPlace: $order->signingPlace,
+            signedAt: $order->signedAt,
+        );
+    }
+
+    private function renderBytes(
+        string $templatePath,
+        Uuid $documentNumberId,
+        \DateTimeImmutable $documentNumberDate,
+        User $user,
+        Storage $storage,
+        RentalType $rentalType,
+        \DateTimeImmutable $startDate,
+        ?\DateTimeImmutable $endDate,
+        \DateTimeImmutable $documentDate,
+        ?string $signaturePath,
+        ?string $signingPlace,
+        ?\DateTimeImmutable $signedAt,
+    ): string {
+        if (!file_exists($templatePath)) {
+            throw new \RuntimeException(sprintf('Contract template not found: %s', $templatePath));
+        }
+
+        $processor = new TemplateProcessor($templatePath);
         $place = $storage->getPlace();
 
-        // Tenant information (multiline, adapts to person vs company)
         $processor->setValue('TENANT_INFO', $this->formatTenantInfo($user));
-
-        // Storage description
-        $processor->setValue('STORAGE_DESCRIPTION', $this->formatStorageDescription($storage, $storageType));
-
-        // Rental duration (full sentence)
-        $processor->setValue('RENTAL_DURATION_TEXT', $this->formatRentalDuration($contract));
-
-        // Contract metadata
-        $processor->setValue('CONTRACT_NUMBER', $this->formatContractNumber($contract));
+        $processor->setValue('STORAGE_DESCRIPTION', $this->formatStorageDescription($storage, $storage->storageType));
+        $processor->setValue('RENTAL_DURATION_TEXT', $this->formatRentalDuration($rentalType, $startDate, $endDate));
+        $processor->setValue('CONTRACT_NUMBER', $this->formatDocumentNumber($documentNumberId, $documentNumberDate));
         $processor->setValue('CONTRACT_CITY', $place->city);
-        $processor->setValue('CONTRACT_DATE', $contract->createdAt->format('d.m.Y'));
-
-        // Signing metadata
+        $processor->setValue('CONTRACT_DATE', $documentDate->format('d.m.Y'));
         $processor->setValue('SIGNING_PLACE', $signingPlace ?? $place->city);
-        $processor->setValue('SIGNING_DATE', $signedAt?->format('d.m.Y') ?? $contract->createdAt->format('d.m.Y'));
+        $processor->setValue('SIGNING_DATE', $signedAt?->format('d.m.Y') ?? $documentDate->format('d.m.Y'));
+
+        $this->embedSignature($processor, $signaturePath);
+
+        $tempPath = tempnam(sys_get_temp_dir(), 'contract_doc_');
+        if (false === $tempPath) {
+            throw new \RuntimeException('Unable to create temporary file for contract rendering.');
+        }
+
+        try {
+            $processor->saveAs($tempPath);
+            $bytes = file_get_contents($tempPath);
+            if (false === $bytes) {
+                throw new \RuntimeException('Unable to read rendered contract document.');
+            }
+
+            return $bytes;
+        } finally {
+            @unlink($tempPath);
+        }
     }
 
     private function embedSignature(TemplateProcessor $processor, ?string $signaturePath): void
@@ -104,7 +154,7 @@ final readonly class ContractDocumentGenerator
         }
     }
 
-    private function formatTenantInfo(\App\Entity\User $user): string
+    private function formatTenantInfo(User $user): string
     {
         $address = $this->formatAddress($user);
 
@@ -136,7 +186,7 @@ final readonly class ContractDocumentGenerator
         return implode("\n", $lines);
     }
 
-    private function formatStorageDescription(\App\Entity\Storage $storage, \App\Entity\StorageType $storageType): string
+    private function formatStorageDescription(Storage $storage, StorageType $storageType): string
     {
         return sprintf(
             '%s č. %s (%d × %d × %d cm)',
@@ -148,22 +198,22 @@ final readonly class ContractDocumentGenerator
         );
     }
 
-    private function formatRentalDuration(Contract $contract): string
+    private function formatRentalDuration(RentalType $rentalType, \DateTimeImmutable $startDate, ?\DateTimeImmutable $endDate): string
     {
-        $startDate = $contract->startDate->format('d.m.Y');
+        $start = $startDate->format('d.m.Y');
 
-        if (RentalType::UNLIMITED === $contract->rentalType || null === $contract->endDate) {
-            return sprintf('Nájem se sjednává na dobu neurčitou, a to od %s', $startDate);
+        if (RentalType::UNLIMITED === $rentalType || null === $endDate) {
+            return sprintf('Nájem se sjednává na dobu neurčitou, a to od %s', $start);
         }
 
         return sprintf(
             'Nájem se sjednává na dobu určitou, a to od %s do %s',
-            $startDate,
-            $contract->endDate->format('d.m.Y'),
+            $start,
+            $endDate->format('d.m.Y'),
         );
     }
 
-    private function formatAddress(\App\Entity\User $user): string
+    private function formatAddress(User $user): string
     {
         if (null === $user->billingStreet || null === $user->billingCity || null === $user->billingPostalCode) {
             return '-';
@@ -177,10 +227,9 @@ final readonly class ContractDocumentGenerator
         );
     }
 
-    private function formatContractNumber(Contract $contract): string
+    private function formatDocumentNumber(Uuid $id, \DateTimeImmutable $date): string
     {
-        $date = $contract->createdAt;
-        $uuidShort = substr($contract->id->toRfc4122(), 0, 8);
+        $uuidShort = substr($id->toRfc4122(), 0, 8);
 
         return sprintf(
             '%s-%s-%s',

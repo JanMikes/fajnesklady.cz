@@ -114,7 +114,7 @@ final class StorageFixtures extends Fixture implements DependentFixtureInterface
             $storage = new Storage(
                 id: Uuid::v7(),
                 number: "A{$i}",
-                coordinates: ['x' => 50 + ($i - 1) * 110, 'y' => 50, 'width' => 100, 'height' => 100, 'rotation' => 0],
+                coordinates: ['x' => 50 + ($i - 1) * 110, 'y' => 50, 'width' => 100, 'height' => 100, 'rotation' => 0, 'normalized' => true],
                 storageType: $smallTypeCentrum,
                 place: $placePrahaCentrum,
                 createdAt: $now,
@@ -130,7 +130,7 @@ final class StorageFixtures extends Fixture implements DependentFixtureInterface
             $storage = new Storage(
                 id: Uuid::v7(),
                 number: "B{$i}",
-                coordinates: ['x' => 50 + ($i - 1) * 220, 'y' => 200, 'width' => 200, 'height' => 200, 'rotation' => 0],
+                coordinates: ['x' => 50 + ($i - 1) * 220, 'y' => 200, 'width' => 200, 'height' => 200, 'rotation' => 0, 'normalized' => true],
                 storageType: $mediumTypeCentrum,
                 place: $placePrahaCentrum,
                 createdAt: $now,
@@ -146,7 +146,7 @@ final class StorageFixtures extends Fixture implements DependentFixtureInterface
             $storage = new Storage(
                 id: Uuid::v7(),
                 number: "C{$i}",
-                coordinates: ['x' => 50 + ($i - 1) * 420, 'y' => 450, 'width' => 400, 'height' => 300, 'rotation' => 0],
+                coordinates: ['x' => 50 + ($i - 1) * 420, 'y' => 450, 'width' => 400, 'height' => 300, 'rotation' => 0, 'normalized' => true],
                 storageType: $largeTypeCentrum,
                 place: $placePrahaCentrum,
                 createdAt: $now,
@@ -162,7 +162,7 @@ final class StorageFixtures extends Fixture implements DependentFixtureInterface
             $storage = new Storage(
                 id: Uuid::v7(),
                 number: "D{$i}",
-                coordinates: ['x' => 50 + ($i - 1) * 110, 'y' => 50, 'width' => 100, 'height' => 100, 'rotation' => 0],
+                coordinates: ['x' => 50 + ($i - 1) * 110, 'y' => 50, 'width' => 100, 'height' => 100, 'rotation' => 0, 'normalized' => true],
                 storageType: $smallTypeJih,
                 place: $placePrahaJih,
                 createdAt: $now,
@@ -178,7 +178,7 @@ final class StorageFixtures extends Fixture implements DependentFixtureInterface
             $storage = new Storage(
                 id: Uuid::v7(),
                 number: "E{$i}",
-                coordinates: ['x' => 50 + ($i - 1) * 220, 'y' => 200, 'width' => 200, 'height' => 200, 'rotation' => 0],
+                coordinates: ['x' => 50 + ($i - 1) * 220, 'y' => 200, 'width' => 200, 'height' => 200, 'rotation' => 0, 'normalized' => true],
                 storageType: $mediumTypeJih,
                 place: $placePrahaJih,
                 createdAt: $now,
@@ -194,7 +194,7 @@ final class StorageFixtures extends Fixture implements DependentFixtureInterface
             $storage = new Storage(
                 id: Uuid::v7(),
                 number: "P{$i}",
-                coordinates: ['x' => 50 + ($i - 1) * 620, 'y' => 50, 'width' => 600, 'height' => 500, 'rotation' => 0],
+                coordinates: ['x' => 50 + ($i - 1) * 620, 'y' => 50, 'width' => 600, 'height' => 500, 'rotation' => 0, 'normalized' => true],
                 storageType: $premiumType,
                 place: $placeBrno,
                 createdAt: $now,
@@ -209,7 +209,7 @@ final class StorageFixtures extends Fixture implements DependentFixtureInterface
             $storage = new Storage(
                 id: Uuid::v7(),
                 number: "O{$i}",
-                coordinates: ['x' => 50 + ($i - 1) * 160, 'y' => 50, 'width' => 150, 'height' => 150, 'rotation' => 0],
+                coordinates: ['x' => 50 + ($i - 1) * 160, 'y' => 50, 'width' => 150, 'height' => 150, 'rotation' => 0, 'normalized' => true],
                 storageType: $standardType,
                 place: $placeOstrava,
                 createdAt: $now,
@@ -224,7 +224,7 @@ final class StorageFixtures extends Fixture implements DependentFixtureInterface
         $storageX1 = new Storage(
             id: Uuid::v7(),
             number: 'X1',
-            coordinates: ['x' => 700, 'y' => 50, 'width' => 250, 'height' => 220, 'rotation' => 0],
+            coordinates: ['x' => 700, 'y' => 50, 'width' => 250, 'height' => 220, 'rotation' => 0, 'normalized' => true],
             storageType: $customType,
             place: $placePrahaCentrum,
             createdAt: $now,
@@ -238,7 +238,7 @@ final class StorageFixtures extends Fixture implements DependentFixtureInterface
         $storageX2 = new Storage(
             id: Uuid::v7(),
             number: 'X2',
-            coordinates: ['x' => 700, 'y' => 300, 'width' => 250, 'height' => 220, 'rotation' => 0],
+            coordinates: ['x' => 700, 'y' => 300, 'width' => 250, 'height' => 220, 'rotation' => 0, 'normalized' => true],
             storageType: $customType,
             place: $placePrahaCentrum,
             createdAt: $now,
@@ -252,7 +252,7 @@ final class StorageFixtures extends Fixture implements DependentFixtureInterface
         $storageX3 = new Storage(
             id: Uuid::v7(),
             number: 'X3',
-            coordinates: ['x' => 700, 'y' => 550, 'width' => 250, 'height' => 220, 'rotation' => 0],
+            coordinates: ['x' => 700, 'y' => 550, 'width' => 250, 'height' => 220, 'rotation' => 0, 'normalized' => true],
             storageType: $customType,
             place: $placePrahaCentrum,
             createdAt: $now,

@@ -14,6 +14,7 @@ use App\Event\OrderCompleted;
 use App\Event\OrderCreated;
 use App\Event\OrderExpired;
 use App\Event\OrderPaid;
+use App\Event\OrderPlaced;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Types\UuidType;
@@ -113,6 +114,11 @@ class Order implements EntityWithEvents
     {
         $this->status = OrderStatus::RESERVED;
         $this->storage->reserve($now);
+
+        $this->recordThat(new OrderPlaced(
+            orderId: $this->id,
+            occurredOn: $now,
+        ));
     }
 
     public function acceptTerms(\DateTimeImmutable $now): void

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Event;
 
 use App\Repository\OrderRepository;
-use App\Service\StorageMapImageGenerator;
+use App\Service\ContractDocumentGenerator;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -19,12 +19,13 @@ final readonly class SendOrderConfirmationEmailHandler
         private OrderRepository $orderRepository,
         private MailerInterface $mailer,
         private UrlGeneratorInterface $urlGenerator,
-        private StorageMapImageGenerator $mapImageGenerator,
+        private ContractDocumentGenerator $contractDocumentGenerator,
         private string $projectDir,
+        private string $contractTemplatePath,
     ) {
     }
 
-    public function __invoke(OrderCreated $event): void
+    public function __invoke(OrderPlaced $event): void
     {
         $order = $this->orderRepository->get($event->orderId);
         $user = $order->user;
@@ -58,10 +59,15 @@ final readonly class SendOrderConfirmationEmailHandler
                 'manageUrl' => $manageUrl,
             ]);
 
-        $mapImageData = $this->mapImageGenerator->generate($storage);
-
-        if (null !== $mapImageData) {
-            $email->attach($mapImageData, 'mapa-skladu.png', 'image/png');
+        // Attach the signed contract DOCX (the order is legally binding at this point).
+        // Skipped only for orders without a signature (e.g. legacy admin migrations).
+        if ($order->hasSignature()) {
+            $contractBytes = $this->contractDocumentGenerator->renderBytesForOrder($order, $this->contractTemplatePath);
+            $email->attach(
+                $contractBytes,
+                sprintf('smlouva-%s.docx', substr($order->id->toRfc4122(), 0, 8)),
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            );
         }
 
         // Attach VOP
@@ -81,16 +87,6 @@ final readonly class SendOrderConfirmationEmailHandler
             $recurringPaymentsPath = $this->projectDir.'/public/documents/podminky-opakovanych-plateb.pdf';
             if (file_exists($recurringPaymentsPath)) {
                 $email->attachFromPath($recurringPaymentsPath, 'podminky-opakovanych-plateb.pdf', 'application/pdf');
-            }
-        }
-
-        // Attach operating rules (if place has one)
-        if (null !== $place->operatingRulesPath) {
-            $operatingRulesPath = $this->projectDir.'/public/uploads/'.$place->operatingRulesPath;
-            if (file_exists($operatingRulesPath)) {
-                $extension = pathinfo($place->operatingRulesPath, \PATHINFO_EXTENSION);
-                $mimeType = 'pdf' === strtolower($extension) ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-                $email->attachFromPath($operatingRulesPath, 'provozni-rad.'.$extension, $mimeType);
             }
         }
 

@@ -18,6 +18,7 @@ use App\Event\OrderCompleted;
 use App\Event\OrderCreated;
 use App\Event\OrderExpired;
 use App\Event\OrderPaid;
+use App\Event\OrderPlaced;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
@@ -182,6 +183,21 @@ class OrderTest extends TestCase
         $order->reserve($now);
 
         $this->assertTrue($order->storage->isReserved());
+    }
+
+    public function testReserveRecordsOrderPlacedEvent(): void
+    {
+        $order = $this->createOrder();
+        $order->popEvents(); // Clear created event
+        $now = new \DateTimeImmutable();
+
+        $order->reserve($now);
+
+        $events = $order->popEvents();
+        $this->assertCount(1, $events);
+        $this->assertInstanceOf(OrderPlaced::class, $events[0]);
+        $this->assertTrue($order->id->equals($events[0]->orderId));
+        $this->assertSame($now, $events[0]->occurredOn);
     }
 
     public function testMarkAwaitingPayment(): void
@@ -524,9 +540,10 @@ class OrderTest extends TestCase
         $this->assertTrue($order->storage->isOccupied());
 
         $events = $order->popEvents();
-        $this->assertCount(2, $events);
-        $this->assertInstanceOf(OrderPaid::class, $events[0]);
-        $this->assertInstanceOf(OrderCompleted::class, $events[1]);
+        $this->assertCount(3, $events);
+        $this->assertInstanceOf(OrderPlaced::class, $events[0]);
+        $this->assertInstanceOf(OrderPaid::class, $events[1]);
+        $this->assertInstanceOf(OrderCompleted::class, $events[2]);
     }
 
     public function testHasSignatureReturnsFalseByDefault(): void

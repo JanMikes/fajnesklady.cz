@@ -10,16 +10,12 @@ use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\RentalType;
-use App\Event\OrderCreated;
+use App\Enum\SigningMethod;
+use App\Event\OrderPlaced;
 use App\Event\SendOrderConfirmationEmailHandler;
 use App\Repository\OrderRepository;
-use App\Repository\StorageRepository;
-use App\Service\PublicFilesystem;
-use App\Service\StorageMapImageGenerator;
-use Intervention\Image\ImageManager;
-use League\Flysystem\FilesystemOperator;
+use App\Service\ContractDocumentGenerator;
 use PHPUnit\Framework\TestCase;
-use Psr\Log\NullLogger;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Email;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
@@ -34,7 +30,6 @@ class SendOrderConfirmationEmailHandlerTest extends TestCase
         $this->tempDir = sys_get_temp_dir().'/order_email_test_'.uniqid();
         mkdir($this->tempDir, 0755, true);
         mkdir($this->tempDir.'/public/documents', 0755, true);
-        mkdir($this->tempDir.'/public/uploads/places', 0755, true);
 
         // Create static document files
         file_put_contents($this->tempDir.'/public/documents/vop.pdf', '%PDF-vop');
@@ -49,11 +44,10 @@ class SendOrderConfirmationEmailHandlerTest extends TestCase
 
     public function testAttachesVopAndConsumerNoticeForLimitedRental(): void
     {
-        $order = $this->createOrder(endDate: new \DateTimeImmutable('+30 days'));
+        $order = $this->createOrder(endDate: new \DateTimeImmutable('+30 days'), withSignature: true);
         $sentEmail = $this->sendEmail($order);
 
-        $attachments = $sentEmail->getAttachments();
-        $names = array_map(fn ($a) => $a->getFilename(), $attachments);
+        $names = $this->attachmentNames($sentEmail);
 
         $this->assertContains('vop.pdf', $names);
         $this->assertContains('pouceni-spotrebitele.pdf', $names);
@@ -62,58 +56,74 @@ class SendOrderConfirmationEmailHandlerTest extends TestCase
 
     public function testAttachesRecurringPaymentsTermsForUnlimitedRental(): void
     {
-        $order = $this->createOrder(endDate: null);
+        $order = $this->createOrder(endDate: null, withSignature: true);
         $sentEmail = $this->sendEmail($order);
 
-        $attachments = $sentEmail->getAttachments();
-        $names = array_map(fn ($a) => $a->getFilename(), $attachments);
+        $names = $this->attachmentNames($sentEmail);
 
         $this->assertContains('vop.pdf', $names);
         $this->assertContains('pouceni-spotrebitele.pdf', $names);
         $this->assertContains('podminky-opakovanych-plateb.pdf', $names);
     }
 
-    public function testAttachesOperatingRulesWhenPlaceHasOne(): void
+    public function testDoesNotAttachOperatingRulesOrMap(): void
     {
-        $order = $this->createOrder(endDate: new \DateTimeImmutable('+30 days'));
-
-        // Create operating rules file
-        $rulesDir = $this->tempDir.'/public/uploads/places/test';
-        mkdir($rulesDir, 0755, true);
-        file_put_contents($rulesDir.'/provozni-rad.pdf', '%PDF-rules');
+        $order = $this->createOrder(endDate: new \DateTimeImmutable('+30 days'), withSignature: true);
         $order->storage->getPlace()->updateOperatingRules('places/test/provozni-rad.pdf', new \DateTimeImmutable());
 
         $sentEmail = $this->sendEmail($order);
 
-        $attachments = $sentEmail->getAttachments();
-        $names = array_map(fn ($a) => $a->getFilename(), $attachments);
+        $names = $this->attachmentNames($sentEmail);
 
-        $this->assertContains('provozni-rad.pdf', $names);
-    }
-
-    public function testDoesNotAttachOperatingRulesWhenPlaceHasNone(): void
-    {
-        $order = $this->createOrder(endDate: new \DateTimeImmutable('+30 days'));
-        $sentEmail = $this->sendEmail($order);
-
-        $attachments = $sentEmail->getAttachments();
-        $names = array_map(fn ($a) => $a->getFilename(), $attachments);
-
-        // Should not contain any provozni-rad attachment
+        // provozni-rad and map are sent in the post-payment "Smlouva připravena" email,
+        // not in the placement confirmation.
         foreach ($names as $name) {
             $this->assertStringNotContainsString('provozni-rad', (string) $name);
+            $this->assertStringNotContainsString('mapa', (string) $name);
         }
     }
 
-    private function sendEmail(Order $order): Email
+    public function testAttachesContractDocxWhenOrderIsSigned(): void
     {
-        $event = new OrderCreated(
-            $order->id,
-            $order->user->id,
-            $order->storage->id,
-            $order->totalPrice,
-            new \DateTimeImmutable(),
-        );
+        $order = $this->createOrder(endDate: new \DateTimeImmutable('+30 days'), withSignature: true);
+
+        $contractGenerator = $this->createStub(ContractDocumentGenerator::class);
+        $contractGenerator->method('renderBytesForOrder')->willReturn('PK fake docx bytes');
+
+        $sentEmail = $this->sendEmail($order, $contractGenerator);
+
+        $names = $this->attachmentNames($sentEmail);
+        $contractAttachments = array_filter($names, fn ($n) => str_starts_with((string) $n, 'smlouva-'));
+
+        $this->assertCount(1, $contractAttachments, 'Expected exactly one smlouva-*.docx attachment');
+    }
+
+    public function testSkipsContractAttachmentWhenOrderHasNoSignature(): void
+    {
+        $order = $this->createOrder(endDate: new \DateTimeImmutable('+30 days'), withSignature: false);
+
+        $contractGenerator = $this->createMock(ContractDocumentGenerator::class);
+        $contractGenerator->expects($this->never())->method('renderBytesForOrder');
+
+        $sentEmail = $this->sendEmail($order, $contractGenerator);
+
+        $names = $this->attachmentNames($sentEmail);
+        foreach ($names as $name) {
+            $this->assertStringStartsNotWith('smlouva-', (string) $name);
+        }
+    }
+
+    /**
+     * @return array<string|null>
+     */
+    private function attachmentNames(Email $email): array
+    {
+        return array_map(fn ($a) => $a->getFilename(), $email->getAttachments());
+    }
+
+    private function sendEmail(Order $order, ?ContractDocumentGenerator $contractGenerator = null): Email
+    {
+        $event = new OrderPlaced($order->id, new \DateTimeImmutable());
 
         $orderRepository = $this->createStub(OrderRepository::class);
         $orderRepository->method('get')->willReturn($order);
@@ -121,11 +131,10 @@ class SendOrderConfirmationEmailHandlerTest extends TestCase
         $urlGenerator = $this->createStub(UrlGeneratorInterface::class);
         $urlGenerator->method('generate')->willReturn('https://example.com/order');
 
-        $storageRepository = $this->createStub(StorageRepository::class);
-        $storageRepository->method('findByPlace')->willReturn([]);
-        $filesystemOperator = $this->createStub(FilesystemOperator::class);
-        $filesystem = new PublicFilesystem($filesystemOperator);
-        $mapImageGenerator = new StorageMapImageGenerator($storageRepository, $filesystem, ImageManager::gd(), new NullLogger());
+        if (null === $contractGenerator) {
+            $contractGenerator = $this->createStub(ContractDocumentGenerator::class);
+            $contractGenerator->method('renderBytesForOrder')->willReturn('PK fake docx bytes');
+        }
 
         $sentEmail = null;
         $mailer = $this->createStub(MailerInterface::class);
@@ -137,8 +146,9 @@ class SendOrderConfirmationEmailHandlerTest extends TestCase
             $orderRepository,
             $mailer,
             $urlGenerator,
-            $mapImageGenerator,
+            $contractGenerator,
             $this->tempDir,
+            $this->tempDir.'/template.docx',
         );
         $handler($event);
 
@@ -147,7 +157,7 @@ class SendOrderConfirmationEmailHandlerTest extends TestCase
         return $sentEmail;
     }
 
-    private function createOrder(?\DateTimeImmutable $endDate): Order
+    private function createOrder(?\DateTimeImmutable $endDate, bool $withSignature): Order
     {
         $place = new Place(
             id: Uuid::v7(),
@@ -174,7 +184,7 @@ class SendOrderConfirmationEmailHandlerTest extends TestCase
         $storage = new Storage(
             id: Uuid::v7(),
             number: 'A1',
-            coordinates: ['x' => 0, 'y' => 0, 'width' => 100, 'height' => 100, 'rotation' => 0],
+            coordinates: ['x' => 0, 'y' => 0, 'width' => 100, 'height' => 100, 'rotation' => 0, 'normalized' => true],
             storageType: $storageType,
             place: $place,
             createdAt: new \DateTimeImmutable(),
@@ -189,7 +199,7 @@ class SendOrderConfirmationEmailHandlerTest extends TestCase
             new \DateTimeImmutable(),
         );
 
-        return new Order(
+        $order = new Order(
             id: Uuid::v7(),
             user: $user,
             storage: $storage,
@@ -201,6 +211,19 @@ class SendOrderConfirmationEmailHandlerTest extends TestCase
             expiresAt: new \DateTimeImmutable('+7 days'),
             createdAt: new \DateTimeImmutable(),
         );
+
+        if ($withSignature) {
+            $order->attachSignature(
+                signaturePath: '/tmp/signature.png',
+                signingMethod: SigningMethod::DRAW,
+                typedName: null,
+                styleId: null,
+                signingPlace: 'Praha',
+                now: new \DateTimeImmutable(),
+            );
+        }
+
+        return $order;
     }
 
     private function removeDirectory(string $dir): void

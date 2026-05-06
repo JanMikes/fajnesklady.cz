@@ -6,6 +6,7 @@ namespace App\Event;
 
 use App\Repository\ContractRepository;
 use App\Service\RecurringPaymentCancelUrlGenerator;
+use App\Service\StorageMapImageGenerator;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -20,6 +21,7 @@ final readonly class SendContractReadyEmailHandler
         private MailerInterface $mailer,
         private UrlGeneratorInterface $urlGenerator,
         private RecurringPaymentCancelUrlGenerator $cancelUrlGenerator,
+        private StorageMapImageGenerator $mapImageGenerator,
         private string $uploadsDirectory,
     ) {
     }
@@ -67,6 +69,14 @@ final readonly class SendContractReadyEmailHandler
                 $contract->documentPath,
                 sprintf('smlouva_%s.docx', $this->formatContractNumber($contract)),
             );
+        }
+
+        // Attach the place map with the rented storage highlighted.
+        // Triggered on OrderCompleted (first payment), so recurring monthly charges
+        // (which do not fire OrderCompleted) won't re-attach this every month.
+        $mapImageData = $this->mapImageGenerator->generate($storage);
+        if (null !== $mapImageData) {
+            $email->attach($mapImageData, 'mapa-skladu.png', 'image/png');
         }
 
         // Attach operating rules document if available for this place

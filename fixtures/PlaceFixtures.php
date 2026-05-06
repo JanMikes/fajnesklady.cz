@@ -6,8 +6,11 @@ namespace App\DataFixtures;
 
 use App\Entity\Place;
 use App\Enum\PlaceType;
+use App\Service\PublicFilesystem;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Persistence\ObjectManager;
+use Intervention\Image\Encoders\PngEncoder;
+use Intervention\Image\ImageManager;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -22,6 +25,8 @@ final class PlaceFixtures extends Fixture
 
     public function __construct(
         private ClockInterface $clock,
+        private ImageManager $imageManager,
+        private PublicFilesystem $publicFilesystem,
     ) {
     }
 
@@ -41,6 +46,7 @@ final class PlaceFixtures extends Fixture
             type: PlaceType::FAJNE_SKLADY,
         );
         $place1->updateLocation('50.0904272', '14.4314139', $now);
+        $place1->updateMapImage($this->generatePlainMap($place1->id), $now);
         $manager->persist($place1);
         $this->addReference(self::REF_PRAHA_CENTRUM, $place1);
 
@@ -55,6 +61,7 @@ final class PlaceFixtures extends Fixture
             type: PlaceType::SAMOSTATNY_SKLAD,
         );
         $place2->updateLocation('50.0312889', '14.4949583', $now);
+        $place2->updateMapImage($this->generatePlainMap($place2->id), $now);
         $manager->persist($place2);
         $this->addReference(self::REF_PRAHA_JIH, $place2);
 
@@ -69,6 +76,7 @@ final class PlaceFixtures extends Fixture
             type: PlaceType::FAJNE_SKLADY,
         );
         $place3->updateLocation('49.1950602', '16.6068371', $now);
+        $place3->updateMapImage($this->generatePlainMap($place3->id), $now);
         $manager->persist($place3);
         $this->addReference(self::REF_BRNO, $place3);
 
@@ -83,6 +91,7 @@ final class PlaceFixtures extends Fixture
             type: PlaceType::SAMOSTATNY_SKLAD,
         );
         $place4->updateLocation('49.8347282', '18.2820642', $now);
+        $place4->updateMapImage($this->generatePlainMap($place4->id), $now);
         $manager->persist($place4);
         $this->addReference(self::REF_OSTRAVA, $place4);
 
@@ -102,5 +111,23 @@ final class PlaceFixtures extends Fixture
         $this->addReference(self::REF_PLZEN, $place5);
 
         $manager->flush();
+    }
+
+    /**
+     * Generate a plain-white map image large enough to contain all seeded storage
+     * coordinates (max extent across fixtures is ~1270×550). The seeded coordinates
+     * are stored with `normalized: true`, so they map directly to image pixels.
+     */
+    private function generatePlainMap(Uuid $placeId): string
+    {
+        $path = sprintf('places/%s/maps/seed-map.png', $placeId->toRfc4122());
+
+        $image = $this->imageManager->create(1500, 900)->fill('#ffffff');
+        $bytes = $image->encode(new PngEncoder())->toString();
+
+        $this->publicFilesystem->deleteIfExists($path);
+        $this->publicFilesystem->write($path, $bytes);
+
+        return $path;
     }
 }

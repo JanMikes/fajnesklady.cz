@@ -12,7 +12,7 @@ use Intervention\Image\Interfaces\ImageInterface;
 use League\Flysystem\FilesystemException;
 use Psr\Log\LoggerInterface;
 
-final readonly class StorageMapImageGenerator
+readonly class StorageMapImageGenerator
 {
     public function __construct(
         private StorageRepository $storageRepository,
