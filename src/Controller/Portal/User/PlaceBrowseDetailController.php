@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller\Portal\User;
 
 use App\Repository\PlaceRepository;
+use App\Repository\StorageRepository;
 use App\Repository\StorageTypeRepository;
 use App\Service\StorageAssignment;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -21,6 +22,7 @@ final class PlaceBrowseDetailController extends AbstractController
     public function __construct(
         private readonly PlaceRepository $placeRepository,
         private readonly StorageTypeRepository $storageTypeRepository,
+        private readonly StorageRepository $storageRepository,
         private readonly StorageAssignment $storageAssignment,
     ) {
     }
@@ -43,19 +45,23 @@ final class PlaceBrowseDetailController extends AbstractController
         $endDate = $startDate->modify('+30 days');
 
         $availability = [];
+        $priceRanges = [];
         foreach ($storageTypes as $storageType) {
-            $availability[$storageType->id->toRfc4122()] = $this->storageAssignment->countAvailableStorages(
+            $key = $storageType->id->toRfc4122();
+            $availability[$key] = $this->storageAssignment->countAvailableStorages(
                 $storageType,
                 $place,
                 $startDate,
                 $endDate
             );
+            $priceRanges[$key] = $this->storageRepository->getEffectiveMonthlyPriceRangeForType($storageType, $place);
         }
 
         return $this->render('portal/user/browse/place_detail.html.twig', [
             'place' => $place,
             'storageTypes' => $storageTypes,
             'availability' => $availability,
+            'priceRanges' => $priceRanges,
             'placeId' => $place->id->toRfc4122(),
         ]);
     }

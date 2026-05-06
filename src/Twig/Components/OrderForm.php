@@ -13,6 +13,7 @@ use App\Form\OrderFormData;
 use App\Form\OrderFormType;
 use App\Repository\StorageRepository;
 use App\Service\PriceCalculator;
+use App\Value\PaymentSchedule;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
@@ -97,44 +98,34 @@ final class OrderForm extends AbstractController
     }
 
     /**
-     * Server-rendered pricing preview shown above the submit button. Uses the same
-     * {@see PriceCalculator} that the order acceptance flow uses, so what the
-     * customer sees here is exactly what they'll pay.
+     * Authoritative payment schedule for the live preview. Same
+     * {@see PriceCalculator::buildPaymentSchedule()} call the order_accept
+     * page and the recurring-billing cron use — what's shown here is what
+     * the customer will actually be charged.
      *
-     * @return array{type: 'monthly', monthly: float}
-     *                                                |array{type: 'oneTime', days: int, total: float}
-     *                                                |array{type: 'recurring', days: int, total: float, monthly: float}
-     *                                                |null Null when the form data is incomplete (e.g. missing dates).
+     * Returns null when the form data is incomplete (e.g. missing dates) so
+     * the template can hide the preview block cleanly.
      */
-    public function getPricing(Storage $storage): ?array
+    public function getPaymentSchedule(Storage $storage): ?PaymentSchedule
     {
         $data = $this->getForm()->getData();
         if (!$data instanceof OrderFormData) {
             return null;
         }
 
-        $monthlyCzk = $storage->getEffectivePricePerMonthInCzk();
-
         if (RentalType::UNLIMITED === $data->rentalType) {
-            return ['type' => 'monthly', 'monthly' => $monthlyCzk];
+            $startDate = $data->startDate ?? new \DateTimeImmutable('today');
+
+            return $this->priceCalculator->buildPaymentSchedule($storage, $startDate, null);
         }
 
         if (null === $data->startDate || null === $data->endDate) {
             return null;
         }
 
-        $days = (int) $data->startDate->diff($data->endDate)->days;
-        if ($days <= 0) {
-            return null;
-        }
+        $schedule = $this->priceCalculator->buildPaymentSchedule($storage, $data->startDate, $data->endDate);
 
-        $totalCzk = $this->priceCalculator->calculatePriceForStorage($storage, $data->startDate, $data->endDate) / 100;
-
-        if ($days < 28) {
-            return ['type' => 'oneTime', 'days' => $days, 'total' => $totalCzk];
-        }
-
-        return ['type' => 'recurring', 'days' => $days, 'total' => $totalCzk, 'monthly' => $monthlyCzk];
+        return $schedule->isEmpty() ? null : $schedule;
     }
 
     #[LiveAction]

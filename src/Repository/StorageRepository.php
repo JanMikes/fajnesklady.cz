@@ -58,6 +58,44 @@ class StorageRepository
     }
 
     /**
+     * Effective monthly price range for all storages of a given type at a place.
+     *
+     * The place_detail page used to advertise `StorageType::defaultPricePerMonth`
+     * unconditionally — but individual `Storage` units can override that via
+     * `Storage::pricePerMonth`, and the order flow uses the per-unit effective
+     * price. That mismatch confused customers seeing "1 400 Kč/měsíc" on the
+     * map and then "1 800 Kč" in the order. Returning the [min, max] effective
+     * range lets the detail page show truthful pricing across units.
+     *
+     * Returns null when there are no (non-deleted) storages of the type at the
+     * place, so the caller falls back to the type default.
+     *
+     * @return array{min: int, max: int}|null Halire (CZK × 100).
+     */
+    public function getEffectiveMonthlyPriceRangeForType(StorageType $storageType, Place $place): ?array
+    {
+        $rows = $this->entityManager->createQueryBuilder()
+            ->select('COALESCE(s.pricePerMonth, st.defaultPricePerMonth) AS effective_price')
+            ->from(Storage::class, 's')
+            ->join('s.storageType', 'st')
+            ->where('s.storageType = :storageType')
+            ->andWhere('s.place = :place')
+            ->andWhere('s.deletedAt IS NULL')
+            ->setParameter('storageType', $storageType)
+            ->setParameter('place', $place)
+            ->getQuery()
+            ->getArrayResult();
+
+        if ([] === $rows) {
+            return null;
+        }
+
+        $prices = array_map(static fn (array $r): int => (int) $r['effective_price'], $rows);
+
+        return ['min' => min($prices), 'max' => max($prices)];
+    }
+
+    /**
      * @return Storage[]
      */
     public function findByStorageTypeAndPlace(StorageType $storageType, Place $place): array

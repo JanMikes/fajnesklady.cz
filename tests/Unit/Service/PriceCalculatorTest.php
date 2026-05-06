@@ -344,4 +344,108 @@ class PriceCalculatorTest extends TestCase
 
         $this->assertSame(0, $price);
     }
+
+    public function testBuildPaymentScheduleUnlimitedRental(): void
+    {
+        $storageType = $this->createStorageType(10000, 180000); // 1 800 Kč/month
+        $place = $this->createPlace();
+        $storage = $this->createStorage($storageType, $place);
+        $startDate = new \DateTimeImmutable('2026-05-09');
+
+        $schedule = $this->calculator->buildPaymentSchedule($storage, $startDate, null);
+
+        $this->assertTrue($schedule->isRecurring);
+        $this->assertTrue($schedule->isOpenEnded);
+        $this->assertSame(1, $schedule->entryCount());
+        $this->assertSame(180000, $schedule->firstPayment()->amount);
+        $this->assertEquals($startDate, $schedule->firstPayment()->chargeDate);
+        $this->assertSame(180000, $schedule->monthlyAmount);
+    }
+
+    public function testBuildPaymentScheduleShortRentalIsOneShot(): void
+    {
+        $storageType = $this->createStorageType(70000, 180000); // 700 Kč/week
+        $place = $this->createPlace();
+        $storage = $this->createStorage($storageType, $place);
+        $startDate = new \DateTimeImmutable('2026-05-09');
+        $endDate = new \DateTimeImmutable('2026-05-19'); // 10 days
+
+        $schedule = $this->calculator->buildPaymentSchedule($storage, $startDate, $endDate);
+
+        $this->assertFalse($schedule->isRecurring);
+        $this->assertFalse($schedule->isOpenEnded);
+        $this->assertSame(1, $schedule->entryCount());
+        // 1 week (70000) + 3 days × (70000/7) = 70000 + 30000 = 100000
+        $this->assertSame(100000, $schedule->firstPayment()->amount);
+        $this->assertNull($schedule->monthlyAmount);
+    }
+
+    public function testBuildPaymentScheduleFortyNineDaysProducesTwoCharges(): void
+    {
+        // The exact case from the bug report — 49 days, 1 800 Kč/měsíc.
+        // Expected: 1 800 (start) + prorated tail (18 days × 60) = 1 080 → total 2 880.
+        $storageType = $this->createStorageType(50000, 180000);
+        $place = $this->createPlace();
+        $storage = $this->createStorage($storageType, $place);
+        $startDate = new \DateTimeImmutable('2026-05-09');
+        $endDate = new \DateTimeImmutable('2026-06-27'); // 49 days
+
+        $schedule = $this->calculator->buildPaymentSchedule($storage, $startDate, $endDate);
+
+        $this->assertTrue($schedule->isRecurring);
+        $this->assertFalse($schedule->isOpenEnded);
+        $this->assertSame(2, $schedule->entryCount());
+        $this->assertSame(180000, $schedule->entries[0]->amount);
+        $this->assertEquals($startDate, $schedule->entries[0]->chargeDate);
+        // Second billing on 9.6.2026, prorates 18 days × 6000 halire/day = 108000
+        $this->assertEquals(new \DateTimeImmutable('2026-06-09'), $schedule->entries[1]->chargeDate);
+        $this->assertSame(108000, $schedule->entries[1]->amount);
+        $this->assertSame(288000, $schedule->totalKnownAmount());
+        $this->assertSame(180000, $schedule->monthlyAmount);
+    }
+
+    public function testBuildPaymentScheduleExactlyOneMonth(): void
+    {
+        $storageType = $this->createStorageType(50000, 180000);
+        $place = $this->createPlace();
+        $storage = $this->createStorage($storageType, $place);
+        $startDate = new \DateTimeImmutable('2026-05-09');
+        $endDate = new \DateTimeImmutable('2026-06-09'); // exactly 1 calendar month
+
+        $schedule = $this->calculator->buildPaymentSchedule($storage, $startDate, $endDate);
+
+        $this->assertTrue($schedule->isRecurring);
+        $this->assertSame(1, $schedule->entryCount());
+        $this->assertSame(180000, $schedule->totalKnownAmount());
+    }
+
+    public function testBuildPaymentScheduleZeroDays(): void
+    {
+        $storageType = $this->createStorageType(50000, 180000);
+        $place = $this->createPlace();
+        $storage = $this->createStorage($storageType, $place);
+        $startDate = new \DateTimeImmutable('2026-05-09');
+
+        $schedule = $this->calculator->buildPaymentSchedule($storage, $startDate, $startDate);
+
+        $this->assertTrue($schedule->isEmpty());
+        $this->assertFalse($schedule->isRecurring);
+    }
+
+    public function testCalculateFirstPaymentPriceMatchesScheduleFirstEntry(): void
+    {
+        // Belt-and-braces: the legacy method must always agree with the schedule
+        // it now delegates to, otherwise OrderAcceptController would persist a
+        // totalPrice different from what the schedule promises.
+        $storageType = $this->createStorageType(50000, 180000);
+        $place = $this->createPlace();
+        $storage = $this->createStorage($storageType, $place);
+        $startDate = new \DateTimeImmutable('2026-05-09');
+
+        foreach ([null, new \DateTimeImmutable('2026-05-19'), new \DateTimeImmutable('2026-06-27')] as $endDate) {
+            $first = $this->calculator->calculateFirstPaymentPrice($storage, $startDate, $endDate);
+            $schedule = $this->calculator->buildPaymentSchedule($storage, $startDate, $endDate);
+            $this->assertSame($first, $schedule->firstPayment()->amount);
+        }
+    }
 }

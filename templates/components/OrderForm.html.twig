@@ -251,25 +251,39 @@
                             </div>
                         </div>
 
-                        {# Dynamic Pricing — server-rendered via PriceCalculator (same service the
-                           order acceptance flow uses). data-model="on(change)|*" syncs form values
-                           on every change, so this re-renders naturally with each date / rental-type
-                           tweak. No client-side math, no morph race. #}
-                        {% set pricing = this.getPricing(selectedStorage) %}
-                        {% if pricing %}
-                            <div class="bg-accent/5 border border-accent/20 rounded-lg px-4 py-3 flex items-center justify-between">
-                                {% if pricing.type == 'monthly' %}
-                                    <span class="text-sm text-gray-600">Měsíční platba</span>
-                                    <span class="text-lg font-bold text-accent">{{ pricing.monthly|number_format(0, ',', ' ') }} Kč / měsíc <span class="text-xs text-gray-500 font-normal">vč. DPH</span></span>
-                                {% elseif pricing.type == 'oneTime' %}
-                                    <span class="text-sm text-gray-600">Jednorázová platba ({{ pricing.days }} dní)</span>
-                                    <span class="text-lg font-bold text-accent">{{ pricing.total|number_format(0, ',', ' ') }} Kč <span class="text-xs text-gray-500 font-normal">vč. DPH</span></span>
-                                {% elseif pricing.type == 'recurring' %}
-                                    <span class="text-sm text-gray-600">{{ pricing.monthly|number_format(0, ',', ' ') }} Kč / měsíc</span>
-                                    <div class="text-right">
-                                        <span class="text-lg font-bold text-accent">{{ pricing.total|number_format(0, ',', ' ') }} Kč <span class="text-xs text-gray-500 font-normal">vč. DPH</span></span>
-                                        <span class="text-xs text-gray-500 ml-1">celkem za {{ pricing.days }} dní</span>
+                        {# Dynamic Pricing — server-rendered via PriceCalculator (same schedule the
+                           order acceptance flow + recurring-billing cron use). data-model="on(change)|*"
+                           syncs form values on every change, so this re-renders naturally with each
+                           date / rental-type tweak. No client-side math, no morph race. #}
+                        {% set schedule = this.getPaymentSchedule(selectedStorage) %}
+                        {% if schedule %}
+                            <div class="bg-accent/5 border border-accent/20 rounded-lg px-4 py-3 space-y-2">
+                                {% if schedule.isOpenEnded %}
+                                    {# UNLIMITED — open-ended monthly recurrence #}
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-sm text-gray-600">Měsíční platba (na dobu neurčitou)</span>
+                                        <span class="text-lg font-bold text-accent">{{ schedule.monthlyAmountInCzk|number_format(0, ',', ' ') }} Kč / měsíc <span class="text-xs text-gray-500 font-normal">vč. DPH</span></span>
                                     </div>
+                                {% elseif not schedule.isRecurring %}
+                                    {# SHORT (< 28 dní) — single one-shot charge #}
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-sm text-gray-600">Jednorázová platba</span>
+                                        <span class="text-lg font-bold text-accent">{{ schedule.firstPayment.amountInCzk|number_format(0, ',', ' ') }} Kč <span class="text-xs text-gray-500 font-normal">vč. DPH</span></span>
+                                    </div>
+                                {% else %}
+                                    {# FIXED-END ≥ 28 dní — full schedule with prorated tail #}
+                                    <div class="flex items-center justify-between border-b border-accent/20 pb-2">
+                                        <span class="text-sm text-gray-600">Cena celkem ({{ schedule.entryCount }} platby)</span>
+                                        <span class="text-lg font-bold text-accent">{{ schedule.totalKnownAmountInCzk|number_format(0, ',', ' ') }} Kč <span class="text-xs text-gray-500 font-normal">vč. DPH</span></span>
+                                    </div>
+                                    <ul class="space-y-1 text-xs text-gray-600">
+                                        {% for entry in schedule.entries %}
+                                            <li class="flex items-center justify-between">
+                                                <span>{{ loop.first ? '1. platba' : (loop.last ? 'doplatek' : (loop.index ~ '. platba')) }} <span class="text-gray-400">({{ entry.chargeDate|date('d.m.Y') }})</span></span>
+                                                <span class="font-medium text-gray-800">{{ entry.amountInCzk|number_format(0, ',', ' ') }} Kč</span>
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
                                 {% endif %}
                             </div>
                         {% endif %}

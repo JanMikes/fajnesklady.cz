@@ -63,16 +63,46 @@
 
                     <hr class="my-4">
 
-                    <div class="flex justify-between text-lg">
-                        <span class="font-semibold text-gray-900">
-                            {% if order.endDate %}
-                                Celková cena
-                            {% else %}
-                                Cena za první měsíc
-                            {% endif %}
-                        </span>
-                        <span class="font-bold text-accent">{{ order.totalPriceInCzk|number_format(2, ',', ' ') }} Kč {{ vat_suffix() }}</span>
-                    </div>
+                    {# Payment-amount header. The button below charges *order.totalPrice* — for
+                       any rental that needs recurring billing (unlimited or fixed-end ≥ 28 days)
+                       that's the FIRST charge, not the contract total. Don't say "Celková cena"
+                       unless the schedule is genuinely a one-shot — otherwise we promise less
+                       than the recurring cron will actually charge. #}
+                    {% if paymentSchedule.isOpenEnded %}
+                        <div class="flex justify-between text-lg">
+                            <span class="font-semibold text-gray-900">Cena za první měsíc</span>
+                            <span class="font-bold text-accent">{{ order.totalPriceInCzk|number_format(2, ',', ' ') }} Kč {{ vat_suffix() }}</span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2">
+                            Po této platbě bude každý měsíc ke stejnému dni stržena částka {{ paymentSchedule.monthlyAmountInCzk|number_format(2, ',', ' ') }} Kč {{ vat_suffix() }} až do odvolání souhlasu.
+                            Souhlas s opakovanou platbou jste udělil/a v předchozím kroku, zrušit jej můžete kdykoli na <a href="mailto:simek@fajnesklady.cz" class="text-accent hover:underline">simek@fajnesklady.cz</a>.
+                        </p>
+                    {% elseif not paymentSchedule.isRecurring %}
+                        <div class="flex justify-between text-lg">
+                            <span class="font-semibold text-gray-900">Celková cena</span>
+                            <span class="font-bold text-accent">{{ order.totalPriceInCzk|number_format(2, ',', ' ') }} Kč {{ vat_suffix() }}</span>
+                        </div>
+                    {% else %}
+                        <div class="flex justify-between text-lg">
+                            <span class="font-semibold text-gray-900">1. platba (z {{ paymentSchedule.entryCount }})</span>
+                            <span class="font-bold text-accent">{{ order.totalPriceInCzk|number_format(2, ',', ' ') }} Kč {{ vat_suffix() }}</span>
+                        </div>
+                        <div class="flex justify-between text-sm mt-1">
+                            <span class="text-gray-600">Cena celkem za {{ paymentSchedule.entryCount }} platby</span>
+                            <span class="font-semibold text-gray-900">{{ paymentSchedule.totalKnownAmountInCzk|number_format(2, ',', ' ') }} Kč {{ vat_suffix() }}</span>
+                        </div>
+                        <div class="rounded-md bg-white border border-gray-200 px-3 py-2 mt-3">
+                            <p class="text-xs text-gray-500 mb-1.5">Rozpis plateb</p>
+                            <ul class="space-y-1 text-xs">
+                                {% for entry in paymentSchedule.entries %}
+                                    <li class="flex justify-between">
+                                        <span class="text-gray-700">{{ loop.first ? '1. platba (nyní)' : (loop.last ? 'doplatek' : (loop.index ~ '. platba')) }} <span class="text-gray-400">({{ entry.chargeDate|date('d.m.Y') }})</span></span>
+                                        <span class="font-medium text-gray-900">{{ entry.amountInCzk|number_format(2, ',', ' ') }} Kč</span>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    {% endif %}
                 </div>
 
                 {# Pronajímatel identification — visible on every payment surface

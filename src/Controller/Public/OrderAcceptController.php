@@ -81,7 +81,7 @@ final class OrderAcceptController extends AbstractController
             ]);
         }
 
-        $totalPrice = $this->priceCalculator->calculateFirstPaymentPrice($storage, $formData->startDate, $formData->endDate);
+        $paymentSchedule = $this->priceCalculator->buildPaymentSchedule($storage, $formData->startDate, $formData->endDate);
         $requiresEarlyStartWaiver = $formData->startDate < (new \DateTimeImmutable('today'))->modify('+14 days');
 
         if ($request->isMethod('POST')) {
@@ -93,8 +93,8 @@ final class OrderAcceptController extends AbstractController
             'storage' => $storage,
             'storageType' => $storageType,
             'place' => $place,
-            'totalPrice' => $totalPrice,
-            'isRecurring' => null === $formData->endDate,
+            'paymentSchedule' => $paymentSchedule,
+            'isRecurring' => $paymentSchedule->isRecurring,
             'requiresEarlyStartWaiver' => $requiresEarlyStartWaiver,
             'recurringPaymentLegalMaxInCzk' => intdiv(PriceCalculator::MAX_RECURRING_PAYMENT_AMOUNT_IN_HALER, 100),
             'submitted' => self::emptySubmittedValues(),
@@ -130,7 +130,7 @@ final class OrderAcceptController extends AbstractController
         $acceptEarlyStartWaiver = $request->request->getBoolean('accept_early_start_waiver');
         $signingPlace = trim($request->request->getString('signing_place'));
 
-        $isRecurring = null === $formData->endDate;
+        $isRecurring = $this->priceCalculator->needsRecurringBilling($startDate, $formData->endDate);
 
         $errors = [];
         if (!$accepted) {
@@ -174,13 +174,15 @@ final class OrderAcceptController extends AbstractController
                 $this->addFlash('error', $error);
             }
 
+            $paymentSchedule = $this->priceCalculator->buildPaymentSchedule($storage, $startDate, $formData->endDate);
+
             return $this->render('public/order_accept.html.twig', [
                 'formData' => $formData,
                 'storage' => $storage,
                 'storageType' => $storageType,
                 'place' => $place,
-                'totalPrice' => $this->priceCalculator->calculateFirstPaymentPrice($storage, $startDate, $formData->endDate),
-                'isRecurring' => null === $formData->endDate,
+                'paymentSchedule' => $paymentSchedule,
+                'isRecurring' => $paymentSchedule->isRecurring,
                 'requiresEarlyStartWaiver' => $requiresEarlyStartWaiver,
                 'recurringPaymentLegalMaxInCzk' => intdiv(PriceCalculator::MAX_RECURRING_PAYMENT_AMOUNT_IN_HALER, 100),
                 'submitted' => [
@@ -285,13 +287,15 @@ final class OrderAcceptController extends AbstractController
             ]);
             $this->addFlash('error', 'Při vytváření objednávky došlo k chybě. Zkuste to prosím znovu.');
 
+            $paymentSchedule = $this->priceCalculator->buildPaymentSchedule($storage, $startDate, $formData->endDate);
+
             return $this->render('public/order_accept.html.twig', [
                 'formData' => $formData,
                 'storage' => $storage,
                 'storageType' => $storageType,
                 'place' => $place,
-                'totalPrice' => $this->priceCalculator->calculateFirstPaymentPrice($storage, $startDate, $formData->endDate),
-                'isRecurring' => null === $formData->endDate,
+                'paymentSchedule' => $paymentSchedule,
+                'isRecurring' => $paymentSchedule->isRecurring,
                 'requiresEarlyStartWaiver' => $requiresEarlyStartWaiver,
                 'recurringPaymentLegalMaxInCzk' => intdiv(PriceCalculator::MAX_RECURRING_PAYMENT_AMOUNT_IN_HALER, 100),
                 'submitted' => self::emptySubmittedValues(),

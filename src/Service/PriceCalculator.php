@@ -6,10 +6,12 @@ namespace App\Service;
 
 use App\Entity\Storage;
 use App\Entity\StorageType;
+use App\Value\PaymentSchedule;
+use App\Value\PaymentScheduleEntry;
 
 final readonly class PriceCalculator
 {
-    private const int WEEKLY_THRESHOLD_DAYS = 28;
+    public const int WEEKLY_THRESHOLD_DAYS = 28;
     private const int DAYS_PER_WEEK = 7;
     private const int DAYS_PER_MONTH = 30;
 
@@ -151,20 +153,9 @@ final readonly class PriceCalculator
         \DateTimeImmutable $startDate,
         ?\DateTimeImmutable $endDate,
     ): int {
-        // UNLIMITED: first month
-        if (null === $endDate) {
-            return $storage->getEffectivePricePerMonth();
-        }
+        $schedule = $this->buildPaymentSchedule($storage, $startDate, $endDate);
 
-        $days = $this->calculateDays($startDate, $endDate);
-
-        // Short rental: full price, no recurring
-        if ($days < self::WEEKLY_THRESHOLD_DAYS) {
-            return $this->calculatePriceForStorage($storage, $startDate, $endDate);
-        }
-
-        // LIMITED >= 1 month: first month price
-        return $storage->getEffectivePricePerMonth();
+        return $schedule->isEmpty() ? 0 : $schedule->firstPayment()->amount;
     }
 
     /**
@@ -177,6 +168,86 @@ final readonly class PriceCalculator
         }
 
         return $this->calculateDays($startDate, $endDate) >= self::WEEKLY_THRESHOLD_DAYS;
+    }
+
+    /**
+     * Build the authoritative list of charges the customer will see.
+     *
+     * Mirrors the cadence used by `ChargeRecurringPaymentHandler` (calendar
+     * months via `\DateTimeImmutable::modify('+1 month')`, with a prorated
+     * tail when the next full month would overshoot the contract end). The
+     * order_create / order_accept / order_payment surfaces all show the same
+     * schedule; the cron later replays it. Any divergence here breaks the
+     * "no surprises" promise — keep this method and the cron in sync.
+     */
+    public function buildPaymentSchedule(
+        Storage $storage,
+        \DateTimeImmutable $startDate,
+        ?\DateTimeImmutable $endDate,
+    ): PaymentSchedule {
+        $monthlyRate = $storage->getEffectivePricePerMonth();
+        $weeklyRate = $storage->getEffectivePricePerWeek();
+
+        // UNLIMITED: open-ended monthly recurrence — only the first charge
+        // is on the schedule, the rest are added by the cron after each
+        // successful billing cycle.
+        if (null === $endDate) {
+            return new PaymentSchedule(
+                entries: [new PaymentScheduleEntry($startDate, $monthlyRate)],
+                isRecurring: true,
+                isOpenEnded: true,
+                monthlyAmount: $monthlyRate,
+            );
+        }
+
+        $days = $this->calculateDays($startDate, $endDate);
+
+        if ($days <= 0) {
+            return new PaymentSchedule(
+                entries: [],
+                isRecurring: false,
+                isOpenEnded: false,
+                monthlyAmount: null,
+            );
+        }
+
+        // SHORT (< 28 days): single one-shot charge, no recurring setup.
+        if ($days < self::WEEKLY_THRESHOLD_DAYS) {
+            return new PaymentSchedule(
+                entries: [new PaymentScheduleEntry($startDate, $this->calculateWeeklyPrice($weeklyRate, $days))],
+                isRecurring: false,
+                isOpenEnded: false,
+                monthlyAmount: null,
+            );
+        }
+
+        // LONG fixed-end (>= 28 days): monthly cadence with prorated tail.
+        // Mirrors `ChargeRecurringPaymentHandler::calculateBillingAmount`:
+        // a full month is charged whenever the next calendar-month boundary
+        // is still within the contract; only the trailing partial period
+        // gets prorated by 30-day daily rate.
+        $entries = [];
+        $billingDate = $startDate;
+        while ($billingDate < $endDate) {
+            $nextBillingDate = $billingDate->modify('+1 month');
+            if ($nextBillingDate <= $endDate) {
+                $entries[] = new PaymentScheduleEntry($billingDate, $monthlyRate);
+                $billingDate = $nextBillingDate;
+                continue;
+            }
+            $remainingDays = max(1, $this->calculateDays($billingDate, $endDate));
+            $dailyRate = $monthlyRate / self::DAYS_PER_MONTH;
+            $proratedAmount = max(1, (int) round($remainingDays * $dailyRate));
+            $entries[] = new PaymentScheduleEntry($billingDate, $proratedAmount);
+            break;
+        }
+
+        return new PaymentSchedule(
+            entries: $entries,
+            isRecurring: true,
+            isOpenEnded: false,
+            monthlyAmount: $monthlyRate,
+        );
     }
 
     /**

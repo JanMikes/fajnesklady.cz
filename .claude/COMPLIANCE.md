@@ -45,6 +45,23 @@ These are the **website-canonical** values. The PDFs may say something else — 
 | Recurring-payment changes / cancellation | e-mail | **simek@fajnesklady.cz** (per Podmínky VI; this is intentional — kept distinct so recurring-payment ops route to the right person) |
 | Hlavní pobočka (provoz) | adresa | Collo Louky 1557, 738 01 Frýdek-Místek |
 
+## Billing modes (the three shapes of a rental)
+
+Every rental falls into exactly one of three modes. The customer-facing quote, the order entity's `totalPrice`, the GoPay call shape, and the recurring-billing cron all branch on the same rule. **Don't add a fourth mode without re-deriving the whole flow.**
+
+| Mode | When it applies | First charge | Subsequent charges | GoPay call shape |
+|---|---|---|---|---|
+| **One-shot (krátkodobý)** | Limited rental, < 28 dní | Full prorated total (weekly rate × weeks + daily tail) | None | `createPayment` (no `recurrence`) |
+| **Recurring fixed-end** | Limited rental, ≥ 28 dní (cap: 1 rok / 12 měsíců) | Full month at start | Cron runs monthly via `createRecurrence`. **Last charge is prorated** (`remainingDays × monthlyRate / 30`) | First charge: `createPayment` with `recurrence_cycle = ON_DEMAND`. Subsequent: `createRecurrence($parentPaymentId, …)` |
+| **Recurring open-ended (doba neurčitá)** | Unlimited rental | Full month at start | Same monthly rate forever via `createRecurrence`, until customer cancels | Same as fixed-end, but with no end date in the schedule |
+
+Hard rules:
+
+- **Limited rentals are capped at 1 rok.** The customer-facing form (`OrderFormData::validateDates`) refuses anything longer and points the customer at "doba neurčitá". This keeps the prorated-tail math from running across an arbitrarily long horizon and keeps recurring contracts comfortably under the GoPay 15 000 Kč single-charge ceiling.
+- **The "is this recurring?" question has exactly one source of truth: `PriceCalculator::needsRecurringBilling()`.** It returns `true` for unlimited *and* fixed-end ≥ 28 dní. Anywhere we render the recurring-payment consent block, gate on this — **not** on `endDate === null` (that historically hid the consent for fixed-end orders that nonetheless set up an ON_DEMAND token = compliance breach).
+- **The exact amount and date of every charge has exactly one source of truth: `PriceCalculator::buildPaymentSchedule()`.** It returns a `PaymentSchedule` value object with the full `[(date, amount), …]` list (open-ended schedules show only the first entry; the rest are added by the cron after each successful billing cycle). The customer-facing surfaces (order_create / order_accept / order_payment) and the recurring cron (`ChargeRecurringPaymentHandler::calculateBillingAmount`) MUST produce identical numbers — keep them in sync. There are unit tests pinning the math; if you need to change the cadence (e.g., switch away from `\DateTimeImmutable::modify('+1 month')` calendar months) update both call sites and the tests in the same commit.
+- **Cancellation does NOT retroactively refund.** Per Podmínky opakovaných plateb čl. VI, cancelling the recurring stops future charges; already-rendered service is settled. The "settle outstanding usage on cancel" feature for open-ended contracts is tracked separately (see backlog spec 019 if open).
+
 ## Recurring payments (opakované platby)
 
 Hard requirements drawn from GoPay rules and Podmínky opakovaných plateb:
@@ -102,6 +119,11 @@ Cookie-consent compliance is governed separately. Don't add it to this file unle
 
 ## Where this is enforced in code
 
+- `src/Service/PriceCalculator.php` — `buildPaymentSchedule()` (single source of truth for the customer-facing schedule and the cron amounts), `needsRecurringBilling()` (single source of truth for "should we set up an ON_DEMAND token").
+- `src/Value/PaymentSchedule.php` + `src/Value/PaymentScheduleEntry.php` — value objects passed to every billing-related template.
+- `src/Form/OrderFormData.php` `validateDates()` — enforces the 1-rok cap on limited rentals.
+- `src/Command/ChargeRecurringPaymentHandler.php` `calculateBillingAmount()` — the cron equivalent of `buildPaymentSchedule`'s tail-prorate branch; **must stay in sync**.
+- `templates/components/OrderForm.html.twig`, `templates/public/order_accept.html.twig`, `templates/public/order_payment.html.twig` — render the schedule.
 - `templates/public/order_accept.html.twig` — submit button label, pre-disclosure, dedicated recurring consent, parameters card.
 - `templates/public/order_payment.html.twig` — identification block, SSL/3DS notice, GoPay logos.
 - `templates/components/OrderForm.html.twig` — pre-purchase legal-doc links, VAT in prices.

@@ -8,6 +8,7 @@ use App\Command\CancelOrderCommand;
 use App\Enum\OrderStatus;
 use App\Repository\OrderRepository;
 use App\Service\GoPay\GoPayClient;
+use App\Service\PriceCalculator;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -24,6 +25,7 @@ final class OrderPaymentController extends AbstractController
         private readonly OrderRepository $orderRepository,
         private readonly MessageBusInterface $commandBus,
         private readonly GoPayClient $goPayClient,
+        private readonly PriceCalculator $priceCalculator,
         private readonly LoggerInterface $logger,
     ) {
     }
@@ -97,11 +99,14 @@ final class OrderPaymentController extends AbstractController
         $storageType = $storage->storageType;
         $place = $storage->getPlace();
 
+        $paymentSchedule = $this->priceCalculator->buildPaymentSchedule($storage, $order->startDate, $order->endDate);
+
         return $this->render('public/order_payment.html.twig', [
             'order' => $order,
             'storage' => $storage,
             'storageType' => $storageType,
             'place' => $place,
+            'paymentSchedule' => $paymentSchedule,
             'goPayEmbedJs' => $this->goPayClient->getEmbedJsUrl(),
         ]);
     }
