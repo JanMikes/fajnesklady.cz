@@ -125,6 +125,12 @@
             </table>
         </div>
 
+        {% if hasMapAttachment %}
+        <p style="font-size: 14px; color: #4b5563; margin-top: 16px;">
+            Mapu pobočky s vyznačenou Vaší skladovou jednotkou (číslo <strong>{{ storageNumber }}</strong>) najdete v příloze tohoto e-mailu.
+        </p>
+        {% endif %}
+
         {% if isRecurring %}
         <div style="background-color: #fef3c7; border: 1px solid #f59e0b; padding: 20px; border-radius: 5px; margin: 20px 0;">
             <h3 style="margin-top: 0; color: #92400e;">Potvrzení opakované platby</h3>

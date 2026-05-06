@@ -1,6 +1,6 @@
 # 011 — Move highlighted-storage map from pre-payment to post-payment email
 
-**Status:** ready
+**Status:** done
 **Type:** UX (email)
 **Scope:** tiny (~3 files: `SendContractReadyEmailHandler` adds attachment; `SendOrderConfirmationEmailHandler` stops attaching; `email/contract_ready.html.twig` adds a one-line note about the attached map)
 **Depends on:** none. Independent of 010 (which adds map download to web surfaces).

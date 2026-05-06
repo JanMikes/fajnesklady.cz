@@ -18,6 +18,7 @@ use App\Service\DocumentPdfConverter;
 use App\Service\RecurringPaymentCancelUrlGenerator;
 use App\Service\StorageMapImageGenerator;
 use PHPUnit\Framework\TestCase;
+use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Email;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
@@ -110,6 +111,25 @@ class SendContractReadyEmailHandlerTest extends TestCase
         $this->assertNotNull($sentEmail);
         $names = array_map(fn ($a) => $a->getFilename(), $sentEmail->getAttachments());
         $this->assertContains('mapa-skladu.png', $names);
+
+        $this->assertInstanceOf(TemplatedEmail::class, $sentEmail);
+        $this->assertTrue($sentEmail->getContext()['hasMapAttachment']);
+    }
+
+    public function testHandlerMarksHasMapAttachmentFalseWhenMapUnavailable(): void
+    {
+        $contract = $this->createContract();
+        $event = new OrderCompleted($contract->order->id, $contract->id, new \DateTimeImmutable());
+
+        $handler = $this->createHandler($contract, $sentEmail, mapBytes: null);
+        $handler($event);
+
+        $this->assertNotNull($sentEmail);
+        $names = array_map(fn ($a) => $a->getFilename(), $sentEmail->getAttachments());
+        $this->assertNotContains('mapa-skladu.png', $names);
+
+        $this->assertInstanceOf(TemplatedEmail::class, $sentEmail);
+        $this->assertFalse($sentEmail->getContext()['hasMapAttachment']);
     }
 
     public function testHandlerAttachesBothContractDocumentAndOperatingRules(): void

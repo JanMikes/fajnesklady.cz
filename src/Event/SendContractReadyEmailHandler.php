@@ -43,6 +43,7 @@ final readonly class SendContractReadyEmailHandler
         );
 
         $isRecurring = $contract->hasActiveRecurringPayment();
+        $mapImageData = $this->mapImageGenerator->generate($storage);
 
         $email = (new TemplatedEmail())
             ->from(new Address('noreply@fajnesklady.cz', 'Fajnesklady.cz'))
@@ -63,6 +64,7 @@ final readonly class SendContractReadyEmailHandler
                 'monthlyAmount' => $isRecurring ? number_format($contract->order->getTotalPriceInCzk(), 2, ',', ' ').' Kč' : null,
                 'nextBillingDate' => $isRecurring && null !== $contract->nextBillingDate ? $contract->nextBillingDate->format('d.m.Y') : null,
                 'cancelUrl' => $isRecurring ? $this->cancelUrlGenerator->generate($contract) : null,
+                'hasMapAttachment' => null !== $mapImageData,
             ]);
 
         // Attach the signed contract — prefer PDF, fall back to DOCX if conversion fails.
@@ -87,7 +89,6 @@ final readonly class SendContractReadyEmailHandler
         // Attach the place map with the rented storage highlighted.
         // Triggered on OrderCompleted (first payment), so recurring monthly charges
         // (which do not fire OrderCompleted) won't re-attach this every month.
-        $mapImageData = $this->mapImageGenerator->generate($storage);
         if (null !== $mapImageData) {
             $email->attach($mapImageData, 'mapa-skladu.png', 'image/png');
         }
