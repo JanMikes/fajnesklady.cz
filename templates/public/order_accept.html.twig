@@ -36,10 +36,14 @@
        Submitted values flow back through `submitted` so a server-side
        validation re-render keeps the user's typed place and ticked
        checkboxes — they shouldn't have to refill the form. #}
+    {# json_encode is HTML-attribute-escaped so the JSON's double quotes
+       don't collide with the surrounding x-data="…" double quotes — that
+       collision silently breaks the Alpine state and leaves the submit
+       button permanently disabled. #}
     <div class="max-w-4xl mx-auto"
          x-data="{
             signed: false,
-            signingPlace: {{ (submitted.signingPlace ?? '')|json_encode|raw }},
+            signingPlace: {{ (submitted.signingPlace ?? '')|json_encode|e('html_attr') }},
             acceptAll: {{ (submitted.acceptAll ?? false) ? 'true' : 'false' }},
             acceptRecurring: {{ isRecurring ? ((submitted.acceptRecurring ?? false) ? 'true' : 'false') : 'true' }}
          }"
