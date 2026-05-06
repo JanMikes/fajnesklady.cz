@@ -13,6 +13,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\Messenger\Exception\HandlerFailedException;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Messenger\Stamp\HandledStamp;
 use Symfony\Component\Routing\Attribute\Route;
@@ -75,10 +76,15 @@ final class PaymentInitiateController extends AbstractController
                 'paymentId' => $payment->id,
                 'gwUrl' => $payment->gwUrl,
             ]);
-        } catch (GoPayException $e) {
+        } catch (HandlerFailedException $e) {
+            $nested = $e->getPrevious();
+            if (!$nested instanceof GoPayException) {
+                throw $e;
+            }
+
             $this->logger->error('GoPay payment initiation failed', [
                 'order_id' => $id,
-                'exception' => $e,
+                'exception' => $nested,
             ]);
 
             return new JsonResponse(
