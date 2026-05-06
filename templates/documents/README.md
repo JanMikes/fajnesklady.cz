@@ -8,56 +8,22 @@ Global contract template for generating rental agreements.
 
 ## Available Placeholders
 
-Use `${PLACEHOLDER}` syntax in the DOCX template.
-
-### Tenant Information
-
-| Placeholder | Description | Example |
-|-------------|-------------|---------|
-| `${TENANT_NAME}` | Full name | Jan Novák |
-| `${TENANT_EMAIL}` | Email address | jan@example.com |
-| `${TENANT_PHONE}` | Phone number | +420 123 456 789 |
-| `${TENANT_COMPANY}` | Company name | Firma s.r.o. |
-| `${TENANT_ICO}` | Company ID (IČO) | 12345678 |
-| `${TENANT_DIC}` | VAT ID (DIČ) | CZ12345678 |
-| `${TENANT_BILLING_ADDRESS}` | Billing address | Ulice 123, 110 00 Praha |
-
-### Storage Information
+Use `${PLACEHOLDER}` syntax in the DOCX template. Substitution is implemented in
+`App\Service\ContractDocumentGenerator`. Make placeholder runs bold in the
+template — values inherit the run's formatting, so making the placeholder bold
+makes every substituted value render bold.
 
 | Placeholder | Description | Example |
 |-------------|-------------|---------|
-| `${STORAGE_NUMBER}` | Box number | A1 |
-| `${STORAGE_TYPE}` | Storage type name | Small Box |
-| `${STORAGE_DIMENSIONS}` | Inner dimensions (w × h × d) | 100 × 200 × 150 cm |
-
-### Place Information
-
-| Placeholder | Description | Example |
-|-------------|-------------|---------|
-| `${PLACE_NAME}` | Warehouse name | Sklad Praha |
-| `${PLACE_ADDRESS}` | Full address | Skladová 123, 110 00 Praha |
-
-### Rental Details
-
-| Placeholder | Description | Example |
-|-------------|-------------|---------|
-| `${START_DATE}` | Rental start date | 15.01.2024 |
-| `${END_DATE}` | Rental end date | 15.02.2024 or "Na dobu neurčitou" |
-| `${RENTAL_TYPE}` | Type of rental | "Doba určitá" / "Doba neurčitá" |
-| `${PRICE}` | Total price | 350,00 Kč |
-
-### Contract Metadata
-
-| Placeholder | Description | Example |
-|-------------|-------------|---------|
-| `${CONTRACT_DATE}` | Contract creation date | 01.01.2024 |
+| `${TENANT_INFO}` | Multiline tenant block (person or company variant). Includes name/company, IČO, DIČ, address, email, phone. Newlines are rendered as line breaks. | Jméno: Jan Novák\nNar. 01.01.1990\nBytem: Hlavní 123, 110 00 Praha\nEmail: jan@example.com\nTelefon: +420 123 456 789 |
+| `${STORAGE_DESCRIPTION}` | Storage type, number, and inner dimensions | Small Box č. A1 (100 × 200 × 150 cm) |
+| `${RENTAL_DURATION_TEXT}` | Full sentence with start/end dates | Nájem se sjednává na dobu určitou, a to od 15.01.2024 do 15.02.2024 |
 | `${CONTRACT_NUMBER}` | Generated contract number | 2024-0101-A1B2C3D4 |
-
-### Signature
-
-| Placeholder | Description | Notes |
-|-------------|-------------|-------|
-| `${SIGNATURE}` | Tenant's electronic signature image | Embedded as PNG (200×80px). If no signature, placeholder is cleared. |
+| `${CONTRACT_CITY}` | City of the storage location | Praha |
+| `${CONTRACT_DATE}` | Contract creation date | 01.01.2024 |
+| `${SIGNING_PLACE}` | Place where contract was signed (defaults to storage city) | Praha |
+| `${SIGNING_DATE}` | Date of signature | 01.01.2024 |
+| `${SIGNATURE}` | Tenant's electronic signature image (PNG, 250×100). Cleared if missing. | (image) |
 
 ## Editing the Template
 

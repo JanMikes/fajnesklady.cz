@@ -157,6 +157,7 @@ readonly class ContractDocumentGenerator
     private function formatTenantInfo(User $user): string
     {
         $address = $this->formatAddress($user);
+        $phone = null !== $user->phone && '' !== $user->phone ? $user->phone : '-';
 
         if (null !== $user->companyName && null !== $user->companyId) {
             // Company tenant
@@ -171,6 +172,7 @@ readonly class ContractDocumentGenerator
 
             $lines[] = sprintf('Sídlem: %s', $address);
             $lines[] = sprintf('Email: %s', $user->email);
+            $lines[] = sprintf('Telefon: %s', $phone);
 
             return implode("\n", $lines);
         }
@@ -181,6 +183,7 @@ readonly class ContractDocumentGenerator
             sprintf('Nar. %s', $user->birthDate?->format('d.m.Y') ?? '-'),
             sprintf('Bytem: %s', $address),
             sprintf('Email: %s', $user->email),
+            sprintf('Telefon: %s', $phone),
         ];
 
         return implode("\n", $lines);

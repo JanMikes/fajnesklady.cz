@@ -15,6 +15,7 @@ use App\Event\OrderPlaced;
 use App\Event\SendOrderConfirmationEmailHandler;
 use App\Repository\OrderRepository;
 use App\Service\ContractDocumentGenerator;
+use App\Service\DocumentPdfConverter;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Email;
@@ -95,7 +96,26 @@ class SendOrderConfirmationEmailHandlerTest extends TestCase
         $names = $this->attachmentNames($sentEmail);
         $contractAttachments = array_filter($names, fn ($n) => str_starts_with((string) $n, 'smlouva-'));
 
-        $this->assertCount(1, $contractAttachments, 'Expected exactly one smlouva-*.docx attachment');
+        $this->assertCount(1, $contractAttachments, 'Expected exactly one smlouva-* attachment');
+    }
+
+    public function testAttachesContractAsPdfWhenConversionAvailable(): void
+    {
+        $order = $this->createOrder(endDate: new \DateTimeImmutable('+30 days'), withSignature: true);
+
+        $contractGenerator = $this->createStub(ContractDocumentGenerator::class);
+        $contractGenerator->method('renderBytesForOrder')->willReturn('PK fake docx bytes');
+
+        $pdfConverter = $this->createStub(DocumentPdfConverter::class);
+        $pdfConverter->method('convertBytesToPdfBytes')->willReturn('%PDF-1.4 fake');
+
+        $sentEmail = $this->sendEmail($order, $contractGenerator, $pdfConverter);
+
+        $names = $this->attachmentNames($sentEmail);
+        $contractAttachments = array_values(array_filter($names, fn ($n) => str_starts_with((string) $n, 'smlouva-')));
+
+        $this->assertCount(1, $contractAttachments);
+        $this->assertStringEndsWith('.pdf', (string) $contractAttachments[0]);
     }
 
     public function testSkipsContractAttachmentWhenOrderHasNoSignature(): void
@@ -121,8 +141,11 @@ class SendOrderConfirmationEmailHandlerTest extends TestCase
         return array_map(fn ($a) => $a->getFilename(), $email->getAttachments());
     }
 
-    private function sendEmail(Order $order, ?ContractDocumentGenerator $contractGenerator = null): Email
-    {
+    private function sendEmail(
+        Order $order,
+        ?ContractDocumentGenerator $contractGenerator = null,
+        ?DocumentPdfConverter $pdfConverter = null,
+    ): Email {
         $event = new OrderPlaced($order->id, new \DateTimeImmutable());
 
         $orderRepository = $this->createStub(OrderRepository::class);
@@ -136,6 +159,13 @@ class SendOrderConfirmationEmailHandlerTest extends TestCase
             $contractGenerator->method('renderBytesForOrder')->willReturn('PK fake docx bytes');
         }
 
+        if (null === $pdfConverter) {
+            // Default: simulate conversion failure → handler attaches DOCX,
+            // matching the existing tests that look for smlouva-*.docx names.
+            $pdfConverter = $this->createStub(DocumentPdfConverter::class);
+            $pdfConverter->method('convertBytesToPdfBytes')->willReturn(null);
+        }
+
         $sentEmail = null;
         $mailer = $this->createStub(MailerInterface::class);
         $mailer->method('send')->willReturnCallback(function (Email $email) use (&$sentEmail) {
@@ -147,6 +177,7 @@ class SendOrderConfirmationEmailHandlerTest extends TestCase
             $mailer,
             $urlGenerator,
             $contractGenerator,
+            $pdfConverter,
             $this->tempDir,
             $this->tempDir.'/template.docx',
         );

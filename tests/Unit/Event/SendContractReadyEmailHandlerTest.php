@@ -14,6 +14,7 @@ use App\Enum\RentalType;
 use App\Event\OrderCompleted;
 use App\Event\SendContractReadyEmailHandler;
 use App\Repository\ContractRepository;
+use App\Service\DocumentPdfConverter;
 use App\Service\RecurringPaymentCancelUrlGenerator;
 use App\Service\StorageMapImageGenerator;
 use PHPUnit\Framework\TestCase;
@@ -158,12 +159,18 @@ class SendContractReadyEmailHandlerTest extends TestCase
         $mapImageGenerator = $this->createStub(StorageMapImageGenerator::class);
         $mapImageGenerator->method('generate')->willReturn($mapBytes);
 
+        // Stub returns null → handler falls back to attaching DOCX directly,
+        // matching the existing test assertions about file extensions.
+        $pdfConverter = $this->createStub(DocumentPdfConverter::class);
+        $pdfConverter->method('convertToPdf')->willReturn(null);
+
         return new SendContractReadyEmailHandler(
             $contractRepository,
             $mailer,
             $urlGenerator,
             $cancelUrlGenerator,
             $mapImageGenerator,
+            $pdfConverter,
             $this->tempDir,
         );
     }

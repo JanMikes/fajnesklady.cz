@@ -17,6 +17,12 @@ final readonly class GetOrCreateUserByEmailCommand
         public ?string $phone = null,
         public ?\DateTimeImmutable $birthDate = null,
         public ?string $plainPassword = null,
+        public ?string $companyName = null,
+        public ?string $companyId = null,
+        public ?string $companyVatId = null,
+        public ?string $billingStreet = null,
+        public ?string $billingCity = null,
+        public ?string $billingPostalCode = null,
     ) {
     }
 }

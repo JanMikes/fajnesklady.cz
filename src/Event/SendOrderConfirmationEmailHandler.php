@@ -6,6 +6,7 @@ namespace App\Event;
 
 use App\Repository\OrderRepository;
 use App\Service\ContractDocumentGenerator;
+use App\Service\DocumentPdfConverter;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -20,6 +21,7 @@ final readonly class SendOrderConfirmationEmailHandler
         private MailerInterface $mailer,
         private UrlGeneratorInterface $urlGenerator,
         private ContractDocumentGenerator $contractDocumentGenerator,
+        private DocumentPdfConverter $pdfConverter,
         private string $projectDir,
         private string $contractTemplatePath,
     ) {
@@ -59,15 +61,27 @@ final readonly class SendOrderConfirmationEmailHandler
                 'manageUrl' => $manageUrl,
             ]);
 
-        // Attach the signed contract DOCX (the order is legally binding at this point).
+        // Attach the signed contract (the order is legally binding at this point).
         // Skipped only for orders without a signature (e.g. legacy admin migrations).
+        // Prefer PDF; fall back to DOCX if LibreOffice conversion is unavailable.
         if ($order->hasSignature()) {
             $contractBytes = $this->contractDocumentGenerator->renderBytesForOrder($order, $this->contractTemplatePath);
-            $email->attach(
-                $contractBytes,
-                sprintf('smlouva-%s.docx', substr($order->id->toRfc4122(), 0, 8)),
-                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            );
+            $orderIdShort = substr($order->id->toRfc4122(), 0, 8);
+            $pdfBytes = $this->pdfConverter->convertBytesToPdfBytes($contractBytes);
+
+            if (null !== $pdfBytes) {
+                $email->attach(
+                    $pdfBytes,
+                    sprintf('smlouva-%s.pdf', $orderIdShort),
+                    'application/pdf',
+                );
+            } else {
+                $email->attach(
+                    $contractBytes,
+                    sprintf('smlouva-%s.docx', $orderIdShort),
+                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                );
+            }
         }
 
         // Attach VOP

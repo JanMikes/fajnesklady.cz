@@ -7,7 +7,7 @@ namespace App\Service;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Process\Process;
 
-final readonly class DocumentPdfConverter
+readonly class DocumentPdfConverter
 {
     public function __construct(
         private string $cacheDirectory,
@@ -81,6 +81,41 @@ final readonly class DocumentPdfConverter
             ]);
 
             return false;
+        }
+    }
+
+    /**
+     * Convert DOCX bytes to PDF bytes via a temporary file.
+     */
+    public function convertBytesToPdfBytes(string $docxBytes): ?string
+    {
+        // LibreOffice derives the output filename from the input, so the
+        // temp file must end with .docx — tempnam alone produces no extension.
+        $tempBase = tempnam(sys_get_temp_dir(), 'pdf_src_');
+        if (false === $tempBase) {
+            return null;
+        }
+        $docxPath = $tempBase.'.docx';
+
+        if (false === file_put_contents($docxPath, $docxBytes)) {
+            @unlink($tempBase);
+
+            return null;
+        }
+
+        try {
+            $pdfPath = $this->convertToPdf($docxPath);
+            if (null === $pdfPath) {
+                return null;
+            }
+
+            $pdfBytes = file_get_contents($pdfPath);
+            @unlink($pdfPath);
+
+            return false === $pdfBytes ? null : $pdfBytes;
+        } finally {
+            @unlink($docxPath);
+            @unlink($tempBase);
         }
     }
 }

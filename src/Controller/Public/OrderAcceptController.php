@@ -195,6 +195,9 @@ final class OrderAcceptController extends AbstractController
 
         try {
             // 1. Get or create user
+            // Company fields are only carried over when the user explicitly toggled
+            // "fakturovat na společnost" — otherwise their saved profile is preserved
+            // by the handler.
             $envelope = $this->commandBus->dispatch(new GetOrCreateUserByEmailCommand(
                 email: $formData->email,
                 firstName: $formData->firstName,
@@ -202,6 +205,12 @@ final class OrderAcceptController extends AbstractController
                 phone: $formData->phone,
                 birthDate: $formData->birthDate,
                 plainPassword: $formData->plainPassword,
+                companyName: $formData->invoiceToCompany ? $formData->companyName : null,
+                companyId: $formData->invoiceToCompany ? $formData->companyId : null,
+                companyVatId: $formData->invoiceToCompany ? $formData->companyVatId : null,
+                billingStreet: $formData->billingStreet,
+                billingCity: $formData->billingCity,
+                billingPostalCode: $formData->billingPostalCode,
             ));
 
             $handledStamp = $envelope->last(HandledStamp::class);

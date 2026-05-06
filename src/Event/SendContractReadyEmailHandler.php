@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Event;
 
 use App\Repository\ContractRepository;
+use App\Service\DocumentPdfConverter;
 use App\Service\RecurringPaymentCancelUrlGenerator;
 use App\Service\StorageMapImageGenerator;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
@@ -22,6 +23,7 @@ final readonly class SendContractReadyEmailHandler
         private UrlGeneratorInterface $urlGenerator,
         private RecurringPaymentCancelUrlGenerator $cancelUrlGenerator,
         private StorageMapImageGenerator $mapImageGenerator,
+        private DocumentPdfConverter $pdfConverter,
         private string $uploadsDirectory,
     ) {
     }
@@ -63,12 +65,23 @@ final readonly class SendContractReadyEmailHandler
                 'cancelUrl' => $isRecurring ? $this->cancelUrlGenerator->generate($contract) : null,
             ]);
 
-        // Attach the contract document if available
+        // Attach the signed contract — prefer PDF, fall back to DOCX if conversion fails.
         if ($contract->hasDocument() && null !== $contract->documentPath && file_exists($contract->documentPath)) {
-            $email->attachFromPath(
-                $contract->documentPath,
-                sprintf('smlouva_%s.docx', $this->formatContractNumber($contract)),
-            );
+            $contractNumber = $this->formatContractNumber($contract);
+            $pdfPath = $this->pdfConverter->convertToPdf($contract->documentPath);
+
+            if (null !== $pdfPath) {
+                $email->attachFromPath(
+                    $pdfPath,
+                    sprintf('smlouva_%s.pdf', $contractNumber),
+                    'application/pdf',
+                );
+            } else {
+                $email->attachFromPath(
+                    $contract->documentPath,
+                    sprintf('smlouva_%s.docx', $contractNumber),
+                );
+            }
         }
 
         // Attach the place map with the rented storage highlighted.

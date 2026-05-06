@@ -55,7 +55,6 @@ final class OrderFormType extends AbstractType
             ])
             ->add('phone', TelType::class, [
                 'label' => 'Telefon',
-                'required' => false,
                 'attr' => [
                     'placeholder' => '+420 123 456 789',
                     'autocomplete' => 'tel',

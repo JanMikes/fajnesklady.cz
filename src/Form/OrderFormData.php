@@ -23,7 +23,10 @@ final class OrderFormData
     #[Assert\Length(max: 100, maxMessage: 'Příjmení může mít maximálně {{ limit }} znaků.')]
     public string $lastName = '';
 
+    #[Assert\NotBlank(message: 'Zadejte telefonní číslo.')]
     #[Assert\Length(max: 20, maxMessage: 'Telefon může mít maximálně {{ limit }} znaků.')]
+    #[Assert\Regex(pattern: '/^\+?[\d\s]+$/', message: 'Telefon může obsahovat pouze číslice, mezery a volitelně znak + na začátku.')]
+    #[Assert\Regex(pattern: '/(?:\D*\d){9}/', message: 'Telefon musí obsahovat alespoň 9 číslic.')]
     public ?string $phone = null;
 
     public ?\DateTimeImmutable $birthDate = null;
