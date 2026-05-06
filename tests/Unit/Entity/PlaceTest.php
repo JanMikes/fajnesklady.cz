@@ -131,10 +131,34 @@ class PlaceTest extends TestCase
 
         $this->assertTrue($place->isActive);
         $this->assertSame(0, $place->daysInAdvance);
+        $this->assertSame(3, $place->orderExpirationDays);
         $this->assertNull($place->latitude);
         $this->assertNull($place->longitude);
         $this->assertNull($place->mapImagePath);
         $this->assertSame(PlaceType::FAJNE_SKLADY, $place->type);
+    }
+
+    public function testUpdateOrderExpirationDays(): void
+    {
+        $createdAt = new \DateTimeImmutable('2024-01-01 10:00:00');
+        $updatedAt = new \DateTimeImmutable('2024-01-01 11:00:00');
+
+        $place = new Place(
+            id: Uuid::v7(),
+            name: 'Test Place',
+            address: 'Test Address',
+            city: 'Praha',
+            postalCode: '110 00',
+            description: null,
+            createdAt: $createdAt,
+        );
+
+        $this->assertSame(3, $place->orderExpirationDays);
+
+        $place->updateOrderExpirationDays(7, $updatedAt);
+
+        $this->assertSame(7, $place->orderExpirationDays);
+        $this->assertSame($updatedAt, $place->updatedAt);
     }
 
     public function testCreatePlaceWithoutAddress(): void

@@ -9,6 +9,7 @@ use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\Extension\Core\Type\EnumType;
 use Symfony\Component\Form\Extension\Core\Type\FileType;
+use Symfony\Component\Form\Extension\Core\Type\IntegerType;
 use Symfony\Component\Form\Extension\Core\Type\TextareaType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
@@ -86,6 +87,16 @@ class PlaceFormType extends AbstractType
                 'placeholder' => 'Volitelný popis místa',
 
                 'rows' => 4,
+            ],
+        ]);
+
+        $builder->add('orderExpirationDays', IntegerType::class, [
+            'label' => 'Doba platnosti objednávky (dny)',
+            'help' => 'Po této době nezaplacená objednávka automaticky vyprší. Výchozí 3 dny.',
+            'attr' => [
+                'min' => 1,
+                'max' => 30,
+                'inputmode' => 'numeric',
             ],
         ]);
 

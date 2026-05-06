@@ -21,6 +21,7 @@ final readonly class UpdatePlaceCommand
         public ?string $operatingRulesPath = null,
         public ?string $latitude = null,
         public ?string $longitude = null,
+        public int $orderExpirationDays = 3,
     ) {
     }
 }

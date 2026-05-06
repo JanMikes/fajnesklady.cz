@@ -32,6 +32,9 @@ class Place
     public private(set) int $daysInAdvance = 0;
 
     #[ORM\Column]
+    public private(set) int $orderExpirationDays = 3;
+
+    #[ORM\Column]
     public private(set) bool $isActive = true;
 
     public function __construct(
@@ -109,6 +112,12 @@ class Place
     public function updateDaysInAdvance(int $daysInAdvance, \DateTimeImmutable $now): void
     {
         $this->daysInAdvance = $daysInAdvance;
+        $this->updatedAt = $now;
+    }
+
+    public function updateOrderExpirationDays(int $orderExpirationDays, \DateTimeImmutable $now): void
+    {
+        $this->orderExpirationDays = $orderExpirationDays;
         $this->updatedAt = $now;
     }
 

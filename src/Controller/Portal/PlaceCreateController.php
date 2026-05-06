@@ -63,6 +63,7 @@ final class PlaceCreateController extends AbstractController
                 operatingRulesPath: $operatingRulesPath,
                 latitude: $formData->latitude,
                 longitude: $formData->longitude,
+                orderExpirationDays: $formData->orderExpirationDays,
             );
 
             $this->commandBus->dispatch($command);

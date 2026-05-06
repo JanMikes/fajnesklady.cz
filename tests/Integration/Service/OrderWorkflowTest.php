@@ -57,7 +57,7 @@ class OrderWorkflowTest extends KernelTestCase
         $this->assertSame(StorageStatus::AVAILABLE, $order->storage->status);
     }
 
-    public function testOrderExpiresAfterSevenDays(): void
+    public function testOrderExpiresAfterPlaceWindow(): void
     {
         [$tenant, $storageType, $place] = $this->getFixtures();
 
@@ -75,13 +75,11 @@ class OrderWorkflowTest extends KernelTestCase
             $now,
         );
 
-        // Verify order expires in 7 days
         $this->assertFalse($order->isExpired($now));
-        $this->assertFalse($order->isExpired($now->modify('+6 days')));
-        $this->assertTrue($order->isExpired($now->modify('+8 days')));
+        $this->assertFalse($order->isExpired($now->modify('+'.($place->orderExpirationDays - 1).' days')));
+        $this->assertTrue($order->isExpired($now->modify('+'.($place->orderExpirationDays + 1).' days')));
 
-        // Expire the order
-        $expireTime = $now->modify('+8 days');
+        $expireTime = $now->modify('+'.($place->orderExpirationDays + 1).' days');
         $this->orderService->expireOrder($order, $expireTime);
 
         $this->assertSame(OrderStatus::EXPIRED, $order->status);

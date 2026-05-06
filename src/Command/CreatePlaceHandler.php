@@ -45,6 +45,8 @@ final readonly class CreatePlaceHandler
             $place->updateLocation($command->latitude, $command->longitude, $now);
         }
 
+        $place->updateOrderExpirationDays($command->orderExpirationDays, $now);
+
         $this->placeRepository->save($place);
 
         return $place;

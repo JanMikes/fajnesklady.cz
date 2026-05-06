@@ -93,6 +93,13 @@
                         {{ form_errors(form.description) }}
                     </div>
 
+                    <div class="mb-4">
+                        <label for="{{ form.orderExpirationDays.vars.id }}" class="block text-sm font-semibold text-gray-700 mb-2">Doba platnosti objednávky (dny)</label>
+                        {{ form_widget(form.orderExpirationDays, {'attr': {'class': 'input input-bordered w-full'}}) }}
+                        <p class="mt-1 text-sm text-gray-500">Po této době nezaplacená objednávka automaticky vyprší. Výchozí 3 dny.</p>
+                        {{ form_errors(form.orderExpirationDays) }}
+                    </div>
+
                     {% if form.ownerId is defined %}
                         <div class="mb-4">
                             <label for="{{ form.ownerId.vars.id }}" class="block text-sm font-semibold text-gray-700 mb-2">Vlastník</label>

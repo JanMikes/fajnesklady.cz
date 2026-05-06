@@ -24,8 +24,6 @@ use App\Service\Identity\ProvideIdentity;
  */
 final readonly class OrderService
 {
-    private const int RESERVATION_DAYS = 7;
-
     public function __construct(
         private ProvideIdentity $identityProvider,
         private OrderRepository $orderRepository,
@@ -89,7 +87,7 @@ final readonly class OrderService
             startDate: $startDate,
             endDate: $endDate,
             totalPrice: $totalPrice,
-            expiresAt: $now->modify('+'.self::RESERVATION_DAYS.' days'),
+            expiresAt: $now->modify('+'.$place->orderExpirationDays.' days'),
             createdAt: $now,
         );
 

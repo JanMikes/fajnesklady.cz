@@ -32,6 +32,10 @@ final class PlaceFormData
 
     public ?string $description = null;
 
+    #[Assert\NotNull(message: 'Zadejte počet dní platnosti objednávky')]
+    #[Assert\Range(min: 1, max: 30, notInRangeMessage: 'Zadejte hodnotu mezi {{ min }} a {{ max }} dny')]
+    public int $orderExpirationDays = 3;
+
     #[Assert\Image(
         maxSize: '5M',
         mimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
@@ -88,6 +92,7 @@ final class PlaceFormData
         $formData->city = $place->city;
         $formData->postalCode = $place->postalCode;
         $formData->description = $place->description;
+        $formData->orderExpirationDays = $place->orderExpirationDays;
         $formData->currentMapImagePath = $place->mapImagePath;
         $formData->currentOperatingRulesPath = $place->operatingRulesPath;
         $formData->latitude = $place->latitude;
