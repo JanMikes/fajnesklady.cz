@@ -74,6 +74,11 @@ final class OrderFormType extends AbstractType
             ->add('plainPassword', PasswordType::class, [
                 'label' => 'Heslo (nepovinné)',
                 'required' => false,
+                // PasswordType defaults to always_empty: true, which omits the value
+                // from re-rendered HTML. Live UX morphs the form on every field
+                // validation, so without this the user's typed password gets wiped
+                // each time they blur another field.
+                'always_empty' => false,
                 'attr' => [
                     'placeholder' => 'Zadejte heslo pro vytvoření účtu',
                     'autocomplete' => 'new-password',
