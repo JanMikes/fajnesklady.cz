@@ -11,23 +11,26 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\HeaderUtils;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\UriSigner;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Uid\Uuid;
 
-#[Route('/objednavka/{id}/dokumenty/mapa.png', name: 'public_order_map_download')]
+#[Route('/objednavka/{id}/dokumenty/mapa.png', name: 'public_order_map_download', requirements: ['id' => '[0-9a-f-]{36}'])]
 final class OrderMapDownloadController extends AbstractController
 {
     public function __construct(
         private readonly OrderRepository $orderRepository,
         private readonly StorageMapImageGenerator $mapImageGenerator,
+        private readonly UriSigner $uriSigner,
     ) {
     }
 
     public function __invoke(string $id, Request $request): Response
     {
-        if (!Uuid::isValid($id)) {
-            throw new NotFoundHttpException('Objednávka nenalezena.');
+        if (!$this->uriSigner->checkRequest($request)) {
+            throw new AccessDeniedHttpException('Neplatný nebo expirovaný odkaz.');
         }
 
         $order = $this->orderRepository->find(Uuid::fromString($id));

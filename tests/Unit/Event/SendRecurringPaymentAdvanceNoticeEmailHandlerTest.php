@@ -15,6 +15,7 @@ use App\Enum\RentalType;
 use App\Event\RecurringPaymentAdvanceNoticeNeeded;
 use App\Event\SendRecurringPaymentAdvanceNoticeEmailHandler;
 use App\Repository\ContractRepository;
+use App\Service\OrderStatusUrlGenerator;
 use App\Service\RecurringPaymentCancelUrlGenerator;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
@@ -110,11 +111,13 @@ class SendRecurringPaymentAdvanceNoticeEmailHandlerTest extends TestCase
         $urlGenerator->method('generate')->willReturn('https://example.com/portal/cancel');
 
         $cancelUrlGenerator = new RecurringPaymentCancelUrlGenerator($urlGenerator, new UriSigner('test-secret'));
+        $statusUrlGenerator = new OrderStatusUrlGenerator($urlGenerator, new UriSigner('test-secret'));
 
         return new SendRecurringPaymentAdvanceNoticeEmailHandler(
             $contractRepository,
             $mailer,
             $cancelUrlGenerator,
+            $statusUrlGenerator,
             new MockClock(new \DateTimeImmutable('2026-05-05 12:00:00')),
             new NullLogger(),
         );

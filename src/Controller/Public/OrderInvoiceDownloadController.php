@@ -9,24 +9,35 @@ use App\Repository\InvoiceRepository;
 use App\Repository\OrderRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
+use Symfony\Component\HttpFoundation\UriSigner;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Uid\Uuid;
 
-#[Route('/objednavka/{id}/dokumenty/faktura.pdf', name: 'public_order_invoice_download')]
+#[Route(
+    '/objednavka/{id}/dokumenty/faktura/{invoiceId}.pdf',
+    name: 'public_order_invoice_download',
+    requirements: [
+        'id' => '[0-9a-f-]{36}',
+        'invoiceId' => '[0-9a-f-]{36}',
+    ],
+)]
 final class OrderInvoiceDownloadController extends AbstractController
 {
     public function __construct(
         private readonly OrderRepository $orderRepository,
         private readonly InvoiceRepository $invoiceRepository,
+        private readonly UriSigner $uriSigner,
     ) {
     }
 
-    public function __invoke(string $id): BinaryFileResponse
+    public function __invoke(Request $request, string $id, string $invoiceId): BinaryFileResponse
     {
-        if (!Uuid::isValid($id)) {
-            throw new NotFoundHttpException('Objednávka nenalezena.');
+        if (!$this->uriSigner->checkRequest($request)) {
+            throw new AccessDeniedHttpException('Neplatný nebo expirovaný odkaz.');
         }
 
         $order = $this->orderRepository->find(Uuid::fromString($id));
@@ -35,9 +46,13 @@ final class OrderInvoiceDownloadController extends AbstractController
             throw new NotFoundHttpException('Objednávka nenalezena.');
         }
 
-        $invoice = $this->invoiceRepository->findByOrder($order);
+        $invoice = $this->invoiceRepository->find(Uuid::fromString($invoiceId));
 
-        if (null === $invoice || !$invoice->hasPdf() || null === $invoice->pdfPath) {
+        if (null === $invoice || !$invoice->order->id->equals($order->id)) {
+            throw new NotFoundHttpException('Faktura nenalezena.');
+        }
+
+        if (!$invoice->hasPdf() || null === $invoice->pdfPath) {
             throw new NotFoundHttpException('Faktura není k dispozici.');
         }
 

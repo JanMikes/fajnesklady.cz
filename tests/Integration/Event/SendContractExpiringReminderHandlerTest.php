@@ -69,7 +69,12 @@ class SendContractExpiringReminderHandlerTest extends KernelTestCase
         $body = $this->renderHtmlBody($email);
         $this->assertStringContainsString('Prodloužit pronájem', $body);
         $this->assertStringContainsString('/objednavka/prodlouzit/'.$contract->order->id->toRfc4122(), $body);
-        $this->assertStringContainsString('Zobrazit smlouvu v portálu', $body);
+        $this->assertStringContainsString('Zobrazit stav objednávky', $body);
+        $this->assertMatchesRegularExpression(
+            '~/objednavka/[0-9a-f-]+/stav\?_hash=~',
+            $body,
+            'Email must include a signed status URL.',
+        );
     }
 
     public function testEmailHidesRenewalCtaForUnlimitedContract(): void
@@ -88,7 +93,7 @@ class SendContractExpiringReminderHandlerTest extends KernelTestCase
 
         $body = $this->renderHtmlBody($email);
         $this->assertStringNotContainsString('Prodloužit pronájem', $body);
-        $this->assertStringContainsString('Zobrazit smlouvu v portálu', $body);
+        $this->assertStringContainsString('Zobrazit stav objednávky', $body);
     }
 
     private function findContractByStorageNumber(string $number): Contract

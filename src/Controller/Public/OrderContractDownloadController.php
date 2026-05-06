@@ -11,27 +11,31 @@ use App\Service\DocumentPdfConverter;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
+use Symfony\Component\HttpFoundation\UriSigner;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Uid\Uuid;
 
-#[Route('/objednavka/{id}/dokumenty/smlouva.pdf', name: 'public_order_contract_download')]
+#[Route('/objednavka/{id}/dokumenty/smlouva.pdf', name: 'public_order_contract_download', requirements: ['id' => '[0-9a-f-]{36}'])]
 final class OrderContractDownloadController extends AbstractController
 {
     public function __construct(
         private readonly OrderRepository $orderRepository,
         private readonly ContractRepository $contractRepository,
         private readonly DocumentPdfConverter $pdfConverter,
+        private readonly UriSigner $uriSigner,
         #[Autowire('%kernel.project_dir%')]
         private readonly string $projectDir,
     ) {
     }
 
-    public function __invoke(string $id): BinaryFileResponse
+    public function __invoke(Request $request, string $id): BinaryFileResponse
     {
-        if (!Uuid::isValid($id)) {
-            throw new NotFoundHttpException('Objednávka nenalezena.');
+        if (!$this->uriSigner->checkRequest($request)) {
+            throw new AccessDeniedHttpException('Neplatný nebo expirovaný odkaz.');
         }
 
         $order = $this->orderRepository->find(Uuid::fromString($id));

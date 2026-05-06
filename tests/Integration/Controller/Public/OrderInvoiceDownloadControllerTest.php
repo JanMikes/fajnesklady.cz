@@ -7,21 +7,24 @@ namespace App\Tests\Integration\Controller\Public;
 use App\Entity\Invoice;
 use App\Entity\Order;
 use App\Enum\OrderStatus;
+use App\Service\OrderStatusUrlGenerator;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
-use Symfony\Component\Uid\Uuid;
 
 class OrderInvoiceDownloadControllerTest extends WebTestCase
 {
     private KernelBrowser $client;
     private EntityManagerInterface $entityManager;
+    private OrderStatusUrlGenerator $urlGenerator;
 
     protected function setUp(): void
     {
         parent::setUp();
         $this->client = static::createClient();
-        $this->entityManager = static::getContainer()->get('doctrine')->getManager();
+        $container = static::getContainer();
+        $this->entityManager = $container->get('doctrine')->getManager();
+        $this->urlGenerator = $container->get(OrderStatusUrlGenerator::class);
     }
 
     protected function tearDown(): void
@@ -30,11 +33,12 @@ class OrderInvoiceDownloadControllerTest extends WebTestCase
         static::ensureKernelShutdown();
     }
 
-    public function testCompletedOrderReturnsPdf(): void
+    public function testSignedUrlReturnsPdfForInvoiceWithPdf(): void
     {
-        $order = $this->findCompletedOrderWithInvoicePdf();
+        $invoice = $this->findInvoiceWithPdf();
+        $order = $invoice->order;
 
-        $this->client->request('GET', $this->buildUrl($order));
+        $this->requestSigned($this->urlGenerator->generateInvoiceDownload($order, $invoice));
 
         $this->assertResponseIsSuccessful();
         $this->assertSame('application/pdf', $this->client->getResponse()->headers->get('Content-Type'));
@@ -43,76 +47,43 @@ class OrderInvoiceDownloadControllerTest extends WebTestCase
         $this->assertStringStartsWith('attachment', $disposition);
     }
 
-    public function testCompletedOrderWithoutInvoiceReturns404(): void
+    public function testUnsignedRequestReturns403(): void
     {
-        // ContractFixtures seeds a completed order with a terminated contract
-        // and no invoice. The controller must 404 when no invoice exists.
-        $order = $this->findCompletedOrderWithoutInvoice();
+        $invoice = $this->findInvoiceWithPdf();
+        $order = $invoice->order;
 
-        $this->client->request('GET', $this->buildUrl($order));
+        $this->client->request(
+            'GET',
+            sprintf(
+                '/objednavka/%s/dokumenty/faktura/%s.pdf',
+                $order->id->toRfc4122(),
+                $invoice->id->toRfc4122(),
+            ),
+        );
 
-        $this->assertResponseStatusCodeSame(404);
+        $this->assertResponseStatusCodeSame(403);
     }
 
-    public function testNonCompletedOrderReturns404(): void
-    {
-        $reserved = $this->findOrderByStatus(OrderStatus::RESERVED);
-
-        $this->client->request('GET', $this->buildUrl($reserved));
-
-        $this->assertResponseStatusCodeSame(404);
-    }
-
-    public function testInvalidUuidReturns404(): void
-    {
-        $this->client->request('GET', '/objednavka/not-a-uuid/dokumenty/faktura.pdf');
-
-        $this->assertResponseStatusCodeSame(404);
-    }
-
-    public function testNonexistentOrderReturns404(): void
-    {
-        $this->client->request('GET', '/objednavka/'.Uuid::v7()->toRfc4122().'/dokumenty/faktura.pdf');
-
-        $this->assertResponseStatusCodeSame(404);
-    }
-
-    private function buildUrl(Order $order): string
-    {
-        return '/objednavka/'.$order->id->toRfc4122().'/dokumenty/faktura.pdf';
-    }
-
-    private function findOrderByStatus(OrderStatus $status): Order
-    {
-        $order = $this->entityManager->getRepository(Order::class)->findOneBy(['status' => $status]);
-        \assert($order instanceof Order, sprintf('No order with status %s in fixtures', $status->value));
-
-        return $order;
-    }
-
-    private function findCompletedOrderWithInvoicePdf(): Order
+    private function findInvoiceWithPdf(): Invoice
     {
         $orders = $this->entityManager->getRepository(Order::class)->findBy(['status' => OrderStatus::COMPLETED]);
         foreach ($orders as $order) {
             $invoice = $this->entityManager->getRepository(Invoice::class)->findOneBy(['order' => $order]);
             if (null !== $invoice && $invoice->hasPdf()) {
-                return $order;
+                return $invoice;
             }
         }
 
         throw new \LogicException('No completed order with PDF invoice in fixtures.');
     }
 
-    private function findCompletedOrderWithoutInvoice(): Order
+    private function requestSigned(string $absoluteUrl): void
     {
-        $orders = $this->entityManager->getRepository(Order::class)->findBy(['status' => OrderStatus::COMPLETED]);
-        foreach ($orders as $order) {
-            $invoice = $this->entityManager->getRepository(Invoice::class)->findOneBy(['order' => $order]);
-            if (null === $invoice) {
-                return $order;
-            }
-        }
+        $parsed = parse_url($absoluteUrl);
+        $path = $parsed['path'] ?? '/';
+        $query = isset($parsed['query']) ? '?'.$parsed['query'] : '';
+        $host = ($parsed['host'] ?? 'localhost').(isset($parsed['port']) ? ':'.$parsed['port'] : '');
 
-        throw new \LogicException('No completed order without invoice in fixtures.');
+        $this->client->request('GET', $path.$query, [], [], ['HTTP_HOST' => $host]);
     }
 }

@@ -6,6 +6,7 @@ namespace App\Event;
 
 use App\Enum\RentalType;
 use App\Repository\ContractRepository;
+use App\Service\OrderStatusUrlGenerator;
 use Psr\Log\LoggerInterface;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\Mailer\MailerInterface;
@@ -20,6 +21,7 @@ final readonly class SendContractExpiringReminderHandler
         private ContractRepository $contractRepository,
         private MailerInterface $mailer,
         private UrlGeneratorInterface $urlGenerator,
+        private OrderStatusUrlGenerator $statusUrlGenerator,
         private LoggerInterface $logger,
     ) {
     }
@@ -32,11 +34,7 @@ final readonly class SendContractExpiringReminderHandler
         $storageType = $storage->storageType;
         $place = $storage->getPlace();
 
-        $portalUrl = $this->urlGenerator->generate(
-            'portal_dashboard',
-            [],
-            UrlGeneratorInterface::ABSOLUTE_URL
-        );
+        $statusUrl = $this->statusUrlGenerator->generate($contract->order);
 
         $renewalUrl = $this->urlGenerator->generate(
             'public_order_renew',
@@ -62,7 +60,7 @@ final readonly class SendContractExpiringReminderHandler
                 'storageNumber' => $storage->number,
                 'endDate' => $contract->endDate?->format('d.m.Y'),
                 'daysRemaining' => $event->daysRemaining,
-                'portalUrl' => $portalUrl,
+                'statusUrl' => $statusUrl,
                 'renewalUrl' => $renewalUrl,
                 'isLimited' => RentalType::LIMITED === $contract->rentalType,
             ]);

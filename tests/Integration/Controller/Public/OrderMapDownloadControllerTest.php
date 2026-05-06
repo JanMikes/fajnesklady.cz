@@ -6,21 +6,24 @@ namespace App\Tests\Integration\Controller\Public;
 
 use App\Entity\Order;
 use App\Enum\OrderStatus;
+use App\Service\OrderStatusUrlGenerator;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
-use Symfony\Component\Uid\Uuid;
 
 class OrderMapDownloadControllerTest extends WebTestCase
 {
     private KernelBrowser $client;
     private EntityManagerInterface $entityManager;
+    private OrderStatusUrlGenerator $urlGenerator;
 
     protected function setUp(): void
     {
         parent::setUp();
         $this->client = static::createClient();
-        $this->entityManager = static::getContainer()->get('doctrine')->getManager();
+        $container = static::getContainer();
+        $this->entityManager = $container->get('doctrine')->getManager();
+        $this->urlGenerator = $container->get(OrderStatusUrlGenerator::class);
     }
 
     protected function tearDown(): void
@@ -29,22 +32,22 @@ class OrderMapDownloadControllerTest extends WebTestCase
         static::ensureKernelShutdown();
     }
 
-    public function testCompletedOrderReturnsPng(): void
+    public function testSignedUrlReturnsPng(): void
     {
         $order = $this->findOrderByStatus(OrderStatus::COMPLETED);
 
-        $this->client->request('GET', $this->buildUrl($order));
+        $this->requestSigned($this->urlGenerator->generateMapDownload($order));
 
         $this->assertResponseIsSuccessful();
         $this->assertSame('image/png', $this->client->getResponse()->headers->get('Content-Type'));
         $this->assertNotEmpty($this->client->getResponse()->getContent());
     }
 
-    public function testCompletedOrderWithDownloadParamSetsAttachmentDisposition(): void
+    public function testSignedUrlWithDownloadFlagSetsAttachmentDisposition(): void
     {
         $order = $this->findOrderByStatus(OrderStatus::COMPLETED);
 
-        $this->client->request('GET', $this->buildUrl($order).'?download=1');
+        $this->requestSigned($this->urlGenerator->generateMapDownload($order, forDownload: true));
 
         $this->assertResponseIsSuccessful();
         $disposition = $this->client->getResponse()->headers->get('Content-Disposition');
@@ -52,32 +55,22 @@ class OrderMapDownloadControllerTest extends WebTestCase
         $this->assertStringStartsWith('attachment', $disposition);
     }
 
-    public function testNonCompletedOrderReturns404(): void
+    public function testUnsignedRequestReturns403(): void
+    {
+        $order = $this->findOrderByStatus(OrderStatus::COMPLETED);
+
+        $this->client->request('GET', '/objednavka/'.$order->id->toRfc4122().'/dokumenty/mapa.png');
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    public function testNonCompletedOrderWithSignedUrlReturns404(): void
     {
         $reserved = $this->findOrderByStatus(OrderStatus::RESERVED);
 
-        $this->client->request('GET', $this->buildUrl($reserved));
+        $this->requestSigned($this->urlGenerator->generateMapDownload($reserved));
 
         $this->assertResponseStatusCodeSame(404);
-    }
-
-    public function testInvalidUuidReturns404(): void
-    {
-        $this->client->request('GET', '/objednavka/not-a-uuid/dokumenty/mapa.png');
-
-        $this->assertResponseStatusCodeSame(404);
-    }
-
-    public function testNonexistentOrderReturns404(): void
-    {
-        $this->client->request('GET', '/objednavka/'.Uuid::v7()->toRfc4122().'/dokumenty/mapa.png');
-
-        $this->assertResponseStatusCodeSame(404);
-    }
-
-    private function buildUrl(Order $order): string
-    {
-        return '/objednavka/'.$order->id->toRfc4122().'/dokumenty/mapa.png';
     }
 
     private function findOrderByStatus(OrderStatus $status): Order
@@ -86,5 +79,15 @@ class OrderMapDownloadControllerTest extends WebTestCase
         \assert($order instanceof Order, sprintf('No order with status %s in fixtures', $status->value));
 
         return $order;
+    }
+
+    private function requestSigned(string $absoluteUrl): void
+    {
+        $parsed = parse_url($absoluteUrl);
+        $path = $parsed['path'] ?? '/';
+        $query = isset($parsed['query']) ? '?'.$parsed['query'] : '';
+        $host = ($parsed['host'] ?? 'localhost').(isset($parsed['port']) ? ':'.$parsed['port'] : '');
+
+        $this->client->request('GET', $path.$query, [], [], ['HTTP_HOST' => $host]);
     }
 }

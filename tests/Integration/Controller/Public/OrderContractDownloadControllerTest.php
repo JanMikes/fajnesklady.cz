@@ -6,6 +6,7 @@ namespace App\Tests\Integration\Controller\Public;
 
 use App\Entity\Order;
 use App\Enum\OrderStatus;
+use App\Service\OrderStatusUrlGenerator;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -13,20 +14,23 @@ use Symfony\Component\Uid\Uuid;
 
 /**
  * Contract download happy-path requires LibreOffice (DocumentPdfConverter)
- * which is environment-dependent. We exercise the gating logic (status,
- * UUID validation, missing artefacts) — the actual DOCX→PDF conversion
- * is covered by SendContractReadyEmailHandlerTest at the unit level.
+ * which is environment-dependent. We exercise the gating logic (signature,
+ * order status, missing artefacts) — the actual DOCX→PDF conversion is
+ * covered elsewhere.
  */
 class OrderContractDownloadControllerTest extends WebTestCase
 {
     private KernelBrowser $client;
     private EntityManagerInterface $entityManager;
+    private OrderStatusUrlGenerator $urlGenerator;
 
     protected function setUp(): void
     {
         parent::setUp();
         $this->client = static::createClient();
-        $this->entityManager = static::getContainer()->get('doctrine')->getManager();
+        $container = static::getContainer();
+        $this->entityManager = $container->get('doctrine')->getManager();
+        $this->urlGenerator = $container->get(OrderStatusUrlGenerator::class);
     }
 
     protected function tearDown(): void
@@ -35,32 +39,34 @@ class OrderContractDownloadControllerTest extends WebTestCase
         static::ensureKernelShutdown();
     }
 
-    public function testNonCompletedOrderReturns404(): void
+    public function testUnsignedRequestReturns403(): void
+    {
+        $order = $this->findOrderByStatus(OrderStatus::COMPLETED);
+
+        $this->client->request('GET', '/objednavka/'.$order->id->toRfc4122().'/dokumenty/smlouva.pdf');
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    public function testNonCompletedOrderWithSignedUrlReturns404(): void
     {
         $reserved = $this->findOrderByStatus(OrderStatus::RESERVED);
 
-        $this->client->request('GET', $this->buildUrl($reserved));
+        $this->requestSigned($this->urlGenerator->generateContractDownload($reserved));
 
         $this->assertResponseStatusCodeSame(404);
     }
 
-    public function testInvalidUuidReturns404(): void
+    public function testNonexistentOrderWithSignedUrlReturns403(): void
     {
-        $this->client->request('GET', '/objednavka/not-a-uuid/dokumenty/smlouva.pdf');
+        $real = $this->findOrderByStatus(OrderStatus::COMPLETED);
+        $signedReal = $this->urlGenerator->generateContractDownload($real);
+        // Replace the id with a missing one — signature breaks → 403, not 404.
+        $tampered = str_replace($real->id->toRfc4122(), Uuid::v7()->toRfc4122(), $signedReal);
 
-        $this->assertResponseStatusCodeSame(404);
-    }
+        $this->requestSigned($tampered);
 
-    public function testNonexistentOrderReturns404(): void
-    {
-        $this->client->request('GET', '/objednavka/'.Uuid::v7()->toRfc4122().'/dokumenty/smlouva.pdf');
-
-        $this->assertResponseStatusCodeSame(404);
-    }
-
-    private function buildUrl(Order $order): string
-    {
-        return '/objednavka/'.$order->id->toRfc4122().'/dokumenty/smlouva.pdf';
+        $this->assertResponseStatusCodeSame(403);
     }
 
     private function findOrderByStatus(OrderStatus $status): Order
@@ -69,5 +75,15 @@ class OrderContractDownloadControllerTest extends WebTestCase
         \assert($order instanceof Order, sprintf('No order with status %s in fixtures', $status->value));
 
         return $order;
+    }
+
+    private function requestSigned(string $absoluteUrl): void
+    {
+        $parsed = parse_url($absoluteUrl);
+        $path = $parsed['path'] ?? '/';
+        $query = isset($parsed['query']) ? '?'.$parsed['query'] : '';
+        $host = ($parsed['host'] ?? 'localhost').(isset($parsed['port']) ? ':'.$parsed['port'] : '');
+
+        $this->client->request('GET', $path.$query, [], [], ['HTTP_HOST' => $host]);
     }
 }

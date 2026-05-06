@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Event;
 
 use App\Repository\OrderRepository;
+use App\Service\OrderStatusUrlGenerator;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -16,6 +17,7 @@ final readonly class SendOrderCancelledEmailHandler
     public function __construct(
         private OrderRepository $orderRepository,
         private MailerInterface $mailer,
+        private OrderStatusUrlGenerator $statusUrlGenerator,
     ) {
     }
 
@@ -43,6 +45,7 @@ final readonly class SendOrderCancelledEmailHandler
                 'endDate' => $order->endDate?->format('d.m.Y') ?? 'Na dobu neurčitou',
                 'priceCzk' => $order->getFirstPaymentPriceInCzk(),
                 'isRecurring' => $order->isRecurring(),
+                'statusUrl' => $this->statusUrlGenerator->generate($order),
             ]);
 
         $this->mailer->send($email);

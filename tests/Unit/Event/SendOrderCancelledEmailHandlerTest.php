@@ -13,9 +13,12 @@ use App\Enum\RentalType;
 use App\Event\OrderCancelled;
 use App\Event\SendOrderCancelledEmailHandler;
 use App\Repository\OrderRepository;
+use App\Service\OrderStatusUrlGenerator;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\HttpFoundation\UriSigner;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Email;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Uid\Uuid;
 
 class SendOrderCancelledEmailHandlerTest extends TestCase
@@ -39,7 +42,7 @@ class SendOrderCancelledEmailHandlerTest extends TestCase
                 $sentEmail = $email;
             });
 
-        $handler = new SendOrderCancelledEmailHandler($orderRepository, $mailer);
+        $handler = new SendOrderCancelledEmailHandler($orderRepository, $mailer, $this->createStatusUrlGenerator());
         $handler($event);
 
         $this->assertNotNull($sentEmail);
@@ -63,11 +66,19 @@ class SendOrderCancelledEmailHandlerTest extends TestCase
             $sentEmail = $email;
         });
 
-        $handler = new SendOrderCancelledEmailHandler($orderRepository, $mailer);
+        $handler = new SendOrderCancelledEmailHandler($orderRepository, $mailer, $this->createStatusUrlGenerator());
         $handler($event);
 
         $this->assertNotNull($sentEmail);
         $this->assertSame('Objednávka zrušena - Test Warehouse', $sentEmail->getSubject());
+    }
+
+    private function createStatusUrlGenerator(): OrderStatusUrlGenerator
+    {
+        $urlGenerator = $this->createStub(UrlGeneratorInterface::class);
+        $urlGenerator->method('generate')->willReturn('https://example.com/objednavka/abc/stav');
+
+        return new OrderStatusUrlGenerator($urlGenerator, new UriSigner('test-secret'));
     }
 
     private function createOrder(): Order

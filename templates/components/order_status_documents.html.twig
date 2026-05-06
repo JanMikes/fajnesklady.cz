@@ -1,20 +1,14 @@
 {#
-   "Vaše dokumenty" card for the authenticated portal user order detail.
-   The public order-status permalink uses `order_status_documents.html.twig`
-   with pre-signed URLs.
-
+   "Vaše dokumenty" panel for the public order-status permalink.
    Inputs:
-   - order: Order
-   - contract: ?Contract
-   - invoices: list<Invoice>
-   - place: Place
+   - vm: OrderStatusViewModel
 
-   Always invoked from a logged-in context — the shared layout already
-   guards on ROLE_USER, so per-invoice `portal_user_invoice_pdf` and the
-   place-scoped uploader URLs are always reachable.
+   All download URLs are pre-signed by OrderStatusUrlGenerator and carried
+   on the view model — no `path()` calls for the four hardened routes here.
 #}
 
-{% set isRecurring = order.endDate is null %}
+{% set isRecurring = vm.isRecurring %}
+{% set hasContractRow = vm.contract is not null %}
 
 <div class="card">
     <div class="card-body">
@@ -26,62 +20,57 @@
         </h2>
         <p class="text-sm text-gray-500 mb-5">Všechny dokumenty související s objednávkou si zde můžete kdykoli stáhnout.</p>
 
-        {# Smluvní dokumenty: smlouva + faktury #}
-        <div class="mb-6">
-            <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Smluvní dokumenty</h3>
-            <ul class="divide-y divide-gray-100 border border-gray-100 rounded-lg">
-                {% if contract and contract.hasDocument %}
-                    {{ _self.documentRow(
-                        path('portal_user_contract_download', {id: contract.id}),
-                        'Nájemní smlouva',
-                        'Podepsaná smlouva o pronájmu skladové jednotky',
-                        'pdf'
-                    ) }}
-                {% elseif contract %}
-                    {{ _self.documentRow(
-                        null,
-                        'Nájemní smlouva',
-                        'Dokument se připravuje, bude doručen e-mailem',
-                        'pdf'
-                    ) }}
-                {% endif %}
-
-                {% for invoice in invoices %}
-                    {% if invoice.hasPdf() %}
+        {% if hasContractRow or vm.invoiceDownloads is not empty %}
+            <div class="mb-6">
+                <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Smluvní dokumenty</h3>
+                <ul class="divide-y divide-gray-100 border border-gray-100 rounded-lg">
+                    {% if hasContractRow %}
                         {{ _self.documentRow(
-                            path('portal_user_invoice_pdf', {id: invoice.id}),
-                            'Faktura č. ' ~ invoice.invoiceNumber,
-                            'Daňový doklad za platbu ' ~ ((invoice.amount / 100)|number_format(2, ',', ' ')) ~ ' Kč',
-                            'pdf'
-                        ) }}
-                    {% else %}
-                        {{ _self.documentRow(
-                            null,
-                            'Faktura č. ' ~ invoice.invoiceNumber,
-                            'PDF se připravuje, bude doručeno e-mailem',
+                            vm.contractDownloadUrl,
+                            'Nájemní smlouva',
+                            vm.contractDownloadUrl ? 'Podepsaná smlouva o pronájmu skladové jednotky' : 'Dokument se připravuje, bude doručen e-mailem',
                             'pdf'
                         ) }}
                     {% endif %}
-                {% endfor %}
-            </ul>
-        </div>
 
-        {# Pobočka: provozní řád + mapa #}
-        {% if place.operatingRulesPath %}
-            <div class="mb-6">
-                <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Pobočka</h3>
-                <ul class="divide-y divide-gray-100 border border-gray-100 rounded-lg">
-                    {{ _self.documentRow(
-                        upload_url(place.operatingRulesPath),
-                        'Provozní řád pobočky',
-                        'Pravidla pro užívání skladu a pobočky',
-                        'pdf'
-                    ) }}
+                    {% for invoice in vm.invoiceDownloads %}
+                        {{ _self.documentRow(
+                            invoice.hasPdf ? invoice.url : null,
+                            invoice.name,
+                            invoice.hasPdf
+                                ? 'Daňový doklad za platbu ' ~ (invoice.amountCzk|number_format(2, ',', ' ')) ~ ' Kč'
+                                : 'PDF se připravuje, bude doručeno e-mailem',
+                            'pdf'
+                        ) }}
+                    {% endfor %}
                 </ul>
             </div>
         {% endif %}
 
-        {# Právní a obchodní dokumenty #}
+        {% if vm.place.operatingRulesPath or vm.mapDownloadUrl %}
+            <div class="mb-6">
+                <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Pobočka</h3>
+                <ul class="divide-y divide-gray-100 border border-gray-100 rounded-lg">
+                    {% if vm.place.operatingRulesPath %}
+                        {{ _self.documentRow(
+                            upload_url(vm.place.operatingRulesPath),
+                            'Provozní řád pobočky',
+                            'Pravidla pro užívání skladu a pobočky',
+                            'pdf'
+                        ) }}
+                    {% endif %}
+                    {% if vm.mapDownloadUrl %}
+                        {{ _self.documentRow(
+                            vm.mapDownloadUrl,
+                            'Mapa pobočky',
+                            'Vaše skladová jednotka vyznačená v mapě',
+                            'image'
+                        ) }}
+                    {% endif %}
+                </ul>
+            </div>
+        {% endif %}
+
         <div>
             <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Právní a obchodní dokumenty</h3>
             <ul class="divide-y divide-gray-100 border border-gray-100 rounded-lg">

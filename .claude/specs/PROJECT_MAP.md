@@ -26,7 +26,10 @@ Stack: PHP 8.5 (Docker image `ghcr.io/thedevs-cz/php:8.5-fajnesklady`) · Symfon
 - `/objednavka/{id}/platba` → `OrderPaymentController`
 - `/objednavka/{id}/platba/iniciovat` → `PaymentInitiateController`
 - `/objednavka/{id}/platba/navrat` → `PaymentReturnController`
-- `/objednavka/{id}/dokonceno` → `OrderCompleteController`
+- `/objednavka/{id}/stav` → `OrderStatusController` (UriSigner-protected lifecycle-aware permalink)
+- `/objednavka/{id}/dokumenty/smlouva.pdf` → `OrderContractDownloadController` (UriSigner-protected)
+- `/objednavka/{id}/dokumenty/faktura/{invoiceId}.pdf` → `OrderInvoiceDownloadController` (UriSigner-protected)
+- `/objednavka/{id}/dokumenty/mapa.png` → `OrderMapDownloadController` (UriSigner-protected)
 - `/podpis/{token}` → `CustomerSigningController`
 - `/podpis/dokonceno/{id}` → `CustomerSigningCompleteController`
 - `/opakovana-platba/{contractId}/zrusit` → `CancelRecurringPaymentController`
@@ -156,7 +159,8 @@ UserRole, OrderStatus, StorageStatus, HandoverStatus, PlaceAccessRequestStatus, 
 Registration, LandlordRegistration, RequestPasswordReset, ResetPassword, ChangePassword, Profile, BillingInfo, Place, Storage, StorageType, StorageUnavailability, PlaceProposal, Order, UserRole (admin), AdminUser, AdminCreateOnboarding, AdminMigrateCustomer, LandlordHandover, TenantHandover.
 
 ## Services of interest
-- Payment: `GoPay\GoPayClient`, `GoPay\GoPayApiClient`, `RecurringPaymentCancelUrlGenerator`
+- Payment: `GoPay\GoPayClient`, `GoPay\GoPayApiClient`, `RecurringPaymentCancelUrlGenerator`, `OrderStatusUrlGenerator`
+- Order status: `Order\OrderDisplayStatusResolver`, `Order\OrderStatusViewModelFactory`
 - Invoicing: `Fakturoid\FakturoidClient`, `InvoicingService`, `SelfBillingService`
 - Security voters: ContractVoter, OrderVoter, PlaceVoter, StorageVoter, StorageTypeVoter, HandoverProtocolVoter, DeactivatedUserChecker, LoginSubscriber
 - Identity: `ProvideIdentity` (UUID v7), `RandomIdentityProvider`, `PredictableIdentityProvider` (tests)

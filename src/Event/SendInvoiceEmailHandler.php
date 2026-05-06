@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Event;
 
 use App\Repository\InvoiceRepository;
+use App\Service\OrderStatusUrlGenerator;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -16,6 +17,7 @@ final readonly class SendInvoiceEmailHandler
     public function __construct(
         private InvoiceRepository $invoiceRepository,
         private MailerInterface $mailer,
+        private OrderStatusUrlGenerator $statusUrlGenerator,
     ) {
     }
 
@@ -29,6 +31,8 @@ final readonly class SendInvoiceEmailHandler
         $place = $storage->getPlace();
 
         $hasPdfAttachment = $invoice->hasPdf() && null !== $invoice->pdfPath && file_exists($invoice->pdfPath);
+
+        $statusUrl = $this->statusUrlGenerator->generate($order);
 
         $email = (new TemplatedEmail())
             ->from(new Address('noreply@fajnesklady.cz', 'Fajnesklady.cz'))
@@ -44,6 +48,7 @@ final readonly class SendInvoiceEmailHandler
                 'storageType' => $storageType->name,
                 'storageNumber' => $storage->number,
                 'hasPdfAttachment' => $hasPdfAttachment,
+                'statusUrl' => $statusUrl,
             ]);
 
         if ($hasPdfAttachment) {

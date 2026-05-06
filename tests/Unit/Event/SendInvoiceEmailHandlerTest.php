@@ -14,9 +14,12 @@ use App\Enum\RentalType;
 use App\Event\InvoiceCreated;
 use App\Event\SendInvoiceEmailHandler;
 use App\Repository\InvoiceRepository;
+use App\Service\OrderStatusUrlGenerator;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\HttpFoundation\UriSigner;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Email;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Uid\Uuid;
 
 class SendInvoiceEmailHandlerTest extends TestCase
@@ -66,7 +69,7 @@ class SendInvoiceEmailHandlerTest extends TestCase
                 $sentEmail = $email;
             });
 
-        $handler = new SendInvoiceEmailHandler($invoiceRepository, $mailer);
+        $handler = new SendInvoiceEmailHandler($invoiceRepository, $mailer, $this->createStatusUrlGenerator());
         $handler($event);
 
         $this->assertNotNull($sentEmail);
@@ -90,7 +93,7 @@ class SendInvoiceEmailHandlerTest extends TestCase
             $sentEmail = $email;
         });
 
-        $handler = new SendInvoiceEmailHandler($invoiceRepository, $mailer);
+        $handler = new SendInvoiceEmailHandler($invoiceRepository, $mailer, $this->createStatusUrlGenerator());
         $handler($event);
 
         $this->assertNotNull($sentEmail);
@@ -116,7 +119,7 @@ class SendInvoiceEmailHandlerTest extends TestCase
             $sentEmail = $email;
         });
 
-        $handler = new SendInvoiceEmailHandler($invoiceRepository, $mailer);
+        $handler = new SendInvoiceEmailHandler($invoiceRepository, $mailer, $this->createStatusUrlGenerator());
         $handler($event);
 
         $this->assertNotNull($sentEmail);
@@ -142,7 +145,7 @@ class SendInvoiceEmailHandlerTest extends TestCase
             $sentEmail = $email;
         });
 
-        $handler = new SendInvoiceEmailHandler($invoiceRepository, $mailer);
+        $handler = new SendInvoiceEmailHandler($invoiceRepository, $mailer, $this->createStatusUrlGenerator());
         $handler($event);
 
         $this->assertNotNull($sentEmail);
@@ -152,6 +155,14 @@ class SendInvoiceEmailHandlerTest extends TestCase
         /** @var \Symfony\Bridge\Twig\Mime\TemplatedEmail $sentEmail */
         $context = $sentEmail->getContext();
         $this->assertFalse($context['hasPdfAttachment']);
+    }
+
+    private function createStatusUrlGenerator(): OrderStatusUrlGenerator
+    {
+        $urlGenerator = $this->createStub(UrlGeneratorInterface::class);
+        $urlGenerator->method('generate')->willReturn('https://example.com/objednavka/abc/stav');
+
+        return new OrderStatusUrlGenerator($urlGenerator, new UriSigner('test-secret'));
     }
 
     private function createInvoice(): Invoice

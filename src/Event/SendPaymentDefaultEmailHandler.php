@@ -7,6 +7,7 @@ namespace App\Event;
 use App\Enum\UserRole;
 use App\Repository\ContractRepository;
 use App\Repository\UserRepository;
+use App\Service\OrderStatusUrlGenerator;
 use Psr\Log\LoggerInterface;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\Mailer\MailerInterface;
@@ -20,6 +21,7 @@ final readonly class SendPaymentDefaultEmailHandler
         private ContractRepository $contractRepository,
         private UserRepository $userRepository,
         private MailerInterface $mailer,
+        private OrderStatusUrlGenerator $statusUrlGenerator,
         private LoggerInterface $logger,
     ) {
     }
@@ -46,6 +48,7 @@ final readonly class SendPaymentDefaultEmailHandler
                 'storageNumber' => $storage->number,
                 'outstandingDebt' => $debtCzk,
                 'hasDebt' => $event->outstandingDebtAmount > 0,
+                'statusUrl' => $this->statusUrlGenerator->generate($contract->order),
             ]);
 
         try {

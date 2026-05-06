@@ -361,16 +361,21 @@ class OrderPaymentControllerTest extends WebTestCase
         $this->assertSame('OK', $this->client->getResponse()->getContent());
     }
 
-    public function testPaymentReturnRedirectsToCompleteOnSuccess(): void
+    public function testPaymentReturnRedirectsToSignedStatusUrlOnSuccess(): void
     {
-        // PAID order has terms accepted - should redirect to complete page
+        // PAID order has terms accepted - should redirect to signed status URL
         $order = $this->findOrderByStatus(OrderStatus::PAID);
         $orderId = $order->id->toRfc4122();
 
         $this->client->request('GET', '/objednavka/'.$orderId.'/platba/navrat');
 
-        // PAID order redirects to complete page
-        $this->assertResponseRedirects('/objednavka/'.$orderId.'/dokonceno');
+        $this->assertResponseRedirects();
+        $location = (string) $this->client->getResponse()->headers->get('Location');
+        $this->assertMatchesRegularExpression(
+            '~/objednavka/'.$orderId.'/stav\?_hash=[A-Za-z0-9_-]+$~',
+            $location,
+            'PaymentReturnController must redirect to the signed /stav permalink.',
+        );
     }
 
     public function testPaymentReturnRedirectsToPaymentOnPending(): void

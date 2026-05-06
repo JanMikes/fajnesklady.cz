@@ -7,11 +7,11 @@ namespace App\Event;
 use App\Repository\OrderRepository;
 use App\Service\ContractDocumentGenerator;
 use App\Service\DocumentPdfConverter;
+use App\Service\OrderStatusUrlGenerator;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Mime\Address;
-use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 #[AsMessageHandler]
 final readonly class SendOrderConfirmationEmailHandler
@@ -19,7 +19,7 @@ final readonly class SendOrderConfirmationEmailHandler
     public function __construct(
         private OrderRepository $orderRepository,
         private MailerInterface $mailer,
-        private UrlGeneratorInterface $urlGenerator,
+        private OrderStatusUrlGenerator $statusUrlGenerator,
         private ContractDocumentGenerator $contractDocumentGenerator,
         private DocumentPdfConverter $pdfConverter,
         private string $projectDir,
@@ -35,11 +35,7 @@ final readonly class SendOrderConfirmationEmailHandler
         $storageType = $storage->storageType;
         $place = $storage->getPlace();
 
-        $manageUrl = $this->urlGenerator->generate(
-            'portal_user_order_detail',
-            ['id' => $order->id->toRfc4122()],
-            UrlGeneratorInterface::ABSOLUTE_URL
-        );
+        $statusUrl = $this->statusUrlGenerator->generate($order);
 
         $email = (new TemplatedEmail())
             ->from(new Address('noreply@fajnesklady.cz', 'Fajnesklady.cz'))
@@ -59,7 +55,7 @@ final readonly class SendOrderConfirmationEmailHandler
                 'isRecurring' => $order->isRecurring(),
                 'expiresAt' => $order->expiresAt->format('d.m.Y H:i'),
                 'lockCode' => $storage->lockCode,
-                'manageUrl' => $manageUrl,
+                'statusUrl' => $statusUrl,
             ]);
 
         // Attach the signed contract (the order is legally binding at this point).

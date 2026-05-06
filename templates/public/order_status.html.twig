@@ -1,0 +1,270 @@
+{% extends app.user ? 'portal/layout.html.twig' : 'user/layout.html.twig' %}
+
+{% set order = vm.order %}
+{% set contract = vm.contract %}
+{% set storage = vm.storage %}
+{% set storageType = vm.storageType %}
+{% set place = vm.place %}
+{% set status = vm.status %}
+
+{% set variantClasses = {
+    'success': 'bg-green-50 border-green-200 text-green-800',
+    'warning': 'bg-amber-50 border-amber-200 text-amber-900',
+    'error': 'bg-red-50 border-red-200 text-red-800',
+    'info': 'bg-blue-50 border-blue-200 text-blue-800',
+    'neutral': 'bg-gray-50 border-gray-200 text-gray-800',
+} %}
+
+{% block title %}Stav objednávky - Fajnesklady.cz{% endblock %}
+
+{% block content %}
+    <div class="max-w-4xl mx-auto">
+        {# Status banner #}
+        <div class="mb-6 rounded-lg border p-5 {{ variantClasses[status.variant] ?? variantClasses['neutral'] }}">
+            <div class="flex items-start gap-4">
+                <div class="flex-shrink-0 mt-0.5">
+                    {% if status.variant == 'success' %}
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                    {% elseif status.variant == 'warning' %}
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    {% elseif status.variant == 'error' %}
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    {% else %}
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    {% endif %}
+                </div>
+                <div class="flex-1">
+                    <h1 class="text-2xl font-bold mb-1">{{ status.label }}</h1>
+                    {% if status.description %}
+                        <p class="text-sm">{{ status.description }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        {# State-specific CTA row #}
+        {% if vm.payNowUrl or vm.newOrderUrl %}
+            <div class="mb-6 flex flex-wrap gap-3">
+                {% if vm.payNowUrl %}
+                    <a href="{{ vm.payNowUrl }}" class="btn btn-primary">Pokračovat v platbě</a>
+                {% endif %}
+                {% if vm.newOrderUrl %}
+                    <a href="{{ vm.newOrderUrl }}" class="btn btn-secondary">Vytvořit novou objednávku</a>
+                {% endif %}
+            </div>
+        {% endif %}
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-2 space-y-6">
+                {# Order summary #}
+                <div class="card">
+                    <div class="card-body">
+                        <h2 class="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                            </svg>
+                            Detail objednávky
+                        </h2>
+
+                        <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                            {% if contract %}
+                                <div>
+                                    <dt class="text-gray-500">Číslo smlouvy</dt>
+                                    <dd class="font-mono font-medium text-gray-900">{{ contract.id|slice(0, 8)|upper }}</dd>
+                                </div>
+                            {% endif %}
+                            <div>
+                                <dt class="text-gray-500">Pobočka</dt>
+                                <dd class="font-medium text-gray-900">{{ place.name }}</dd>
+                            </div>
+                            <div class="sm:col-span-2">
+                                <dt class="text-gray-500">Adresa</dt>
+                                <dd class="font-medium text-gray-900">{{ place.address }}, {{ place.postalCode }} {{ place.city }}</dd>
+                            </div>
+                            <div>
+                                <dt class="text-gray-500">Skladová jednotka</dt>
+                                <dd class="font-medium text-gray-900">{{ storageType.name }} – {{ storage.number }}</dd>
+                            </div>
+                            <div>
+                                <dt class="text-gray-500">Rozměry</dt>
+                                <dd class="font-medium text-gray-900">{{ storageType.dimensionsInMeters }}</dd>
+                            </div>
+                            <div>
+                                <dt class="text-gray-500">Datum začátku</dt>
+                                <dd class="font-medium text-gray-900">{{ order.startDate|date('d.m.Y') }}</dd>
+                            </div>
+                            <div>
+                                <dt class="text-gray-500">Datum konce</dt>
+                                <dd class="font-medium text-gray-900">
+                                    {% if order.endDate %}
+                                        {{ order.endDate|date('d.m.Y') }}
+                                    {% else %}
+                                        Na dobu neurčitou
+                                    {% endif %}
+                                </dd>
+                            </div>
+                            <div class="sm:col-span-2 pt-3 mt-1 border-t border-gray-100">
+                                <dt class="text-gray-500">{{ order.isRecurring ? 'Měsíční platba' : 'Zaplaceno' }}</dt>
+                                <dd class="font-bold text-lg text-green-600">
+                                    {{ order.firstPaymentPriceInCzk|number_format(2, ',', ' ') }} Kč{% if order.isRecurring %} / měsíc{% endif %}
+                                    <span class="text-xs font-normal text-gray-500 ml-1">vč. DPH</span>
+                                </dd>
+                            </div>
+                        </dl>
+                    </div>
+                </div>
+
+                {# Recurring info card #}
+                {% if vm.isRecurring and contract and contract.hasActiveRecurringPayment() %}
+                    <div class="card">
+                        <div class="card-body">
+                            <h2 class="text-lg font-bold text-gray-900 mb-4">Opakovaná platba</h2>
+                            <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                                {% if contract.nextBillingDate %}
+                                    <div>
+                                        <dt class="text-gray-500">Příští platba</dt>
+                                        <dd class="font-medium text-gray-900">{{ contract.nextBillingDate|date('d.m.Y') }}</dd>
+                                    </div>
+                                {% endif %}
+                                {% if contract.lastBilledAt %}
+                                    <div>
+                                        <dt class="text-gray-500">Poslední platba</dt>
+                                        <dd class="font-medium text-gray-900">{{ contract.lastBilledAt|date('d.m.Y') }}</dd>
+                                    </div>
+                                {% endif %}
+                                {% if contract.paidThroughDate %}
+                                    <div>
+                                        <dt class="text-gray-500">Zaplaceno do</dt>
+                                        <dd class="font-medium text-gray-900">{{ contract.paidThroughDate|date('d.m.Y') }}</dd>
+                                    </div>
+                                {% endif %}
+                            </dl>
+                            {% if vm.cancelRecurringUrl %}
+                                <div class="mt-4">
+                                    <a href="{{ vm.cancelRecurringUrl }}" class="link text-sm">Zrušit opakovanou platbu</a>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endif %}
+
+                {# Failed-billing notice #}
+                {% if status.case.value == 'active_billing_failed' %}
+                    <div class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                        <strong>Poslední automatický pokus o platbu selhal.</strong>
+                        Zkontrolujte prosím vaši kartu nebo nás kontaktujte na
+                        <a href="mailto:simek@fajnesklady.cz" class="link">simek@fajnesklady.cz</a>.
+                    </div>
+                {% endif %}
+
+                {# Outstanding-debt notice #}
+                {% if vm.outstandingDebtCzk is not null %}
+                    <div class="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+                        <strong>Z důvodu neuhrazené platby evidujeme dluh ve výši {{ vm.outstandingDebtCzk|number_format(0, ',', ' ') }} Kč.</strong>
+                        Kontaktujte nás prosím na <a href="mailto:simek@fajnesklady.cz" class="link">simek@fajnesklady.cz</a>.
+                    </div>
+                {% endif %}
+
+                {# Map preview — only when completed and place has a map #}
+                {% if vm.mapEmbedUrl %}
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="flex items-start justify-between mb-4 gap-4">
+                                <div>
+                                    <h2 class="text-lg font-bold text-gray-900 mb-1 flex items-center gap-2">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                                        </svg>
+                                        Mapa pobočky
+                                    </h2>
+                                    <p class="text-sm text-gray-500">Vaše skladová jednotka <strong>{{ storage.number }}</strong> v rámci pobočky.</p>
+                                </div>
+                                {% if vm.mapDownloadUrl %}
+                                    <a href="{{ vm.mapDownloadUrl }}" class="btn btn-ghost btn-sm shrink-0" title="Stáhnout obrázek mapy">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                        </svg>
+                                        Stáhnout
+                                    </a>
+                                {% endif %}
+                            </div>
+                            <a href="{{ vm.mapEmbedUrl }}" target="_blank" class="block group">
+                                <div class="rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
+                                    <img src="{{ vm.mapEmbedUrl }}"
+                                         alt="Mapa pobočky {{ place.name }} s vyznačenou skladovou jednotkou"
+                                         class="w-full h-auto group-hover:opacity-95 transition-opacity">
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                {% endif %}
+
+                {# Documents #}
+                <div id="dokumenty">
+                    {% include 'components/order_status_documents.html.twig' with {vm: vm} only %}
+                </div>
+            </div>
+
+            {# Sidebar #}
+            <div class="space-y-6">
+                {# Email reminder #}
+                <div class="card">
+                    <div class="card-body text-center">
+                        <div class="inline-flex items-center justify-center w-12 h-12 bg-accent/10 rounded-full mb-3">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                        </div>
+                        <h3 class="font-semibold text-gray-900 mb-1">Tento odkaz najdete v e-mailech</h3>
+                        <p class="text-sm text-gray-600">
+                            Stejný odkaz Vám byl zaslán v každém e-mailu od nás. Můžete se sem kdykoli vrátit.
+                        </p>
+                    </div>
+                </div>
+
+                {# Pobočka contact #}
+                <div class="bg-accent/5 rounded-lg p-4 border border-accent/10">
+                    <h3 class="font-semibold text-gray-900 mb-2">Pobočka {{ place.name }}</h3>
+                    <p class="text-sm text-gray-600 mb-3">{{ place.address }}, {{ place.postalCode }} {{ place.city }}</p>
+                    {% if place.description %}
+                        <p class="text-xs text-gray-500 mb-3 whitespace-pre-line">{{ place.description }}</p>
+                    {% endif %}
+                    <a href="tel:+420605522566" class="link inline-flex items-center text-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                        </svg>
+                        +420 605 522 566
+                    </a>
+                </div>
+
+                {# Timeline #}
+                {% if vm.timeline is not empty %}
+                    <div class="card">
+                        <div class="card-body">
+                            <h3 class="font-semibold text-gray-900 mb-3">Historie objednávky</h3>
+                            <ol class="space-y-2 text-sm">
+                                {% for entry in vm.timeline %}
+                                    <li class="flex items-start gap-2">
+                                        <span class="flex-shrink-0">{{ entry.icon }}</span>
+                                        <div class="flex-1 min-w-0">
+                                            <div class="text-gray-900">{{ entry.label }}</div>
+                                            <div class="text-xs text-gray-500">{{ entry.occurredAt|date('d.m.Y H:i') }}</div>
+                                        </div>
+                                    </li>
+                                {% endfor %}
+                            </ol>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+{% endblock %}

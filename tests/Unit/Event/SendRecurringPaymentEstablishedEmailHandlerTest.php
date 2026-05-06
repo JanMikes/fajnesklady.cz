@@ -13,9 +13,11 @@ use App\Enum\RentalType;
 use App\Event\RecurringPaymentEstablished;
 use App\Event\SendRecurringPaymentEstablishedEmailHandler;
 use App\Repository\OrderRepository;
+use App\Service\OrderStatusUrlGenerator;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
+use Symfony\Component\HttpFoundation\UriSigner;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Email;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
@@ -83,12 +85,14 @@ class SendRecurringPaymentEstablishedEmailHandlerTest extends TestCase
         });
 
         $urlGenerator = $this->createStub(UrlGeneratorInterface::class);
-        $urlGenerator->method('generate')->willReturn('https://example.com/portal/order');
+        $urlGenerator->method('generate')->willReturn('https://example.com/objednavka/abc/stav');
+
+        $statusUrlGenerator = new OrderStatusUrlGenerator($urlGenerator, new UriSigner('test-secret'));
 
         return new SendRecurringPaymentEstablishedEmailHandler(
             $orderRepository,
             $mailer,
-            $urlGenerator,
+            $statusUrlGenerator,
             new NullLogger(),
         );
     }

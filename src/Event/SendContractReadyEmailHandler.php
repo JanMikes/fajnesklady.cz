@@ -6,13 +6,13 @@ namespace App\Event;
 
 use App\Repository\ContractRepository;
 use App\Service\DocumentPdfConverter;
+use App\Service\OrderStatusUrlGenerator;
 use App\Service\RecurringPaymentCancelUrlGenerator;
 use App\Service\StorageMapImageGenerator;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Mime\Address;
-use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 #[AsMessageHandler]
 final readonly class SendContractReadyEmailHandler
@@ -20,7 +20,7 @@ final readonly class SendContractReadyEmailHandler
     public function __construct(
         private ContractRepository $contractRepository,
         private MailerInterface $mailer,
-        private UrlGeneratorInterface $urlGenerator,
+        private OrderStatusUrlGenerator $statusUrlGenerator,
         private RecurringPaymentCancelUrlGenerator $cancelUrlGenerator,
         private StorageMapImageGenerator $mapImageGenerator,
         private DocumentPdfConverter $pdfConverter,
@@ -36,11 +36,7 @@ final readonly class SendContractReadyEmailHandler
         $storageType = $storage->storageType;
         $place = $storage->getPlace();
 
-        $orderUrl = $this->urlGenerator->generate(
-            'public_order_complete',
-            ['id' => $contract->order->id->toRfc4122(), '_fragment' => 'dokumenty'],
-            UrlGeneratorInterface::ABSOLUTE_URL
-        );
+        $statusUrl = $this->statusUrlGenerator->generate($contract->order);
 
         $isRecurring = $contract->hasActiveRecurringPayment();
         $mapImageData = $this->mapImageGenerator->generate($storage);
@@ -67,7 +63,7 @@ final readonly class SendContractReadyEmailHandler
                 'storageNumber' => $storage->number,
                 'startDate' => $contract->startDate->format('d.m.Y'),
                 'endDate' => $contract->endDate?->format('d.m.Y') ?? 'Na dobu neurčitou',
-                'orderUrl' => $orderUrl,
+                'statusUrl' => $statusUrl,
                 'isRecurring' => $isRecurring,
                 'monthlyAmount' => $isRecurring ? number_format($contract->order->getFirstPaymentPriceInCzk(), 2, ',', ' ').' Kč' : null,
                 'nextBillingDate' => $isRecurring && null !== $contract->nextBillingDate ? $contract->nextBillingDate->format('d.m.Y') : null,

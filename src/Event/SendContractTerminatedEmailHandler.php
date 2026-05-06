@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Event;
 
 use App\Repository\ContractRepository;
+use App\Service\OrderStatusUrlGenerator;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -16,6 +17,7 @@ final readonly class SendContractTerminatedEmailHandler
     public function __construct(
         private ContractRepository $contractRepository,
         private MailerInterface $mailer,
+        private OrderStatusUrlGenerator $statusUrlGenerator,
     ) {
     }
 
@@ -37,6 +39,7 @@ final readonly class SendContractTerminatedEmailHandler
                 'placeName' => $place->name,
                 'storageType' => $storageType->name,
                 'storageNumber' => $storage->number,
+                'statusUrl' => $this->statusUrlGenerator->generate($contract->order),
             ]);
 
         $this->mailer->send($email);

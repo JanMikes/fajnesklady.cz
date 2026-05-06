@@ -8,9 +8,11 @@ use App\Command\CancelOrderCommand;
 use App\Enum\OrderStatus;
 use App\Repository\OrderRepository;
 use App\Service\GoPay\GoPayClient;
+use App\Service\OrderStatusUrlGenerator;
 use App\Service\PriceCalculator;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -26,6 +28,7 @@ final class OrderPaymentController extends AbstractController
         private readonly MessageBusInterface $commandBus,
         private readonly GoPayClient $goPayClient,
         private readonly PriceCalculator $priceCalculator,
+        private readonly OrderStatusUrlGenerator $orderStatusUrlGenerator,
         private readonly LoggerInterface $logger,
     ) {
     }
@@ -56,12 +59,8 @@ final class OrderPaymentController extends AbstractController
 
         // Check if order can be paid
         if (!$order->canBePaid()) {
-            if (OrderStatus::COMPLETED === $order->status) {
-                return $this->redirectToRoute('public_order_complete', ['id' => $order->id]);
-            }
-
-            if (OrderStatus::PAID === $order->status) {
-                return $this->redirectToRoute('public_order_complete', ['id' => $order->id]);
+            if (OrderStatus::COMPLETED === $order->status || OrderStatus::PAID === $order->status) {
+                return new RedirectResponse($this->orderStatusUrlGenerator->generate($order));
             }
 
             $this->addFlash('error', 'Tuto objednávku již nelze zaplatit.');

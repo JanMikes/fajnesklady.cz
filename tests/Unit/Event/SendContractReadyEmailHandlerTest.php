@@ -15,10 +15,12 @@ use App\Event\OrderCompleted;
 use App\Event\SendContractReadyEmailHandler;
 use App\Repository\ContractRepository;
 use App\Service\DocumentPdfConverter;
+use App\Service\OrderStatusUrlGenerator;
 use App\Service\RecurringPaymentCancelUrlGenerator;
 use App\Service\StorageMapImageGenerator;
 use PHPUnit\Framework\TestCase;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
+use Symfony\Component\HttpFoundation\UriSigner;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Email;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
@@ -173,8 +175,9 @@ class SendContractReadyEmailHandlerTest extends TestCase
         $urlGenerator = $this->createStub(UrlGeneratorInterface::class);
         $urlGenerator->method('generate')->willReturn('https://example.com/portal');
 
-        $uriSigner = new \Symfony\Component\HttpFoundation\UriSigner('test-secret');
+        $uriSigner = new UriSigner('test-secret');
         $cancelUrlGenerator = new RecurringPaymentCancelUrlGenerator($urlGenerator, $uriSigner);
+        $statusUrlGenerator = new OrderStatusUrlGenerator($urlGenerator, $uriSigner);
 
         $mapImageGenerator = $this->createStub(StorageMapImageGenerator::class);
         $mapImageGenerator->method('generate')->willReturn($mapBytes);
@@ -187,7 +190,7 @@ class SendContractReadyEmailHandlerTest extends TestCase
         return new SendContractReadyEmailHandler(
             $contractRepository,
             $mailer,
-            $urlGenerator,
+            $statusUrlGenerator,
             $cancelUrlGenerator,
             $mapImageGenerator,
             $pdfConverter,

@@ -35,6 +35,11 @@ return App::config([
         ],
         'App\\Service\\' => [
             'resource' => '../src/Service/',
+            'exclude' => [
+                '../src/Service/Order/OrderDisplayStatus.php',
+                '../src/Service/Order/OrderDisplayStatusCase.php',
+                '../src/Service/Order/OrderStatusViewModel.php',
+            ],
         ],
         'App\\Service\\Identity\\ProvideIdentity' => [
             'alias' => 'App\\Service\\Identity\\RandomIdentityProvider',

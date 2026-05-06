@@ -157,6 +157,31 @@ class AuditLogRepository
     }
 
     /**
+     * @return AuditLog[]
+     */
+    public function findForOrderTimeline(string $orderId, ?string $contractId): array
+    {
+        $qb = $this->entityManager->createQueryBuilder()
+            ->select('al')
+            ->from(AuditLog::class, 'al')
+            ->orderBy('al.createdAt', 'ASC');
+
+        if (null !== $contractId) {
+            $qb->where('(al.entityType = :orderType AND al.entityId = :orderId) OR (al.entityType = :contractType AND al.entityId = :contractId)')
+                ->setParameter('orderType', 'order')
+                ->setParameter('orderId', $orderId)
+                ->setParameter('contractType', 'contract')
+                ->setParameter('contractId', $contractId);
+        } else {
+            $qb->where('al.entityType = :orderType AND al.entityId = :orderId')
+                ->setParameter('orderType', 'order')
+                ->setParameter('orderId', $orderId);
+        }
+
+        return $qb->getQuery()->getResult();
+    }
+
+    /**
      * Get distinct entity types from audit log.
      *
      * @return string[]

@@ -6,6 +6,7 @@ namespace App\Event;
 
 use App\Enum\AdvanceNoticeReason;
 use App\Repository\ContractRepository;
+use App\Service\OrderStatusUrlGenerator;
 use App\Service\PriceCalculator;
 use App\Service\RecurringPaymentCancelUrlGenerator;
 use Psr\Clock\ClockInterface;
@@ -31,6 +32,7 @@ final readonly class SendRecurringPaymentAdvanceNoticeEmailHandler
         private ContractRepository $contractRepository,
         private MailerInterface $mailer,
         private RecurringPaymentCancelUrlGenerator $cancelUrlGenerator,
+        private OrderStatusUrlGenerator $statusUrlGenerator,
         private ClockInterface $clock,
         private LoggerInterface $logger,
     ) {
@@ -70,6 +72,7 @@ final readonly class SendRecurringPaymentAdvanceNoticeEmailHandler
                 'lastBilledAt' => $contract->lastBilledAt?->format('d.m.Y'),
                 'adminNote' => $event->adminNote,
                 'cancelUrl' => $contract->hasActiveRecurringPayment() ? $this->cancelUrlGenerator->generate($contract) : null,
+                'statusUrl' => $this->statusUrlGenerator->generate($contract->order),
             ]);
 
         try {

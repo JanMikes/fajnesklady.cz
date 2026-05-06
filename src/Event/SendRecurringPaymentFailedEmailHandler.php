@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Event;
 
 use App\Repository\ContractRepository;
+use App\Service\OrderStatusUrlGenerator;
 use App\Service\RecurringPaymentCancelUrlGenerator;
 use Psr\Log\LoggerInterface;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
@@ -19,6 +20,7 @@ final readonly class SendRecurringPaymentFailedEmailHandler
         private ContractRepository $contractRepository,
         private MailerInterface $mailer,
         private RecurringPaymentCancelUrlGenerator $cancelUrlGenerator,
+        private OrderStatusUrlGenerator $statusUrlGenerator,
         private LoggerInterface $logger,
     ) {
     }
@@ -52,6 +54,7 @@ final readonly class SendRecurringPaymentFailedEmailHandler
                 'isFirstAttempt' => $isFirstAttempt,
                 'reason' => $event->reason,
                 'cancelUrl' => $contract->hasActiveRecurringPayment() ? $this->cancelUrlGenerator->generate($contract) : null,
+                'statusUrl' => $this->statusUrlGenerator->generate($contract->order),
             ]);
 
         try {

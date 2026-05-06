@@ -16,7 +16,9 @@ use App\Event\SendOrderConfirmationEmailHandler;
 use App\Repository\OrderRepository;
 use App\Service\ContractDocumentGenerator;
 use App\Service\DocumentPdfConverter;
+use App\Service\OrderStatusUrlGenerator;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\HttpFoundation\UriSigner;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Email;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
@@ -152,7 +154,9 @@ class SendOrderConfirmationEmailHandlerTest extends TestCase
         $orderRepository->method('get')->willReturn($order);
 
         $urlGenerator = $this->createStub(UrlGeneratorInterface::class);
-        $urlGenerator->method('generate')->willReturn('https://example.com/order');
+        $urlGenerator->method('generate')->willReturn('https://example.com/objednavka/abc/stav');
+
+        $statusUrlGenerator = new OrderStatusUrlGenerator($urlGenerator, new UriSigner('test-secret'));
 
         if (null === $contractGenerator) {
             $contractGenerator = $this->createStub(ContractDocumentGenerator::class);
@@ -175,7 +179,7 @@ class SendOrderConfirmationEmailHandlerTest extends TestCase
         $handler = new SendOrderConfirmationEmailHandler(
             $orderRepository,
             $mailer,
-            $urlGenerator,
+            $statusUrlGenerator,
             $contractGenerator,
             $pdfConverter,
             $this->tempDir,

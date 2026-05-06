@@ -7,8 +7,10 @@ namespace App\Controller\Public;
 use App\Command\ProcessPaymentNotificationCommand;
 use App\Enum\OrderStatus;
 use App\Repository\OrderRepository;
+use App\Service\OrderStatusUrlGenerator;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Messenger\MessageBusInterface;
@@ -21,6 +23,7 @@ final class PaymentReturnController extends AbstractController
     public function __construct(
         private readonly OrderRepository $orderRepository,
         private readonly MessageBusInterface $commandBus,
+        private readonly OrderStatusUrlGenerator $orderStatusUrlGenerator,
         private readonly LoggerInterface $logger,
     ) {
     }
@@ -59,14 +62,14 @@ final class PaymentReturnController extends AbstractController
         if (OrderStatus::COMPLETED === $order->status) {
             $this->addFlash('success', 'Platba byla přijata a objednávka dokončena.');
 
-            return $this->redirectToRoute('public_order_complete', ['id' => $id]);
+            return new RedirectResponse($this->orderStatusUrlGenerator->generate($order));
         }
 
         if (OrderStatus::PAID === $order->status) {
             // Payment confirmed but not auto-completed (shouldn't happen in normal flow)
             $this->addFlash('success', 'Platba byla úspěšně přijata.');
 
-            return $this->redirectToRoute('public_order_complete', ['id' => $id]);
+            return new RedirectResponse($this->orderStatusUrlGenerator->generate($order));
         }
 
         if ($order->status->isTerminal()) {

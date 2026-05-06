@@ -1,6 +1,6 @@
 # 020 — Public order status permalink (signed URL, lifecycle-aware page)
 
-**Status:** ready
+**Status:** done
 **Type:** feature (new public route + URL signing + email-CTA refactor + replaces /dokonceno)
 **Scope:** medium-large (~18 files: 1 new generator, 4 controllers updated/replaced, 1 new template, 1 partial, ~9 email handlers + templates, ~3 test files)
 **Depends on:** none — supersedes the just-merged `/dokonceno` work (commits `9172231`, `fa33a21`)
