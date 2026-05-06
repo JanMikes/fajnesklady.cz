@@ -68,6 +68,7 @@ class OrderPaymentControllerTest extends WebTestCase
             'accept_vop' => '1',
             'accept_consumer_notice' => '1',
             'accept_gdpr' => '1',
+            'accept_recurring_payments' => '1',
             'signature_data' => $this->createValidPngDataUrl(),
             'signing_method' => 'draw',
             'signature_consent' => '1',
@@ -221,17 +222,20 @@ class OrderPaymentControllerTest extends WebTestCase
         $this->assertResponseIsSuccessful(); // Re-renders form with error
     }
 
-    public function testAcceptRecurringPaymentsNotRequiredForLimitedRental(): void
+    public function testAcceptRecurringPaymentsNotRequiredForShortLimitedRental(): void
     {
+        // Short limited rental (< 28 days) is billed as a one-off, so no
+        // recurring-payment consent is required. Anything ≥ 28 days falls into
+        // monthly recurring billing — see PriceCalculator::needsRecurringBilling.
         $storage = $this->findAvailableStorage();
-        $this->setOrderSessionData(); // limited rental
+        $this->setOrderSessionData(endDate: '2025-07-05');
 
         $this->client->request('POST', $this->buildAcceptUrl($storage), [
             'accept_contract' => '1',
             'accept_vop' => '1',
             'accept_consumer_notice' => '1',
             'accept_gdpr' => '1',
-            // no accept_recurring_payments - not required for limited rental
+            // no accept_recurring_payments - not required for short rental
             'signature_data' => $this->createValidPngDataUrl(),
             'signing_method' => 'draw',
             'signature_consent' => '1',
@@ -253,6 +257,7 @@ class OrderPaymentControllerTest extends WebTestCase
             'accept_vop' => '1',
             'accept_consumer_notice' => '1',
             'accept_gdpr' => '1',
+            'accept_recurring_payments' => '1',
             'signature_data' => $this->createValidPngDataUrl(),
             'signing_method' => 'typed',
             'typed_name' => 'Jan Novák',
@@ -448,7 +453,7 @@ class OrderPaymentControllerTest extends WebTestCase
         $this->entityManager->clear();
     }
 
-    private function setOrderSessionData(bool $unlimited = false): void
+    private function setOrderSessionData(bool $unlimited = false, ?string $endDate = null): void
     {
         /** @var SessionFactoryInterface $sessionFactory */
         $sessionFactory = static::getContainer()->get('session.factory');
@@ -468,7 +473,7 @@ class OrderPaymentControllerTest extends WebTestCase
             'billingPostalCode' => null,
             'rentalType' => $unlimited ? 'unlimited' : 'limited',
             'startDate' => '2025-06-22',
-            'endDate' => $unlimited ? null : '2025-07-22',
+            'endDate' => $unlimited ? null : ($endDate ?? '2025-07-22'),
         ]);
         $session->save();
 

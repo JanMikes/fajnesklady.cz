@@ -70,7 +70,7 @@ class StorageRepository
      * Returns null when there are no (non-deleted) storages of the type at the
      * place, so the caller falls back to the type default.
      *
-     * @return array{min: int, max: int}|null Halire (CZK × 100).
+     * @return array{min: int, max: int}|null halire (CZK × 100)
      */
     public function getEffectiveMonthlyPriceRangeForType(StorageType $storageType, Place $place): ?array
     {

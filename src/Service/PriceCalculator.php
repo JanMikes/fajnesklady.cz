@@ -233,12 +233,14 @@ final readonly class PriceCalculator
             if ($nextBillingDate <= $endDate) {
                 $entries[] = new PaymentScheduleEntry($billingDate, $monthlyRate);
                 $billingDate = $nextBillingDate;
+
                 continue;
             }
             $remainingDays = max(1, $this->calculateDays($billingDate, $endDate));
             $dailyRate = $monthlyRate / self::DAYS_PER_MONTH;
             $proratedAmount = max(1, (int) round($remainingDays * $dailyRate));
             $entries[] = new PaymentScheduleEntry($billingDate, $proratedAmount);
+
             break;
         }
 
