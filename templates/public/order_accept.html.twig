@@ -90,48 +90,20 @@
                                 {% endif %}
                             </span>
                         </div>
-                        {# Cena — single source of truth (PriceCalculator::buildPaymentSchedule).
-                           Three shapes: open-ended (1 800 Kč/měsíc), one-shot (1 500 Kč), or
-                           fixed-end recurring (1. platba + doplatek + celkem). The fixed-end
-                           variant lists every charge explicitly so the customer cannot be
-                           surprised by a follow-up amount the previous step hinted at but
-                           the recap dropped. #}
-                        {% if paymentSchedule.isOpenEnded %}
-                            <div class="flex justify-between">
-                                <span class="text-gray-600">Měsíční platba</span>
-                                <span class="font-medium text-accent">
-                                    {{ paymentSchedule.monthlyAmountInCzk|number_format(2, ',', ' ') }} Kč / měsíc
-                                    <span class="text-xs text-gray-500 font-normal">vč. DPH</span>
-                                </span>
-                            </div>
-                        {% elseif not paymentSchedule.isRecurring %}
-                            <div class="flex justify-between">
-                                <span class="text-gray-600">Cena</span>
-                                <span class="font-medium text-accent">
-                                    {{ paymentSchedule.firstPayment.amountInCzk|number_format(2, ',', ' ') }} Kč
-                                    <span class="text-xs text-gray-500 font-normal">vč. DPH</span>
-                                </span>
-                            </div>
-                        {% else %}
-                            <div class="flex justify-between">
-                                <span class="text-gray-600">Cena celkem za {{ paymentSchedule.entryCount }} platby</span>
-                                <span class="font-medium text-accent">
-                                    {{ paymentSchedule.totalKnownAmountInCzk|number_format(2, ',', ' ') }} Kč
-                                    <span class="text-xs text-gray-500 font-normal">vč. DPH</span>
-                                </span>
-                            </div>
-                            <div class="rounded-md bg-white border border-gray-200 px-3 py-2 mt-1">
-                                <p class="text-xs text-gray-500 mb-1.5">Rozpis plateb</p>
-                                <ul class="space-y-1 text-xs">
-                                    {% for entry in paymentSchedule.entries %}
-                                        <li class="flex justify-between">
-                                            <span class="text-gray-700">{{ loop.first ? '1. platba' : (loop.last ? 'doplatek' : (loop.index ~ '. platba')) }} <span class="text-gray-400">({{ entry.chargeDate|date('d.m.Y') }})</span></span>
-                                            <span class="font-medium text-gray-900">{{ entry.amountInCzk|number_format(2, ',', ' ') }} Kč</span>
-                                        </li>
-                                    {% endfor %}
-                                </ul>
-                            </div>
-                        {% endif %}
+                        {# Cena. Customer never sees a lifetime sum across recurring charges
+                           (spec 021); the partial renders "Měsíční platba: X Kč / měsíc" for
+                           any recurring schedule and "Celková cena: X Kč" for one-shot.
+                           The "Parametry opakované platby" block further down still spells
+                           out cadence, max amount and stop conditions for compliance. #}
+                        <div class="flex justify-between">
+                            {% include '_price_label.html.twig' with {
+                                isRecurring: paymentSchedule.isRecurring,
+                                priceCzk: paymentSchedule.firstPayment.amountInCzk,
+                                labelClass: 'text-gray-600',
+                                valueClass: 'font-medium text-accent',
+                            } only %}
+                        </div>
+                        <p class="text-xs text-gray-500 text-right">vč. DPH</p>
                     </div>
 
                     {% if storage.hasPhotos %}

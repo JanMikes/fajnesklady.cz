@@ -118,8 +118,7 @@
                     <td>{{ endDate }}</td>
                 </tr>
                 <tr>
-                    <td>Celková cena:</td>
-                    <td><strong>{{ totalPrice }}</strong></td>
+                    {% include 'email/_price_label.html.twig' with { isRecurring: isRecurring, priceCzk: priceCzk } only %}
                 </tr>
             </table>
         </div>

@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Service;
 
+use App\Entity\Order;
 use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
+use App\Entity\User;
+use App\Enum\PaymentFrequency;
+use App\Enum\RentalType;
 use App\Service\PriceCalculator;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
@@ -447,5 +451,136 @@ class PriceCalculatorTest extends TestCase
             $schedule = $this->calculator->buildPaymentSchedule($storage, $startDate, $endDate);
             $this->assertSame($first, $schedule->firstPayment()->amount);
         }
+    }
+
+    public function testBuildScheduleFromOrderOneTime(): void
+    {
+        $order = $this->createOrder(
+            rentalType: RentalType::LIMITED,
+            startDate: new \DateTimeImmutable('2025-06-15'),
+            endDate: new \DateTimeImmutable('2025-06-29'), // 14 days
+            totalPrice: 180000,
+        );
+
+        $schedule = $this->calculator->buildScheduleFromOrder($order);
+
+        $this->assertCount(1, $schedule->entries);
+        $this->assertSame(180000, $schedule->firstPayment()->amount);
+        $this->assertFalse($schedule->isRecurring);
+        $this->assertFalse($schedule->isOpenEnded);
+        $this->assertNull($schedule->monthlyAmount);
+    }
+
+    public function testBuildScheduleFromOrderFixedTermRecurring(): void
+    {
+        // 90 days @ 5 000 Kč/měsíc = 3 entries (full + full + prorated tail)
+        $order = $this->createOrder(
+            rentalType: RentalType::LIMITED,
+            startDate: new \DateTimeImmutable('2025-06-15'),
+            endDate: new \DateTimeImmutable('2025-09-13'),
+            totalPrice: 500000,
+        );
+
+        $schedule = $this->calculator->buildScheduleFromOrder($order);
+
+        $this->assertGreaterThanOrEqual(2, count($schedule->entries));
+        $this->assertTrue($schedule->isRecurring);
+        $this->assertFalse($schedule->isOpenEnded);
+        $this->assertSame(500000, $schedule->monthlyAmount);
+        $this->assertSame(500000, $schedule->firstPayment()->amount);
+    }
+
+    public function testBuildScheduleFromOrderUnlimited(): void
+    {
+        $order = $this->createOrder(
+            rentalType: RentalType::UNLIMITED,
+            startDate: new \DateTimeImmutable('2025-06-15'),
+            endDate: null,
+            totalPrice: 500000,
+        );
+
+        $schedule = $this->calculator->buildScheduleFromOrder($order);
+
+        $this->assertCount(1, $schedule->entries);
+        $this->assertSame(500000, $schedule->firstPayment()->amount);
+        $this->assertTrue($schedule->isRecurring);
+        $this->assertTrue($schedule->isOpenEnded);
+        $this->assertSame(500000, $schedule->monthlyAmount);
+    }
+
+    /**
+     * The locked-in invariant: once an order is created, subsequent changes
+     * to Storage.pricePerMonth must NOT influence the schedule rendered for
+     * that order (the order's totalPrice is the locked anchor).
+     */
+    public function testBuildScheduleFromOrderIgnoresStoragePriceChanges(): void
+    {
+        $storageType = $this->createStorageType(50000, 500000); // 5 000 Kč/month default
+        $place = $this->createPlace();
+        $storage = $this->createStorage($storageType, $place);
+
+        $order = $this->createOrderWithStorage(
+            $storage,
+            rentalType: RentalType::UNLIMITED,
+            startDate: new \DateTimeImmutable('2025-06-15'),
+            endDate: null,
+            totalPrice: 500000,
+        );
+
+        // Storage price hike *after* the order is placed.
+        $storage->updatePrices(70000, 700000, new \DateTimeImmutable('2025-07-01'));
+
+        $schedule = $this->calculator->buildScheduleFromOrder($order);
+
+        $this->assertSame(500000, $schedule->monthlyAmount, 'order monthly stayed at locked rate');
+        $this->assertSame(500000, $schedule->firstPayment()->amount);
+    }
+
+    private function createUser(): User
+    {
+        return new User(
+            id: Uuid::v7(),
+            email: 'user@example.com',
+            password: 'password',
+            firstName: 'Test',
+            lastName: 'User',
+            createdAt: new \DateTimeImmutable(),
+        );
+    }
+
+    private function createOrder(
+        RentalType $rentalType,
+        \DateTimeImmutable $startDate,
+        ?\DateTimeImmutable $endDate,
+        int $totalPrice,
+    ): Order {
+        $storageType = $this->createStorageType(50000, 180000);
+        $place = $this->createPlace();
+        $storage = $this->createStorage($storageType, $place);
+
+        return $this->createOrderWithStorage($storage, $rentalType, $startDate, $endDate, $totalPrice);
+    }
+
+    private function createOrderWithStorage(
+        Storage $storage,
+        RentalType $rentalType,
+        \DateTimeImmutable $startDate,
+        ?\DateTimeImmutable $endDate,
+        int $totalPrice,
+    ): Order {
+        $createdAt = new \DateTimeImmutable('2025-06-01');
+
+        return new Order(
+            id: Uuid::v7(),
+            user: $this->createUser(),
+            storage: $storage,
+            rentalType: $rentalType,
+            paymentFrequency: PaymentFrequency::MONTHLY,
+            startDate: $startDate,
+            endDate: $endDate,
+            totalPrice: $totalPrice,
+            expiresAt: $createdAt->modify('+7 days'),
+            createdAt: $createdAt,
+        );
     }
 }

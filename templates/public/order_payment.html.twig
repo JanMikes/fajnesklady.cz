@@ -63,45 +63,29 @@
 
                     <hr class="my-4">
 
-                    {# Payment-amount header. The button below charges *order.totalPrice* — for
-                       any rental that needs recurring billing (unlimited or fixed-end ≥ 28 days)
-                       that's the FIRST charge, not the contract total. Don't say "Celková cena"
-                       unless the schedule is genuinely a one-shot — otherwise we promise less
-                       than the recurring cron will actually charge. #}
-                    {% if paymentSchedule.isOpenEnded %}
-                        <div class="flex justify-between text-lg">
-                            <span class="font-semibold text-gray-900">Cena za první měsíc</span>
-                            <span class="font-bold text-accent">{{ order.totalPriceInCzk|number_format(2, ',', ' ') }} Kč {{ vat_suffix() }}</span>
-                        </div>
+                    {# Customer never sees a lifetime sum across recurring charges (spec 021).
+                       Recurring schedules show "Měsíční platba: X Kč / měsíc"; one-time
+                       shows "Celková cena: X Kč". The button below charges only the first
+                       installment — its "(první platba)" suffix flags that for recurring. #}
+                    <div class="flex justify-between text-lg">
+                        {% include '_price_label.html.twig' with {
+                            isRecurring: paymentSchedule.isRecurring,
+                            priceCzk: order.totalPriceInCzk,
+                            labelClass: 'font-semibold text-gray-900',
+                            valueClass: 'font-bold text-accent',
+                        } only %}
+                    </div>
+                    <p class="text-xs text-gray-500 text-right mt-1">{{ vat_suffix() }}</p>
+                    {% if paymentSchedule.isRecurring %}
                         <p class="text-xs text-gray-500 mt-2">
-                            Po této platbě bude každý měsíc ke stejnému dni stržena částka {{ paymentSchedule.monthlyAmountInCzk|number_format(2, ',', ' ') }} Kč {{ vat_suffix() }} až do odvolání souhlasu.
+                            Tlačítko níže strhne pouze první platbu. Další platby ve výši {{ paymentSchedule.monthlyAmountInCzk|number_format(2, ',', ' ') }} Kč {{ vat_suffix() }} budou strhávány měsíčně
+                            {% if paymentSchedule.isOpenEnded %}
+                                až do odvolání souhlasu.
+                            {% else %}
+                                až do {{ order.endDate|date('d.m.Y') }} (poslední doplatek prorátován).
+                            {% endif %}
                             Souhlas s opakovanou platbou jste udělil/a v předchozím kroku, zrušit jej můžete kdykoli na <a href="mailto:simek@fajnesklady.cz" class="text-accent hover:underline">simek@fajnesklady.cz</a>.
                         </p>
-                    {% elseif not paymentSchedule.isRecurring %}
-                        <div class="flex justify-between text-lg">
-                            <span class="font-semibold text-gray-900">Celková cena</span>
-                            <span class="font-bold text-accent">{{ order.totalPriceInCzk|number_format(2, ',', ' ') }} Kč {{ vat_suffix() }}</span>
-                        </div>
-                    {% else %}
-                        <div class="flex justify-between text-lg">
-                            <span class="font-semibold text-gray-900">1. platba (z {{ paymentSchedule.entryCount }})</span>
-                            <span class="font-bold text-accent">{{ order.totalPriceInCzk|number_format(2, ',', ' ') }} Kč {{ vat_suffix() }}</span>
-                        </div>
-                        <div class="flex justify-between text-sm mt-1">
-                            <span class="text-gray-600">Cena celkem za {{ paymentSchedule.entryCount }} platby</span>
-                            <span class="font-semibold text-gray-900">{{ paymentSchedule.totalKnownAmountInCzk|number_format(2, ',', ' ') }} Kč {{ vat_suffix() }}</span>
-                        </div>
-                        <div class="rounded-md bg-white border border-gray-200 px-3 py-2 mt-3">
-                            <p class="text-xs text-gray-500 mb-1.5">Rozpis plateb</p>
-                            <ul class="space-y-1 text-xs">
-                                {% for entry in paymentSchedule.entries %}
-                                    <li class="flex justify-between">
-                                        <span class="text-gray-700">{{ loop.first ? '1. platba (nyní)' : (loop.last ? 'doplatek' : (loop.index ~ '. platba')) }} <span class="text-gray-400">({{ entry.chargeDate|date('d.m.Y') }})</span></span>
-                                        <span class="font-medium text-gray-900">{{ entry.amountInCzk|number_format(2, ',', ' ') }} Kč</span>
-                                    </li>
-                                {% endfor %}
-                            </ul>
-                        </div>
                     {% endif %}
                 </div>
 
@@ -188,7 +172,7 @@
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                         </svg>
-                        Zaplatit {{ order.totalPriceInCzk|number_format(2, ',', ' ') }} Kč vč. DPH
+                        Zaplatit {{ order.totalPriceInCzk|number_format(2, ',', ' ') }} Kč vč. DPH{% if paymentSchedule.isRecurring %} (první platba){% endif %}
                     </button>
 
                     {% if order.canBeCancelled %}

@@ -65,6 +65,41 @@ class PaymentRepository
     }
 
     /**
+     * Total amount (in halíře) the tenant has actually paid against this
+     * contract — sum of every Payment row, including the initial charge
+     * and every subsequent recurring charge.
+     */
+    public function sumPaidByContract(Contract $contract): int
+    {
+        $result = $this->entityManager->createQueryBuilder()
+            ->select('SUM(p.amount)')
+            ->from(Payment::class, 'p')
+            ->where('p.contract = :contract')
+            ->setParameter('contract', $contract)
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return (int) ($result ?? 0);
+    }
+
+    /**
+     * Total paid against a specific order — used during the brief window
+     * before the contract row exists (between markPaid and complete).
+     */
+    public function sumPaidByOrder(Order $order): int
+    {
+        $result = $this->entityManager->createQueryBuilder()
+            ->select('SUM(p.amount)')
+            ->from(Payment::class, 'p')
+            ->where('p.order = :order')
+            ->setParameter('order', $order)
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return (int) ($result ?? 0);
+    }
+
+    /**
      * Find all payments for storages owned by a landlord in a specific period.
      *
      * @return Payment[]

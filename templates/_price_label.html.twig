@@ -1,0 +1,15 @@
+{# Customer-facing label + value, inline spans. Caller wraps in flex / dl / etc.
+   Inputs:
+     isRecurring   bool
+     priceCzk      float    (the monthly rate for recurring, or the one-time total)
+     labelClass    string  optional (default 'text-sm font-medium text-gray-500')
+     valueClass    string  optional (default 'text-sm text-gray-900 font-semibold')
+   Never renders a lifetime total. For recurring it always appends "/ měsíc".
+#}
+{% set formattedPrice = priceCzk|number_format(2, ',', ' ') ~ ' Kč' %}
+<span class="{{ labelClass|default('text-sm font-medium text-gray-500') }}">
+    {{ isRecurring ? 'Měsíční platba' : 'Celková cena' }}
+</span>
+<span class="{{ valueClass|default('text-sm text-gray-900 font-semibold') }}">
+    {{ formattedPrice }}{% if isRecurring %} / měsíc{% endif %}
+</span>

@@ -1,0 +1,23 @@
+{# Extra rows for staff: "Zaplaceno" + (when applicable) "K zaplacení celkem".
+   Caller is responsible for gating: only include from admin/landlord templates.
+   Inputs:
+     order            Order
+     paymentSchedule  PaymentSchedule
+     totalPaid        int   halíře, sum of Payment.amount
+   For unlimited-recurring orders the "K zaplacení celkem" row is omitted —
+   the lifetime total is undefined.
+#}
+<div>
+    <dt class="text-sm font-medium text-gray-500">Zaplaceno</dt>
+    <dd class="mt-1 text-sm text-gray-900 font-semibold">
+        {{ (totalPaid / 100)|number_format(2, ',', ' ') }} Kč
+    </dd>
+</div>
+{% if not paymentSchedule.isOpenEnded and paymentSchedule.isRecurring %}
+    <div>
+        <dt class="text-sm font-medium text-gray-500">K zaplacení celkem</dt>
+        <dd class="mt-1 text-sm text-gray-900 font-semibold">
+            {{ paymentSchedule.totalKnownAmountInCzk|number_format(2, ',', ' ') }} Kč
+        </dd>
+    </div>
+{% endif %}

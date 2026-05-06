@@ -7,7 +7,9 @@ namespace App\Controller\Portal;
 use App\Repository\ContractRepository;
 use App\Repository\InvoiceRepository;
 use App\Repository\OrderRepository;
+use App\Repository\PaymentRepository;
 use App\Service\ContractService;
+use App\Service\PriceCalculator;
 use App\Service\Security\ContractVoter;
 use App\Service\Security\OrderVoter;
 use Psr\Clock\ClockInterface;
@@ -25,7 +27,9 @@ final class LandlordOrderDetailController extends AbstractController
         private readonly OrderRepository $orderRepository,
         private readonly ContractRepository $contractRepository,
         private readonly InvoiceRepository $invoiceRepository,
+        private readonly PaymentRepository $paymentRepository,
         private readonly ContractService $contractService,
+        private readonly PriceCalculator $priceCalculator,
         private readonly ClockInterface $clock,
     ) {
     }
@@ -50,6 +54,11 @@ final class LandlordOrderDetailController extends AbstractController
             $canTerminate = $this->isGranted(ContractVoter::TERMINATE, $contract);
         }
 
+        $paymentSchedule = $this->priceCalculator->buildScheduleFromOrder($order);
+        $totalPaid = null !== $contract
+            ? $this->paymentRepository->sumPaidByContract($contract)
+            : $this->paymentRepository->sumPaidByOrder($order);
+
         return $this->render('portal/landlord/order/detail.html.twig', [
             'order' => $order,
             'storage' => $storage,
@@ -59,6 +68,8 @@ final class LandlordOrderDetailController extends AbstractController
             'invoice' => $invoice,
             'daysRemaining' => $daysRemaining,
             'canTerminate' => $canTerminate,
+            'paymentSchedule' => $paymentSchedule,
+            'totalPaid' => $totalPaid,
         ]);
     }
 }

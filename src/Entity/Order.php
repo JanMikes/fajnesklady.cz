@@ -236,6 +236,35 @@ class Order implements EntityWithEvents
         return RentalType::UNLIMITED === $this->rentalType;
     }
 
+    /**
+     * Whether this order is billed on a monthly recurring cadence.
+     *
+     * Mirrors {@see \App\Service\PriceCalculator::needsRecurringBilling()}.
+     * Three pricing modes total: isOneTime() | isFixedTermRecurring() | isUnlimited().
+     *
+     * The 28-day threshold is duplicated rather than imported from
+     * PriceCalculator so the entity stays free of service deps. A unit test
+     * pins the two values together.
+     */
+    public function isRecurring(): bool
+    {
+        if (null === $this->endDate) {
+            return true;
+        }
+
+        return (int) $this->startDate->diff($this->endDate)->days >= 28;
+    }
+
+    public function isFixedTermRecurring(): bool
+    {
+        return $this->isRecurring() && null !== $this->endDate;
+    }
+
+    public function isOneTime(): bool
+    {
+        return !$this->isRecurring();
+    }
+
     public function getTotalPriceInCzk(): float
     {
         return $this->totalPrice / 100;

@@ -9,6 +9,7 @@ use App\Repository\ContractRepository;
 use App\Repository\InvoiceRepository;
 use App\Repository\OrderRepository;
 use App\Service\ContractService;
+use App\Service\PriceCalculator;
 use App\Service\Security\ContractVoter;
 use Psr\Clock\ClockInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -28,6 +29,7 @@ final class OrderDetailController extends AbstractController
         private readonly ContractRepository $contractRepository,
         private readonly InvoiceRepository $invoiceRepository,
         private readonly ContractService $contractService,
+        private readonly PriceCalculator $priceCalculator,
         private readonly ClockInterface $clock,
     ) {
     }
@@ -63,6 +65,8 @@ final class OrderDetailController extends AbstractController
             $canTerminate = $this->isGranted(ContractVoter::TERMINATE, $contract);
         }
 
+        $paymentSchedule = $this->priceCalculator->buildScheduleFromOrder($order);
+
         return $this->render('portal/user/order/detail.html.twig', [
             'order' => $order,
             'contract' => $contract,
@@ -72,6 +76,7 @@ final class OrderDetailController extends AbstractController
             'place' => $order->storage->getPlace(),
             'daysRemaining' => $daysRemaining,
             'canTerminate' => $canTerminate,
+            'paymentSchedule' => $paymentSchedule,
         ]);
     }
 }

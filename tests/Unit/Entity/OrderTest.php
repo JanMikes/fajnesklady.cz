@@ -500,6 +500,80 @@ class OrderTest extends TestCase
         $this->assertFalse($limitedOrder->isUnlimited());
     }
 
+    public function testPricingModePredicatesShortOneTime(): void
+    {
+        $order = $this->createOrder(
+            startDate: new \DateTimeImmutable('2025-06-15'),
+            endDate: new \DateTimeImmutable('2025-06-22'),
+        );
+
+        $this->assertFalse($order->isRecurring());
+        $this->assertFalse($order->isFixedTermRecurring());
+        $this->assertTrue($order->isOneTime());
+        $this->assertFalse($order->isUnlimited());
+    }
+
+    public function testPricingModePredicatesAtThresholdMinusOne(): void
+    {
+        $order = $this->createOrder(
+            startDate: new \DateTimeImmutable('2025-06-15'),
+            endDate: new \DateTimeImmutable('2025-07-12'),
+        );
+
+        $this->assertFalse($order->isRecurring());
+        $this->assertFalse($order->isFixedTermRecurring());
+        $this->assertTrue($order->isOneTime());
+    }
+
+    public function testPricingModePredicatesFixedTermRecurring(): void
+    {
+        $order = $this->createOrder(
+            startDate: new \DateTimeImmutable('2025-06-15'),
+            endDate: new \DateTimeImmutable('2025-12-15'),
+        );
+
+        $this->assertTrue($order->isRecurring());
+        $this->assertTrue($order->isFixedTermRecurring());
+        $this->assertFalse($order->isOneTime());
+        $this->assertFalse($order->isUnlimited());
+    }
+
+    public function testPricingModePredicatesUnlimited(): void
+    {
+        $order = $this->createOrder(
+            rentalType: RentalType::UNLIMITED,
+            startDate: new \DateTimeImmutable('2025-06-15'),
+            endDate: null,
+        );
+
+        $this->assertTrue($order->isRecurring());
+        $this->assertFalse($order->isFixedTermRecurring());
+        $this->assertFalse($order->isOneTime());
+        $this->assertTrue($order->isUnlimited());
+    }
+
+    /**
+     * Pin the entity-side 28-day threshold against PriceCalculator.
+     * Order::isRecurring() duplicates the constant rather than imports it
+     * (entities stay free of service deps); this test catches drift.
+     */
+    public function testIsRecurringAgreesWithPriceCalculatorAroundThreshold(): void
+    {
+        $start = new \DateTimeImmutable('2025-06-15');
+        $priceCalculator = new \App\Service\PriceCalculator();
+
+        for ($days = 0; $days <= 60; ++$days) {
+            $end = $start->modify('+'.$days.' days');
+            $order = $this->createOrder(startDate: $start, endDate: $end);
+
+            $this->assertSame(
+                $priceCalculator->needsRecurringBilling($start, $end),
+                $order->isRecurring(),
+                sprintf('Mismatch at %d days', $days),
+            );
+        }
+    }
+
     public function testGetTotalPriceInCzk(): void
     {
         $order = $this->createOrder(totalPrice: 50000);

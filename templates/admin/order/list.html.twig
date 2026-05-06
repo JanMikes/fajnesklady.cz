@@ -43,7 +43,7 @@
                                     <span class="text-gray-500">(na dobu neurčitou)</span>
                                 {% endif %}
                             </td>
-                            <td class="font-medium">{{ (order.totalPrice / 100)|number_format(0, ',', ' ') }} Kč</td>
+                            <td class="font-medium">{{ (order.totalPrice / 100)|number_format(0, ',', ' ') }} Kč{% if order.isRecurring %} / měsíc{% endif %}</td>
                             <td>
                                 {% set statusClass = {
                                     'created': 'badge-ghost',

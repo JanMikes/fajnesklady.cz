@@ -144,16 +144,17 @@
                         </dd>
                     </div>
                     <div>
-                        <dt class="text-sm font-medium text-gray-500">Celková cena</dt>
-                        <dd class="mt-1 text-sm text-gray-900 font-semibold">{{ (order.totalPrice / 100)|number_format(2, ',', ' ') }} Kč</dd>
+                        <dt class="text-sm font-medium text-gray-500">{{ order.isRecurring ? 'Měsíční platba' : 'Celková cena' }}</dt>
+                        <dd class="mt-1 text-sm text-gray-900 font-semibold">{{ (order.totalPrice / 100)|number_format(2, ',', ' ') }} Kč{% if order.isRecurring %} / měsíc{% endif %}</dd>
                     </div>
+                    {% include '_price_aggregate.html.twig' with { order: order, paymentSchedule: paymentSchedule, totalPaid: totalPaid } only %}
                     <div>
                         <dt class="text-sm font-medium text-gray-500">Vytvořeno</dt>
                         <dd class="mt-1 text-sm text-gray-900">{{ order.createdAt|date('d.m.Y H:i') }}</dd>
                     </div>
                     {% if order.paidAt %}
                     <div>
-                        <dt class="text-sm font-medium text-gray-500">Zaplaceno</dt>
+                        <dt class="text-sm font-medium text-gray-500">Datum platby</dt>
                         <dd class="mt-1 text-sm text-gray-900">{{ order.paidAt|date('d.m.Y H:i') }}</dd>
                     </div>
                     {% endif %}

@@ -1,6 +1,6 @@
 # 021 — Customer never sees a lifetime total; admin & landlord see "Zaplaceno" + "K zaplacení celkem"
 
-**Status:** ready
+**Status:** done
 **Type:** UX / wording rule + small refactor + role-gated aggregate block
 **Scope:** medium (~14 files: 1 entity helper, 1 service helper, 1 repository helper, 2 web partials, 6 templates, 3 controllers, 2 tests)
 **Depends on:** none. **Supersedes spec 013** (the customer-facing label fix originally in 013 is folded in here so the whole rule ships in one piece — see "Relationship to 013" below).

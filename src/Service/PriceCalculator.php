@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Entity\Order;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Value\PaymentSchedule;
@@ -228,6 +229,67 @@ final readonly class PriceCalculator
         // gets prorated by 30-day daily rate.
         $entries = [];
         $billingDate = $startDate;
+        while ($billingDate < $endDate) {
+            $nextBillingDate = $billingDate->modify('+1 month');
+            if ($nextBillingDate <= $endDate) {
+                $entries[] = new PaymentScheduleEntry($billingDate, $monthlyRate);
+                $billingDate = $nextBillingDate;
+
+                continue;
+            }
+            $remainingDays = max(1, $this->calculateDays($billingDate, $endDate));
+            $dailyRate = $monthlyRate / self::DAYS_PER_MONTH;
+            $proratedAmount = max(1, (int) round($remainingDays * $dailyRate));
+            $entries[] = new PaymentScheduleEntry($billingDate, $proratedAmount);
+
+            break;
+        }
+
+        return new PaymentSchedule(
+            entries: $entries,
+            isRecurring: true,
+            isOpenEnded: false,
+            monthlyAmount: $monthlyRate,
+        );
+    }
+
+    /**
+     * Build the locked-in payment schedule for an *existing* order, using
+     * Order.totalPrice as the monthly anchor (NOT the current Storage price).
+     *
+     * Why a separate method: buildPaymentSchedule(Storage, ...) reads the
+     * *current* Storage price. After an order is placed the storage price
+     * may change; the order's monthly stays. For displaying a schedule on
+     * portal/admin/landlord detail pages we must respect that lock.
+     */
+    public function buildScheduleFromOrder(Order $order): PaymentSchedule
+    {
+        if ($order->isUnlimited()) {
+            return new PaymentSchedule(
+                entries: [new PaymentScheduleEntry($order->startDate, $order->totalPrice)],
+                isRecurring: true,
+                isOpenEnded: true,
+                monthlyAmount: $order->totalPrice,
+            );
+        }
+
+        $endDate = $order->endDate;
+        \assert(null !== $endDate);
+
+        $days = $this->calculateDays($order->startDate, $endDate);
+
+        if ($days < self::WEEKLY_THRESHOLD_DAYS) {
+            return new PaymentSchedule(
+                entries: [new PaymentScheduleEntry($order->startDate, $order->totalPrice)],
+                isRecurring: false,
+                isOpenEnded: false,
+                monthlyAmount: null,
+            );
+        }
+
+        $monthlyRate = $order->totalPrice;
+        $entries = [];
+        $billingDate = $order->startDate;
         while ($billingDate < $endDate) {
             $nextBillingDate = $billingDate->modify('+1 month');
             if ($nextBillingDate <= $endDate) {

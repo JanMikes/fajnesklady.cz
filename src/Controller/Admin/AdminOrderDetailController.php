@@ -7,7 +7,9 @@ namespace App\Controller\Admin;
 use App\Repository\ContractRepository;
 use App\Repository\InvoiceRepository;
 use App\Repository\OrderRepository;
+use App\Repository\PaymentRepository;
 use App\Service\ContractService;
+use App\Service\PriceCalculator;
 use App\Service\Security\OrderVoter;
 use Psr\Clock\ClockInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -24,7 +26,9 @@ final class AdminOrderDetailController extends AbstractController
         private readonly OrderRepository $orderRepository,
         private readonly ContractRepository $contractRepository,
         private readonly InvoiceRepository $invoiceRepository,
+        private readonly PaymentRepository $paymentRepository,
         private readonly ContractService $contractService,
+        private readonly PriceCalculator $priceCalculator,
         private readonly ClockInterface $clock,
     ) {
     }
@@ -49,6 +53,11 @@ final class AdminOrderDetailController extends AbstractController
             $canTerminate = $this->isGranted('CONTRACT_TERMINATE', $contract);
         }
 
+        $paymentSchedule = $this->priceCalculator->buildScheduleFromOrder($order);
+        $totalPaid = null !== $contract
+            ? $this->paymentRepository->sumPaidByContract($contract)
+            : $this->paymentRepository->sumPaidByOrder($order);
+
         return $this->render('admin/order/detail.html.twig', [
             'order' => $order,
             'storage' => $storage,
@@ -58,6 +67,8 @@ final class AdminOrderDetailController extends AbstractController
             'invoices' => $invoices,
             'daysRemaining' => $daysRemaining,
             'canTerminate' => $canTerminate,
+            'paymentSchedule' => $paymentSchedule,
+            'totalPaid' => $totalPaid,
         ]);
     }
 }
