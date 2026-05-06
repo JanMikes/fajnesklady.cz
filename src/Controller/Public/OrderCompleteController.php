@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Controller\Public;
 
+use App\Entity\User;
 use App\Enum\OrderStatus;
 use App\Repository\ContractRepository;
 use App\Repository\InvoiceRepository;
 use App\Repository\OrderRepository;
-use App\Service\PriceCalculator;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -22,7 +22,6 @@ final class OrderCompleteController extends AbstractController
         private readonly OrderRepository $orderRepository,
         private readonly ContractRepository $contractRepository,
         private readonly InvoiceRepository $invoiceRepository,
-        private readonly PriceCalculator $priceCalculator,
     ) {
     }
 
@@ -48,23 +47,31 @@ final class OrderCompleteController extends AbstractController
             return $this->redirectToRoute($this->getUser() ? 'portal_browse_places' : 'app_home');
         }
 
+        // Logged-in owners belong on the portal page where they get the full
+        // navigation context. Anonymous viewers (and admins/landlords looking
+        // at someone else's order) stay on the public success page.
+        $user = $this->getUser();
+        if ($user instanceof User && $order->user->id->equals($user->id)) {
+            return $this->redirectToRoute('portal_user_order_detail', [
+                'id' => $order->id->toRfc4122(),
+                '_fragment' => 'dokumenty',
+            ]);
+        }
+
         $storage = $order->storage;
         $storageType = $storage->storageType;
         $place = $storage->getPlace();
 
         $contract = $this->contractRepository->findByOrder($order);
-        $invoice = $this->invoiceRepository->findByOrder($order);
-
-        $isRecurring = $this->priceCalculator->needsRecurringBilling($order->startDate, $order->endDate);
+        $invoices = $this->invoiceRepository->findAllByOrder($order);
 
         return $this->render('public/order_complete.html.twig', [
             'order' => $order,
             'contract' => $contract,
-            'invoice' => $invoice,
+            'invoices' => $invoices,
             'storage' => $storage,
             'storageType' => $storageType,
             'place' => $place,
-            'isRecurring' => $isRecurring,
         ]);
     }
 }

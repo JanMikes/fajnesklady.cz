@@ -336,3 +336,7 @@ Order flow, payment, and any consumer-facing legal text are governed by [.claude
 - Card + 3D Secure + GoPay-with-link logos MUST appear at every payment surface.
 
 When a rule conflicts with a feature request, stop and consult [.claude/COMPLIANCE.md](.claude/COMPLIANCE.md) and the source documents (`public/documents/*.pdf`) before deviating.
+
+## Customer-facing documents
+
+Inventory of every document a customer can encounter (contract, invoice, map, VOP, poučení spotřebitele, formuláře, …), where each is generated, where it's stored, and how the customer accesses it: [.claude/CUSTOMER_DOCUMENTS.md](.claude/CUSTOMER_DOCUMENTS.md). Update that file whenever a document is added, removed, or moves between storage tiers / e-mail touchpoints.

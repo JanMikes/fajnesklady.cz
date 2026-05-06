@@ -36,14 +36,22 @@ final readonly class SendContractReadyEmailHandler
         $storageType = $storage->storageType;
         $place = $storage->getPlace();
 
-        $portalUrl = $this->urlGenerator->generate(
-            'portal_dashboard',
-            [],
+        $orderUrl = $this->urlGenerator->generate(
+            'public_order_complete',
+            ['id' => $contract->order->id->toRfc4122(), '_fragment' => 'dokumenty'],
             UrlGeneratorInterface::ABSOLUTE_URL
         );
 
         $isRecurring = $contract->hasActiveRecurringPayment();
         $mapImageData = $this->mapImageGenerator->generate($storage);
+
+        $operatingRulesPath = null;
+        if ($place->hasOperatingRules() && null !== $place->operatingRulesPath) {
+            $candidate = $this->uploadsDirectory.'/'.$place->operatingRulesPath;
+            if (file_exists($candidate)) {
+                $operatingRulesPath = $candidate;
+            }
+        }
 
         $email = (new TemplatedEmail())
             ->from(new Address('noreply@fajnesklady.cz', 'Fajnesklady.cz'))
@@ -59,12 +67,13 @@ final readonly class SendContractReadyEmailHandler
                 'storageNumber' => $storage->number,
                 'startDate' => $contract->startDate->format('d.m.Y'),
                 'endDate' => $contract->endDate?->format('d.m.Y') ?? 'Na dobu neurčitou',
-                'portalUrl' => $portalUrl,
+                'orderUrl' => $orderUrl,
                 'isRecurring' => $isRecurring,
                 'monthlyAmount' => $isRecurring ? number_format($contract->order->getTotalPriceInCzk(), 2, ',', ' ').' Kč' : null,
                 'nextBillingDate' => $isRecurring && null !== $contract->nextBillingDate ? $contract->nextBillingDate->format('d.m.Y') : null,
                 'cancelUrl' => $isRecurring ? $this->cancelUrlGenerator->generate($contract) : null,
                 'hasMapAttachment' => null !== $mapImageData,
+                'hasOperatingRulesAttachment' => null !== $operatingRulesPath,
             ]);
 
         // Attach the signed contract — prefer PDF, fall back to DOCX if conversion fails.
@@ -94,15 +103,12 @@ final readonly class SendContractReadyEmailHandler
         }
 
         // Attach operating rules document if available for this place
-        if ($place->hasOperatingRules() && null !== $place->operatingRulesPath) {
-            $operatingRulesFullPath = $this->uploadsDirectory.'/'.$place->operatingRulesPath;
-            if (file_exists($operatingRulesFullPath)) {
-                $extension = pathinfo($operatingRulesFullPath, PATHINFO_EXTENSION);
-                $email->attachFromPath(
-                    $operatingRulesFullPath,
-                    'provozni_rad.'.$extension,
-                );
-            }
+        if (null !== $operatingRulesPath) {
+            $extension = pathinfo($operatingRulesPath, PATHINFO_EXTENSION);
+            $email->attachFromPath(
+                $operatingRulesPath,
+                'provozni_rad.'.$extension,
+            );
         }
 
         $this->mailer->send($email);

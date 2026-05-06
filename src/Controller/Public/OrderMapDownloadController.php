@@ -15,7 +15,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Uid\Uuid;
 
-#[Route('/objednavka/{id}/dokumenty/mapa', name: 'public_order_map_download')]
+#[Route('/objednavka/{id}/dokumenty/mapa.png', name: 'public_order_map_download')]
 final class OrderMapDownloadController extends AbstractController
 {
     public function __construct(

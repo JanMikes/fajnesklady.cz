@@ -131,6 +131,12 @@
         </p>
         {% endif %}
 
+        {% if hasOperatingRulesAttachment %}
+        <p style="font-size: 14px; color: #4b5563; margin-top: 8px;">
+            V příloze tohoto e-mailu najdete také <strong>provozní řád pobočky {{ placeName }}</strong>. Prosíme o jeho pozorné přečtení před první návštěvou skladu.
+        </p>
+        {% endif %}
+
         {% if isRecurring %}
         <div style="background-color: #fef3c7; border: 1px solid #f59e0b; padding: 20px; border-radius: 5px; margin: 20px 0;">
             <h3 style="margin-top: 0; color: #92400e;">Potvrzení opakované platby</h3>
@@ -162,10 +168,10 @@
         </div>
         {% endif %}
 
-        <p>Smlouvu ve formátu DOCX si můžete stáhnout ve svém účtu:</p>
+        <p>Detail objednávky a všechny dokumenty (smlouva, faktura{% if hasMapAttachment %}, mapa pobočky{% endif %}{% if hasOperatingRulesAttachment %}, provozní řád pobočky{% endif %}, VOP, poučení spotřebitele) najdete na následující stránce:</p>
 
         <div style="text-align: center;">
-            <a href="{{ portalUrl }}" class="button">Zobrazit smlouvu</a>
+            <a href="{{ orderUrl }}" class="button">Zobrazit detail objednávky</a>
         </div>
 
         <h3>Co dál?</h3>
