@@ -102,6 +102,82 @@ class ProcessPaymentNotificationHandlerTest extends KernelTestCase
         $this->assertNotNull($refreshedOrder->goPayParentPaymentId);
     }
 
+    public function testProcessPaymentNotificationIsIdempotentForDuplicateRecurringWebhooks(): void
+    {
+        // Arrange: an active recurring contract.
+        $order = $this->createAndInitiatePayment(RentalType::UNLIMITED);
+        $paymentId = $order->goPayPaymentId;
+        \assert(null !== $paymentId);
+
+        $this->goPayClient->simulatePaymentPaid($paymentId);
+        $this->commandBus->dispatch(new ProcessPaymentNotificationCommand($paymentId));
+        $this->entityManager->flush();
+        $this->entityManager->clear();
+
+        $contract = $this->entityManager->createQueryBuilder()
+            ->select('c')
+            ->from(\App\Entity\Contract::class, 'c')
+            ->where('c.order = :order')
+            ->setParameter('order', $order->id)
+            ->getQuery()
+            ->getSingleResult();
+
+        $parentPaymentId = $contract->goPayParentPaymentId;
+        \assert(null !== $parentPaymentId);
+        $recurringPaymentId = 'gp_recurring_dup_42';
+
+        $this->goPayClient->simulatePaymentPaid($recurringPaymentId);
+        $reflection = new \ReflectionClass($this->goPayClient);
+        $prop = $reflection->getProperty('paymentStatuses');
+        $statuses = $prop->getValue($this->goPayClient);
+        $statuses[$recurringPaymentId] = new \App\Value\GoPayPaymentStatus(
+            id: $recurringPaymentId,
+            state: 'PAID',
+            parentId: $parentPaymentId,
+            amount: $contract->storage->getEffectivePricePerMonth(),
+        );
+        $prop->setValue($this->goPayClient, $statuses);
+
+        // Act: dispatch the same recurring webhook twice.
+        $this->commandBus->dispatch(new ProcessPaymentNotificationCommand($recurringPaymentId));
+        $this->entityManager->flush();
+        $this->entityManager->clear();
+
+        $afterFirst = $this->entityManager->find(\App\Entity\Contract::class, $contract->id);
+        \assert($afterFirst instanceof \App\Entity\Contract);
+        $nextBillingAfterFirst = $afterFirst->nextBillingDate;
+        $paidThroughAfterFirst = $afterFirst->paidThroughDate;
+
+        $this->commandBus->dispatch(new ProcessPaymentNotificationCommand($recurringPaymentId));
+        $this->entityManager->flush();
+        $this->entityManager->clear();
+
+        // Assert: only one Payment row exists for this GoPay payment ID and
+        // the contract's billing dates did NOT advance a second time.
+        $paymentCount = (int) $this->entityManager->createQueryBuilder()
+            ->select('COUNT(p.id)')
+            ->from(\App\Entity\Payment::class, 'p')
+            ->where('p.goPayPaymentId = :paymentId')
+            ->setParameter('paymentId', $recurringPaymentId)
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        $this->assertSame(1, $paymentCount, 'Duplicate webhook must not create a second Payment row.');
+
+        $afterSecond = $this->entityManager->find(\App\Entity\Contract::class, $contract->id);
+        \assert($afterSecond instanceof \App\Entity\Contract);
+        $this->assertEquals(
+            $nextBillingAfterFirst?->format(\DateTimeInterface::ATOM),
+            $afterSecond->nextBillingDate?->format(\DateTimeInterface::ATOM),
+            'Duplicate webhook must not advance nextBillingDate twice.',
+        );
+        $this->assertEquals(
+            $paidThroughAfterFirst?->format(\DateTimeInterface::ATOM),
+            $afterSecond->paidThroughDate?->format(\DateTimeInterface::ATOM),
+            'Duplicate webhook must not advance paidThroughDate twice.',
+        );
+    }
+
     public function testProcessPaymentNotificationReconcileRecurringPayment(): void
     {
         // Set up a contract with recurring payment (same as ChargeRecurringPaymentHandlerTest)

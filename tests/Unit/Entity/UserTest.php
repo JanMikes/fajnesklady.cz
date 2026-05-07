@@ -383,6 +383,19 @@ class UserTest extends TestCase
         $this->assertFalse($user->hasBillingInfo());
     }
 
+    public function testRecordLoginUpdatesLastLoginAt(): void
+    {
+        $createdAt = new \DateTimeImmutable('2025-06-15 12:00:00');
+        $loggedInAt = new \DateTimeImmutable('2025-06-16 09:30:00');
+        $user = new User(Uuid::v7(), 'test@example.com', 'password123', 'Test', 'User', $createdAt);
+
+        $this->assertNull($user->lastLoginAt);
+
+        $user->recordLogin($loggedInAt);
+
+        $this->assertSame($loggedInAt, $user->lastLoginAt);
+    }
+
     public function testHasBillingInfoReturnsFalseWhenCompanyNameIsEmptyString(): void
     {
         $user = new User(Uuid::v7(), 'test@example.com', 'password123', 'Test', 'User', new \DateTimeImmutable());

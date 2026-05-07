@@ -52,6 +52,20 @@ class PaymentRepository
             ->getOneOrNullResult();
     }
 
+    public function existsByGoPayPaymentId(string $goPayPaymentId): bool
+    {
+        $result = $this->entityManager->createQueryBuilder()
+            ->select('1')
+            ->from(Payment::class, 'p')
+            ->where('p.goPayPaymentId = :goPayPaymentId')
+            ->setParameter('goPayPaymentId', $goPayPaymentId)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+
+        return null !== $result;
+    }
+
     public function findByContractAndPaidAt(Contract $contract, \DateTimeImmutable $paidAt): ?Payment
     {
         return $this->entityManager->createQueryBuilder()

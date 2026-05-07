@@ -541,6 +541,10 @@ Place per existing conventions.
 
 ## Open questions
 
-1. **Recommend `reason` stays optional (nullable).** In day-to-day onboarding the reason is implied by the context ("Initial value (admin onboarding)" — the handler can default it), and forcing admins to type a reason every time would friction-tax the common case. The future edit UI can require a reason at the form level (validation), keeping the entity flexible. **Confirm: leave reason `?string` (nullable), default `null`?**
-2. **Recommend backfilling existing contracts** with `previousAmount=NULL, reason='Initial value (backfill)'` per Requirement 7. Alternative: skip backfill entirely (start tracking from go-live) — the admin then sees an empty "Historie ceny" panel for any pre-existing override, which is misleading because the value clearly came from somewhere. **Confirm: backfill?**
-3. **Recommend recording an event even when `previous === new`** (idempotent re-affirmation, per Requirement 2). Alternative: skip the event if value unchanged. The future edit UI might call this often if the form re-submits without a change. **Confirm: always record?**
+None — proceed.
+
+Resolved 2026-05-07:
+
+1. **`reason` is optional (`?string`, default `null`).** Future edit UI may enforce non-null at the form layer; the entity stays flexible.
+2. **Backfill existing contracts** per Requirement 7 (`previousAmount=NULL`, `reason='Initial value (backfill)'`).
+3. **Always record an event** even when `previous === new`. Audit trail visibility wins over row-count parsimony; if no-op spam becomes real, add a `previous !== new` guard in the persist handler later.

@@ -82,7 +82,7 @@ final class UserExportController extends AbstractController
                     $user->companyVatId,
                     self::renderAddress($user),
                     $user->createdAt,
-                    null, // Poslední přihlášení — not currently tracked on User
+                    $user->lastLoginAt,
                 ];
             }
         })();

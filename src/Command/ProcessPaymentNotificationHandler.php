@@ -37,6 +37,21 @@ final readonly class ProcessPaymentNotificationHandler
 
     public function __invoke(ProcessPaymentNotificationCommand $command): void
     {
+        // Idempotency guard: GoPay can re-deliver the same webhook (timeouts,
+        // retries, parallel deliveries). Once a Payment row exists for this
+        // GoPay payment ID we have already finalised processing — bail out
+        // before mutating contract billing dates a second time. The recurring
+        // path is the load-bearing case (Payment.goPayPaymentId is populated
+        // by RecordPaymentOnRecurringChargeHandler); order-path duplicates
+        // remain protected by Order::canBePaid() further down.
+        if ($this->paymentRepository->existsByGoPayPaymentId($command->goPayPaymentId)) {
+            $this->logger->info('Skipping duplicate GoPay notification', [
+                'gopay_payment_id' => $command->goPayPaymentId,
+            ]);
+
+            return;
+        }
+
         $status = $this->goPayClient->getStatus($command->goPayPaymentId);
         $now = $this->clock->now();
 
@@ -73,12 +88,9 @@ final readonly class ProcessPaymentNotificationHandler
             return;
         }
 
-        // Not an order payment — check if already processed (idempotency)
-        $existingPayment = $this->paymentRepository->findByGoPayPaymentId($command->goPayPaymentId);
-        if (null !== $existingPayment) {
-            return;
-        }
-
+        // Not an order payment. The duplicate check at the top of __invoke
+        // already short-circuited if we have a Payment for this GoPay ID;
+        // anything that reaches here is a first-time notification.
         // Could be a recurring charge notification — reconcile via parent payment ID
         if (null !== $status->parentId && '' !== $status->parentId && $status->isPaid()) {
             $this->reconcileRecurringPayment($status->parentId, $status, $now);

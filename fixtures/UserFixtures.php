@@ -53,6 +53,7 @@ final class UserFixtures extends Fixture
         );
         $user->changePassword($this->passwordHasher->hashPassword($user, 'password'), $now);
         $user->markAsVerified($now);
+        $user->recordLogin($now->modify('-2 days'));
         $user->popEvents();
         $manager->persist($user);
         $this->addReference(self::REF_USER, $user);
@@ -85,6 +86,7 @@ final class UserFixtures extends Fixture
         $landlord->markAsVerified($now);
         $landlord->changeRole(UserRole::LANDLORD, $now);
         $landlord->updateProfile('Marie', 'Skladova', '+420777123456', $now);
+        $landlord->recordLogin($now->modify('-1 day'));
         $landlord->popEvents();
         $manager->persist($landlord);
         $this->addReference(self::REF_LANDLORD, $landlord);
@@ -133,6 +135,7 @@ final class UserFixtures extends Fixture
         $admin->changePassword($this->passwordHasher->hashPassword($admin, 'password'), $now);
         $admin->markAsVerified($now);
         $admin->changeRole(UserRole::ADMIN, $now);
+        $admin->recordLogin($now);
         $admin->popEvents();
         $manager->persist($admin);
         $this->addReference(self::REF_ADMIN, $admin);

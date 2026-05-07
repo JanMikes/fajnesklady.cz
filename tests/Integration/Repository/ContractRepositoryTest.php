@@ -1003,4 +1003,83 @@ class ContractRepositoryTest extends KernelTestCase
         $this->assertEquals($now->modify('+10 days'), $result[$storageA->id->toRfc4122()]);
         $this->assertArrayNotHasKey($storageB->id->toRfc4122(), $result);
     }
+
+    public function testSumExpectedRecurringByLandlordHonoursIndividualMonthlyAmountOverride(): void
+    {
+        $tenant = $this->createUser('tenant-mrr-landlord-override@test.com');
+        $landlord = $this->createUser('landlord-mrr-override-byll@test.com');
+        $place = $this->createPlace();
+        $st = $this->createStorageType();
+        $standardStorage = $this->createStorage($st, $place, 'LMR1', $landlord);
+        $overrideStorage = $this->createStorage($st, $place, 'LMR2', $landlord);
+        $freeStorage = $this->createStorage($st, $place, 'LMR3', $landlord);
+
+        $now = new \DateTimeImmutable('2025-06-15 12:00:00');
+
+        // Standard contract — order monthly = 150 000 halere, no override → contributes 150 000.
+        $standardOrder = $this->createOrder($tenant, $standardStorage, $now->modify('-30 days'), null, 150000);
+        $standardContract = $this->createContract($standardOrder, $tenant, $standardStorage, $now->modify('-30 days'), null);
+        $standardContract->setRecurringPayment('parent-byll-std', $now->modify('+5 days'), $now->modify('-1 day'));
+
+        // Override contract — order = 150 000, override = 50 000 → contributes 50 000.
+        $overrideOrder = $this->createOrder($tenant, $overrideStorage, $now->modify('-30 days'), null, 150000);
+        $overrideContract = $this->createContract($overrideOrder, $tenant, $overrideStorage, $now->modify('-30 days'), null);
+        $overrideContract->applyIndividualMonthlyAmount(50000);
+        $overrideContract->setRecurringPayment('parent-byll-ovr', $now->modify('+5 days'), $now->modify('-1 day'));
+
+        // Free contract — override = 0 → contributes 0 to the sum (auto-excluded by zero contribution).
+        $freeOrder = $this->createOrder($tenant, $freeStorage, $now->modify('-30 days'), null, 150000);
+        $freeContract = $this->createContract($freeOrder, $tenant, $freeStorage, $now->modify('-30 days'), null);
+        $freeContract->applyIndividualMonthlyAmount(0);
+        $freeContract->setRecurringPayment('parent-byll-free', $now->modify('+5 days'), $now->modify('-1 day'));
+
+        $this->entityManager->flush();
+
+        // Standard 150 000 + override 50 000 + free 0 = 200 000. Without the COALESCE fix,
+        // this would have summed three times the order price (450 000).
+        $this->assertSame(200000, $this->repository->sumExpectedRecurringByLandlord($landlord));
+    }
+
+    public function testSumExpectedRecurringAllHonoursIndividualMonthlyAmountOverride(): void
+    {
+        // sumExpectedRecurringAll has no scoping argument and therefore picks up
+        // any fixture-loaded recurring contracts as a baseline. We assert on the
+        // delta introduced by this test rather than an absolute value so the test
+        // is resilient to fixture changes.
+        $baseline = $this->repository->sumExpectedRecurringAll();
+
+        $tenant = $this->createUser('tenant-mrr-all-override@test.com');
+        $landlord = $this->createUser('landlord-mrr-all-override@test.com');
+        $place = $this->createPlace();
+        $st = $this->createStorageType();
+        $standardStorage = $this->createStorage($st, $place, 'AMR1', $landlord);
+        $overrideStorage = $this->createStorage($st, $place, 'AMR2', $landlord);
+        $freeStorage = $this->createStorage($st, $place, 'AMR3', $landlord);
+
+        $now = new \DateTimeImmutable('2025-06-15 12:00:00');
+
+        // Standard contract — order = 150 000, no override → contributes 150 000.
+        $standardOrder = $this->createOrder($tenant, $standardStorage, $now->modify('-30 days'), null, 150000);
+        $standardContract = $this->createContract($standardOrder, $tenant, $standardStorage, $now->modify('-30 days'), null);
+        $standardContract->setRecurringPayment('parent-all-std', $now->modify('+5 days'), $now->modify('-1 day'));
+
+        // Override contract — order = 150 000, override = 80 000 → contributes 80 000.
+        $overrideOrder = $this->createOrder($tenant, $overrideStorage, $now->modify('-30 days'), null, 150000);
+        $overrideContract = $this->createContract($overrideOrder, $tenant, $overrideStorage, $now->modify('-30 days'), null);
+        $overrideContract->applyIndividualMonthlyAmount(80000);
+        $overrideContract->setRecurringPayment('parent-all-ovr', $now->modify('+5 days'), $now->modify('-1 day'));
+
+        // Free contract — override = 0 → contributes 0.
+        $freeOrder = $this->createOrder($tenant, $freeStorage, $now->modify('-30 days'), null, 150000);
+        $freeContract = $this->createContract($freeOrder, $tenant, $freeStorage, $now->modify('-30 days'), null);
+        $freeContract->applyIndividualMonthlyAmount(0);
+        $freeContract->setRecurringPayment('parent-all-free', $now->modify('+5 days'), $now->modify('-1 day'));
+
+        $this->entityManager->flush();
+
+        // Delta = standard 150 000 + override 80 000 + free 0 = 230 000.
+        // Pre-fix the delta would have been 450 000 (the order's locked-in monthly × 3),
+        // because the override + free amounts would have been ignored.
+        $this->assertSame($baseline + 230000, $this->repository->sumExpectedRecurringAll());
+    }
 }

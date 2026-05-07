@@ -746,12 +746,18 @@ class ContractRepository
     }
 
     /**
-     * Sum expected recurring revenue for a landlord (sum of order.firstPaymentPrice for active recurring contracts).
+     * Sum expected recurring revenue for a landlord (active recurring contracts only).
+     *
+     * Scoping: `goPayParentPaymentId IS NOT NULL` is intentional — landlord MRR
+     * excludes externally-prepaid contracts (spec 026, "Sync with landlord MRR formula").
      */
     public function sumExpectedRecurringByLandlord(User $landlord): int
     {
+        // Use COALESCE so per-customer overrides (Contract.individualMonthlyAmount, spec 025)
+        // win over Order.firstPaymentPrice. Free contracts (override = 0) contribute 0
+        // to the sum by construction.
         $result = $this->entityManager->createQueryBuilder()
-            ->select('SUM(o.firstPaymentPrice)')
+            ->select('SUM(COALESCE(c.individualMonthlyAmount, o.firstPaymentPrice))')
             ->from(Contract::class, 'c')
             ->join('c.storage', 's')
             ->join('c.order', 'o')
@@ -770,8 +776,11 @@ class ContractRepository
      */
     public function sumExpectedRecurringAll(): int
     {
+        // Use COALESCE so per-customer overrides (Contract.individualMonthlyAmount, spec 025)
+        // win over Order.firstPaymentPrice. Free contracts (override = 0) contribute 0
+        // to the sum by construction.
         $result = $this->entityManager->createQueryBuilder()
-            ->select('SUM(o.firstPaymentPrice)')
+            ->select('SUM(COALESCE(c.individualMonthlyAmount, o.firstPaymentPrice))')
             ->from(Contract::class, 'c')
             ->join('c.order', 'o')
             ->where('c.goPayParentPaymentId IS NOT NULL')

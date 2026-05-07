@@ -80,6 +80,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, EntityW
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     public private(set) ?string $adminNote = null;
 
+    #[ORM\Column(nullable: true)]
+    public private(set) ?\DateTimeImmutable $lastLoginAt = null;
+
     public string $fullName {
         get => trim($this->firstName.' '.$this->lastName);
     }
@@ -289,6 +292,11 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, EntityW
     {
         $this->adminNote = $adminNote;
         $this->updatedAt = $now;
+    }
+
+    public function recordLogin(\DateTimeImmutable $now): void
+    {
+        $this->lastLoginAt = $now;
     }
 
     public function isAdmin(): bool

@@ -105,4 +105,39 @@ class UserExportControllerTest extends WebTestCase
         self::assertTrue($this->rowsContainCellValue($rows, 'Nájemce'));
         self::assertFalse($this->rowsContainCellValue($rows, 'Uživatel'));
     }
+
+    public function testLastLoginAtIsExported(): void
+    {
+        // Stamp lastLoginAt on the tenant fixture so the export has at least one
+        // populated cell to assert against.
+        $tenant = $this->findUserByEmail($this->entityManager, 'tenant@example.com');
+        $tenant->recordLogin(new \DateTimeImmutable('2025-06-15 09:30:00'));
+        $this->entityManager->flush();
+
+        $this->client->loginUser($this->findUserByEmail($this->entityManager, 'admin@example.com'), 'main');
+        $this->client->request('GET', '/portal/users/export');
+
+        $body = $this->assertXlsxResponse($this->client);
+        $rows = $this->readXlsxRows($body);
+
+        // The exporter formats DATETIME cells as "dd.mm.yyyy hh:mm" — match a
+        // substring that is robust against timezone display quirks while still
+        // confirming the cell was emitted.
+        $foundFormatted = false;
+        foreach ($rows as $row) {
+            foreach ($row as $cell) {
+                if ($cell instanceof \DateTimeInterface
+                    && '2025-06-15' === $cell->format('Y-m-d')
+                ) {
+                    $foundFormatted = true;
+                    break 2;
+                }
+                if (is_string($cell) && str_contains($cell, '15.06.2025')) {
+                    $foundFormatted = true;
+                    break 2;
+                }
+            }
+        }
+        self::assertTrue($foundFormatted, 'Expected lastLoginAt cell with 2025-06-15 in the export.');
+    }
 }

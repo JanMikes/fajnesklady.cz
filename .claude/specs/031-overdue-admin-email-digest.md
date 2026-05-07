@@ -1,6 +1,6 @@
 # 031 — Daily overdue admin e-mail digest
 
-**Status:** draft
+**Status:** ready
 **Type:** feature (admin push notification)
 **Scope:** small (~10 files: 1 console command + 1 event + 1 handler + 1 entity + 1 repository + 1 migration + 2 email templates + tests + BACKLOG/PROJECT_MAP touch-ups)
 **Depends on:** spec 023 (`OverdueChecker` + `OverdueSummary` + `/portal/admin/po-splatnosti` page).
@@ -605,8 +605,10 @@ Move to `ready` once the Open questions are resolved (see below).
 
 ## Open questions
 
-1. **Cron schedule** — recommend **08:00 Europe/Prague** daily. Same cron host as `app:send-external-prepayment-ending-soon`. Confirm?
-2. **Top-N** — recommend **10** (severity DESC, daysOverdue DESC). Anything bigger lengthens the e-mail; smaller hides legitimate items. Prefer 5 / 20?
-3. **Idempotency mechanism** — recommend the **`OverdueDigestSent` entity with a unique `(admin_id, date)` constraint** (this spec's design). Provides an audit trail ("when was admin@ last notified, what did the count look like?") and is race-safe at the DB level. Alternatives considered and rejected: cache key (no audit trail, fragile across cache flushes), filesystem marker (host-coupled, breaks on multi-host), `User.lastOverdueDigestSentAt` column (works but mixes audit data into the user row). Confirm the entity approach?
+None — proceed.
 
-Once all three are answered "yes", flip Status to `ready`.
+Resolved 2026-05-07:
+
+1. **Cron schedule**: 08:00 Europe/Prague daily. Same cron host as `app:send-external-prepayment-ending-soon`.
+2. **Top-N**: 10 (severity DESC, daysOverdue DESC).
+3. **Idempotency mechanism**: `OverdueDigestSent` entity with unique `(admin_id, date)` constraint per the spec's design.
