@@ -6,6 +6,7 @@ namespace App\Form;
 
 use App\Entity\User;
 use App\Repository\StorageRepository;
+use App\Service\Form\StorageChoiceBuilder;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
@@ -23,6 +24,7 @@ class StorageUnavailabilityFormType extends AbstractType
 {
     public function __construct(
         private readonly StorageRepository $storageRepository,
+        private readonly StorageChoiceBuilder $storageChoiceBuilder,
         private readonly TokenStorageInterface $tokenStorage,
         private readonly AuthorizationCheckerInterface $authorizationChecker,
     ) {
@@ -34,6 +36,7 @@ class StorageUnavailabilityFormType extends AbstractType
             'label' => 'Sklad',
             'choices' => $this->getStorageChoices(),
             'placeholder' => '-- Vyberte sklad --',
+            'attr' => ['data-controller' => 'tom-select'],
         ]);
 
         $builder->add('startDate', DateType::class, [
@@ -70,7 +73,7 @@ class StorageUnavailabilityFormType extends AbstractType
     }
 
     /**
-     * @return array<string, string>
+     * @return array<string, array<string, string>>
      */
     private function getStorageChoices(): array
     {
@@ -81,19 +84,10 @@ class StorageUnavailabilityFormType extends AbstractType
             return [];
         }
 
-        // Admins can see all storages, landlords only see their own
-        if ($this->authorizationChecker->isGranted('ROLE_ADMIN')) {
-            $storages = $this->storageRepository->findAll();
-        } else {
-            $storages = $this->storageRepository->findByOwner($user);
-        }
+        $storages = $this->authorizationChecker->isGranted('ROLE_ADMIN')
+            ? $this->storageRepository->findAll()
+            : $this->storageRepository->findByOwner($user);
 
-        $choices = [];
-        foreach ($storages as $storage) {
-            $label = $storage->place->name.' - '.$storage->storageType->name.' - '.$storage->number;
-            $choices[$label] = $storage->id->toRfc4122();
-        }
-
-        return $choices;
+        return $this->storageChoiceBuilder->groupAndSort($storages);
     }
 }

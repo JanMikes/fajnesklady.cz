@@ -66,4 +66,11 @@ return [
     'signature_pad' => [
         'version' => '5.0.4',
     ],
+    'tom-select' => [
+        'version' => '2.4.1',
+    ],
+    'tom-select/dist/css/tom-select.min.css' => [
+        'version' => '2.4.1',
+        'type' => 'css',
+    ],
 ];

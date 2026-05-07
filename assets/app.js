@@ -2,6 +2,7 @@ import './stimulus_bootstrap.js';
 import Alpine from 'alpinejs';
 import GLightbox from 'glightbox';
 import 'glightbox/dist/css/glightbox.min.css';
+import 'tom-select/dist/css/tom-select.min.css';
 
 // Global modal state — used by the term modals on the order accept and
 // signing pages. A store sidesteps any nested-scope issues that occur when

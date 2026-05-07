@@ -46,6 +46,7 @@ class StorageFormType extends AbstractType
                 'label' => 'Místo',
                 'choices' => $this->getPlaceChoices(),
                 'placeholder' => '-- Vyberte místo --',
+                'attr' => ['data-controller' => 'tom-select'],
             ]);
         }
 
@@ -57,6 +58,7 @@ class StorageFormType extends AbstractType
             'label' => 'Typ skladu',
             'choices' => $storageTypeChoices,
             'placeholder' => '-- Vyberte typ skladu --',
+            'attr' => ['data-controller' => 'tom-select'],
         ]);
 
         if (!$options['is_edit']) {
@@ -181,6 +183,8 @@ class StorageFormType extends AbstractType
             $places = $this->placeRepository->findByOwner($user);
         }
 
+        usort($places, static fn (\App\Entity\Place $a, \App\Entity\Place $b): int => strnatcasecmp($a->name, $b->name));
+
         $choices = [];
         foreach ($places as $place) {
             $choices[$place->name.' ('.$place->city.')'] = $place->id->toRfc4122();
@@ -190,19 +194,25 @@ class StorageFormType extends AbstractType
     }
 
     /**
-     * @return array<string, string>
+     * @return array<string, array<string, string>>
      */
     private function getStorageTypeChoices(): array
     {
         $storageTypes = $this->storageTypeRepository->findAllActive();
 
-        $choices = [];
+        $grouped = [];
         foreach ($storageTypes as $storageType) {
-            $label = $storageType->name.' ('.$storageType->getDimensionsInMeters().') - '.$storageType->place->name;
-            $choices[$label] = $storageType->id->toRfc4122();
+            $label = $storageType->name.' ('.$storageType->getDimensionsInMeters().')';
+            $grouped[$storageType->place->name][$label] = $storageType->id->toRfc4122();
         }
 
-        return $choices;
+        uksort($grouped, static fn (string $a, string $b): int => strnatcasecmp($a, $b));
+        foreach ($grouped as $placeName => $items) {
+            uksort($items, static fn (string $a, string $b): int => strnatcasecmp($a, $b));
+            $grouped[$placeName] = $items;
+        }
+
+        return $grouped;
     }
 
     /**
@@ -217,6 +227,8 @@ class StorageFormType extends AbstractType
             $label = $storageType->name.' ('.$storageType->getDimensionsInMeters().')';
             $choices[$label] = $storageType->id->toRfc4122();
         }
+
+        uksort($choices, static fn (string $a, string $b): int => strnatcasecmp($a, $b));
 
         return $choices;
     }

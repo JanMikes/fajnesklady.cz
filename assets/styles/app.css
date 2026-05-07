@@ -541,3 +541,33 @@ span.flatpickr-weekday {
 .bg-accent {
     background-color: var(--color-accent);
 }
+
+/* TomSelect overrides — make the searchable dropdown match .form-input. */
+.ts-wrapper.single .ts-control {
+    @apply min-h-[42px] border border-gray-300 rounded-md px-3 py-2 text-sm shadow-sm bg-white;
+}
+
+.ts-wrapper.single.input-active .ts-control,
+.ts-wrapper.single.focus .ts-control {
+    @apply ring-1 border-gray-400;
+}
+
+.ts-wrapper .ts-dropdown {
+    @apply rounded-md shadow-lg border border-gray-200 mt-1 text-sm bg-white;
+}
+
+.ts-dropdown .optgroup-header {
+    @apply bg-gray-50 text-gray-600 font-semibold px-3 py-1.5 text-xs uppercase tracking-wide;
+}
+
+.ts-dropdown .option.active {
+    @apply bg-gray-100 text-gray-900;
+}
+
+.ts-wrapper.disabled .ts-control {
+    @apply bg-gray-100 text-gray-500 cursor-not-allowed;
+}
+
+.ts-dropdown .dropdown-input-wrap input {
+    @apply block w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-sm placeholder-gray-400 focus:outline-none;
+}

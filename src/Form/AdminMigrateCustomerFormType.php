@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Form;
 
 use App\Enum\RentalType;
-use App\Repository\StorageRepository;
+use App\Service\Form\StorageChoiceBuilder;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
@@ -25,7 +25,7 @@ use Symfony\Component\OptionsResolver\OptionsResolver;
 final class AdminMigrateCustomerFormType extends AbstractType
 {
     public function __construct(
-        private readonly StorageRepository $storageRepository,
+        private readonly StorageChoiceBuilder $storageChoiceBuilder,
     ) {
     }
 
@@ -90,8 +90,9 @@ final class AdminMigrateCustomerFormType extends AbstractType
             ])
             ->add('storageId', ChoiceType::class, [
                 'label' => 'Skladová jednotka',
-                'choices' => $this->getStorageChoices(),
+                'choices' => $this->storageChoiceBuilder->buildAvailableGroupedChoices(),
                 'placeholder' => '-- Vyberte skladovou jednotku --',
+                'attr' => ['data-controller' => 'tom-select'],
             ])
             ->add('rentalType', EnumType::class, [
                 'class' => RentalType::class,
@@ -152,26 +153,5 @@ final class AdminMigrateCustomerFormType extends AbstractType
         $resolver->setDefaults([
             'data_class' => AdminMigrateCustomerFormData::class,
         ]);
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    private function getStorageChoices(): array
-    {
-        $storages = $this->storageRepository->findAllAvailable();
-
-        $choices = [];
-        foreach ($storages as $storage) {
-            $label = sprintf(
-                '%s - %s (%s)',
-                $storage->place->name,
-                $storage->storageType->name,
-                $storage->number,
-            );
-            $choices[$label] = $storage->id->toRfc4122();
-        }
-
-        return $choices;
     }
 }

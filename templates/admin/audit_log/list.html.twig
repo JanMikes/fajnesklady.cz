@@ -13,7 +13,7 @@
             <form method="get" class="flex flex-wrap gap-4 items-end">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Typ entity</label>
-                    <select name="entity_type" class="form-input text-sm py-1.5">
+                    <select name="entity_type" class="form-input text-sm py-1.5" data-controller="tom-select">
                         <option value="">Všechny typy</option>
                         {% for type in entityTypes %}
                             <option value="{{ type }}" {% if currentEntityType == type %}selected{% endif %}>{{ type }}</option>
@@ -22,7 +22,7 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Typ události</label>
-                    <select name="event_type" class="form-input text-sm py-1.5">
+                    <select name="event_type" class="form-input text-sm py-1.5" data-controller="tom-select">
                         <option value="">Všechny události</option>
                         {% for type in eventTypes %}
                             <option value="{{ type }}" {% if currentEventType == type %}selected{% endif %}>{{ type }}</option>

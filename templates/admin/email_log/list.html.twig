@@ -33,7 +33,7 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Šablona</label>
-                    <select name="template" class="form-input text-sm py-1.5">
+                    <select name="template" class="form-input text-sm py-1.5" data-controller="tom-select">
                         <option value="">Všechny šablony</option>
                         {% for templateName in templateNames %}
                             <option value="{{ templateName }}" {% if currentTemplate == templateName %}selected{% endif %}>{{ templateName }}</option>
@@ -42,7 +42,7 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Stav</label>
-                    <select name="status" class="form-input text-sm py-1.5">
+                    <select name="status" class="form-input text-sm py-1.5" data-controller="tom-select">
                         <option value="">Vše</option>
                         {% for statusOption in statuses %}
                             <option value="{{ statusOption.value }}" {% if currentStatus == statusOption.value %}selected{% endif %}>{{ statusOption.label }}</option>
