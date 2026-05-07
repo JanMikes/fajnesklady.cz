@@ -164,7 +164,7 @@ class OverdueCheckerTest extends TestCase
      */
     private function createChecker(array $contracts): OverdueChecker
     {
-        $repository = $this->createMock(ContractRepository::class);
+        $repository = $this->createStub(ContractRepository::class);
         $repository->method('findWithPaymentIssues')->willReturn($contracts);
 
         return new OverdueChecker($repository);
