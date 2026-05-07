@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller\Admin;
 
+use App\Entity\Place;
 use App\Repository\ContractRepository;
 use App\Repository\PlaceRepository;
 use App\Repository\StorageRepository;
@@ -36,29 +37,43 @@ final class AdminPlaceExportController extends AbstractController
 
         $columns = [
             new ExcelColumn('Pobočka'),
+            new ExcelColumn('Vlastník'),
+            new ExcelColumn('E-mail vlastníka'),
             new ExcelColumn('Adresa'),
-            new ExcelColumn('Stav'),
             new ExcelColumn('Skladů celkem', ExcelColumnType::INTEGER),
             new ExcelColumn('Skladů obsazených', ExcelColumnType::INTEGER),
             new ExcelColumn('Skladů volných', ExcelColumnType::INTEGER),
             new ExcelColumn('Aktivních smluv', ExcelColumnType::INTEGER),
             new ExcelColumn('MRR (Kč/měs)', ExcelColumnType::MONEY_KC),
-            new ExcelColumn('Vytvořeno', ExcelColumnType::DATE),
         ];
 
         $places = $this->placeRepository->findAllForExport();
+
+        // Bulk-load every per-place stat in 3 queries (storage counts, owners,
+        // contract MRR) instead of running 5 per row — eliminates N+1 the
+        // previous implementation introduced.
+        $placeIds = array_map(static fn (Place $p) => $p->id, $places);
+        $storageStats = $this->storageRepository->loadStorageStatsByPlaceIds($placeIds);
+        $owners = $this->storageRepository->loadOwnersByPlaceIds($placeIds);
+        $contractStats = $this->contractRepository->loadContractStatsByPlaceIds($placeIds);
+
         $rows = [];
         foreach ($places as $place) {
+            $key = (string) $place->id;
+            $placeStorageStats = $storageStats[$key] ?? ['total' => 0, 'occupied' => 0, 'available' => 0];
+            $placeContractStats = $contractStats[$key] ?? ['activeRecurring' => 0, 'expectedMrrInHaler' => 0];
+            $placeOwners = $owners[$key] ?? [];
+
             $rows[] = [
                 $place->name,
+                implode(', ', array_map(static fn (array $o): string => $o['fullName'], $placeOwners)),
+                implode(', ', array_map(static fn (array $o): string => $o['email'], $placeOwners)),
                 trim(sprintf('%s, %s %s', (string) $place->address, $place->postalCode, $place->city), ', '),
-                $place->isActive ? 'Aktivní' : 'Neaktivní',
-                $this->storageRepository->countAtPlace($place, null),
-                $this->storageRepository->countOccupiedAtPlace($place, null),
-                $this->storageRepository->countAvailableAtPlace($place, null),
-                $this->contractRepository->countActiveRecurringAtPlace($place, null),
-                $this->contractRepository->sumExpectedRecurringAtPlace($place, null),
-                $place->createdAt,
+                $placeStorageStats['total'],
+                $placeStorageStats['occupied'],
+                $placeStorageStats['available'],
+                $placeContractStats['activeRecurring'],
+                $placeContractStats['expectedMrrInHaler'],
             ];
         }
 

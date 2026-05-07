@@ -376,19 +376,21 @@ final class PlaceAccessCodesController extends AbstractController
     public function __invoke(string $placeId, Request $request): Response
     {
         $place = $this->placeRepository->get(Uuid::fromString($placeId));
-        $this->denyAccessUnlessGranted(PlaceVoter::EDIT, $place);
+        $this->denyAccessUnlessGranted(PlaceVoter::MANAGE_CODES, $place);
         // GET: render config form + summary (used count, available count, list of in-use storages with codes)
         // POST: handle config form submit → UpdatePlaceStorageCodeConfigCommand → flash + redirect
     }
 }
 ```
 
-Two **action** sub-controllers (separate routes, POST-only, CSRF-protected with `isCsrfTokenValid`):
+Two **action** sub-controllers (separate routes, POST-only):
 
 - `PlaceAccessCodesBulkGenerateController` — `POST /portal/places/{placeId}/access-codes/bulk-generate`. Dispatches `BulkGenerateStorageCodesCommand($placeId)`. On success flash: `"Doplněno X kódů."`. Catches `StorageCodeRangeExhausted` → flash error.
 - `PlaceAccessCodesResetController` — `POST /portal/places/{placeId}/access-codes/reset`. Dispatches `ReleaseUnusedStorageCodesCommand($placeId)`. Flash: `"Uvolněno X použitých kódů."`. (X = return value of `releaseUnusedForPlace`.)
 
-Both action handlers MUST be guarded by `PlaceVoter::EDIT` and validated as enabled-only (`if (!$place->storageCodesEnabled) throw …`).
+Both action handlers MUST be guarded by the new `PlaceVoter::MANAGE_CODES` permission and validated as enabled-only (`if (!$place->storageCodesEnabled) throw …`).
+
+CSRF: not required for these endpoints — accepted risk per project decision (low blast radius: idempotent within the same place, admin/landlord-scoped, no financial impact).
 
 #### 8a. Template `templates/portal/place/access_codes.html.twig` (new)
 
@@ -403,7 +405,7 @@ Minimum sections:
 
 #### 8b. Place detail card — link to the new page
 
-`templates/portal/place/detail.html.twig` — new card alongside "Sklady / Typy skladů / Editor mapy / Upravit / Smazat" inside the `grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6` container. Show as enabled by displaying a green badge "Povoleno" with the range, or a gray "Zakázáno" badge. Card href → `path('portal_place_access_codes', {placeId: place.id})`. Show only when `is_granted(PlaceVoter::EDIT, place)` (matches edit/canvas card visibility).
+`templates/portal/place/detail.html.twig` — new card alongside "Sklady / Typy skladů / Editor mapy / Upravit / Smazat" inside the `grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6` container. Show as enabled by displaying a green badge "Povoleno" with the range, or a gray "Zakázáno" badge. Card href → `path('portal_place_access_codes', {placeId: place.id})`. Show only when `is_granted(PlaceVoter::MANAGE_CODES, place)` — admin OR landlord with PlaceAccess (broader than EDIT, which is admin-only).
 
 ```twig
 <a href="{{ path('portal_place_access_codes', {placeId: place.id}) }}" class="card hover:shadow-lg transition-shadow border-2 border-transparent hover:border-indigo-300">

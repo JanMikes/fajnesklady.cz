@@ -77,4 +77,32 @@ class UserExportControllerTest extends WebTestCase
         self::assertTrue($this->rowsContainCellValue($rows, 'tenant@example.com'));
         self::assertFalse($this->rowsContainCellValue($rows, 'admin@example.com'));
     }
+
+    public function testHeaderIncludesOnboardedDebtorAndLastLoginColumns(): void
+    {
+        $this->client->loginUser($this->findUserByEmail($this->entityManager, 'admin@example.com'), 'main');
+        $this->client->request('GET', '/portal/users/export');
+
+        $body = $this->assertXlsxResponse($this->client);
+        $rows = $this->readXlsxRows($body);
+
+        $header = $rows[0];
+        self::assertContains('Onboardovaný', $header);
+        self::assertContains('Dlužník', $header);
+        self::assertContains('Poslední přihlášení', $header);
+    }
+
+    public function testRoleColumnUsesNajemceLabel(): void
+    {
+        $this->client->loginUser($this->findUserByEmail($this->entityManager, 'admin@example.com'), 'main');
+        $this->client->request('GET', '/portal/users/export');
+
+        $body = $this->assertXlsxResponse($this->client);
+        $rows = $this->readXlsxRows($body);
+
+        // ROLE_USER label is now "Nájemce" (not "Uživatel"). At least one row
+        // (e.g. tenant@example.com) must surface that label in the Role column.
+        self::assertTrue($this->rowsContainCellValue($rows, 'Nájemce'));
+        self::assertFalse($this->rowsContainCellValue($rows, 'Uživatel'));
+    }
 }

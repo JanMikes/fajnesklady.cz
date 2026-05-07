@@ -38,6 +38,11 @@ final class UserListController extends AbstractController
         };
         $now = $this->clock->now();
 
+        // Cache the active-user-ids subquery once per request — used by the
+        // active/inactive paginator paths AND the chip badge counts. Without
+        // caching the same DISTINCT-IDENTITY scan runs 3-4× per page render.
+        $activeUserIds = $this->contractRepository->findActiveContractUserIdsSubquery($now);
+
         switch ($filter) {
             case 'overdue':
                 $users = $this->userRepository->findOverduePaginated($page, $limit, $now);
@@ -50,13 +55,13 @@ final class UserListController extends AbstractController
 
                 break;
             case 'active':
-                $users = $this->userRepository->findWithActiveContractsPaginated($page, $limit, $now);
-                $totalUsers = $this->userRepository->countWithActiveContracts($now);
+                $users = $this->userRepository->findWithActiveContractsPaginated($page, $limit, $now, $activeUserIds);
+                $totalUsers = $this->userRepository->countWithActiveContracts($now, $activeUserIds);
 
                 break;
             case 'inactive':
-                $users = $this->userRepository->findWithoutActiveContractsPaginated($page, $limit, $now);
-                $totalUsers = $this->userRepository->countWithoutActiveContracts($now);
+                $users = $this->userRepository->findWithoutActiveContractsPaginated($page, $limit, $now, $activeUserIds);
+                $totalUsers = $this->userRepository->countWithoutActiveContracts($now, $activeUserIds);
 
                 break;
             default:
@@ -67,8 +72,8 @@ final class UserListController extends AbstractController
         $totalPages = (int) ceil($totalUsers / $limit);
         $overdueUserCount = $this->userRepository->countOverdueUsers($now);
         $onboardedUserCount = $this->userRepository->countOnboarded();
-        $activeUserCount = $this->userRepository->countWithActiveContracts($now);
-        $inactiveUserCount = $this->userRepository->countWithoutActiveContracts($now);
+        $activeUserCount = $this->userRepository->countWithActiveContracts($now, $activeUserIds);
+        $inactiveUserCount = $this->userRepository->countWithoutActiveContracts($now, $activeUserIds);
 
         $pageUserIds = array_map(static fn (User $u) => $u->id, $users);
         $debtorIdSet = array_flip($this->overdueChecker->filterOverdueUserIds($now, $pageUserIds));

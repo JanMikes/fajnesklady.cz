@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Controller\Admin;
 
 use App\Enum\EmailLogStatus;
-use App\Repository\EmailLogFilter;
 use App\Repository\EmailLogRepository;
+use App\Service\Form\EmailLogFilterFactory;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -21,6 +21,7 @@ final class AdminEmailLogController extends AbstractController
 
     public function __construct(
         private readonly EmailLogRepository $emailLogRepository,
+        private readonly EmailLogFilterFactory $filterFactory,
     ) {
     }
 
@@ -28,26 +29,7 @@ final class AdminEmailLogController extends AbstractController
     {
         $page = max(1, (int) $request->query->get('page', '1'));
 
-        $dateFrom = $this->parseDate($request->query->get('date_from'), endOfDay: false);
-        $dateTo = $this->parseDate($request->query->get('date_to'), endOfDay: true);
-        $recipient = $this->trimToNull($request->query->get('recipient'));
-        $subject = $this->trimToNull($request->query->get('subject'));
-        $templateName = $this->trimToNull($request->query->get('template'));
-        $statusValue = $this->trimToNull($request->query->get('status'));
-
-        $status = null;
-        if (null !== $statusValue) {
-            $status = EmailLogStatus::tryFrom($statusValue);
-        }
-
-        $filter = new EmailLogFilter(
-            dateFrom: $dateFrom,
-            dateTo: $dateTo,
-            recipient: $recipient,
-            subject: $subject,
-            templateName: $templateName,
-            status: $status,
-        );
+        $filter = $this->filterFactory->fromRequest($request);
 
         $logs = $this->emailLogRepository->findPaginated($page, self::PAGE_SIZE, $filter);
         $totalLogs = $this->emailLogRepository->countWithFilter($filter);
@@ -62,35 +44,10 @@ final class AdminEmailLogController extends AbstractController
             'statuses' => EmailLogStatus::cases(),
             'currentDateFrom' => null !== $request->query->get('date_from') ? (string) $request->query->get('date_from') : '',
             'currentDateTo' => null !== $request->query->get('date_to') ? (string) $request->query->get('date_to') : '',
-            'currentRecipient' => $recipient ?? '',
-            'currentSubject' => $subject ?? '',
-            'currentTemplate' => $templateName ?? '',
-            'currentStatus' => null !== $status ? $status->value : '',
+            'currentRecipient' => $filter->recipient ?? '',
+            'currentSubject' => $filter->subject ?? '',
+            'currentTemplate' => $filter->templateName ?? '',
+            'currentStatus' => null !== $filter->status ? $filter->status->value : '',
         ]);
-    }
-
-    private function parseDate(mixed $value, bool $endOfDay): ?\DateTimeImmutable
-    {
-        if (!is_string($value) || '' === trim($value)) {
-            return null;
-        }
-
-        $date = \DateTimeImmutable::createFromFormat('!Y-m-d', trim($value));
-        if (false === $date) {
-            return null;
-        }
-
-        return $endOfDay ? $date->setTime(23, 59, 59) : $date;
-    }
-
-    private function trimToNull(mixed $value): ?string
-    {
-        if (!is_string($value)) {
-            return null;
-        }
-
-        $trimmed = trim($value);
-
-        return '' === $trimmed ? null : $trimmed;
     }
 }

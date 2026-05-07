@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Tests\Integration\Controller\Public;
 
 use App\DataFixtures\OrderFixtures;
+use App\Entity\Contract;
 use App\Entity\Order;
 use App\Enum\OrderStatus;
+use App\Repository\ContractRepository;
 use App\Service\OrderStatusUrlGenerator;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -18,6 +20,7 @@ class OrderStatusControllerTest extends WebTestCase
     private KernelBrowser $client;
     private EntityManagerInterface $entityManager;
     private OrderStatusUrlGenerator $urlGenerator;
+    private ContractRepository $contractRepository;
 
     protected function setUp(): void
     {
@@ -26,6 +29,7 @@ class OrderStatusControllerTest extends WebTestCase
         $container = static::getContainer();
         $this->entityManager = $container->get('doctrine')->getManager();
         $this->urlGenerator = $container->get(OrderStatusUrlGenerator::class);
+        $this->contractRepository = $container->get(ContractRepository::class);
     }
 
     protected function tearDown(): void
@@ -86,6 +90,58 @@ class OrderStatusControllerTest extends WebTestCase
         $body = (string) $this->client->getResponse()->getContent();
         $this->assertStringContainsString('Váš přístupový kód', $body);
         $this->assertStringContainsString('0577', $body);
+    }
+
+    public function testTerminatedContractDoesNotRenderAccessCodeBlock(): void
+    {
+        // Same fixture as the active-contract test (storage C1 has lockCode "0577")
+        // — flip the contract into a terminated state so the partial's gating
+        // condition fails. Mutating the fixture inside the test is safe because
+        // DAMA DoctrineTestBundle wraps each test in a rollback-only transaction.
+        $order = $this->findOrderByReference(OrderFixtures::REF_ORDER_COMPLETED_UNLIMITED);
+        $contract = $this->contractRepository->findByOrder($order);
+        \assert($contract instanceof Contract, 'Fixture order must have a contract');
+        $contract->terminate(
+            new \DateTimeImmutable('2025-06-10'),
+            \App\Enum\TerminationReason::TENANT_NOTICE,
+        );
+        $this->entityManager->flush();
+
+        $this->requestSigned($this->urlGenerator->generate($order));
+
+        $this->assertResponseIsSuccessful();
+        $body = (string) $this->client->getResponse()->getContent();
+        $this->assertStringNotContainsString('Váš přístupový kód', $body);
+        $this->assertStringNotContainsString('0577', $body);
+    }
+
+    public function testExpiredContractDoesNotRenderAccessCodeBlock(): void
+    {
+        // REF_ORDER_COMPLETED → B3 has no lockCode in fixtures, so seed one
+        // (still numeric, still 4-digit so the codes-feature path is exercised),
+        // then push the contract's endDate into the past to flip the
+        // (endDate is null OR endDate >= today) gate.
+        $order = $this->findOrderByReference(OrderFixtures::REF_ORDER_COMPLETED);
+        $contract = $this->contractRepository->findByOrder($order);
+        \assert($contract instanceof Contract, 'Fixture order must have a contract');
+
+        $now = new \DateTimeImmutable('2025-06-15 12:00:00');
+        $contract->storage->updateLockCode('1234', $now);
+
+        // Reflect a past endDate directly — Contract has no public mutator and
+        // ContractFixtures' "expiring soon" already lives on D3 which has no
+        // lockCode. This keeps the assertion focused on the partial's gating.
+        $reflection = new \ReflectionClass($contract);
+        $endDateProp = $reflection->getProperty('endDate');
+        $endDateProp->setValue($contract, new \DateTimeImmutable('2025-06-01'));
+        $this->entityManager->flush();
+
+        $this->requestSigned($this->urlGenerator->generate($order));
+
+        $this->assertResponseIsSuccessful();
+        $body = (string) $this->client->getResponse()->getContent();
+        $this->assertStringNotContainsString('Váš přístupový kód', $body);
+        $this->assertStringNotContainsString('1234', $body);
     }
 
     public function testReservedOrderRendersAwaitingPaymentBadgeAndPayCta(): void

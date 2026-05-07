@@ -71,6 +71,7 @@ final class PlaceDetailController extends AbstractController
             ? $this->storageRepository->countByPlace($place)
             : $this->storageRepository->countByOwnerAndPlace($user, $place);
         $hasAccess = $isAdmin || $this->placeAccessRepository->hasAccess($user, $place);
+        $canManageCodes = $this->isGranted(PlaceVoter::MANAGE_CODES, $place);
 
         return $this->render('portal/place/detail.html.twig', [
             'place' => $place,
@@ -83,6 +84,7 @@ final class PlaceDetailController extends AbstractController
             'storageCount' => $storageCount,
             'hasAccess' => $hasAccess,
             'isAdmin' => $isAdmin,
+            'canManageCodes' => $canManageCodes,
         ]);
     }
 }

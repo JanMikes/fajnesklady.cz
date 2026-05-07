@@ -11,6 +11,7 @@ use App\Repository\StorageTypeRepository;
 use App\Service\Storage\StorageOccupancyService;
 use App\Value\RentalSpan;
 use App\Value\RentalSpanKind;
+use Psr\Clock\ClockInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -27,6 +28,7 @@ final class CalendarController extends AbstractController
         private readonly StorageTypeRepository $storageTypeRepository,
         private readonly StorageRepository $storageRepository,
         private readonly StorageOccupancyService $occupancyService,
+        private readonly ClockInterface $clock,
     ) {
     }
 
@@ -36,14 +38,18 @@ final class CalendarController extends AbstractController
         $user = $this->getUser();
         $isAdmin = $this->isGranted('ROLE_ADMIN');
 
-        $year = (int) $request->query->get('year', (string) date('Y'));
-        $month = (int) $request->query->get('month', (string) date('n'));
+        $today = $this->clock->now();
+        $defaultYear = (int) $today->format('Y');
+        $defaultMonth = (int) $today->format('n');
+
+        $year = (int) $request->query->get('year', (string) $defaultYear);
+        $month = (int) $request->query->get('month', (string) $defaultMonth);
 
         if ($month < 1 || $month > 12) {
-            $month = (int) date('n');
+            $month = $defaultMonth;
         }
         if ($year < 2020 || $year > 2100) {
-            $year = (int) date('Y');
+            $year = $defaultYear;
         }
 
         $view = (string) $request->query->get('view', 'month');
@@ -94,9 +100,11 @@ final class CalendarController extends AbstractController
         $startingToday = [];
         $dayDetails = [];
         $spans = [];
+        $rentalViews = [];
 
         if ([] !== $storages) {
             $spans = $this->occupancyService->spansInRange($storages, $startOfMonth, $endOfMonth);
+            $rentalViews = $this->occupancyService->currentViews($storages, $today);
 
             // Per-day rollups for the month grid.
             $currentDate = $startOfMonth;
@@ -203,6 +211,8 @@ final class CalendarController extends AbstractController
             'storages' => $storages,
             'calendarData' => $calendarData,
             'spans' => $spans,
+            'rentalViews' => $rentalViews,
+            'today' => $today,
             'endingToday' => $endingToday,
             'startingToday' => $startingToday,
             'dayDetails' => $dayDetails,

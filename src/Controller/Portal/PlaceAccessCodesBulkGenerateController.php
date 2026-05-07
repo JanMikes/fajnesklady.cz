@@ -35,7 +35,7 @@ final class PlaceAccessCodesBulkGenerateController extends AbstractController
     public function __invoke(string $placeId): Response
     {
         $place = $this->placeRepository->get(Uuid::fromString($placeId));
-        $this->denyAccessUnlessGranted(PlaceVoter::EDIT, $place);
+        $this->denyAccessUnlessGranted(PlaceVoter::MANAGE_CODES, $place);
 
         if (!$place->storageCodesEnabled) {
             throw new BadRequestHttpException('Přístupové kódy nejsou pro toto místo povolené.');

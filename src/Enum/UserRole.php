@@ -34,7 +34,7 @@ enum UserRole: string
     public function label(): string
     {
         return match ($this) {
-            self::USER => 'Uživatel',
+            self::USER => 'Nájemce',
             self::LANDLORD => 'Pronajímatel',
             self::ADMIN => 'Administrátor',
         };

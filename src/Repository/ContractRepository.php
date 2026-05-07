@@ -504,6 +504,9 @@ class ContractRepository
                 .'(c.nextBillingDate IS NOT NULL AND c.nextBillingDate < :overdueThreshold))) OR '
                 .'(c.outstandingDebtAmount IS NOT NULL AND c.outstandingDebtAmount > 0)'
             )
+            // Free contracts (individualMonthlyAmount = 0) skip charging entirely — a "0 Kč overdue"
+            // entry would be meaningless. Mirrors OverdueChecker::findOverdueViews()'s isFree() filter.
+            ->andWhere('c.individualMonthlyAmount IS NULL OR c.individualMonthlyAmount > 0')
             ->setParameter('overdueThreshold', $now->modify('-1 day'))
             ->getQuery()
             ->getSingleScalarResult();
@@ -524,6 +527,9 @@ class ContractRepository
                 .'(c.nextBillingDate IS NOT NULL AND c.nextBillingDate < :overdueThreshold))) OR '
                 .'(c.outstandingDebtAmount IS NOT NULL AND c.outstandingDebtAmount > 0)'
             )
+            // Free contracts (individualMonthlyAmount = 0) skip charging — exclude them so the
+            // sum stays consistent with countOverdueContracts() and OverdueChecker::summarise().
+            ->andWhere('c.individualMonthlyAmount IS NULL OR c.individualMonthlyAmount > 0')
             ->setParameter('overdueThreshold', $now->modify('-1 day'))
             ->getQuery()
             ->getSingleScalarResult();
@@ -592,6 +598,9 @@ class ContractRepository
 
         $idStrings = array_map(static fn (Uuid $id): string => (string) $id, $userIds);
 
+        // COALESCE so per-customer overrides (contract.individual_monthly_amount, spec 025)
+        // win over the order's locked-in monthly. Free contracts (override = 0) contribute 0
+        // to the MRR sum by construction.
         $rows = $this->entityManager->getConnection()->executeQuery(
             <<<'SQL'
                 SELECT
@@ -601,7 +610,7 @@ class ContractRepository
                         WHERE c.terminated_at IS NULL
                           AND (c.end_date IS NULL OR c.end_date >= :now)
                     ) AS active_count,
-                    COALESCE(SUM(o.total_price) FILTER (
+                    COALESCE(SUM(COALESCE(c.individual_monthly_amount, o.total_price)) FILTER (
                         WHERE c.terminated_at IS NULL
                           AND (c.end_date IS NULL OR c.end_date >= :now)
                           AND (c.end_date IS NULL OR (c.end_date - c.start_date) >= 28)
@@ -804,6 +813,60 @@ class ContractRepository
             ->getSingleScalarResult();
     }
 
+    /**
+     * Aggregate per-place contract stats keyed by RFC-4122 place UUID string.
+     *
+     * Mirrors {@see self::countActiveRecurringAtPlace()} +
+     * {@see self::sumExpectedRecurringAtPlace()} (admin scope, no owner
+     * filter) so the admin places export can pull both numbers in a single
+     * DBAL query instead of paying 2 queries per row.
+     *
+     * Places without active recurring contracts are absent from the result;
+     * callers default to zeros.
+     *
+     * @param Uuid[] $placeIds
+     *
+     * @return array<string, array{activeRecurring: int, expectedMrrInHaler: int}>
+     */
+    public function loadContractStatsByPlaceIds(array $placeIds): array
+    {
+        if ([] === $placeIds) {
+            return [];
+        }
+
+        $idStrings = array_map(static fn (Uuid $id): string => (string) $id, $placeIds);
+
+        // COALESCE so per-customer overrides (Contract.individualMonthlyAmount, spec 025)
+        // win over Order.firstPaymentPrice — same rule as sumExpectedRecurringAtPlace.
+        $rows = $this->entityManager->getConnection()->executeQuery(
+            <<<'SQL'
+                SELECT
+                    s.place_id::text AS place_id,
+                    COUNT(*) AS active_recurring,
+                    COALESCE(SUM(COALESCE(c.individual_monthly_amount, o.total_price)), 0) AS expected_mrr
+                FROM contract c
+                INNER JOIN storage s ON s.id = c.storage_id
+                INNER JOIN orders o ON o.id = c.order_id
+                WHERE s.place_id IN (:placeIds)
+                  AND c.go_pay_parent_payment_id IS NOT NULL
+                  AND c.terminated_at IS NULL
+                GROUP BY s.place_id
+                SQL,
+            ['placeIds' => $idStrings],
+            ['placeIds' => \Doctrine\DBAL\ArrayParameterType::STRING]
+        )->fetchAllAssociative();
+
+        $stats = [];
+        foreach ($rows as $row) {
+            $stats[(string) $row['place_id']] = [
+                'activeRecurring' => (int) $row['active_recurring'],
+                'expectedMrrInHaler' => (int) $row['expected_mrr'],
+            ];
+        }
+
+        return $stats;
+    }
+
     public function countActiveRecurringAtPlace(Place $place, ?User $owner): int
     {
         $qb = $this->entityManager->createQueryBuilder()
@@ -822,10 +885,38 @@ class ContractRepository
         return (int) $qb->getQuery()->getSingleScalarResult();
     }
 
-    public function sumExpectedRecurringAtPlace(Place $place, ?User $owner): int
+    /**
+     * Count all active contracts at a place — non-terminated and either open-ended
+     * or with endDate still in the future. Unlike {@see self::countActiveRecurringAtPlace()},
+     * this does NOT filter by GoPay token, so fixed-term and externally-prepaid /
+     * manually-onboarded contracts are included as well.
+     */
+    public function countActiveContractsAtPlace(Place $place, ?User $owner, \DateTimeImmutable $now): int
     {
         $qb = $this->entityManager->createQueryBuilder()
-            ->select('SUM(o.firstPaymentPrice)')
+            ->select('COUNT(c.id)')
+            ->from(Contract::class, 'c')
+            ->join('c.storage', 's')
+            ->where('s.place = :place')
+            ->andWhere('c.terminatedAt IS NULL')
+            ->andWhere('c.endDate IS NULL OR c.endDate > :now')
+            ->setParameter('place', $place)
+            ->setParameter('now', $now);
+
+        if (null !== $owner) {
+            $qb->andWhere('s.owner = :owner')->setParameter('owner', $owner);
+        }
+
+        return (int) $qb->getQuery()->getSingleScalarResult();
+    }
+
+    public function sumExpectedRecurringAtPlace(Place $place, ?User $owner): int
+    {
+        // Use COALESCE so per-customer overrides (Contract.individualMonthlyAmount, spec 025)
+        // win over Order.firstPaymentPrice. Free contracts (override = 0) contribute 0
+        // to the sum by construction.
+        $qb = $this->entityManager->createQueryBuilder()
+            ->select('SUM(COALESCE(c.individualMonthlyAmount, o.firstPaymentPrice))')
             ->from(Contract::class, 'c')
             ->join('c.storage', 's')
             ->join('c.order', 'o')

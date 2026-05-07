@@ -51,7 +51,7 @@ class UserRoleTest extends TestCase
 
     public function testLabelReturnsCorrectLabelForUser(): void
     {
-        $this->assertSame('Uživatel', UserRole::USER->label());
+        $this->assertSame('Nájemce', UserRole::USER->label());
     }
 
     public function testLabelReturnsCorrectLabelForLandlord(): void

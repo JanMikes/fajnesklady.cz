@@ -314,6 +314,166 @@ class UserRepositoryTest extends KernelTestCase
         );
     }
 
+    public function testFindWithActiveContractsPaginatedReturnsOnlyUsersWithActiveContracts(): void
+    {
+        // Verify the active-contracts paginator surfaces ONLY users with at least one
+        // non-terminated, not-yet-expired contract — and excludes terminated-only users
+        // and never-rented users alike. Lives alongside testFindWithActiveContractsPaginatedAndCount,
+        // which only checks one user of each shape; this test specifically guards the
+        // "terminated contract should NOT make the user count as active" branch.
+        $now = new \DateTimeImmutable('2025-06-15 12:00:00');
+
+        $activeTenant = new User(Uuid::v7(), 'paginated-active@example.com', 'password', 'Act', 'Tenant', $now);
+        $terminatedTenant = new User(Uuid::v7(), 'paginated-terminated@example.com', 'password', 'Trm', 'Tenant', $now);
+        $neverRented = new User(Uuid::v7(), 'paginated-never@example.com', 'password', 'Never', 'Rented', $now);
+
+        $place = new Place(Uuid::v7(), 'Paginated Place', 'Address', 'City', '00000', null, $now);
+        $storageType = new StorageType(Uuid::v7(), $place, 'Box', 100, 100, 100, 10000, 35000, $now);
+        $storageActive = new Storage(
+            Uuid::v7(),
+            'PA-'.bin2hex(random_bytes(2)),
+            ['x' => 0, 'y' => 0, 'width' => 100, 'height' => 100, 'rotation' => 0],
+            $storageType,
+            $place,
+            $now,
+        );
+        $storageTerminated = new Storage(
+            Uuid::v7(),
+            'PT-'.bin2hex(random_bytes(2)),
+            ['x' => 0, 'y' => 0, 'width' => 100, 'height' => 100, 'rotation' => 0],
+            $storageType,
+            $place,
+            $now,
+        );
+
+        $orderActive = new Order(
+            Uuid::v7(),
+            $activeTenant,
+            $storageActive,
+            RentalType::UNLIMITED,
+            PaymentFrequency::MONTHLY,
+            $now->modify('-30 days'),
+            null,
+            35000,
+            $now->modify('+7 days'),
+            $now->modify('-30 days'),
+        );
+        $contractActive = new Contract(
+            Uuid::v7(),
+            $orderActive,
+            $activeTenant,
+            $storageActive,
+            RentalType::UNLIMITED,
+            $now->modify('-30 days'),
+            null,
+            $now->modify('-30 days'),
+        );
+
+        $orderTerminated = new Order(
+            Uuid::v7(),
+            $terminatedTenant,
+            $storageTerminated,
+            RentalType::UNLIMITED,
+            PaymentFrequency::MONTHLY,
+            $now->modify('-60 days'),
+            null,
+            35000,
+            $now->modify('+7 days'),
+            $now->modify('-60 days'),
+        );
+        $contractTerminated = new Contract(
+            Uuid::v7(),
+            $orderTerminated,
+            $terminatedTenant,
+            $storageTerminated,
+            RentalType::UNLIMITED,
+            $now->modify('-60 days'),
+            null,
+            $now->modify('-60 days'),
+        );
+        $contractTerminated->terminate($now->modify('-1 day'), TerminationReason::TENANT_NOTICE);
+
+        $this->entityManager->persist($activeTenant);
+        $this->entityManager->persist($terminatedTenant);
+        $this->entityManager->persist($neverRented);
+        $this->entityManager->persist($place);
+        $this->entityManager->persist($storageType);
+        $this->entityManager->persist($storageActive);
+        $this->entityManager->persist($storageTerminated);
+        $this->entityManager->persist($orderActive);
+        $this->entityManager->persist($orderTerminated);
+        $this->entityManager->persist($contractActive);
+        $this->entityManager->persist($contractTerminated);
+        $this->entityManager->flush();
+
+        $activeUsers = $this->repository->findWithActiveContractsPaginated(1, 100, $now);
+        $activeEmails = array_map(static fn (User $u) => $u->email, $activeUsers);
+
+        $this->assertContains('paginated-active@example.com', $activeEmails);
+        $this->assertNotContains('paginated-terminated@example.com', $activeEmails);
+        $this->assertNotContains('paginated-never@example.com', $activeEmails);
+    }
+
+    public function testCountWithActiveAndWithoutActiveContractsSumToCountTotal(): void
+    {
+        // Invariant: every user is either in the "with active contract" set
+        // or the "without active contract" set — never both, never neither.
+        // Fixture-loaded users plus a freshly inserted active/inactive pair
+        // must always satisfy active + inactive == total, regardless of state.
+        $now = new \DateTimeImmutable('2025-06-15 12:00:00');
+
+        $activeTenant = new User(Uuid::v7(), 'invariant-active@example.com', 'password', 'Inv', 'Active', $now);
+        $inactiveUser = new User(Uuid::v7(), 'invariant-inactive@example.com', 'password', 'Inv', 'Inactive', $now);
+
+        $place = new Place(Uuid::v7(), 'Invariant Place', 'Address', 'City', '00000', null, $now);
+        $storageType = new StorageType(Uuid::v7(), $place, 'Box', 100, 100, 100, 10000, 35000, $now);
+        $storage = new Storage(
+            Uuid::v7(),
+            'IN-'.bin2hex(random_bytes(2)),
+            ['x' => 0, 'y' => 0, 'width' => 100, 'height' => 100, 'rotation' => 0],
+            $storageType,
+            $place,
+            $now,
+        );
+        $order = new Order(
+            Uuid::v7(),
+            $activeTenant,
+            $storage,
+            RentalType::UNLIMITED,
+            PaymentFrequency::MONTHLY,
+            $now->modify('-30 days'),
+            null,
+            35000,
+            $now->modify('+7 days'),
+            $now->modify('-30 days'),
+        );
+        $contract = new Contract(
+            Uuid::v7(),
+            $order,
+            $activeTenant,
+            $storage,
+            RentalType::UNLIMITED,
+            $now->modify('-30 days'),
+            null,
+            $now->modify('-30 days'),
+        );
+
+        $this->entityManager->persist($activeTenant);
+        $this->entityManager->persist($inactiveUser);
+        $this->entityManager->persist($place);
+        $this->entityManager->persist($storageType);
+        $this->entityManager->persist($storage);
+        $this->entityManager->persist($order);
+        $this->entityManager->persist($contract);
+        $this->entityManager->flush();
+
+        $total = $this->repository->countTotal();
+        $active = $this->repository->countWithActiveContracts($now);
+        $inactive = $this->repository->countWithoutActiveContracts($now);
+
+        $this->assertSame($total, $active + $inactive);
+    }
+
     public function testUpdateUser(): void
     {
         $now = new \DateTimeImmutable();

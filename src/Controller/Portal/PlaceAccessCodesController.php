@@ -36,7 +36,7 @@ final class PlaceAccessCodesController extends AbstractController
     public function __invoke(string $placeId, Request $request): Response
     {
         $place = $this->placeRepository->get(Uuid::fromString($placeId));
-        $this->denyAccessUnlessGranted(PlaceVoter::EDIT, $place);
+        $this->denyAccessUnlessGranted(PlaceVoter::MANAGE_CODES, $place);
 
         $formData = PlaceStorageCodeConfigFormData::fromPlace($place);
         $form = $this->createForm(PlaceStorageCodeConfigFormType::class, $formData);

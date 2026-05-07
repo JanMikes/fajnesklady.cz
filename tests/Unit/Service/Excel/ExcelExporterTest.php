@@ -90,8 +90,41 @@ final class ExcelExporterTest extends TestCase
 
         $rows = $this->writeAndRead($sheet);
 
-        // Header + 50 000 data rows = 50 001 total.
-        self::assertCount(ExcelExporter::MAX_ROWS + 1, $rows);
+        // Header + 50 000 data rows + 1 truncation marker = 50 002 total.
+        self::assertCount(ExcelExporter::MAX_ROWS + 2, $rows);
+    }
+
+    public function testAddsTruncationMarkerWhenInputExceedsCap(): void
+    {
+        $sheet = new ExcelSheet(
+            sheetTitle: 'Big',
+            filename: 'big.xlsx',
+            columns: [new ExcelColumn('N', ExcelColumnType::INTEGER)],
+            rows: $this->generateRows(ExcelExporter::MAX_ROWS + 1),
+        );
+
+        $rows = $this->writeAndRead($sheet);
+
+        self::assertNotSame([], $rows);
+        $lastRow = $rows[count($rows) - 1];
+        self::assertSame(ExcelExporter::TRUNCATION_MARKER, $lastRow[0]);
+    }
+
+    public function testNoTruncationMarkerWhenWithinCap(): void
+    {
+        $sheet = new ExcelSheet(
+            sheetTitle: 'Small',
+            filename: 'small.xlsx',
+            columns: [new ExcelColumn('N', ExcelColumnType::INTEGER)],
+            rows: $this->generateRows(3),
+        );
+
+        $rows = $this->writeAndRead($sheet);
+
+        // Header + 3 data rows = 4 — no marker appended.
+        self::assertCount(4, $rows);
+        $lastRow = $rows[count($rows) - 1];
+        self::assertNotSame(ExcelExporter::TRUNCATION_MARKER, $lastRow[0]);
     }
 
     /**

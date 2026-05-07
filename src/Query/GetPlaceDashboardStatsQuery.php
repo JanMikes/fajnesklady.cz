@@ -55,6 +55,7 @@ final readonly class GetPlaceDashboardStatsQuery
         );
 
         $expectedThisMonthRevenue = $this->contractRepository->sumExpectedRecurringAtPlace($place, $owner);
+        $activeContractsCount = $this->contractRepository->countActiveContractsAtPlace($place, $owner, $now);
         $activeRecurringContracts = $this->contractRepository->countActiveRecurringAtPlace($place, $owner);
 
         $overdue = null === $owner
@@ -80,6 +81,7 @@ final readonly class GetPlaceDashboardStatsQuery
             occupancyRate: $occupancyRate,
             lastMonthRevenue: $lastMonthRevenue,
             expectedThisMonthRevenue: $expectedThisMonthRevenue,
+            activeContractsCount: $activeContractsCount,
             activeRecurringContracts: $activeRecurringContracts,
             overdueCount: $overdue->count,
             overdueAmount: $overdue->totalAmount,

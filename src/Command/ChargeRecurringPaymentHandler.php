@@ -37,6 +37,23 @@ final readonly class ChargeRecurringPaymentHandler
         $contract = $command->contract;
         $now = $this->clock->now();
 
+        // Defensive double-charge guard: if the contract was successfully billed
+        // within the last 5 minutes, assume a near-simultaneous race between the
+        // recurring cron and a manual admin charge (separate processes, separate
+        // transactions) and bail out. The window is intentionally short and
+        // non-configurable — long enough to absorb cron + manual collisions,
+        // short enough not to swallow a legitimate retry hours later.
+        if (null !== $contract->lastBilledAt
+            && $contract->lastBilledAt <= $now
+            && $contract->lastBilledAt >= $now->modify('-5 minutes')) {
+            $this->logger->warning('Skipped recurring charge: contract already billed within last 5 minutes', [
+                'contractId' => $contract->id,
+                'lastBilledAt' => $contract->lastBilledAt,
+            ]);
+
+            return;
+        }
+
         if (!$contract->hasActiveRecurringPayment()) {
             throw new \DomainException('Contract does not have active recurring payment.');
         }

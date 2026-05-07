@@ -1049,6 +1049,166 @@ class ControllerAccessTest extends WebTestCase
     }
 
     // ===========================================
+    // PLACE ACCESS CODES — landlord-with-PlaceAccess + admin
+    // ===========================================
+
+    public function testPlaceAccessCodesRequiresAuthentication(): void
+    {
+        $place = $this->getFixturePlace();
+
+        $this->client->request('GET', '/portal/places/'.$place->id->toRfc4122().'/access-codes');
+
+        $this->assertResponseRedirects('/login');
+    }
+
+    public function testPlaceAccessCodesDeniedForRegularUser(): void
+    {
+        $place = $this->getFixturePlace();
+        $user = $this->getFixtureUser();
+        $this->login($user);
+
+        $this->client->request('GET', '/portal/places/'.$place->id->toRfc4122().'/access-codes');
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    public function testPlaceAccessCodesAccessibleByLandlordWithAccess(): void
+    {
+        // Landlord (fixture) has PlaceAccess to Sklad Praha - Centrum + owns
+        // storages there — MANAGE_CODES grants on either condition.
+        $place = $this->getFixturePlace();
+        $landlord = $this->getFixtureLandlord();
+        $this->login($landlord);
+
+        $this->client->request('GET', '/portal/places/'.$place->id->toRfc4122().'/access-codes');
+
+        $this->assertResponseIsSuccessful();
+    }
+
+    public function testPlaceAccessCodesDeniedForLandlordWithoutAccess(): void
+    {
+        // Landlord2 has no PlaceAccess to Brno and owns no storage there
+        // (Brno storages P1/P2 are unassigned in fixtures).
+        $place = $this->getFixturePlaceWithoutAnyLandlordAccess();
+        $landlord2 = $this->findUserByEmail('landlord2@example.com');
+        $this->login($landlord2);
+
+        $this->client->request('GET', '/portal/places/'.$place->id->toRfc4122().'/access-codes');
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    public function testPlaceAccessCodesAccessibleByAdmin(): void
+    {
+        $place = $this->getFixturePlace();
+        $admin = $this->getFixtureAdmin();
+        $this->login($admin);
+
+        $this->client->request('GET', '/portal/places/'.$place->id->toRfc4122().'/access-codes');
+
+        $this->assertResponseIsSuccessful();
+    }
+
+    public function testPlaceAccessCodesBulkGenerateRequiresAuthentication(): void
+    {
+        $place = $this->getFixturePlace();
+
+        $this->client->request('POST', '/portal/places/'.$place->id->toRfc4122().'/access-codes/bulk-generate');
+
+        $this->assertResponseRedirects('/login');
+    }
+
+    public function testPlaceAccessCodesBulkGenerateDeniedForRegularUser(): void
+    {
+        $place = $this->getFixturePlace();
+        $user = $this->getFixtureUser();
+        $this->login($user);
+
+        $this->client->request('POST', '/portal/places/'.$place->id->toRfc4122().'/access-codes/bulk-generate');
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    public function testPlaceAccessCodesBulkGenerateDeniedForLandlordWithoutAccess(): void
+    {
+        $place = $this->getFixturePlaceWithoutAnyLandlordAccess();
+        $landlord2 = $this->findUserByEmail('landlord2@example.com');
+        $this->login($landlord2);
+
+        $this->client->request('POST', '/portal/places/'.$place->id->toRfc4122().'/access-codes/bulk-generate');
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    public function testPlaceAccessCodesBulkGenerateAllowedForLandlordWithAccess(): void
+    {
+        $place = $this->getFixturePlace();
+        $landlord = $this->getFixtureLandlord();
+        $this->login($landlord);
+
+        $this->client->request('POST', '/portal/places/'.$place->id->toRfc4122().'/access-codes/bulk-generate');
+
+        // Bulk-generate redirects back to the listing on success.
+        $this->assertResponseRedirects();
+    }
+
+    public function testApiStoragesGenerateCodeRequiresAuthentication(): void
+    {
+        $place = $this->getFixturePlace();
+
+        $this->client->request('POST', '/api/places/'.$place->id->toRfc4122().'/storages/generate-code');
+
+        $this->assertResponseRedirects('/login');
+    }
+
+    public function testApiStoragesGenerateCodeDeniedForRegularUser(): void
+    {
+        $place = $this->getFixturePlace();
+        $user = $this->getFixtureUser();
+        $this->login($user);
+
+        $this->client->request('POST', '/api/places/'.$place->id->toRfc4122().'/storages/generate-code');
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    public function testApiStoragesGenerateCodeDeniedForLandlordWithoutAccess(): void
+    {
+        $place = $this->getFixturePlaceWithoutAnyLandlordAccess();
+        $landlord2 = $this->findUserByEmail('landlord2@example.com');
+        $this->login($landlord2);
+
+        $this->client->request('POST', '/api/places/'.$place->id->toRfc4122().'/storages/generate-code');
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    public function testApiStoragesGenerateCodeDeniedForLandlordWithAccess(): void
+    {
+        // The canvas-side generate-code API is gated on PlaceVoter::EDIT
+        // (admin-only — same as the canvas itself), not MANAGE_CODES. Landlords
+        // generate codes via the access-codes page instead.
+        $place = $this->getFixturePlace();
+        $landlord = $this->getFixtureLandlord();
+        $this->login($landlord);
+
+        $this->client->request('POST', '/api/places/'.$place->id->toRfc4122().'/storages/generate-code');
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    public function testApiStoragesGenerateCodeAllowedForAdmin(): void
+    {
+        $place = $this->getFixturePlace();
+        $admin = $this->getFixtureAdmin();
+        $this->login($admin);
+
+        $this->client->request('POST', '/api/places/'.$place->id->toRfc4122().'/storages/generate-code');
+
+        $this->assertResponseIsSuccessful();
+    }
+
+    // ===========================================
     // API - Storage operations
     // ===========================================
 
@@ -1209,6 +1369,19 @@ class ControllerAccessTest extends WebTestCase
     {
         $place = $this->entityManager->getRepository(Place::class)->findOneBy(['name' => 'Sklad Praha - Centrum']);
         \assert($place instanceof Place, 'Place "Sklad Praha - Centrum" not found in fixtures');
+
+        return $place;
+    }
+
+    /**
+     * "Sklad Brno" — no landlord has PlaceAccess to it and its P1/P2 storages
+     * have no owner. Used to assert MANAGE_CODES denies for landlords with
+     * neither PlaceAccess nor an owned storage at the place.
+     */
+    private function getFixturePlaceWithoutAnyLandlordAccess(): Place
+    {
+        $place = $this->entityManager->getRepository(Place::class)->findOneBy(['name' => 'Sklad Brno']);
+        \assert($place instanceof Place, 'Place "Sklad Brno" not found in fixtures');
 
         return $place;
     }

@@ -194,6 +194,72 @@ class StorageCodeGeneratorTest extends TestCase
         $this->assertCount(1, array_keys($this->usageStore));
     }
 
+    public function testBulkGenerateForEmptyFillsOnlyNullLockCodeStoragesAndReturnsTuples(): void
+    {
+        // Tiny range so we can deterministically assert "every code in range used"
+        // — 4 slots for 3 empty storages, with 1 code already in active use.
+        $place = $this->createPlace(digits: 1, from: 0, to: 3);
+        $this->activeCodesStore = ['0']; // one code already taken by a different storage
+
+        $emptyA = $this->createStorage($place, lockCode: null);
+        $emptyB = $this->createStorage($place, lockCode: null);
+        $emptyC = $this->createStorage($place, lockCode: null);
+        $this->emptyStorages = [$emptyA, $emptyB, $emptyC];
+
+        $generator = $this->createGenerator();
+
+        $filled = $generator->bulkGenerateForEmpty($place);
+
+        $this->assertCount(3, $filled);
+        $usedCodes = [];
+        foreach ($filled as $tuple) {
+            $this->assertNotNull($tuple['storage']->lockCode);
+            $this->assertSame($tuple['code'], $tuple['storage']->lockCode);
+            $usedCodes[] = $tuple['code'];
+        }
+        $this->assertCount(3, array_unique($usedCodes), 'Each filled code must be unique within the bulk run.');
+
+        // Each newly-assigned code must have been recorded in usage.
+        foreach ($usedCodes as $code) {
+            $this->assertArrayHasKey($place->id->toRfc4122().':'.$code, $this->usageStore);
+        }
+
+        // None of them should equal the pre-existing active lock code "0".
+        $this->assertNotContains('0', $usedCodes);
+    }
+
+    public function testBulkGenerateForEmptyPropagatesRangeExhaustedMidRun(): void
+    {
+        // Range = {0,1}; "0" is already used by another storage. Two empty
+        // storages need codes — only "1" can be assigned, so the second
+        // iteration MUST raise StorageCodeRangeExhausted. The first storage's
+        // code persists (the doctrine_transaction middleware would roll it back
+        // at the message bus boundary, but the service itself doesn't catch).
+        $place = $this->createPlace(digits: 1, from: 0, to: 1);
+        $this->activeCodesStore = ['0'];
+
+        $first = $this->createStorage($place, lockCode: null);
+        $second = $this->createStorage($place, lockCode: null);
+        $this->emptyStorages = [$first, $second];
+
+        $generator = $this->createGenerator();
+
+        $thrown = null;
+
+        try {
+            $generator->bulkGenerateForEmpty($place);
+        } catch (StorageCodeRangeExhausted $e) {
+            $thrown = $e;
+        }
+
+        $this->assertInstanceOf(StorageCodeRangeExhausted::class, $thrown);
+
+        // Partial state propagates: first storage got "1" + a usage row.
+        $this->assertSame('1', $first->lockCode);
+        $this->assertNull($second->lockCode);
+        $this->assertArrayHasKey($place->id->toRfc4122().':1', $this->usageStore);
+    }
+
     private function createGenerator(int $otherStorageCount = 0): StorageCodeGenerator
     {
         $usageStore = &$this->usageStore;

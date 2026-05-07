@@ -543,6 +543,21 @@ span.flatpickr-weekday {
 }
 
 /* TomSelect overrides — make the searchable dropdown match .form-input. */
+
+/*
+ * Kill the FOUC: the native <select> is briefly visible before the Stimulus
+ * controller mounts TomSelect on top. TomSelect renders its own UI alongside
+ * the original element (and adds the `tomselected` class once mounted), so we
+ * can hide the underlying <select> unconditionally whenever it opts in via
+ * `data-controller`. The element stays in the DOM for form submission.
+ */
+select[data-controller~="tom-select"] {
+    opacity: 0;
+    height: 0;
+    position: absolute;
+    pointer-events: none;
+}
+
 .ts-wrapper.single .ts-control {
     @apply min-h-[42px] border border-gray-300 rounded-md px-3 py-2 text-sm shadow-sm bg-white;
 }

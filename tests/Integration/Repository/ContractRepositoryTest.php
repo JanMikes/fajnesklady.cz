@@ -510,12 +510,16 @@ class ContractRepositoryTest extends KernelTestCase
     {
         $now = new \DateTimeImmutable('2025-06-15 12:00:00');
 
+        // Wipe contracts so we can assert exact counts/sums in isolation (DAMA rolls back).
+        $this->entityManager->getConnection()->executeStatement('DELETE FROM contract');
+
         $tenant = $this->createUser('overdue-mixed@test.com');
         $place = $this->createPlace();
         $storageType = $this->createStorageType();
         $storage1 = $this->createStorage($storageType, $place, 'OD1');
         $storage2 = $this->createStorage($storageType, $place, 'OD2');
         $storage3 = $this->createStorage($storageType, $place, 'OD3');
+        $storage4 = $this->createStorage($storageType, $place, 'OD4');
 
         // Active failing contract — counts.
         $orderFail = $this->createOrder($tenant, $storage1, $now->modify('-30 days'), null);
@@ -534,14 +538,25 @@ class ContractRepositoryTest extends KernelTestCase
         $this->createContract($orderHealthy, $tenant, $storage3, $now->modify('-10 days'), null)
             ->setRecurringPayment('parent-healthy', $now->modify('+5 days'), $now->modify('+5 days'));
 
+        // Free contract whose recurring window has lapsed — should NOT count or contribute to the sum.
+        // Free contracts skip charging entirely; mirroring OverdueChecker's isFree() filter keeps
+        // the badge count and the page row count consistent.
+        $orderFree = $this->createOrder($tenant, $storage4, $now->modify('-30 days'), null);
+        $contractFree = $this->createContract($orderFree, $tenant, $storage4, $now->modify('-30 days'), null);
+        $contractFree->applyIndividualMonthlyAmount(0);
+        $contractFree->setRecurringPayment('parent-free', $now->modify('-5 days'), $now->modify('-5 days'));
+        $contractFree->recordFailedBillingAttempt($now->modify('-3 days'));
+
         $this->entityManager->flush();
 
         $count = $this->repository->countOverdueContracts($now);
         $sum = $this->repository->sumOverdueAmount($now);
         $userIds = $this->repository->findOverdueUserIds($now);
 
-        $this->assertGreaterThanOrEqual(2, $count);
-        $this->assertGreaterThanOrEqual(10000 + 350000, $sum); // failing's order rate + terminated debt
+        // Failing + terminated-with-debt = 2; the free contract and the healthy one are excluded.
+        $this->assertSame(2, $count);
+        // Failing's monthly rate (10 000) + terminated debt (350 000); free contract excluded.
+        $this->assertSame(10000 + 350000, $sum);
         $this->assertContains($tenant->id->toRfc4122(), $userIds);
     }
 
@@ -599,6 +614,80 @@ class ContractRepositoryTest extends KernelTestCase
         // Each order's firstPaymentPrice is 10000 in the helper.
         $this->assertSame(20000, $this->repository->sumExpectedRecurringAtPlace($place, null));
         $this->assertSame(10000, $this->repository->sumExpectedRecurringAtPlace($place, $landlordA));
+    }
+
+    public function testSumExpectedRecurringAtPlaceHonoursIndividualMonthlyAmountOverride(): void
+    {
+        $tenant = $this->createUser('tenant-mrr-override@test.com');
+        $landlord = $this->createUser('landlord-mrr-override@test.com');
+        $place = $this->createPlace();
+        $st = $this->createStorageType();
+        $standardStorage = $this->createStorage($st, $place, 'MRR1', $landlord);
+        $overrideStorage = $this->createStorage($st, $place, 'MRR2', $landlord);
+        $freeStorage = $this->createStorage($st, $place, 'MRR3', $landlord);
+
+        $now = new \DateTimeImmutable('2025-06-15 12:00:00');
+
+        // Standard contract — order monthly = 150 000 halere (1 500 Kč), no override → contributes 150 000.
+        $standardOrder = $this->createOrder($tenant, $standardStorage, $now->modify('-30 days'), null, 150000);
+        $standardContract = $this->createContract($standardOrder, $tenant, $standardStorage, $now->modify('-30 days'), null);
+        $standardContract->setRecurringPayment('parent-std', $now->modify('+5 days'), $now->modify('-1 day'));
+
+        // Override contract — order monthly = 150 000 (storage default), override = 50 000 → contributes 50 000.
+        $overrideOrder = $this->createOrder($tenant, $overrideStorage, $now->modify('-30 days'), null, 150000);
+        $overrideContract = $this->createContract($overrideOrder, $tenant, $overrideStorage, $now->modify('-30 days'), null);
+        $overrideContract->applyIndividualMonthlyAmount(50000);
+        $overrideContract->setRecurringPayment('parent-ovr', $now->modify('+5 days'), $now->modify('-1 day'));
+
+        // Free contract — override = 0 → contributes 0 to the sum (auto-excluded by zero contribution).
+        $freeOrder = $this->createOrder($tenant, $freeStorage, $now->modify('-30 days'), null, 150000);
+        $freeContract = $this->createContract($freeOrder, $tenant, $freeStorage, $now->modify('-30 days'), null);
+        $freeContract->applyIndividualMonthlyAmount(0);
+        $freeContract->setRecurringPayment('parent-free', $now->modify('+5 days'), $now->modify('-1 day'));
+
+        $this->entityManager->flush();
+
+        // Standard 150 000 + override 50 000 + free 0 = 200 000. Without the COALESCE fix, this
+        // would have summed three times the order price (450 000) — the bug spec 028 fixes.
+        $this->assertSame(200000, $this->repository->sumExpectedRecurringAtPlace($place, $landlord));
+        $this->assertSame(200000, $this->repository->sumExpectedRecurringAtPlace($place, null));
+    }
+
+    public function testLoadCustomerStatsByUserIdsHonoursIndividualMonthlyAmountOverride(): void
+    {
+        $now = new \DateTimeImmutable('2025-06-15 12:00:00');
+
+        $tenant = $this->createUser('cstats-override@test.com');
+        $place = $this->createPlace();
+        $st = $this->createStorageType();
+        $standardStorage = $this->createStorage($st, $place, 'CSO1');
+        $overrideStorage = $this->createStorage($st, $place, 'CSO2');
+        $freeStorage = $this->createStorage($st, $place, 'CSO3');
+
+        // Standard contract — order = 150 000, no override → contributes 150 000 to MRR.
+        $standardOrder = $this->createOrder($tenant, $standardStorage, $now->modify('-30 days'), null, 150000);
+        $this->createContract($standardOrder, $tenant, $standardStorage, $now->modify('-30 days'), null);
+
+        // Override contract — order = 150 000 (storage default), override = 80 000 → contributes 80 000.
+        $overrideOrder = $this->createOrder($tenant, $overrideStorage, $now->modify('-30 days'), null, 150000);
+        $overrideContract = $this->createContract($overrideOrder, $tenant, $overrideStorage, $now->modify('-30 days'), null);
+        $overrideContract->applyIndividualMonthlyAmount(80000);
+
+        // Free contract — order = 150 000, override = 0 → contributes 0.
+        $freeOrder = $this->createOrder($tenant, $freeStorage, $now->modify('-30 days'), null, 150000);
+        $freeContract = $this->createContract($freeOrder, $tenant, $freeStorage, $now->modify('-30 days'), null);
+        $freeContract->applyIndividualMonthlyAmount(0);
+
+        $this->entityManager->flush();
+
+        $stats = $this->repository->loadCustomerStatsByUserIds([$tenant->id], $now);
+
+        $key = $tenant->id->toRfc4122();
+        $this->assertSame(3, $stats[$key]['activeCount']);
+        $this->assertSame(3, $stats[$key]['totalCount']);
+        // 150 000 (standard) + 80 000 (override) + 0 (free) = 230 000.
+        // Pre-fix this would have been 450 000 (the order's locked-in monthly × 3).
+        $this->assertSame(230000, $stats[$key]['mrrInHaler']);
     }
 
     public function testLoadCustomerStatsByUserIdsAggregatesActiveTotalAndMrr(): void
@@ -679,6 +768,58 @@ class ContractRepositoryTest extends KernelTestCase
 
         $key = $tenant->id->toRfc4122();
         $this->assertSame(1, $stats[$key]['activeCount']);
+        $this->assertSame(0, $stats[$key]['mrrInHaler']);
+    }
+
+    public function testLoadCustomerStatsByUserIdsCountsLimitedContractAtExactly28DaysAsRecurring(): void
+    {
+        // 28 days is the boundary set by PriceCalculator::WEEKLY_THRESHOLD_DAYS — the
+        // recurring predicate in loadCustomerStatsByUserIds is `(c.end_date - c.start_date) >= 28`,
+        // so a contract with exactly 28 days IS recurring and MUST contribute to MRR.
+        $now = new \DateTimeImmutable('2025-06-15 12:00:00');
+
+        $tenant = $this->createUser('cstats-28-day@test.com');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage = $this->createStorage($storageType, $place, 'C28');
+
+        $start = $now->modify('-1 day');
+        $end = $start->modify('+28 days');
+        $order = $this->createOrder($tenant, $storage, $start, $end, 90000);
+        $this->createContract($order, $tenant, $storage, $start, $end);
+
+        $this->entityManager->flush();
+
+        $stats = $this->repository->loadCustomerStatsByUserIds([$tenant->id], $now);
+
+        $key = $tenant->id->toRfc4122();
+        $this->assertSame(1, $stats[$key]['activeCount']);
+        $this->assertSame(90000, $stats[$key]['mrrInHaler']);
+    }
+
+    public function testLoadCustomerStatsByUserIdsExcludesLimitedContractAt27DaysFromMrr(): void
+    {
+        // One day below the 28-day boundary — short LIMITED, must NOT contribute to MRR
+        // (still counts toward activeCount and totalCount).
+        $now = new \DateTimeImmutable('2025-06-15 12:00:00');
+
+        $tenant = $this->createUser('cstats-27-day@test.com');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage = $this->createStorage($storageType, $place, 'C27');
+
+        $start = $now->modify('-1 day');
+        $end = $start->modify('+27 days');
+        $order = $this->createOrder($tenant, $storage, $start, $end, 90000);
+        $this->createContract($order, $tenant, $storage, $start, $end);
+
+        $this->entityManager->flush();
+
+        $stats = $this->repository->loadCustomerStatsByUserIds([$tenant->id], $now);
+
+        $key = $tenant->id->toRfc4122();
+        $this->assertSame(1, $stats[$key]['activeCount']);
+        $this->assertSame(1, $stats[$key]['totalCount']);
         $this->assertSame(0, $stats[$key]['mrrInHaler']);
     }
 

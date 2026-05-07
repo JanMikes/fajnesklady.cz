@@ -6,6 +6,7 @@ namespace App\Controller\Admin;
 
 use App\Entity\AuditLog;
 use App\Repository\AuditLogRepository;
+use App\Service\AuditLogDescriptionRenderer;
 use App\Service\Excel\ExcelColumn;
 use App\Service\Excel\ExcelColumnType;
 use App\Service\Excel\ExcelExporter;
@@ -23,6 +24,7 @@ final class AdminAuditLogExportController extends AbstractController
 {
     public function __construct(
         private readonly AuditLogRepository $auditLogRepository,
+        private readonly AuditLogDescriptionRenderer $descriptionRenderer,
         private readonly ExcelExporter $excelExporter,
         private readonly ClockInterface $clock,
     ) {
@@ -42,21 +44,21 @@ final class AdminAuditLogExportController extends AbstractController
             new ExcelColumn('Typ entity'),
             new ExcelColumn('ID entity'),
             new ExcelColumn('Událost'),
-            new ExcelColumn('Data'),
+            new ExcelColumn('Popis'),
         ];
 
         $logs = $this->auditLogRepository->streamWithFilters($entityType, $eventType, $search);
-        $rows = (static function () use ($logs): \Generator {
+        $renderer = $this->descriptionRenderer;
+        $rows = (static function () use ($logs, $renderer): \Generator {
             foreach ($logs as $log) {
-                /** @var AuditLog $log */
-                $payload = json_encode($log->payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                /* @var AuditLog $log */
                 yield [
                     $log->createdAt,
                     null === $log->user ? '' : ('' !== $log->user->fullName ? $log->user->fullName : $log->user->email),
                     $log->entityType,
                     $log->entityId,
                     $log->eventType,
-                    false === $payload ? '' : $payload,
+                    $renderer->describe($log),
                 ];
             }
         })();

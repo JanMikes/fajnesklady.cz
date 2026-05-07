@@ -72,11 +72,14 @@ final readonly class SendExternalPrepaymentEndingSoonEmailHandler
             ->htmlTemplate('email/external_prepayment_ending_soon.html.twig')
             ->context($context);
 
-        $sent = false;
+        // Mark the notice as attempted BEFORE sending. If delivery fails, the
+        // SMTP/queue layer is responsible for retrying that single message; the
+        // cron must not re-fire for this contract on every subsequent daily run
+        // and re-spam the customer once the mailer recovers.
+        $contract->recordAdvanceNoticeSent($this->clock->now());
 
         try {
             $this->mailer->send($customerEmail);
-            $sent = true;
         } catch (\Throwable $e) {
             $this->logger->error('Failed to send external prepayment ending notice to customer', [
                 'contract_id' => $event->contractId->toRfc4122(),
@@ -85,10 +88,6 @@ final readonly class SendExternalPrepaymentEndingSoonEmailHandler
         }
 
         $this->notifyAdmins($contract, $context);
-
-        if ($sent) {
-            $contract->recordAdvanceNoticeSent($this->clock->now());
-        }
     }
 
     /**

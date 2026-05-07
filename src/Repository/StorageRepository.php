@@ -509,6 +509,110 @@ class StorageRepository
     }
 
     /**
+     * Aggregate storage counts for the given place IDs in a single DBAL query.
+     *
+     * Mirrors the per-place counters in {@see self::countAtPlace()},
+     * {@see self::countOccupiedAtPlace()}, {@see self::countAvailableAtPlace()}
+     * — used by the admin places export to avoid 3 queries per row.
+     *
+     * Places without any storages are absent from the result; callers default
+     * to zeros.
+     *
+     * @param Uuid[] $placeIds
+     *
+     * @return array<string, array{total: int, occupied: int, available: int}>
+     */
+    public function loadStorageStatsByPlaceIds(array $placeIds): array
+    {
+        if ([] === $placeIds) {
+            return [];
+        }
+
+        $idStrings = array_map(static fn (Uuid $id): string => (string) $id, $placeIds);
+
+        $rows = $this->entityManager->getConnection()->executeQuery(
+            <<<'SQL'
+                SELECT
+                    s.place_id::text AS place_id,
+                    COUNT(*) AS total,
+                    COUNT(*) FILTER (WHERE s.status = :occupied) AS occupied,
+                    COUNT(*) FILTER (WHERE s.status = :available) AS available
+                FROM storage s
+                WHERE s.place_id IN (:placeIds)
+                  AND s.deleted_at IS NULL
+                GROUP BY s.place_id
+                SQL,
+            [
+                'placeIds' => $idStrings,
+                'occupied' => StorageStatus::OCCUPIED->value,
+                'available' => StorageStatus::AVAILABLE->value,
+            ],
+            [
+                'placeIds' => \Doctrine\DBAL\ArrayParameterType::STRING,
+            ]
+        )->fetchAllAssociative();
+
+        $stats = [];
+        foreach ($rows as $row) {
+            $stats[(string) $row['place_id']] = [
+                'total' => (int) $row['total'],
+                'occupied' => (int) $row['occupied'],
+                'available' => (int) $row['available'],
+            ];
+        }
+
+        return $stats;
+    }
+
+    /**
+     * Distinct storage owners for the given places, keyed by RFC-4122 place
+     * UUID string. Each entry is a list of {fullName, email} pairs (one per
+     * unique owner of any non-deleted storage at that place), ordered by name
+     * for stable export output. Single DBAL query.
+     *
+     * @param Uuid[] $placeIds
+     *
+     * @return array<string, list<array{fullName: string, email: string}>>
+     */
+    public function loadOwnersByPlaceIds(array $placeIds): array
+    {
+        if ([] === $placeIds) {
+            return [];
+        }
+
+        $idStrings = array_map(static fn (Uuid $id): string => (string) $id, $placeIds);
+
+        $rows = $this->entityManager->getConnection()->executeQuery(
+            <<<'SQL'
+                SELECT DISTINCT
+                    s.place_id::text AS place_id,
+                    u.first_name AS first_name,
+                    u.last_name AS last_name,
+                    u.email AS email
+                FROM storage s
+                INNER JOIN users u ON u.id = s.owner_id
+                WHERE s.place_id IN (:placeIds)
+                  AND s.deleted_at IS NULL
+                ORDER BY u.last_name ASC, u.first_name ASC
+                SQL,
+            ['placeIds' => $idStrings],
+            ['placeIds' => \Doctrine\DBAL\ArrayParameterType::STRING]
+        )->fetchAllAssociative();
+
+        $owners = [];
+        foreach ($rows as $row) {
+            $placeId = (string) $row['place_id'];
+            $owners[$placeId] ??= [];
+            $owners[$placeId][] = [
+                'fullName' => trim(((string) $row['first_name']).' '.((string) $row['last_name'])),
+                'email' => (string) $row['email'],
+            ];
+        }
+
+        return $owners;
+    }
+
+    /**
      * Find storages with optional filtering by owner, place, and storage type.
      *
      * @return Storage[]

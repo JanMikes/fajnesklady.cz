@@ -7,6 +7,7 @@ namespace App\Service\Security;
 use App\Entity\Place;
 use App\Entity\User;
 use App\Repository\PlaceAccessRepository;
+use App\Repository\StorageRepository;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Authorization\Voter\Voter;
 
@@ -19,15 +20,17 @@ final class PlaceVoter extends Voter
     public const string EDIT = 'PLACE_EDIT';
     public const string DELETE = 'PLACE_DELETE';
     public const string REQUEST_CHANGE = 'PLACE_REQUEST_CHANGE';
+    public const string MANAGE_CODES = 'PLACE_MANAGE_CODES';
 
     public function __construct(
         private readonly PlaceAccessRepository $placeAccessRepository,
+        private readonly StorageRepository $storageRepository,
     ) {
     }
 
     protected function supports(string $attribute, mixed $subject): bool
     {
-        return in_array($attribute, [self::VIEW, self::EDIT, self::DELETE, self::REQUEST_CHANGE], true)
+        return in_array($attribute, [self::VIEW, self::EDIT, self::DELETE, self::REQUEST_CHANGE, self::MANAGE_CODES], true)
             && $subject instanceof Place;
     }
 
@@ -54,6 +57,10 @@ final class PlaceVoter extends Voter
                 self::VIEW => true,
                 // Only landlords with access can request changes
                 self::REQUEST_CHANGE => $this->placeAccessRepository->hasAccess($user, $place),
+                // Landlords with PlaceAccess OR ownership of any storage at the place
+                // can manage access codes (it's an operational, per-place feature).
+                self::MANAGE_CODES => $this->placeAccessRepository->hasAccess($user, $place)
+                    || $this->storageRepository->countByOwnerAndPlace($user, $place) > 0,
                 // Landlords cannot edit or delete places
                 self::EDIT, self::DELETE => false,
                 default => false,

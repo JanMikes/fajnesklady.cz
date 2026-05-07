@@ -5,13 +5,12 @@ declare(strict_types=1);
 namespace App\Controller\Admin;
 
 use App\Entity\EmailLog;
-use App\Enum\EmailLogStatus;
-use App\Repository\EmailLogFilter;
 use App\Repository\EmailLogRepository;
 use App\Service\Excel\ExcelColumn;
 use App\Service\Excel\ExcelColumnType;
 use App\Service\Excel\ExcelExporter;
 use App\Service\Excel\ExcelSheet;
+use App\Service\Form\EmailLogFilterFactory;
 use Psr\Clock\ClockInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -25,6 +24,7 @@ final class AdminEmailLogExportController extends AbstractController
 {
     public function __construct(
         private readonly EmailLogRepository $emailLogRepository,
+        private readonly EmailLogFilterFactory $filterFactory,
         private readonly ExcelExporter $excelExporter,
         private readonly ClockInterface $clock,
     ) {
@@ -34,17 +34,7 @@ final class AdminEmailLogExportController extends AbstractController
     {
         $now = $this->clock->now();
 
-        $statusValue = self::trimToNull($request->query->get('status'));
-        $status = null !== $statusValue ? EmailLogStatus::tryFrom($statusValue) : null;
-
-        $filter = new EmailLogFilter(
-            dateFrom: self::parseDate($request->query->get('date_from'), endOfDay: false),
-            dateTo: self::parseDate($request->query->get('date_to'), endOfDay: true),
-            recipient: self::trimToNull($request->query->get('recipient')),
-            subject: self::trimToNull($request->query->get('subject')),
-            templateName: self::trimToNull($request->query->get('template')),
-            status: $status,
-        );
+        $filter = $this->filterFactory->fromRequest($request);
 
         $columns = [
             new ExcelColumn('Odesláno', ExcelColumnType::DATETIME),
@@ -79,29 +69,5 @@ final class AdminEmailLogExportController extends AbstractController
         );
 
         return $this->excelExporter->stream($sheet);
-    }
-
-    private static function trimToNull(mixed $value): ?string
-    {
-        if (!is_string($value)) {
-            return null;
-        }
-        $trimmed = trim($value);
-
-        return '' === $trimmed ? null : $trimmed;
-    }
-
-    private static function parseDate(mixed $value, bool $endOfDay): ?\DateTimeImmutable
-    {
-        if (!is_string($value) || '' === trim($value)) {
-            return null;
-        }
-
-        $date = \DateTimeImmutable::createFromFormat('!Y-m-d', trim($value));
-        if (false === $date) {
-            return null;
-        }
-
-        return $endOfDay ? $date->setTime(23, 59, 59) : $date;
     }
 }

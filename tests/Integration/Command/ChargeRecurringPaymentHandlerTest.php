@@ -153,6 +153,60 @@ class ChargeRecurringPaymentHandlerTest extends KernelTestCase
         $this->assertSame($storageMonthly, array_values($amounts)[0]);
     }
 
+    public function testShortCircuitsWhenContractWasJustBilled(): void
+    {
+        // Defensive guard against cron + manual-admin-charge race: if the
+        // contract was successfully billed within the last 5 minutes, the
+        // handler must skip GoPay entirely.
+        $contract = $this->createContractWithRecurringPayment();
+        $now = $this->clock->now();
+
+        // Simulate a charge that just landed 2 minutes ago (e.g. by a manual
+        // admin action in another process) — recordBillingCharge sets
+        // lastBilledAt and bumps nextBillingDate forward.
+        $contract->recordBillingCharge(
+            $now->modify('-2 minutes'),
+            $now->modify('+1 month'),
+            $now->modify('+1 month'),
+        );
+        $this->entityManager->flush();
+        $this->goPayClient->reset();
+
+        $this->commandBus->dispatch(new ChargeRecurringPaymentCommand($contract));
+
+        // No GoPay call should be made — short-circuit fired.
+        $this->assertSame(
+            [],
+            $this->goPayClient->getRecurrenceAmounts(),
+            'Short-circuit must prevent any GoPay call when lastBilledAt is within 5 minutes.',
+        );
+    }
+
+    public function testFutureLastBilledAtDoesNotPermanentlyLockBilling(): void
+    {
+        // Defence against clock drift: if lastBilledAt somehow lies in the
+        // future (data anomaly, container clock skew), the 5-minute guard
+        // must NOT lock the contract out of billing forever.
+        $contract = $this->createContractWithRecurringPayment();
+        $now = $this->clock->now();
+
+        $contract->recordBillingCharge(
+            $now->modify('+10 minutes'),
+            $now->modify('+1 month'),
+            $now->modify('+1 month'),
+        );
+        $this->entityManager->flush();
+        $this->goPayClient->reset();
+
+        $this->commandBus->dispatch(new ChargeRecurringPaymentCommand($contract));
+
+        $this->assertNotSame(
+            [],
+            $this->goPayClient->getRecurrenceAmounts(),
+            'A future lastBilledAt must not silently skip the charge — the upper-bound guard should let it through.',
+        );
+    }
+
     private function createContractWithRecurringPayment(): Contract
     {
         /** @var User $tenant */

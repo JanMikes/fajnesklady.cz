@@ -65,6 +65,37 @@ class CalendarControllerTest extends WebTestCase
         $this->assertStringContainsString('končí', $body);
     }
 
+    public function testDefaultMonthAndYearComeFromClockNotServerTime(): void
+    {
+        // MockClock is pinned to 2025-06-15. Without query params the controller
+        // must default to that month — proving it reads from the injected clock,
+        // not PHP's `date()` (which would yield "now" in UTC and could roll the
+        // month over for late-evening Europe/Prague visitors on the last day).
+        $this->loginAs('landlord@example.com');
+
+        $this->client->request('GET', '/portal/calendar');
+
+        $this->assertResponseIsSuccessful();
+        $body = (string) $this->client->getResponse()->getContent();
+        $this->assertStringContainsString('Červen 2025', $body);
+    }
+
+    public function testTerminatingContractShowsWarningIconInBottomStorageList(): void
+    {
+        // REF_CONTRACT_TERMINATING is an unlimited contract on storage E1
+        // (Praha Jih, owned by landlord) with terminatesAt set ~30 days ahead.
+        // The bottom storage list of the calendar must mirror the planning page
+        // and render "do dd.mm.yyyy ⚠" for that row.
+        $this->loginAs('landlord@example.com');
+
+        $this->client->request('GET', '/portal/calendar?year=2025&month=6');
+
+        $this->assertResponseIsSuccessful();
+        $body = (string) $this->client->getResponse()->getContent();
+        $this->assertStringContainsString('⚠', $body);
+        $this->assertStringContainsString('ukončuje se', $body);
+    }
+
     private function loginAs(string $email): void
     {
         $user = $this->entityManager->getRepository(User::class)->findOneBy(['email' => $email]);

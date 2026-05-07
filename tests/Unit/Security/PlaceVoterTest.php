@@ -7,6 +7,7 @@ namespace App\Tests\Unit\Security;
 use App\Entity\Place;
 use App\Entity\User;
 use App\Repository\PlaceAccessRepository;
+use App\Repository\StorageRepository;
 use App\Service\Security\PlaceVoter;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
@@ -19,7 +20,10 @@ class PlaceVoterTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->voter = new PlaceVoter($this->createStub(PlaceAccessRepository::class));
+        $this->voter = new PlaceVoter(
+            $this->createStub(PlaceAccessRepository::class),
+            $this->createStub(StorageRepository::class),
+        );
     }
 
     private function createUser(string $email = 'user@example.com'): User
@@ -144,7 +148,7 @@ class PlaceVoterTest extends TestCase
             ->with($landlord, $place)
             ->willReturn(true);
 
-        $voter = new PlaceVoter($placeAccessRepository);
+        $voter = new PlaceVoter($placeAccessRepository, $this->createStub(StorageRepository::class));
         $result = $voter->vote($this->createToken($landlord), $place, [PlaceVoter::REQUEST_CHANGE]);
 
         $this->assertSame(VoterInterface::ACCESS_GRANTED, $result);
@@ -164,8 +168,90 @@ class PlaceVoterTest extends TestCase
             ->with($landlord, $place)
             ->willReturn(false);
 
-        $voter = new PlaceVoter($placeAccessRepository);
+        $voter = new PlaceVoter($placeAccessRepository, $this->createStub(StorageRepository::class));
         $result = $voter->vote($this->createToken($landlord), $place, [PlaceVoter::REQUEST_CHANGE]);
+
+        $this->assertSame(VoterInterface::ACCESS_DENIED, $result);
+    }
+
+    public function testAdminCanManageCodes(): void
+    {
+        $admin = $this->createUser('admin@example.com');
+        $this->setUserRoles($admin, ['ROLE_USER', 'ROLE_ADMIN']);
+
+        $place = $this->createPlace();
+
+        $result = $this->voter->vote($this->createToken($admin), $place, [PlaceVoter::MANAGE_CODES]);
+
+        $this->assertSame(VoterInterface::ACCESS_GRANTED, $result);
+    }
+
+    public function testLandlordWithOwnedStorageCanManageCodes(): void
+    {
+        $landlord = $this->createUser('landlord@example.com');
+        $this->setUserRoles($landlord, ['ROLE_USER', 'ROLE_LANDLORD']);
+
+        $place = $this->createPlace();
+
+        $placeAccessRepository = $this->createMock(PlaceAccessRepository::class);
+        $placeAccessRepository->method('hasAccess')->willReturn(false);
+
+        $storageRepository = $this->createMock(StorageRepository::class);
+        $storageRepository
+            ->expects($this->once())
+            ->method('countByOwnerAndPlace')
+            ->with($landlord, $place)
+            ->willReturn(2);
+
+        $voter = new PlaceVoter($placeAccessRepository, $storageRepository);
+        $result = $voter->vote($this->createToken($landlord), $place, [PlaceVoter::MANAGE_CODES]);
+
+        $this->assertSame(VoterInterface::ACCESS_GRANTED, $result);
+    }
+
+    public function testLandlordWithPlaceAccessOnlyCanManageCodes(): void
+    {
+        $landlord = $this->createUser('landlord@example.com');
+        $this->setUserRoles($landlord, ['ROLE_USER', 'ROLE_LANDLORD']);
+
+        $place = $this->createPlace();
+
+        $placeAccessRepository = $this->createMock(PlaceAccessRepository::class);
+        $placeAccessRepository
+            ->expects($this->once())
+            ->method('hasAccess')
+            ->with($landlord, $place)
+            ->willReturn(true);
+
+        // Storage repo is short-circuited: hasAccess() returning true wins.
+        $storageRepository = $this->createMock(StorageRepository::class);
+        $storageRepository->expects($this->never())->method('countByOwnerAndPlace');
+
+        $voter = new PlaceVoter($placeAccessRepository, $storageRepository);
+        $result = $voter->vote($this->createToken($landlord), $place, [PlaceVoter::MANAGE_CODES]);
+
+        $this->assertSame(VoterInterface::ACCESS_GRANTED, $result);
+    }
+
+    public function testLandlordWithoutAccessOrOwnedStorageCannotManageCodes(): void
+    {
+        $landlord = $this->createUser('landlord@example.com');
+        $this->setUserRoles($landlord, ['ROLE_USER', 'ROLE_LANDLORD']);
+
+        $place = $this->createPlace();
+
+        $placeAccessRepository = $this->createMock(PlaceAccessRepository::class);
+        $placeAccessRepository->method('hasAccess')->willReturn(false);
+
+        $storageRepository = $this->createMock(StorageRepository::class);
+        $storageRepository
+            ->expects($this->once())
+            ->method('countByOwnerAndPlace')
+            ->with($landlord, $place)
+            ->willReturn(0);
+
+        $voter = new PlaceVoter($placeAccessRepository, $storageRepository);
+        $result = $voter->vote($this->createToken($landlord), $place, [PlaceVoter::MANAGE_CODES]);
 
         $this->assertSame(VoterInterface::ACCESS_DENIED, $result);
     }

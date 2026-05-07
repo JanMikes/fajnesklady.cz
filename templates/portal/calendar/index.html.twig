@@ -122,7 +122,7 @@
                     {% for day in 1..daysInMonth %}
                         {% set dateKey = year ~ '-' ~ (month < 10 ? '0' ~ month : month) ~ '-' ~ (day < 10 ? '0' ~ day : day) %}
                         {% set dayData = calendarData[dateKey] ?? null %}
-                        {% set isToday = dateKey == 'now'|date('Y-m-d') %}
+                        {% set isToday = dateKey == today|date('Y-m-d') %}
                         {% set endsCount = endingToday[dateKey] ?? 0 %}
                         {% set startsCount = startingToday[dateKey] ?? 0 %}
                         {% set details = dayDetails[dateKey] ?? [] %}
@@ -219,7 +219,7 @@
                             <div class="grid text-xs text-gray-500" style="grid-template-columns: repeat({{ daysInMonth }}, minmax(20px, 1fr));">
                                 {% for d in 1..daysInMonth %}
                                     {% set dateKey = year ~ '-' ~ (month < 10 ? '0' ~ month : month) ~ '-' ~ (d < 10 ? '0' ~ d : d) %}
-                                    {% set isToday = dateKey == 'now'|date('Y-m-d') %}
+                                    {% set isToday = dateKey == today|date('Y-m-d') %}
                                     <div class="text-center {{ isToday ? 'text-accent font-semibold' : '' }}">{{ d }}</div>
                                 {% endfor %}
                             </div>
@@ -235,7 +235,7 @@
                                     {% for d in 1..daysInMonth %}
                                         {% set dayDate = startOfMonth|date_modify('+' ~ (d - 1) ~ ' days') %}
                                         {% set dateKey = dayDate|date('Y-m-d') %}
-                                        {% set isToday = dateKey == 'now'|date('Y-m-d') %}
+                                        {% set isToday = dateKey == today|date('Y-m-d') %}
                                         {% set covering = null %}
                                         {% for span in storageSpans %}
                                             {% if covering is null and span.startDate <= dayDate and (span.endDate is null or span.endDate >= dayDate) %}
@@ -287,16 +287,7 @@
                         <tbody>
                             {% for storage in storages %}
                                 {% set storageId = storage.id.toRfc4122 %}
-                                {% set storageSpans = spans[storageId] ?? [] %}
-                                {% set today = 'now'|date('Y-m-d') %}
-                                {% set activeSpan = null %}
-                                {% for span in storageSpans %}
-                                    {% if activeSpan is null and span.startDate|date('Y-m-d') <= today
-                                        and (span.endDate is null or span.endDate|date('Y-m-d') >= today)
-                                        and span.kind.value != 'block' %}
-                                        {% set activeSpan = span %}
-                                    {% endif %}
-                                {% endfor %}
+                                {% set rentalView = rentalViews[storageId] ?? null %}
                                 <tr>
                                     <td class="font-medium text-gray-900">{{ storage.number }}</td>
                                     <td>{{ storage.place.name }}</td>
@@ -313,18 +304,24 @@
                                         {% endif %}
                                     </td>
                                     <td class="text-gray-700">
-                                        {% if activeSpan %}
-                                            {{ activeSpan.startDate|date('d.m.Y') }}
+                                        {% if rentalView and rentalView.rentedFrom %}
+                                            {{ rentalView.rentedFrom|date('d.m.Y') }}
                                         {% else %}
                                             —
                                         {% endif %}
                                     </td>
                                     <td class="text-gray-700">
-                                        {% if activeSpan %}
-                                            {% if activeSpan.endDate %}
-                                                do {{ activeSpan.endDate|date('d.m.Y') }}
-                                            {% else %}
+                                        {% if rentalView and rentalView.isOccupied %}
+                                            {% if rentalView.isTerminating %}
+                                                <span class="text-amber-700" title="Smlouva je ve výpovědi">
+                                                    do {{ rentalView.rentedUntil|date('d.m.Y') }}
+                                                    <span aria-hidden="true">⚠</span>
+                                                    <span class="sr-only">ukončuje se</span>
+                                                </span>
+                                            {% elseif rentalView.isUnlimited %}
                                                 <span title="Pronájem na dobu neurčitou">neomezeně <span aria-hidden="true">∞</span></span>
+                                            {% else %}
+                                                do {{ rentalView.rentedUntil|date('d.m.Y') }}
                                             {% endif %}
                                         {% else %}
                                             —

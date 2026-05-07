@@ -54,5 +54,25 @@ class AdminAuditLogExportControllerTest extends WebTestCase
 
         self::assertSame('Čas', $rows[0][0]);
         self::assertSame('Událost', $rows[0][4]);
+        self::assertSame('Popis', $rows[0][5]);
+    }
+
+    public function testDescriptionColumnIsHumanReadableNotJson(): void
+    {
+        $this->client->loginUser($this->findUserByEmail($this->entityManager, 'admin@example.com'), 'main');
+        $this->client->request('GET', '/portal/admin/audit-log/export');
+
+        $body = $this->assertXlsxResponse($this->client);
+        $rows = $this->readXlsxRows($body);
+
+        // Skip header — every data row's column 6 must be a Czech sentence,
+        // never a raw JSON object dump.
+        for ($i = 1; $i < count($rows); ++$i) {
+            $description = $rows[$i][5] ?? null;
+            if (!is_string($description) || '' === $description) {
+                continue;
+            }
+            self::assertStringStartsNotWith('{', $description, sprintf('row %d shipped raw JSON in Popis column: %s', $i, $description));
+        }
     }
 }

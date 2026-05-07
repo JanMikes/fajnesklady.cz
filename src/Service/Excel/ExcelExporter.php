@@ -14,6 +14,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 final readonly class ExcelExporter
 {
     public const int MAX_ROWS = 50_000;
+    public const string TRUNCATION_MARKER = '(soubor zkrácen na prvních 50 000 řádků)';
 
     public function stream(ExcelSheet $sheet): StreamedResponse
     {
@@ -61,8 +62,11 @@ final readonly class ExcelExporter
         $decimalStyle = (new Style())->setFormat('#,##0.00');
 
         $written = 0;
+        $truncated = false;
         foreach ($sheet->rows as $rawRow) {
             if ($written >= self::MAX_ROWS) {
+                $truncated = true;
+
                 break;
             }
             $cells = [];
@@ -79,6 +83,12 @@ final readonly class ExcelExporter
             }
             $writer->addRow(new Row($cells));
             ++$written;
+        }
+
+        // Visible truncation marker — without this, a user opening a 50 000-row
+        // export has no way to know more rows existed and got dropped.
+        if ($truncated) {
+            $writer->addRow(Row::fromValues([self::TRUNCATION_MARKER]));
         }
 
         $writer->close();

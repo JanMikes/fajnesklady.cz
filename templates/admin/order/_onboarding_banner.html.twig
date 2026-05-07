@@ -1,5 +1,6 @@
 {% set hasIndividual = order.individualMonthlyAmount is not null and order.individualMonthlyAmount > 0 %}
-{% set isFree = order.individualMonthlyAmount == 0 %}
+{# Use strict identity (is same as) to distinguish 0 from null — Twig's `==` evaluates `null == 0` as true. #}
+{% set isFree = order.individualMonthlyAmount is same as(0) %}
 {% set hasPrepaid = order.paidThroughDate is not null %}
 
 {% if hasIndividual or isFree or hasPrepaid or order.isAdminCreated %}

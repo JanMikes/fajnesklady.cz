@@ -238,17 +238,23 @@ class UserRepository
     }
 
     /**
+     * @param string[]|null $activeUserIds RFC-4122 user UUID strings (sentinel-padded if empty),
+     *                                     as returned by ContractRepository::findActiveContractUserIdsSubquery().
+     *                                     Pass it in to avoid re-running that subquery when the
+     *                                     caller already needs it for related counts.
+     *
      * @return User[]
      */
-    public function findWithActiveContractsPaginated(int $page, int $limit, \DateTimeImmutable $now): array
+    public function findWithActiveContractsPaginated(int $page, int $limit, \DateTimeImmutable $now, ?array $activeUserIds = null): array
     {
         $offset = ($page - 1) * $limit;
+        $activeUserIds ??= $this->contractRepository->findActiveContractUserIdsSubquery($now);
 
         return $this->entityManager->createQueryBuilder()
             ->select('u')
             ->from(User::class, 'u')
             ->where('u.id IN (:activeIds)')
-            ->setParameter('activeIds', $this->contractRepository->findActiveContractUserIdsSubquery($now))
+            ->setParameter('activeIds', $activeUserIds)
             ->orderBy('u.createdAt', 'DESC')
             ->addOrderBy('u.id', 'DESC')
             ->setFirstResult($offset)
@@ -257,29 +263,37 @@ class UserRepository
             ->getResult();
     }
 
-    public function countWithActiveContracts(\DateTimeImmutable $now): int
+    /**
+     * @param string[]|null $activeUserIds see {@see self::findWithActiveContractsPaginated()}
+     */
+    public function countWithActiveContracts(\DateTimeImmutable $now, ?array $activeUserIds = null): int
     {
+        $activeUserIds ??= $this->contractRepository->findActiveContractUserIdsSubquery($now);
+
         return (int) $this->entityManager->createQueryBuilder()
             ->select('COUNT(u.id)')
             ->from(User::class, 'u')
             ->where('u.id IN (:activeIds)')
-            ->setParameter('activeIds', $this->contractRepository->findActiveContractUserIdsSubquery($now))
+            ->setParameter('activeIds', $activeUserIds)
             ->getQuery()
             ->getSingleScalarResult();
     }
 
     /**
+     * @param string[]|null $activeUserIds see {@see self::findWithActiveContractsPaginated()}
+     *
      * @return User[]
      */
-    public function findWithoutActiveContractsPaginated(int $page, int $limit, \DateTimeImmutable $now): array
+    public function findWithoutActiveContractsPaginated(int $page, int $limit, \DateTimeImmutable $now, ?array $activeUserIds = null): array
     {
         $offset = ($page - 1) * $limit;
+        $activeUserIds ??= $this->contractRepository->findActiveContractUserIdsSubquery($now);
 
         return $this->entityManager->createQueryBuilder()
             ->select('u')
             ->from(User::class, 'u')
             ->where('u.id NOT IN (:activeIds)')
-            ->setParameter('activeIds', $this->contractRepository->findActiveContractUserIdsSubquery($now))
+            ->setParameter('activeIds', $activeUserIds)
             ->orderBy('u.createdAt', 'DESC')
             ->addOrderBy('u.id', 'DESC')
             ->setFirstResult($offset)
@@ -288,13 +302,18 @@ class UserRepository
             ->getResult();
     }
 
-    public function countWithoutActiveContracts(\DateTimeImmutable $now): int
+    /**
+     * @param string[]|null $activeUserIds see {@see self::findWithActiveContractsPaginated()}
+     */
+    public function countWithoutActiveContracts(\DateTimeImmutable $now, ?array $activeUserIds = null): int
     {
+        $activeUserIds ??= $this->contractRepository->findActiveContractUserIdsSubquery($now);
+
         return (int) $this->entityManager->createQueryBuilder()
             ->select('COUNT(u.id)')
             ->from(User::class, 'u')
             ->where('u.id NOT IN (:activeIds)')
-            ->setParameter('activeIds', $this->contractRepository->findActiveContractUserIdsSubquery($now))
+            ->setParameter('activeIds', $activeUserIds)
             ->getQuery()
             ->getSingleScalarResult();
     }
@@ -308,6 +327,38 @@ class UserRepository
      * @return iterable<User>
      */
     public function streamForExport(?string $filter, \DateTimeImmutable $now): iterable
+    {
+        $qb = $this->buildExportQueryBuilder($filter, $now);
+
+        $batch = 0;
+        foreach ($qb->getQuery()->toIterable() as $user) {
+            yield $user;
+            if (++$batch >= 200) {
+                $this->entityManager->clear();
+                $batch = 0;
+            }
+        }
+    }
+
+    /**
+     * UUID list for the same query as {@see self::streamForExport()}, used by
+     * the export controller to pre-compute debtor / onboarded membership sets
+     * once per request without paying a per-row query.
+     *
+     * @return Uuid[]
+     */
+    public function findIdsForExport(?string $filter, \DateTimeImmutable $now): array
+    {
+        /** @var array<int, array{id: Uuid}> $rows */
+        $rows = $this->buildExportQueryBuilder($filter, $now)
+            ->select('u.id')
+            ->getQuery()
+            ->getArrayResult();
+
+        return array_map(static fn (array $r): Uuid => $r['id'], $rows);
+    }
+
+    private function buildExportQueryBuilder(?string $filter, \DateTimeImmutable $now): \Doctrine\ORM\QueryBuilder
     {
         $qb = $this->entityManager->createQueryBuilder()
             ->select('u')
@@ -338,14 +389,7 @@ class UserRepository
                 break;
         }
 
-        $batch = 0;
-        foreach ($qb->getQuery()->toIterable() as $user) {
-            yield $user;
-            if (++$batch >= 200) {
-                $this->entityManager->clear();
-                $batch = 0;
-            }
-        }
+        return $qb;
     }
 
     /**
