@@ -300,6 +300,52 @@ class OrderRepository
     }
 
     /**
+     * Earliest future startDate per storage among orders that block the storage
+     * (CREATED/RESERVED/AWAITING_PAYMENT/PAID) with startDate strictly greater
+     * than $strictlyAfter. Counterpart of {@see ContractRepository::findNextStartByStorages()}.
+     *
+     * MIN() over a DATE_IMMUTABLE column comes back as a Y-m-d string —
+     * Doctrine skips its type-conversion pass on SQL aggregates, so we
+     * rehydrate in PHP.
+     *
+     * @param Storage[] $storages
+     *
+     * @return array<string, \DateTimeImmutable> keyed by Storage->id->toRfc4122()
+     */
+    public function findNextStartByStorages(array $storages, \DateTimeImmutable $strictlyAfter): array
+    {
+        if ([] === $storages) {
+            return [];
+        }
+
+        /** @var array<int, array{storageId: string, nextStart: string}> $rows */
+        $rows = $this->entityManager->createQueryBuilder()
+            ->select('IDENTITY(o.storage) AS storageId, MIN(o.startDate) AS nextStart')
+            ->from(Order::class, 'o')
+            ->where('o.storage IN (:storages)')
+            ->andWhere('o.status IN (:statuses)')
+            ->andWhere('o.startDate > :after')
+            ->setParameter('storages', $storages)
+            ->setParameter('statuses', [
+                OrderStatus::CREATED,
+                OrderStatus::RESERVED,
+                OrderStatus::AWAITING_PAYMENT,
+                OrderStatus::PAID,
+            ])
+            ->setParameter('after', $strictlyAfter)
+            ->groupBy('o.storage')
+            ->getQuery()
+            ->getArrayResult();
+
+        $result = [];
+        foreach ($rows as $row) {
+            $result[(string) $row['storageId']] = new \DateTimeImmutable((string) $row['nextStart']);
+        }
+
+        return $result;
+    }
+
+    /**
      * @return Order[]
      */
     public function findAllPaginated(int $page, int $limit): array

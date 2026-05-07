@@ -107,37 +107,6 @@ class StorageRepositoryTest extends KernelTestCase
         $this->assertFalse($this->repository->hasCoOwners($place, $me));
     }
 
-    public function testFindFreeCountByTypeAtPlaceGroupsAndScopesByOwner(): void
-    {
-        $place = $this->createPlace();
-        $typeA = $this->createStorageType($place, 'Aaa Type');
-        $typeB = $this->createStorageType($place, 'Bbb Type');
-        $owner = $this->createUser('free-owner@test.com');
-        $stranger = $this->createUser('free-stranger@test.com');
-
-        $this->createStorage($typeA, $place, 'FCA1', $owner);
-        $this->createStorage($typeA, $place, 'FCA2', $owner);
-        $this->createStorage($typeB, $place, 'FCB1', $owner);
-        $this->createStorage($typeB, $place, 'FCB2', $stranger);
-        $this->entityManager->flush();
-
-        $resultsAll = $this->repository->findFreeCountByTypeAtPlace($place, null);
-        $byType = [];
-        foreach ($resultsAll as $row) {
-            $byType[$row['storageType']->name] = $row['freeCount'];
-        }
-        $this->assertSame(2, $byType['Aaa Type']);
-        $this->assertSame(2, $byType['Bbb Type']);
-
-        $resultsOwner = $this->repository->findFreeCountByTypeAtPlace($place, $owner);
-        $byTypeOwner = [];
-        foreach ($resultsOwner as $row) {
-            $byTypeOwner[$row['storageType']->name] = $row['freeCount'];
-        }
-        $this->assertSame(2, $byTypeOwner['Aaa Type']);
-        $this->assertSame(1, $byTypeOwner['Bbb Type']);
-    }
-
     private function createUser(string $email): User
     {
         $user = new User(Uuid::v7(), $email, 'password', 'Test', 'User', new \DateTimeImmutable());

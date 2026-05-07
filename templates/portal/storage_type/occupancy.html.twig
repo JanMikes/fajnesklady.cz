@@ -1,0 +1,269 @@
+{% extends 'portal/layout.html.twig' %}
+
+{% block title %}Plánování obsazenosti — {{ storageType.name }}{% endblock %}
+
+{% block breadcrumb %}
+    {% set crumbs = [
+        {label: 'Místa', url: path('portal_places_list')},
+        {label: place.name, url: path('portal_places_detail', {id: place.id})},
+    ] %}
+    {% if isAdmin %}
+        {% set crumbs = crumbs|merge([{label: 'Typy skladů', url: path('portal_storage_types_list', {placeId: place.id})}]) %}
+    {% endif %}
+    {% set crumbs = crumbs|merge([{label: storageType.name ~ ' — Plánování obsazenosti'}]) %}
+    {% include 'components/breadcrumb.html.twig' with {breadcrumb_items: crumbs} %}
+{% endblock %}
+
+{% block content %}
+    <div class="flex justify-between items-start mb-6">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">Plánování obsazenosti</h1>
+            <p class="text-gray-500 mt-1">{{ place.name }} — {{ storageType.name }}</p>
+        </div>
+    </div>
+
+    {# Header card — name, dimensions, default monthly price #}
+    <div class="card mb-6">
+        <div class="card-body">
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-xl font-semibold text-gray-900">{{ storageType.name }}</h2>
+                    <p class="text-sm text-gray-500">{{ storageType.dimensionsInMeters }}</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-sm text-gray-500">Cena/měsíc</p>
+                    <p class="text-lg font-semibold text-gray-900">{{ storageType.defaultPricePerMonthInCzk|number_format(0, ',', ' ') }} Kč</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# KPI tiles #}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+        <div class="card">
+            <div class="card-body">
+                <p class="text-sm text-gray-500">Celkem</p>
+                <p class="text-2xl font-bold text-gray-900 mt-1">{{ result.totalCount }}</p>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-body">
+                <p class="text-sm text-gray-500 flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-red-500"></span>
+                    Obsazeno
+                </p>
+                <p class="text-2xl font-bold text-gray-900 mt-1">{{ result.occupiedCount }}</p>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-body">
+                <p class="text-sm text-gray-500 flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-green-500"></span>
+                    Volných
+                </p>
+                <p class="text-2xl font-bold text-gray-900 mt-1">{{ result.availableCount }}</p>
+            </div>
+        </div>
+        {% if result.blockedCount > 0 %}
+            <div class="card">
+                <div class="card-body">
+                    <p class="text-sm text-gray-500 flex items-center gap-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-gray-400"></span>
+                        Blokováno
+                    </p>
+                    <p class="text-2xl font-bold text-gray-900 mt-1">{{ result.blockedCount }}</p>
+                </div>
+            </div>
+        {% endif %}
+        <div class="card">
+            <div class="card-body">
+                <p class="text-sm text-gray-500">Nejbližší uvolnění</p>
+                <p class="text-2xl font-bold text-gray-900 mt-1">
+                    {% if result.nextFreeingDate %}
+                        do {{ result.nextFreeingDate|date('d.m.Y') }}
+                    {% else %}
+                        —
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+    </div>
+
+    {% if result.totalCount == 0 %}
+        <div class="card">
+            <div class="card-body text-center py-12">
+                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                </svg>
+                <h3 class="mt-4 text-lg font-medium text-gray-900">Žádné sklady tohoto typu</h3>
+                <p class="mt-2 text-sm text-gray-500">Zatím nemáte na tomto místě žádné sklady typu „{{ storageType.name }}".</p>
+                <a href="{{ path('portal_storages_list', {placeId: place.id, storage_type: storageType.id}) }}" class="btn btn-primary mt-4">
+                    Přejít na sklady
+                </a>
+            </div>
+        </div>
+    {% else %}
+        {# Filter chip strip #}
+        {% set chip_base = 'inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium border transition-colors' %}
+        {% set chip_active = 'bg-accent text-white border-accent' %}
+        {% set chip_inactive = 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50' %}
+        <div class="flex flex-wrap gap-2 mb-4">
+            <a href="{{ path('portal_storage_type_occupancy', {placeId: place.id, id: storageType.id, show: 'all'}) }}"
+               class="{{ chip_base }} {{ show == 'all' ? chip_active : chip_inactive }}">Vše ({{ result.totalCount }})</a>
+            <a href="{{ path('portal_storage_type_occupancy', {placeId: place.id, id: storageType.id, show: 'occupied'}) }}"
+               class="{{ chip_base }} {{ show == 'occupied' ? chip_active : chip_inactive }}">Obsazené ({{ result.occupiedCount }})</a>
+            <a href="{{ path('portal_storage_type_occupancy', {placeId: place.id, id: storageType.id, show: 'free'}) }}"
+               class="{{ chip_base }} {{ show == 'free' ? chip_active : chip_inactive }}">Volné ({{ result.availableCount }})</a>
+            {% if result.blockedCount > 0 %}
+                <a href="{{ path('portal_storage_type_occupancy', {placeId: place.id, id: storageType.id, show: 'blocked'}) }}"
+                   class="{{ chip_base }} {{ show == 'blocked' ? chip_active : chip_inactive }}">Blokované ({{ result.blockedCount }})</a>
+            {% endif %}
+        </div>
+
+        {# Rentals table #}
+        <div class="card mb-6">
+            <div class="overflow-x-auto">
+                <table class="table table-zebra">
+                    <thead>
+                        <tr>
+                            <th>Sklad</th>
+                            <th>Stav</th>
+                            <th>Nájemce</th>
+                            <th>Pronajato OD</th>
+                            <th>Pronajato DO</th>
+                            <th>Příští volný</th>
+                            <th>Akce</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for view in result.rows %}
+                            {% set visible = (show == 'all')
+                                or (show == 'occupied' and view.isOccupied)
+                                or (show == 'free' and view.isFree)
+                                or (show == 'blocked' and view.isBlocked) %}
+                            {% if visible %}
+                                <tr>
+                                    <td class="font-medium text-gray-900">
+                                        <a href="{{ path('portal_storages_edit', {id: view.storage.id}) }}" class="link">{{ view.storage.number }}</a>
+                                    </td>
+                                    <td>
+                                        {% if view.isOccupied %}
+                                            {% if view.isTerminating %}
+                                                <span class="badge badge-warning" title="Smlouva je ve výpovědi">Ukončuje se</span>
+                                            {% else %}
+                                                <span class="badge badge-error">Obsazený</span>
+                                            {% endif %}
+                                        {% elseif view.isBlocked %}
+                                            <span class="badge badge-ghost">Blokováno</span>
+                                        {% else %}
+                                            <span class="badge badge-success">Volný</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ view.tenantName ?? '—' }}</td>
+                                    <td>{{ view.rentedFrom ? view.rentedFrom|date('d.m.Y') : '—' }}</td>
+                                    <td>
+                                        {% if view.isOccupied %}
+                                            {% if view.isTerminating %}
+                                                <span class="text-amber-700" title="Smlouva je ve výpovědi">
+                                                    do {{ view.rentedUntil|date('d.m.Y') }}
+                                                    <span aria-hidden="true">⚠</span>
+                                                </span>
+                                            {% elseif view.isUnlimited %}
+                                                <span class="text-gray-700" title="Pronájem na dobu neurčitou">neomezeně <span aria-hidden="true">∞</span></span>
+                                            {% else %}
+                                                do {{ view.rentedUntil|date('d.m.Y') }}
+                                            {% endif %}
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if view.isOccupied %}
+                                            {% if view.availableFrom %}
+                                                {{ view.availableFrom|date('d.m.Y') }}
+                                            {% else %}
+                                                —
+                                            {% endif %}
+                                        {% elseif view.isFree %}
+                                            <span class="text-green-700">Volný</span>
+                                            {% if view.nextBookedFrom %}
+                                                <div class="text-xs text-gray-500 mt-0.5">další rezervace od {{ view.nextBookedFrom|date('d.m.Y') }}</div>
+                                            {% endif %}
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if view.isOccupied %}
+                                            {% set orderForLink = view.currentContract ? view.currentContract.order : view.currentOrder %}
+                                            {% if orderForLink %}
+                                                <a href="{{ path(isAdmin ? 'admin_order_detail' : 'portal_landlord_order_detail', {id: orderForLink.id}) }}" class="link text-sm">
+                                                    Objednávka
+                                                </a>
+                                            {% endif %}
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        {% else %}
+                            <tr>
+                                <td colspan="7" class="text-center text-gray-500 py-8">Žádné sklady neodpovídají filtru.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {# 90-day mini-timeline #}
+        {% set days = 90 %}
+        <div class="card">
+            <div class="card-header bg-gray-50 px-6 py-4 border-b">
+                <h3 class="text-lg font-semibold text-gray-900">Časová osa (90 dní)</h3>
+                <p class="text-sm text-gray-500">{{ rangeFrom|date('d.m.Y') }} — {{ rangeTo|date('d.m.Y') }}</p>
+            </div>
+            <div class="p-4">
+                <div class="hidden md:block" data-test="storage-type-timeline">
+                    {# Header row: empty cell for label column, then week ticks #}
+                    <div class="grid items-center" style="grid-template-columns: 160px 1fr; gap: 8px;">
+                        <div></div>
+                        <div class="grid" style="grid-template-columns: repeat({{ (days / 7)|round(0, 'ceil') }}, 1fr);">
+                            {% for week in 0..((days / 7)|round(0, 'ceil') - 1) %}
+                                {% set tickDate = rangeFrom|date_modify('+' ~ (week * 7) ~ ' days') %}
+                                <div class="text-xs text-gray-500">{{ tickDate|date('d.m') }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    {% for view in result.rows %}
+                        {% set storageId = view.storage.id.toRfc4122 %}
+                        {% set storageSpans = spans[storageId] ?? [] %}
+                        <div class="grid items-center mt-1" style="grid-template-columns: 160px 1fr; gap: 8px;">
+                            <div class="text-sm text-gray-900 truncate">
+                                <a href="{{ path('portal_storages_edit', {id: view.storage.id}) }}" class="link">Sklad {{ view.storage.number }}</a>
+                            </div>
+                            <div class="relative h-6 bg-green-50 rounded">
+                                {% for span in storageSpans %}
+                                    {% set spanStart = span.startDate < rangeFrom ? rangeFrom : span.startDate %}
+                                    {% set spanEnd = (span.endDate is null or span.endDate > rangeTo) ? rangeTo : span.endDate %}
+                                    {% set offsetDays = (spanStart.diff(rangeFrom).days) %}
+                                    {% set spanDays = (spanStart.diff(spanEnd).days) + 1 %}
+                                    {% set leftPct = (offsetDays / days * 100) %}
+                                    {% set widthPct = (spanDays / days * 100) %}
+                                    {% set color = span.kind.value == 'block' ? 'bg-gray-400' : (span.kind.value == 'order' ? 'bg-amber-400' : 'bg-red-400') %}
+                                    <div class="absolute top-0 bottom-0 {{ color }} rounded"
+                                         style="left: {{ leftPct }}%; width: {{ widthPct }}%;"
+                                         title="{{ span.tenantName is null ? 'Blokováno' : span.tenantName }}{% if span.endDate %} (do {{ span.endDate|date('d.m.Y') }}){% else %} (neomezeně){% endif %}">
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+                <div class="md:hidden text-center text-sm text-gray-500 py-8">
+                    Pro plánování přepněte na desktop.
+                </div>
+            </div>
+        </div>
+    {% endif %}
+{% endblock %}

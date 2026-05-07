@@ -6,6 +6,7 @@ namespace App\Controller\Portal;
 
 use App\Entity\User;
 use App\Query\GetPlaceDashboardStats;
+use App\Query\GetPlaceTypeOccupancyOverview;
 use App\Query\QueryBus;
 use App\Repository\ContractRepository;
 use App\Repository\OrderRepository;
@@ -60,8 +61,10 @@ final class PlaceDetailController extends AbstractController
             ->findUpcomingAtPlace($place, 30, $now, $ownerScope);
         $recentOrders = $this->orderRepository
             ->findRecentAtPlace($place, 5, $ownerScope);
-        $freeByType = $this->storageRepository
-            ->findFreeCountByTypeAtPlace($place, $ownerScope);
+        $placeOverview = $this->queryBus->handle(new GetPlaceTypeOccupancyOverview(
+            placeId: $place->id,
+            landlordId: $isAdmin ? null : $user->id,
+        ));
 
         $storageTypeCount = $this->storageTypeRepository->countByPlace($place);
         $storageCount = $isAdmin
@@ -75,7 +78,7 @@ final class PlaceDetailController extends AbstractController
             'expiringContracts' => $expiringContracts,
             'upcomingOrders' => $upcomingOrders,
             'recentOrders' => $recentOrders,
-            'freeByType' => $freeByType,
+            'placeOverview' => $placeOverview,
             'storageTypeCount' => $storageTypeCount,
             'storageCount' => $storageCount,
             'hasAccess' => $hasAccess,

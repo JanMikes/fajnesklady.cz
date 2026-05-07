@@ -5,11 +5,12 @@ declare(strict_types=1);
 namespace App\Controller\Portal;
 
 use App\Entity\User;
-use App\Repository\OrderRepository;
 use App\Repository\PlaceRepository;
 use App\Repository\StorageRepository;
 use App\Repository\StorageTypeRepository;
-use App\Repository\StorageUnavailabilityRepository;
+use App\Service\Storage\StorageOccupancyService;
+use App\Value\RentalSpan;
+use App\Value\RentalSpanKind;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -25,8 +26,7 @@ final class CalendarController extends AbstractController
         private readonly PlaceRepository $placeRepository,
         private readonly StorageTypeRepository $storageTypeRepository,
         private readonly StorageRepository $storageRepository,
-        private readonly OrderRepository $orderRepository,
-        private readonly StorageUnavailabilityRepository $unavailabilityRepository,
+        private readonly StorageOccupancyService $occupancyService,
     ) {
     }
 
@@ -36,11 +36,9 @@ final class CalendarController extends AbstractController
         $user = $this->getUser();
         $isAdmin = $this->isGranted('ROLE_ADMIN');
 
-        // Get month/year from query params, default to current month
         $year = (int) $request->query->get('year', (string) date('Y'));
         $month = (int) $request->query->get('month', (string) date('n'));
 
-        // Validate month/year
         if ($month < 1 || $month > 12) {
             $month = (int) date('n');
         }
@@ -48,17 +46,20 @@ final class CalendarController extends AbstractController
             $year = (int) date('Y');
         }
 
+        $view = (string) $request->query->get('view', 'month');
+        if (!in_array($view, ['month', 'timeline'], true)) {
+            $view = 'month';
+        }
+
         $placeId = $request->query->get('place', 'all');
         $storageTypeId = $request->query->get('storage_type', 'all');
 
-        // Get places for the filter dropdown
         if ($isAdmin) {
             $places = $this->placeRepository->findAll();
         } else {
             $places = $this->placeRepository->findByOwner($user);
         }
 
-        // Determine selected place
         $selectedPlace = null;
         if ('' !== $placeId && 'all' !== $placeId) {
             $selectedPlace = $this->placeRepository->find(Uuid::fromString($placeId));
@@ -68,7 +69,6 @@ final class CalendarController extends AbstractController
             }
         }
 
-        // Get storage types for the filter dropdown (based on selected place)
         if (null !== $selectedPlace) {
             $storageTypes = $this->storageTypeRepository->findByPlace($selectedPlace);
         } elseif ($isAdmin) {
@@ -77,82 +77,52 @@ final class CalendarController extends AbstractController
             $storageTypes = [];
         }
 
-        // Determine selected storage type
         $selectedStorageType = null;
         if ('' !== $storageTypeId && 'all' !== $storageTypeId) {
             $selectedStorageType = $this->storageTypeRepository->find(Uuid::fromString($storageTypeId));
         }
 
-        $calendarData = [];
-
-        // Get storages based on filters
         $ownerFilter = $isAdmin ? null : $user;
         $storages = $this->storageRepository->findFiltered($ownerFilter, $selectedPlace, $selectedStorageType);
 
+        $startOfMonth = new \DateTimeImmutable(sprintf('%d-%02d-01', $year, $month));
+        $endOfMonth = $startOfMonth->modify('last day of this month');
+        $daysInMonth = (int) $endOfMonth->format('j');
+
+        $calendarData = [];
+        $endingToday = [];
+        $startingToday = [];
+        $dayDetails = [];
+        $spans = [];
+
         if ([] !== $storages) {
-            // Build calendar data for the month
-            $startOfMonth = new \DateTimeImmutable(sprintf('%d-%02d-01', $year, $month));
-            $endOfMonth = $startOfMonth->modify('last day of this month');
+            $spans = $this->occupancyService->spansInRange($storages, $startOfMonth, $endOfMonth);
 
-            // Get all orders and unavailabilities for these storages in date range
-            $orders = $this->orderRepository->findActiveByStoragesInDateRange(
-                $storages,
-                $startOfMonth,
-                $endOfMonth
-            );
-            $unavailabilities = $this->unavailabilityRepository->findByStoragesInDateRange(
-                $storages,
-                $startOfMonth,
-                $endOfMonth
-            );
-
-            // Build lookup tables for quick access
-            $ordersByStorage = [];
-            foreach ($orders as $order) {
-                $storageId = $order->storage->id->toRfc4122();
-                $ordersByStorage[$storageId][] = $order;
-            }
-
-            $unavailabilitiesByStorage = [];
-            foreach ($unavailabilities as $unavailability) {
-                $storageId = $unavailability->storage->id->toRfc4122();
-                $unavailabilitiesByStorage[$storageId][] = $unavailability;
-            }
-
-            // For each day in the month, calculate availability
+            // Per-day rollups for the month grid.
             $currentDate = $startOfMonth;
             while ($currentDate <= $endOfMonth) {
                 $dayKey = $currentDate->format('Y-m-d');
                 $available = 0;
                 $occupied = 0;
                 $unavailable = 0;
+                $endsCount = 0;
+                $startsCount = 0;
+                $details = [];
 
                 foreach ($storages as $storage) {
                     $storageId = $storage->id->toRfc4122();
+                    $storageSpans = $spans[$storageId] ?? [];
+
                     $isOccupied = false;
                     $isUnavailable = false;
-
-                    // Check orders
-                    if (isset($ordersByStorage[$storageId])) {
-                        foreach ($ordersByStorage[$storageId] as $order) {
-                            if ($order->startDate <= $currentDate
-                                && (null === $order->endDate || $order->endDate >= $currentDate)) {
-                                $isOccupied = true;
-
-                                break;
-                            }
+                    foreach ($storageSpans as $span) {
+                        if (!$this->spanCovers($span, $currentDate)) {
+                            continue;
                         }
-                    }
-
-                    // Check manual unavailabilities
-                    if (!$isOccupied && isset($unavailabilitiesByStorage[$storageId])) {
-                        foreach ($unavailabilitiesByStorage[$storageId] as $unavail) {
-                            if ($unavail->startDate <= $currentDate
-                                && (null === $unavail->endDate || $unavail->endDate >= $currentDate)) {
-                                $isUnavailable = true;
-
-                                break;
-                            }
+                        if (RentalSpanKind::BLOCK === $span->kind) {
+                            $isUnavailable = true;
+                        } else {
+                            $isOccupied = true;
                         }
                     }
 
@@ -163,6 +133,29 @@ final class CalendarController extends AbstractController
                     } else {
                         ++$available;
                     }
+
+                    foreach ($storageSpans as $span) {
+                        if (null !== $span->endDate && $span->endDate->format('Y-m-d') === $dayKey
+                            && RentalSpanKind::BLOCK !== $span->kind) {
+                            ++$endsCount;
+                            $details[] = [
+                                'kind' => 'ending',
+                                'storageNumber' => $storage->number,
+                                'tenantName' => $span->tenantName,
+                                'date' => $span->endDate,
+                            ];
+                        }
+                        if ($span->startDate->format('Y-m-d') === $dayKey
+                            && RentalSpanKind::BLOCK !== $span->kind) {
+                            ++$startsCount;
+                            $details[] = [
+                                'kind' => 'starting',
+                                'storageNumber' => $storage->number,
+                                'tenantName' => $span->tenantName,
+                                'date' => $span->startDate,
+                            ];
+                        }
+                    }
                 }
 
                 $calendarData[$dayKey] = [
@@ -172,11 +165,20 @@ final class CalendarController extends AbstractController
                     'total' => count($storages),
                 ];
 
+                if ($endsCount > 0) {
+                    $endingToday[$dayKey] = $endsCount;
+                }
+                if ($startsCount > 0) {
+                    $startingToday[$dayKey] = $startsCount;
+                }
+                if ([] !== $details) {
+                    $dayDetails[$dayKey] = array_slice($details, 0, 50);
+                }
+
                 $currentDate = $currentDate->modify('+1 day');
             }
         }
 
-        // Calculate previous and next month links
         $prevMonth = $month - 1;
         $prevYear = $year;
         if ($prevMonth < 1) {
@@ -200,6 +202,14 @@ final class CalendarController extends AbstractController
             'selectedStorageTypeId' => $storageTypeId,
             'storages' => $storages,
             'calendarData' => $calendarData,
+            'spans' => $spans,
+            'endingToday' => $endingToday,
+            'startingToday' => $startingToday,
+            'dayDetails' => $dayDetails,
+            'startOfMonth' => $startOfMonth,
+            'endOfMonth' => $endOfMonth,
+            'daysInMonth' => $daysInMonth,
+            'view' => $view,
             'year' => $year,
             'month' => $month,
             'monthName' => $this->getCzechMonthName($month),
@@ -210,19 +220,28 @@ final class CalendarController extends AbstractController
         ]);
     }
 
+    private function spanCovers(RentalSpan $span, \DateTimeImmutable $day): bool
+    {
+        if ($span->startDate > $day) {
+            return false;
+        }
+
+        return null === $span->endDate || $span->endDate >= $day;
+    }
+
     private function getCzechMonthName(int $month): string
     {
         $months = [
             1 => 'Leden',
-            2 => 'Unor',
-            3 => 'Brezen',
+            2 => 'Únor',
+            3 => 'Březen',
             4 => 'Duben',
-            5 => 'Kveten',
-            6 => 'Cerven',
-            7 => 'Cervenec',
+            5 => 'Květen',
+            6 => 'Červen',
+            7 => 'Červenec',
             8 => 'Srpen',
-            9 => 'Zari',
-            10 => 'Rijen',
+            9 => 'Září',
+            10 => 'Říjen',
             11 => 'Listopad',
             12 => 'Prosinec',
         ];

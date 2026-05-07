@@ -9,6 +9,8 @@ use App\Repository\PlaceRepository;
 use App\Repository\StorageRepository;
 use App\Repository\StorageTypeRepository;
 use App\Service\Security\PlaceVoter;
+use App\Service\Storage\StorageOccupancyService;
+use Psr\Clock\ClockInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -24,6 +26,8 @@ final class StorageListController extends AbstractController
         private readonly StorageRepository $storageRepository,
         private readonly StorageTypeRepository $storageTypeRepository,
         private readonly PlaceRepository $placeRepository,
+        private readonly StorageOccupancyService $occupancyService,
+        private readonly ClockInterface $clock,
     ) {
     }
 
@@ -46,6 +50,11 @@ final class StorageListController extends AbstractController
         $storages = $this->storageRepository->findFiltered($owner, $place, $selectedStorageType);
         $storageTypes = $this->storageTypeRepository->findByPlace($place);
 
+        $rentalViews = [];
+        if (null !== $selectedStorageType && [] !== $storages) {
+            $rentalViews = $this->occupancyService->currentViews($storages, $this->clock->now());
+        }
+
         // Check prerequisites for adding storages
         $hasMapImage = null !== $place->mapImagePath;
         $hasStorageTypes = [] !== $storageTypes;
@@ -56,6 +65,7 @@ final class StorageListController extends AbstractController
             'storageTypes' => $storageTypes,
             'selectedStorageType' => $selectedStorageType,
             'place' => $place,
+            'rentalViews' => $rentalViews,
             'hasMapImage' => $hasMapImage,
             'hasStorageTypes' => $hasStorageTypes,
             'canvasReady' => $canvasReady,

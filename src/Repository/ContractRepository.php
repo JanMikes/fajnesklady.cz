@@ -112,6 +112,106 @@ class ContractRepository
     }
 
     /**
+     * Bulk variant of {@see self::findActiveByStorage()} — used by
+     * {@see \App\Service\Storage\StorageOccupancyService} to fetch the active
+     * contract per storage in one query.
+     *
+     * @param Storage[] $storages
+     *
+     * @return Contract[]
+     */
+    public function findActiveByStorages(array $storages, \DateTimeImmutable $now): array
+    {
+        if ([] === $storages) {
+            return [];
+        }
+
+        return $this->entityManager->createQueryBuilder()
+            ->select('c')
+            ->from(Contract::class, 'c')
+            ->where('c.storage IN (:storages)')
+            ->andWhere('c.terminatedAt IS NULL')
+            ->andWhere('c.startDate <= :now')
+            ->andWhere('c.endDate IS NULL OR c.endDate >= :now')
+            ->setParameter('storages', $storages)
+            ->setParameter('now', $now)
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Active (non-terminated) contracts overlapping [$from, $to] for the given
+     * storages. Drives the calendar Gantt strip + per-day detail panel.
+     *
+     * @param Storage[] $storages
+     *
+     * @return Contract[]
+     */
+    public function findOverlappingByStorages(
+        array $storages,
+        \DateTimeImmutable $from,
+        \DateTimeImmutable $to,
+    ): array {
+        if ([] === $storages) {
+            return [];
+        }
+
+        return $this->entityManager->createQueryBuilder()
+            ->select('c')
+            ->from(Contract::class, 'c')
+            ->where('c.storage IN (:storages)')
+            ->andWhere('c.terminatedAt IS NULL')
+            ->andWhere('c.startDate <= :to')
+            ->andWhere('c.endDate IS NULL OR c.endDate >= :from')
+            ->setParameter('storages', $storages)
+            ->setParameter('from', $from)
+            ->setParameter('to', $to)
+            ->orderBy('c.startDate', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Earliest future startDate per storage among active or upcoming contracts
+     * with startDate strictly greater than $strictlyAfter. Used to compute
+     * "next reservation" hints on free storages.
+     *
+     * MIN() over a DATE_IMMUTABLE column comes back as a Y-m-d string —
+     * Doctrine skips its type-conversion pass on SQL aggregates, so we
+     * rehydrate in PHP.
+     *
+     * @param Storage[] $storages
+     *
+     * @return array<string, \DateTimeImmutable> keyed by Storage->id->toRfc4122()
+     */
+    public function findNextStartByStorages(array $storages, \DateTimeImmutable $strictlyAfter): array
+    {
+        if ([] === $storages) {
+            return [];
+        }
+
+        /** @var array<int, array{storageId: string, nextStart: string}> $rows */
+        $rows = $this->entityManager->createQueryBuilder()
+            ->select('IDENTITY(c.storage) AS storageId, MIN(c.startDate) AS nextStart')
+            ->from(Contract::class, 'c')
+            ->where('c.storage IN (:storages)')
+            ->andWhere('c.terminatedAt IS NULL')
+            ->andWhere('c.startDate > :after')
+            ->setParameter('storages', $storages)
+            ->setParameter('after', $strictlyAfter)
+            ->groupBy('c.storage')
+            ->getQuery()
+            ->getArrayResult();
+
+        $result = [];
+        foreach ($rows as $row) {
+            $result[(string) $row['storageId']] = new \DateTimeImmutable((string) $row['nextStart']);
+        }
+
+        return $result;
+    }
+
+    /**
      * Find contracts expiring within a given number of days.
      *
      * @return Contract[]

@@ -331,17 +331,33 @@
         </div>
     {% endif %}
 
-    {# Volné sklady (per typ) #}
-    {% if freeByType|length > 0 %}
+    {# Obsazenost typů #}
+    {% if placeOverview.rows|length > 0 %}
         <div class="bg-white shadow overflow-hidden sm:rounded-lg mb-8">
             <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
-                <h3 class="text-lg font-medium text-gray-900">Volné sklady (per typ)</h3>
+                <h3 class="text-lg font-medium text-gray-900">Obsazenost typů</h3>
             </div>
             <div class="divide-y divide-gray-200">
-                {% for row in freeByType %}
-                    <div class="px-4 py-3 flex justify-between items-center">
-                        <span class="text-sm text-gray-900">{{ row.storageType.name }}</span>
-                        <span class="text-sm font-semibold text-gray-700">{{ row.freeCount }} {{ row.freeCount == 1 ? 'sklad' : (row.freeCount < 5 ? 'sklady' : 'skladu') }}</span>
+                {% for row in placeOverview.rows %}
+                    <div class="px-4 py-3 flex justify-between items-center gap-4">
+                        <div class="min-w-0">
+                            <a href="{{ path('portal_storage_type_occupancy', {placeId: place.id, id: row.storageType.id}) }}" class="text-sm font-medium text-gray-900 link">
+                                {{ row.storageType.name }}
+                            </a>
+                            <p class="text-xs text-gray-500 mt-0.5">
+                                {{ row.totalCount }} skladů · {{ row.occupiedCount }} obsazeno · {{ row.availableCount }} volných{% if row.blockedCount > 0 %} · {{ row.blockedCount }} blokovaných{% endif %}
+                            </p>
+                        </div>
+                        <div class="text-right">
+                            {% if row.availableCount > 0 %}
+                                <span class="badge badge-success">{{ row.availableCount }} volných</span>
+                            {% else %}
+                                <span class="badge badge-error">Vše obsazeno</span>
+                            {% endif %}
+                            {% if row.nextFreeingDate %}
+                                <p class="text-xs text-gray-500 mt-1">Nejbližší uvolnění do {{ row.nextFreeingDate|date('d.m.Y') }}</p>
+                            {% endif %}
+                        </div>
                     </div>
                 {% endfor %}
             </div>

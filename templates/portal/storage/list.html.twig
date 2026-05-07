@@ -125,12 +125,20 @@
         {% if selectedStorageType %}
             <div class="card">
                 <div class="card-header bg-gray-50 px-6 py-4 border-b">
-                    <div class="flex items-center justify-between">
+                    <div class="flex items-center justify-between flex-wrap gap-3">
                         <div>
                             <h2 class="text-lg font-semibold text-gray-900">{{ selectedStorageType.name }}</h2>
                             <p class="text-sm text-gray-500">{{ selectedStorageType.dimensionsInMeters }}</p>
                         </div>
-                        <span class="badge badge-primary">{{ storages|length }} skladů</span>
+                        <div class="flex items-center gap-3">
+                            <a href="{{ path('portal_storage_type_occupancy', {placeId: place.id, id: selectedStorageType.id}) }}" class="btn btn-sm btn-ghost">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                Plánování (90 dní)
+                            </a>
+                            <span class="badge badge-primary">{{ storages|length }} skladů</span>
+                        </div>
                     </div>
                 </div>
                 <div class="overflow-x-auto">
@@ -139,23 +147,68 @@
                             <tr>
                                 <th>Číslo</th>
                                 <th>Stav</th>
+                                <th>Nájemce</th>
+                                <th>Pronajato OD</th>
+                                <th>Pronajato DO</th>
+                                <th>Příští volný</th>
                                 <th>Vytvořeno</th>
                                 <th>Akce</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for storage in storages %}
+                                {% set view = rentalViews[storage.id.toRfc4122] ?? null %}
                                 <tr>
                                     <td class="font-medium text-gray-900">{{ storage.number }}</td>
                                     <td>
-                                        {% if storage.status.value == 'available' %}
-                                            <span class="badge badge-success">Dostupný</span>
+                                        {% if view and view.isOccupied %}
+                                            {% if view.isTerminating %}
+                                                <span class="badge badge-warning" title="Smlouva je ve výpovědi">Ukončuje se</span>
+                                            {% else %}
+                                                <span class="badge badge-error">Obsazený</span>
+                                            {% endif %}
+                                        {% elseif view and view.isBlocked %}
+                                            <span class="badge badge-ghost">Blokováno</span>
+                                        {% elseif view and view.isFree %}
+                                            <span class="badge badge-success">Volný</span>
                                         {% elseif storage.status.value == 'reserved' %}
                                             <span class="badge badge-warning">Rezervovaný</span>
                                         {% elseif storage.status.value == 'occupied' %}
                                             <span class="badge badge-error">Obsazený</span>
+                                        {% elseif storage.status.value == 'available' %}
+                                            <span class="badge badge-success">Dostupný</span>
                                         {% else %}
                                             <span class="badge badge-ghost">Nedostupný</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ view ? (view.tenantName ?? '—') : '—' }}</td>
+                                    <td>{{ view and view.rentedFrom ? view.rentedFrom|date('d.m.Y') : '—' }}</td>
+                                    <td>
+                                        {% if view and view.isOccupied %}
+                                            {% if view.isTerminating %}
+                                                <span class="text-amber-700" title="Smlouva je ve výpovědi">
+                                                    do {{ view.rentedUntil|date('d.m.Y') }}
+                                                    <span aria-hidden="true">⚠</span>
+                                                </span>
+                                            {% elseif view.isUnlimited %}
+                                                <span class="text-gray-700" title="Pronájem na dobu neurčitou">neomezeně <span aria-hidden="true">∞</span></span>
+                                            {% else %}
+                                                do {{ view.rentedUntil|date('d.m.Y') }}
+                                            {% endif %}
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if view and view.isOccupied %}
+                                            {{ view.availableFrom ? view.availableFrom|date('d.m.Y') : '—' }}
+                                        {% elseif view and view.isFree %}
+                                            <span class="text-green-700">Volný</span>
+                                            {% if view.nextBookedFrom %}
+                                                <div class="text-xs text-gray-500 mt-0.5">další rezervace od {{ view.nextBookedFrom|date('d.m.Y') }}</div>
+                                            {% endif %}
+                                        {% else %}
+                                            —
                                         {% endif %}
                                     </td>
                                     <td class="text-gray-500 text-sm">{{ storage.createdAt|date('d.m.Y H:i') }}</td>
@@ -180,7 +233,7 @@
                                 </tr>
                             {% else %}
                                 <tr>
-                                    <td colspan="4" class="text-center text-gray-500 py-8">Žádné sklady nebyly nalezeny pro tento typ</td>
+                                    <td colspan="8" class="text-center text-gray-500 py-8">Žádné sklady nebyly nalezeny pro tento typ</td>
                                 </tr>
                             {% endfor %}
                         </tbody>

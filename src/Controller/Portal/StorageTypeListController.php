@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Controller\Portal;
 
+use App\Query\GetPlaceTypeOccupancyOverview;
+use App\Query\QueryBus;
 use App\Repository\PlaceRepository;
 use App\Repository\StorageTypeRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -20,6 +22,7 @@ final class StorageTypeListController extends AbstractController
     public function __construct(
         private readonly StorageTypeRepository $storageTypeRepository,
         private readonly PlaceRepository $placeRepository,
+        private readonly QueryBus $queryBus,
     ) {
     }
 
@@ -35,12 +38,20 @@ final class StorageTypeListController extends AbstractController
 
         $totalPages = (int) ceil($totalStorageTypes / $limit);
 
+        $overview = $this->queryBus->handle(new GetPlaceTypeOccupancyOverview(placeId: $place->id));
+
+        $occupancyByTypeId = [];
+        foreach ($overview->rows as $row) {
+            $occupancyByTypeId[$row->storageType->id->toRfc4122()] = $row;
+        }
+
         return $this->render('portal/storage_type/list.html.twig', [
             'place' => $place,
             'storageTypes' => $storageTypes,
             'currentPage' => $page,
             'totalPages' => $totalPages,
             'totalStorageTypes' => $totalStorageTypes,
+            'occupancyByTypeId' => $occupancyByTypeId,
         ]);
     }
 }

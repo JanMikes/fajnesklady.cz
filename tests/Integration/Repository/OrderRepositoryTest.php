@@ -541,4 +541,45 @@ class OrderRepositoryTest extends KernelTestCase
         $this->assertNotContains($cancelled->id->toRfc4122(), $ids);
         $this->assertNotContains($tooFar->id->toRfc4122(), $ids);
     }
+
+    public function testFindNextStartByStoragesPicksEarliestFutureBlockingOrder(): void
+    {
+        $tenant = $this->createUser('tenant-onextstart@test.com');
+        $place = $this->createPlace();
+        $st = $this->createStorageType();
+        $storageA = $this->createStorage($st, $place, 'ONS1');
+        $storageB = $this->createStorage($st, $place, 'ONS2');
+
+        $now = new \DateTimeImmutable('2025-06-15');
+
+        // storageA: two future blocking orders, the earlier one wins
+        $reserved = $this->createOrder($tenant, $storageA, $now->modify('+10 days'), $now->modify('+40 days'));
+        $reserved->reserve($now);
+        $paid = $this->createOrder($tenant, $storageA, $now->modify('+5 days'), $now->modify('+35 days'));
+        $paid->reserve($now);
+        $paid->markPaid($now);
+
+        // storageA: cancelled order — must NOT count
+        $cancelled = $this->createOrder($tenant, $storageA, $now->modify('+2 days'), $now->modify('+8 days'));
+        $cancelled->reserve($now);
+        $cancelled->cancel($now);
+
+        // storageB: only past order
+        $past = $this->createOrder($tenant, $storageB, $now->modify('-30 days'), $now->modify('-1 day'));
+        $past->reserve($now);
+
+        $this->entityManager->flush();
+
+        $result = $this->repository->findNextStartByStorages([$storageA, $storageB], $now);
+
+        $this->assertEquals($now->modify('+5 days'), $result[$storageA->id->toRfc4122()]);
+        $this->assertArrayNotHasKey($storageB->id->toRfc4122(), $result);
+    }
+
+    public function testFindNextStartByStoragesIsEmptyForEmptyInput(): void
+    {
+        $now = new \DateTimeImmutable('2025-06-15');
+
+        $this->assertSame([], $this->repository->findNextStartByStorages([], $now));
+    }
 }

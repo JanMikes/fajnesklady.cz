@@ -760,4 +760,106 @@ class ContractRepositoryTest extends KernelTestCase
         $this->assertContains($contractInA->id->toRfc4122(), $landlordIds);
         $this->assertNotContains($contractStranger->id->toRfc4122(), $landlordIds);
     }
+
+    public function testFindActiveByStoragesReturnsCurrentlyActiveContracts(): void
+    {
+        $tenant = $this->createUser('tenant-cas-active@test.com');
+        $place = $this->createPlace();
+        $st = $this->createStorageType();
+        $storageActive = $this->createStorage($st, $place, 'CAS1');
+        $storageFuture = $this->createStorage($st, $place, 'CAS2');
+        $storageTerminated = $this->createStorage($st, $place, 'CAS3');
+
+        $now = new \DateTimeImmutable('2025-06-15');
+
+        $orderActive = $this->createOrder($tenant, $storageActive, $now->modify('-10 days'), $now->modify('+10 days'));
+        $active = $this->createContract($orderActive, $tenant, $storageActive, $now->modify('-10 days'), $now->modify('+10 days'));
+
+        $orderFuture = $this->createOrder($tenant, $storageFuture, $now->modify('+5 days'), $now->modify('+30 days'));
+        $this->createContract($orderFuture, $tenant, $storageFuture, $now->modify('+5 days'), $now->modify('+30 days'));
+
+        $orderTerminated = $this->createOrder($tenant, $storageTerminated, $now->modify('-30 days'), $now->modify('+10 days'));
+        $terminated = $this->createContract($orderTerminated, $tenant, $storageTerminated, $now->modify('-30 days'), $now->modify('+10 days'));
+        $terminated->terminate($now->modify('-1 day'));
+
+        $this->entityManager->flush();
+
+        $found = $this->repository->findActiveByStorages([$storageActive, $storageFuture, $storageTerminated], $now);
+        $ids = array_map(fn (Contract $c) => $c->id->toRfc4122(), $found);
+
+        $this->assertCount(1, $found);
+        $this->assertContains($active->id->toRfc4122(), $ids);
+    }
+
+    public function testFindActiveByStoragesReturnsEmptyForEmptyInput(): void
+    {
+        $now = new \DateTimeImmutable('2025-06-15');
+
+        $this->assertSame([], $this->repository->findActiveByStorages([], $now));
+    }
+
+    public function testFindOverlappingByStoragesReturnsAllNonTerminatedSpansOverlappingRange(): void
+    {
+        $tenant = $this->createUser('tenant-overlap-bulk@test.com');
+        $place = $this->createPlace();
+        $st = $this->createStorageType();
+        $storage = $this->createStorage($st, $place, 'COB1');
+
+        $rangeFrom = new \DateTimeImmutable('2025-06-01');
+        $rangeTo = new \DateTimeImmutable('2025-06-30');
+
+        // Inside range
+        $insideOrder = $this->createOrder($tenant, $storage, new \DateTimeImmutable('2025-06-10'), new \DateTimeImmutable('2025-06-20'));
+        $inside = $this->createContract($insideOrder, $tenant, $storage, new \DateTimeImmutable('2025-06-10'), new \DateTimeImmutable('2025-06-20'));
+
+        // Strictly before range
+        $beforeOrder = $this->createOrder($tenant, $storage, new \DateTimeImmutable('2025-04-01'), new \DateTimeImmutable('2025-05-01'));
+        $this->createContract($beforeOrder, $tenant, $storage, new \DateTimeImmutable('2025-04-01'), new \DateTimeImmutable('2025-05-01'));
+
+        // Unlimited contract starting before range — overlaps
+        $unlimitedOrder = $this->createOrder($tenant, $storage, new \DateTimeImmutable('2025-05-15'), null);
+        $unlimited = $this->createContract($unlimitedOrder, $tenant, $storage, new \DateTimeImmutable('2025-05-15'), null);
+
+        $this->entityManager->flush();
+
+        $found = $this->repository->findOverlappingByStorages([$storage], $rangeFrom, $rangeTo);
+        $ids = array_map(fn (Contract $c) => $c->id->toRfc4122(), $found);
+
+        $this->assertContains($inside->id->toRfc4122(), $ids);
+        $this->assertContains($unlimited->id->toRfc4122(), $ids);
+        $this->assertCount(2, $ids);
+    }
+
+    public function testFindNextStartByStoragesReturnsEarliestFutureStartPerStorage(): void
+    {
+        $tenant = $this->createUser('tenant-next-start@test.com');
+        $place = $this->createPlace();
+        $st = $this->createStorageType();
+        $storageA = $this->createStorage($st, $place, 'NSA1');
+        $storageB = $this->createStorage($st, $place, 'NSB1');
+
+        $now = new \DateTimeImmutable('2025-06-15');
+
+        // storageA: two future contracts, the earlier one wins
+        $orderA1 = $this->createOrder($tenant, $storageA, $now->modify('+10 days'), $now->modify('+40 days'));
+        $this->createContract($orderA1, $tenant, $storageA, $now->modify('+10 days'), $now->modify('+40 days'));
+        $orderA2 = $this->createOrder($tenant, $storageA, $now->modify('+20 days'), $now->modify('+50 days'));
+        $this->createContract($orderA2, $tenant, $storageA, $now->modify('+20 days'), $now->modify('+50 days'));
+
+        // storageA also has a contract that started in the past — NOT future.
+        $orderAPast = $this->createOrder($tenant, $storageA, $now->modify('-30 days'), $now->modify('-1 day'));
+        $this->createContract($orderAPast, $tenant, $storageA, $now->modify('-30 days'), $now->modify('-1 day'));
+
+        // storageB: no future contracts
+        $orderBPast = $this->createOrder($tenant, $storageB, $now->modify('-30 days'), $now->modify('-1 day'));
+        $this->createContract($orderBPast, $tenant, $storageB, $now->modify('-30 days'), $now->modify('-1 day'));
+
+        $this->entityManager->flush();
+
+        $result = $this->repository->findNextStartByStorages([$storageA, $storageB], $now);
+
+        $this->assertArrayHasKey($storageA->id->toRfc4122(), $result);
+        $this->assertEquals($now->modify('+10 days'), $result[$storageA->id->toRfc4122()]);
+        $this->assertArrayNotHasKey($storageB->id->toRfc4122(), $result);
+    }
 }

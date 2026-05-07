@@ -31,6 +31,11 @@ final class ContractFixtures extends Fixture implements DependentFixtureInterfac
     // Terminated contract
     public const REF_CONTRACT_TERMINATED = 'contract-terminated';
 
+    // Active unlimited contract with a pending termination notice
+    // (terminatesAt set ~30 days out) — drives the "ukončuje se" warning
+    // across planning surfaces.
+    public const REF_CONTRACT_TERMINATING = 'contract-terminating';
+
     public function __construct(
         private ClockInterface $clock,
         private ContractDocumentGenerator $documentGenerator,
@@ -56,6 +61,9 @@ final class ContractFixtures extends Fixture implements DependentFixtureInterfac
 
         /** @var Order $orderExpiringSoon */
         $orderExpiringSoon = $this->getReference(OrderFixtures::REF_ORDER_EXPIRING_SOON, Order::class);
+
+        /** @var Order $orderTerminating */
+        $orderTerminating = $this->getReference(OrderFixtures::REF_ORDER_TERMINATING, Order::class);
 
         /** @var Storage $storageB3 */
         $storageB3 = $this->getReference(StorageFixtures::REF_MEDIUM_B3, Storage::class);
@@ -176,6 +184,29 @@ final class ContractFixtures extends Fixture implements DependentFixtureInterfac
         $contractTerminated->terminate($now->modify('-20 days'), TerminationReason::PAYMENT_FAILURE);
         $manager->persist($contractTerminated);
         $this->addReference(self::REF_CONTRACT_TERMINATED, $contractTerminated);
+
+        // Active unlimited contract on storage E1 with a pending termination
+        // notice — surfaces the "ukončuje se" warning + terminatesAt date on
+        // every planning view. (E1 is reused: the previous terminated contract
+        // released the storage long before this one starts.)
+        $contractTerminatingId = Uuid::v7();
+        $contractTerminating = new Contract(
+            id: $contractTerminatingId,
+            order: $orderTerminating,
+            user: $user,
+            storage: $orderTerminating->storage,
+            rentalType: RentalType::UNLIMITED,
+            startDate: $orderTerminating->startDate,
+            endDate: null,
+            createdAt: $now->modify('-60 days'),
+        );
+        $contractTerminating->sign($now->modify('-60 days'));
+        $this->generateDocument($contractTerminating);
+        $orderTerminating->complete($contractTerminatingId, $now->modify('-60 days'));
+        $orderTerminating->popEvents();
+        $contractTerminating->requestTermination($now->modify('-2 days'), $now->modify('+30 days'));
+        $manager->persist($contractTerminating);
+        $this->addReference(self::REF_CONTRACT_TERMINATING, $contractTerminating);
 
         $manager->flush();
     }

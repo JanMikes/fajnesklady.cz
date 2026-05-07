@@ -38,6 +38,10 @@ final class OrderFixtures extends Fixture implements DependentFixtureInterface
     // Order expiring soon for reminder tests
     public const REF_ORDER_EXPIRING_SOON = 'order-expiring-soon';
 
+    // Order backing the unlimited contract that has a pending termination
+    // notice — surfaces "ukončuje se" warnings on planning surfaces.
+    public const REF_ORDER_TERMINATING = 'order-terminating';
+
     public function __construct(
         private ClockInterface $clock,
     ) {
@@ -73,6 +77,7 @@ final class OrderFixtures extends Fixture implements DependentFixtureInterface
 
         /** @var Storage $storageD3 */
         $storageD3 = $this->getReference(StorageFixtures::REF_SMALL_D3, Storage::class);
+
 
         // Order in RESERVED status - starts in 7 days, ends in 37 days (30 day rental)
         $orderReserved = new Order(
@@ -221,6 +226,34 @@ final class OrderFixtures extends Fixture implements DependentFixtureInterface
         $orderExpiringSoon->popEvents();
         $manager->persist($orderExpiringSoon);
         $this->addReference(self::REF_ORDER_EXPIRING_SOON, $orderExpiringSoon);
+
+        // Order backing the unlimited "ukončuje se" contract on storage E1
+        // (Praha Jih, Medium). Started 60 days ago; the contract receives a
+        // termination notice in ContractFixtures so planning surfaces render
+        // the warning icon. Cannot live on a Praha Centrum small box (A-row)
+        // because the admin onboarding TomSelect test relies on those staying
+        // available.
+        $storageForTerminating = $this->getReference(StorageFixtures::REF_MEDIUM_E1, Storage::class);
+        \assert($storageForTerminating instanceof Storage);
+        $orderTerminating = new Order(
+            id: Uuid::v7(),
+            user: $user,
+            storage: $storageForTerminating,
+            rentalType: RentalType::UNLIMITED,
+            paymentFrequency: null,
+            startDate: $now->modify('-60 days'),
+            endDate: null,
+            firstPaymentPrice: 40000,
+            expiresAt: $now->modify('-67 days'),
+            createdAt: $now->modify('-67 days'),
+        );
+        $orderTerminating->reserve($now->modify('-67 days'));
+        $orderTerminating->acceptTerms($now->modify('-67 days'));
+        $orderTerminating->markAwaitingPayment($now->modify('-66 days'));
+        $orderTerminating->markPaid($now->modify('-65 days'));
+        $orderTerminating->popEvents();
+        $manager->persist($orderTerminating);
+        $this->addReference(self::REF_ORDER_TERMINATING, $orderTerminating);
 
         $manager->flush();
     }
