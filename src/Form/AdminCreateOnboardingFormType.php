@@ -13,6 +13,7 @@ use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\DateType;
 use Symfony\Component\Form\Extension\Core\Type\EmailType;
 use Symfony\Component\Form\Extension\Core\Type\EnumType;
+use Symfony\Component\Form\Extension\Core\Type\NumberType;
 use Symfony\Component\Form\Extension\Core\Type\TelType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
@@ -118,6 +119,32 @@ final class AdminCreateOnboardingFormType extends AbstractType
                     PaymentMethod::EXTERNAL => 'Externí platba (bankovní převod, hotovost)',
                     PaymentMethod::GOPAY => 'GoPay (zákazník nastaví při podpisu)',
                 },
+            ])
+            ->add('monthlyPriceMode', ChoiceType::class, [
+                'label' => 'Cenový model',
+                'expanded' => true,
+                'choices' => [
+                    'Standardní (sazba skladu)' => 'standard',
+                    'Individuální měsíční cena' => 'custom',
+                    'Zdarma (bez účtování)' => 'free',
+                ],
+            ])
+            ->add('customMonthlyPriceInCzk', NumberType::class, [
+                'label' => 'Individuální měsíční cena (Kč)',
+                'required' => false,
+                'scale' => 2,
+                'attr' => ['placeholder' => '1500.00'],
+                'help' => 'Maximálně 15 000 Kč (zákonný strop pro opakované platby).',
+            ])
+            ->add('isExternallyPrepaid', CheckboxType::class, [
+                'label' => 'Externí předplatné — zákazník již zaplatil mimo GoPay',
+                'required' => false,
+            ])
+            ->add('paidThroughDate', DateType::class, [
+                'label' => 'Předplaceno do',
+                'required' => false,
+                'widget' => 'single_text',
+                'help' => 'Po vypršení předplatného bude zákazníkovi 7 dní předem zaslán e-mail s žádostí o nastavení automatické platby.',
             ]);
     }
 

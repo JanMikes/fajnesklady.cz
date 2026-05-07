@@ -602,4 +602,94 @@ class ContractTest extends TestCase
 
         $this->assertNull($contract->getEffectiveEndDate());
     }
+
+    public function testGetEffectiveMonthlyAmountFallsBackToStorage(): void
+    {
+        $contract = $this->createContract();
+
+        // Storage default is 35000 (350 Kč)
+        $this->assertSame(35000, $contract->getEffectiveMonthlyAmount());
+        $this->assertNull($contract->individualMonthlyAmount);
+        $this->assertFalse($contract->hasIndividualPrice());
+        $this->assertFalse($contract->isFree());
+    }
+
+    public function testApplyIndividualMonthlyAmountTakesPrecedenceOverStorage(): void
+    {
+        $contract = $this->createContract();
+
+        $contract->applyIndividualMonthlyAmount(80_000);
+
+        $this->assertSame(80_000, $contract->getEffectiveMonthlyAmount());
+        $this->assertTrue($contract->hasIndividualPrice());
+        $this->assertFalse($contract->isFree());
+    }
+
+    public function testApplyIndividualMonthlyAmountZeroIsFree(): void
+    {
+        $contract = $this->createContract();
+
+        $contract->applyIndividualMonthlyAmount(0);
+
+        $this->assertSame(0, $contract->getEffectiveMonthlyAmount());
+        $this->assertTrue($contract->hasIndividualPrice());
+        $this->assertTrue($contract->isFree());
+    }
+
+    public function testApplyIndividualMonthlyAmountRejectsNegative(): void
+    {
+        $contract = $this->createContract();
+
+        $this->expectException(\InvalidArgumentException::class);
+        $contract->applyIndividualMonthlyAmount(-1);
+    }
+
+    public function testApplyIndividualMonthlyAmountRejectsAboveLegalCap(): void
+    {
+        $contract = $this->createContract();
+
+        $this->expectException(\DomainException::class);
+        // 16 000 Kč > 15 000 Kč legal max for recurring payments
+        $contract->applyIndividualMonthlyAmount(1_600_000);
+    }
+
+    public function testApplyIndividualMonthlyAmountAtCapIsAccepted(): void
+    {
+        $contract = $this->createContract();
+
+        $contract->applyIndividualMonthlyAmount(1_500_000);
+
+        $this->assertSame(1_500_000, $contract->getEffectiveMonthlyAmount());
+    }
+
+    public function testApplyIndividualMonthlyAmountNullClearsOverride(): void
+    {
+        $contract = $this->createContract();
+        $contract->applyIndividualMonthlyAmount(80_000);
+
+        $contract->applyIndividualMonthlyAmount(null);
+
+        $this->assertNull($contract->individualMonthlyAmount);
+        $this->assertFalse($contract->hasIndividualPrice());
+    }
+
+    public function testIsFreeReturnsFalseWhenIndividualAmountIsNull(): void
+    {
+        $contract = $this->createContract();
+
+        // null !== 0 — null means "use storage default", not free
+        $this->assertFalse($contract->isFree());
+    }
+
+    public function testMarkExternallyPrepaidSetsBothDates(): void
+    {
+        $contract = $this->createContract();
+        $paidThroughDate = new \DateTimeImmutable('2026-12-31');
+
+        $contract->markExternallyPrepaid($paidThroughDate);
+
+        $this->assertEquals($paidThroughDate, $contract->paidThroughDate);
+        $this->assertEquals($paidThroughDate->modify('+1 day'), $contract->nextBillingDate);
+        $this->assertNull($contract->goPayParentPaymentId);
+    }
 }

@@ -325,6 +325,78 @@ class OrderRepository
             ->getSingleScalarResult();
     }
 
+    /**
+     * Paginated admin orders, optionally narrowed by an onboarding-related filter.
+     *
+     * @param ?string $filter null | 'individual' | 'external' | 'ending' | 'free'
+     *
+     * @return Order[]
+     */
+    public function findAdminFiltered(\DateTimeImmutable $now, ?string $filter, int $page, int $limit): array
+    {
+        $qb = $this->buildAdminFilteredQueryBuilder($now, $filter)
+            ->orderBy('o.createdAt', 'DESC')
+            ->setFirstResult(($page - 1) * $limit)
+            ->setMaxResults($limit);
+
+        return $qb->getQuery()->getResult();
+    }
+
+    public function countByAdminFilter(\DateTimeImmutable $now, ?string $filter): int
+    {
+        $qb = $this->buildAdminFilteredQueryBuilder($now, $filter)
+            ->select('COUNT(o.id)');
+
+        return (int) $qb->getQuery()->getSingleScalarResult();
+    }
+
+    /**
+     * @return array{individual: int, external: int, ending: int, free: int}
+     */
+    public function countAllAdminFilters(\DateTimeImmutable $now): array
+    {
+        return [
+            'individual' => $this->countByAdminFilter($now, 'individual'),
+            'external' => $this->countByAdminFilter($now, 'external'),
+            'ending' => $this->countByAdminFilter($now, 'ending'),
+            'free' => $this->countByAdminFilter($now, 'free'),
+        ];
+    }
+
+    private function buildAdminFilteredQueryBuilder(\DateTimeImmutable $now, ?string $filter): \Doctrine\ORM\QueryBuilder
+    {
+        $qb = $this->entityManager->createQueryBuilder()
+            ->from(Order::class, 'o')
+            ->select('o');
+
+        switch ($filter) {
+            case 'individual':
+                $qb->andWhere('o.individualMonthlyAmount IS NOT NULL')
+                    ->andWhere('o.individualMonthlyAmount > 0');
+
+                break;
+            case 'free':
+                $qb->andWhere('o.individualMonthlyAmount = 0');
+
+                break;
+            case 'external':
+                $qb->andWhere('o.paidThroughDate IS NOT NULL');
+
+                break;
+            case 'ending':
+                $today = $now->setTime(0, 0, 0);
+                $qb->andWhere('o.paidThroughDate IS NOT NULL')
+                    ->andWhere('o.paidThroughDate >= :endingFrom')
+                    ->andWhere('o.paidThroughDate <= :endingTo')
+                    ->setParameter('endingFrom', $today->modify('-1 day'))
+                    ->setParameter('endingTo', $today->modify('+14 days'));
+
+                break;
+        }
+
+        return $qb;
+    }
+
     public function findBySigningToken(string $token): ?Order
     {
         return $this->entityManager->createQueryBuilder()

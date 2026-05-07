@@ -1,0 +1,25 @@
+{% set hasIndividual = order.individualMonthlyAmount is not null and order.individualMonthlyAmount > 0 %}
+{% set isFree = order.individualMonthlyAmount == 0 %}
+{% set hasPrepaid = order.paidThroughDate is not null %}
+
+{% if hasIndividual or isFree or hasPrepaid or order.isAdminCreated %}
+    <div class="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div class="flex flex-col gap-1 text-sm text-blue-900">
+            {% if order.isAdminCreated %}
+                <div>Tato objednávka byla vytvořena adminem (onboarding).</div>
+            {% endif %}
+            {% if isFree %}
+                <div><strong>Smlouva zdarma</strong> — žádné účtování ani fakturace.</div>
+            {% endif %}
+            {% if hasIndividual %}
+                <div><strong>Individuální měsíční cena:</strong> {{ (order.individualMonthlyAmount / 100)|number_format(0, ',', ' ') }} Kč</div>
+            {% endif %}
+            {% if hasPrepaid %}
+                <div><strong>Externě předplaceno do:</strong> {{ order.paidThroughDate|date('d.m.Y') }}</div>
+            {% endif %}
+            {% if order.paymentMethod %}
+                <div><strong>Způsob platby:</strong> {{ order.paymentMethod.value == 'external' ? 'Externí (mimo GoPay)' : 'GoPay' }}</div>
+            {% endif %}
+        </div>
+    </div>
+{% endif %}

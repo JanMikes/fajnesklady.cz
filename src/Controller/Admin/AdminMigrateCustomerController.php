@@ -59,6 +59,12 @@ final class AdminMigrateCustomerController extends AbstractController
                 /** @var \DateTimeImmutable $paidAt */
                 $paidAt = $formData->paidAt;
 
+                $individualMonthlyAmount = match ($formData->monthlyPriceMode) {
+                    'custom' => null !== $formData->customMonthlyPriceInCzk ? (int) round($formData->customMonthlyPriceInCzk * 100) : null,
+                    'free' => 0,
+                    default => null,
+                };
+
                 $envelope = $this->commandBus->dispatch(new AdminMigrateCustomerCommand(
                     email: $formData->email,
                     firstName: $formData->firstName,
@@ -80,6 +86,8 @@ final class AdminMigrateCustomerController extends AbstractController
                     contractDocumentPath: $tempPath,
                     totalPrice: $totalPriceInHalire,
                     paidAt: $paidAt,
+                    individualMonthlyAmount: $individualMonthlyAmount,
+                    paidThroughDate: $formData->paidThroughDate,
                 ));
 
                 $handledStamp = $envelope->last(HandledStamp::class);

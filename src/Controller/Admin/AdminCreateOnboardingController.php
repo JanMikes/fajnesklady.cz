@@ -46,6 +46,13 @@ final class AdminCreateOnboardingController extends AbstractController
                 /** @var \DateTimeImmutable $startDate */
                 $startDate = $formData->startDate;
 
+                $individualMonthlyAmount = match ($formData->monthlyPriceMode) {
+                    'custom' => null !== $formData->customMonthlyPriceInCzk ? (int) round($formData->customMonthlyPriceInCzk * 100) : null,
+                    'free' => 0,
+                    default => null,
+                };
+                $paidThroughDate = $formData->isExternallyPrepaid ? $formData->paidThroughDate : null;
+
                 $envelope = $this->commandBus->dispatch(new AdminCreateOnboardingCommand(
                     email: $formData->email,
                     firstName: $formData->firstName,
@@ -65,6 +72,8 @@ final class AdminCreateOnboardingController extends AbstractController
                     startDate: $startDate,
                     endDate: $formData->endDate,
                     paymentMethod: $formData->paymentMethod,
+                    individualMonthlyAmount: $individualMonthlyAmount,
+                    paidThroughDate: $paidThroughDate,
                 ));
 
                 $handledStamp = $envelope->last(HandledStamp::class);

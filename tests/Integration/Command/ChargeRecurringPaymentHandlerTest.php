@@ -109,6 +109,50 @@ class ChargeRecurringPaymentHandlerTest extends KernelTestCase
         $this->assertTrue($exceptionThrown, 'Expected HandlerFailedException to be thrown');
     }
 
+    public function testChargeRespectsContractIndividualMonthlyAmount(): void
+    {
+        $contract = $this->createContractWithRecurringPayment();
+
+        // Override the recurring monthly to 500 Kč; the underlying storage's
+        // default (used to be 1500 Kč) must not leak through.
+        $contract->applyIndividualMonthlyAmount(50_000);
+        $this->entityManager->flush();
+
+        $this->commandBus->dispatch(new ChargeRecurringPaymentCommand($contract));
+
+        $amounts = $this->goPayClient->getRecurrenceAmounts();
+        $this->assertCount(1, $amounts);
+        $this->assertSame(50_000, array_values($amounts)[0]);
+    }
+
+    public function testChargeSkipsFreeContractsWithoutGoPayCall(): void
+    {
+        $contract = $this->createContractWithRecurringPayment();
+        $contract->applyIndividualMonthlyAmount(0);
+        $this->entityManager->flush();
+
+        $this->commandBus->dispatch(new ChargeRecurringPaymentCommand($contract));
+
+        $this->assertSame([], $this->goPayClient->getRecurrenceAmounts());
+
+        $this->entityManager->clear();
+        $refreshed = $this->entityManager->find(Contract::class, $contract->id);
+        // No charge → lastBilledAt unchanged
+        $this->assertNull($refreshed->lastBilledAt);
+    }
+
+    public function testChargeFallsBackToStorageRateWhenNoOverride(): void
+    {
+        $contract = $this->createContractWithRecurringPayment();
+        $storageMonthly = $contract->storage->getEffectivePricePerMonth();
+
+        $this->commandBus->dispatch(new ChargeRecurringPaymentCommand($contract));
+
+        $amounts = $this->goPayClient->getRecurrenceAmounts();
+        $this->assertCount(1, $amounts);
+        $this->assertSame($storageMonthly, array_values($amounts)[0]);
+    }
+
     private function createContractWithRecurringPayment(): Contract
     {
         /** @var User $tenant */

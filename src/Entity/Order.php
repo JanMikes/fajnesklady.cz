@@ -74,6 +74,24 @@ class Order implements EntityWithEvents
     #[ORM\Column(length: 10, nullable: true, enumType: PaymentMethod::class)]
     public private(set) ?PaymentMethod $paymentMethod = null;
 
+    /**
+     * Per-order monthly override carried from admin onboarding into Contract
+     * creation. See spec 025 — copied onto Contract.individualMonthlyAmount in
+     * OrderService::completeOrder so future recurring charges respect it.
+     *
+     * null → standard storage rate; 0 → free; > 0 → individual price.
+     */
+    #[ORM\Column(nullable: true)]
+    public private(set) ?int $individualMonthlyAmount = null;
+
+    /**
+     * Date through which the customer has prepaid externally (cash / bank
+     * transfer). Carried from onboarding into Contract.paidThroughDate so the
+     * recurring cron does not bill until afterwards.
+     */
+    #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
+    public private(set) ?\DateTimeImmutable $paidThroughDate = null;
+
     public function __construct(
         #[ORM\Id]
         #[ORM\Column(type: UuidType::NAME, unique: true)]
@@ -146,7 +164,7 @@ class Order implements EntityWithEvents
         $this->status = OrderStatus::AWAITING_PAYMENT;
     }
 
-    public function markPaid(\DateTimeImmutable $now): void
+    public function markPaid(\DateTimeImmutable $now, ?int $amountOverride = null): void
     {
         $this->status = OrderStatus::PAID;
         $this->paidAt = $now;
@@ -154,6 +172,7 @@ class Order implements EntityWithEvents
         $this->recordThat(new OrderPaid(
             orderId: $this->id,
             occurredOn: $now,
+            amountOverride: $amountOverride,
         ));
     }
 
@@ -326,13 +345,18 @@ class Order implements EntityWithEvents
         $this->paymentMethod = $method;
     }
 
-    public function overrideFirstPaymentPrice(int $price): void
-    {
-        $this->firstPaymentPrice = $price;
-    }
-
     public function extendExpiration(\DateTimeImmutable $newExpiresAt): void
     {
         $this->expiresAt = $newExpiresAt;
+    }
+
+    /**
+     * Write-once at admin onboarding creation. Both fields propagate to the
+     * Contract when {@see \App\Service\OrderService::completeOrder()} runs.
+     */
+    public function setOnboardingBillingTerms(?int $individualMonthlyAmount, ?\DateTimeImmutable $paidThroughDate): void
+    {
+        $this->individualMonthlyAmount = $individualMonthlyAmount;
+        $this->paidThroughDate = $paidThroughDate;
     }
 }

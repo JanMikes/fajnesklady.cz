@@ -70,15 +70,28 @@ class OrderOnboardingTest extends TestCase
         $this->assertSame(PaymentMethod::GOPAY, $order->paymentMethod);
     }
 
-    public function testOverrideFirstPaymentPrice(): void
+    public function testSetOnboardingBillingTermsWritesBothFields(): void
     {
         $order = $this->createOrder();
 
-        $this->assertSame(35000, $order->firstPaymentPrice);
+        $this->assertNull($order->individualMonthlyAmount);
+        $this->assertNull($order->paidThroughDate);
 
-        $order->overrideFirstPaymentPrice(50000);
+        $paidThrough = new \DateTimeImmutable('2026-12-31');
+        $order->setOnboardingBillingTerms(80_000, $paidThrough);
 
-        $this->assertSame(50000, $order->firstPaymentPrice);
+        $this->assertSame(80_000, $order->individualMonthlyAmount);
+        $this->assertEquals($paidThrough, $order->paidThroughDate);
+    }
+
+    public function testSetOnboardingBillingTermsAcceptsZeroForFreeContracts(): void
+    {
+        $order = $this->createOrder();
+
+        $order->setOnboardingBillingTerms(0, null);
+
+        $this->assertSame(0, $order->individualMonthlyAmount);
+        $this->assertNull($order->paidThroughDate);
     }
 
     public function testExtendExpiration(): void

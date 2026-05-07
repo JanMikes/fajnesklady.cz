@@ -12,6 +12,10 @@ use App\Enum\RentalType;
 
 final readonly class AdminCreateOnboardingCommand
 {
+    /**
+     * @param ?int                $individualMonthlyAmount halere; null = standard storage rate; 0 = free
+     * @param ?\DateTimeImmutable $paidThroughDate         null = no external prepayment
+     */
     public function __construct(
         public string $email,
         public string $firstName,
@@ -31,6 +35,8 @@ final readonly class AdminCreateOnboardingCommand
         public \DateTimeImmutable $startDate,
         public ?\DateTimeImmutable $endDate,
         public PaymentMethod $paymentMethod,
+        public ?int $individualMonthlyAmount = null,
+        public ?\DateTimeImmutable $paidThroughDate = null,
     ) {
     }
 }

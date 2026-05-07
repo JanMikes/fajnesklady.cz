@@ -159,6 +159,21 @@ class OverdueCheckerTest extends TestCase
         $this->assertSame([], $checker->filterOverdueUserIds($this->clock->now(), []));
     }
 
+    public function testFreeContractsAreExcludedFromOverdueViews(): void
+    {
+        $now = $this->clock->now();
+
+        $regular = $this->createRecurringContract($now->modify('-3 days'));
+        $free = $this->createRecurringContract($now->modify('-5 days'));
+        $free->applyIndividualMonthlyAmount(0);
+
+        $checker = $this->createChecker([$regular, $free]);
+        $views = $checker->findOverdueViews($now);
+
+        $this->assertCount(1, $views);
+        $this->assertSame($regular->id, $views[0]->contract->id);
+    }
+
     public function testSummariseForPlaceFiltersByPlace(): void
     {
         $now = $this->clock->now();

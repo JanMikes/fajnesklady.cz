@@ -129,7 +129,7 @@
 
                     <hr class="my-6 border-t border-gray-200">
 
-                    <h3 class="text-lg font-semibold mb-4">Smlouva a platba</h3>
+                    <h3 class="text-lg font-semibold mb-4">Smlouva a externí platba</h3>
                     <div class="grid md:grid-cols-2 gap-4 mb-6">
                         <div class="md:col-span-2">
                             {{ form_label(form.contractDocument) }}
@@ -148,6 +148,36 @@
                             {{ form_widget(form.paidAt) }}
                             {{ form_errors(form.paidAt) }}
                         </div>
+                        <div>
+                            {{ form_label(form.paidThroughDate) }}
+                            {{ form_widget(form.paidThroughDate) }}
+                            {{ form_errors(form.paidThroughDate) }}
+                            <p class="mt-1 text-xs text-gray-500">{{ form.paidThroughDate.vars.help }}</p>
+                        </div>
+                    </div>
+
+                    <hr class="my-6 border-t border-gray-200">
+
+                    <h3 class="text-lg font-semibold mb-4">Cenový model pro budoucí měsíční platby</h3>
+                    <div class="mb-6 space-y-3">
+                        {% for choice in form.monthlyPriceMode %}
+                            <label class="flex items-center cursor-pointer gap-3">
+                                {{ form_widget(choice, {'attr': {'class': 'h-4 w-4 text-accent focus:ring-accent border-gray-300'}}) }}
+                                <span class="text-sm text-gray-700">{{ choice.vars.label }}</span>
+                            </label>
+                        {% endfor %}
+                        {{ form_errors(form.monthlyPriceMode) }}
+
+                        <div>
+                            {{ form_label(form.customMonthlyPriceInCzk) }}
+                            {{ form_widget(form.customMonthlyPriceInCzk) }}
+                            {{ form_errors(form.customMonthlyPriceInCzk) }}
+                            {% if form.customMonthlyPriceInCzk.vars.help is defined %}
+                                <p class="mt-1 text-xs text-gray-500">{{ form.customMonthlyPriceInCzk.vars.help }}</p>
+                            {% endif %}
+                        </div>
+
+                        <p class="text-xs text-gray-500">Po vypršení externího předplatného bude zákazníkovi 7 dní předem zaslán e-mail s žádostí o nastavení automatické platby.</p>
                     </div>
 
                     <div class="flex justify-end gap-2">

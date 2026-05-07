@@ -131,7 +131,7 @@ final readonly class ChargeRecurringPaymentHandler
 
     private function calculateBillingAmount(Contract $contract, \DateTimeImmutable $now): int
     {
-        $monthlyRate = $contract->storage->getEffectivePricePerMonth();
+        $monthlyRate = $contract->getEffectiveMonthlyAmount();
         $effectiveEndDate = $contract->getEffectiveEndDate();
 
         if (null === $effectiveEndDate) {

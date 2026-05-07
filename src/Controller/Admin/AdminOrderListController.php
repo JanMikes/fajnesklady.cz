@@ -25,17 +25,29 @@ final class AdminOrderListController extends AbstractController
     ) {
     }
 
+    private const array FILTERS = ['individual', 'external', 'ending', 'free'];
+
     public function __invoke(Request $request): Response
     {
         $page = max(1, (int) $request->query->get('page', '1'));
         $limit = 20;
+        $now = $this->clock->now();
 
-        $orders = $this->orderRepository->findAllPaginated($page, $limit);
-        $totalOrders = $this->orderRepository->countTotal();
+        $filterParam = $request->query->get('filter');
+        $filter = is_string($filterParam) && in_array($filterParam, self::FILTERS, true) ? $filterParam : null;
+
+        if (null === $filter) {
+            $orders = $this->orderRepository->findAllPaginated($page, $limit);
+            $totalOrders = $this->orderRepository->countTotal();
+        } else {
+            $orders = $this->orderRepository->findAdminFiltered($now, $filter, $page, $limit);
+            $totalOrders = $this->orderRepository->countByAdminFilter($now, $filter);
+        }
+
         $totalPages = (int) ceil($totalOrders / $limit);
 
         $pageUserIds = array_map(static fn (Order $o) => $o->user->id, $orders);
-        $debtorIdSet = array_flip($this->overdueChecker->filterOverdueUserIds($this->clock->now(), $pageUserIds));
+        $debtorIdSet = array_flip($this->overdueChecker->filterOverdueUserIds($now, $pageUserIds));
 
         return $this->render('admin/order/list.html.twig', [
             'orders' => $orders,
@@ -43,6 +55,8 @@ final class AdminOrderListController extends AbstractController
             'totalPages' => $totalPages,
             'totalOrders' => $totalOrders,
             'debtorIdSet' => $debtorIdSet,
+            'filter' => $filter,
+            'filterCounts' => $this->orderRepository->countAllAdminFilters($now),
         ]);
     }
 }

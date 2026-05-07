@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vaše předplatné brzy končí</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #2563eb;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 5px 5px 0 0;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 22px;
+        }
+        .content {
+            background-color: #f9f9f9;
+            padding: 30px;
+            border: 1px solid #ddd;
+            border-top: none;
+        }
+        .lead { margin-top: 0; }
+        .info-box {
+            background-color: #fef3c7;
+            border: 1px solid #fde68a;
+            padding: 16px 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .storage {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 16px 20px;
+            margin: 20px 0;
+        }
+        .storage h3 {
+            margin-top: 0;
+            font-size: 14px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+        .storage table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .storage td {
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+            font-size: 14px;
+        }
+        .storage td:first-child {
+            font-weight: 600;
+            color: #555;
+            width: 55%;
+        }
+        .storage tr:last-child td {
+            border-bottom: none;
+        }
+        .footer {
+            text-align: center;
+            padding: 20px;
+            font-size: 12px;
+            color: #666;
+        }
+        a { color: #2563eb; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Vaše předplatné brzy končí</h1>
+    </div>
+
+    <div class="content">
+        <p class="lead">Dobrý den {{ name }},</p>
+
+        <p>vaše externí předplatné za pronájem skladového kontejneru končí <strong>{{ paidThroughDate }}</strong>. Aby pronájem mohl pokračovat bez přerušení, potřebujeme nastavit pravidelnou opakovanou platbu.</p>
+
+        <div class="info-box">
+            <p style="margin: 0;">Po vypršení předplatného nedokážeme automaticky strhávat měsíční platby. <strong>Kontaktujte nás prosím</strong> na <a href="mailto:simek@fajnesklady.cz">simek@fajnesklady.cz</a> nebo +420 605 522 566 — pomůžeme vám nastavit automatickou platbu kartou přes GoPay.</p>
+        </div>
+
+        <div class="storage">
+            <h3>Pronajatý sklad</h3>
+            <table>
+                <tr><td>Pobočka</td><td>{{ placeName }}</td></tr>
+                <tr><td>Typ skladu</td><td>{{ storageType }}</td></tr>
+                <tr><td>Číslo skladu</td><td>{{ storageNumber }}</td></tr>
+                <tr><td>Měsíční cena</td><td>{{ monthlyAmount }} Kč / měsíc vč. DPH</td></tr>
+                <tr><td>Předplaceno do</td><td>{{ paidThroughDate }}</td></tr>
+            </table>
+        </div>
+
+        <p style="text-align: center; margin: 28px 0;">
+            <a href="{{ statusUrl }}" style="display: inline-block; background-color: #2563eb; color: white; padding: 10px 24px; text-decoration: none; border-radius: 5px; font-size: 14px;">Zobrazit stav objednávky</a>
+        </p>
+
+        <p>S pozdravem,<br><strong>Tým Fajnesklady.cz</strong></p>
+    </div>
+
+    <div class="footer">
+        <p>Mekmann s.r.o., IČO 11678631, Dvořákova 780, 739 11 Frýdlant nad Ostravicí</p>
+        <p>Toto je automaticky generovaný e-mail. V obecných záležitostech kontaktujte <a href="mailto:skladmistr@fajnesklady.cz">skladmistr@fajnesklady.cz</a> nebo +420 605 522 566.</p>
+        <p>&copy; {{ 'now'|date('Y') }} Fajnesklady.cz. Všechna práva vyhrazena.</p>
+    </div>
+</body>
+</html>

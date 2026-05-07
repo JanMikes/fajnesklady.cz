@@ -6,6 +6,7 @@ namespace App\Entity;
 
 use App\Enum\RentalType;
 use App\Enum\TerminationReason;
+use App\Service\PriceCalculator;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Types\UuidType;
@@ -61,6 +62,19 @@ class Contract
      */
     #[ORM\Column(nullable: true)]
     public private(set) ?\DateTimeImmutable $lastAdvanceNoticeSentAt = null;
+
+    /**
+     * Per-contract monthly recurring price in halere (CZK × 100). When set, this
+     * overrides the current storage rate for ALL future recurring charges and
+     * for any code projecting the "locked-in monthly". Set during admin
+     * onboarding (spec 025) for individual-price or free contracts.
+     *
+     *  null → use storage.effectivePricePerMonth (default behaviour)
+     *  0    → free contract: skip charging, skip invoicing
+     *  > 0  → custom monthly that survives storage-price changes
+     */
+    #[ORM\Column(nullable: true)]
+    public private(set) ?int $individualMonthlyAmount = null;
 
     public function __construct(
         #[ORM\Id]
@@ -244,5 +258,45 @@ class Contract
     public function recordAdvanceNoticeSent(\DateTimeImmutable $now): void
     {
         $this->lastAdvanceNoticeSentAt = $now;
+    }
+
+    public function applyIndividualMonthlyAmount(?int $amount): void
+    {
+        if (null !== $amount && $amount < 0) {
+            throw new \InvalidArgumentException('Individual monthly amount cannot be negative.');
+        }
+
+        if (null !== $amount && $amount > PriceCalculator::MAX_RECURRING_PAYMENT_AMOUNT_IN_HALER) {
+            throw new \DomainException(sprintf('Individual monthly amount %d Kč exceeds the legal recurring-payment maximum of %d Kč.', intdiv($amount, 100), intdiv(PriceCalculator::MAX_RECURRING_PAYMENT_AMOUNT_IN_HALER, 100)));
+        }
+
+        $this->individualMonthlyAmount = $amount;
+    }
+
+    public function getEffectiveMonthlyAmount(): int
+    {
+        return $this->individualMonthlyAmount ?? $this->storage->getEffectivePricePerMonth();
+    }
+
+    public function hasIndividualPrice(): bool
+    {
+        return null !== $this->individualMonthlyAmount;
+    }
+
+    public function isFree(): bool
+    {
+        return 0 === $this->individualMonthlyAmount;
+    }
+
+    /**
+     * Set up an externally-prepaid contract: paidThroughDate is the last day
+     * of prepayment, nextBillingDate is the day after that. No goPay token is
+     * established here — the customer must convert via the post-prepayment
+     * flow (spec 026, deferred).
+     */
+    public function markExternallyPrepaid(\DateTimeImmutable $paidThroughDate): void
+    {
+        $this->paidThroughDate = $paidThroughDate;
+        $this->nextBillingDate = $paidThroughDate->modify('+1 day');
     }
 }

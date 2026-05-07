@@ -11,6 +11,11 @@ use App\Enum\RentalType;
 
 final readonly class AdminMigrateCustomerCommand
 {
+    /**
+     * @param int                 $totalPrice              Halere — lump-sum amount paid externally; recorded as the initial Payment
+     * @param ?int                $individualMonthlyAmount Halere; null = standard storage rate; 0 = free
+     * @param ?\DateTimeImmutable $paidThroughDate         Required for migrate; defaults to endDate (LIMITED) when omitted
+     */
     public function __construct(
         public string $email,
         public string $firstName,
@@ -32,6 +37,8 @@ final readonly class AdminMigrateCustomerCommand
         public string $contractDocumentPath,
         public int $totalPrice,
         public \DateTimeImmutable $paidAt,
+        public ?int $individualMonthlyAmount = null,
+        public ?\DateTimeImmutable $paidThroughDate = null,
     ) {
     }
 }

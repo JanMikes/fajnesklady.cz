@@ -115,14 +115,35 @@ final class AdminMigrateCustomerFormType extends AbstractType
                 'label' => 'Podepsaná smlouva (PDF, JPEG, PNG)',
             ])
             ->add('totalPriceInCzk', NumberType::class, [
-                'label' => 'Měsíční cena (Kč)',
+                'label' => 'Zaplacená částka externě (Kč)',
                 'scale' => 2,
-                'attr' => ['placeholder' => '1500.00'],
-                'help' => 'Dohodnutá měsíční cena v Kč.',
+                'attr' => ['placeholder' => '18000.00'],
+                'help' => 'Celková částka, kterou zákazník zaplatil mimo GoPay (např. v hotovosti nebo převodem).',
             ])
             ->add('paidAt', DateType::class, [
                 'label' => 'Datum platby',
                 'widget' => 'single_text',
+            ])
+            ->add('paidThroughDate', DateType::class, [
+                'label' => 'Předplaceno do',
+                'widget' => 'single_text',
+                'help' => 'Datum, do kterého externí platba pokrývá pronájem. Pro doby určité přednastavte datum konce smlouvy.',
+            ])
+            ->add('monthlyPriceMode', ChoiceType::class, [
+                'label' => 'Cenový model pro budoucí měsíční platby',
+                'expanded' => true,
+                'choices' => [
+                    'Standardní (sazba skladu)' => 'standard',
+                    'Individuální měsíční cena' => 'custom',
+                    'Zdarma (bez účtování)' => 'free',
+                ],
+            ])
+            ->add('customMonthlyPriceInCzk', NumberType::class, [
+                'label' => 'Individuální měsíční cena (Kč)',
+                'required' => false,
+                'scale' => 2,
+                'attr' => ['placeholder' => '1500.00'],
+                'help' => 'Maximálně 15 000 Kč (zákonný strop pro opakované platby).',
             ]);
     }
 

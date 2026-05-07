@@ -126,8 +126,8 @@ Stack: PHP 8.5 (Docker image `ghcr.io/thedevs-cz/php:8.5-fajnesklady`) · Symfon
 | `StorageType` | Template/category for storage | place; storages, photos |
 | `StoragePhoto` / `StorageTypePhoto` | Images | parent |
 | `StorageUnavailability` | Blackout period | storage, user |
-| `Order` | Rental request/booking | user, storage; contract; invoices |
-| `Contract` | Legal rental agreement | order(1:1), user, storage; tracks signing, termination, recurring payment |
+| `Order` | Rental request/booking (carries `individualMonthlyAmount` + `paidThroughDate` from admin onboarding) | user, storage; contract; invoices |
+| `Contract` | Legal rental agreement (carries `individualMonthlyAmount` override that survives storage-price changes) | order(1:1), user, storage; tracks signing, termination, recurring payment |
 | `Invoice` | Customer bill | order, user |
 | `SelfBillingInvoice` | Landlord revenue invoice | landlord; payments |
 | `Payment` | Payment tx | selfBillingInvoice, order, contract, storage; GoPay status |
@@ -148,7 +148,7 @@ RegisterUser, RegisterLandlord, VerifyEmail, ResendVerificationEmail, RequestPas
 GetDashboardStats, GetLandlordDashboardStats, GetAdminRevenueChart, GetLandlordRevenueChart.
 
 ## Domain Events
-UserRegistered, EmailVerified, PasswordResetRequested, LandlordRegistered, AdminOnboardingInitiated, OrderCreated, OrderPaid, OrderCompleted, OrderCancelled, OrderExpired, PlaceProposed, PlaceAccessRequested, PlaceAccessRequestApproved, PlaceAccessRequestDenied, HandoverProtocolCreated, HandoverCompleted, HandoverExpired, HandoverReminderDue, ContractExpiringSoon, ContractTerminated, ContractTerminatedDueToPaymentFailure, InvoiceCreated, RecurringPaymentCharged, RecurringPaymentFailed, RecurringPaymentCancelled, TerminationNoticeRequested.
+UserRegistered, EmailVerified, PasswordResetRequested, LandlordRegistered, AdminOnboardingInitiated, OrderCreated, OrderPaid, OrderCompleted, OrderCancelled, OrderExpired, PlaceProposed, PlaceAccessRequested, PlaceAccessRequestApproved, PlaceAccessRequestDenied, HandoverProtocolCreated, HandoverCompleted, HandoverExpired, HandoverReminderDue, ContractExpiringSoon, ContractTerminated, ContractTerminatedDueToPaymentFailure, InvoiceCreated, RecurringPaymentCharged, RecurringPaymentFailed, RecurringPaymentCancelled, TerminationNoticeRequested, ExternalPrepaymentEndingSoon.
 
 Many handlers exist for email side-effects (Send*Handler) and bookkeeping (IssueInvoiceOnPaymentHandler, RecordPaymentOn*Handler, ReleaseStorageOn*Handler).
 

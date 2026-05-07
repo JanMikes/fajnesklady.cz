@@ -7,6 +7,14 @@
         <h1 class="text-3xl font-bold text-gray-900">Všechny objednávky (Admin)</h1>
     </div>
 
+    <div class="mb-4 flex items-center gap-2 flex-wrap">
+        <a href="{{ path('admin_orders_list') }}" class="btn btn-sm {{ filter ? 'btn-ghost' : 'btn-primary' }}">Vše</a>
+        <a href="{{ path('admin_orders_list', {filter: 'individual'}) }}" class="btn btn-sm {{ filter == 'individual' ? 'btn-warning' : 'btn-ghost' }}">Indiv. cena ({{ filterCounts.individual }})</a>
+        <a href="{{ path('admin_orders_list', {filter: 'external'}) }}" class="btn btn-sm {{ filter == 'external' ? 'btn-info' : 'btn-ghost' }}">Externí předplatné ({{ filterCounts.external }})</a>
+        <a href="{{ path('admin_orders_list', {filter: 'ending'}) }}" class="btn btn-sm {{ filter == 'ending' ? 'btn-error' : 'btn-ghost' }}">Předplatné brzy končí ({{ filterCounts.ending }})</a>
+        <a href="{{ path('admin_orders_list', {filter: 'free'}) }}" class="btn btn-sm {{ filter == 'free' ? 'btn-success' : 'btn-ghost' }}">Zdarma ({{ filterCounts.free }})</a>
+    </div>
+
     <div class="card">
         <div class="overflow-x-auto">
             <table class="table table-zebra">
@@ -66,9 +74,21 @@
                                     'cancelled': 'Zrušeno',
                                     'expired': 'Expirováno'
                                 } %}
-                                <span class="badge {{ statusClass[order.status.value] ?? 'badge-ghost' }}">
-                                    {{ statusLabel[order.status.value] ?? order.status.value }}
-                                </span>
+                                <div class="flex flex-wrap gap-1">
+                                    <span class="badge {{ statusClass[order.status.value] ?? 'badge-ghost' }}">
+                                        {{ statusLabel[order.status.value] ?? order.status.value }}
+                                    </span>
+                                    {% if order.individualMonthlyAmount is not null %}
+                                        {% if order.individualMonthlyAmount == 0 %}
+                                            <span class="badge badge-success badge-sm" title="Smlouva zdarma — bez fakturace">Zdarma</span>
+                                        {% else %}
+                                            <span class="badge badge-warning badge-sm" title="Individuální měsíční cena: {{ (order.individualMonthlyAmount / 100)|number_format(0, ',', ' ') }} Kč">Indiv. cena</span>
+                                        {% endif %}
+                                    {% endif %}
+                                    {% if order.paidThroughDate %}
+                                        <span class="badge badge-info badge-sm" title="Externí platba do {{ order.paidThroughDate|date('d.m.Y') }}">Předplaceno do {{ order.paidThroughDate|date('d.m.Y') }}</span>
+                                    {% endif %}
+                                </div>
                             </td>
                             <td class="text-gray-500 text-sm">{{ order.createdAt|date('d.m.Y H:i') }}</td>
                             <td>
@@ -90,7 +110,8 @@
             {% include 'components/pagination.html.twig' with {
                 currentPage: currentPage,
                 totalPages: totalPages,
-                route: 'admin_orders_list'
+                route: 'admin_orders_list',
+                routeParams: filter ? {filter: filter} : {},
             } %}
         {% endif %}
     </div>

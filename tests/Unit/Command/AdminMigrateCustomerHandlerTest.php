@@ -14,6 +14,7 @@ use App\Entity\User;
 use App\Enum\OrderStatus;
 use App\Enum\PaymentMethod;
 use App\Enum\RentalType;
+use App\Event\OrderPaid;
 use App\Repository\AuditLogRepository;
 use App\Repository\ContractRepository;
 use App\Repository\OrderRepository;
@@ -115,7 +116,9 @@ class AdminMigrateCustomerHandlerTest extends TestCase
         $this->assertSame(OrderStatus::COMPLETED, $result->order->status);
         $this->assertTrue($result->order->isAdminCreated);
         $this->assertSame(PaymentMethod::EXTERNAL, $result->order->paymentMethod);
-        $this->assertSame(50000, $result->order->firstPaymentPrice);
+        // firstPaymentPrice is the locked-in monthly (storage default since
+        // no individualMonthlyAmount provided), NOT the lump sum prepayment.
+        $this->assertSame(35000, $result->order->firstPaymentPrice);
         $this->assertTrue($result->order->hasAcceptedTerms());
         $this->assertNotNull($result->documentPath);
         $this->assertTrue($result->isSigned());
@@ -167,7 +170,7 @@ class AdminMigrateCustomerHandlerTest extends TestCase
         $this->assertSame('12345678', $existingUser->companyId);
     }
 
-    public function testOverridesPrice(): void
+    public function testLumpSumIsRecordedViaOrderPaidAmountOverride(): void
     {
         $now = new \DateTimeImmutable('2025-06-15 12:00:00');
         $this->clock->method('now')->willReturn($now);
@@ -177,8 +180,6 @@ class AdminMigrateCustomerHandlerTest extends TestCase
         $storage = $this->createStorage($storageType, $place);
 
         $this->userRepository->method('findByEmail')->willReturn(null);
-
-        $adminPrice = 99900;
 
         $command = new AdminMigrateCustomerCommand(
             email: 'price@example.com',
@@ -199,13 +200,105 @@ class AdminMigrateCustomerHandlerTest extends TestCase
             startDate: new \DateTimeImmutable('2025-06-01'),
             endDate: null,
             contractDocumentPath: $this->sourceFile,
-            totalPrice: $adminPrice,
+            totalPrice: 99900,
             paidAt: new \DateTimeImmutable('2025-06-10'),
         );
 
         $result = ($this->handler)($command);
 
-        $this->assertSame($adminPrice, $result->order->firstPaymentPrice);
+        // firstPaymentPrice keeps the locked-in monthly (storage default).
+        $this->assertSame(35000, $result->order->firstPaymentPrice);
+
+        // The lump sum surfaces via OrderPaid::amountOverride, which the
+        // RecordPaymentOnOrderPaidHandler later honours.
+        $events = $result->order->popEvents();
+        $orderPaidEvents = array_values(array_filter($events, static fn ($e) => $e instanceof OrderPaid));
+        $this->assertCount(1, $orderPaidEvents);
+        $this->assertSame(99900, $orderPaidEvents[0]->amountOverride);
+    }
+
+    public function testCustomMonthlyAndLumpSumCoexist(): void
+    {
+        $now = new \DateTimeImmutable('2025-06-15 12:00:00');
+        $this->clock->method('now')->willReturn($now);
+
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType($place);
+        $storage = $this->createStorage($storageType, $place);
+
+        $this->userRepository->method('findByEmail')->willReturn(null);
+
+        $command = new AdminMigrateCustomerCommand(
+            email: 'custom@example.com',
+            firstName: 'Custom',
+            lastName: 'Tenant',
+            phone: null,
+            birthDate: null,
+            companyName: null,
+            companyId: null,
+            companyVatId: null,
+            billingStreet: null,
+            billingCity: null,
+            billingPostalCode: null,
+            storage: $storage,
+            storageType: $storageType,
+            place: $place,
+            rentalType: RentalType::LIMITED,
+            startDate: new \DateTimeImmutable('2025-06-01'),
+            endDate: new \DateTimeImmutable('2026-06-01'),
+            contractDocumentPath: $this->sourceFile,
+            totalPrice: 60000,
+            paidAt: new \DateTimeImmutable('2025-06-10'),
+            individualMonthlyAmount: 50000,
+            paidThroughDate: new \DateTimeImmutable('2025-12-31'),
+        );
+
+        $result = ($this->handler)($command);
+
+        $this->assertSame(50000, $result->order->firstPaymentPrice);
+        $this->assertSame(50000, $result->individualMonthlyAmount);
+        $this->assertEquals(new \DateTimeImmutable('2025-12-31'), $result->paidThroughDate);
+        $this->assertEquals(new \DateTimeImmutable('2026-01-01'), $result->nextBillingDate);
+    }
+
+    public function testPaidThroughDateDefaultsToEndDateForLimitedRental(): void
+    {
+        $now = new \DateTimeImmutable('2025-06-15 12:00:00');
+        $this->clock->method('now')->willReturn($now);
+
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType($place);
+        $storage = $this->createStorage($storageType, $place);
+
+        $this->userRepository->method('findByEmail')->willReturn(null);
+
+        $endDate = new \DateTimeImmutable('2025-12-31');
+        $command = new AdminMigrateCustomerCommand(
+            email: 'limited@example.com',
+            firstName: 'Limited',
+            lastName: 'Tenant',
+            phone: null,
+            birthDate: null,
+            companyName: null,
+            companyId: null,
+            companyVatId: null,
+            billingStreet: null,
+            billingCity: null,
+            billingPostalCode: null,
+            storage: $storage,
+            storageType: $storageType,
+            place: $place,
+            rentalType: RentalType::LIMITED,
+            startDate: new \DateTimeImmutable('2025-06-01'),
+            endDate: $endDate,
+            contractDocumentPath: $this->sourceFile,
+            totalPrice: 30000,
+            paidAt: new \DateTimeImmutable('2025-06-10'),
+        );
+
+        $result = ($this->handler)($command);
+
+        $this->assertEquals($endDate, $result->paidThroughDate);
     }
 
     public function testMovesContractDocument(): void

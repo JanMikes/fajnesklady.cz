@@ -29,22 +29,36 @@ final class UserListController extends AbstractController
     {
         $page = max(1, (int) $request->query->get('page', '1'));
         $limit = 20;
-        $filter = 'overdue' === $request->query->get('filter') ? 'overdue' : null;
+        $filterParam = $request->query->get('filter');
+        $filter = match ($filterParam) {
+            'overdue', 'onboarded' => $filterParam,
+            default => null,
+        };
         $now = $this->clock->now();
 
-        if ('overdue' === $filter) {
-            $users = $this->userRepository->findOverduePaginated($page, $limit, $now);
-            $totalUsers = $this->userRepository->countOverdueUsers($now);
-        } else {
-            $users = $this->userRepository->findAllPaginated($page, $limit);
-            $totalUsers = $this->userRepository->countTotal();
+        switch ($filter) {
+            case 'overdue':
+                $users = $this->userRepository->findOverduePaginated($page, $limit, $now);
+                $totalUsers = $this->userRepository->countOverdueUsers($now);
+
+                break;
+            case 'onboarded':
+                $users = $this->userRepository->findOnboardedPaginated($page, $limit);
+                $totalUsers = $this->userRepository->countOnboarded();
+
+                break;
+            default:
+                $users = $this->userRepository->findAllPaginated($page, $limit);
+                $totalUsers = $this->userRepository->countTotal();
         }
 
         $totalPages = (int) ceil($totalUsers / $limit);
         $overdueUserCount = $this->userRepository->countOverdueUsers($now);
+        $onboardedUserCount = $this->userRepository->countOnboarded();
 
         $pageUserIds = array_map(static fn (User $u) => $u->id, $users);
         $debtorIdSet = array_flip($this->overdueChecker->filterOverdueUserIds($now, $pageUserIds));
+        $onboardedIdSet = array_flip($this->userRepository->findOnboardedUserIds($pageUserIds));
 
         return $this->render('portal/user/list.html.twig', [
             'users' => $users,
@@ -53,7 +67,9 @@ final class UserListController extends AbstractController
             'totalUsers' => $totalUsers,
             'filter' => $filter,
             'overdueUserCount' => $overdueUserCount,
+            'onboardedUserCount' => $onboardedUserCount,
             'debtorIdSet' => $debtorIdSet,
+            'onboardedIdSet' => $onboardedIdSet,
         ]);
     }
 }

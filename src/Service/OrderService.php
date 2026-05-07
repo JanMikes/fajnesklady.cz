@@ -50,6 +50,7 @@ final readonly class OrderService
         \DateTimeImmutable $now,
         ?PaymentFrequency $paymentFrequency = null,
         ?Storage $preSelectedStorage = null,
+        ?int $monthlyPriceOverride = null,
     ): Order {
         if (null !== $preSelectedStorage) {
             // Validate pre-selected storage
@@ -75,7 +76,9 @@ final readonly class OrderService
         }
 
         // Calculate first payment price (monthly recurring or full for short rentals)
-        $firstPaymentPrice = $this->priceCalculator->calculateFirstPaymentPrice($storage, $startDate, $endDate);
+        // Admin onboarding may pin a custom monthly that survives storage-price changes.
+        $firstPaymentPrice = $monthlyPriceOverride
+            ?? $this->priceCalculator->calculateFirstPaymentPrice($storage, $startDate, $endDate);
 
         // Create order
         $order = new Order(
@@ -111,14 +114,20 @@ final readonly class OrderService
 
     /**
      * Confirm payment received.
+     *
+     * @param ?int $explicitAmount Halere amount that should be recorded as the
+     *                             initial Payment when it differs from the
+     *                             order's locked-in monthly. Used by the admin
+     *                             migrate flow (lump-sum prepayment); null
+     *                             everywhere else.
      */
-    public function confirmPayment(Order $order, \DateTimeImmutable $now = new \DateTimeImmutable()): void
+    public function confirmPayment(Order $order, \DateTimeImmutable $now = new \DateTimeImmutable(), ?int $explicitAmount = null): void
     {
         if (!$order->canBePaid()) {
             throw new \DomainException('Order cannot be paid in its current state.');
         }
 
-        $order->markPaid($now);
+        $order->markPaid($now, $explicitAmount);
         $this->auditLogger->logOrderPaid($order);
     }
 
@@ -142,6 +151,15 @@ final readonly class OrderService
             endDate: $order->endDate,
             createdAt: $now,
         );
+
+        // Carry admin-onboarding billing terms onto the contract so the
+        // recurring cron honours individual prices and external prepayment.
+        if (null !== $order->individualMonthlyAmount) {
+            $contract->applyIndividualMonthlyAmount($order->individualMonthlyAmount);
+        }
+        if (null !== $order->paidThroughDate) {
+            $contract->markExternallyPrepaid($order->paidThroughDate);
+        }
 
         // Complete the order with contract reference
         $order->complete($contract->id, $now);

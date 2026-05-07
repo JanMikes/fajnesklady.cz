@@ -129,6 +129,47 @@
 
                     <hr class="my-6 border-t border-gray-200">
 
+                    <h3 class="text-lg font-semibold mb-4">Cenový model</h3>
+                    <div class="mb-6 space-y-3">
+                        {% for choice in form.monthlyPriceMode %}
+                            <label class="flex items-center cursor-pointer gap-3">
+                                {{ form_widget(choice, {'attr': {'class': 'h-4 w-4 text-accent focus:ring-accent border-gray-300'}}) }}
+                                <span class="text-sm text-gray-700">{{ choice.vars.label }}</span>
+                            </label>
+                        {% endfor %}
+                        {{ form_errors(form.monthlyPriceMode) }}
+
+                        <div>
+                            {{ form_label(form.customMonthlyPriceInCzk) }}
+                            {{ form_widget(form.customMonthlyPriceInCzk) }}
+                            {{ form_errors(form.customMonthlyPriceInCzk) }}
+                            {% if form.customMonthlyPriceInCzk.vars.help is defined %}
+                                <p class="mt-1 text-xs text-gray-500">{{ form.customMonthlyPriceInCzk.vars.help }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <hr class="my-6 border-t border-gray-200">
+
+                    <h3 class="text-lg font-semibold mb-4">Externí předplatné</h3>
+                    <div class="mb-6 space-y-3">
+                        <label class="flex items-center cursor-pointer gap-3">
+                            {{ form_widget(form.isExternallyPrepaid, {'attr': {'class': 'h-4 w-4 text-accent focus:ring-accent border-gray-300'}}) }}
+                            <span class="text-sm text-gray-700">{{ form.isExternallyPrepaid.vars.label }}</span>
+                        </label>
+
+                        <div>
+                            {{ form_label(form.paidThroughDate) }}
+                            {{ form_widget(form.paidThroughDate) }}
+                            {{ form_errors(form.paidThroughDate) }}
+                            {% if form.paidThroughDate.vars.help is defined %}
+                                <p class="mt-1 text-xs text-gray-500">{{ form.paidThroughDate.vars.help }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <hr class="my-6 border-t border-gray-200">
+
                     <h3 class="text-lg font-semibold mb-4">Způsob platby</h3>
                     <div class="mb-6">
                         <div class="space-y-2">
@@ -142,6 +183,7 @@
                             {% endfor %}
                         </div>
                         {{ form_errors(form.paymentMethod) }}
+                        <p class="mt-2 text-xs text-gray-500">U bezplatných smluv a externího předplatného se způsob platby automaticky přepne na externí.</p>
                     </div>
 
                     <div class="flex justify-end gap-2">

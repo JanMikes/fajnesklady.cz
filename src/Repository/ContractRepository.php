@@ -467,6 +467,32 @@ class ContractRepository
         return array_map(static fn (array $r): string => (string) $r['userId'], $rows);
     }
 
+    /**
+     * Externally-prepaid contracts whose paidThroughDate falls within
+     * [$rangeStart, $rangeEnd] and which have NOT yet established a GoPay token.
+     * Idempotency: skip contracts whose lastAdvanceNoticeSentAt is at or after
+     * $rangeStart so a once-per-day cron does not double-send.
+     *
+     * @return Contract[]
+     */
+    public function findExternalPrepaymentsEndingInRange(
+        \DateTimeImmutable $rangeStart,
+        \DateTimeImmutable $rangeEnd,
+    ): array {
+        return $this->entityManager->createQueryBuilder()
+            ->select('c')
+            ->from(Contract::class, 'c')
+            ->where('c.paidThroughDate IS NOT NULL')
+            ->andWhere('c.goPayParentPaymentId IS NULL')
+            ->andWhere('c.terminatedAt IS NULL')
+            ->andWhere('c.paidThroughDate BETWEEN :rangeStart AND :rangeEnd')
+            ->andWhere('c.lastAdvanceNoticeSentAt IS NULL OR c.lastAdvanceNoticeSentAt < :rangeStart')
+            ->setParameter('rangeStart', $rangeStart)
+            ->setParameter('rangeEnd', $rangeEnd)
+            ->getQuery()
+            ->getResult();
+    }
+
     public function findByGoPayParentPaymentId(string $parentPaymentId): ?Contract
     {
         return $this->entityManager->createQueryBuilder()

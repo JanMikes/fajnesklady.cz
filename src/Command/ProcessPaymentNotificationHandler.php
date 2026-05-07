@@ -123,7 +123,7 @@ final readonly class ProcessPaymentNotificationHandler
 
         $contract->recordBillingCharge($now, $nextBillingDate, $paidThroughDate);
 
-        $amount = $status->amount ?? $contract->storage->getEffectivePricePerMonth();
+        $amount = $status->amount ?? $contract->getEffectiveMonthlyAmount();
 
         $this->eventBus->dispatch(new RecurringPaymentCharged(
             contractId: $contract->id,

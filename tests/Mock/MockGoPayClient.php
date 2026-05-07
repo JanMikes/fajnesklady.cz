@@ -176,6 +176,21 @@ final class MockGoPayClient implements GoPayClient
         return $this->createdPayments;
     }
 
+    /**
+     * @return array<string, ?int> Amounts charged via createRecurrence(), keyed by paymentId
+     */
+    public function getRecurrenceAmounts(): array
+    {
+        $amounts = [];
+        foreach ($this->paymentStatuses as $paymentId => $status) {
+            if (null !== $status->parentId) {
+                $amounts[$paymentId] = $status->amount;
+            }
+        }
+
+        return $amounts;
+    }
+
     public function wasRecurrenceVoided(string $paymentId): bool
     {
         return isset($this->voidedRecurrences[$paymentId]);

@@ -7,10 +7,13 @@
         <h1 class="text-3xl font-bold text-gray-900">Uživatelé</h1>
     </div>
 
-    <div class="mb-4 flex items-center gap-2">
+    <div class="mb-4 flex items-center gap-2 flex-wrap">
         <a href="{{ path('portal_users_list') }}" class="btn btn-sm {{ filter ? 'btn-ghost' : 'btn-primary' }}">Vše</a>
         <a href="{{ path('portal_users_list', {filter: 'overdue'}) }}" class="btn btn-sm {{ filter == 'overdue' ? 'btn-error' : 'btn-ghost' }}">
             Pouze dlužníci ({{ overdueUserCount }})
+        </a>
+        <a href="{{ path('portal_users_list', {filter: 'onboarded'}) }}" class="btn btn-sm {{ filter == 'onboarded' ? 'btn-secondary' : 'btn-ghost' }}">
+            Pouze onboardovaní ({{ onboardedUserCount }})
         </a>
     </div>
 
@@ -71,6 +74,9 @@
                                             </svg>
                                             Dlužník
                                         </span>
+                                    {% endif %}
+                                    {% if onboardedIdSet[user.id.toRfc4122()] is defined %}
+                                        <span class="badge badge-secondary" title="Zákazník byl onboardován adminem">Onboardovaný</span>
                                     {% endif %}
                                 </div>
                             </td>

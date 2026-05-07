@@ -48,7 +48,8 @@ final readonly class AdminMigrateCustomerHandler
             $user->updateBirthDate($command->birthDate, $now);
         }
 
-        // 3. Create order
+        // 3. Create order — locked-in monthly is individualMonthlyAmount (when set)
+        // or the storage default; the lump sum is recorded separately as a Payment.
         $order = $this->orderService->createOrder(
             user: $user,
             storageType: $command->storageType,
@@ -59,21 +60,28 @@ final readonly class AdminMigrateCustomerHandler
             now: $now,
             paymentFrequency: PaymentFrequency::MONTHLY,
             preSelectedStorage: $command->storage,
+            monthlyPriceOverride: $command->individualMonthlyAmount,
         );
 
         // 4. Mark as admin-created with external payment
         $order->markAsAdminCreated();
         $order->setPaymentMethod(PaymentMethod::EXTERNAL);
-        $order->overrideFirstPaymentPrice($command->totalPrice);
+
+        // Default paidThroughDate to endDate for LIMITED rentals when omitted
+        $paidThroughDate = $command->paidThroughDate ?? $command->endDate;
+        $order->setOnboardingBillingTerms($command->individualMonthlyAmount, $paidThroughDate);
 
         // 5. Accept terms + reserve storage
         $order->acceptTerms($now);
         $order->reserve($now);
 
-        // 6. Confirm payment (triggers OrderPaid event → Payment + Invoice creation)
-        $this->orderService->confirmPayment($order, $command->paidAt);
+        // 6. Confirm payment with the lump-sum override → records Payment for the
+        // amount actually paid externally, while Order.firstPaymentPrice keeps
+        // the locked-in monthly the cron will replay later.
+        $this->orderService->confirmPayment($order, $command->paidAt, $command->totalPrice);
 
-        // 7. Complete order → create Contract, storage → OCCUPIED
+        // 7. Complete order → create Contract, storage → OCCUPIED. The contract
+        // inherits individualMonthlyAmount + paidThroughDate via OrderService.
         $contract = $this->orderService->completeOrder($order, $now);
 
         // 8. Move uploaded contract document and attach to contract

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\Entity\Contract;
+use App\Entity\Order;
 use App\Entity\User;
 use App\Enum\UserRole;
 use App\Exception\UserNotFound;
@@ -202,6 +203,81 @@ class UserRepository
             ->setParameter('overdueIds', $this->overdueUserIdsSubquery($now))
             ->getQuery()
             ->getSingleScalarResult();
+    }
+
+    /**
+     * @return User[]
+     */
+    public function findOnboardedPaginated(int $page, int $limit): array
+    {
+        $offset = ($page - 1) * $limit;
+
+        return $this->entityManager->createQueryBuilder()
+            ->select('u')
+            ->from(User::class, 'u')
+            ->where('u.id IN (:onboardedIds)')
+            ->setParameter('onboardedIds', $this->onboardedUserIdsSubquery())
+            ->orderBy('u.createdAt', 'DESC')
+            ->addOrderBy('u.id', 'DESC')
+            ->setFirstResult($offset)
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+    }
+
+    public function countOnboarded(): int
+    {
+        return (int) $this->entityManager->createQueryBuilder()
+            ->select('COUNT(u.id)')
+            ->from(User::class, 'u')
+            ->where('u.id IN (:onboardedIds)')
+            ->setParameter('onboardedIds', $this->onboardedUserIdsSubquery())
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    /**
+     * @param Uuid[] $userIds
+     *
+     * @return string[] RFC-4122 strings of users with ≥1 admin-created order
+     */
+    public function findOnboardedUserIds(array $userIds): array
+    {
+        if ([] === $userIds) {
+            return [];
+        }
+
+        /** @var array<int, array{userId: string}> $rows */
+        $rows = $this->entityManager->createQueryBuilder()
+            ->select('DISTINCT IDENTITY(o.user) AS userId')
+            ->from(Order::class, 'o')
+            ->where('o.isAdminCreated = true')
+            ->andWhere('o.user IN (:ids)')
+            ->setParameter('ids', $userIds)
+            ->getQuery()
+            ->getArrayResult();
+
+        return array_map(static fn (array $r): string => (string) $r['userId'], $rows);
+    }
+
+    /**
+     * @return string[] sentinel zero-UUID when empty (DBAL forbids empty IN-lists)
+     */
+    private function onboardedUserIdsSubquery(): array
+    {
+        /** @var array<int, array{userId: string}> $rows */
+        $rows = $this->entityManager->createQueryBuilder()
+            ->select('DISTINCT IDENTITY(o.user) AS userId')
+            ->from(Order::class, 'o')
+            ->where('o.isAdminCreated = true')
+            ->getQuery()
+            ->getArrayResult();
+
+        if ([] === $rows) {
+            return ['00000000-0000-0000-0000-000000000000'];
+        }
+
+        return array_map(static fn (array $r): string => (string) $r['userId'], $rows);
     }
 
     /**

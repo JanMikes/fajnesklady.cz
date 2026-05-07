@@ -67,6 +67,20 @@ final class AdminCreateOnboardingFormData
     #[Assert\NotNull(message: 'Vyberte způsob platby.')]
     public PaymentMethod $paymentMethod = PaymentMethod::EXTERNAL;
 
+    /**
+     * Cenový model: 'standard' (sazba skladu), 'custom' (individuální měsíční cena),
+     * 'free' (zdarma — bez účtování).
+     */
+    public string $monthlyPriceMode = 'standard';
+
+    #[Assert\PositiveOrZero(message: 'Cena nemůže být záporná.')]
+    #[Assert\LessThanOrEqual(value: 15000, message: 'Maximální měsíční cena je 15 000 Kč (zákonný strop pro opakované platby).')]
+    public ?float $customMonthlyPriceInCzk = null;
+
+    public bool $isExternallyPrepaid = false;
+
+    public ?\DateTimeImmutable $paidThroughDate = null;
+
     #[Assert\Callback]
     public function validateCompanyInfo(ExecutionContextInterface $context): void
     {
@@ -122,6 +136,51 @@ final class AdminCreateOnboardingFormData
                     ->atPath('endDate')
                     ->addViolation();
             }
+        }
+    }
+
+    #[Assert\Callback]
+    public function validateMonthlyPriceMode(ExecutionContextInterface $context): void
+    {
+        if ('custom' !== $this->monthlyPriceMode) {
+            return;
+        }
+
+        if (null === $this->customMonthlyPriceInCzk || $this->customMonthlyPriceInCzk <= 0) {
+            $context->buildViolation('Zadejte individuální měsíční cenu.')
+                ->atPath('customMonthlyPriceInCzk')
+                ->addViolation();
+        }
+    }
+
+    #[Assert\Callback]
+    public function validatePaidThroughDate(ExecutionContextInterface $context): void
+    {
+        if (!$this->isExternallyPrepaid) {
+            return;
+        }
+
+        if (null === $this->paidThroughDate) {
+            $context->buildViolation('Zadejte datum, do kdy je předplaceno.')
+                ->atPath('paidThroughDate')
+                ->addViolation();
+
+            return;
+        }
+
+        if (null !== $this->startDate && $this->paidThroughDate < $this->startDate) {
+            $context->buildViolation('Datum předplatby nemůže být před datem začátku.')
+                ->atPath('paidThroughDate')
+                ->addViolation();
+        }
+
+        if (RentalType::LIMITED === $this->rentalType
+            && null !== $this->endDate
+            && $this->paidThroughDate > $this->endDate
+        ) {
+            $context->buildViolation('Datum předplatby nemůže být po datu konce smlouvy.')
+                ->atPath('paidThroughDate')
+                ->addViolation();
         }
     }
 }

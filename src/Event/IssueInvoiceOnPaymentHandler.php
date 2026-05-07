@@ -27,6 +27,12 @@ final readonly class IssueInvoiceOnPaymentHandler
     {
         $order = $this->orderRepository->get($event->orderId);
 
+        if (0 === $order->firstPaymentPrice) {
+            // Free contract — no invoice. The recurring cron has the same
+            // early-return on $amount <= 0; spec 025 keeps invoicing in sync.
+            return;
+        }
+
         if (null !== $this->invoiceRepository->findByOrder($order)) {
             return;
         }

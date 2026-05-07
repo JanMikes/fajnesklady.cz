@@ -24,7 +24,11 @@ final readonly class OverdueChecker
      */
     public function findOverdueViews(\DateTimeImmutable $now): array
     {
-        $contracts = $this->contractRepository->findWithPaymentIssues($now);
+        // Free contracts have a zero monthly — a "0 Kč overdue" entry is meaningless.
+        $contracts = array_values(array_filter(
+            $this->contractRepository->findWithPaymentIssues($now),
+            static fn (Contract $c): bool => !$c->isFree(),
+        ));
         $views = array_map(fn (Contract $c): OverdueContractView => $this->buildView($c, $now), $contracts);
 
         usort($views, function (OverdueContractView $a, OverdueContractView $b): int {

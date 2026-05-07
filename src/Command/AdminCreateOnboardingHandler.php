@@ -7,6 +7,7 @@ namespace App\Command;
 use App\Entity\Order;
 use App\Entity\User;
 use App\Enum\PaymentFrequency;
+use App\Enum\PaymentMethod;
 use App\Event\AdminOnboardingInitiated;
 use App\Repository\UserRepository;
 use App\Service\Identity\ProvideIdentity;
@@ -60,11 +61,18 @@ final readonly class AdminCreateOnboardingHandler
             now: $now,
             paymentFrequency: PaymentFrequency::MONTHLY,
             preSelectedStorage: $command->storage,
+            monthlyPriceOverride: $command->individualMonthlyAmount,
         );
 
         // 4. Mark as admin-created with signing token
         $order->markAsAdminCreated();
-        $order->setPaymentMethod($command->paymentMethod);
+
+        // Free contracts and external prepayment must be EXTERNAL — neither
+        // can be charged via GoPay during signing.
+        $forceExternal = 0 === $command->individualMonthlyAmount || null !== $command->paidThroughDate;
+        $order->setPaymentMethod($forceExternal ? PaymentMethod::EXTERNAL : $command->paymentMethod);
+
+        $order->setOnboardingBillingTerms($command->individualMonthlyAmount, $command->paidThroughDate);
         $order->setSigningToken(bin2hex(random_bytes(32)));
         $order->extendExpiration($now->modify('+'.self::ONBOARDING_EXPIRATION_DAYS.' days'));
 
