@@ -300,6 +300,135 @@ class StorageRepository
             ->getSingleScalarResult();
     }
 
+    public function countAtPlace(Place $place, ?User $owner): int
+    {
+        return (int) $this->scopedAtPlace($place, $owner)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    public function countOccupiedAtPlace(Place $place, ?User $owner): int
+    {
+        return (int) $this->scopedAtPlace($place, $owner)
+            ->andWhere('s.status = :status')
+            ->setParameter('status', StorageStatus::OCCUPIED)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    public function countAvailableAtPlace(Place $place, ?User $owner): int
+    {
+        return (int) $this->scopedAtPlace($place, $owner)
+            ->andWhere('s.status = :status')
+            ->setParameter('status', StorageStatus::AVAILABLE)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    public function countBlockedAtPlace(Place $place, ?User $owner): int
+    {
+        return (int) $this->scopedAtPlace($place, $owner)
+            ->andWhere('s.status = :status')
+            ->setParameter('status', StorageStatus::MANUALLY_UNAVAILABLE)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    /**
+     * True iff there's ≥1 non-deleted storage at $place owned by someone other
+     * than $excludeOwner (and whose owner is set). Surfaces a co-owner
+     * disclaimer on the landlord dashboard.
+     */
+    public function hasCoOwners(Place $place, User $excludeOwner): bool
+    {
+        $count = (int) $this->entityManager->createQueryBuilder()
+            ->select('COUNT(s.id)')
+            ->from(Storage::class, 's')
+            ->where('s.place = :place')
+            ->andWhere('s.deletedAt IS NULL')
+            ->andWhere('s.owner IS NOT NULL')
+            ->andWhere('s.owner != :owner')
+            ->setParameter('place', $place)
+            ->setParameter('owner', $excludeOwner)
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return $count > 0;
+    }
+
+    /**
+     * Per–storage-type free count at a place, scoped to an optional owner.
+     *
+     * @return list<array{storageType: StorageType, freeCount: int}>
+     */
+    public function findFreeCountByTypeAtPlace(Place $place, ?User $owner): array
+    {
+        $qb = $this->entityManager->createQueryBuilder()
+            ->select('IDENTITY(s.storageType) AS typeId, COUNT(s.id) AS freeCount')
+            ->from(Storage::class, 's')
+            ->where('s.place = :place')
+            ->andWhere('s.deletedAt IS NULL')
+            ->andWhere('s.status = :status')
+            ->setParameter('place', $place)
+            ->setParameter('status', StorageStatus::AVAILABLE)
+            ->groupBy('s.storageType');
+
+        if (null !== $owner) {
+            $qb->andWhere('s.owner = :owner')->setParameter('owner', $owner);
+        }
+
+        /** @var list<array{typeId: string, freeCount: int|string}> $rows */
+        $rows = $qb->getQuery()->getArrayResult();
+
+        if ([] === $rows) {
+            return [];
+        }
+
+        $typeIds = array_map(static fn (array $r): string => (string) $r['typeId'], $rows);
+        /** @var StorageType[] $types */
+        $types = $this->entityManager->createQueryBuilder()
+            ->select('st')
+            ->from(StorageType::class, 'st')
+            ->where('st.id IN (:ids)')
+            ->setParameter('ids', $typeIds)
+            ->getQuery()
+            ->getResult();
+
+        $byId = [];
+        foreach ($types as $t) {
+            $byId[(string) $t->id] = $t;
+        }
+
+        $result = [];
+        foreach ($rows as $r) {
+            $key = (string) $r['typeId'];
+            if (!isset($byId[$key])) {
+                continue;
+            }
+            $result[] = ['storageType' => $byId[$key], 'freeCount' => (int) $r['freeCount']];
+        }
+
+        usort($result, static fn (array $a, array $b): int => strnatcmp($a['storageType']->name, $b['storageType']->name));
+
+        return $result;
+    }
+
+    private function scopedAtPlace(Place $place, ?User $owner): \Doctrine\ORM\QueryBuilder
+    {
+        $qb = $this->entityManager->createQueryBuilder()
+            ->select('COUNT(s.id)')
+            ->from(Storage::class, 's')
+            ->where('s.place = :place')
+            ->andWhere('s.deletedAt IS NULL')
+            ->setParameter('place', $place);
+
+        if (null !== $owner) {
+            $qb->andWhere('s.owner = :owner')->setParameter('owner', $owner);
+        }
+
+        return $qb;
+    }
+
     public function countByOwner(User $owner): int
     {
         return (int) $this->entityManager->createQueryBuilder()

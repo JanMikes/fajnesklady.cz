@@ -6,6 +6,7 @@ namespace App\Repository;
 
 use App\Entity\Contract;
 use App\Entity\Order;
+use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
@@ -586,5 +587,77 @@ class ContractRepository
             ->andWhere('c.terminatedAt IS NULL')
             ->getQuery()
             ->getSingleScalarResult();
+    }
+
+    public function countActiveRecurringAtPlace(Place $place, ?User $owner): int
+    {
+        $qb = $this->entityManager->createQueryBuilder()
+            ->select('COUNT(c.id)')
+            ->from(Contract::class, 'c')
+            ->join('c.storage', 's')
+            ->where('s.place = :place')
+            ->andWhere('c.goPayParentPaymentId IS NOT NULL')
+            ->andWhere('c.terminatedAt IS NULL')
+            ->setParameter('place', $place);
+
+        if (null !== $owner) {
+            $qb->andWhere('s.owner = :owner')->setParameter('owner', $owner);
+        }
+
+        return (int) $qb->getQuery()->getSingleScalarResult();
+    }
+
+    public function sumExpectedRecurringAtPlace(Place $place, ?User $owner): int
+    {
+        $qb = $this->entityManager->createQueryBuilder()
+            ->select('SUM(o.firstPaymentPrice)')
+            ->from(Contract::class, 'c')
+            ->join('c.storage', 's')
+            ->join('c.order', 'o')
+            ->where('s.place = :place')
+            ->andWhere('c.goPayParentPaymentId IS NOT NULL')
+            ->andWhere('c.terminatedAt IS NULL')
+            ->setParameter('place', $place);
+
+        if (null !== $owner) {
+            $qb->andWhere('s.owner = :owner')->setParameter('owner', $owner);
+        }
+
+        return (int) ($qb->getQuery()->getSingleScalarResult() ?? 0);
+    }
+
+    /**
+     * Active contracts at $place whose endDate falls within $days from $now.
+     * Same semantics as findExpiringWithinDays but place-scoped.
+     *
+     * @return Contract[]
+     */
+    public function findExpiringWithinDaysAtPlace(
+        int $days,
+        \DateTimeImmutable $now,
+        Place $place,
+        ?User $owner,
+    ): array {
+        $futureDate = $now->modify("+{$days} days");
+
+        $qb = $this->entityManager->createQueryBuilder()
+            ->select('c')
+            ->from(Contract::class, 'c')
+            ->join('c.storage', 's')
+            ->where('s.place = :place')
+            ->andWhere('c.terminatedAt IS NULL')
+            ->andWhere('c.endDate IS NOT NULL')
+            ->andWhere('c.endDate >= :now')
+            ->andWhere('c.endDate <= :futureDate')
+            ->setParameter('place', $place)
+            ->setParameter('now', $now)
+            ->setParameter('futureDate', $futureDate)
+            ->orderBy('c.endDate', 'ASC');
+
+        if (null !== $owner) {
+            $qb->andWhere('s.owner = :owner')->setParameter('owner', $owner);
+        }
+
+        return $qb->getQuery()->getResult();
     }
 }

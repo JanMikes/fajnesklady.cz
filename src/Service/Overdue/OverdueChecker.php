@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service\Overdue;
 
 use App\Entity\Contract;
+use App\Entity\Place;
 use App\Repository\ContractRepository;
 use App\Value\OverdueContractView;
 use App\Value\OverdueSeverity;
@@ -38,6 +39,22 @@ final readonly class OverdueChecker
     public function summarise(\DateTimeImmutable $now): OverdueSummary
     {
         $views = $this->findOverdueViews($now);
+        $totalAmount = array_sum(array_map(static fn (OverdueContractView $v): int => $v->overdueAmount, $views));
+
+        return new OverdueSummary(
+            count: count($views),
+            totalAmount: $totalAmount,
+            top: array_slice($views, 0, 5),
+        );
+    }
+
+    public function summariseForPlace(\DateTimeImmutable $now, Place $place): OverdueSummary
+    {
+        $views = array_values(array_filter(
+            $this->findOverdueViews($now),
+            static fn (OverdueContractView $v): bool => $v->contract->storage->place->id->equals($place->id),
+        ));
+
         $totalAmount = array_sum(array_map(static fn (OverdueContractView $v): int => $v->overdueAmount, $views));
 
         return new OverdueSummary(

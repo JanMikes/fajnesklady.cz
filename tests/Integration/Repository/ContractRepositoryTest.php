@@ -77,7 +77,7 @@ class ContractRepositoryTest extends KernelTestCase
         return $storageType;
     }
 
-    private function createStorage(StorageType $storageType, Place $place, string $number): Storage
+    private function createStorage(StorageType $storageType, Place $place, string $number, ?User $owner = null): Storage
     {
         $storage = new Storage(
             id: Uuid::v7(),
@@ -86,6 +86,7 @@ class ContractRepositoryTest extends KernelTestCase
             storageType: $storageType,
             place: $place,
             createdAt: new \DateTimeImmutable(),
+            owner: $owner,
         );
         $this->entityManager->persist($storage);
 
@@ -563,5 +564,81 @@ class ContractRepositoryTest extends KernelTestCase
         $this->assertContains($debtor->id->toRfc4122(), $debtorOnly);
         $this->assertNotContains($clean->id->toRfc4122(), $cleanOnly);
         $this->assertSame([], $emptyInput);
+    }
+
+    public function testCountAndSumActiveRecurringAtPlaceScopedByOwner(): void
+    {
+        $tenant = $this->createUser('tenant-rec-place@test.com');
+        $landlordA = $this->createUser('landlord-rec-A@test.com');
+        $landlordB = $this->createUser('landlord-rec-B@test.com');
+        $place = $this->createPlace();
+        $st = $this->createStorageType();
+        $storageA = $this->createStorage($st, $place, 'RPA', $landlordA);
+        $storageB = $this->createStorage($st, $place, 'RPB', $landlordB);
+
+        $orderA = $this->createOrder($tenant, $storageA, new \DateTimeImmutable('-30 days'), null);
+        $orderA->markPaid(new \DateTimeImmutable('-29 days'));
+        $contractA = $this->createContract($orderA, $tenant, $storageA, new \DateTimeImmutable('-30 days'), null);
+        $contractA->setRecurringPayment('parent-A', new \DateTimeImmutable('+5 days'), new \DateTimeImmutable('-1 day'));
+
+        $orderB = $this->createOrder($tenant, $storageB, new \DateTimeImmutable('-30 days'), null);
+        $orderB->markPaid(new \DateTimeImmutable('-29 days'));
+        $contractB = $this->createContract($orderB, $tenant, $storageB, new \DateTimeImmutable('-30 days'), null);
+        $contractB->setRecurringPayment('parent-B', new \DateTimeImmutable('+5 days'), new \DateTimeImmutable('-1 day'));
+
+        $this->entityManager->flush();
+
+        $this->assertSame(2, $this->repository->countActiveRecurringAtPlace($place, null));
+        $this->assertSame(1, $this->repository->countActiveRecurringAtPlace($place, $landlordA));
+
+        // Each order's firstPaymentPrice is 10000 in the helper.
+        $this->assertSame(20000, $this->repository->sumExpectedRecurringAtPlace($place, null));
+        $this->assertSame(10000, $this->repository->sumExpectedRecurringAtPlace($place, $landlordA));
+    }
+
+    public function testFindExpiringWithinDaysAtPlaceScopedByPlaceAndOwner(): void
+    {
+        $tenant = $this->createUser('tenant-expiring-place@test.com');
+        $landlord = $this->createUser('landlord-expiring@test.com');
+        $stranger = $this->createUser('stranger-expiring@test.com');
+        $placeA = $this->createPlace();
+        $placeB = $this->createPlace();
+        $st = $this->createStorageType();
+
+        $now = new \DateTimeImmutable('2025-06-15 12:00:00');
+
+        $myStorageA = $this->createStorage($st, $placeA, 'EXA1', $landlord);
+        $strangerStorageA = $this->createStorage($st, $placeA, 'EXA2', $stranger);
+        $storageB = $this->createStorage($st, $placeB, 'EXB1', $landlord);
+
+        // expires within 30d at placeA, owned by landlord — IN
+        $orderInA = $this->createOrder($tenant, $myStorageA, $now, $now->modify('+10 days'));
+        $contractInA = $this->createContract($orderInA, $tenant, $myStorageA, $now, $now->modify('+10 days'));
+
+        // expires within 30d at placeA, owned by stranger — IN for null, OUT for landlord
+        $orderStranger = $this->createOrder($tenant, $strangerStorageA, $now, $now->modify('+15 days'));
+        $contractStranger = $this->createContract($orderStranger, $tenant, $strangerStorageA, $now, $now->modify('+15 days'));
+
+        // expires within 30d at placeB — different place, OUT
+        $orderOtherPlace = $this->createOrder($tenant, $storageB, $now, $now->modify('+5 days'));
+        $contractOtherPlace = $this->createContract($orderOtherPlace, $tenant, $storageB, $now, $now->modify('+5 days'));
+
+        // expires past 30d at placeA — OUT
+        $orderTooFar = $this->createOrder($tenant, $myStorageA, $now, $now->modify('+45 days'));
+        $contractTooFar = $this->createContract($orderTooFar, $tenant, $myStorageA, $now, $now->modify('+45 days'));
+
+        $this->entityManager->flush();
+
+        $admin = $this->repository->findExpiringWithinDaysAtPlace(30, $now, $placeA, null);
+        $adminIds = array_map(fn (Contract $c) => $c->id->toRfc4122(), $admin);
+        $this->assertContains($contractInA->id->toRfc4122(), $adminIds);
+        $this->assertContains($contractStranger->id->toRfc4122(), $adminIds);
+        $this->assertNotContains($contractOtherPlace->id->toRfc4122(), $adminIds);
+        $this->assertNotContains($contractTooFar->id->toRfc4122(), $adminIds);
+
+        $landlordOnly = $this->repository->findExpiringWithinDaysAtPlace(30, $now, $placeA, $landlord);
+        $landlordIds = array_map(fn (Contract $c) => $c->id->toRfc4122(), $landlordOnly);
+        $this->assertContains($contractInA->id->toRfc4122(), $landlordIds);
+        $this->assertNotContains($contractStranger->id->toRfc4122(), $landlordIds);
     }
 }

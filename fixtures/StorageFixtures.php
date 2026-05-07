@@ -54,6 +54,11 @@ final class StorageFixtures extends Fixture implements DependentFixtureInterface
     public const REF_CUSTOM_X2 = 'storage-custom-x2';
     public const REF_CUSTOM_X3 = 'storage-custom-x3';
 
+    // Praha Centrum - Co-owner storage (owned by landlord2 at landlord's place,
+    // surfaces the "Vidíte pouze své sklady" disclaimer to landlord on the
+    // place dashboard).
+    public const REF_SMALL_Z1_LANDLORD2 = 'storage-small-z1-landlord2';
+
     public function __construct(
         private ClockInterface $clock,
     ) {
@@ -270,6 +275,20 @@ final class StorageFixtures extends Fixture implements DependentFixtureInterface
         // No updatePrices call - uses default storage type prices (400 CZK/week, 1400 CZK/month)
         $manager->persist($storageX3);
         $this->addReference(self::REF_CUSTOM_X3, $storageX3);
+
+        // Z1 - storage at Praha Centrum owned by landlord2 (co-owner of the place).
+        // Lets the place dashboard test the "Vidíte pouze své sklady" disclaimer.
+        $storageZ1 = new Storage(
+            id: Uuid::v7(),
+            number: 'Z1',
+            coordinates: ['x' => 1000, 'y' => 50, 'width' => 100, 'height' => 100, 'rotation' => 0, 'normalized' => true],
+            storageType: $smallTypeCentrum,
+            place: $placePrahaCentrum,
+            createdAt: $now,
+            owner: $landlord2,
+        );
+        $manager->persist($storageZ1);
+        $this->addReference(self::REF_SMALL_Z1_LANDLORD2, $storageZ1);
 
         $manager->flush();
     }

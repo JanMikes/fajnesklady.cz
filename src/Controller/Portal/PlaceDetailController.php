@@ -5,11 +5,16 @@ declare(strict_types=1);
 namespace App\Controller\Portal;
 
 use App\Entity\User;
+use App\Query\GetPlaceDashboardStats;
+use App\Query\QueryBus;
+use App\Repository\ContractRepository;
+use App\Repository\OrderRepository;
 use App\Repository\PlaceAccessRepository;
 use App\Repository\PlaceRepository;
 use App\Repository\StorageRepository;
 use App\Repository\StorageTypeRepository;
 use App\Service\Security\PlaceVoter;
+use Psr\Clock\ClockInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -25,33 +30,56 @@ final class PlaceDetailController extends AbstractController
         private readonly StorageRepository $storageRepository,
         private readonly StorageTypeRepository $storageTypeRepository,
         private readonly PlaceAccessRepository $placeAccessRepository,
+        private readonly ContractRepository $contractRepository,
+        private readonly OrderRepository $orderRepository,
+        private readonly QueryBus $queryBus,
+        private readonly ClockInterface $clock,
     ) {
     }
 
     public function __invoke(string $id): Response
     {
         $place = $this->placeRepository->get(Uuid::fromString($id));
-
         $this->denyAccessUnlessGranted(PlaceVoter::VIEW, $place);
 
         /** @var User $user */
         $user = $this->getUser();
+        $isAdmin = $this->isGranted('ROLE_ADMIN');
+        $now = $this->clock->now();
+
+        $ownerScope = $isAdmin ? null : $user;
+
+        $stats = $this->queryBus->handle(new GetPlaceDashboardStats(
+            placeId: $place->id,
+            landlordId: $isAdmin ? null : $user->id,
+        ));
+
+        $expiringContracts = $this->contractRepository
+            ->findExpiringWithinDaysAtPlace(30, $now, $place, $ownerScope);
+        $upcomingOrders = $this->orderRepository
+            ->findUpcomingAtPlace($place, 30, $now, $ownerScope);
+        $recentOrders = $this->orderRepository
+            ->findRecentAtPlace($place, 5, $ownerScope);
+        $freeByType = $this->storageRepository
+            ->findFreeCountByTypeAtPlace($place, $ownerScope);
 
         $storageTypeCount = $this->storageTypeRepository->countByPlace($place);
-
-        if ($this->isGranted('ROLE_ADMIN')) {
-            $storageCount = $this->storageRepository->countByPlace($place);
-        } else {
-            $storageCount = $this->storageRepository->countByOwnerAndPlace($user, $place);
-        }
-
-        $hasAccess = $this->isGranted('ROLE_ADMIN') || $this->placeAccessRepository->hasAccess($user, $place);
+        $storageCount = $isAdmin
+            ? $this->storageRepository->countByPlace($place)
+            : $this->storageRepository->countByOwnerAndPlace($user, $place);
+        $hasAccess = $isAdmin || $this->placeAccessRepository->hasAccess($user, $place);
 
         return $this->render('portal/place/detail.html.twig', [
             'place' => $place,
+            'stats' => $stats,
+            'expiringContracts' => $expiringContracts,
+            'upcomingOrders' => $upcomingOrders,
+            'recentOrders' => $recentOrders,
+            'freeByType' => $freeByType,
             'storageTypeCount' => $storageTypeCount,
             'storageCount' => $storageCount,
             'hasAccess' => $hasAccess,
+            'isAdmin' => $isAdmin,
         ]);
     }
 }

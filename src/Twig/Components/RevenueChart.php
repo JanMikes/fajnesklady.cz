@@ -6,6 +6,7 @@ namespace App\Twig\Components;
 
 use App\Query\GetAdminRevenueChart;
 use App\Query\GetLandlordRevenueChart;
+use App\Query\GetPlaceRevenueChart;
 use App\Query\QueryBus;
 use Symfony\Component\Uid\Uuid;
 use Symfony\UX\Chartjs\Builder\ChartBuilderInterface;
@@ -25,6 +26,9 @@ final class RevenueChart
     #[LiveProp]
     public ?string $landlordId = null;
 
+    #[LiveProp]
+    public ?string $placeId = null;
+
     public function __construct(
         private readonly QueryBus $queryBus,
         private readonly ChartBuilderInterface $chartBuilder,
@@ -33,7 +37,13 @@ final class RevenueChart
 
     public function getChart(): Chart
     {
-        if (null !== $this->landlordId) {
+        if (null !== $this->placeId) {
+            $result = $this->queryBus->handle(new GetPlaceRevenueChart(
+                placeId: Uuid::fromString($this->placeId),
+                landlordId: null !== $this->landlordId ? Uuid::fromString($this->landlordId) : null,
+                months: $this->months,
+            ));
+        } elseif (null !== $this->landlordId) {
             $result = $this->queryBus->handle(new GetLandlordRevenueChart(
                 landlordId: Uuid::fromString($this->landlordId),
                 months: $this->months,

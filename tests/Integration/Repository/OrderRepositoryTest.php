@@ -452,4 +452,93 @@ class OrderRepositoryTest extends KernelTestCase
 
         $this->assertSame(2, $count);
     }
+
+    public function testFindRecentAtPlaceHonoursLimit(): void
+    {
+        $tenant = $this->createUser('tenant-recent@test.com');
+        $landlord = $this->createUser('landlord-recent@test.com');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage = $this->createStorage($storageType, $place, 'RECENT1', $landlord);
+
+        for ($i = 0; $i < 4; ++$i) {
+            $order = $this->createOrder($tenant, $storage, new \DateTimeImmutable('+1 day'), new \DateTimeImmutable('+30 days'));
+            $order->reserve(new \DateTimeImmutable());
+        }
+
+        $this->entityManager->flush();
+
+        $this->assertCount(2, $this->repository->findRecentAtPlace($place, 2, null));
+        $this->assertCount(4, $this->repository->findRecentAtPlace($place, 0, null));
+    }
+
+    public function testFindRecentAtPlaceFiltersByOwner(): void
+    {
+        $tenant = $this->createUser('tenant-recent-scope@test.com');
+        $landlordA = $this->createUser('landlord-A@test.com');
+        $landlordB = $this->createUser('landlord-B@test.com');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storageA = $this->createStorage($storageType, $place, 'OWNA', $landlordA);
+        $storageB = $this->createStorage($storageType, $place, 'OWNB', $landlordB);
+
+        $orderA = $this->createOrder($tenant, $storageA, new \DateTimeImmutable('+1 day'), new \DateTimeImmutable('+30 days'));
+        $orderA->reserve(new \DateTimeImmutable());
+        $orderB = $this->createOrder($tenant, $storageB, new \DateTimeImmutable('+1 day'), new \DateTimeImmutable('+30 days'));
+        $orderB->reserve(new \DateTimeImmutable());
+
+        $this->entityManager->flush();
+
+        $forA = $this->repository->findRecentAtPlace($place, 0, $landlordA);
+        $this->assertCount(1, $forA);
+        $this->assertTrue($forA[0]->id->equals($orderA->id));
+
+        $forB = $this->repository->findRecentAtPlace($place, 0, $landlordB);
+        $this->assertCount(1, $forB);
+        $this->assertTrue($forB[0]->id->equals($orderB->id));
+
+        $this->assertCount(2, $this->repository->findRecentAtPlace($place, 0, null));
+    }
+
+    public function testFindUpcomingAtPlaceFiltersByStatusAndWindow(): void
+    {
+        $tenant = $this->createUser('tenant-upcoming@test.com');
+        $landlord = $this->createUser('landlord-upcoming@test.com');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage1 = $this->createStorage($storageType, $place, 'UPC1', $landlord);
+        $storage2 = $this->createStorage($storageType, $place, 'UPC2', $landlord);
+        $storage3 = $this->createStorage($storageType, $place, 'UPC3', $landlord);
+        $storage4 = $this->createStorage($storageType, $place, 'UPC4', $landlord);
+
+        $now = new \DateTimeImmutable('2025-06-15 12:00:00');
+
+        // Reserved within window
+        $reserved = $this->createOrder($tenant, $storage1, $now->modify('+5 days'), $now->modify('+35 days'));
+        $reserved->reserve($now);
+
+        // Paid within window
+        $paid = $this->createOrder($tenant, $storage2, $now->modify('+10 days'), $now->modify('+40 days'));
+        $paid->reserve($now);
+        $paid->markPaid($now);
+
+        // Cancelled within window — excluded
+        $cancelled = $this->createOrder($tenant, $storage3, $now->modify('+7 days'), $now->modify('+37 days'));
+        $cancelled->reserve($now);
+        $cancelled->cancel($now);
+
+        // Reserved past window
+        $tooFar = $this->createOrder($tenant, $storage4, $now->modify('+45 days'), $now->modify('+75 days'));
+        $tooFar->reserve($now);
+
+        $this->entityManager->flush();
+
+        $upcoming = $this->repository->findUpcomingAtPlace($place, 30, $now, null);
+        $ids = array_map(fn (Order $o): string => $o->id->toRfc4122(), $upcoming);
+
+        $this->assertContains($reserved->id->toRfc4122(), $ids);
+        $this->assertContains($paid->id->toRfc4122(), $ids);
+        $this->assertNotContains($cancelled->id->toRfc4122(), $ids);
+        $this->assertNotContains($tooFar->id->toRfc4122(), $ids);
+    }
 }

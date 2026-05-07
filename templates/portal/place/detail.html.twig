@@ -9,7 +9,27 @@
     ]} %}
 {% endblock %}
 
+{% set statusClass = {
+    'created': 'bg-gray-100 text-gray-800',
+    'reserved': 'bg-yellow-100 text-yellow-800',
+    'awaiting_payment': 'bg-amber-100 text-amber-800',
+    'paid': 'bg-green-100 text-green-800',
+    'completed': 'bg-green-100 text-green-800',
+    'cancelled': 'bg-red-100 text-red-800',
+    'expired': 'bg-gray-100 text-gray-800'
+} %}
+{% set statusLabel = {
+    'created': 'Vytvořeno',
+    'reserved': 'Rezervováno',
+    'awaiting_payment': 'Čeká na platbu',
+    'paid': 'Zaplaceno',
+    'completed': 'Dokončeno',
+    'cancelled': 'Zrušeno',
+    'expired': 'Expirováno'
+} %}
+
 {% block content %}
+    {# Header card #}
     <div class="card mb-8">
         <div class="card-body">
             <div class="flex items-center gap-4">
@@ -42,138 +62,409 @@
         </div>
     </div>
 
-    {% if not place.hasOperatingRules %}
-        <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 flex items-center gap-3">
-            <div class="bg-amber-100 text-amber-600 rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4.5c-.77-.833-2.694-.833-3.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                </svg>
+    {# Setup-health alerts (admin only, only when problems) #}
+    {% if isAdmin and (stats.missingOperatingRules or stats.missingMap or stats.missingStorageTypes or stats.missingLockCodes) %}
+        <div class="space-y-3 mb-6">
+            {% if stats.missingOperatingRules %}
+                {{ include('portal/place/_health_alert.html.twig', {
+                    title: 'Chybí nahrát provozní řád',
+                    detail: 'Provozní řád je vyžadován při objednávce.',
+                    ctaUrl: path('portal_places_edit', {id: place.id}),
+                    ctaLabel: 'Nahrát v nastavení místa',
+                }) }}
+            {% endif %}
+            {% if stats.missingMap %}
+                {{ include('portal/place/_health_alert.html.twig', {
+                    title: 'Mapa není nahrána',
+                    detail: 'Bez mapy nelze používat editor rozmístění a zákazník nevidí plán.',
+                    ctaUrl: path('portal_storage_canvas', {placeId: place.id}),
+                    ctaLabel: 'Otevřít editor mapy',
+                }) }}
+            {% endif %}
+            {% if stats.missingStorageTypes %}
+                {{ include('portal/place/_health_alert.html.twig', {
+                    title: 'Žádné typy skladů',
+                    detail: 'Bez aspoň jednoho typu se nedá vytvořit sklad ani objednávka.',
+                    ctaUrl: path('portal_storage_types_list', {placeId: place.id}),
+                    ctaLabel: 'Vytvořit typ skladu',
+                }) }}
+            {% endif %}
+            {% if stats.missingLockCodes %}
+                {{ include('portal/place/_health_alert.html.twig', {
+                    title: 'Přístupové kódy ještě nevygenerovány',
+                    detail: 'Přístupové kódy jsou povolené, ale žádný sklad zatím kód nemá.',
+                    ctaUrl: path('portal_place_access_codes', {placeId: place.id}),
+                    ctaLabel: 'Spravovat přístupové kódy',
+                }) }}
+            {% endif %}
+        </div>
+    {% endif %}
+
+    {# Co-owner disclaimer (landlord only) #}
+    {% if not isAdmin and stats.hasCoOwners %}
+        <div class="text-sm text-gray-500 mb-6 italic">
+            Vidíte pouze své sklady. Toto místo má i další pronajímatele.
+        </div>
+    {% endif %}
+
+    {# Po splatnosti banner (admin only, only when > 0) #}
+    {% if isAdmin and stats.overdueCount > 0 %}
+        <a href="{{ path('admin_overdue') }}" class="block mb-8 overflow-hidden shadow rounded-lg bg-red-50 hover:bg-red-100 border border-red-300">
+            <div class="p-5">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <svg class="h-7 w-7 text-red-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-red-700 truncate uppercase">Na tomto místě: Po splatnosti</dt>
+                            <dd class="flex items-baseline gap-3 flex-wrap">
+                                <span class="text-3xl font-bold text-red-700">{{ stats.overdueCount }}</span>
+                                <span class="text-sm text-red-700">{{ stats.overdueCount == 1 ? 'smlouva' : (stats.overdueCount < 5 ? 'smlouvy' : 'smluv') }}</span>
+                                <span class="text-2xl font-semibold text-red-700">· {{ (stats.overdueAmount / 100)|number_format(0, ',', ' ') }} Kč</span>
+                            </dd>
+                        </dl>
+                    </div>
+                </div>
+                {% if stats.overdueTop|length > 0 %}
+                    <ul class="mt-3 divide-y divide-red-200 border-t border-red-200">
+                        {% for view in stats.overdueTop|slice(0, 3) %}
+                            <li class="py-2 flex items-center justify-between text-sm">
+                                <div>
+                                    <span class="font-semibold text-red-800">{{ view.contract.user.fullName }}</span>
+                                    <span class="text-red-700 ml-2">{{ view.reasonLabel }} · {{ view.daysOverdue }} {{ view.daysOverdue == 1 ? 'den' : (view.daysOverdue < 5 ? 'dny' : 'dní') }}</span>
+                                </div>
+                                <div class="text-red-700 font-semibold">
+                                    {{ (view.overdueAmount / 100)|number_format(0, ',', ' ') }} Kč
+                                </div>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
             </div>
-            <div class="flex-1">
-                <p class="text-sm font-medium text-amber-800">Chybí nahrát provozní řád</p>
-                <p class="text-xs text-amber-600">Provozní řád je vyžadován při objednávce. Nahrajte ho v <a href="{{ path('portal_places_edit', {id: place.id}) }}" class="underline font-medium">nastavení místa</a>.</p>
+        </a>
+    {% endif %}
+
+    {# KPI tiles #}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div class="bg-white overflow-hidden shadow rounded-lg">
+            <div class="p-5">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <svg class="h-6 w-6 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 truncate">Obsazenost</dt>
+                            <dd class="text-lg font-semibold text-gray-900">{{ stats.occupancyRate|number_format(1, ',', ' ') }}%</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-50 px-5 py-3">
+                <div class="w-full bg-gray-200 rounded-full h-2 mb-1">
+                    <div class="bg-green-600 h-2 rounded-full" style="width: {{ min(stats.occupancyRate, 100) }}%"></div>
+                </div>
+                <span class="text-xs text-gray-500">{{ stats.occupiedStorages }}/{{ stats.totalStorages }} obsazených{% if stats.blockedStorages > 0 %} · {{ stats.blockedStorages }} blokovaných{% endif %}</span>
+            </div>
+        </div>
+
+        <div class="bg-white overflow-hidden shadow rounded-lg">
+            <div class="p-5">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <svg class="h-6 w-6 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 truncate">Tržby minulý měsíc</dt>
+                            <dd class="text-lg font-semibold text-gray-900">{{ (stats.lastMonthRevenue / 100)|number_format(0, ',', ' ') }} Kč</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-50 px-5 py-3">
+                <span class="text-sm text-gray-500">Hrubé tržby</span>
+            </div>
+        </div>
+
+        <div class="bg-white overflow-hidden shadow rounded-lg">
+            <div class="p-5">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <svg class="h-6 w-6 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                        </svg>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 truncate">Očekávané MRR</dt>
+                            <dd class="text-lg font-semibold text-gray-900">{{ (stats.expectedThisMonthRevenue / 100)|number_format(0, ',', ' ') }} Kč / měsíc</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-50 px-5 py-3">
+                <span class="text-sm text-gray-500">Z opakovaných plateb</span>
+            </div>
+        </div>
+
+        <div class="bg-white overflow-hidden shadow rounded-lg">
+            <div class="p-5">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <svg class="h-6 w-6 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 truncate">Aktivní smlouvy</dt>
+                            <dd class="text-lg font-semibold text-gray-900">{{ stats.activeRecurringContracts }}</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-50 px-5 py-3">
+                <span class="text-sm text-gray-500">S opakovanou platbou</span>
+            </div>
+        </div>
+    </div>
+
+    {# Brzy končící smlouvy (≤ 30 dní) #}
+    {% if expiringContracts|length > 0 %}
+        <div class="bg-white shadow overflow-hidden sm:rounded-lg mb-8">
+            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">Brzy končící smlouvy (≤ 30 dní)</h3>
+            </div>
+            <div class="divide-y divide-gray-200">
+                {% for contract in expiringContracts %}
+                    {% set orderRoute = isAdmin ? 'admin_order_detail' : 'portal_landlord_order_detail' %}
+                    <div class="px-4 py-3 flex justify-between items-center">
+                        <div>
+                            <p class="text-sm font-medium text-gray-900">
+                                <a href="{{ path(orderRoute, {id: contract.order.id}) }}" class="link">
+                                    {{ contract.user.fullName }}
+                                </a>
+                            </p>
+                            <p class="text-sm text-gray-500">
+                                {{ contract.storage.storageType.name }} – {{ contract.storage.number }}
+                            </p>
+                        </div>
+                        <div class="text-sm text-gray-700">
+                            do {{ contract.endDate|date('d.m.Y') }}
+                        </div>
+                    </div>
+                {% endfor %}
             </div>
         </div>
     {% endif %}
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {% if hasAccess %}
-            <a href="{{ path('portal_storages_list', {placeId: place.id}) }}" class="card hover:shadow-lg transition-shadow border-2 border-transparent hover:border-blue-300">
-                <div class="card-body">
-                    <div class="flex items-center gap-3 mb-3">
-                        <div class="bg-blue-100 text-blue-600 rounded-lg p-3">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-                            </svg>
-                        </div>
+    {# Co se chystá (≤ 30 dní) #}
+    {% if upcomingOrders|length > 0 %}
+        <div class="bg-white shadow overflow-hidden sm:rounded-lg mb-8">
+            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">Co se chystá (≤ 30 dní)</h3>
+            </div>
+            <div class="divide-y divide-gray-200">
+                {% for order in upcomingOrders %}
+                    {% set orderRoute = isAdmin ? 'admin_order_detail' : 'portal_landlord_order_detail' %}
+                    <div class="px-4 py-3 flex justify-between items-center">
                         <div>
-                            <h2 class="text-lg font-semibold text-gray-900">Sklady</h2>
-                            <p class="text-sm text-gray-500">{{ storageCount }} {{ storageCount == 1 ? 'sklad' : (storageCount >= 2 and storageCount <= 4 ? 'sklady' : 'skladu') }}</p>
-                        </div>
-                    </div>
-                    <p class="text-sm text-gray-600">Spravovat sklady na tomto místě</p>
-                </div>
-            </a>
-        {% endif %}
-
-        {% if is_granted('ROLE_ADMIN') %}
-            <a href="{{ path('portal_storage_types_list', {placeId: place.id}) }}" class="card hover:shadow-lg transition-shadow border-2 border-transparent hover:border-purple-300">
-                <div class="card-body">
-                    <div class="flex items-center gap-3 mb-3">
-                        <div class="bg-purple-100 text-purple-600 rounded-lg p-3">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                            </svg>
-                        </div>
-                        <div class="flex-1">
-                            <h2 class="text-lg font-semibold text-gray-900">Typy skladů</h2>
-                            <p class="text-sm text-gray-500">{{ storageTypeCount }} {{ storageTypeCount == 1 ? 'typ' : (storageTypeCount >= 2 and storageTypeCount <= 4 ? 'typy' : 'typů') }}</p>
-                        </div>
-                        {% if storageTypeCount == 0 %}
-                            <div class="bg-amber-100 text-amber-600 rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0" title="Žádné typy skladů">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4.5c-.77-.833-2.694-.833-3.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                                </svg>
-                            </div>
-                        {% endif %}
-                    </div>
-                    <p class="text-sm text-gray-600">Spravovat typy skladů</p>
-                </div>
-            </a>
-
-            <a href="{{ path('portal_place_access_codes', {placeId: place.id}) }}" class="card hover:shadow-lg transition-shadow border-2 border-transparent hover:border-indigo-300">
-                <div class="card-body">
-                    <div class="flex items-center gap-3 mb-3">
-                        <div class="bg-indigo-100 text-indigo-600 rounded-lg p-3">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-                            </svg>
-                        </div>
-                        <div class="flex-1">
-                            <h2 class="text-lg font-semibold text-gray-900">Přístupové kódy</h2>
+                            <p class="text-sm font-medium text-gray-900">
+                                <a href="{{ path(orderRoute, {id: order.id}) }}" class="link">
+                                    {{ order.user.fullName }}
+                                </a>
+                            </p>
                             <p class="text-sm text-gray-500">
-                                {% if place.storageCodesEnabled %}
-                                    <span class="text-green-600">Povoleno</span> · {{ place.storageCodeDigits }} čísl., {{ place.storageCodeFrom }}–{{ place.storageCodeTo }}
-                                {% else %}
-                                    <span class="text-gray-500">Zakázáno</span>
-                                {% endif %}
+                                {{ order.storage.storageType.name }} – {{ order.storage.number }} · začátek {{ order.startDate|date('d.m.Y') }}
                             </p>
                         </div>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {{ statusClass[order.status.value] ?? 'bg-gray-100 text-gray-800' }}">
+                            {{ statusLabel[order.status.value] ?? order.status.value }}
+                        </span>
                     </div>
-                    <p class="text-sm text-gray-600">Konfigurace, hromadné vygenerování a reset kódů</p>
-                </div>
-            </a>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
 
-            <a href="{{ path('portal_storage_canvas', {placeId: place.id}) }}" class="card hover:shadow-lg transition-shadow border-2 border-transparent hover:border-green-300">
-                <div class="card-body">
-                    <div class="flex items-center gap-3 mb-3">
-                        <div class="bg-green-100 text-green-600 rounded-lg p-3">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
-                            </svg>
-                        </div>
-                        <div class="flex-1">
-                            <h2 class="text-lg font-semibold text-gray-900">Editor mapy</h2>
-                            <p class="text-sm text-gray-500">
-                                {% if place.mapImagePath %}
-                                    <span class="text-green-600">Mapa nahrána</span>
-                                {% else %}
-                                    <span class="text-amber-600">Mapa není nahrána</span>
-                                {% endif %}
-                            </p>
-                        </div>
-                        {% if not place.mapImagePath %}
-                            <div class="bg-amber-100 text-amber-600 rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0" title="Mapa není nahrána">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4.5c-.77-.833-2.694-.833-3.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                                </svg>
+    {# Posledních 5 objednávek #}
+    {% if recentOrders|length > 0 %}
+        <div class="bg-white shadow overflow-hidden sm:rounded-lg mb-8">
+            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">Posledních 5 objednávek</h3>
+            </div>
+            <div class="divide-y divide-gray-200">
+                {% for order in recentOrders %}
+                    {% set orderRoute = isAdmin ? 'admin_order_detail' : 'portal_landlord_order_detail' %}
+                    <div class="px-4 py-4">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-sm font-medium text-gray-900">
+                                    <a href="{{ path(orderRoute, {id: order.id}) }}" class="link">
+                                        {{ order.storage.storageType.name }} – {{ order.storage.number }}
+                                    </a>
+                                </p>
+                                <p class="text-sm text-gray-500">
+                                    {{ order.user.fullName }} · {{ order.createdAt|date('d.m.Y H:i') }}
+                                </p>
                             </div>
-                        {% endif %}
+                            <div class="text-right">
+                                <p class="text-sm font-medium text-gray-900">
+                                    {{ (order.firstPaymentPrice / 100)|number_format(0, ',', ' ') }} Kč{% if order.isRecurring %} / měsíc{% endif %}
+                                </p>
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {{ statusClass[order.status.value] ?? 'bg-gray-100 text-gray-800' }}">
+                                    {{ statusLabel[order.status.value] ?? order.status.value }}
+                                </span>
+                            </div>
+                        </div>
                     </div>
-                    <p class="text-sm text-gray-600">Vizuální editor rozmístění skladů</p>
-                </div>
-            </a>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
 
-            <a href="{{ path('portal_places_edit', {id: place.id}) }}" class="card hover:shadow-lg transition-shadow border-2 border-transparent hover:border-gray-300">
-                <div class="card-body">
-                    <div class="flex items-center gap-3 mb-3">
-                        <div class="bg-gray-100 text-gray-600 rounded-lg p-3">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                        </div>
-                        <div>
-                            <h2 class="text-lg font-semibold text-gray-900">Upravit místo</h2>
-                            <p class="text-sm text-gray-500">Název, adresa, popis</p>
-                        </div>
+    {# Volné sklady (per typ) #}
+    {% if freeByType|length > 0 %}
+        <div class="bg-white shadow overflow-hidden sm:rounded-lg mb-8">
+            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">Volné sklady (per typ)</h3>
+            </div>
+            <div class="divide-y divide-gray-200">
+                {% for row in freeByType %}
+                    <div class="px-4 py-3 flex justify-between items-center">
+                        <span class="text-sm text-gray-900">{{ row.storageType.name }}</span>
+                        <span class="text-sm font-semibold text-gray-700">{{ row.freeCount }} {{ row.freeCount == 1 ? 'sklad' : (row.freeCount < 5 ? 'sklady' : 'skladu') }}</span>
                     </div>
-                    <p class="text-sm text-gray-600">Upravit základní informace o místě</p>
-                </div>
-            </a>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
+    {# Tržby — chart (12 měsíců) #}
+    <div class="mb-8">
+        {% if isAdmin %}
+            {{ component('RevenueChart', { placeId: place.id.toRfc4122 }) }}
+        {% else %}
+            {{ component('RevenueChart', { placeId: place.id.toRfc4122, landlordId: app.user.id.toRfc4122 }) }}
         {% endif %}
     </div>
 
-    {% if is_granted('ROLE_ADMIN') %}
+    {# Správa místa — the existing hub #}
+    <section class="mt-12">
+        <h2 class="text-xl font-semibold text-gray-900 mb-4">Správa místa</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% if hasAccess %}
+                <a href="{{ path('portal_storages_list', {placeId: place.id}) }}" class="card hover:shadow-lg transition-shadow border-2 border-transparent hover:border-blue-300">
+                    <div class="card-body">
+                        <div class="flex items-center gap-3 mb-3">
+                            <div class="bg-blue-100 text-blue-600 rounded-lg p-3">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 class="text-lg font-semibold text-gray-900">Sklady</h2>
+                                <p class="text-sm text-gray-500">{{ storageCount }} {{ storageCount == 1 ? 'sklad' : (storageCount >= 2 and storageCount <= 4 ? 'sklady' : 'skladu') }}</p>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-600">Spravovat sklady na tomto místě</p>
+                    </div>
+                </a>
+            {% endif %}
+
+            {% if isAdmin %}
+                <a href="{{ path('portal_storage_types_list', {placeId: place.id}) }}" class="card hover:shadow-lg transition-shadow border-2 border-transparent hover:border-purple-300">
+                    <div class="card-body">
+                        <div class="flex items-center gap-3 mb-3">
+                            <div class="bg-purple-100 text-purple-600 rounded-lg p-3">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                </svg>
+                            </div>
+                            <div class="flex-1">
+                                <h2 class="text-lg font-semibold text-gray-900">Typy skladů</h2>
+                                <p class="text-sm text-gray-500">{{ storageTypeCount }} {{ storageTypeCount == 1 ? 'typ' : (storageTypeCount >= 2 and storageTypeCount <= 4 ? 'typy' : 'typů') }}</p>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-600">Spravovat typy skladů</p>
+                    </div>
+                </a>
+
+                <a href="{{ path('portal_place_access_codes', {placeId: place.id}) }}" class="card hover:shadow-lg transition-shadow border-2 border-transparent hover:border-indigo-300">
+                    <div class="card-body">
+                        <div class="flex items-center gap-3 mb-3">
+                            <div class="bg-indigo-100 text-indigo-600 rounded-lg p-3">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                                </svg>
+                            </div>
+                            <div class="flex-1">
+                                <h2 class="text-lg font-semibold text-gray-900">Přístupové kódy</h2>
+                                <p class="text-sm text-gray-500">
+                                    {% if place.storageCodesEnabled %}
+                                        <span class="text-green-600">Povoleno</span> · {{ place.storageCodeDigits }} čísl., {{ place.storageCodeFrom }}–{{ place.storageCodeTo }}
+                                    {% else %}
+                                        <span class="text-gray-500">Zakázáno</span>
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-600">Konfigurace, hromadné vygenerování a reset kódů</p>
+                    </div>
+                </a>
+
+                <a href="{{ path('portal_storage_canvas', {placeId: place.id}) }}" class="card hover:shadow-lg transition-shadow border-2 border-transparent hover:border-green-300">
+                    <div class="card-body">
+                        <div class="flex items-center gap-3 mb-3">
+                            <div class="bg-green-100 text-green-600 rounded-lg p-3">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+                                </svg>
+                            </div>
+                            <div class="flex-1">
+                                <h2 class="text-lg font-semibold text-gray-900">Editor mapy</h2>
+                                <p class="text-sm text-gray-500">
+                                    {% if place.mapImagePath %}
+                                        <span class="text-green-600">Mapa nahrána</span>
+                                    {% else %}
+                                        <span class="text-amber-600">Mapa není nahrána</span>
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-600">Vizuální editor rozmístění skladů</p>
+                    </div>
+                </a>
+
+                <a href="{{ path('portal_places_edit', {id: place.id}) }}" class="card hover:shadow-lg transition-shadow border-2 border-transparent hover:border-gray-300">
+                    <div class="card-body">
+                        <div class="flex items-center gap-3 mb-3">
+                            <div class="bg-gray-100 text-gray-600 rounded-lg p-3">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 class="text-lg font-semibold text-gray-900">Upravit místo</h2>
+                                <p class="text-sm text-gray-500">Název, adresa, popis</p>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-600">Upravit základní informace o místě</p>
+                    </div>
+                </a>
+            {% endif %}
+        </div>
+    </section>
+
+    {% if isAdmin %}
         <section class="mt-12 border-2 border-red-300 rounded-lg overflow-hidden bg-white">
             <header class="bg-red-50 border-b border-red-200 px-5 py-3 flex items-center gap-2">
                 <svg class="w-5 h-5 text-red-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">

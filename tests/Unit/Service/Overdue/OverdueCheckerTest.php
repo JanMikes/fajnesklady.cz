@@ -159,6 +159,69 @@ class OverdueCheckerTest extends TestCase
         $this->assertSame([], $checker->filterOverdueUserIds($this->clock->now(), []));
     }
 
+    public function testSummariseForPlaceFiltersByPlace(): void
+    {
+        $now = $this->clock->now();
+        $placeA = new Place(Uuid::v7(), 'Place A', 'Address', 'City', '00000', null, $now);
+        $placeB = new Place(Uuid::v7(), 'Place B', 'Address', 'City', '00000', null, $now);
+
+        $cA1 = $this->createRecurringContractAtPlace($placeA, $now->modify('-3 days'));
+        $cA2 = $this->createRecurringContractAtPlace($placeA, $now->modify('-5 days'));
+        $cA2->recordFailedBillingAttempt($now->modify('-2 days'));
+        $cB1 = $this->createRecurringContractAtPlace($placeB, $now->modify('-7 days'));
+
+        $checker = $this->createChecker([$cA1, $cA2, $cB1]);
+
+        $summaryA = $checker->summariseForPlace($now, $placeA);
+        $summaryB = $checker->summariseForPlace($now, $placeB);
+
+        $this->assertSame(2, $summaryA->count);
+        $this->assertSame(2 * self::MONTHLY_RATE, $summaryA->totalAmount);
+        $this->assertSame(1, $summaryB->count);
+        $this->assertSame(self::MONTHLY_RATE, $summaryB->totalAmount);
+    }
+
+    private function createRecurringContractAtPlace(Place $place, \DateTimeImmutable $nextBillingDate): Contract
+    {
+        $createdAt = new \DateTimeImmutable('2025-01-01');
+        $user = new User(Uuid::v7(), 'overdue-place-test-'.bin2hex(random_bytes(2)).'@example.com', 'password', 'Test', 'User', $createdAt);
+        $storageType = new StorageType(Uuid::v7(), $place, 'Box', 100, 100, 100, 10000, self::MONTHLY_RATE, $createdAt);
+        $storage = new Storage(
+            Uuid::v7(),
+            '1',
+            ['x' => 0, 'y' => 0, 'width' => 100, 'height' => 100, 'rotation' => 0],
+            $storageType,
+            $place,
+            $createdAt,
+        );
+        $order = new Order(
+            Uuid::v7(),
+            $user,
+            $storage,
+            RentalType::UNLIMITED,
+            PaymentFrequency::MONTHLY,
+            $createdAt,
+            null,
+            self::MONTHLY_RATE,
+            $createdAt->modify('+7 days'),
+            $createdAt,
+        );
+
+        $contract = new Contract(
+            Uuid::v7(),
+            $order,
+            $user,
+            $storage,
+            RentalType::UNLIMITED,
+            $createdAt,
+            null,
+            $createdAt,
+        );
+        $contract->setRecurringPayment('gopay-parent-id-'.bin2hex(random_bytes(2)), $nextBillingDate, $nextBillingDate);
+
+        return $contract;
+    }
+
     /**
      * @param Contract[] $contracts
      */

@@ -7,6 +7,7 @@ namespace App\Repository;
 use App\Entity\Contract;
 use App\Entity\Order;
 use App\Entity\Payment;
+use App\Entity\Place;
 use App\Entity\SelfBillingInvoice;
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
@@ -266,6 +267,62 @@ class PaymentRepository
         usort($grouped, static fn (array $a, array $b): int => ($a['year'] <=> $b['year']) ?: ($a['month'] <=> $b['month']));
 
         return $grouped;
+    }
+
+    public function sumAtPlaceAndPeriod(Place $place, int $year, int $month, ?User $owner): int
+    {
+        $startDate = new \DateTimeImmutable(sprintf('%d-%02d-01 00:00:00', $year, $month));
+        $endDate = $startDate->modify('first day of next month');
+
+        $qb = $this->entityManager->createQueryBuilder()
+            ->select('SUM(p.amount)')
+            ->from(Payment::class, 'p')
+            ->join('p.storage', 's')
+            ->where('s.place = :place')
+            ->andWhere('p.paidAt >= :startDate')
+            ->andWhere('p.paidAt < :endDate')
+            ->setParameter('place', $place)
+            ->setParameter('startDate', $startDate)
+            ->setParameter('endDate', $endDate);
+
+        if (null !== $owner) {
+            $qb->andWhere('s.owner = :owner')->setParameter('owner', $owner);
+        }
+
+        return (int) ($qb->getQuery()->getSingleScalarResult() ?? 0);
+    }
+
+    /**
+     * @return array<array{year: int, month: int, total: int}>
+     */
+    public function getMonthlyRevenueAtPlace(
+        Place $place,
+        int $months,
+        \DateTimeImmutable $now,
+        ?User $owner,
+    ): array {
+        $startDate = $now->modify("-{$months} months")->modify('first day of this month midnight');
+        $endDate = $now->modify('first day of next month midnight');
+
+        $qb = $this->entityManager->createQueryBuilder()
+            ->select('p')
+            ->from(Payment::class, 'p')
+            ->join('p.storage', 's')
+            ->where('s.place = :place')
+            ->andWhere('p.paidAt >= :startDate')
+            ->andWhere('p.paidAt < :endDate')
+            ->setParameter('place', $place)
+            ->setParameter('startDate', $startDate)
+            ->setParameter('endDate', $endDate);
+
+        if (null !== $owner) {
+            $qb->andWhere('s.owner = :owner')->setParameter('owner', $owner);
+        }
+
+        /** @var Payment[] $payments */
+        $payments = $qb->getQuery()->getResult();
+
+        return $this->groupPaymentsByMonth($payments);
     }
 
     /**

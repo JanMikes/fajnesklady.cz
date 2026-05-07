@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\Entity\Order;
+use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\User;
 use App\Enum\OrderStatus;
@@ -344,5 +345,70 @@ class OrderRepository
             ->setParameter('paymentId', $paymentId)
             ->getQuery()
             ->getOneOrNullResult();
+    }
+
+    /**
+     * Recent orders at a place, scoped to an optional owner.
+     *
+     * @return Order[]
+     */
+    public function findRecentAtPlace(Place $place, int $limit, ?User $owner): array
+    {
+        $qb = $this->entityManager->createQueryBuilder()
+            ->select('o')
+            ->from(Order::class, 'o')
+            ->join('o.storage', 's')
+            ->where('s.place = :place')
+            ->setParameter('place', $place)
+            ->orderBy('o.createdAt', 'DESC');
+
+        if (null !== $owner) {
+            $qb->andWhere('s.owner = :owner')->setParameter('owner', $owner);
+        }
+
+        if ($limit > 0) {
+            $qb->setMaxResults($limit);
+        }
+
+        return $qb->getQuery()->getResult();
+    }
+
+    /**
+     * Orders that are still in flight (RESERVED / AWAITING_PAYMENT / PAID) and
+     * scheduled to start within $daysAhead from $now. Surfaces "incoming tenants".
+     *
+     * @return Order[]
+     */
+    public function findUpcomingAtPlace(
+        Place $place,
+        int $daysAhead,
+        \DateTimeImmutable $now,
+        ?User $owner,
+    ): array {
+        $futureDate = $now->modify("+{$daysAhead} days");
+
+        $qb = $this->entityManager->createQueryBuilder()
+            ->select('o')
+            ->from(Order::class, 'o')
+            ->join('o.storage', 's')
+            ->where('s.place = :place')
+            ->andWhere('o.status IN (:statuses)')
+            ->andWhere('o.startDate >= :now')
+            ->andWhere('o.startDate <= :futureDate')
+            ->setParameter('place', $place)
+            ->setParameter('statuses', [
+                OrderStatus::RESERVED,
+                OrderStatus::AWAITING_PAYMENT,
+                OrderStatus::PAID,
+            ])
+            ->setParameter('now', $now)
+            ->setParameter('futureDate', $futureDate)
+            ->orderBy('o.startDate', 'ASC');
+
+        if (null !== $owner) {
+            $qb->andWhere('s.owner = :owner')->setParameter('owner', $owner);
+        }
+
+        return $qb->getQuery()->getResult();
     }
 }

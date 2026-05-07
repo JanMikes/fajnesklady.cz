@@ -93,6 +93,7 @@ class PlaceRepositoryTest extends KernelTestCase
     public function testFindByOwnerReturnsOnlyOwnedPlaces(): void
     {
         // Use fixture data - landlord owns Praha places, landlord2 owns Ostrava
+        // plus one co-owner storage (Z1) at Praha Centrum.
         $landlord = $this->entityManager->getRepository(User::class)->findOneBy(['email' => 'landlord@example.com']);
         $landlord2 = $this->entityManager->getRepository(User::class)->findOneBy(['email' => 'landlord2@example.com']);
 
@@ -101,13 +102,16 @@ class PlaceRepositoryTest extends KernelTestCase
 
         // Landlord has 2 places (Praha Centrum and Praha Jih)
         $this->assertCount(2, $landlordPlaces);
-        // Landlord2 has 1 place (Ostrava)
-        $this->assertCount(1, $landlord2Places);
+        // Landlord2 has 2 places (Ostrava + Praha Centrum via co-owner storage Z1)
+        $this->assertCount(2, $landlord2Places);
 
         $landlordNames = array_map(fn (Place $p) => $p->name, $landlordPlaces);
         $this->assertContains('Sklad Praha - Centrum', $landlordNames);
         $this->assertContains('Sklad Praha - Jiznimesto', $landlordNames);
-        $this->assertSame('Sklad Ostrava', $landlord2Places[0]->name);
+
+        $landlord2Names = array_map(fn (Place $p) => $p->name, $landlord2Places);
+        $this->assertContains('Sklad Ostrava', $landlord2Names);
+        $this->assertContains('Sklad Praha - Centrum', $landlord2Names);
     }
 
     public function testFindAllActiveExcludesInactive(): void
