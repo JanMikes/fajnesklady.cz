@@ -137,6 +137,9 @@
                                 </svg>
                                 Plánování (90 dní)
                             </a>
+                            {% include 'components/excel_export_button.html.twig' with {
+                                href: path('portal_storages_export', app.request.query.all|merge({placeId: place.id}))
+                            } %}
                             <span class="badge badge-primary">{{ storages|length }} skladů</span>
                         </div>
                     </div>

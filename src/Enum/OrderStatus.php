@@ -26,4 +26,17 @@ enum OrderStatus: string
     {
         return in_array($this, [self::COMPLETED, self::CANCELLED, self::EXPIRED], true);
     }
+
+    public function label(): string
+    {
+        return match ($this) {
+            self::CREATED => 'Vytvořeno',
+            self::RESERVED => 'Rezervováno',
+            self::AWAITING_PAYMENT => 'Čeká na platbu',
+            self::PAID => 'Zaplaceno',
+            self::COMPLETED => 'Dokončeno',
+            self::CANCELLED => 'Zrušeno',
+            self::EXPIRED => 'Expirováno',
+        };
+    }
 }

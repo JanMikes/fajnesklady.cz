@@ -300,6 +300,55 @@ class UserRepository
     }
 
     /**
+     * Streamed iteration for export. Mirrors {@see self::findAllPaginated()},
+     * {@see self::findOverduePaginated()}, {@see self::findOnboardedPaginated()},
+     * {@see self::findWithActiveContractsPaginated()}, and
+     * {@see self::findWithoutActiveContractsPaginated()} but without pagination.
+     *
+     * @return iterable<User>
+     */
+    public function streamForExport(?string $filter, \DateTimeImmutable $now): iterable
+    {
+        $qb = $this->entityManager->createQueryBuilder()
+            ->select('u')
+            ->from(User::class, 'u')
+            ->orderBy('u.createdAt', 'DESC')
+            ->addOrderBy('u.id', 'DESC');
+
+        switch ($filter) {
+            case 'overdue':
+                $qb->where('u.id IN (:ids)')
+                    ->setParameter('ids', $this->overdueUserIdsSubquery($now));
+
+                break;
+            case 'onboarded':
+                $qb->where('u.id IN (:ids)')
+                    ->setParameter('ids', $this->onboardedUserIdsSubquery());
+
+                break;
+            case 'active':
+                $qb->where('u.id IN (:ids)')
+                    ->setParameter('ids', $this->contractRepository->findActiveContractUserIdsSubquery($now));
+
+                break;
+            case 'inactive':
+                $qb->where('u.id NOT IN (:ids)')
+                    ->setParameter('ids', $this->contractRepository->findActiveContractUserIdsSubquery($now));
+
+                break;
+        }
+
+        $batch = 0;
+        foreach ($qb->getQuery()->toIterable() as $user) {
+            yield $user;
+            if (++$batch >= 200) {
+                $this->entityManager->clear();
+                $batch = 0;
+            }
+        }
+    }
+
+    /**
      * @param Uuid[] $userIds
      *
      * @return string[] RFC-4122 strings of users with ≥1 admin-created order

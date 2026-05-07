@@ -443,6 +443,27 @@ class OrderRepository
         return $qb;
     }
 
+    /**
+     * Streamed iteration for export. Honours the same admin filter as
+     * {@see self::findAdminFiltered()} but without pagination.
+     *
+     * @return iterable<Order>
+     */
+    public function streamAdminFiltered(\DateTimeImmutable $now, ?string $filter): iterable
+    {
+        $qb = $this->buildAdminFilteredQueryBuilder($now, $filter)
+            ->orderBy('o.createdAt', 'DESC');
+
+        $batch = 0;
+        foreach ($qb->getQuery()->toIterable() as $order) {
+            yield $order;
+            if (++$batch >= 200) {
+                $this->entityManager->clear();
+                $batch = 0;
+            }
+        }
+    }
+
     public function findBySigningToken(string $token): ?Order
     {
         return $this->entityManager->createQueryBuilder()

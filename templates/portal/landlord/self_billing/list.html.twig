@@ -5,6 +5,11 @@
 {% block content %}
     <div class="flex items-center justify-between mb-8">
         <h1 class="text-3xl font-bold text-gray-900">Samofakturace</h1>
+        {% if invoices|length > 0 %}
+            {% include 'components/excel_export_button.html.twig' with {
+                href: path('portal_landlord_self_billing_export')
+            } %}
+        {% endif %}
     </div>
 
     {% if invoices|length > 0 %}

@@ -93,6 +93,45 @@ class EmailLogRepository
     }
 
     /**
+     * Streamed iteration for export. Same filter shape as
+     * {@see self::findPaginated()} but without pagination.
+     *
+     * Native SQL is used for parity with {@see self::findPaginated()} — DQL
+     * cannot ILIKE the JSONB recipient column.
+     *
+     * @return iterable<EmailLog>
+     */
+    public function streamWithFilter(EmailLogFilter $filter): iterable
+    {
+        $rsm = new ResultSetMappingBuilder($this->entityManager);
+        $rsm->addRootEntityFromClassMetadata(EmailLog::class, 'el');
+
+        $sql = 'SELECT '.$rsm->generateSelectClause(['el' => 'el'])
+            .' FROM email_log el';
+
+        [$where, $params] = $this->buildWhere($filter);
+        if ('' !== $where) {
+            $sql .= ' WHERE '.$where;
+        }
+
+        $sql .= ' ORDER BY el.attempted_at DESC';
+
+        $query = $this->entityManager->createNativeQuery($sql, $rsm);
+        foreach ($params as $name => $value) {
+            $query->setParameter($name, $value);
+        }
+
+        $batch = 0;
+        foreach ($query->toIterable() as $log) {
+            yield $log;
+            if (++$batch >= 200) {
+                $this->entityManager->clear();
+                $batch = 0;
+            }
+        }
+    }
+
+    /**
      * @return string[]
      */
     public function getDistinctTemplateNames(): array

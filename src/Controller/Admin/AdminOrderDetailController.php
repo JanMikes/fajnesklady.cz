@@ -19,7 +19,7 @@ use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Uid\Uuid;
 
-#[Route('/portal/admin/orders/{id}', name: 'admin_order_detail')]
+#[Route('/portal/admin/orders/{id}', name: 'admin_order_detail', requirements: ['id' => '[0-9a-f-]{36}'])]
 #[IsGranted('ROLE_ADMIN')]
 final class AdminOrderDetailController extends AbstractController
 {

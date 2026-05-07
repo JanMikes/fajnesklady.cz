@@ -182,6 +182,47 @@ class AuditLogRepository
     }
 
     /**
+     * Streamed iteration for export. Same filter shape as
+     * {@see self::findPaginatedWithFilters()} but without pagination.
+     *
+     * @return iterable<AuditLog>
+     */
+    public function streamWithFilters(
+        ?string $entityType,
+        ?string $eventType,
+        ?string $search,
+    ): iterable {
+        $qb = $this->entityManager->createQueryBuilder()
+            ->select('al')
+            ->from(AuditLog::class, 'al')
+            ->orderBy('al.createdAt', 'DESC');
+
+        if (null !== $entityType && '' !== $entityType) {
+            $qb->andWhere('al.entityType = :entityType')
+                ->setParameter('entityType', $entityType);
+        }
+
+        if (null !== $eventType && '' !== $eventType) {
+            $qb->andWhere('al.eventType = :eventType')
+                ->setParameter('eventType', $eventType);
+        }
+
+        if (null !== $search && '' !== $search) {
+            $qb->andWhere('al.entityId LIKE :search OR al.eventType LIKE :search')
+                ->setParameter('search', '%'.$search.'%');
+        }
+
+        $batch = 0;
+        foreach ($qb->getQuery()->toIterable() as $log) {
+            yield $log;
+            if (++$batch >= 200) {
+                $this->entityManager->clear();
+                $batch = 0;
+            }
+        }
+    }
+
+    /**
      * Get distinct entity types from audit log.
      *
      * @return string[]

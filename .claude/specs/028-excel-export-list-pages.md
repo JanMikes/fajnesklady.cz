@@ -1,6 +1,6 @@
 # 028 — Excel export of admin & landlord list pages
 
-**Status:** ready
+**Status:** done
 **Type:** feature (operations / reporting)
 **Scope:** medium (~22 files: 1 new dependency, 1 service + 1 value object, 9 single-action controllers, 9 template button additions, 4 repository "all-results" helpers, integration tests)
 **Depends on:** none

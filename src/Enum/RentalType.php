@@ -16,4 +16,12 @@ enum RentalType: string
     {
         return array_map(fn (self $type) => $type->value, self::cases());
     }
+
+    public function label(): string
+    {
+        return match ($this) {
+            self::LIMITED => 'Pevný',
+            self::UNLIMITED => 'Neomezeně',
+        };
+    }
 }

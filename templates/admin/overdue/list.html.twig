@@ -3,7 +3,14 @@
 {% block title %}Po splatnosti — Admin{% endblock %}
 
 {% block content %}
-    <h1 class="text-3xl font-bold text-gray-900 mb-6">Po splatnosti</h1>
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold text-gray-900">Po splatnosti</h1>
+        {% if summary.count > 0 %}
+            {% include 'components/excel_export_button.html.twig' with {
+                href: path('admin_overdue_export')
+            } %}
+        {% endif %}
+    </div>
 
     {% if summary.count == 0 %}
         <div class="card bg-green-50 border-green-200">

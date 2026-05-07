@@ -5,6 +5,9 @@
 {% block content %}
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-3xl font-bold text-gray-900">Odeslané e-maily</h1>
+        {% include 'components/excel_export_button.html.twig' with {
+            href: path('admin_email_log_export', app.request.query.all)
+        } %}
     </div>
 
     {# Filters #}

@@ -5,6 +5,11 @@
 {% block content %}
     <div class="flex items-center justify-between mb-8">
         <h1 class="text-3xl font-bold text-gray-900">Objednávky</h1>
+        {% if orders|length > 0 %}
+            {% include 'components/excel_export_button.html.twig' with {
+                href: path('portal_landlord_orders_export')
+            } %}
+        {% endif %}
     </div>
 
     {% if orders|length > 0 %}

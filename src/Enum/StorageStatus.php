@@ -18,4 +18,14 @@ enum StorageStatus: string
     {
         return array_map(fn (self $status) => $status->value, self::cases());
     }
+
+    public function label(): string
+    {
+        return match ($this) {
+            self::AVAILABLE => 'Dostupný',
+            self::RESERVED => 'Rezervovaný',
+            self::OCCUPIED => 'Obsazený',
+            self::MANUALLY_UNAVAILABLE => 'Nedostupný',
+        };
+    }
 }

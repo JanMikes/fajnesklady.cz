@@ -39,6 +39,9 @@ return App::config([
                 '../src/Service/Order/OrderDisplayStatus.php',
                 '../src/Service/Order/OrderDisplayStatusCase.php',
                 '../src/Service/Order/OrderStatusViewModel.php',
+                '../src/Service/Excel/ExcelColumn.php',
+                '../src/Service/Excel/ExcelColumnType.php',
+                '../src/Service/Excel/ExcelSheet.php',
             ],
         ],
         'App\\Service\\Identity\\ProvideIdentity' => [

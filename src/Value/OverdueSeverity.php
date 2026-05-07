@@ -36,4 +36,13 @@ enum OverdueSeverity: string
             self::WARNING => 1,
         };
     }
+
+    public function label(): string
+    {
+        return match ($this) {
+            self::WARNING => 'Upozornění',
+            self::ERROR => 'Chyba',
+            self::CRITICAL => 'Kritické',
+        };
+    }
 }

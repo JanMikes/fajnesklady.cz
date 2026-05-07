@@ -78,6 +78,21 @@ class PlaceRepository
     }
 
     /**
+     * Full place list for export, ordered alphabetically by name.
+     *
+     * @return Place[]
+     */
+    public function findAllForExport(): array
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('p')
+            ->from(Place::class, 'p')
+            ->orderBy('p.name', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
      * @return Place[]
      */
     public function findAllActive(): array
