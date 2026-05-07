@@ -9,6 +9,7 @@ use App\Entity\Order;
 use App\Entity\Storage;
 use App\Entity\User;
 use App\Enum\RentalType;
+use App\Enum\TerminationReason;
 use App\Service\ContractDocumentGenerator;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
@@ -103,6 +104,15 @@ final class ContractFixtures extends Fixture implements DependentFixtureInterfac
         $this->generateDocument($contractUnlimited);
         $orderUnlimited->complete($contractUnlimitedId, $now->modify('-34 days'));
         $orderUnlimited->popEvents();
+        // Recurring payment with two failed attempts — surfaces as ERROR severity on the
+        // Po splatnosti page so admins have a non-empty list to look at in dev.
+        $contractUnlimited->setRecurringPayment(
+            'gopay-parent-debug-unlimited',
+            $now->modify('-5 days'),
+            $now->modify('-5 days'),
+        );
+        $contractUnlimited->recordFailedBillingAttempt($now->modify('-3 days'));
+        $contractUnlimited->recordFailedBillingAttempt($now->modify('-3 days'));
         $manager->persist($contractUnlimited);
         $this->addReference(self::REF_CONTRACT_UNLIMITED, $contractUnlimited);
 
@@ -160,7 +170,10 @@ final class ContractFixtures extends Fixture implements DependentFixtureInterfac
         $this->generateDocument($contractTerminated);
         $terminatedOrder->complete($contractTerminatedId, $now->modify('-64 days'));
         $terminatedOrder->popEvents();
-        $contractTerminated->terminate($now->modify('-30 days'));
+        // Terminated due to payment failure with outstanding debt — surfaces as
+        // CRITICAL severity on the Po splatnosti page in dev.
+        $contractTerminated->setOutstandingDebt(350000);
+        $contractTerminated->terminate($now->modify('-20 days'), TerminationReason::PAYMENT_FAILURE);
         $manager->persist($contractTerminated);
         $this->addReference(self::REF_CONTRACT_TERMINATED, $contractTerminated);
 

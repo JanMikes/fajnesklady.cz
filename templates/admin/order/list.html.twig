@@ -31,6 +31,9 @@
                                 <a href="{{ path('portal_users_view', {id: order.user.id}) }}" class="link">
                                     {{ order.user.fullName }}
                                 </a>
+                                {% if debtorIdSet[order.user.id.toRfc4122()] is defined %}
+                                    <span class="badge badge-error badge-sm ml-1" title="Zákazník má platbu po splatnosti">Dlužník</span>
+                                {% endif %}
                                 <div class="text-xs text-gray-500">{{ order.user.email }}</div>
                             </td>
                             <td class="text-gray-900">{{ order.storage.number }}</td>

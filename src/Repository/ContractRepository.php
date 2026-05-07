@@ -393,6 +393,79 @@ class ContractRepository
             ->getSingleScalarResult();
     }
 
+    public function countOverdueContracts(\DateTimeImmutable $now): int
+    {
+        return (int) $this->entityManager->createQueryBuilder()
+            ->select('COUNT(c.id)')
+            ->from(Contract::class, 'c')
+            ->where(
+                '(c.terminatedAt IS NULL AND (c.failedBillingAttempts > 0 OR '
+                .'(c.nextBillingDate IS NOT NULL AND c.nextBillingDate < :overdueThreshold))) OR '
+                .'(c.outstandingDebtAmount IS NOT NULL AND c.outstandingDebtAmount > 0)'
+            )
+            ->setParameter('overdueThreshold', $now->modify('-1 day'))
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    public function sumOverdueAmount(\DateTimeImmutable $now): int
+    {
+        // SUM = outstandingDebt for terminated, else order.firstPaymentPrice (one unpaid month).
+        $result = $this->entityManager->createQueryBuilder()
+            ->select(
+                'SUM(CASE WHEN c.terminatedAt IS NOT NULL AND c.outstandingDebtAmount > 0 '
+                .'THEN c.outstandingDebtAmount ELSE o.firstPaymentPrice END)'
+            )
+            ->from(Contract::class, 'c')
+            ->join('c.order', 'o')
+            ->where(
+                '(c.terminatedAt IS NULL AND (c.failedBillingAttempts > 0 OR '
+                .'(c.nextBillingDate IS NOT NULL AND c.nextBillingDate < :overdueThreshold))) OR '
+                .'(c.outstandingDebtAmount IS NOT NULL AND c.outstandingDebtAmount > 0)'
+            )
+            ->setParameter('overdueThreshold', $now->modify('-1 day'))
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return (int) ($result ?? 0);
+    }
+
+    /**
+     * Returns RFC-4122 user UUID strings of users who have ≥1 overdue contract.
+     *
+     * @param Uuid[]|null $restrictToUserIds when non-null, the result is the
+     *                                       intersection of overdue users and
+     *                                       this list — used by paginated lists
+     *                                       to badge only the visible page's users
+     *
+     * @return string[]
+     */
+    public function findOverdueUserIds(\DateTimeImmutable $now, ?array $restrictToUserIds = null): array
+    {
+        if (null !== $restrictToUserIds && [] === $restrictToUserIds) {
+            return [];
+        }
+
+        $qb = $this->entityManager->createQueryBuilder()
+            ->select('DISTINCT IDENTITY(c.user) AS userId')
+            ->from(Contract::class, 'c')
+            ->where(
+                '(c.terminatedAt IS NULL AND (c.failedBillingAttempts > 0 OR '
+                .'(c.nextBillingDate IS NOT NULL AND c.nextBillingDate < :overdueThreshold))) OR '
+                .'(c.outstandingDebtAmount IS NOT NULL AND c.outstandingDebtAmount > 0)'
+            )
+            ->setParameter('overdueThreshold', $now->modify('-1 day'));
+
+        if (null !== $restrictToUserIds) {
+            $qb->andWhere('c.user IN (:ids)')->setParameter('ids', $restrictToUserIds);
+        }
+
+        /** @var array<int, array{userId: string}> $rows */
+        $rows = $qb->getQuery()->getArrayResult();
+
+        return array_map(static fn (array $r): string => (string) $r['userId'], $rows);
+    }
+
     public function findByGoPayParentPaymentId(string $parentPaymentId): ?Contract
     {
         return $this->entityManager->createQueryBuilder()

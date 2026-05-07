@@ -9,6 +9,7 @@ use App\Repository\InvoiceRepository;
 use App\Repository\OrderRepository;
 use App\Repository\PaymentRepository;
 use App\Service\ContractService;
+use App\Service\Overdue\OverdueChecker;
 use App\Service\PriceCalculator;
 use App\Service\Security\OrderVoter;
 use Psr\Clock\ClockInterface;
@@ -29,6 +30,7 @@ final class AdminOrderDetailController extends AbstractController
         private readonly PaymentRepository $paymentRepository,
         private readonly ContractService $contractService,
         private readonly PriceCalculator $priceCalculator,
+        private readonly OverdueChecker $overdueChecker,
         private readonly ClockInterface $clock,
     ) {
     }
@@ -58,6 +60,11 @@ final class AdminOrderDetailController extends AbstractController
             ? $this->paymentRepository->sumPaidByContract($contract)
             : $this->paymentRepository->sumPaidByOrder($order);
 
+        $isUserOverdue = [] !== $this->overdueChecker->filterOverdueUserIds(
+            $this->clock->now(),
+            [$order->user->id],
+        );
+
         return $this->render('admin/order/detail.html.twig', [
             'order' => $order,
             'storage' => $storage,
@@ -69,6 +76,7 @@ final class AdminOrderDetailController extends AbstractController
             'canTerminate' => $canTerminate,
             'paymentSchedule' => $paymentSchedule,
             'totalPaid' => $totalPaid,
+            'isUserOverdue' => $isUserOverdue,
         ]);
     }
 }

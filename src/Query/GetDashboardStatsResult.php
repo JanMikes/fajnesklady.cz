@@ -4,8 +4,13 @@ declare(strict_types=1);
 
 namespace App\Query;
 
+use App\Value\OverdueContractView;
+
 final readonly class GetDashboardStatsResult
 {
+    /**
+     * @param OverdueContractView[] $overdueTop
+     */
     public function __construct(
         public int $totalUsers,
         public int $verifiedUsers,
@@ -20,6 +25,9 @@ final readonly class GetDashboardStatsResult
         public int $occupiedStorages,
         public float $platformOccupancyRate,
         public int $activeRecurringContracts,
+        public int $overdueCount,
+        public int $overdueAmount,
+        public array $overdueTop,
     ) {
     }
 }

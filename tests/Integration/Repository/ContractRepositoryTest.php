@@ -12,6 +12,7 @@ use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\PaymentFrequency;
 use App\Enum\RentalType;
+use App\Enum\TerminationReason;
 use App\Exception\ContractNotFound;
 use App\Repository\ContractRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -497,5 +498,70 @@ class ContractRepositoryTest extends KernelTestCase
         $found = $this->repository->findRequiringAdvanceNotice($now);
         $foundIds = array_map(fn (Contract $c) => $c->id->toRfc4122(), $found);
         $this->assertNotContains($contract->id->toRfc4122(), $foundIds);
+    }
+
+    public function testCountAndSumOverdueIncludeFailingActiveAndTerminatedDebt(): void
+    {
+        $now = new \DateTimeImmutable('2025-06-15 12:00:00');
+
+        $tenant = $this->createUser('overdue-mixed@test.com');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage1 = $this->createStorage($storageType, $place, 'OD1');
+        $storage2 = $this->createStorage($storageType, $place, 'OD2');
+        $storage3 = $this->createStorage($storageType, $place, 'OD3');
+
+        // Active failing contract — counts.
+        $orderFail = $this->createOrder($tenant, $storage1, $now->modify('-30 days'), null);
+        $contractFail = $this->createContract($orderFail, $tenant, $storage1, $now->modify('-30 days'), null);
+        $contractFail->setRecurringPayment('parent-fail', $now->modify('-5 days'), $now->modify('-5 days'));
+        $contractFail->recordFailedBillingAttempt($now->modify('-3 days'));
+
+        // Terminated with debt — counts.
+        $orderDebt = $this->createOrder($tenant, $storage2, $now->modify('-60 days'), $now->modify('-30 days'));
+        $contractDebt = $this->createContract($orderDebt, $tenant, $storage2, $now->modify('-60 days'), $now->modify('-30 days'));
+        $contractDebt->setOutstandingDebt(350000);
+        $contractDebt->terminate($now->modify('-15 days'), TerminationReason::PAYMENT_FAILURE);
+
+        // Healthy active recurring — does NOT count.
+        $orderHealthy = $this->createOrder($tenant, $storage3, $now->modify('-10 days'), null);
+        $this->createContract($orderHealthy, $tenant, $storage3, $now->modify('-10 days'), null)
+            ->setRecurringPayment('parent-healthy', $now->modify('+5 days'), $now->modify('+5 days'));
+
+        $this->entityManager->flush();
+
+        $count = $this->repository->countOverdueContracts($now);
+        $sum = $this->repository->sumOverdueAmount($now);
+        $userIds = $this->repository->findOverdueUserIds($now);
+
+        $this->assertGreaterThanOrEqual(2, $count);
+        $this->assertGreaterThanOrEqual(10000 + 350000, $sum); // failing's order rate + terminated debt
+        $this->assertContains($tenant->id->toRfc4122(), $userIds);
+    }
+
+    public function testFindOverdueUserIdsRestrictedToSubsetReturnsEmptyForNonDebtor(): void
+    {
+        $now = new \DateTimeImmutable('2025-06-15 12:00:00');
+
+        $debtor = $this->createUser('overdue-restrict-debtor@test.com');
+        $clean = $this->createUser('overdue-restrict-clean@test.com');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage = $this->createStorage($storageType, $place, 'ODR1');
+
+        $order = $this->createOrder($debtor, $storage, $now->modify('-30 days'), null);
+        $contract = $this->createContract($order, $debtor, $storage, $now->modify('-30 days'), null);
+        $contract->setRecurringPayment('parent-restrict', $now->modify('-5 days'), $now->modify('-5 days'));
+        $contract->recordFailedBillingAttempt($now->modify('-3 days'));
+
+        $this->entityManager->flush();
+
+        $debtorOnly = $this->repository->findOverdueUserIds($now, [$debtor->id]);
+        $cleanOnly = $this->repository->findOverdueUserIds($now, [$clean->id]);
+        $emptyInput = $this->repository->findOverdueUserIds($now, []);
+
+        $this->assertContains($debtor->id->toRfc4122(), $debtorOnly);
+        $this->assertNotContains($clean->id->toRfc4122(), $cleanOnly);
+        $this->assertSame([], $emptyInput);
     }
 }

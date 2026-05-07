@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Controller\Admin;
 
+use App\Entity\Order;
 use App\Repository\OrderRepository;
+use App\Service\Overdue\OverdueChecker;
+use Psr\Clock\ClockInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -17,6 +20,8 @@ final class AdminOrderListController extends AbstractController
 {
     public function __construct(
         private readonly OrderRepository $orderRepository,
+        private readonly OverdueChecker $overdueChecker,
+        private readonly ClockInterface $clock,
     ) {
     }
 
@@ -29,11 +34,15 @@ final class AdminOrderListController extends AbstractController
         $totalOrders = $this->orderRepository->countTotal();
         $totalPages = (int) ceil($totalOrders / $limit);
 
+        $pageUserIds = array_map(static fn (Order $o) => $o->user->id, $orders);
+        $debtorIdSet = array_flip($this->overdueChecker->filterOverdueUserIds($this->clock->now(), $pageUserIds));
+
         return $this->render('admin/order/list.html.twig', [
             'orders' => $orders,
             'currentPage' => $page,
             'totalPages' => $totalPages,
             'totalOrders' => $totalOrders,
+            'debtorIdSet' => $debtorIdSet,
         ]);
     }
 }

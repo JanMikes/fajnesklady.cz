@@ -11,6 +11,7 @@ use App\Repository\PlaceRepository;
 use App\Repository\SelfBillingInvoiceRepository;
 use App\Repository\StorageRepository;
 use App\Repository\UserRepository;
+use App\Service\Overdue\OverdueChecker;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
@@ -24,6 +25,7 @@ final readonly class GetDashboardStatsQuery
         private ContractRepository $contractRepository,
         private PlaceRepository $placeRepository,
         private StorageRepository $storageRepository,
+        private OverdueChecker $overdueChecker,
         private ClockInterface $clock,
     ) {
     }
@@ -54,6 +56,8 @@ final readonly class GetDashboardStatsQuery
         $platformOccupancyRate = $totalStorages > 0 ? ($occupiedStorages / $totalStorages) * 100 : 0.0;
         $activeRecurringContracts = $this->contractRepository->countActiveRecurringAll();
 
+        $overdueSummary = $this->overdueChecker->summarise($now);
+
         return new GetDashboardStatsResult(
             totalUsers: $totalUsers,
             verifiedUsers: $verifiedUsers,
@@ -68,6 +72,9 @@ final readonly class GetDashboardStatsQuery
             occupiedStorages: $occupiedStorages,
             platformOccupancyRate: $platformOccupancyRate,
             activeRecurringContracts: $activeRecurringContracts,
+            overdueCount: $overdueSummary->count,
+            overdueAmount: $overdueSummary->totalAmount,
+            overdueTop: $overdueSummary->top,
         );
     }
 }

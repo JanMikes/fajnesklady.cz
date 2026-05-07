@@ -50,6 +50,18 @@
         </div>
     </div>
 
+    {% if isUserOverdue %}
+        <div class="mb-6 bg-red-50 border border-red-300 rounded-lg p-4 flex items-start gap-3">
+            <svg class="w-5 h-5 flex-shrink-0 mt-0.5 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l6.518 11.59c.75 1.335-.213 2.98-1.742 2.98H3.481c-1.53 0-2.493-1.645-1.743-2.98L8.257 3.099zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+            </svg>
+            <div class="text-sm text-red-800">
+                <strong>Tento zákazník má platbu po splatnosti.</strong>
+                <a href="{{ path('admin_overdue') }}" class="link ml-2">Zobrazit přehled po splatnosti</a>
+            </div>
+        </div>
+    {% endif %}
+
     {# Expiration Warning for contracts ending soon #}
     {% if contract and daysRemaining is not null and daysRemaining <= 7 and daysRemaining > 0 and contract.terminatedAt is null %}
     <div class="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">

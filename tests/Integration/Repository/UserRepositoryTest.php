@@ -4,7 +4,15 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Repository;
 
+use App\Entity\Contract;
+use App\Entity\Order;
+use App\Entity\Place;
+use App\Entity\Storage;
+use App\Entity\StorageType;
 use App\Entity\User;
+use App\Enum\PaymentFrequency;
+use App\Enum\RentalType;
+use App\Enum\TerminationReason;
 use App\Exception\UserNotFound;
 use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -172,6 +180,73 @@ class UserRepositoryTest extends KernelTestCase
         foreach ($remainingEmails as $email) {
             $this->assertContains($email, $fixtureEmails);
         }
+    }
+
+    public function testFindOverduePaginatedAndCountReturnOnlyDebtorUsers(): void
+    {
+        $now = new \DateTimeImmutable('2025-06-15 12:00:00');
+        $debtor = $this->createDebtorWithFailingContract('debtor-overdue@example.com', $now);
+        $clean = new User(Uuid::v7(), 'clean-overdue@example.com', 'password', 'Clean', 'User', $now);
+        $this->entityManager->persist($clean);
+        $this->entityManager->flush();
+
+        $debtorUsers = $this->repository->findOverduePaginated(1, 50, $now);
+        $debtorEmails = array_map(static fn (User $u) => $u->email, $debtorUsers);
+        $count = $this->repository->countOverdueUsers($now);
+
+        $this->assertContains('debtor-overdue@example.com', $debtorEmails);
+        $this->assertNotContains('clean-overdue@example.com', $debtorEmails);
+        $this->assertGreaterThanOrEqual(1, $count);
+        $this->assertSame($count, count($this->repository->findOverduePaginated(1, 1000, $now)));
+    }
+
+    private function createDebtorWithFailingContract(string $email, \DateTimeImmutable $now): User
+    {
+        $debtor = new User(Uuid::v7(), $email, 'password', 'Debt', 'Or', $now);
+        $place = new Place(Uuid::v7(), 'Place', 'Address', 'City', '00000', null, $now);
+        $storageType = new StorageType(Uuid::v7(), $place, 'Box', 100, 100, 100, 10000, 35000, $now);
+        $storage = new Storage(
+            Uuid::v7(),
+            'OD-'.bin2hex(random_bytes(2)),
+            ['x' => 0, 'y' => 0, 'width' => 100, 'height' => 100, 'rotation' => 0],
+            $storageType,
+            $place,
+            $now,
+        );
+        $order = new Order(
+            Uuid::v7(),
+            $debtor,
+            $storage,
+            RentalType::UNLIMITED,
+            PaymentFrequency::MONTHLY,
+            $now->modify('-30 days'),
+            null,
+            35000,
+            $now->modify('-23 days'),
+            $now->modify('-30 days'),
+        );
+        $contract = new Contract(
+            Uuid::v7(),
+            $order,
+            $debtor,
+            $storage,
+            RentalType::UNLIMITED,
+            $now->modify('-30 days'),
+            null,
+            $now->modify('-30 days'),
+        );
+        $contract->setOutstandingDebt(35000);
+        $contract->terminate($now->modify('-10 days'), TerminationReason::PAYMENT_FAILURE);
+
+        $this->entityManager->persist($debtor);
+        $this->entityManager->persist($place);
+        $this->entityManager->persist($storageType);
+        $this->entityManager->persist($storage);
+        $this->entityManager->persist($order);
+        $this->entityManager->persist($contract);
+        $this->entityManager->flush();
+
+        return $debtor;
     }
 
     public function testUpdateUser(): void

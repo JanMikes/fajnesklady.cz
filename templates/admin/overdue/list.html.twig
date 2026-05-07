@@ -1,0 +1,81 @@
+{% extends 'portal/layout.html.twig' %}
+
+{% block title %}Po splatnosti — Admin{% endblock %}
+
+{% block content %}
+    <h1 class="text-3xl font-bold text-gray-900 mb-6">Po splatnosti</h1>
+
+    {% if summary.count == 0 %}
+        <div class="card bg-green-50 border-green-200">
+            <div class="card-body text-center">
+                <p class="text-green-700 text-lg">Žádné platby po splatnosti.</p>
+            </div>
+        </div>
+    {% else %}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div class="card bg-red-50 border-red-300">
+                <div class="card-body">
+                    <h2 class="text-sm font-medium text-red-700 uppercase">Celková částka po splatnosti</h2>
+                    <p class="text-3xl font-bold text-red-700">
+                        {{ (summary.totalAmount / 100)|number_format(0, ',', ' ') }} Kč
+                    </p>
+                </div>
+            </div>
+            <div class="card bg-red-50 border-red-300">
+                <div class="card-body">
+                    <h2 class="text-sm font-medium text-red-700 uppercase">Smluv po splatnosti</h2>
+                    <p class="text-3xl font-bold text-red-700">{{ summary.count }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="overflow-x-auto">
+                <table class="table table-zebra">
+                    <thead>
+                        <tr>
+                            <th>Zákazník</th>
+                            <th>Sklad</th>
+                            <th>Důvod</th>
+                            <th>Po splatnosti</th>
+                            <th>Částka</th>
+                            <th>Akce</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for view in views %}
+                            <tr class="{{ view.severity.rowClass }}">
+                                <td>
+                                    <a href="{{ path('portal_users_view', {id: view.contract.user.id}) }}" class="link font-semibold">
+                                        {{ view.contract.user.fullName }}
+                                    </a>
+                                    <div class="text-sm text-gray-500">{{ view.contract.user.email }}</div>
+                                    {% if view.contract.user.phone %}
+                                        <div class="text-sm text-gray-500">{{ view.contract.user.phone }}</div>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div>{{ view.contract.storage.storageType.name }} #{{ view.contract.storage.number }}</div>
+                                    <div class="text-sm text-gray-500">{{ view.contract.storage.place.name }}</div>
+                                </td>
+                                <td>
+                                    <span class="badge {{ view.severity.badgeClass }}">{{ view.reasonLabel }}</span>
+                                </td>
+                                <td>
+                                    <div class="font-bold">{{ view.daysOverdue }} {{ view.daysOverdue == 1 ? 'den' : (view.daysOverdue < 5 ? 'dny' : 'dní') }}</div>
+                                    <div class="text-xs text-gray-500">od {{ view.anchorDate|date('d.m.Y') }}</div>
+                                </td>
+                                <td>
+                                    <span class="text-red-700 font-bold">{{ (view.overdueAmount / 100)|number_format(0, ',', ' ') }} Kč</span>
+                                </td>
+                                <td>
+                                    <a href="{{ path('admin_order_detail', {id: view.contract.order.id}) }}" class="link text-sm">Detail objednávky</a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% endif %}
+{% endblock %}

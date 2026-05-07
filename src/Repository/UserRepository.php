@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Repository;
 
+use App\Entity\Contract;
 use App\Entity\User;
 use App\Enum\UserRole;
 use App\Exception\UserNotFound;
@@ -170,6 +171,64 @@ class UserRepository
             ->orderBy('u.createdAt', 'ASC')
             ->getQuery()
             ->getResult();
+    }
+
+    /**
+     * @return User[]
+     */
+    public function findOverduePaginated(int $page, int $limit, \DateTimeImmutable $now): array
+    {
+        $offset = ($page - 1) * $limit;
+
+        return $this->entityManager->createQueryBuilder()
+            ->select('u')
+            ->from(User::class, 'u')
+            ->where('u.id IN (:overdueIds)')
+            ->setParameter('overdueIds', $this->overdueUserIdsSubquery($now))
+            ->orderBy('u.createdAt', 'DESC')
+            ->addOrderBy('u.id', 'DESC')
+            ->setFirstResult($offset)
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+    }
+
+    public function countOverdueUsers(\DateTimeImmutable $now): int
+    {
+        return (int) $this->entityManager->createQueryBuilder()
+            ->select('COUNT(u.id)')
+            ->from(User::class, 'u')
+            ->where('u.id IN (:overdueIds)')
+            ->setParameter('overdueIds', $this->overdueUserIdsSubquery($now))
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    /**
+     * @return string[] RFC-4122 user UUID strings, with a sentinel zero-UUID
+     *                  when there are no overdue users — empty arrays in
+     *                  `IN (:overdueIds)` blow up at the DBAL layer
+     */
+    private function overdueUserIdsSubquery(\DateTimeImmutable $now): array
+    {
+        /** @var array<int, array{userId: string}> $rows */
+        $rows = $this->entityManager->createQueryBuilder()
+            ->select('DISTINCT IDENTITY(c.user) AS userId')
+            ->from(Contract::class, 'c')
+            ->where(
+                '(c.terminatedAt IS NULL AND (c.failedBillingAttempts > 0 OR '
+                .'(c.nextBillingDate IS NOT NULL AND c.nextBillingDate < :overdueThreshold))) OR '
+                .'(c.outstandingDebtAmount IS NOT NULL AND c.outstandingDebtAmount > 0)'
+            )
+            ->setParameter('overdueThreshold', $now->modify('-1 day'))
+            ->getQuery()
+            ->getArrayResult();
+
+        if ([] === $rows) {
+            return ['00000000-0000-0000-0000-000000000000'];
+        }
+
+        return array_map(static fn (array $r): string => (string) $r['userId'], $rows);
     }
 
     /**
