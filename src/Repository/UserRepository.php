@@ -16,6 +16,7 @@ class UserRepository
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
+        private readonly ContractRepository $contractRepository,
     ) {
     }
 
@@ -232,6 +233,68 @@ class UserRepository
             ->from(User::class, 'u')
             ->where('u.id IN (:onboardedIds)')
             ->setParameter('onboardedIds', $this->onboardedUserIdsSubquery())
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    /**
+     * @return User[]
+     */
+    public function findWithActiveContractsPaginated(int $page, int $limit, \DateTimeImmutable $now): array
+    {
+        $offset = ($page - 1) * $limit;
+
+        return $this->entityManager->createQueryBuilder()
+            ->select('u')
+            ->from(User::class, 'u')
+            ->where('u.id IN (:activeIds)')
+            ->setParameter('activeIds', $this->contractRepository->findActiveContractUserIdsSubquery($now))
+            ->orderBy('u.createdAt', 'DESC')
+            ->addOrderBy('u.id', 'DESC')
+            ->setFirstResult($offset)
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+    }
+
+    public function countWithActiveContracts(\DateTimeImmutable $now): int
+    {
+        return (int) $this->entityManager->createQueryBuilder()
+            ->select('COUNT(u.id)')
+            ->from(User::class, 'u')
+            ->where('u.id IN (:activeIds)')
+            ->setParameter('activeIds', $this->contractRepository->findActiveContractUserIdsSubquery($now))
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    /**
+     * @return User[]
+     */
+    public function findWithoutActiveContractsPaginated(int $page, int $limit, \DateTimeImmutable $now): array
+    {
+        $offset = ($page - 1) * $limit;
+
+        return $this->entityManager->createQueryBuilder()
+            ->select('u')
+            ->from(User::class, 'u')
+            ->where('u.id NOT IN (:activeIds)')
+            ->setParameter('activeIds', $this->contractRepository->findActiveContractUserIdsSubquery($now))
+            ->orderBy('u.createdAt', 'DESC')
+            ->addOrderBy('u.id', 'DESC')
+            ->setFirstResult($offset)
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+    }
+
+    public function countWithoutActiveContracts(\DateTimeImmutable $now): int
+    {
+        return (int) $this->entityManager->createQueryBuilder()
+            ->select('COUNT(u.id)')
+            ->from(User::class, 'u')
+            ->where('u.id NOT IN (:activeIds)')
+            ->setParameter('activeIds', $this->contractRepository->findActiveContractUserIdsSubquery($now))
             ->getQuery()
             ->getSingleScalarResult();
     }

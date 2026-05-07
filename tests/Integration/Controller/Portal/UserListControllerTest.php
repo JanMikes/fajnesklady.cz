@@ -54,6 +54,65 @@ class UserListControllerTest extends WebTestCase
         $this->assertSelectorTextContains('body', 'tenant@example.com');
     }
 
+    public function testListRendersRentalAndMrrColumnsAndChips(): void
+    {
+        $this->client->loginUser($this->findUserByEmail('admin@example.com'), 'main');
+
+        $this->client->request('GET', '/portal/users');
+
+        $this->assertResponseIsSuccessful();
+        $this->assertSelectorTextContains('body', 'S aktivními smlouvami');
+        $this->assertSelectorTextContains('body', 'Bez aktivních smluv');
+        $this->assertSelectorTextContains('body', 'Smlouvy');
+        $this->assertSelectorTextContains('body', 'MRR');
+    }
+
+    public function testActiveFilterListsOnlyUsersWithActiveContracts(): void
+    {
+        $this->client->loginUser($this->findUserByEmail('admin@example.com'), 'main');
+
+        $crawler = $this->client->request('GET', '/portal/users?filter=active');
+
+        $this->assertResponseIsSuccessful();
+        $tableEmails = $crawler->filter('table tbody td')->extract(['_text']);
+        $tableText = implode(' ', $tableEmails);
+        $this->assertStringContainsString('tenant@example.com', $tableText);
+        // admin@ never holds a tenant contract — must not appear in the user-list table.
+        $this->assertStringNotContainsString('admin@example.com', $tableText);
+    }
+
+    public function testInactiveFilterExcludesUsersWithActiveContracts(): void
+    {
+        $this->client->loginUser($this->findUserByEmail('admin@example.com'), 'main');
+
+        $crawler = $this->client->request('GET', '/portal/users?filter=inactive');
+
+        $this->assertResponseIsSuccessful();
+        $tableText = implode(' ', $crawler->filter('table tbody td')->extract(['_text']));
+        $this->assertStringNotContainsString('tenant@example.com', $tableText);
+        $this->assertStringContainsString('admin@example.com', $tableText);
+    }
+
+    public function testUnknownFilterFallsBackToAll(): void
+    {
+        $this->client->loginUser($this->findUserByEmail('admin@example.com'), 'main');
+
+        $crawler = $this->client->request('GET', '/portal/users?filter=garbage');
+
+        $this->assertResponseIsSuccessful();
+        // "Vše" chip is the active (btn-primary) one when filter is null.
+        $this->assertGreaterThan(0, $crawler->filter('a.btn-primary:contains("Vše")')->count());
+    }
+
+    public function testNonAdminGetsForbidden(): void
+    {
+        $this->client->loginUser($this->findUserByEmail('user@example.com'), 'main');
+
+        $this->client->request('GET', '/portal/users');
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
     private function findUserByEmail(string $email): User
     {
         $user = $this->entityManager->getRepository(User::class)->findOneBy(['email' => $email]);

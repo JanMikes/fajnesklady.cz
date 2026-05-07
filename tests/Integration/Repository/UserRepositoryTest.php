@@ -249,6 +249,71 @@ class UserRepositoryTest extends KernelTestCase
         return $debtor;
     }
 
+    public function testFindWithActiveContractsPaginatedAndCount(): void
+    {
+        $now = new \DateTimeImmutable('2025-06-15 12:00:00');
+
+        $tenant = new User(Uuid::v7(), 'active-tenant@example.com', 'password', 'Active', 'Tenant', $now);
+        $bystander = new User(Uuid::v7(), 'no-contract@example.com', 'password', 'No', 'Contract', $now);
+        $place = new Place(Uuid::v7(), 'Place A', 'Address', 'City', '00000', null, $now);
+        $storageType = new StorageType(Uuid::v7(), $place, 'Box', 100, 100, 100, 10000, 35000, $now);
+        $storage = new Storage(
+            Uuid::v7(),
+            'AC-'.bin2hex(random_bytes(2)),
+            ['x' => 0, 'y' => 0, 'width' => 100, 'height' => 100, 'rotation' => 0],
+            $storageType,
+            $place,
+            $now,
+        );
+        $order = new Order(
+            Uuid::v7(),
+            $tenant,
+            $storage,
+            RentalType::UNLIMITED,
+            PaymentFrequency::MONTHLY,
+            $now->modify('-30 days'),
+            null,
+            35000,
+            $now->modify('+7 days'),
+            $now->modify('-30 days'),
+        );
+        $contract = new Contract(
+            Uuid::v7(),
+            $order,
+            $tenant,
+            $storage,
+            RentalType::UNLIMITED,
+            $now->modify('-30 days'),
+            null,
+            $now->modify('-30 days'),
+        );
+
+        $this->entityManager->persist($tenant);
+        $this->entityManager->persist($bystander);
+        $this->entityManager->persist($place);
+        $this->entityManager->persist($storageType);
+        $this->entityManager->persist($storage);
+        $this->entityManager->persist($order);
+        $this->entityManager->persist($contract);
+        $this->entityManager->flush();
+
+        $activeUsers = $this->repository->findWithActiveContractsPaginated(1, 100, $now);
+        $activeEmails = array_map(static fn (User $u) => $u->email, $activeUsers);
+        $inactiveUsers = $this->repository->findWithoutActiveContractsPaginated(1, 100, $now);
+        $inactiveEmails = array_map(static fn (User $u) => $u->email, $inactiveUsers);
+
+        $this->assertContains('active-tenant@example.com', $activeEmails);
+        $this->assertNotContains('no-contract@example.com', $activeEmails);
+
+        $this->assertContains('no-contract@example.com', $inactiveEmails);
+        $this->assertNotContains('active-tenant@example.com', $inactiveEmails);
+
+        $this->assertSame(
+            $this->repository->countTotal(),
+            $this->repository->countWithActiveContracts($now) + $this->repository->countWithoutActiveContracts($now),
+        );
+    }
+
     public function testUpdateUser(): void
     {
         $now = new \DateTimeImmutable();

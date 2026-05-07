@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller\Portal;
 
 use App\Entity\User;
+use App\Repository\ContractRepository;
 use App\Repository\UserRepository;
 use App\Service\Overdue\OverdueChecker;
 use Psr\Clock\ClockInterface;
@@ -20,6 +21,7 @@ final class UserListController extends AbstractController
 {
     public function __construct(
         private readonly UserRepository $userRepository,
+        private readonly ContractRepository $contractRepository,
         private readonly OverdueChecker $overdueChecker,
         private readonly ClockInterface $clock,
     ) {
@@ -31,7 +33,7 @@ final class UserListController extends AbstractController
         $limit = 20;
         $filterParam = $request->query->get('filter');
         $filter = match ($filterParam) {
-            'overdue', 'onboarded' => $filterParam,
+            'overdue', 'onboarded', 'active', 'inactive' => $filterParam,
             default => null,
         };
         $now = $this->clock->now();
@@ -47,6 +49,16 @@ final class UserListController extends AbstractController
                 $totalUsers = $this->userRepository->countOnboarded();
 
                 break;
+            case 'active':
+                $users = $this->userRepository->findWithActiveContractsPaginated($page, $limit, $now);
+                $totalUsers = $this->userRepository->countWithActiveContracts($now);
+
+                break;
+            case 'inactive':
+                $users = $this->userRepository->findWithoutActiveContractsPaginated($page, $limit, $now);
+                $totalUsers = $this->userRepository->countWithoutActiveContracts($now);
+
+                break;
             default:
                 $users = $this->userRepository->findAllPaginated($page, $limit);
                 $totalUsers = $this->userRepository->countTotal();
@@ -55,10 +67,13 @@ final class UserListController extends AbstractController
         $totalPages = (int) ceil($totalUsers / $limit);
         $overdueUserCount = $this->userRepository->countOverdueUsers($now);
         $onboardedUserCount = $this->userRepository->countOnboarded();
+        $activeUserCount = $this->userRepository->countWithActiveContracts($now);
+        $inactiveUserCount = $this->userRepository->countWithoutActiveContracts($now);
 
         $pageUserIds = array_map(static fn (User $u) => $u->id, $users);
         $debtorIdSet = array_flip($this->overdueChecker->filterOverdueUserIds($now, $pageUserIds));
         $onboardedIdSet = array_flip($this->userRepository->findOnboardedUserIds($pageUserIds));
+        $customerStats = $this->contractRepository->loadCustomerStatsByUserIds($pageUserIds, $now);
 
         return $this->render('portal/user/list.html.twig', [
             'users' => $users,
@@ -68,8 +83,11 @@ final class UserListController extends AbstractController
             'filter' => $filter,
             'overdueUserCount' => $overdueUserCount,
             'onboardedUserCount' => $onboardedUserCount,
+            'activeUserCount' => $activeUserCount,
+            'inactiveUserCount' => $inactiveUserCount,
             'debtorIdSet' => $debtorIdSet,
             'onboardedIdSet' => $onboardedIdSet,
+            'customerStats' => $customerStats,
         ]);
     }
 }

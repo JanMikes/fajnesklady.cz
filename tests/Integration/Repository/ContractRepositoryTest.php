@@ -93,8 +93,13 @@ class ContractRepositoryTest extends KernelTestCase
         return $storage;
     }
 
-    private function createOrder(User $user, Storage $storage, \DateTimeImmutable $startDate, ?\DateTimeImmutable $endDate): Order
-    {
+    private function createOrder(
+        User $user,
+        Storage $storage,
+        \DateTimeImmutable $startDate,
+        ?\DateTimeImmutable $endDate,
+        int $firstPaymentPrice = 10000,
+    ): Order {
         $order = new Order(
             id: Uuid::v7(),
             user: $user,
@@ -103,7 +108,7 @@ class ContractRepositoryTest extends KernelTestCase
             paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: $startDate,
             endDate: $endDate,
-            firstPaymentPrice: 10000,
+            firstPaymentPrice: $firstPaymentPrice,
             expiresAt: new \DateTimeImmutable('+7 days'),
             createdAt: new \DateTimeImmutable(),
         );
@@ -594,6 +599,120 @@ class ContractRepositoryTest extends KernelTestCase
         // Each order's firstPaymentPrice is 10000 in the helper.
         $this->assertSame(20000, $this->repository->sumExpectedRecurringAtPlace($place, null));
         $this->assertSame(10000, $this->repository->sumExpectedRecurringAtPlace($place, $landlordA));
+    }
+
+    public function testLoadCustomerStatsByUserIdsAggregatesActiveTotalAndMrr(): void
+    {
+        $now = new \DateTimeImmutable('2025-06-15 12:00:00');
+
+        $tenant = $this->createUser('cstats-tenant@test.com');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $unlimited = $this->createStorage($storageType, $place, 'CSU');
+        $longLimited = $this->createStorage($storageType, $place, 'CSL');
+        $shortLimited = $this->createStorage($storageType, $place, 'CSS');
+        $terminated = $this->createStorage($storageType, $place, 'CST');
+
+        // Active UNLIMITED contract @ 1500 Kč → counts toward MRR
+        $orderUnlimited = $this->createOrder($tenant, $unlimited, $now->modify('-30 days'), null, 150000);
+        $this->createContract($orderUnlimited, $tenant, $unlimited, $now->modify('-30 days'), null);
+
+        // Active LIMITED ≥28d contract @ 800 Kč → counts toward MRR
+        $orderLong = $this->createOrder($tenant, $longLimited, $now->modify('-10 days'), $now->modify('+50 days'), 80000);
+        $this->createContract($orderLong, $tenant, $longLimited, $now->modify('-10 days'), $now->modify('+50 days'));
+
+        // Active short LIMITED <28d @ 1200 Kč → NOT in MRR
+        $orderShort = $this->createOrder($tenant, $shortLimited, $now->modify('-3 days'), $now->modify('+10 days'), 120000);
+        $this->createContract($orderShort, $tenant, $shortLimited, $now->modify('-3 days'), $now->modify('+10 days'));
+
+        // Terminated contract → in totalCount, not in activeCount or MRR
+        $orderTerminated = $this->createOrder($tenant, $terminated, $now->modify('-90 days'), null, 200000);
+        $contractTerminated = $this->createContract($orderTerminated, $tenant, $terminated, $now->modify('-90 days'), null);
+        $contractTerminated->terminate($now->modify('-1 day'));
+
+        $this->entityManager->flush();
+
+        $stats = $this->repository->loadCustomerStatsByUserIds([$tenant->id], $now);
+
+        $key = $tenant->id->toRfc4122();
+        $this->assertArrayHasKey($key, $stats);
+        $this->assertSame(3, $stats[$key]['activeCount']);
+        $this->assertSame(4, $stats[$key]['totalCount']);
+        $this->assertSame(150000 + 80000, $stats[$key]['mrrInHaler']);
+    }
+
+    public function testLoadCustomerStatsByUserIdsOmitsUsersWithoutContracts(): void
+    {
+        $now = new \DateTimeImmutable('2025-06-15 12:00:00');
+        $userWithout = $this->createUser('cstats-blank@test.com');
+        $this->entityManager->flush();
+
+        $stats = $this->repository->loadCustomerStatsByUserIds([$userWithout->id], $now);
+
+        $this->assertSame([], $stats);
+    }
+
+    public function testLoadCustomerStatsByUserIdsReturnsEmptyForEmptyInput(): void
+    {
+        $now = new \DateTimeImmutable('2025-06-15 12:00:00');
+
+        $stats = $this->repository->loadCustomerStatsByUserIds([], $now);
+
+        $this->assertSame([], $stats);
+    }
+
+    public function testLoadCustomerStatsByUserIdsHandlesFreeContractAsZeroMrr(): void
+    {
+        $now = new \DateTimeImmutable('2025-06-15 12:00:00');
+
+        $tenant = $this->createUser('cstats-free@test.com');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage = $this->createStorage($storageType, $place, 'CFR');
+
+        $order = $this->createOrder($tenant, $storage, $now->modify('-30 days'), null, 0);
+        $this->createContract($order, $tenant, $storage, $now->modify('-30 days'), null);
+
+        $this->entityManager->flush();
+
+        $stats = $this->repository->loadCustomerStatsByUserIds([$tenant->id], $now);
+
+        $key = $tenant->id->toRfc4122();
+        $this->assertSame(1, $stats[$key]['activeCount']);
+        $this->assertSame(0, $stats[$key]['mrrInHaler']);
+    }
+
+    public function testFindActiveContractUserIdsSubqueryReturnsSentinelWhenEmpty(): void
+    {
+        $now = new \DateTimeImmutable('2025-06-15 12:00:00');
+
+        // Wipe contracts in this test's transaction (DAMA rolls back).
+        $connection = $this->entityManager->getConnection();
+        $connection->executeStatement('DELETE FROM contract');
+
+        $ids = $this->repository->findActiveContractUserIdsSubquery($now);
+
+        $this->assertSame(['00000000-0000-0000-0000-000000000000'], $ids);
+    }
+
+    public function testFindActiveContractUserIdsSubqueryReturnsActiveUsers(): void
+    {
+        $now = new \DateTimeImmutable('2025-06-15 12:00:00');
+
+        $tenant = $this->createUser('active-subquery-tenant@test.com');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage = $this->createStorage($storageType, $place, 'CAS');
+
+        $order = $this->createOrder($tenant, $storage, $now->modify('-10 days'), null);
+        $this->createContract($order, $tenant, $storage, $now->modify('-10 days'), null);
+
+        $this->entityManager->flush();
+
+        $ids = $this->repository->findActiveContractUserIdsSubquery($now);
+
+        $this->assertContains($tenant->id->toRfc4122(), $ids);
+        $this->assertNotContains('00000000-0000-0000-0000-000000000000', $ids);
     }
 
     public function testFindExpiringWithinDaysAtPlaceScopedByPlaceAndOwner(): void

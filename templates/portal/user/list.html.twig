@@ -15,6 +15,12 @@
         <a href="{{ path('portal_users_list', {filter: 'onboarded'}) }}" class="btn btn-sm {{ filter == 'onboarded' ? 'btn-secondary' : 'btn-ghost' }}">
             Pouze onboardovaní ({{ onboardedUserCount }})
         </a>
+        <a href="{{ path('portal_users_list', {filter: 'active'}) }}" class="btn btn-sm {{ filter == 'active' ? 'btn-success' : 'btn-ghost' }}">
+            S aktivními smlouvami ({{ activeUserCount }})
+        </a>
+        <a href="{{ path('portal_users_list', {filter: 'inactive'}) }}" class="btn btn-sm {{ filter == 'inactive' ? 'btn-warning' : 'btn-ghost' }}">
+            Bez aktivních smluv ({{ inactiveUserCount }})
+        </a>
     </div>
 
     <div class="card">
@@ -26,6 +32,8 @@
                         <th>Email</th>
                         <th>Role</th>
                         <th>Stav</th>
+                        <th>Smlouvy</th>
+                        <th>MRR</th>
                         <th>Vytvořeno</th>
                         <th>Akce</th>
                     </tr>
@@ -80,6 +88,24 @@
                                     {% endif %}
                                 </div>
                             </td>
+                            {% set stats = customerStats[user.id.toRfc4122()]|default({activeCount: 0, totalCount: 0, mrrInHaler: 0}) %}
+                            <td class="text-sm">
+                                {% if stats.totalCount == 0 %}
+                                    <span class="text-gray-400">—</span>
+                                {% else %}
+                                    <span class="font-medium text-gray-900">{{ stats.activeCount }}</span>
+                                    <span class="text-gray-500">aktivních</span>
+                                    <span class="text-gray-400 text-xs">· {{ stats.totalCount }} celkem</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-sm">
+                                {% if stats.mrrInHaler == 0 %}
+                                    <span class="text-gray-400">—</span>
+                                {% else %}
+                                    <span class="font-medium text-gray-900">{{ (stats.mrrInHaler / 100)|number_format(0, ',', ' ') }}</span>
+                                    <span class="text-gray-500">Kč/měs</span>
+                                {% endif %}
+                            </td>
                             <td class="text-gray-500 text-sm">{{ user.createdAt|date('d.m.Y H:i') }}</td>
                             <td>
                                 <div class="flex gap-2">
@@ -100,7 +126,7 @@
                         </tr>
                     {% else %}
                         <tr>
-                            <td colspan="6" class="text-center text-gray-500 py-8">Žádní uživatelé nenalezeni</td>
+                            <td colspan="8" class="text-center text-gray-500 py-8">Žádní uživatelé nenalezeni</td>
                         </tr>
                     {% endfor %}
                 </tbody>

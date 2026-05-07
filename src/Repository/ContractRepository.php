@@ -468,6 +468,95 @@ class ContractRepository
     }
 
     /**
+     * Aggregate per-user contract stats keyed by RFC-4122 user UUID string.
+     *
+     * Stats per user:
+     *  - totalCount  — every contract ever (including terminated and expired)
+     *  - activeCount — non-terminated contracts whose endDate is null or future
+     *  - mrrInHaler  — sum of Order.firstPaymentPrice across active "recurring shape" contracts
+     *                  ("recurring shape" = endDate IS NULL OR (endDate - startDate) >= 28 days,
+     *                  matching PriceCalculator::WEEKLY_THRESHOLD_DAYS — short LIMITED rentals
+     *                  are one-shots and must not inflate monthly revenue)
+     *
+     * Users with no contracts are absent from the result; callers default to zeros.
+     *
+     * @param Uuid[] $userIds
+     *
+     * @return array<string, array{activeCount: int, totalCount: int, mrrInHaler: int}>
+     */
+    public function loadCustomerStatsByUserIds(array $userIds, \DateTimeImmutable $now): array
+    {
+        if ([] === $userIds) {
+            return [];
+        }
+
+        $idStrings = array_map(static fn (Uuid $id): string => (string) $id, $userIds);
+
+        $rows = $this->entityManager->getConnection()->executeQuery(
+            <<<'SQL'
+                SELECT
+                    c.user_id::text AS user_id,
+                    COUNT(*) AS total_count,
+                    COUNT(*) FILTER (
+                        WHERE c.terminated_at IS NULL
+                          AND (c.end_date IS NULL OR c.end_date >= :now)
+                    ) AS active_count,
+                    COALESCE(SUM(o.total_price) FILTER (
+                        WHERE c.terminated_at IS NULL
+                          AND (c.end_date IS NULL OR c.end_date >= :now)
+                          AND (c.end_date IS NULL OR (c.end_date - c.start_date) >= 28)
+                    ), 0) AS mrr
+                FROM contract c
+                INNER JOIN orders o ON o.id = c.order_id
+                WHERE c.user_id IN (:userIds)
+                GROUP BY c.user_id
+                SQL,
+            ['now' => $now, 'userIds' => $idStrings],
+            [
+                'now' => \Doctrine\DBAL\Types\Types::DATETIME_IMMUTABLE,
+                'userIds' => \Doctrine\DBAL\ArrayParameterType::STRING,
+            ]
+        )->fetchAllAssociative();
+
+        $stats = [];
+        foreach ($rows as $row) {
+            $stats[(string) $row['user_id']] = [
+                'activeCount' => (int) $row['active_count'],
+                'totalCount' => (int) $row['total_count'],
+                'mrrInHaler' => (int) $row['mrr'],
+            ];
+        }
+
+        return $stats;
+    }
+
+    /**
+     * RFC-4122 user UUID strings of users with ≥1 active (non-terminated, not-yet-expired)
+     * contract. Returns the zero-UUID sentinel when no users qualify — empty arrays
+     * in `IN (:ids)` blow up at the DBAL layer (mirrors UserRepository::overdueUserIdsSubquery).
+     *
+     * @return string[]
+     */
+    public function findActiveContractUserIdsSubquery(\DateTimeImmutable $now): array
+    {
+        /** @var array<int, array{userId: string}> $rows */
+        $rows = $this->entityManager->createQueryBuilder()
+            ->select('DISTINCT IDENTITY(c.user) AS userId')
+            ->from(Contract::class, 'c')
+            ->where('c.terminatedAt IS NULL')
+            ->andWhere('c.endDate IS NULL OR c.endDate >= :now')
+            ->setParameter('now', $now)
+            ->getQuery()
+            ->getArrayResult();
+
+        if ([] === $rows) {
+            return ['00000000-0000-0000-0000-000000000000'];
+        }
+
+        return array_map(static fn (array $r): string => (string) $r['userId'], $rows);
+    }
+
+    /**
      * Externally-prepaid contracts whose paidThroughDate falls within
      * [$rangeStart, $rangeEnd] and which have NOT yet established a GoPay token.
      * Idempotency: skip contracts whose lastAdvanceNoticeSentAt is at or after
