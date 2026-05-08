@@ -96,6 +96,26 @@ class StorageCodeGeneratorTest extends TestCase
         $generator->propose($place);
     }
 
+    public function testProposeExcludesReservedCodesNotYetFlushed(): void
+    {
+        // Range = {0042, 0043}; "0042" is in-flight (passed via $reserved) so
+        // propose must return "0043" — even though "0042" is not yet visible
+        // to the DB query.
+        $place = $this->createPlace(digits: 4, from: 42, to: 43);
+        $generator = $this->createGenerator();
+
+        $this->assertSame('0043', $generator->propose($place, ['0042' => true]));
+    }
+
+    public function testProposeThrowsWhenReservedCodesExhaustRange(): void
+    {
+        $place = $this->createPlace(digits: 4, from: 42, to: 43);
+        $generator = $this->createGenerator();
+
+        $this->expectException(StorageCodeRangeExhausted::class);
+        $generator->propose($place, ['0042' => true, '0043' => true]);
+    }
+
     public function testValidateRejectsWrongLength(): void
     {
         $generator = $this->createGenerator();

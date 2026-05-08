@@ -30,11 +30,16 @@ final readonly class StorageCodeGenerator
     }
 
     /**
+     * @param array<string, true> $reserved Codes already chosen in this batch but not yet flushed
+     *
      * @throws StorageCodeRangeExhausted when no available code exists
      */
-    public function propose(Place $place): string
+    public function propose(Place $place, array $reserved = []): string
     {
         $used = $this->buildUsedSet($place);
+        foreach ($reserved as $code => $_) {
+            $used[(string) $code] = true;
+        }
 
         if ($this->countUsedInRange($place, $used) >= $place->storageCodeRangeSize()) {
             throw StorageCodeRangeExhausted::forPlace($place);
@@ -106,9 +111,12 @@ final readonly class StorageCodeGenerator
     {
         $now = $this->clock->now();
         $filled = [];
+        $reserved = [];
 
         foreach ($this->storageRepository->findByPlaceWithoutLockCode($place) as $storage) {
-            $code = $this->propose($place);
+            $code = $this->propose($place, $reserved);
+            $reserved[$code] = true;
+
             $storage->updateLockCode($code, $now);
             $this->storageRepository->save($storage);
             $this->markUsed($place, $code);
