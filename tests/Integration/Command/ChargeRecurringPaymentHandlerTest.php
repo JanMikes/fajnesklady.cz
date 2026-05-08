@@ -182,6 +182,114 @@ class ChargeRecurringPaymentHandlerTest extends KernelTestCase
         );
     }
 
+    public function testPollingTimeoutRecordsInFlightChargeInsteadOfFailing(): void
+    {
+        // Polling timed out — GoPay still says CREATED. The handler must NOT
+        // throw (the webhook will reconcile) and must record the GoPay payment
+        // ID as in-flight on the contract so the next cron run can reconcile
+        // before issuing another charge. Critically, it must not bump
+        // failedBillingAttempts — this is not (yet) a failure.
+        $contract = $this->createContractWithRecurringPayment();
+        $this->goPayClient->willStayPendingForRecurrence();
+
+        $this->commandBus->dispatch(new ChargeRecurringPaymentCommand($contract));
+
+        $this->entityManager->clear();
+        $refreshed = $this->entityManager->find(Contract::class, $contract->id);
+
+        $this->assertNotNull($refreshed->pendingRecurringPaymentId, 'Polling timeout must persist the GoPay payment ID for next-run reconciliation.');
+        $this->assertNull($refreshed->lastBilledAt, 'lastBilledAt must NOT advance until the charge is confirmed.');
+        $this->assertSame(0, $refreshed->failedBillingAttempts, 'A polling timeout is not a failure — webhook will reconcile.');
+    }
+
+    public function testReconcilesInFlightChargeOnNextRunWhenGoPayReportsPaid(): void
+    {
+        // Webhook never arrived (or arrived after the cron). On the next run,
+        // the handler must check the in-flight payment's status, see PAID,
+        // and reconcile billing dates inline — without issuing a new charge.
+        $contract = $this->createContractWithRecurringPayment();
+        $now = $this->clock->now();
+
+        $contract->recordInFlightCharge('gp_inflight_paid');
+        $this->goPayClient->seedRecurrenceStatus(
+            paymentId: 'gp_inflight_paid',
+            state: 'PAID',
+            parentPaymentId: (string) $contract->goPayParentPaymentId,
+            amount: 150_000,
+        );
+        $this->entityManager->flush();
+        $this->goPayClient->reset();
+        $this->goPayClient->seedRecurrenceStatus('gp_inflight_paid', 'PAID', (string) $contract->goPayParentPaymentId, 150_000);
+
+        $this->commandBus->dispatch(new ChargeRecurringPaymentCommand($contract));
+
+        $this->entityManager->clear();
+        $refreshed = $this->entityManager->find(Contract::class, $contract->id);
+
+        $this->assertNull($refreshed->pendingRecurringPaymentId, 'In-flight tracking must be cleared after inline reconciliation.');
+        $this->assertNotNull($refreshed->lastBilledAt);
+        $this->assertEquals($now->format('Y-m-d H:i:s'), $refreshed->lastBilledAt->format('Y-m-d H:i:s'));
+        $this->assertSame(0, $refreshed->failedBillingAttempts);
+        $this->assertSame([], $this->goPayClient->getRecurrenceAmounts(), 'No new charge must be issued — the in-flight one was reconciled.');
+    }
+
+    public function testSkipsChargeWhenInFlightPaymentIsStillPending(): void
+    {
+        // Previous attempt still being processed by GoPay (CREATED). Handler
+        // must NOT charge again and must leave billing state untouched —
+        // failedBillingAttempts stays 0, pendingRecurringPaymentId stays set.
+        $contract = $this->createContractWithRecurringPayment();
+
+        $contract->recordInFlightCharge('gp_inflight_pending');
+        $this->goPayClient->seedRecurrenceStatus(
+            paymentId: 'gp_inflight_pending',
+            state: 'CREATED',
+            parentPaymentId: (string) $contract->goPayParentPaymentId,
+        );
+        $this->entityManager->flush();
+
+        $this->commandBus->dispatch(new ChargeRecurringPaymentCommand($contract));
+
+        $this->entityManager->clear();
+        $refreshed = $this->entityManager->find(Contract::class, $contract->id);
+
+        $this->assertSame('gp_inflight_pending', $refreshed->pendingRecurringPaymentId);
+        $this->assertNull($refreshed->lastBilledAt);
+        $this->assertSame(0, $refreshed->failedBillingAttempts);
+        $this->assertSame([], $this->goPayClient->getRecurrenceAmounts(), 'No new charge must be issued while a previous one is still pending.');
+    }
+
+    public function testThrowsAndClearsInFlightWhenGoPayReportsTerminalFailure(): void
+    {
+        // Previous attempt was canceled by GoPay (e.g. card declined after
+        // 3DS). Handler must surface a PaymentNotConfirmedException so the
+        // cron records a failed attempt — and must clear the in-flight ID
+        // before throwing so the contract is no longer stuck waiting.
+        $contract = $this->createContractWithRecurringPayment();
+
+        $contract->recordInFlightCharge('gp_inflight_canceled');
+        $this->goPayClient->seedRecurrenceStatus(
+            paymentId: 'gp_inflight_canceled',
+            state: 'CANCELED',
+            parentPaymentId: (string) $contract->goPayParentPaymentId,
+        );
+        $this->entityManager->flush();
+
+        $exceptionThrown = false;
+
+        try {
+            $this->commandBus->dispatch(new ChargeRecurringPaymentCommand($contract));
+        } catch (\Symfony\Component\Messenger\Exception\HandlerFailedException $e) {
+            $exceptionThrown = true;
+            $previous = $e->getPrevious();
+            $this->assertInstanceOf(\App\Service\GoPay\PaymentNotConfirmedException::class, $previous);
+            $this->assertSame('CANCELED', $previous->state);
+            $this->assertFalse($previous->isPending(), 'CANCELED must be classified as a terminal failure, not pending.');
+        }
+
+        $this->assertTrue($exceptionThrown, 'Terminal in-flight state must surface as PaymentNotConfirmedException.');
+    }
+
     public function testFutureLastBilledAtDoesNotPermanentlyLockBilling(): void
     {
         // Defence against clock drift: if lastBilledAt somehow lies in the

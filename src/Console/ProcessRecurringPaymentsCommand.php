@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace App\Console;
 
 use App\Command\ChargeRecurringPaymentCommand;
+use App\Entity\Contract;
 use App\Event\RecurringPaymentFailed;
 use App\Repository\ContractRepository;
 use App\Service\GoPay\GoPayException;
 use App\Service\GoPay\PaymentNotConfirmedException;
+use App\Service\Messenger\HandlerFailureUnwrap;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\Persistence\ManagerRegistry;
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -28,7 +31,7 @@ final class ProcessRecurringPaymentsCommand extends Command
 {
     public function __construct(
         private readonly ContractRepository $contractRepository,
-        private readonly EntityManagerInterface $entityManager,
+        private readonly ManagerRegistry $doctrine,
         private readonly MessageBusInterface $commandBus,
         #[Autowire(service: 'event.bus')]
         private readonly MessageBusInterface $eventBus,
@@ -61,38 +64,81 @@ final class ProcessRecurringPaymentsCommand extends Command
                 $this->commandBus->dispatch(new ChargeRecurringPaymentCommand($contract));
                 ++$successCount;
                 $io->text(sprintf('  [OK] Contract %s charged successfully.', $contract->id));
-            } catch (GoPayException|PaymentNotConfirmedException $e) {
+            } catch (\Throwable $rawException) {
                 ++$failureCount;
+                $exception = HandlerFailureUnwrap::unwrap($rawException);
 
-                // Record failure outside the rolled-back command bus transaction
-                $contract->recordFailedBillingAttempt($now);
-                $this->entityManager->flush();
+                $this->recordFailure($contract, $exception, $now);
 
-                $this->eventBus->dispatch(new RecurringPaymentFailed(
-                    contractId: $contract->id,
-                    attempt: $contract->failedBillingAttempts,
-                    reason: $e->getMessage(),
-                    occurredOn: $now,
-                ));
-
-                $this->logger->error('Recurring payment processing failed', [
-                    'contract_id' => $contract->id->toRfc4122(),
-                    'attempt' => $contract->failedBillingAttempts,
-                    'exception' => $e,
-                ]);
-                $io->error(sprintf('  [FAIL] Contract %s: %s', $contract->id, $e->getMessage()));
-            } catch (\Exception $e) {
-                ++$failureCount;
-                $this->logger->error('Recurring payment processing failed (unexpected)', [
-                    'contract_id' => $contract->id->toRfc4122(),
-                    'exception' => $e,
-                ]);
-                $io->error(sprintf('  [FAIL] Contract %s: %s', $contract->id, $e->getMessage()));
+                $io->error(sprintf('  [FAIL] Contract %s: %s', $contract->id, $exception->getMessage()));
             }
         }
 
         $io->success(sprintf('Processed: %d success, %d failures.', $successCount, $failureCount));
 
         return $failureCount > 0 ? Command::FAILURE : Command::SUCCESS;
+    }
+
+    /**
+     * Record a billing failure for a contract. Wrapped so any follow-up error
+     * (closed EntityManager after a Doctrine rollback, event-bus failure, …)
+     * cannot break the rest of the cron run — the unrecorded failure surfaces
+     * again on the next cron run.
+     */
+    private function recordFailure(Contract $contract, \Throwable $exception, \DateTimeImmutable $now): void
+    {
+        $isExpectedFailure = $exception instanceof GoPayException
+            || $exception instanceof PaymentNotConfirmedException;
+
+        try {
+            if ($isExpectedFailure) {
+                $contract->recordFailedBillingAttempt($now);
+                $this->getEntityManager()->flush();
+
+                $this->eventBus->dispatch(new RecurringPaymentFailed(
+                    contractId: $contract->id,
+                    attempt: $contract->failedBillingAttempts,
+                    reason: $exception->getMessage(),
+                    occurredOn: $now,
+                ));
+
+                $this->logger->error('Recurring payment processing failed', [
+                    'contract_id' => $contract->id->toRfc4122(),
+                    'attempt' => $contract->failedBillingAttempts,
+                    'exception' => $exception,
+                ]);
+            } else {
+                $this->logger->error('Recurring payment processing failed (unexpected)', [
+                    'contract_id' => $contract->id->toRfc4122(),
+                    'exception' => $exception,
+                ]);
+            }
+        } catch (\Throwable $followUpException) {
+            $this->logger->critical('Failed to record billing failure — resetting EntityManager and continuing', [
+                'contract_id' => $contract->id->toRfc4122(),
+                'original_exception' => $exception,
+                'follow_up_exception' => $followUpException,
+            ]);
+
+            $this->doctrine->resetManager();
+        }
+    }
+
+    private function getEntityManager(): EntityManagerInterface
+    {
+        $manager = $this->doctrine->getManager();
+        if (!$manager instanceof EntityManagerInterface) {
+            throw new \LogicException('Default Doctrine manager is not an ORM EntityManager.');
+        }
+
+        if (!$manager->isOpen()) {
+            $this->doctrine->resetManager();
+            $reset = $this->doctrine->getManager();
+            \assert($reset instanceof EntityManagerInterface);
+
+            return $reset;
+        }
+
+        return $manager;
     }
 }

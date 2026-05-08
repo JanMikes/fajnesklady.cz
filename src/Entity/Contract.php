@@ -45,6 +45,16 @@ class Contract
     #[ORM\Column(nullable: true)]
     public private(set) ?\DateTimeImmutable $lastBillingFailedAt = null;
 
+    /**
+     * GoPay payment ID of a recurring charge that is still being processed
+     * asynchronously by GoPay (synchronous polling timed out, webhook hasn't
+     * arrived yet). When set, the next cron run reconciles this payment's
+     * status with GoPay before issuing a new charge — protects against
+     * double-charges when the webhook is slow or fails to deliver.
+     */
+    #[ORM\Column(nullable: true)]
+    public private(set) ?string $pendingRecurringPaymentId = null;
+
     #[ORM\Column(nullable: true)]
     public private(set) ?\DateTimeImmutable $terminationNoticedAt = null;
 
@@ -182,12 +192,34 @@ class Contract
         $this->paidThroughDate = $paidThroughDate;
         $this->failedBillingAttempts = 0;
         $this->lastBillingFailedAt = null;
+        $this->pendingRecurringPaymentId = null;
     }
 
     public function recordFailedBillingAttempt(\DateTimeImmutable $failedAt): void
     {
         ++$this->failedBillingAttempts;
         $this->lastBillingFailedAt = $failedAt;
+        $this->pendingRecurringPaymentId = null;
+    }
+
+    /**
+     * Mark a freshly-issued GoPay charge as still being processed asynchronously.
+     * Set when synchronous polling timed out — the webhook (or the next cron run)
+     * is expected to reconcile the final state.
+     */
+    public function recordInFlightCharge(string $paymentId): void
+    {
+        $this->pendingRecurringPaymentId = $paymentId;
+    }
+
+    public function clearPendingRecurringCharge(): void
+    {
+        $this->pendingRecurringPaymentId = null;
+    }
+
+    public function hasPendingRecurringCharge(): bool
+    {
+        return null !== $this->pendingRecurringPaymentId;
     }
 
     public function cancelRecurringPayment(): void

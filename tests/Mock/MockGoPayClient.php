@@ -23,11 +23,16 @@ final class MockGoPayClient implements GoPayClient
     /** @var array<string, true> */
     private array $voidedRecurrences = [];
 
+    /** @var array<string, int> Amounts by GoPay paymentId — populated on each actual createRecurrence call. */
+    private array $issuedRecurrenceAmounts = [];
+
     private bool $shouldFailNextPayment = false;
 
     private bool $shouldFailNextRecurrence = false;
 
     private bool $recurrenceReturnsCreated = false;
+
+    private bool $recurrenceStaysPending = false;
 
     public function createPayment(Order $order, string $returnUrl, string $notificationUrl): GoPayPayment
     {
@@ -52,7 +57,12 @@ final class MockGoPayClient implements GoPayClient
         // Return CREATED state if configured (simulates async processing)
         // but store as PAID for getStatus (simulates GoPay confirming after a moment)
         $returnState = 'PAID';
-        if ($this->recurrenceReturnsCreated) {
+        $statusState = 'PAID';
+        if ($this->recurrenceStaysPending) {
+            $this->recurrenceStaysPending = false;
+            $returnState = 'CREATED';
+            $statusState = 'CREATED';
+        } elseif ($this->recurrenceReturnsCreated) {
             $this->recurrenceReturnsCreated = false;
             $returnState = 'CREATED';
         }
@@ -66,10 +76,11 @@ final class MockGoPayClient implements GoPayClient
         $this->createdPayments[$paymentId] = $payment;
         $this->paymentStatuses[$paymentId] = new GoPayPaymentStatus(
             id: $paymentId,
-            state: 'PAID',
+            state: $statusState,
             parentId: $parentPaymentId,
             amount: $amount,
         );
+        $this->issuedRecurrenceAmounts[$paymentId] = $amount;
 
         return $payment;
     }
@@ -169,6 +180,31 @@ final class MockGoPayClient implements GoPayClient
     }
 
     /**
+     * Make the next createRecurrence return CREATED AND keep getStatus
+     * returning CREATED — simulates a charge that GoPay never resolves
+     * (or only resolves after the polling window) so the handler must
+     * record an in-flight charge.
+     */
+    public function willStayPendingForRecurrence(): void
+    {
+        $this->recurrenceStaysPending = true;
+    }
+
+    /**
+     * Seed a status row directly so tests can simulate a known in-flight
+     * GoPay payment without going through createRecurrence first.
+     */
+    public function seedRecurrenceStatus(string $paymentId, string $state, string $parentPaymentId, ?int $amount = null): void
+    {
+        $this->paymentStatuses[$paymentId] = new GoPayPaymentStatus(
+            id: $paymentId,
+            state: $state,
+            parentId: $parentPaymentId,
+            amount: $amount,
+        );
+    }
+
+    /**
      * @return array<string, GoPayPayment>
      */
     public function getCreatedPayments(): array
@@ -177,18 +213,11 @@ final class MockGoPayClient implements GoPayClient
     }
 
     /**
-     * @return array<string, ?int> Amounts charged via createRecurrence(), keyed by paymentId
+     * @return array<string, int> Amounts charged via createRecurrence(), keyed by paymentId
      */
     public function getRecurrenceAmounts(): array
     {
-        $amounts = [];
-        foreach ($this->paymentStatuses as $paymentId => $status) {
-            if (null !== $status->parentId) {
-                $amounts[$paymentId] = $status->amount;
-            }
-        }
-
-        return $amounts;
+        return $this->issuedRecurrenceAmounts;
     }
 
     public function wasRecurrenceVoided(string $paymentId): bool
@@ -202,8 +231,10 @@ final class MockGoPayClient implements GoPayClient
         $this->paymentStatuses = [];
         $this->createdPayments = [];
         $this->voidedRecurrences = [];
+        $this->issuedRecurrenceAmounts = [];
         $this->shouldFailNextPayment = false;
         $this->shouldFailNextRecurrence = false;
         $this->recurrenceReturnsCreated = false;
+        $this->recurrenceStaysPending = false;
     }
 }

@@ -123,7 +123,7 @@ final class PlaceFixtures extends Fixture
     {
         $path = sprintf('places/%s/maps/seed-map.png', $placeId->toRfc4122());
 
-        $image = $this->imageManager->create(1500, 900)->fill('#ffffff');
+        $image = $this->imageManager->createImage(1500, 900)->fill('#ffffff');
         $bytes = $image->encode(new PngEncoder())->toString();
 
         $this->publicFilesystem->deleteIfExists($path);

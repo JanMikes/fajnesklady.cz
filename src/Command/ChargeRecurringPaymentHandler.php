@@ -7,7 +7,6 @@ namespace App\Command;
 use App\Entity\Contract;
 use App\Event\RecurringPaymentCharged;
 use App\Service\GoPay\GoPayClient;
-use App\Service\GoPay\GoPayException;
 use App\Service\GoPay\PaymentNotConfirmedException;
 use App\Value\GoPayPayment;
 use Psr\Clock\ClockInterface;
@@ -20,8 +19,16 @@ use Symfony\Component\Uid\Uuid;
 final readonly class ChargeRecurringPaymentHandler
 {
     private const int DAYS_PER_MONTH = 30;
-    private const int MAX_STATUS_POLLS = 5;
-    private const int POLL_INTERVAL_MICROSECONDS = 2_000_000; // 2 seconds
+
+    /**
+     * Polling window for GoPay's async card processing. 15 × 2 s = 30 s,
+     * which absorbs the vast majority of webhook delays observed in production.
+     * If we still get a non-PAID state after the window, we record the GoPay
+     * payment ID as in-flight and let the webhook (or the next cron run) close
+     * the loop — see Contract::$pendingRecurringPaymentId.
+     */
+    private const int MAX_STATUS_POLLS = 15;
+    private const int POLL_INTERVAL_MICROSECONDS = 2_000_000;
 
     public function __construct(
         private GoPayClient $goPayClient,
@@ -58,6 +65,19 @@ final readonly class ChargeRecurringPaymentHandler
             throw new \DomainException('Contract does not have active recurring payment.');
         }
 
+        // Reconcile any in-flight charge from a previous run before issuing a
+        // new one. This is the primary defense against double-charges when
+        // GoPay's webhook is slow or never arrives. We always return after
+        // reconciling — either the previous charge is now PAID (finalised),
+        // still pending (try again next run), or it terminally failed (the
+        // method throws so the cron records a failure and the retry cron
+        // picks the contract up under the 3-day / 7-day ladder).
+        if ($contract->hasPendingRecurringCharge()) {
+            $this->reconcilePendingCharge($contract, $now);
+
+            return;
+        }
+
         /** @var string $parentPaymentId */
         $parentPaymentId = $contract->goPayParentPaymentId;
 
@@ -72,58 +92,105 @@ final readonly class ChargeRecurringPaymentHandler
             return;
         }
 
-        try {
-            // Charge via GoPay
-            $payment = $this->goPayClient->createRecurrence(
-                $parentPaymentId,
-                $amount,
-                $this->buildOrderNumber($contract->id, $now),
-                $this->buildDescription($contract, $now),
-            );
+        // Charge via GoPay
+        $payment = $this->goPayClient->createRecurrence(
+            $parentPaymentId,
+            $amount,
+            $this->buildOrderNumber($contract->id, $now),
+            $this->buildDescription($contract, $now),
+        );
 
-            // GoPay may return CREATED while the card charge is still processing.
-            // Poll for confirmation before giving up.
-            if ('PAID' !== $payment->state) {
-                $payment = $this->pollForConfirmation($payment);
-            }
-
-            if ('PAID' !== $payment->state) {
-                $this->logger->error('Recurring payment not confirmed by GoPay after polling', [
-                    'gopay_payment_id' => $payment->id,
-                    'state' => $payment->state,
-                    'contract_id' => $contract->id->toRfc4122(),
-                ]);
-
-                throw PaymentNotConfirmedException::withState($payment->id, $payment->state);
-            }
-
-            // Use nextBillingDate as billing period start for deterministic proration
-            /** @var \DateTimeImmutable $billingPeriodStart */
-            $billingPeriodStart = $contract->nextBillingDate ?? $now;
-            $effectiveEndDate = $contract->getEffectiveEndDate();
-            $nextBillingDate = $billingPeriodStart->modify('+1 month');
-            $paidThroughDate = $nextBillingDate;
-
-            // If this was the last billing cycle, stop future charges
-            if (null !== $effectiveEndDate && $nextBillingDate >= $effectiveEndDate) {
-                $nextBillingDate = null; // No more charges
-                $paidThroughDate = $effectiveEndDate;
-            }
-
-            // Update contract
-            $contract->recordBillingCharge($now, $nextBillingDate, $paidThroughDate);
-
-            $this->eventBus->dispatch(new RecurringPaymentCharged(
-                contractId: $contract->id,
-                paymentId: $payment->id,
-                amount: $amount,
-                occurredOn: $now,
-            ));
-        } catch (GoPayException|PaymentNotConfirmedException $e) {
-            // Re-throw — failure recording is handled by the calling console command
-            // outside the doctrine_transaction (which rolls back on exception).
-            throw $e;
+        // GoPay may return CREATED while the card charge is still processing.
+        // Poll for confirmation before giving up.
+        if ('PAID' !== $payment->state) {
+            $payment = $this->pollForConfirmation($payment);
         }
+
+        if ('PAID' !== $payment->state) {
+            // Polling timed out. Record the GoPay payment ID as in-flight so the
+            // next cron run reconciles it instead of issuing another charge, and
+            // return successfully — the webhook is expected to close the loop.
+            $contract->recordInFlightCharge($payment->id);
+
+            $this->logger->warning('Recurring payment still pending after polling — webhook will reconcile', [
+                'gopay_payment_id' => $payment->id,
+                'state' => $payment->state,
+                'contract_id' => $contract->id->toRfc4122(),
+            ]);
+
+            return;
+        }
+
+        $this->finalizeCharge($contract, $payment->id, $amount, $now);
+    }
+
+    /**
+     * Look up an in-flight GoPay payment and act on its status:
+     *  - PAID     → reconcile billing dates inline (webhook missed/slow)
+     *  - pending  → skip this run; webhook or next cron will close it
+     *  - terminal → throw {@see PaymentNotConfirmedException} so the cron
+     *               records a normal billing failure
+     */
+    private function reconcilePendingCharge(Contract $contract, \DateTimeImmutable $now): void
+    {
+        /** @var string $pendingId */
+        $pendingId = $contract->pendingRecurringPaymentId;
+        $status = $this->goPayClient->getStatus($pendingId);
+
+        if ($status->isPaid()) {
+            $amount = $status->amount ?? $contract->getEffectiveMonthlyAmount();
+            $this->finalizeCharge($contract, $status->id, $amount, $now);
+
+            $this->logger->info('Recurring payment reconciled inline from in-flight state', [
+                'contract_id' => $contract->id->toRfc4122(),
+                'gopay_payment_id' => $status->id,
+            ]);
+
+            return;
+        }
+
+        if ($status->isPending()) {
+            $this->logger->info('Skipping recurring charge: previous attempt still in flight', [
+                'contract_id' => $contract->id->toRfc4122(),
+                'gopay_payment_id' => $pendingId,
+                'state' => $status->state,
+            ]);
+
+            return;
+        }
+
+        // Terminal failure (CANCELED / TIMEOUTED / REFUNDED). Clear in-flight
+        // tracking and surface as a normal billing failure — the cron will
+        // record the failed attempt and the retry cron will pick up the
+        // contract under the standard 3-day / 7-day retry ladder.
+        $contract->clearPendingRecurringCharge();
+
+        throw PaymentNotConfirmedException::withState($pendingId, $status->state);
+    }
+
+    private function finalizeCharge(Contract $contract, string $paymentId, int $amount, \DateTimeImmutable $now): void
+    {
+        // Use nextBillingDate as billing period start for deterministic proration
+        /** @var \DateTimeImmutable $billingPeriodStart */
+        $billingPeriodStart = $contract->nextBillingDate ?? $now;
+        $effectiveEndDate = $contract->getEffectiveEndDate();
+        $nextBillingDate = $billingPeriodStart->modify('+1 month');
+        $paidThroughDate = $nextBillingDate;
+
+        // If this was the last billing cycle, stop future charges
+        if (null !== $effectiveEndDate && $nextBillingDate >= $effectiveEndDate) {
+            $nextBillingDate = null;
+            $paidThroughDate = $effectiveEndDate;
+        }
+
+        $contract->recordBillingCharge($now, $nextBillingDate, $paidThroughDate);
+
+        $this->eventBus->dispatch(new RecurringPaymentCharged(
+            contractId: $contract->id,
+            paymentId: $paymentId,
+            amount: $amount,
+            occurredOn: $now,
+        ));
     }
 
     /**

@@ -130,10 +130,12 @@ class UserExportControllerTest extends WebTestCase
                     && '2025-06-15' === $cell->format('Y-m-d')
                 ) {
                     $foundFormatted = true;
+
                     break 2;
                 }
                 if (is_string($cell) && str_contains($cell, '15.06.2025')) {
                     $foundFormatted = true;
+
                     break 2;
                 }
             }

@@ -32,6 +32,8 @@ Three message buses:
 
 **Event Bus** (`event.bus`): Domain events with zero-or-more handlers. Used for side effects (emails, logging).
 
+**Project-wide messenger gotchas (READ BEFORE WORKING ON BUS DISPATCHES):** [.claude/MESSENGER.md](.claude/MESSENGER.md). Most importantly: handler exceptions are wrapped in `HandlerFailedException`, so typed `catch` blocks at dispatch sites never match the original — always unwrap via `App\Service\Messenger\HandlerFailureUnwrap::unwrap()`. Also covers the GoPay webhook architecture (per-payment `notification_url`, no global registration) and the failure-recording-outside-transaction pattern for cron loops.
+
 ### Directory Structure
 
 ```
