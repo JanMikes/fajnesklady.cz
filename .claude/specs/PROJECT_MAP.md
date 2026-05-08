@@ -161,6 +161,7 @@ Stack: PHP 8.5 (Docker image `ghcr.io/thedevs-cz/php:8.5-fajnesklady`) · Symfon
 | `CreatePlaceRequest` | Application to create place | requester, place |
 | `PlaceStorageCodeUsage` | Tracks which storage codes have been issued at a place | place; supports bulk + on-demand allocation |
 | `EmailLog` | Persistent record of every outbound email (status, recipient, template, payload) | user (nullable); written out-of-band so survives rollback |
+| `OverdueDigestSent` | Audit row marking a daily overdue digest e-mail was sent to one admin (unique per admin per day) | admin:User |
 | `AuditLog` | Activity log | user |
 | `ResetPasswordRequest` | Password reset token | user |
 | `LandlordInvoiceSequence` | Invoice numbering | landlord |
@@ -197,6 +198,8 @@ Place / handover: PlaceProposed, PlaceAccessRequested, PlaceAccessRequestApprove
 
 Contracts / billing: ContractExpiringSoon, ContractTerminated, ContractTerminatedDueToPaymentFailure, InvoiceCreated, RecurringPaymentEstablished, RecurringPaymentCharged, RecurringPaymentFailed, RecurringPaymentCancelled, RecurringPaymentAdvanceNoticeNeeded, TerminationNoticeRequested, ExternalPrepaymentEndingSoon, PaymentAmountMismatch.
 
+Admin notifications: OverdueDigestRequested.
+
 Handlers (in `src/Event/`):
 - Email side-effects: `Send*EmailHandler` (welcome, verification, password reset, order confirmation, signing link, contract ready/expiring/terminated, handover request/reminder/completed, invoice, recurring-payment established/cancelled/failed/advance-notice + admin variants, place access approved/denied/requested, place proposed, payment default, amount mismatch alert, external-prepayment ending soon, termination notice).
 - Bookkeeping: `IssueInvoiceOnPaymentHandler`, `IssueInvoiceOnRecurringChargeHandler`, `RecordPaymentOnOrderPaidHandler`, `RecordPaymentOnRecurringChargeHandler`, `ReleaseStorageOnHandoverCompletedHandler`, `ForceReleaseStorageOnHandoverExpiredHandler`, `SendStorageAvailabilityWarningHandler`.
@@ -213,7 +216,7 @@ Registration, LandlordRegistration, RequestPasswordReset, ResetPassword, ChangeP
 
 Compose `EntityManagerInterface` only — never extend `ServiceEntityRepository`, never call `flush()` (exception: `EmailLogRepository`, audit-log writers commit out-of-band so the row survives a parent rollback).
 
-User, Place, PlaceAccess, PlaceAccessRequest, PlaceChangeRequest, PlaceStorageCodeUsage, CreatePlaceRequest, Storage, StorageType, StoragePhoto, StorageTypePhoto, StorageUnavailability, Order, Contract, Invoice, SelfBillingInvoice, LandlordInvoiceSequence, Payment, HandoverProtocol, HandoverPhoto, AuditLog, EmailLog (+ `EmailLogFilter` value-object), ResetPasswordRequest.
+User, Place, PlaceAccess, PlaceAccessRequest, PlaceChangeRequest, PlaceStorageCodeUsage, CreatePlaceRequest, Storage, StorageType, StoragePhoto, StorageTypePhoto, StorageUnavailability, Order, Contract, Invoice, SelfBillingInvoice, LandlordInvoiceSequence, Payment, HandoverProtocol, HandoverPhoto, AuditLog, EmailLog (+ `EmailLogFilter` value-object), OverdueDigestSent, ResetPasswordRequest.
 
 ## Services (`src/Service/`)
 
@@ -258,6 +261,7 @@ Domain exceptions, most carrying `#[WithHttpStatus]`:
 | `app:retry-failed-payments` | Retry recurring charges that previously failed |
 | `app:send-recurring-payment-advance-notice` | Email customer N days before next charge |
 | `app:send-external-prepayment-ending-soon` | Email customer when external-prepayment runway nearly used up |
+| `app:send-overdue-digest-email` | Daily 08:00 Europe/Prague — one e-mail per admin when ≥1 overdue contract; idempotent via `OverdueDigestSent` |
 | `app:send-expiration-reminders` | Email customer ahead of fixed-term contract end |
 | `app:process-contract-terminations` | Apply scheduled terminations + emit `ContractTerminated` |
 | `app:process-handover-protocols` | Send handover requests/reminders, expire stale protocols |

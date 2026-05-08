@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Po splatnosti — denní přehled</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 700px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #dc2626; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
+        .header h1 { margin: 0; font-size: 22px; }
+        .header .date { margin: 6px 0 0; font-size: 13px; }
+        .content { background-color: #f9f9f9; padding: 24px; border: 1px solid #ddd; border-top: none; }
+        .summary { background-color: #fef2f2; border: 1px solid #fecaca; padding: 16px 20px; margin-bottom: 20px; border-radius: 5px; }
+        .summary p { margin: 0; }
+        .summary p + p { margin-top: 6px; }
+        .summary strong { color: #b91c1c; font-size: 22px; }
+        table.rows { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 20px; }
+        table.rows th { text-align: left; padding: 8px; background-color: #f3f4f6; border-bottom: 2px solid #d1d5db; font-size: 12px; text-transform: uppercase; }
+        table.rows td { padding: 8px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
+        tr.sev-critical td { background-color: #fee2e2; }
+        tr.sev-error    td { background-color: #fef2f2; }
+        tr.sev-warning  td { background-color: #fffbeb; }
+        .badge { display: inline-block; padding: 2px 8px; font-size: 11px; border-radius: 9999px; font-weight: 600; }
+        .badge-critical { background-color: #b91c1c; color: white; }
+        .badge-error    { background-color: #ef4444; color: white; }
+        .badge-warning  { background-color: #f59e0b; color: white; }
+        .muted { font-size: 12px; color: #666; }
+        .cta { text-align: center; margin: 24px 0; }
+        .cta a { display: inline-block; background-color: #dc2626; color: white; padding: 12px 28px; text-decoration: none; border-radius: 5px; font-size: 14px; font-weight: 600; }
+        .footer { text-align: center; padding: 16px; font-size: 12px; color: #666; }
+        a { color: #dc2626; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Po splatnosti — denní přehled</h1>
+        <p class="date">{{ date|date('d.m.Y') }}</p>
+    </div>
+
+    <div class="content">
+        <p>Dobrý den {{ adminName }},</p>
+
+        <div class="summary">
+            <p>Smluv po splatnosti: <strong>{{ totalCount }}</strong></p>
+            <p>Celková částka: <strong>{{ (totalAmount / 100)|number_format(0, ',', ' ') }} Kč</strong></p>
+        </div>
+
+        <p>Nejvíc po splatnosti (top {{ top|length }}):</p>
+
+        <table class="rows">
+            <thead>
+                <tr>
+                    <th>Závažnost</th>
+                    <th>Zákazník</th>
+                    <th>Sklad</th>
+                    <th>Důvod</th>
+                    <th>Po splatnosti</th>
+                    <th style="text-align: right;">Částka</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for view in top %}
+                    <tr class="sev-{{ view.severity.value }}">
+                        <td>
+                            <span class="badge badge-{{ view.severity.value }}">{{ view.severity.label }}</span>
+                        </td>
+                        <td>
+                            <strong>{{ view.contract.user.fullName }}</strong><br>
+                            <span class="muted">{{ view.contract.user.email }}</span>
+                        </td>
+                        <td>
+                            {{ view.contract.storage.storageType.name }} #{{ view.contract.storage.number }}<br>
+                            <span class="muted">{{ view.contract.storage.place.name }}</span>
+                        </td>
+                        <td>{{ view.reasonLabel }}</td>
+                        <td>
+                            <strong>{{ view.daysOverdue }}</strong> {{ view.daysOverdue == 1 ? 'den' : (view.daysOverdue < 5 ? 'dny' : 'dní') }}<br>
+                            <span class="muted">od {{ view.anchorDate|date('d.m.Y') }}</span>
+                        </td>
+                        <td style="text-align: right;">
+                            <strong>{{ (view.overdueAmount / 100)|number_format(0, ',', ' ') }} Kč</strong>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        {% if totalCount > top|length %}
+            <p class="muted">… a dalších {{ totalCount - top|length }} smluv. Kompletní přehled najdete na portálu.</p>
+        {% endif %}
+
+        <div class="cta">
+            <a href="{{ overdueUrl }}">Zobrazit všechny po splatnosti</a>
+        </div>
+
+        <p style="font-size: 13px;">Tento e-mail dostáváte denně v 08:00, dokud existují smlouvy po splatnosti. Když všechny zákazníky odbavíte, e-mail přestane chodit.</p>
+    </div>
+
+    <div class="footer">
+        <p>Mekmann s.r.o., IČO 11678631, Dvořákova 780, 739 11 Frýdlant nad Ostravicí</p>
+        <p>Toto je automaticky generovaný admin e-mail.</p>
+        <p>&copy; {{ 'now'|date('Y') }} Fajnesklady.cz. Všechna práva vyhrazena.</p>
+    </div>
+</body>
+</html>

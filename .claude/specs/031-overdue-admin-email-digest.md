@@ -1,6 +1,6 @@
 # 031 — Daily overdue admin e-mail digest
 
-**Status:** ready
+**Status:** done
 **Type:** feature (admin push notification)
 **Scope:** small (~10 files: 1 console command + 1 event + 1 handler + 1 entity + 1 repository + 1 migration + 2 email templates + tests + BACKLOG/PROJECT_MAP touch-ups)
 **Depends on:** spec 023 (`OverdueChecker` + `OverdueSummary` + `/portal/admin/po-splatnosti` page).
