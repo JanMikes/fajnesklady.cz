@@ -118,6 +118,8 @@ final readonly class FakturoidApiClient implements FakturoidClient
         try {
             $response = $this->manager->getInvoicesProvider()->create([
                 'subject_id' => $subjectId,
+                // Prices in our system are gross (vč. DPH); Fakturoid must back-calculate VAT, not add it on top.
+                'vat_price_mode' => 'from_total_with_vat',
                 'lines' => [
                     [
                         'name' => sprintf(
@@ -170,6 +172,8 @@ final readonly class FakturoidApiClient implements FakturoidClient
         try {
             $response = $this->manager->getInvoicesProvider()->create([
                 'subject_id' => $subjectId,
+                // Prices in our system are gross (vč. DPH); Fakturoid must back-calculate VAT, not add it on top.
+                'vat_price_mode' => 'from_total_with_vat',
                 'lines' => [
                     [
                         'name' => sprintf(
@@ -262,6 +266,8 @@ final readonly class FakturoidApiClient implements FakturoidClient
             'subject_id' => $subjectId,
             'number' => $invoice->invoiceNumber,
             'document_type' => 'partial_proforma', // Self-billing uses proforma until payment
+            // Prices in our system are gross (vč. DPH); Fakturoid must back-calculate VAT, not add it on top.
+            'vat_price_mode' => 'from_total_with_vat',
             'lines' => [
                 [
                     'name' => sprintf(
