@@ -20,10 +20,14 @@ use Symfony\Component\Uid\Uuid;
 /**
  * Spec 025 fixtures — surfaces the new admin order list filter strip and
  * order-detail banner with realistic data:
- *  - Indiv. cena (storage A1)
- *  - Zdarma (storage A2)
- *  - Externí předplatné brzy končí (storage A3)
- *  - Externí předplatné po splatnosti / Po splatnosti list (storage A4).
+ *  - Indiv. cena (storage P1)
+ *  - Zdarma (storage P2)
+ *  - Externí předplatné brzy končí (storage E2)
+ *  - Externí předplatné po splatnosti / Po splatnosti list (storage X3).
+ *
+ * Spec 030 adds:
+ *  - Externí předplatné s rezervou >7 dní (storage O2) — drives the blue
+ *    "Předplaceno externě do …" banner on the customer surfaces.
  */
 final class OnboardingFixtures extends Fixture implements DependentFixtureInterface
 {
@@ -52,6 +56,9 @@ final class OnboardingFixtures extends Fixture implements DependentFixtureInterf
 
         /** @var Storage $storageX3 */
         $storageX3 = $this->getReference(StorageFixtures::REF_CUSTOM_X3, Storage::class);
+
+        /** @var Storage $storageO2 */
+        $storageO2 = $this->getReference(StorageFixtures::REF_STANDARD_O2, Storage::class);
 
         // 1) Individual price unlimited contract — 800 Kč/month override
         $this->createOnboardedContract(
@@ -96,6 +103,18 @@ final class OnboardingFixtures extends Fixture implements DependentFixtureInterf
             startedDaysAgo: 90,
             individualMonthlyAmount: null,
             paidThroughDate: $now->modify('-10 days'),
+        );
+
+        // 5) External prepaid, comfortably in the future (>7 days) — drives the
+        // blue "Předplaceno externě do …" banner on the customer surfaces (spec 030).
+        $this->createOnboardedContract(
+            manager: $manager,
+            user: $tenant,
+            storage: $storageO2,
+            now: $now,
+            startedDaysAgo: 30,
+            individualMonthlyAmount: null,
+            paidThroughDate: $now->modify('+30 days'),
         );
 
         $manager->flush();

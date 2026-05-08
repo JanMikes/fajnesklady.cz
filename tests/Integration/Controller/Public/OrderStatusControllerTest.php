@@ -225,6 +225,74 @@ class OrderStatusControllerTest extends WebTestCase
         return $order;
     }
 
+    public function testFreeContractRendersZdarmaBadge(): void
+    {
+        $order = $this->findOnboardedOrderByStorageNumber('P2');
+
+        $this->requestSigned($this->urlGenerator->generate($order));
+
+        $this->assertResponseIsSuccessful();
+        $body = (string) $this->client->getResponse()->getContent();
+        $this->assertStringContainsString('Pronájem zdarma', $body);
+        $this->assertStringContainsString('Tato smlouva nepodléhá platbám.', $body);
+    }
+
+    public function testExternalPrepaymentInFutureRendersBlueBanner(): void
+    {
+        $order = $this->findOnboardedOrderByStorageNumber('O2');
+
+        $this->requestSigned($this->urlGenerator->generate($order));
+
+        $this->assertResponseIsSuccessful();
+        $body = (string) $this->client->getResponse()->getContent();
+        $this->assertStringContainsString('Předplaceno externě do', $body);
+        $this->assertStringContainsString('Po tomto datu se obnoví běžné měsíční platby.', $body);
+        $this->assertStringNotContainsString('Externí předplatné brzy končí.', $body);
+    }
+
+    public function testExternalPrepaymentEndingSoonRendersAmberBanner(): void
+    {
+        $order = $this->findOnboardedOrderByStorageNumber('E2');
+
+        $this->requestSigned($this->urlGenerator->generate($order));
+
+        $this->assertResponseIsSuccessful();
+        $body = (string) $this->client->getResponse()->getContent();
+        $this->assertStringContainsString('Externí předplatné brzy končí.', $body);
+        $this->assertStringContainsString('simek@fajnesklady.cz', $body);
+    }
+
+    public function testVanillaContractDoesNotRenderAnyBillingStatusBanner(): void
+    {
+        $order = $this->findOrderByReference(OrderFixtures::REF_ORDER_COMPLETED);
+
+        $this->requestSigned($this->urlGenerator->generate($order));
+
+        $this->assertResponseIsSuccessful();
+        $body = (string) $this->client->getResponse()->getContent();
+        $this->assertStringNotContainsString('Pronájem zdarma', $body);
+        $this->assertStringNotContainsString('Předplaceno externě', $body);
+        // Match the customer-billing-status partial wording specifically; the
+        // sidebar's existing failed-billing notice already says "Externí" elsewhere
+        // — anchor on the unique sentence so this stays a focused regression check.
+        $this->assertStringNotContainsString('Externí předplatné brzy končí.', $body);
+    }
+
+    private function findOnboardedOrderByStorageNumber(string $storageNumber): Order
+    {
+        $order = $this->entityManager->createQueryBuilder()
+            ->select('o')
+            ->from(Order::class, 'o')
+            ->join('o.storage', 's')
+            ->where('s.number = :number')
+            ->setParameter('number', $storageNumber)
+            ->getQuery()
+            ->getOneOrNullResult();
+        \assert($order instanceof Order, sprintf('No onboarded order on storage %s', $storageNumber));
+
+        return $order;
+    }
+
     /**
      * Request the signed URL via the test client, preserving the host:port
      * that UriSigner used to compute the hash. Without aligning HTTP_HOST,

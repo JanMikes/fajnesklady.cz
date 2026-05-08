@@ -127,7 +127,7 @@ Stack: PHP 8.5 (Docker image `ghcr.io/thedevs-cz/php:8.5-fajnesklady`) · Symfon
 | `StoragePhoto` / `StorageTypePhoto` | Images | parent |
 | `StorageUnavailability` | Blackout period | storage, user |
 | `Order` | Rental request/booking (carries `individualMonthlyAmount` + `paidThroughDate` from admin onboarding) | user, storage; contract; invoices |
-| `Contract` | Legal rental agreement (carries `individualMonthlyAmount` override that survives storage-price changes) | order(1:1), user, storage; tracks signing, termination, recurring payment |
+| `Contract` | Legal rental agreement (carries `individualMonthlyAmount` override that survives storage-price changes; `daysUntilExternalPrepaymentEnds()` reports remaining external-prepayment days for customer banners) | order(1:1), user, storage; tracks signing, termination, recurring payment |
 | `Invoice` | Customer bill | order, user |
 | `SelfBillingInvoice` | Landlord revenue invoice | landlord; payments |
 | `Payment` | Payment tx | selfBillingInvoice, order, contract, storage; GoPay status |

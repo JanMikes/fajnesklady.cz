@@ -87,6 +87,11 @@
 
     {% include 'components/order_access_code.html.twig' with {storage: storage, contract: contract} only %}
 
+    {% include 'components/customer_billing_status.html.twig' with {
+        contract: contract,
+        now: now,
+    } only %}
+
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
         {# Order Details #}
         <div class="bg-white shadow overflow-hidden sm:rounded-lg">

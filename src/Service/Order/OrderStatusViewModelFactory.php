@@ -13,6 +13,7 @@ use App\Repository\ContractRepository;
 use App\Repository\InvoiceRepository;
 use App\Service\OrderStatusUrlGenerator;
 use App\Service\RecurringPaymentCancelUrlGenerator;
+use Psr\Clock\ClockInterface;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 final readonly class OrderStatusViewModelFactory
@@ -25,11 +26,13 @@ final readonly class OrderStatusViewModelFactory
         private OrderStatusUrlGenerator $statusUrlGenerator,
         private RecurringPaymentCancelUrlGenerator $cancelUrlGenerator,
         private UrlGeneratorInterface $urlGenerator,
+        private ClockInterface $clock,
     ) {
     }
 
     public function build(Order $order): OrderStatusViewModel
     {
+        $now = $this->clock->now();
         $storage = $order->storage;
         $storageType = $storage->storageType;
         $place = $storage->getPlace();
@@ -115,6 +118,7 @@ final readonly class OrderStatusViewModelFactory
             mapDownloadUrl: $mapDownloadUrl,
             invoiceDownloads: $invoiceDownloads,
             newOrderUrl: $newOrderUrl,
+            now: $now,
         );
     }
 

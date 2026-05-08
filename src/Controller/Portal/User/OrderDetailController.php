@@ -55,12 +55,12 @@ final class OrderDetailController extends AbstractController
 
         $contract = $this->contractRepository->findByOrder($order);
         $invoices = $this->invoiceRepository->findAllByOrder($order);
+        $now = $this->clock->now();
 
         $daysRemaining = null;
         $canTerminate = false;
 
         if (null !== $contract) {
-            $now = $this->clock->now();
             $daysRemaining = $this->contractService->getDaysRemaining($contract, $now);
             $canTerminate = $this->isGranted(ContractVoter::TERMINATE, $contract);
         }
@@ -77,6 +77,7 @@ final class OrderDetailController extends AbstractController
             'daysRemaining' => $daysRemaining,
             'canTerminate' => $canTerminate,
             'paymentSchedule' => $paymentSchedule,
+            'now' => $now,
         ]);
     }
 }

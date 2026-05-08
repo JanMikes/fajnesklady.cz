@@ -1,0 +1,52 @@
+{# Customer-facing badge / banner reflecting non-standard billing state.
+   Renders nothing for vanilla recurring contracts.
+
+   Inputs:
+     contract  Contract|null       — null hides everything
+     now       \DateTimeImmutable  — used for the 7-day window calculation
+
+   Free wins over external prepayment when both are set: a zero-priced contract
+   has no recurring charge to resume, so the prepayment banner would mislead.
+#}
+{% if contract is not null %}
+    {% if contract.isFree() %}
+        <div class="mb-4 inline-flex items-center gap-2 rounded-md bg-green-50 border border-green-200 px-3 py-2">
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800">
+                Pronájem zdarma
+            </span>
+            <span class="text-sm text-green-800">Tato smlouva nepodléhá platbám.</span>
+        </div>
+    {% else %}
+        {% set daysLeft = contract.daysUntilExternalPrepaymentEnds(now) %}
+        {% if daysLeft is not null and daysLeft >= 0 %}
+            {% if daysLeft <= 7 %}
+                <div class="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
+                    <div class="flex items-start gap-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-amber-600 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        <div class="flex-1 text-sm text-amber-900">
+                            <strong>Externí předplatné brzy končí.</strong>
+                            Předplatné vyprší {{ contract.paidThroughDate|date('d.m.Y') }}.
+                            Pro pokračování bez přerušení nás prosím kontaktujte na
+                            <a href="mailto:simek@fajnesklady.cz" class="link font-medium">simek@fajnesklady.cz</a>
+                            a nastavíme automatickou platbu.
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <div class="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-4">
+                    <div class="flex items-start gap-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-600 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <div class="flex-1 text-sm text-blue-900">
+                            <strong>Předplaceno externě do {{ contract.paidThroughDate|date('d.m.Y') }}.</strong>
+                            Po tomto datu se obnoví běžné měsíční platby.
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        {% endif %}
+    {% endif %}
+{% endif %}

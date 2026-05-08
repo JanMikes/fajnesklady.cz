@@ -692,4 +692,64 @@ class ContractTest extends TestCase
         $this->assertEquals($paidThroughDate->modify('+1 day'), $contract->nextBillingDate);
         $this->assertNull($contract->goPayParentPaymentId);
     }
+
+    public function testDaysUntilExternalPrepaymentEndsReturnsNullWhenNotPrepaid(): void
+    {
+        $contract = $this->createContract();
+
+        $this->assertNull($contract->daysUntilExternalPrepaymentEnds(new \DateTimeImmutable('2025-06-15 12:00:00')));
+    }
+
+    public function testDaysUntilExternalPrepaymentEndsReturnsNullWhenAlreadyConvertedToGoPay(): void
+    {
+        $contract = $this->createContract();
+        $paidThroughDate = new \DateTimeImmutable('2025-07-15');
+        $contract->markExternallyPrepaid($paidThroughDate);
+        // Customer has converted to GoPay — the externally-prepaid state ends.
+        $contract->setRecurringPayment('gopay-parent-1', new \DateTimeImmutable('2025-08-15'), $paidThroughDate);
+
+        $this->assertNull($contract->daysUntilExternalPrepaymentEnds(new \DateTimeImmutable('2025-06-15 12:00:00')));
+    }
+
+    public function testDaysUntilExternalPrepaymentEndsReturnsNullWhenContractTerminated(): void
+    {
+        $contract = $this->createContract(rentalType: RentalType::UNLIMITED, endDate: null);
+        $contract->markExternallyPrepaid(new \DateTimeImmutable('2025-07-15'));
+        $contract->terminate(new \DateTimeImmutable('2025-06-10'));
+
+        $this->assertNull($contract->daysUntilExternalPrepaymentEnds(new \DateTimeImmutable('2025-06-15 12:00:00')));
+    }
+
+    public function testDaysUntilExternalPrepaymentEndsReturnsPositiveForFutureDate(): void
+    {
+        $contract = $this->createContract();
+        $contract->markExternallyPrepaid(new \DateTimeImmutable('2025-06-20'));
+
+        $this->assertSame(5, $contract->daysUntilExternalPrepaymentEnds(new \DateTimeImmutable('2025-06-15 12:00:00')));
+    }
+
+    public function testDaysUntilExternalPrepaymentEndsReturnsZeroOnExpirationDay(): void
+    {
+        $contract = $this->createContract();
+        $contract->markExternallyPrepaid(new \DateTimeImmutable('2025-06-15'));
+
+        $this->assertSame(0, $contract->daysUntilExternalPrepaymentEnds(new \DateTimeImmutable('2025-06-15 12:00:00')));
+    }
+
+    public function testDaysUntilExternalPrepaymentEndsReturnsNegativeForPastDate(): void
+    {
+        $contract = $this->createContract();
+        $contract->markExternallyPrepaid(new \DateTimeImmutable('2025-06-13'));
+
+        $this->assertSame(-2, $contract->daysUntilExternalPrepaymentEnds(new \DateTimeImmutable('2025-06-15 12:00:00')));
+    }
+
+    public function testDaysUntilExternalPrepaymentEndsIgnoresTimeOfDayWithinSameCalendarDay(): void
+    {
+        $contract = $this->createContract();
+        $contract->markExternallyPrepaid(new \DateTimeImmutable('2025-06-15 00:00:00'));
+
+        // Late in the same calendar day must still resolve to 0, not -1.
+        $this->assertSame(0, $contract->daysUntilExternalPrepaymentEnds(new \DateTimeImmutable('2025-06-15 23:59:59')));
+    }
 }

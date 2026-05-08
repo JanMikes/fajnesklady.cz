@@ -1,6 +1,6 @@
 # 030 — Customer-facing reflection of free / external-prepayment contracts
 
-**Status:** ready
+**Status:** done
 **Type:** UX / templates
 **Scope:** small (~6 files: 1 new shared partial + 2 templates touched + 1 entity helper + 2 integration tests)
 **Depends on:** spec 025 (entity fields, admin banner) — done

@@ -36,6 +36,7 @@ final readonly class OrderStatusViewModel
         public ?string $mapDownloadUrl,
         public array $invoiceDownloads,
         public ?string $newOrderUrl,
+        public \DateTimeImmutable $now,
     ) {
     }
 }

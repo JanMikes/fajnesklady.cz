@@ -331,4 +331,34 @@ class Contract
         $this->paidThroughDate = $paidThroughDate;
         $this->nextBillingDate = $paidThroughDate->modify('+1 day');
     }
+
+    /**
+     * Calendar days from $now to $this->paidThroughDate for an externally-
+     * prepaid contract. Returns null when this contract is NOT in the
+     * "externally prepaid, not yet converted" state — i.e. when:
+     *   - paidThroughDate is null (no prepayment recorded), OR
+     *   - goPayParentPaymentId is set (customer already converted to GoPay), OR
+     *   - the contract is terminated.
+     *
+     * Returns a negative integer when the prepayment has already lapsed —
+     * the customer-facing partial uses 0..7 as the "ending soon" band and
+     * treats >7 as "future" / <0 as "lapsed, hide".
+     */
+    public function daysUntilExternalPrepaymentEnds(\DateTimeImmutable $now): ?int
+    {
+        if (null === $this->paidThroughDate) {
+            return null;
+        }
+        if (null !== $this->goPayParentPaymentId) {
+            return null;
+        }
+        if ($this->isTerminated()) {
+            return null;
+        }
+
+        $today = $now->setTime(0, 0, 0);
+        $end = $this->paidThroughDate->setTime(0, 0, 0);
+
+        return (int) $today->diff($end)->format('%r%a');
+    }
 }
