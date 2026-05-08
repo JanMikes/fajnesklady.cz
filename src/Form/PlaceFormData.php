@@ -43,8 +43,6 @@ final class PlaceFormData
     )]
     public ?UploadedFile $mapImage = null;
 
-    public ?string $currentMapImagePath = null;
-
     #[Assert\File(
         maxSize: '10M',
         mimeTypes: ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
@@ -52,16 +50,12 @@ final class PlaceFormData
     )]
     public ?UploadedFile $operatingRulesDocument = null;
 
-    public ?string $currentOperatingRulesPath = null;
-
     #[Assert\File(
         maxSize: '10M',
         mimeTypes: ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
         mimeTypesMessage: 'Nahrajte dokument ve formátu PDF nebo DOCX',
     )]
     public ?UploadedFile $instructionsDocument = null;
-
-    public ?string $currentInstructionsPath = null;
 
     public bool $useMapLocation = false;
 
@@ -102,9 +96,6 @@ final class PlaceFormData
         $formData->postalCode = $place->postalCode;
         $formData->description = $place->description;
         $formData->orderExpirationDays = $place->orderExpirationDays;
-        $formData->currentMapImagePath = $place->mapImagePath;
-        $formData->currentOperatingRulesPath = $place->operatingRulesPath;
-        $formData->currentInstructionsPath = $place->instructionsPath;
         $formData->latitude = $place->latitude;
         $formData->longitude = $place->longitude;
         $formData->useMapLocation = !$place->hasAddress() && null !== $place->latitude;

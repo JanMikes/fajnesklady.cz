@@ -132,7 +132,7 @@
 
                     <div class="mb-4">
                         <label for="{{ form.mapImage.vars.id }}" class="block text-sm font-semibold text-gray-700 mb-2">Mapa skladu</label>
-                        {% if form.vars.data.currentMapImagePath %}
+                        {% if place.mapImagePath %}
                             <div class="mb-2 p-3 bg-gray-50 rounded-lg flex items-center justify-between">
                                 <div class="flex items-center">
                                     <svg class="h-5 w-5 text-green-500 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -140,7 +140,7 @@
                                     </svg>
                                     <span class="text-sm text-gray-700">Nahráno</span>
                                 </div>
-                                <a href="/uploads/{{ form.vars.data.currentMapImagePath }}" target="_blank" class="link text-sm">
+                                <a href="{{ upload_url(place.mapImagePath) }}" target="_blank" class="link text-sm">
                                     Zobrazit
                                 </a>
                             </div>
@@ -152,7 +152,7 @@
 
                     <div class="mb-4">
                         <label for="{{ form.operatingRulesDocument.vars.id }}" class="block text-sm font-semibold text-gray-700 mb-2">Provozní řád</label>
-                        {% if form.vars.data.currentOperatingRulesPath %}
+                        {% if place.operatingRulesPath %}
                             <div class="mb-2 p-3 bg-gray-50 rounded-lg flex items-center justify-between">
                                 <div class="flex items-center">
                                     <svg class="h-5 w-5 text-green-500 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -160,7 +160,7 @@
                                     </svg>
                                     <span class="text-sm text-gray-700">Nahráno</span>
                                 </div>
-                                <a href="{{ upload_url(form.vars.data.currentOperatingRulesPath) }}" target="_blank" class="link text-sm">
+                                <a href="{{ upload_url(place.operatingRulesPath) }}" target="_blank" class="link text-sm">
                                     Zobrazit
                                 </a>
                             </div>
@@ -173,7 +173,7 @@
                     {% if form.instructionsDocument is defined %}
                         <div class="mb-4">
                             <label for="{{ form.instructionsDocument.vars.id }}" class="block text-sm font-semibold text-gray-700 mb-2">Návod pro zákazníky</label>
-                            {% if form.vars.data.currentInstructionsPath %}
+                            {% if place.instructionsPath %}
                                 <div class="mb-2 p-3 bg-gray-50 rounded-lg flex items-center justify-between">
                                     <div class="flex items-center">
                                         <svg class="h-5 w-5 text-green-500 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -181,7 +181,7 @@
                                         </svg>
                                         <span class="text-sm text-gray-700">Nahráno</span>
                                     </div>
-                                    <a href="{{ upload_url(form.vars.data.currentInstructionsPath) }}" target="_blank" class="link text-sm">
+                                    <a href="{{ upload_url(place.instructionsPath) }}" target="_blank" class="link text-sm">
                                         Zobrazit
                                     </a>
                                 </div>
