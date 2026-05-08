@@ -72,7 +72,14 @@ final readonly class AdminCreateOnboardingHandler
         $forceExternal = 0 === $command->individualMonthlyAmount || null !== $command->paidThroughDate;
         $order->setPaymentMethod($forceExternal ? PaymentMethod::EXTERNAL : $command->paymentMethod);
 
-        $order->setOnboardingBillingTerms($command->individualMonthlyAmount, $command->paidThroughDate);
+        $createdByAdmin = null !== $command->createdByAdminId
+            ? $this->userRepository->get($command->createdByAdminId)
+            : null;
+        $order->setOnboardingBillingTerms(
+            individualMonthlyAmount: $command->individualMonthlyAmount,
+            paidThroughDate: $command->paidThroughDate,
+            createdByAdmin: $createdByAdmin,
+        );
         $order->setSigningToken(bin2hex(random_bytes(32)));
         $order->extendExpiration($now->modify('+'.self::ONBOARDING_EXPIRATION_DAYS.' days'));
 

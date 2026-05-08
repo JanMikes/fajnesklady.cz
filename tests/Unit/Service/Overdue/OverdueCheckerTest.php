@@ -165,7 +165,7 @@ class OverdueCheckerTest extends TestCase
 
         $regular = $this->createRecurringContract($now->modify('-3 days'));
         $free = $this->createRecurringContract($now->modify('-5 days'));
-        $free->applyIndividualMonthlyAmount(0);
+        $free->applyIndividualMonthlyAmount(0, null, null, $now);
 
         $checker = $this->createChecker([$regular, $free]);
         $views = $checker->findOverdueViews($now);

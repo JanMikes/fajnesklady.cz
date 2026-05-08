@@ -6,6 +6,7 @@ namespace App\Controller\Admin;
 
 use App\Command\AdminCreateOnboardingCommand;
 use App\Entity\Order;
+use App\Entity\User;
 use App\Form\AdminCreateOnboardingFormData;
 use App\Form\AdminCreateOnboardingFormType;
 use App\Repository\StorageRepository;
@@ -53,6 +54,9 @@ final class AdminCreateOnboardingController extends AbstractController
                 };
                 $paidThroughDate = $formData->isExternallyPrepaid ? $formData->paidThroughDate : null;
 
+                $admin = $this->getUser();
+                \assert($admin instanceof User);
+
                 $envelope = $this->commandBus->dispatch(new AdminCreateOnboardingCommand(
                     email: $formData->email,
                     firstName: $formData->firstName,
@@ -74,6 +78,7 @@ final class AdminCreateOnboardingController extends AbstractController
                     paymentMethod: $formData->paymentMethod,
                     individualMonthlyAmount: $individualMonthlyAmount,
                     paidThroughDate: $paidThroughDate,
+                    createdByAdminId: $admin->id,
                 ));
 
                 $handledStamp = $envelope->last(HandledStamp::class);

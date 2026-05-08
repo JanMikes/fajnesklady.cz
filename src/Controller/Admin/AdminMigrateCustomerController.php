@@ -6,6 +6,7 @@ namespace App\Controller\Admin;
 
 use App\Command\AdminMigrateCustomerCommand;
 use App\Entity\Contract;
+use App\Entity\User;
 use App\Form\AdminMigrateCustomerFormData;
 use App\Form\AdminMigrateCustomerFormType;
 use App\Repository\StorageRepository;
@@ -65,6 +66,9 @@ final class AdminMigrateCustomerController extends AbstractController
                     default => null,
                 };
 
+                $admin = $this->getUser();
+                \assert($admin instanceof User);
+
                 $envelope = $this->commandBus->dispatch(new AdminMigrateCustomerCommand(
                     email: $formData->email,
                     firstName: $formData->firstName,
@@ -88,6 +92,7 @@ final class AdminMigrateCustomerController extends AbstractController
                     paidAt: $paidAt,
                     individualMonthlyAmount: $individualMonthlyAmount,
                     paidThroughDate: $formData->paidThroughDate,
+                    createdByAdminId: $admin->id,
                 ));
 
                 $handledStamp = $envelope->last(HandledStamp::class);

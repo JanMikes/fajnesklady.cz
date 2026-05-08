@@ -6,6 +6,7 @@ namespace App\Entity;
 
 use App\Enum\RentalType;
 use App\Enum\TerminationReason;
+use App\Event\ContractPriceChanged;
 use App\Service\PriceCalculator;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -13,8 +14,10 @@ use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
 
 #[ORM\Entity]
-class Contract
+class Contract implements EntityWithEvents
 {
+    use HasEvents;
+
     #[ORM\Column(length: 500, nullable: true)]
     public private(set) ?string $documentPath = null;
 
@@ -292,8 +295,12 @@ class Contract
         $this->lastAdvanceNoticeSentAt = $now;
     }
 
-    public function applyIndividualMonthlyAmount(?int $amount): void
-    {
+    public function applyIndividualMonthlyAmount(
+        ?int $amount,
+        ?User $changedBy,
+        ?string $reason,
+        \DateTimeImmutable $now,
+    ): void {
         if (null !== $amount && $amount < 0) {
             throw new \InvalidArgumentException('Individual monthly amount cannot be negative.');
         }
@@ -302,7 +309,17 @@ class Contract
             throw new \DomainException(sprintf('Individual monthly amount %d Kč exceeds the legal recurring-payment maximum of %d Kč.', intdiv($amount, 100), intdiv(PriceCalculator::MAX_RECURRING_PAYMENT_AMOUNT_IN_HALER, 100)));
         }
 
+        $previous = $this->individualMonthlyAmount;
         $this->individualMonthlyAmount = $amount;
+
+        $this->recordThat(new ContractPriceChanged(
+            contractId: $this->id,
+            previousAmount: $previous,
+            newAmount: $amount,
+            changedBy: $changedBy,
+            reason: $reason,
+            occurredOn: $now,
+        ));
     }
 
     public function getEffectiveMonthlyAmount(): int

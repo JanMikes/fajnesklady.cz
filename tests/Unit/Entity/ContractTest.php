@@ -618,7 +618,7 @@ class ContractTest extends TestCase
     {
         $contract = $this->createContract();
 
-        $contract->applyIndividualMonthlyAmount(80_000);
+        $contract->applyIndividualMonthlyAmount(80_000, null, null, new \DateTimeImmutable());
 
         $this->assertSame(80_000, $contract->getEffectiveMonthlyAmount());
         $this->assertTrue($contract->hasIndividualPrice());
@@ -629,7 +629,7 @@ class ContractTest extends TestCase
     {
         $contract = $this->createContract();
 
-        $contract->applyIndividualMonthlyAmount(0);
+        $contract->applyIndividualMonthlyAmount(0, null, null, new \DateTimeImmutable());
 
         $this->assertSame(0, $contract->getEffectiveMonthlyAmount());
         $this->assertTrue($contract->hasIndividualPrice());
@@ -641,7 +641,7 @@ class ContractTest extends TestCase
         $contract = $this->createContract();
 
         $this->expectException(\InvalidArgumentException::class);
-        $contract->applyIndividualMonthlyAmount(-1);
+        $contract->applyIndividualMonthlyAmount(-1, null, null, new \DateTimeImmutable());
     }
 
     public function testApplyIndividualMonthlyAmountRejectsAboveLegalCap(): void
@@ -650,14 +650,14 @@ class ContractTest extends TestCase
 
         $this->expectException(\DomainException::class);
         // 16 000 Kč > 15 000 Kč legal max for recurring payments
-        $contract->applyIndividualMonthlyAmount(1_600_000);
+        $contract->applyIndividualMonthlyAmount(1_600_000, null, null, new \DateTimeImmutable());
     }
 
     public function testApplyIndividualMonthlyAmountAtCapIsAccepted(): void
     {
         $contract = $this->createContract();
 
-        $contract->applyIndividualMonthlyAmount(1_500_000);
+        $contract->applyIndividualMonthlyAmount(1_500_000, null, null, new \DateTimeImmutable());
 
         $this->assertSame(1_500_000, $contract->getEffectiveMonthlyAmount());
     }
@@ -665,9 +665,9 @@ class ContractTest extends TestCase
     public function testApplyIndividualMonthlyAmountNullClearsOverride(): void
     {
         $contract = $this->createContract();
-        $contract->applyIndividualMonthlyAmount(80_000);
+        $contract->applyIndividualMonthlyAmount(80_000, null, null, new \DateTimeImmutable());
 
-        $contract->applyIndividualMonthlyAmount(null);
+        $contract->applyIndividualMonthlyAmount(null, null, null, new \DateTimeImmutable());
 
         $this->assertNull($contract->individualMonthlyAmount);
         $this->assertFalse($contract->hasIndividualPrice());

@@ -155,7 +155,12 @@ final readonly class OrderService
         // Carry admin-onboarding billing terms onto the contract so the
         // recurring cron honours individual prices and external prepayment.
         if (null !== $order->individualMonthlyAmount) {
-            $contract->applyIndividualMonthlyAmount($order->individualMonthlyAmount);
+            $contract->applyIndividualMonthlyAmount(
+                amount: $order->individualMonthlyAmount,
+                changedBy: $order->createdByAdmin,
+                reason: 'Initial value (admin onboarding)',
+                now: $now,
+            );
         }
         if (null !== $order->paidThroughDate) {
             $contract->markExternallyPrepaid($order->paidThroughDate);

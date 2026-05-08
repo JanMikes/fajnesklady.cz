@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\DataFixtures;
 
 use App\Entity\Contract;
+use App\Entity\ContractPriceChange;
 use App\Entity\Order;
 use App\Entity\Storage;
 use App\Entity\User;
@@ -43,6 +44,9 @@ final class OnboardingFixtures extends Fixture implements DependentFixtureInterf
         /** @var User $tenant */
         $tenant = $this->getReference(UserFixtures::REF_TENANT, User::class);
 
+        /** @var User $admin */
+        $admin = $this->getReference(UserFixtures::REF_ADMIN, User::class);
+
         // Use storages that no test relies on as "available":
         //   P1, P2 (premium Brno, no owner), E2 (medium Praha Jih), X3 (custom Centrum).
         /** @var Storage $storageP1 */
@@ -64,6 +68,7 @@ final class OnboardingFixtures extends Fixture implements DependentFixtureInterf
         $this->createOnboardedContract(
             manager: $manager,
             user: $tenant,
+            admin: $admin,
             storage: $storageP1,
             now: $now,
             startedDaysAgo: 60,
@@ -75,6 +80,7 @@ final class OnboardingFixtures extends Fixture implements DependentFixtureInterf
         $this->createOnboardedContract(
             manager: $manager,
             user: $tenant,
+            admin: $admin,
             storage: $storageP2,
             now: $now,
             startedDaysAgo: 30,
@@ -86,6 +92,7 @@ final class OnboardingFixtures extends Fixture implements DependentFixtureInterf
         $this->createOnboardedContract(
             manager: $manager,
             user: $tenant,
+            admin: $admin,
             storage: $storageE2,
             now: $now,
             startedDaysAgo: 90,
@@ -98,6 +105,7 @@ final class OnboardingFixtures extends Fixture implements DependentFixtureInterf
         $this->createOnboardedContract(
             manager: $manager,
             user: $tenant,
+            admin: $admin,
             storage: $storageX3,
             now: $now,
             startedDaysAgo: 90,
@@ -110,6 +118,7 @@ final class OnboardingFixtures extends Fixture implements DependentFixtureInterf
         $this->createOnboardedContract(
             manager: $manager,
             user: $tenant,
+            admin: $admin,
             storage: $storageO2,
             now: $now,
             startedDaysAgo: 30,
@@ -123,6 +132,7 @@ final class OnboardingFixtures extends Fixture implements DependentFixtureInterf
     private function createOnboardedContract(
         ObjectManager $manager,
         User $user,
+        User $admin,
         Storage $storage,
         \DateTimeImmutable $now,
         int $startedDaysAgo,
@@ -146,7 +156,7 @@ final class OnboardingFixtures extends Fixture implements DependentFixtureInterf
         );
         $order->markAsAdminCreated();
         $order->setPaymentMethod(PaymentMethod::EXTERNAL);
-        $order->setOnboardingBillingTerms($individualMonthlyAmount, $paidThroughDate);
+        $order->setOnboardingBillingTerms($individualMonthlyAmount, $paidThroughDate, $admin);
         $order->reserve($startDate);
         $order->acceptTerms($startDate);
         $order->markPaid($startDate);
@@ -166,7 +176,26 @@ final class OnboardingFixtures extends Fixture implements DependentFixtureInterf
         );
 
         if (null !== $individualMonthlyAmount) {
-            $contract->applyIndividualMonthlyAmount($individualMonthlyAmount);
+            $contract->applyIndividualMonthlyAmount(
+                amount: $individualMonthlyAmount,
+                changedBy: $admin,
+                reason: 'Initial value (fixture)',
+                now: $startDate,
+            );
+            // Fixtures bypass the event-bus middleware that would normally
+            // persist the audit row. Drop the buffered event and write the
+            // history row directly so /portal/admin/orders/{id} renders the
+            // "Historie ceny" panel against fixture data.
+            $contract->popEvents();
+            $manager->persist(new ContractPriceChange(
+                id: Uuid::v7(),
+                contract: $contract,
+                previousAmount: null,
+                newAmount: $individualMonthlyAmount,
+                changedAt: $startDate,
+                changedBy: $admin,
+                reason: 'Initial value (fixture)',
+            ));
         }
         if (null !== $paidThroughDate) {
             $contract->markExternallyPrepaid($paidThroughDate);

@@ -149,7 +149,8 @@ Stack: PHP 8.5 (Docker image `ghcr.io/thedevs-cz/php:8.5-fajnesklady`) · Symfon
 | `StoragePhoto` / `StorageTypePhoto` | Images | parent |
 | `StorageUnavailability` | Blackout period | storage, user |
 | `Order` (records events) | Rental request/booking; carries `individualMonthlyAmount` + `paidThroughDate` from admin onboarding | user, storage; contract; invoices |
-| `Contract` | Legal rental agreement; `individualMonthlyAmount` override survives storage-price changes; `daysUntilExternalPrepaymentEnds()` reports remaining external-prepayment days for customer banners | order(1:1), user, storage; tracks signing, termination, recurring payment |
+| `Contract` (records events) | Legal rental agreement; `individualMonthlyAmount` override survives storage-price changes; every change to it records a `ContractPriceChanged` event; `daysUntilExternalPrepaymentEnds()` reports remaining external-prepayment days for customer banners | order(1:1), user, storage; tracks signing, termination, recurring payment |
+| `ContractPriceChange` | Append-only audit row per `applyIndividualMonthlyAmount` call (previous → new amount, actor, reason) | contract, changedBy:User? |
 | `Invoice` (records events) | Customer bill | order, user |
 | `SelfBillingInvoice` | Landlord revenue invoice | landlord; payments |
 | `Payment` | Payment tx | selfBillingInvoice, order, contract, storage; GoPay status |
@@ -196,7 +197,7 @@ Order: OrderCreated, OrderPlaced, OrderPaid, OrderCompleted, OrderCancelled, Ord
 
 Place / handover: PlaceProposed, PlaceAccessRequested, PlaceAccessRequestApproved, PlaceAccessRequestDenied, HandoverProtocolCreated, HandoverCompleted, HandoverExpired, HandoverReminderDue.
 
-Contracts / billing: ContractExpiringSoon, ContractTerminated, ContractTerminatedDueToPaymentFailure, InvoiceCreated, RecurringPaymentEstablished, RecurringPaymentCharged, RecurringPaymentFailed, RecurringPaymentCancelled, RecurringPaymentAdvanceNoticeNeeded, TerminationNoticeRequested, ExternalPrepaymentEndingSoon, PaymentAmountMismatch.
+Contracts / billing: ContractExpiringSoon, ContractPriceChanged, ContractTerminated, ContractTerminatedDueToPaymentFailure, InvoiceCreated, RecurringPaymentEstablished, RecurringPaymentCharged, RecurringPaymentFailed, RecurringPaymentCancelled, RecurringPaymentAdvanceNoticeNeeded, TerminationNoticeRequested, ExternalPrepaymentEndingSoon, PaymentAmountMismatch.
 
 Admin notifications: OverdueDigestRequested.
 
@@ -216,7 +217,7 @@ Registration, LandlordRegistration, RequestPasswordReset, ResetPassword, ChangeP
 
 Compose `EntityManagerInterface` only — never extend `ServiceEntityRepository`, never call `flush()` (exception: `EmailLogRepository`, audit-log writers commit out-of-band so the row survives a parent rollback).
 
-User, Place, PlaceAccess, PlaceAccessRequest, PlaceChangeRequest, PlaceStorageCodeUsage, CreatePlaceRequest, Storage, StorageType, StoragePhoto, StorageTypePhoto, StorageUnavailability, Order, Contract, Invoice, SelfBillingInvoice, LandlordInvoiceSequence, Payment, HandoverProtocol, HandoverPhoto, AuditLog, EmailLog (+ `EmailLogFilter` value-object), OverdueDigestSent, ResetPasswordRequest.
+User, Place, PlaceAccess, PlaceAccessRequest, PlaceChangeRequest, PlaceStorageCodeUsage, CreatePlaceRequest, Storage, StorageType, StoragePhoto, StorageTypePhoto, StorageUnavailability, Order, Contract, ContractPriceChange, Invoice, SelfBillingInvoice, LandlordInvoiceSequence, Payment, HandoverProtocol, HandoverPhoto, AuditLog, EmailLog (+ `EmailLogFilter` value-object), OverdueDigestSent, ResetPasswordRequest.
 
 ## Services (`src/Service/`)
 

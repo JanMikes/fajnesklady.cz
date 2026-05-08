@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller\Admin;
 
+use App\Repository\ContractPriceChangeRepository;
 use App\Repository\ContractRepository;
 use App\Repository\InvoiceRepository;
 use App\Repository\OrderRepository;
@@ -26,6 +27,7 @@ final class AdminOrderDetailController extends AbstractController
     public function __construct(
         private readonly OrderRepository $orderRepository,
         private readonly ContractRepository $contractRepository,
+        private readonly ContractPriceChangeRepository $priceChangeRepository,
         private readonly InvoiceRepository $invoiceRepository,
         private readonly PaymentRepository $paymentRepository,
         private readonly ContractService $contractService,
@@ -65,6 +67,10 @@ final class AdminOrderDetailController extends AbstractController
             [$order->user->id],
         );
 
+        $priceChanges = null !== $contract
+            ? $this->priceChangeRepository->findByContractOrderedByDate($contract)
+            : [];
+
         return $this->render('admin/order/detail.html.twig', [
             'order' => $order,
             'storage' => $storage,
@@ -77,6 +83,7 @@ final class AdminOrderDetailController extends AbstractController
             'paymentSchedule' => $paymentSchedule,
             'totalPaid' => $totalPaid,
             'isUserOverdue' => $isUserOverdue,
+            'priceChanges' => $priceChanges,
             'now' => $now,
         ]);
     }

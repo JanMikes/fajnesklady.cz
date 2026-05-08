@@ -92,6 +92,14 @@ class Order implements EntityWithEvents
     #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
     public private(set) ?\DateTimeImmutable $paidThroughDate = null;
 
+    /**
+     * Admin who created this onboarding order. Provenance for the locked-in
+     * monthly price; used as the actor on the first ContractPriceChange row.
+     */
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(nullable: true)]
+    public private(set) ?User $createdByAdmin = null;
+
     public function __construct(
         #[ORM\Id]
         #[ORM\Column(type: UuidType::NAME, unique: true)]
@@ -354,9 +362,15 @@ class Order implements EntityWithEvents
      * Write-once at admin onboarding creation. Both fields propagate to the
      * Contract when {@see \App\Service\OrderService::completeOrder()} runs.
      */
-    public function setOnboardingBillingTerms(?int $individualMonthlyAmount, ?\DateTimeImmutable $paidThroughDate): void
-    {
+    public function setOnboardingBillingTerms(
+        ?int $individualMonthlyAmount,
+        ?\DateTimeImmutable $paidThroughDate,
+        ?User $createdByAdmin = null,
+    ): void {
         $this->individualMonthlyAmount = $individualMonthlyAmount;
         $this->paidThroughDate = $paidThroughDate;
+        if (null !== $createdByAdmin) {
+            $this->createdByAdmin = $createdByAdmin;
+        }
     }
 }

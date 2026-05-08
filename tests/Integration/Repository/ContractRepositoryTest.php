@@ -543,7 +543,7 @@ class ContractRepositoryTest extends KernelTestCase
         // the badge count and the page row count consistent.
         $orderFree = $this->createOrder($tenant, $storage4, $now->modify('-30 days'), null);
         $contractFree = $this->createContract($orderFree, $tenant, $storage4, $now->modify('-30 days'), null);
-        $contractFree->applyIndividualMonthlyAmount(0);
+        $contractFree->applyIndividualMonthlyAmount(0, null, null, $now);
         $contractFree->setRecurringPayment('parent-free', $now->modify('-5 days'), $now->modify('-5 days'));
         $contractFree->recordFailedBillingAttempt($now->modify('-3 days'));
 
@@ -636,13 +636,13 @@ class ContractRepositoryTest extends KernelTestCase
         // Override contract — order monthly = 150 000 (storage default), override = 50 000 → contributes 50 000.
         $overrideOrder = $this->createOrder($tenant, $overrideStorage, $now->modify('-30 days'), null, 150000);
         $overrideContract = $this->createContract($overrideOrder, $tenant, $overrideStorage, $now->modify('-30 days'), null);
-        $overrideContract->applyIndividualMonthlyAmount(50000);
+        $overrideContract->applyIndividualMonthlyAmount(50000, null, null, $now);
         $overrideContract->setRecurringPayment('parent-ovr', $now->modify('+5 days'), $now->modify('-1 day'));
 
         // Free contract — override = 0 → contributes 0 to the sum (auto-excluded by zero contribution).
         $freeOrder = $this->createOrder($tenant, $freeStorage, $now->modify('-30 days'), null, 150000);
         $freeContract = $this->createContract($freeOrder, $tenant, $freeStorage, $now->modify('-30 days'), null);
-        $freeContract->applyIndividualMonthlyAmount(0);
+        $freeContract->applyIndividualMonthlyAmount(0, null, null, $now);
         $freeContract->setRecurringPayment('parent-free', $now->modify('+5 days'), $now->modify('-1 day'));
 
         $this->entityManager->flush();
@@ -671,12 +671,12 @@ class ContractRepositoryTest extends KernelTestCase
         // Override contract — order = 150 000 (storage default), override = 80 000 → contributes 80 000.
         $overrideOrder = $this->createOrder($tenant, $overrideStorage, $now->modify('-30 days'), null, 150000);
         $overrideContract = $this->createContract($overrideOrder, $tenant, $overrideStorage, $now->modify('-30 days'), null);
-        $overrideContract->applyIndividualMonthlyAmount(80000);
+        $overrideContract->applyIndividualMonthlyAmount(80000, null, null, $now);
 
         // Free contract — order = 150 000, override = 0 → contributes 0.
         $freeOrder = $this->createOrder($tenant, $freeStorage, $now->modify('-30 days'), null, 150000);
         $freeContract = $this->createContract($freeOrder, $tenant, $freeStorage, $now->modify('-30 days'), null);
-        $freeContract->applyIndividualMonthlyAmount(0);
+        $freeContract->applyIndividualMonthlyAmount(0, null, null, $now);
 
         $this->entityManager->flush();
 
@@ -1024,13 +1024,13 @@ class ContractRepositoryTest extends KernelTestCase
         // Override contract — order = 150 000, override = 50 000 → contributes 50 000.
         $overrideOrder = $this->createOrder($tenant, $overrideStorage, $now->modify('-30 days'), null, 150000);
         $overrideContract = $this->createContract($overrideOrder, $tenant, $overrideStorage, $now->modify('-30 days'), null);
-        $overrideContract->applyIndividualMonthlyAmount(50000);
+        $overrideContract->applyIndividualMonthlyAmount(50000, null, null, $now);
         $overrideContract->setRecurringPayment('parent-byll-ovr', $now->modify('+5 days'), $now->modify('-1 day'));
 
         // Free contract — override = 0 → contributes 0 to the sum (auto-excluded by zero contribution).
         $freeOrder = $this->createOrder($tenant, $freeStorage, $now->modify('-30 days'), null, 150000);
         $freeContract = $this->createContract($freeOrder, $tenant, $freeStorage, $now->modify('-30 days'), null);
-        $freeContract->applyIndividualMonthlyAmount(0);
+        $freeContract->applyIndividualMonthlyAmount(0, null, null, $now);
         $freeContract->setRecurringPayment('parent-byll-free', $now->modify('+5 days'), $now->modify('-1 day'));
 
         $this->entityManager->flush();
@@ -1066,13 +1066,13 @@ class ContractRepositoryTest extends KernelTestCase
         // Override contract — order = 150 000, override = 80 000 → contributes 80 000.
         $overrideOrder = $this->createOrder($tenant, $overrideStorage, $now->modify('-30 days'), null, 150000);
         $overrideContract = $this->createContract($overrideOrder, $tenant, $overrideStorage, $now->modify('-30 days'), null);
-        $overrideContract->applyIndividualMonthlyAmount(80000);
+        $overrideContract->applyIndividualMonthlyAmount(80000, null, null, $now);
         $overrideContract->setRecurringPayment('parent-all-ovr', $now->modify('+5 days'), $now->modify('-1 day'));
 
         // Free contract — override = 0 → contributes 0.
         $freeOrder = $this->createOrder($tenant, $freeStorage, $now->modify('-30 days'), null, 150000);
         $freeContract = $this->createContract($freeOrder, $tenant, $freeStorage, $now->modify('-30 days'), null);
-        $freeContract->applyIndividualMonthlyAmount(0);
+        $freeContract->applyIndividualMonthlyAmount(0, null, null, $now);
         $freeContract->setRecurringPayment('parent-all-free', $now->modify('+5 days'), $now->modify('-1 day'));
 
         $this->entityManager->flush();

@@ -8,6 +8,7 @@ use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Enum\RentalType;
+use Symfony\Component\Uid\Uuid;
 
 final readonly class AdminMigrateCustomerCommand
 {
@@ -15,6 +16,7 @@ final readonly class AdminMigrateCustomerCommand
      * @param int                 $totalPrice              Halere — lump-sum amount paid externally; recorded as the initial Payment
      * @param ?int                $individualMonthlyAmount Halere; null = standard storage rate; 0 = free
      * @param ?\DateTimeImmutable $paidThroughDate         Required for migrate; defaults to endDate (LIMITED) when omitted
+     * @param ?Uuid               $createdByAdminId        admin user id from the security token; null in fixtures
      */
     public function __construct(
         public string $email,
@@ -39,6 +41,7 @@ final readonly class AdminMigrateCustomerCommand
         public \DateTimeImmutable $paidAt,
         public ?int $individualMonthlyAmount = null,
         public ?\DateTimeImmutable $paidThroughDate = null,
+        public ?Uuid $createdByAdminId = null,
     ) {
     }
 }

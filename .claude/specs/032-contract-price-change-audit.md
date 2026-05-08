@@ -1,6 +1,6 @@
 # 032 — Contract price-change audit trail
 
-**Status:** ready
+**Status:** done
 **Type:** feature (audit trail / financial observability)
 **Scope:** small (~10 files: 1 entity + 1 event + 1 handler + repo + migration + listener-trigger inside `Contract` + admin partial + tests + PROJECT_MAP/BACKLOG)
 **Depends on:** spec 025 (introduced `Contract.individualMonthlyAmount` and `applyIndividualMonthlyAmount()` — this spec adds history on top)

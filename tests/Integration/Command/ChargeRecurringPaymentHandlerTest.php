@@ -115,7 +115,7 @@ class ChargeRecurringPaymentHandlerTest extends KernelTestCase
 
         // Override the recurring monthly to 500 Kč; the underlying storage's
         // default (used to be 1500 Kč) must not leak through.
-        $contract->applyIndividualMonthlyAmount(50_000);
+        $contract->applyIndividualMonthlyAmount(50_000, null, null, $this->clock->now());
         $this->entityManager->flush();
 
         $this->commandBus->dispatch(new ChargeRecurringPaymentCommand($contract));
@@ -128,7 +128,7 @@ class ChargeRecurringPaymentHandlerTest extends KernelTestCase
     public function testChargeSkipsFreeContractsWithoutGoPayCall(): void
     {
         $contract = $this->createContractWithRecurringPayment();
-        $contract->applyIndividualMonthlyAmount(0);
+        $contract->applyIndividualMonthlyAmount(0, null, null, $this->clock->now());
         $this->entityManager->flush();
 
         $this->commandBus->dispatch(new ChargeRecurringPaymentCommand($contract));

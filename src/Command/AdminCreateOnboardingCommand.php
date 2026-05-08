@@ -9,12 +9,14 @@ use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Enum\PaymentMethod;
 use App\Enum\RentalType;
+use Symfony\Component\Uid\Uuid;
 
 final readonly class AdminCreateOnboardingCommand
 {
     /**
      * @param ?int                $individualMonthlyAmount halere; null = standard storage rate; 0 = free
      * @param ?\DateTimeImmutable $paidThroughDate         null = no external prepayment
+     * @param ?Uuid               $createdByAdminId        admin user id from the security token; null in fixtures
      */
     public function __construct(
         public string $email,
@@ -37,6 +39,7 @@ final readonly class AdminCreateOnboardingCommand
         public PaymentMethod $paymentMethod,
         public ?int $individualMonthlyAmount = null,
         public ?\DateTimeImmutable $paidThroughDate = null,
+        public ?Uuid $createdByAdminId = null,
     ) {
     }
 }

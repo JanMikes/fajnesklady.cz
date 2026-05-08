@@ -69,7 +69,14 @@ final readonly class AdminMigrateCustomerHandler
 
         // Default paidThroughDate to endDate for LIMITED rentals when omitted
         $paidThroughDate = $command->paidThroughDate ?? $command->endDate;
-        $order->setOnboardingBillingTerms($command->individualMonthlyAmount, $paidThroughDate);
+        $createdByAdmin = null !== $command->createdByAdminId
+            ? $this->userRepository->get($command->createdByAdminId)
+            : null;
+        $order->setOnboardingBillingTerms(
+            individualMonthlyAmount: $command->individualMonthlyAmount,
+            paidThroughDate: $paidThroughDate,
+            createdByAdmin: $createdByAdmin,
+        );
 
         // 5. Accept terms + reserve storage
         $order->acceptTerms($now);

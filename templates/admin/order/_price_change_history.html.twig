@@ -1,0 +1,35 @@
+{% if priceChanges|length > 0 %}
+    <div class="mb-6 bg-white shadow overflow-hidden sm:rounded-lg">
+        <div class="px-4 py-5 sm:p-6">
+            <h3 class="text-base font-semibold text-gray-900 mb-4">Historie ceny</h3>
+            <ul class="divide-y divide-gray-200 text-sm">
+                {% for change in priceChanges %}
+                    <li class="py-2 flex flex-wrap items-center gap-2">
+                        <span class="text-gray-500">{{ change.changedAt|date('d.m.Y H:i') }}</span>
+                        <span class="text-gray-300">·</span>
+                        <span>{{ change.changedBy ? change.changedBy.email : 'systém' }}</span>
+                        <span class="text-gray-300">·</span>
+                        <span>
+                            {% if change.previousAmount is null %}
+                                standardní cena
+                            {% else %}
+                                {{ (change.previousAmount / 100)|number_format(0, ',', ' ') }} Kč
+                            {% endif %}
+                            <span class="mx-1">→</span>
+                            {% if change.newAmount is null %}
+                                standardní cena
+                            {% elseif change.newAmount == 0 %}
+                                zdarma
+                            {% else %}
+                                {{ (change.newAmount / 100)|number_format(0, ',', ' ') }} Kč
+                            {% endif %}
+                        </span>
+                        {% if change.reason %}
+                            <span class="text-gray-500">({{ change.reason }})</span>
+                        {% endif %}
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+{% endif %}
