@@ -42,24 +42,24 @@ final readonly class ExcelExporter
      */
     public function writeXlsx(ExcelSheet $sheet, string $target): void
     {
-        $options = new Options();
-        $options->DEFAULT_COLUMN_WIDTH = 18.0;
+        $options = new Options(DEFAULT_COLUMN_WIDTH: 18.0);
 
         $writer = new Writer($options);
         $writer->openToFile($target);
         $writer->getCurrentSheet()->setName($this->safeSheetTitle($sheet->sheetTitle));
 
-        $writer->addRow(Row::fromValues(
-            array_values(array_map(static fn (ExcelColumn $c): string => $c->header, $sheet->columns)),
-            (new Style())->setFontBold(),
-        ));
+        $headerStyle = (new Style())->withFontBold(true);
+        $writer->addRow(new Row(array_map(
+            static fn (ExcelColumn $c): Cell => Cell::fromValue($c->header, $headerStyle),
+            array_values($sheet->columns),
+        )));
 
         // Reusable styles — never instantiate per cell.
-        $dateStyle = (new Style())->setFormat('dd.mm.yyyy');
-        $dateTimeStyle = (new Style())->setFormat('dd.mm.yyyy hh:mm');
-        $moneyStyle = (new Style())->setFormat('#,##0.00');
-        $integerStyle = (new Style())->setFormat('0');
-        $decimalStyle = (new Style())->setFormat('#,##0.00');
+        $dateStyle = (new Style())->withFormat('dd.mm.yyyy');
+        $dateTimeStyle = (new Style())->withFormat('dd.mm.yyyy hh:mm');
+        $moneyStyle = (new Style())->withFormat('#,##0.00');
+        $integerStyle = (new Style())->withFormat('0');
+        $decimalStyle = (new Style())->withFormat('#,##0.00');
 
         $written = 0;
         $truncated = false;

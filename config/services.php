@@ -129,7 +129,8 @@ return App::config([
             ],
         ],
         'Intervention\\Image\\ImageManager' => [
-            'factory' => ['Intervention\\Image\\ImageManager', 'gd'],
+            'factory' => ['Intervention\\Image\\ImageManager', 'usingDriver'],
+            'arguments' => ['Intervention\\Image\\Drivers\\Gd\\Driver'],
         ],
         'App\\Service\\StoragePhotoUploader' => null,
         'App\\Middleware\\DispatchDomainEventsMiddleware' => null,

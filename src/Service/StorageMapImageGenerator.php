@@ -42,7 +42,7 @@ readonly class StorageMapImageGenerator
             return null;
         }
 
-        $image = $this->imageManager->read($imageData);
+        $image = $this->imageManager->decode($imageData);
 
         $allStorages = $this->storageRepository->findByPlace($place);
 
@@ -72,13 +72,15 @@ readonly class StorageMapImageGenerator
         }
 
         if ($isHighlighted) {
-            $image->drawRectangle($x, $y, function ($rectangle) use ($width, $height): void {
+            $image->drawRectangle(function ($rectangle) use ($x, $y, $width, $height): void {
+                $rectangle->at($x, $y);
                 $rectangle->size($width, $height);
                 $rectangle->background('rgba(34, 197, 94, 0.4)');
                 $rectangle->border('rgba(22, 163, 74, 1.0)', 3);
             });
         } else {
-            $image->drawRectangle($x, $y, function ($rectangle) use ($width, $height): void {
+            $image->drawRectangle(function ($rectangle) use ($x, $y, $width, $height): void {
+                $rectangle->at($x, $y);
                 $rectangle->size($width, $height);
                 $rectangle->background('rgba(156, 163, 175, 0.3)');
                 $rectangle->border('rgba(107, 114, 128, 0.5)', 1);
