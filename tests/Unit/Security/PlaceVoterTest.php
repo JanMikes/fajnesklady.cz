@@ -193,7 +193,7 @@ class PlaceVoterTest extends TestCase
 
         $place = $this->createPlace();
 
-        $placeAccessRepository = $this->createMock(PlaceAccessRepository::class);
+        $placeAccessRepository = $this->createStub(PlaceAccessRepository::class);
         $placeAccessRepository->method('hasAccess')->willReturn(false);
 
         $storageRepository = $this->createMock(StorageRepository::class);
@@ -240,7 +240,7 @@ class PlaceVoterTest extends TestCase
 
         $place = $this->createPlace();
 
-        $placeAccessRepository = $this->createMock(PlaceAccessRepository::class);
+        $placeAccessRepository = $this->createStub(PlaceAccessRepository::class);
         $placeAccessRepository->method('hasAccess')->willReturn(false);
 
         $storageRepository = $this->createMock(StorageRepository::class);

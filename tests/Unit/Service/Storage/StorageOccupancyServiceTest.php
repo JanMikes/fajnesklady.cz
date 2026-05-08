@@ -377,16 +377,16 @@ final class StorageOccupancyServiceTest extends TestCase
         array $futureContractStarts = [],
         array $futureOrderStarts = [],
     ): StorageOccupancyService {
-        $contractRepo = $this->createMock(ContractRepository::class);
+        $contractRepo = $this->createStub(ContractRepository::class);
         $contractRepo->method('findActiveByStorages')->willReturn($contracts);
         $contractRepo->method('findOverlappingByStorages')->willReturn($overlappingContracts);
         $contractRepo->method('findNextStartByStorages')->willReturn($futureContractStarts);
 
-        $orderRepo = $this->createMock(OrderRepository::class);
+        $orderRepo = $this->createStub(OrderRepository::class);
         $orderRepo->method('findActiveByStoragesInDateRange')->willReturn($orders);
         $orderRepo->method('findNextStartByStorages')->willReturn($futureOrderStarts);
 
-        $blockRepo = $this->createMock(StorageUnavailabilityRepository::class);
+        $blockRepo = $this->createStub(StorageUnavailabilityRepository::class);
         $blockRepo->method('findByStoragesInDateRange')->willReturn($blocks);
 
         return new StorageOccupancyService($contractRepo, $orderRepo, $blockRepo);

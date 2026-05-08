@@ -68,7 +68,7 @@ class RecordLoginSubscriberTest extends KernelTestCase
         $passport = new SelfValidatingPassport(new UserBadge($foreignUser->getUserIdentifier(), static fn () => $foreignUser));
         $token = new UsernamePasswordToken($foreignUser, 'main');
         $event = new LoginSuccessEvent(
-            authenticator: $this->createMock(AuthenticatorInterface::class),
+            authenticator: $this->createStub(AuthenticatorInterface::class),
             passport: $passport,
             authenticatedToken: $token,
             request: Request::create('/login'),
@@ -96,7 +96,7 @@ class RecordLoginSubscriberTest extends KernelTestCase
         $token = new UsernamePasswordToken($user, 'main', $user->getRoles());
 
         return new LoginSuccessEvent(
-            authenticator: $this->createMock(AuthenticatorInterface::class),
+            authenticator: $this->createStub(AuthenticatorInterface::class),
             passport: $passport,
             authenticatedToken: $token,
             request: Request::create('/login'),
