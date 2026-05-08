@@ -4,18 +4,23 @@ declare(strict_types=1);
 
 namespace App\Command;
 
+use App\Entity\Order;
+use App\Event\PaymentAmountMismatch;
 use App\Event\RecurringPaymentCharged;
 use App\Event\RecurringPaymentEstablished;
 use App\Repository\ContractRepository;
 use App\Repository\OrderRepository;
 use App\Repository\PaymentRepository;
+use App\Service\Billing\RecurringAmountCalculator;
 use App\Service\GoPay\GoPayClient;
 use App\Service\OrderService;
 use App\Service\PriceCalculator;
 use App\Value\GoPayPaymentStatus;
+use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
+use Symfony\Component\Messenger\Exception\HandlerFailedException;
 use Symfony\Component\Messenger\MessageBusInterface;
 
 #[AsMessageHandler]
@@ -28,6 +33,7 @@ final readonly class ProcessPaymentNotificationHandler
         private ContractRepository $contractRepository,
         private OrderService $orderService,
         private PriceCalculator $priceCalculator,
+        private RecurringAmountCalculator $amountCalculator,
         private MessageBusInterface $commandBus,
         private MessageBusInterface $eventBus,
         private ClockInterface $clock,
@@ -60,6 +66,8 @@ final readonly class ProcessPaymentNotificationHandler
 
         if (null !== $order) {
             if ($status->isPaid() && $order->canBePaid()) {
+                $this->detectOrderAmountMismatch($order, $status, $now);
+
                 // Store parent payment ID for recurring (all orders >= 1 month)
                 $needsRecurring = $this->priceCalculator->needsRecurringBilling($order->startDate, $order->endDate);
                 if ($needsRecurring) {
@@ -133,21 +141,101 @@ final readonly class ProcessPaymentNotificationHandler
             $paidThroughDate = $effectiveEndDate;
         }
 
+        // GoPay is the source of truth for what was actually charged. If it
+        // disagrees with what we computed, RECORD WHAT GOPAY SAYS but emit
+        // a mismatch event so admin can investigate (the last cycle of a
+        // fixed-term contract is legitimately prorated; everything else
+        // likely needs reconciliation with the customer).
+        $expectedAmount = $this->amountCalculator->calculate($contract, $now);
+        $receivedAmount = $status->amount ?? $expectedAmount;
+
+        if (null !== $status->amount && $status->amount !== $expectedAmount) {
+            $this->logger->warning('GoPay recurring amount differs from expected — admin alert dispatched', [
+                'contract_id' => $contract->id->toRfc4122(),
+                'gopay_payment_id' => $status->id,
+                'expected_amount' => $expectedAmount,
+                'received_amount' => $status->amount,
+            ]);
+
+            $this->eventBus->dispatch(PaymentAmountMismatch::forContract(
+                contractId: $contract->id,
+                goPayPaymentId: $status->id,
+                expectedAmount: $expectedAmount,
+                receivedAmount: $status->amount,
+                occurredOn: $now,
+            ));
+        }
+
         $contract->recordBillingCharge($now, $nextBillingDate, $paidThroughDate);
 
-        $amount = $status->amount ?? $contract->getEffectiveMonthlyAmount();
+        // Persist the Payment row via RecurringPaymentCharged. The unique
+        // partial index on payment.go_pay_payment_id is the hard backstop
+        // against parallel-webhook races: if two simultaneous deliveries
+        // both pass the existsByGoPayPaymentId check at the top of __invoke,
+        // the second flush attempt will violate the constraint. That is the
+        // expected outcome — log a warning and return cleanly so the messenger
+        // does not surface a duplicate as an error.
+        try {
+            $this->eventBus->dispatch(new RecurringPaymentCharged(
+                contractId: $contract->id,
+                paymentId: $status->id,
+                amount: $receivedAmount,
+                occurredOn: $now,
+            ));
+        } catch (HandlerFailedException $e) {
+            if ($this->isUniqueViolation($e)) {
+                $this->logger->warning('Duplicate webhook lost the race for recurring Payment insert', [
+                    'gopay_payment_id' => $status->id,
+                    'contract_id' => $contract->id->toRfc4122(),
+                ]);
 
-        $this->eventBus->dispatch(new RecurringPaymentCharged(
-            contractId: $contract->id,
-            paymentId: $status->id,
-            amount: $amount,
-            occurredOn: $now,
-        ));
+                return;
+            }
+
+            throw $e;
+        }
 
         $this->logger->info('Recurring payment reconciled via webhook', [
             'contract_id' => $contract->id->toRfc4122(),
             'gopay_payment_id' => $status->id,
-            'amount' => $amount,
+            'amount' => $receivedAmount,
         ]);
+    }
+
+    private function detectOrderAmountMismatch(Order $order, GoPayPaymentStatus $status, \DateTimeImmutable $now): void
+    {
+        if (null === $status->amount) {
+            return;
+        }
+
+        if ($status->amount === $order->firstPaymentPrice) {
+            return;
+        }
+
+        $this->logger->warning('GoPay order amount differs from expected — admin alert dispatched', [
+            'order_id' => $order->id->toRfc4122(),
+            'gopay_payment_id' => $status->id,
+            'expected_amount' => $order->firstPaymentPrice,
+            'received_amount' => $status->amount,
+        ]);
+
+        $this->eventBus->dispatch(PaymentAmountMismatch::forOrder(
+            orderId: $order->id,
+            goPayPaymentId: $status->id,
+            expectedAmount: $order->firstPaymentPrice,
+            receivedAmount: $status->amount,
+            occurredOn: $now,
+        ));
+    }
+
+    private function isUniqueViolation(\Throwable $e): bool
+    {
+        for ($cur = $e; null !== $cur; $cur = $cur->getPrevious()) {
+            if ($cur instanceof UniqueConstraintViolationException) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

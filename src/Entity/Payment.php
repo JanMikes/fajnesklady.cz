@@ -9,6 +9,11 @@ use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
 
 #[ORM\Entity]
+#[ORM\UniqueConstraint(
+    name: 'uniq_payment_gopay_payment_id',
+    columns: ['go_pay_payment_id'],
+    options: ['where' => '(go_pay_payment_id IS NOT NULL)'],
+)]
 class Payment
 {
     #[ORM\ManyToOne(targetEntity: SelfBillingInvoice::class)]

@@ -58,6 +58,12 @@ return App::config([
             'alias' => 'limiter.ares_lookup',
             'public' => true,
         ],
+        // GoPay webhook rate limiter — exposed publicly so the webhook test
+        // can reset the bucket between cases.
+        'test.limiter.gopay_webhook' => [
+            'alias' => 'limiter.gopay_webhook',
+            'public' => true,
+        ],
         // Twig rendering exposed for tests that capture an Email and need to
         // render its template (e.g. asserting email body content for a handler
         // invoked outside an HTTP request).

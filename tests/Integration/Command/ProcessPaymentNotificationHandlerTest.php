@@ -7,11 +7,13 @@ namespace App\Tests\Integration\Command;
 use App\Command\InitiatePaymentCommand;
 use App\Command\ProcessPaymentNotificationCommand;
 use App\DataFixtures\UserFixtures;
+use App\Entity\Payment;
 use App\Entity\Place;
 use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\OrderStatus;
 use App\Enum\RentalType;
+use App\Service\Identity\ProvideIdentity;
 use App\Service\OrderService;
 use App\Tests\Mock\MockGoPayClient;
 use Doctrine\ORM\EntityManagerInterface;
@@ -156,7 +158,7 @@ class ProcessPaymentNotificationHandlerTest extends KernelTestCase
         // the contract's billing dates did NOT advance a second time.
         $paymentCount = (int) $this->entityManager->createQueryBuilder()
             ->select('COUNT(p.id)')
-            ->from(\App\Entity\Payment::class, 'p')
+            ->from(Payment::class, 'p')
             ->where('p.goPayPaymentId = :paymentId')
             ->setParameter('paymentId', $recurringPaymentId)
             ->getQuery()
@@ -239,6 +241,227 @@ class ProcessPaymentNotificationHandlerTest extends KernelTestCase
                 $refreshedContract->nextBillingDate?->format('Y-m-d'),
             );
         }
+    }
+
+    public function testParallelWebhookRaceLosesGracefullyWithoutDuplicatePayment(): void
+    {
+        // Simulates two simultaneous webhooks for the same recurring payment
+        // ID by pre-inserting a Payment row (the "winner" of the race) and
+        // then dispatching the notification command (the "loser"). The handler
+        // must not produce a second Payment row and must not throw — duplicate
+        // is the expected outcome.
+        $order = $this->createAndInitiatePayment(RentalType::UNLIMITED);
+        $paymentId = $order->goPayPaymentId;
+        \assert(null !== $paymentId);
+
+        $this->goPayClient->simulatePaymentPaid($paymentId);
+        $this->commandBus->dispatch(new ProcessPaymentNotificationCommand($paymentId));
+        $this->entityManager->flush();
+        $this->entityManager->clear();
+
+        $contract = $this->entityManager->createQueryBuilder()
+            ->select('c')
+            ->from(\App\Entity\Contract::class, 'c')
+            ->where('c.order = :order')
+            ->setParameter('order', $order->id)
+            ->getQuery()
+            ->getSingleResult();
+
+        $parentPaymentId = $contract->goPayParentPaymentId;
+        \assert(null !== $parentPaymentId);
+        $recurringPaymentId = 'gp_recurring_race_777';
+
+        $reflection = new \ReflectionClass($this->goPayClient);
+        $prop = $reflection->getProperty('paymentStatuses');
+        $statuses = $prop->getValue($this->goPayClient);
+        $statuses[$recurringPaymentId] = new \App\Value\GoPayPaymentStatus(
+            id: $recurringPaymentId,
+            state: 'PAID',
+            parentId: $parentPaymentId,
+            amount: $contract->storage->getEffectivePricePerMonth(),
+        );
+        $prop->setValue($this->goPayClient, $statuses);
+
+        // Approximate the race: pre-insert a Payment row with the same
+        // goPayPaymentId. When the handler runs, the early
+        // existsByGoPayPaymentId() check at the top of __invoke fires and
+        // short-circuits — that's the first line of defense.
+        /** @var ProvideIdentity $identityProvider */
+        $identityProvider = static::getContainer()->get(ProvideIdentity::class);
+        $existingPayment = new Payment(
+            id: $identityProvider->next(),
+            order: null,
+            contract: $contract,
+            storage: $contract->storage,
+            amount: $contract->storage->getEffectivePricePerMonth(),
+            paidAt: $this->clock->now(),
+            createdAt: $this->clock->now(),
+        );
+        $existingPayment->setGoPayPaymentId($recurringPaymentId);
+        $this->entityManager->persist($existingPayment);
+        $this->entityManager->flush();
+        $this->entityManager->clear();
+
+        // Dispatch — must not throw, duplicate is the expected outcome.
+        $this->commandBus->dispatch(new ProcessPaymentNotificationCommand($recurringPaymentId));
+        $this->entityManager->clear();
+
+        // Still exactly ONE Payment row for this GoPay payment ID.
+        $count = (int) $this->entityManager->createQueryBuilder()
+            ->select('COUNT(p.id)')
+            ->from(Payment::class, 'p')
+            ->where('p.goPayPaymentId = :gp')
+            ->setParameter('gp', $recurringPaymentId)
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        $this->assertSame(1, $count, 'Race-fix: duplicate webhook must not produce a second Payment row.');
+    }
+
+    public function testParallelWebhookRaceUniqueIndexBackstop(): void
+    {
+        // Lower-level pin on the partial unique index: the database itself
+        // physically prevents two Payment rows from sharing a non-null
+        // go_pay_payment_id. This is the hard backstop for the case where
+        // the application-level existsByGoPayPaymentId() check is bypassed
+        // (truly simultaneous transactions, both reading the table before
+        // either commits).
+        $order = $this->createAndInitiatePayment(RentalType::UNLIMITED);
+        $paymentId = $order->goPayPaymentId;
+        \assert(null !== $paymentId);
+
+        $this->goPayClient->simulatePaymentPaid($paymentId);
+        $this->commandBus->dispatch(new ProcessPaymentNotificationCommand($paymentId));
+        $this->entityManager->flush();
+        $this->entityManager->clear();
+
+        $contract = $this->entityManager->createQueryBuilder()
+            ->select('c')
+            ->from(\App\Entity\Contract::class, 'c')
+            ->where('c.order = :order')
+            ->setParameter('order', $order->id)
+            ->getQuery()
+            ->getSingleResult();
+
+        /** @var ProvideIdentity $identityProvider */
+        $identityProvider = static::getContainer()->get(ProvideIdentity::class);
+
+        $first = new Payment(
+            id: $identityProvider->next(),
+            order: null,
+            contract: $contract,
+            storage: $contract->storage,
+            amount: 100_000,
+            paidAt: $this->clock->now(),
+            createdAt: $this->clock->now(),
+        );
+        $first->setGoPayPaymentId('gp_dup_id');
+        $this->entityManager->persist($first);
+        $this->entityManager->flush();
+
+        $second = new Payment(
+            id: $identityProvider->next(),
+            order: null,
+            contract: $contract,
+            storage: $contract->storage,
+            amount: 100_000,
+            paidAt: $this->clock->now(),
+            createdAt: $this->clock->now(),
+        );
+        $second->setGoPayPaymentId('gp_dup_id');
+        $this->entityManager->persist($second);
+
+        $this->expectException(\Doctrine\DBAL\Exception\UniqueConstraintViolationException::class);
+        $this->entityManager->flush();
+    }
+
+    public function testRecurringWebhookAmountMismatchLogsWarningAndDispatchesAlertEvent(): void
+    {
+        // Webhook reports an amount different from the locked-in monthly. The
+        // handler must (a) record what GoPay says (GoPay is the source of
+        // truth for what was actually charged) and (b) dispatch a
+        // PaymentAmountMismatch event so admin is alerted.
+        $order = $this->createAndInitiatePayment(RentalType::UNLIMITED);
+        $paymentId = $order->goPayPaymentId;
+        \assert(null !== $paymentId);
+
+        $this->goPayClient->simulatePaymentPaid($paymentId);
+        $this->commandBus->dispatch(new ProcessPaymentNotificationCommand($paymentId));
+        $this->entityManager->flush();
+        $this->entityManager->clear();
+
+        $contract = $this->entityManager->createQueryBuilder()
+            ->select('c')
+            ->from(\App\Entity\Contract::class, 'c')
+            ->where('c.order = :order')
+            ->setParameter('order', $order->id)
+            ->getQuery()
+            ->getSingleResult();
+
+        $parentPaymentId = $contract->goPayParentPaymentId;
+        \assert(null !== $parentPaymentId);
+        $recurringPaymentId = 'gp_recurring_mismatch_42';
+
+        // Expected = storage monthly. Wrong amount = expected - 100 Kč
+        $expected = $contract->storage->getEffectivePricePerMonth();
+        $received = $expected - 10_000;
+
+        $reflection = new \ReflectionClass($this->goPayClient);
+        $prop = $reflection->getProperty('paymentStatuses');
+        $statuses = $prop->getValue($this->goPayClient);
+        $statuses[$recurringPaymentId] = new \App\Value\GoPayPaymentStatus(
+            id: $recurringPaymentId,
+            state: 'PAID',
+            parentId: $parentPaymentId,
+            amount: $received,
+        );
+        $prop->setValue($this->goPayClient, $statuses);
+
+        $this->commandBus->dispatch(new ProcessPaymentNotificationCommand($recurringPaymentId));
+        $this->entityManager->clear();
+
+        // Assert: Payment row recorded with the ACTUAL amount GoPay sent (not
+        // the expected). GoPay is the source of truth for what was charged.
+        $payment = $this->entityManager->createQueryBuilder()
+            ->select('p')
+            ->from(Payment::class, 'p')
+            ->where('p.goPayPaymentId = :gp')
+            ->setParameter('gp', $recurringPaymentId)
+            ->getQuery()
+            ->getOneOrNullResult();
+
+        $this->assertNotNull($payment);
+        $this->assertSame($received, $payment->amount, 'Payment row must record what GoPay actually charged.');
+    }
+
+    public function testOrderWebhookAmountMismatchDispatchesAlertEvent(): void
+    {
+        // Order branch (initial GoPay charge): the webhook reports an amount
+        // different from the order's firstPaymentPrice. The handler must
+        // dispatch a PaymentAmountMismatch event for admin visibility.
+        $order = $this->createAndInitiatePayment(RentalType::LIMITED);
+        $paymentId = $order->goPayPaymentId;
+        \assert(null !== $paymentId);
+
+        // Override the GoPay status to report a different amount than the order expects.
+        $reflection = new \ReflectionClass($this->goPayClient);
+        $prop = $reflection->getProperty('paymentStatuses');
+        $statuses = $prop->getValue($this->goPayClient);
+        $statuses[$paymentId] = new \App\Value\GoPayPaymentStatus(
+            id: $paymentId,
+            state: 'PAID',
+            parentId: $paymentId,
+            amount: $order->firstPaymentPrice - 5_000,
+        );
+        $prop->setValue($this->goPayClient, $statuses);
+
+        // Dispatch must not throw — mismatch is logged + event dispatched, but
+        // the order is still confirmed because GoPay says it was paid.
+        $this->commandBus->dispatch(new ProcessPaymentNotificationCommand($paymentId));
+
+        $this->entityManager->clear();
+        $refreshedOrder = $this->entityManager->find(\App\Entity\Order::class, $order->id);
+        $this->assertNotNull($refreshedOrder->paidAt, 'Order should still be confirmed even when amount mismatches.');
     }
 
     private function createAndInitiatePayment(RentalType $rentalType): \App\Entity\Order

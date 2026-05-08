@@ -31,6 +31,18 @@ return App::config([
                 'limit' => 60,
                 'interval' => '1 hour',
             ],
+            // GoPay webhook rate limiter - per-IP, token bucket so legitimate
+            // GoPay retries get burst capacity while abuse gets throttled.
+            // 60 burst + 60 refill/min is generous for real traffic but
+            // tight enough to stop scripted abuse.
+            'gopay_webhook' => [
+                'policy' => 'token_bucket',
+                'limit' => 60,
+                'rate' => [
+                    'interval' => '1 minute',
+                    'amount' => 60,
+                ],
+            ],
         ],
     ],
 ]);

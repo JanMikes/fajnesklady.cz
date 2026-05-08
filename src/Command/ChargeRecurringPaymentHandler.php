@@ -6,6 +6,7 @@ namespace App\Command;
 
 use App\Entity\Contract;
 use App\Event\RecurringPaymentCharged;
+use App\Service\Billing\RecurringAmountCalculator;
 use App\Service\GoPay\GoPayClient;
 use App\Service\GoPay\PaymentNotConfirmedException;
 use App\Value\GoPayPayment;
@@ -18,8 +19,6 @@ use Symfony\Component\Uid\Uuid;
 #[AsMessageHandler]
 final readonly class ChargeRecurringPaymentHandler
 {
-    private const int DAYS_PER_MONTH = 30;
-
     /**
      * Polling window for GoPay's async card processing. 15 × 2 s = 30 s,
      * which absorbs the vast majority of webhook delays observed in production.
@@ -35,6 +34,7 @@ final readonly class ChargeRecurringPaymentHandler
         private ClockInterface $clock,
         private MessageBusInterface $eventBus,
         private LoggerInterface $logger,
+        private RecurringAmountCalculator $amountCalculator,
         private int $pollIntervalMicroseconds = self::POLL_INTERVAL_MICROSECONDS,
     ) {
     }
@@ -82,7 +82,7 @@ final readonly class ChargeRecurringPaymentHandler
         $parentPaymentId = $contract->goPayParentPaymentId;
 
         // Calculate amount (full month or prorated for last billing cycle)
-        $amount = $this->calculateBillingAmount($contract, $now);
+        $amount = $this->amountCalculator->calculate($contract, $now);
 
         if ($amount <= 0) {
             $this->logger->info('Skipping billing — zero or negative amount', [
@@ -211,30 +211,6 @@ final readonly class ChargeRecurringPaymentHandler
         }
 
         return $payment;
-    }
-
-    private function calculateBillingAmount(Contract $contract, \DateTimeImmutable $now): int
-    {
-        $monthlyRate = $contract->getEffectiveMonthlyAmount();
-        $effectiveEndDate = $contract->getEffectiveEndDate();
-
-        if (null === $effectiveEndDate) {
-            return $monthlyRate;
-        }
-
-        // Use nextBillingDate as the canonical billing period start (deterministic)
-        $billingPeriodStart = $contract->nextBillingDate ?? $now;
-        $nextFullPeriodEnd = $billingPeriodStart->modify('+1 month');
-
-        if ($nextFullPeriodEnd <= $effectiveEndDate) {
-            return $monthlyRate;
-        }
-
-        // Prorate: only charge for remaining days until end
-        $remainingDays = max(1, (int) $billingPeriodStart->diff($effectiveEndDate)->days);
-        $dailyRate = $monthlyRate / self::DAYS_PER_MONTH;
-
-        return max(1, (int) round($remainingDays * $dailyRate));
     }
 
     private function buildOrderNumber(Uuid $contractId, \DateTimeImmutable $now): string
