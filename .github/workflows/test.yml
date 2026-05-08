@@ -25,7 +25,7 @@ jobs:
                     - 5432:5432
 
         steps:
-            -   uses: actions/checkout@v4
+            -   uses: actions/checkout@v6
             -   run: composer install --no-scripts --no-progress
             -   run: bin/console importmap:install
             -   run: bin/console tailwind:build
@@ -36,7 +36,7 @@ jobs:
         runs-on: ubuntu-latest
         container: ghcr.io/thedevs-cz/php:8.5-fajnesklady
         steps:
-            -   uses: actions/checkout@v4
+            -   uses: actions/checkout@v6
             -   run: composer install --no-scripts --no-progress
             -   run: bin/console cache:warmup --env=dev
             -   run: composer run-script phpstan
@@ -56,7 +56,7 @@ jobs:
                     - 5432:5432
 
         steps:
-            -   uses: actions/checkout@v4
+            -   uses: actions/checkout@v6
             -   run: composer install --no-scripts --no-progress
             -   run: bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
             -   run: bin/console doctrine:schema:update --dump-sql
