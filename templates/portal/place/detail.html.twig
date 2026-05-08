@@ -63,12 +63,20 @@
     </div>
 
     {# Setup-health alerts (admin only, only when problems) #}
-    {% if isAdmin and (stats.missingOperatingRules or stats.missingMap or stats.missingStorageTypes or stats.missingLockCodes) %}
+    {% if isAdmin and (stats.missingOperatingRules or stats.missingInstructions or stats.missingMap or stats.missingStorageTypes or stats.missingLockCodes) %}
         <div class="space-y-3 mb-6">
             {% if stats.missingOperatingRules %}
                 {{ include('portal/place/_health_alert.html.twig', {
                     title: 'Chybí nahrát provozní řád',
                     detail: 'Provozní řád je vyžadován při objednávce.',
+                    ctaUrl: path('portal_places_edit', {id: place.id}),
+                    ctaLabel: 'Nahrát v nastavení místa',
+                }) }}
+            {% endif %}
+            {% if stats.missingInstructions %}
+                {{ include('portal/place/_health_alert.html.twig', {
+                    title: 'Chybí nahrát návod pro zákazníky',
+                    detail: 'Návod je po platbě připojen k potvrzovacímu e-mailu zákazníka.',
                     ctaUrl: path('portal_places_edit', {id: place.id}),
                     ctaLabel: 'Nahrát v nastavení místa',
                 }) }}

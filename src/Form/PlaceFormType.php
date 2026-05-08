@@ -117,12 +117,25 @@ class PlaceFormType extends AbstractType
             ],
             'help' => 'Dokument provozního řádu (PDF nebo DOCX, max 10 MB)',
         ]);
+
+        if ($options['is_admin']) {
+            $builder->add('instructionsDocument', FileType::class, [
+                'label' => 'Návod pro zákazníky',
+                'required' => false,
+                'attr' => [
+                    'accept' => 'application/pdf,.pdf,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                ],
+                'help' => 'Praktický návod pro zákazníky (PDF nebo DOCX, max 10 MB). Po platbě je přiložen k potvrzovacímu e-mailu.',
+            ]);
+        }
     }
 
     public function configureOptions(OptionsResolver $resolver): void
     {
         $resolver->setDefaults([
             'data_class' => PlaceFormData::class,
+            'is_admin' => false,
         ]);
+        $resolver->setAllowedTypes('is_admin', 'bool');
     }
 }

@@ -37,7 +37,9 @@ final class PlaceEditController extends AbstractController
         $this->denyAccessUnlessGranted(PlaceVoter::EDIT, $place);
 
         $formData = PlaceFormData::fromPlace($place);
-        $form = $this->createForm(PlaceFormType::class, $formData);
+        $form = $this->createForm(PlaceFormType::class, $formData, [
+            'is_admin' => $this->isGranted('ROLE_ADMIN'),
+        ]);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
@@ -55,6 +57,13 @@ final class PlaceEditController extends AbstractController
                 $operatingRulesPath = $this->fileUploader->uploadOperatingRules($formData->operatingRulesDocument, $place->id);
             }
 
+            // Handle instructions upload (admin-only field)
+            $instructionsPath = null;
+            if (null !== $formData->instructionsDocument) {
+                $this->fileUploader->deleteFile($place->instructionsPath);
+                $instructionsPath = $this->fileUploader->uploadInstructions($formData->instructionsDocument, $place->id);
+            }
+
             $command = new UpdatePlaceCommand(
                 placeId: $place->id,
                 name: $formData->name,
@@ -65,6 +74,7 @@ final class PlaceEditController extends AbstractController
                 type: $formData->type,
                 mapImagePath: $mapImagePath,
                 operatingRulesPath: $operatingRulesPath,
+                instructionsPath: $instructionsPath,
                 latitude: $formData->latitude,
                 longitude: $formData->longitude,
                 orderExpirationDays: $formData->orderExpirationDays,

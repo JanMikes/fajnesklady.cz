@@ -329,6 +329,48 @@ class PlaceTest extends TestCase
         $this->assertSame($updatedAt, $place->updatedAt);
     }
 
+    public function testDefaultInstructionsIsNull(): void
+    {
+        $now = new \DateTimeImmutable();
+
+        $place = new Place(
+            id: Uuid::v7(),
+            name: 'Test Place',
+            address: 'Test Address',
+            city: 'Praha',
+            postalCode: '110 00',
+            description: null,
+            createdAt: $now,
+        );
+
+        $this->assertNull($place->instructionsPath);
+        $this->assertFalse($place->hasInstructions());
+    }
+
+    public function testUpdateInstructions(): void
+    {
+        $createdAt = new \DateTimeImmutable('2024-01-01 10:00:00');
+        $updatedAt = new \DateTimeImmutable('2024-01-01 11:00:00');
+
+        $place = new Place(
+            id: Uuid::v7(),
+            name: 'Test Place',
+            address: 'Test Address',
+            city: 'Praha',
+            postalCode: '110 00',
+            description: null,
+            createdAt: $createdAt,
+        );
+
+        $this->assertFalse($place->hasInstructions());
+
+        $place->updateInstructions('places/uuid/instructions/navod.pdf', $updatedAt);
+
+        $this->assertSame('places/uuid/instructions/navod.pdf', $place->instructionsPath);
+        $this->assertTrue($place->hasInstructions());
+        $this->assertSame($updatedAt, $place->updatedAt);
+    }
+
     public function testActivateDeactivate(): void
     {
         $createdAt = new \DateTimeImmutable('2024-01-01 10:00:00');

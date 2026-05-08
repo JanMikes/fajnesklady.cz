@@ -40,6 +40,10 @@ final readonly class UpdatePlaceHandler
             $place->updateOperatingRules($command->operatingRulesPath, $now);
         }
 
+        if (null !== $command->instructionsPath) {
+            $place->updateInstructions($command->instructionsPath, $now);
+        }
+
         $place->updateLocation($command->latitude, $command->longitude, $now);
 
         $place->updateOrderExpirationDays($command->orderExpirationDays, $now);

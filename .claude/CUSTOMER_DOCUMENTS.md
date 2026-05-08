@@ -19,13 +19,14 @@ overview so we don't have to grep on every change.
 | 8 | Provozní řád pobočky (PDF/DOCX) | per-place upload | `public/uploads/{Place.operatingRulesPath}` | `upload_url()` Twig helper — only when `place.hasOperatingRules()` |
 | 9 | Formulář odstoupení od smlouvy (PDF) | static asset | `public/documents/formular-odstoupeni-od-smlouvy.pdf` | direct asset URL |
 | 10 | Reklamační formulář (PDF) | static asset | `public/documents/reklamacni-formular.pdf` | direct asset URL |
+| 11 | Návod pro zákazníky (PDF/DOCX) | per-place upload (admin-only) | `public/uploads/{Place.instructionsPath}` | `upload_url()` Twig helper — only when `place.hasInstructions()` |
 
 ## Email touchpoints
 
 | Email | Trigger | Attachments | Links to |
 |---|---|---|---|
 | `email/order_confirmation.html.twig` | `OrderPlaced` (after acceptance, **pre-payment**) | signed contract (PDF or DOCX fallback), VOP, poučení spotřebitele, podmínky opakovaných plateb (if recurring) | portal order detail (`manageUrl`) |
-| `email/contract_ready.html.twig` | `OrderCompleted` (**post-payment**, fired by webhook / payment return) | signed contract, mapa skladu (PNG), provozní řád pobočky (if any) | public order success page with `#dokumenty` anchor (`orderUrl`) |
+| `email/contract_ready.html.twig` | `OrderCompleted` (**post-payment**, fired by webhook / payment return) | signed contract, mapa skladu (PNG), provozní řád pobočky (if any), návod pro zákazníky (if any) | public order success page with `#dokumenty` anchor (`orderUrl`) |
 | `email/invoice.html.twig` | `InvoiceCreated` | invoice PDF | — |
 
 **Naming note:** the `contract_ready` template name is historical; the contract is actually finalized in the *pre-payment* email (`order_confirmation`). Treat `contract_ready` as the "rental activated" email — it's about operational artefacts (map, operating rules) and the link to the documents hub. A future spec can rename the template + handler class for clarity.

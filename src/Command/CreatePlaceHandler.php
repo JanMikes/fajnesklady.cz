@@ -41,6 +41,10 @@ final readonly class CreatePlaceHandler
             $place->updateOperatingRules($command->operatingRulesPath, $now);
         }
 
+        if (null !== $command->instructionsPath) {
+            $place->updateInstructions($command->instructionsPath, $now);
+        }
+
         if (null !== $command->latitude && null !== $command->longitude) {
             $place->updateLocation($command->latitude, $command->longitude, $now);
         }

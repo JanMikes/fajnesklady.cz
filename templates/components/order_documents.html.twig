@@ -66,17 +66,27 @@
             </ul>
         </div>
 
-        {# Pobočka: provozní řád + mapa #}
-        {% if place.operatingRulesPath %}
+        {# Pobočka: provozní řád + návod + mapa #}
+        {% if place.operatingRulesPath or place.instructionsPath %}
             <div class="mb-6">
                 <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Pobočka</h3>
                 <ul class="divide-y divide-gray-100 border border-gray-100 rounded-lg">
-                    {{ _self.documentRow(
-                        upload_url(place.operatingRulesPath),
-                        'Provozní řád pobočky',
-                        'Pravidla pro užívání skladu a pobočky',
-                        'pdf'
-                    ) }}
+                    {% if place.operatingRulesPath %}
+                        {{ _self.documentRow(
+                            upload_url(place.operatingRulesPath),
+                            'Provozní řád pobočky',
+                            'Pravidla pro užívání skladu a pobočky',
+                            'pdf'
+                        ) }}
+                    {% endif %}
+                    {% if place.instructionsPath %}
+                        {{ _self.documentRow(
+                            upload_url(place.instructionsPath),
+                            'Návod pro zákazníky',
+                            'Praktický návod k používání skladu a pobočky',
+                            'pdf'
+                        ) }}
+                    {% endif %}
                 </ul>
             </div>
         {% endif %}

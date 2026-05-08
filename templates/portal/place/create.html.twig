@@ -126,6 +126,28 @@
                         {{ form_errors(form.operatingRulesDocument) }}
                     </div>
 
+                    {% if form.instructionsDocument is defined %}
+                        <div class="mb-4">
+                            <label for="{{ form.instructionsDocument.vars.id }}" class="block text-sm font-semibold text-gray-700 mb-2">Návod pro zákazníky</label>
+                            {% if form.vars.data.currentInstructionsPath %}
+                                <div class="mb-2 p-3 bg-gray-50 rounded-lg flex items-center justify-between">
+                                    <div class="flex items-center">
+                                        <svg class="h-5 w-5 text-green-500 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        <span class="text-sm text-gray-700">Nahráno</span>
+                                    </div>
+                                    <a href="{{ upload_url(form.vars.data.currentInstructionsPath) }}" target="_blank" class="link text-sm">
+                                        Zobrazit
+                                    </a>
+                                </div>
+                            {% endif %}
+                            {{ form_widget(form.instructionsDocument, {}) }}
+                            <p class="mt-1 text-sm text-gray-500">Praktický návod pro zákazníky (PDF nebo DOCX, max 10 MB). Po platbě je přiložen k potvrzovacímu e-mailu.</p>
+                            {{ form_errors(form.instructionsDocument) }}
+                        </div>
+                    {% endif %}
+
                     <hr class="my-6 border-t border-gray-200">
 
                     <div class="flex justify-end gap-2">

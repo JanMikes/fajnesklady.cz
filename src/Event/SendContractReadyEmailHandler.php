@@ -49,6 +49,14 @@ final readonly class SendContractReadyEmailHandler
             }
         }
 
+        $instructionsPath = null;
+        if ($place->hasInstructions() && null !== $place->instructionsPath) {
+            $candidate = $this->uploadsDirectory.'/'.$place->instructionsPath;
+            if (file_exists($candidate)) {
+                $instructionsPath = $candidate;
+            }
+        }
+
         $email = (new TemplatedEmail())
             ->from(new Address('noreply@fajnesklady.cz', 'Fajnesklady.cz'))
             ->to(new Address($user->email, $user->fullName))
@@ -70,6 +78,7 @@ final readonly class SendContractReadyEmailHandler
                 'cancelUrl' => $isRecurring ? $this->cancelUrlGenerator->generate($contract) : null,
                 'hasMapAttachment' => null !== $mapImageData,
                 'hasOperatingRulesAttachment' => null !== $operatingRulesPath,
+                'hasInstructionsAttachment' => null !== $instructionsPath,
             ]);
 
         // Attach the signed contract — prefer PDF, fall back to DOCX if conversion fails.
@@ -104,6 +113,15 @@ final readonly class SendContractReadyEmailHandler
             $email->attachFromPath(
                 $operatingRulesPath,
                 'provozni_rad.'.$extension,
+            );
+        }
+
+        // Attach customer instructions document if available for this place
+        if (null !== $instructionsPath) {
+            $extension = pathinfo($instructionsPath, PATHINFO_EXTENSION);
+            $email->attachFromPath(
+                $instructionsPath,
+                'navod.'.$extension,
             );
         }
 

@@ -63,6 +63,7 @@ final readonly class GetPlaceDashboardStatsQuery
             : new OverdueSummary(count: 0, totalAmount: 0, top: []);
 
         $missingOperatingRules = null === $owner && null === $place->operatingRulesPath;
+        $missingInstructions = null === $owner && null === $place->instructionsPath;
         $missingMap = null === $owner && null === $place->mapImagePath;
         $missingStorageTypes = null === $owner
             && 0 === $this->storageTypeRepository->countByPlace($place);
@@ -87,6 +88,7 @@ final readonly class GetPlaceDashboardStatsQuery
             overdueAmount: $overdue->totalAmount,
             overdueTop: $overdue->top,
             missingOperatingRules: $missingOperatingRules,
+            missingInstructions: $missingInstructions,
             missingMap: $missingMap,
             missingStorageTypes: $missingStorageTypes,
             missingLockCodes: $missingLockCodes,

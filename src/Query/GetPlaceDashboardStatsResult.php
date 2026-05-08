@@ -25,6 +25,7 @@ final readonly class GetPlaceDashboardStatsResult
         public int $overdueAmount,
         public array $overdueTop,
         public bool $missingOperatingRules,
+        public bool $missingInstructions,
         public bool $missingMap,
         public bool $missingStorageTypes,
         public bool $missingLockCodes,

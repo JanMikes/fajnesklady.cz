@@ -28,6 +28,9 @@ class Place
     #[ORM\Column(length: 500, nullable: true)]
     public private(set) ?string $operatingRulesPath = null;
 
+    #[ORM\Column(length: 500, nullable: true)]
+    public private(set) ?string $instructionsPath = null;
+
     #[ORM\Column]
     public private(set) int $daysInAdvance = 0;
 
@@ -118,6 +121,17 @@ class Place
     public function updateOperatingRules(?string $operatingRulesPath, \DateTimeImmutable $now): void
     {
         $this->operatingRulesPath = $operatingRulesPath;
+        $this->updatedAt = $now;
+    }
+
+    public function hasInstructions(): bool
+    {
+        return null !== $this->instructionsPath;
+    }
+
+    public function updateInstructions(?string $instructionsPath, \DateTimeImmutable $now): void
+    {
+        $this->instructionsPath = $instructionsPath;
         $this->updatedAt = $now;
     }
 

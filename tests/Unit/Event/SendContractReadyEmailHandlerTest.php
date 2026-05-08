@@ -134,6 +134,58 @@ class SendContractReadyEmailHandlerTest extends TestCase
         $this->assertFalse($sentEmail->getContext()['hasMapAttachment']);
     }
 
+    public function testHandlerAttachesInstructionsWhenAvailable(): void
+    {
+        $instructionsDir = $this->tempDir.'/places/test/instructions';
+        mkdir($instructionsDir, 0755, true);
+        $instructionsPath = 'places/test/instructions/navod.pdf';
+        file_put_contents($this->tempDir.'/'.$instructionsPath, '%PDF-1.4 test content');
+
+        $contract = $this->createContract(instructionsPath: $instructionsPath);
+        $event = new OrderCompleted($contract->order->id, $contract->id, new \DateTimeImmutable());
+
+        $handler = $this->createHandler($contract, $sentEmail);
+        $handler($event);
+
+        $this->assertNotNull($sentEmail);
+        $names = array_map(fn ($a) => $a->getFilename(), $sentEmail->getAttachments());
+        $this->assertContains('navod.pdf', $names);
+
+        $this->assertInstanceOf(TemplatedEmail::class, $sentEmail);
+        $this->assertTrue($sentEmail->getContext()['hasInstructionsAttachment']);
+    }
+
+    public function testHandlerAttachesInstructionsDocxWhenAvailable(): void
+    {
+        $instructionsDir = $this->tempDir.'/places/test/instructions';
+        mkdir($instructionsDir, 0755, true);
+        $instructionsPath = 'places/test/instructions/navod.docx';
+        file_put_contents($this->tempDir.'/'.$instructionsPath, 'PK test docx content');
+
+        $contract = $this->createContract(instructionsPath: $instructionsPath);
+        $event = new OrderCompleted($contract->order->id, $contract->id, new \DateTimeImmutable());
+
+        $handler = $this->createHandler($contract, $sentEmail);
+        $handler($event);
+
+        $this->assertNotNull($sentEmail);
+        $names = array_map(fn ($a) => $a->getFilename(), $sentEmail->getAttachments());
+        $this->assertContains('navod.docx', $names);
+    }
+
+    public function testHandlerDoesNotAttachInstructionsWhenNotAvailable(): void
+    {
+        $contract = $this->createContract();
+        $event = new OrderCompleted($contract->order->id, $contract->id, new \DateTimeImmutable());
+
+        $handler = $this->createHandler($contract, $sentEmail);
+        $handler($event);
+
+        $this->assertNotNull($sentEmail);
+        $this->assertInstanceOf(TemplatedEmail::class, $sentEmail);
+        $this->assertFalse($sentEmail->getContext()['hasInstructionsAttachment']);
+    }
+
     public function testHandlerAttachesBothContractDocumentAndOperatingRules(): void
     {
         // Create contract document
@@ -198,8 +250,10 @@ class SendContractReadyEmailHandlerTest extends TestCase
         );
     }
 
-    private function createContract(?string $operatingRulesPath = null): Contract
-    {
+    private function createContract(
+        ?string $operatingRulesPath = null,
+        ?string $instructionsPath = null,
+    ): Contract {
         $place = new Place(
             id: Uuid::v7(),
             name: 'Test Warehouse',
@@ -212,6 +266,10 @@ class SendContractReadyEmailHandlerTest extends TestCase
 
         if (null !== $operatingRulesPath) {
             $place->updateOperatingRules($operatingRulesPath, new \DateTimeImmutable());
+        }
+
+        if (null !== $instructionsPath) {
+            $place->updateInstructions($instructionsPath, new \DateTimeImmutable());
         }
 
         $storageType = new StorageType(

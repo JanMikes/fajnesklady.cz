@@ -29,7 +29,7 @@ final class PlaceCreateController extends AbstractController
 
     public function __invoke(Request $request): Response
     {
-        $form = $this->createForm(PlaceFormType::class);
+        $form = $this->createForm(PlaceFormType::class, options: ['is_admin' => true]);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
@@ -51,6 +51,12 @@ final class PlaceCreateController extends AbstractController
                 $operatingRulesPath = $this->fileUploader->uploadOperatingRules($formData->operatingRulesDocument, $placeId);
             }
 
+            // Handle instructions upload (admin-only field)
+            $instructionsPath = null;
+            if (null !== $formData->instructionsDocument) {
+                $instructionsPath = $this->fileUploader->uploadInstructions($formData->instructionsDocument, $placeId);
+            }
+
             $command = new CreatePlaceCommand(
                 placeId: $placeId,
                 name: $formData->name,
@@ -61,6 +67,7 @@ final class PlaceCreateController extends AbstractController
                 type: $formData->type,
                 mapImagePath: $mapImagePath,
                 operatingRulesPath: $operatingRulesPath,
+                instructionsPath: $instructionsPath,
                 latitude: $formData->latitude,
                 longitude: $formData->longitude,
                 orderExpirationDays: $formData->orderExpirationDays,

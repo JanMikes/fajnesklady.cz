@@ -24,6 +24,11 @@ final class PlaceFileUploader
         return $this->uploadFile($file, $placeId, 'operating-rules');
     }
 
+    public function uploadInstructions(UploadedFile $file, Uuid $placeId): string
+    {
+        return $this->uploadFile($file, $placeId, 'instructions');
+    }
+
     public function deleteFile(?string $path): void
     {
         if (null === $path) {
