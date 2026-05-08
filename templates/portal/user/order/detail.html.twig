@@ -35,8 +35,7 @@
                 {{ statusLabel[order.status.value] ?? order.status.value }}
             </span>
             {% if contract %}
-                {% set now = "now"|date("U") %}
-                {% set isContractActive = contract.terminatedAt is null and (contract.endDate is null or contract.endDate|date("U") >= now) %}
+                {% set isContractActive = contract.terminatedAt is null and (contract.endDate is null or contract.endDate >= now) %}
                 {% if contract.terminatedAt %}
                     <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
                         Smlouva ukončena

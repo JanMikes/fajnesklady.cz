@@ -17,6 +17,7 @@ use App\Repository\PlaceRepository;
 use App\Repository\StorageRepository;
 use App\Repository\StorageTypeRepository;
 use App\Service\PriceCalculator;
+use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -37,6 +38,7 @@ final class OrderAcceptController extends AbstractController
         private readonly MessageBusInterface $commandBus,
         private readonly PriceCalculator $priceCalculator,
         private readonly LoggerInterface $logger,
+        private readonly ClockInterface $clock,
     ) {
     }
 
@@ -81,11 +83,12 @@ final class OrderAcceptController extends AbstractController
             ]);
         }
 
+        $now = $this->clock->now();
         $paymentSchedule = $this->priceCalculator->buildPaymentSchedule($storage, $formData->startDate, $formData->endDate);
-        $requiresEarlyStartWaiver = $formData->startDate < (new \DateTimeImmutable('today'))->modify('+14 days');
+        $requiresEarlyStartWaiver = $formData->startDate < $now->setTime(0, 0, 0)->modify('+14 days');
 
         if ($request->isMethod('POST')) {
-            return $this->handlePost($request, $formData, $formData->startDate, $place, $storageType, $storage, $requiresEarlyStartWaiver);
+            return $this->handlePost($request, $formData, $formData->startDate, $place, $storageType, $storage, $requiresEarlyStartWaiver, $now);
         }
 
         return $this->render('public/order_accept.html.twig', [
@@ -98,6 +101,7 @@ final class OrderAcceptController extends AbstractController
             'requiresEarlyStartWaiver' => $requiresEarlyStartWaiver,
             'recurringPaymentLegalMaxInCzk' => intdiv(PriceCalculator::MAX_RECURRING_PAYMENT_AMOUNT_IN_HALER, 100),
             'submitted' => self::emptySubmittedValues(),
+            'now' => $now,
         ]);
     }
 
@@ -117,6 +121,7 @@ final class OrderAcceptController extends AbstractController
         \App\Entity\StorageType $storageType,
         \App\Entity\Storage $storage,
         bool $requiresEarlyStartWaiver,
+        \DateTimeImmutable $now,
     ): Response {
         $accepted = $request->request->getBoolean('accept_contract');
         $signatureData = $request->request->getString('signature_data');
@@ -192,6 +197,7 @@ final class OrderAcceptController extends AbstractController
                         && (!$requiresEarlyStartWaiver || $acceptEarlyStartWaiver),
                     'acceptRecurring' => $acceptRecurringPayments,
                 ],
+                'now' => $now,
             ]);
         }
 
@@ -299,6 +305,7 @@ final class OrderAcceptController extends AbstractController
                 'requiresEarlyStartWaiver' => $requiresEarlyStartWaiver,
                 'recurringPaymentLegalMaxInCzk' => intdiv(PriceCalculator::MAX_RECURRING_PAYMENT_AMOUNT_IN_HALER, 100),
                 'submitted' => self::emptySubmittedValues(),
+                'now' => $now,
             ]);
         }
     }

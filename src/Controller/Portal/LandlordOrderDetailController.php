@@ -44,12 +44,12 @@ final class LandlordOrderDetailController extends AbstractController
         $place = $storage->getPlace();
         $contract = $this->contractRepository->findByOrder($order);
         $invoice = $this->invoiceRepository->findByOrder($order);
+        $now = $this->clock->now();
 
         $daysRemaining = null;
         $canTerminate = false;
 
         if (null !== $contract) {
-            $now = $this->clock->now();
             $daysRemaining = $this->contractService->getDaysRemaining($contract, $now);
             $canTerminate = $this->isGranted(ContractVoter::TERMINATE, $contract);
         }
@@ -70,6 +70,7 @@ final class LandlordOrderDetailController extends AbstractController
             'canTerminate' => $canTerminate,
             'paymentSchedule' => $paymentSchedule,
             'totalPaid' => $totalPaid,
+            'now' => $now,
         ]);
     }
 }

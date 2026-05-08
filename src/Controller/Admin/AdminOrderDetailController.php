@@ -45,12 +45,12 @@ final class AdminOrderDetailController extends AbstractController
         $place = $storage->getPlace();
         $contract = $this->contractRepository->findByOrder($order);
         $invoices = $this->invoiceRepository->findAllByOrder($order);
+        $now = $this->clock->now();
 
         $daysRemaining = null;
         $canTerminate = false;
 
         if (null !== $contract) {
-            $now = $this->clock->now();
             $daysRemaining = $this->contractService->getDaysRemaining($contract, $now);
             $canTerminate = $this->isGranted('CONTRACT_TERMINATE', $contract);
         }
@@ -61,7 +61,7 @@ final class AdminOrderDetailController extends AbstractController
             : $this->paymentRepository->sumPaidByOrder($order);
 
         $isUserOverdue = [] !== $this->overdueChecker->filterOverdueUserIds(
-            $this->clock->now(),
+            $now,
             [$order->user->id],
         );
 
@@ -77,6 +77,7 @@ final class AdminOrderDetailController extends AbstractController
             'paymentSchedule' => $paymentSchedule,
             'totalPaid' => $totalPaid,
             'isUserOverdue' => $isUserOverdue,
+            'now' => $now,
         ]);
     }
 }
