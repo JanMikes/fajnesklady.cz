@@ -120,7 +120,7 @@ final class UserRepository
 
 **Rules:**
 - NEVER extend `ServiceEntityRepository`
-- NEVER call `flush()` - middleware handles it (except in DataFixtures)
+- NEVER call `flush()` - middleware handles it. See "Manual flush()" below for the narrow exceptions; if you need one, you must justify it inline.
 - NEVER use `getRepository()` or `findBy()`/`findOneBy()` - use QueryBuilder
 - Use `EntityManager::find()` for ID lookups
 - No repository interfaces - inject concrete classes
@@ -293,6 +293,12 @@ Available: `UserAlreadyExists`, `UserNotFound`, `PlaceNotFound`, `StorageTypeNot
 - ID generation: Production uses `RandomIdentityProvider`, tests use `PredictableIdentityProvider`
 - **Logging exceptions**: Always use `'exception' => $e` in logger context, never `$e->getMessage()`. Monolog extracts the message, trace, and class automatically from the `exception` key.
 - **Migrations**: NEVER handwrite migration SQL. Always generate via `docker compose exec web bin/console make:migration` (or `doctrine:migrations:diff`) so the diff matches what `doctrine:schema:validate` expects. Handwritten DDL drifts from the runtime schema (entities + bundle-registered tables like `PdoSessionHandler`) and breaks the `migrations-up-to-date` CI job.
+- **Manual `flush()`**: writes go through a messenger handler (command bus / event bus); the `doctrine_transaction` middleware flushes on success and rolls back on exception. **Default: never call `flush()` yourself.** Repositories, services, controllers, message handlers, voters — none of them flush. The narrow exceptions, which are the ONLY places it is allowed:
+  - `DataFixtures` (no messenger envelope around them).
+  - Symfony console `Command`s (no doctrine middleware on the request).
+  - Kernel / security event subscribers that fire from the HTTP request lifecycle (`LoginSuccessEvent`, request-terminate hooks, etc.) — no middleware envelope, so they own their own flush.
+  - Existing audit-log writer repositories that intentionally commit out-of-band so the audit row survives even if the parent transaction rolls back (e.g. `EmailLogRepository`).
+  Every manual `flush()` MUST have an inline comment immediately above the call explaining why it is required. If you can't write that justification cleanly, it shouldn't be there — push the work back through a message handler instead.
 
 ## Frontend
 

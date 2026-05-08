@@ -41,6 +41,11 @@ final class RecordLoginSubscriber implements EventSubscriberInterface
         }
 
         $user->recordLogin($this->clock->now());
+
+        // Manual flush() required: Symfony security events fire from the HTTP
+        // request lifecycle, which has no messenger doctrine_transaction
+        // middleware around it. There is no other code path that will commit
+        // this change, so the subscriber owns the flush itself.
         $this->entityManager->flush();
     }
 }
