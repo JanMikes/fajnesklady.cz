@@ -186,6 +186,41 @@ class SendContractReadyEmailHandlerTest extends TestCase
         $this->assertFalse($sentEmail->getContext()['hasInstructionsAttachment']);
     }
 
+    public function testHandlerEmbedsContractPdfBytesAndUnlinksCacheFile(): void
+    {
+        // Regression: the contract PDF used to be referenced by attachFromPath
+        // pointing at /app/var/cache/prod/pdf_conversions, which is NOT a
+        // shared volume between the web container and the messenger-consumer
+        // container — the worker would fail with "Unable to open path …".
+        // Bytes must be inlined so the SendEmailMessage envelope is
+        // self-contained, and the cache file must be removed to avoid leaks.
+        $contractDocPath = $this->tempDir.'/contract.docx';
+        file_put_contents($contractDocPath, 'PK fake docx');
+
+        $convertedPdfPath = $this->tempDir.'/cache/contract_converted.pdf';
+        mkdir(dirname($convertedPdfPath), 0755, true);
+        $pdfBytes = '%PDF-1.4 inlined bytes';
+        file_put_contents($convertedPdfPath, $pdfBytes);
+
+        $contract = $this->createContract();
+        $contract->attachDocument($contractDocPath, new \DateTimeImmutable());
+
+        $event = new OrderCompleted($contract->order->id, $contract->id, new \DateTimeImmutable());
+        $handler = $this->createHandler(
+            $contract,
+            $sentEmail,
+            convertedPdfPath: $convertedPdfPath,
+        );
+        $handler($event);
+
+        $this->assertNotNull($sentEmail);
+        $attachments = $sentEmail->getAttachments();
+        $this->assertCount(1, $attachments);
+        $this->assertStringEndsWith('.pdf', (string) $attachments[0]->getFilename());
+        $this->assertSame($pdfBytes, $attachments[0]->getBody(), 'PDF bytes must be embedded inline, not referenced by path.');
+        $this->assertFileDoesNotExist($convertedPdfPath, 'Cache PDF must be unlinked after bytes are read.');
+    }
+
     public function testHandlerAttachesBothContractDocumentAndOperatingRules(): void
     {
         // Create contract document
@@ -214,8 +249,12 @@ class SendContractReadyEmailHandlerTest extends TestCase
     /**
      * @param Email|null $sentEmail Captured email reference
      */
-    private function createHandler(Contract $contract, ?Email &$sentEmail, ?string $mapBytes = null): SendContractReadyEmailHandler
-    {
+    private function createHandler(
+        Contract $contract,
+        ?Email &$sentEmail,
+        ?string $mapBytes = null,
+        ?string $convertedPdfPath = null,
+    ): SendContractReadyEmailHandler {
         $contractRepository = $this->createStub(ContractRepository::class);
         $contractRepository->method('get')->willReturn($contract);
 
@@ -234,10 +273,12 @@ class SendContractReadyEmailHandlerTest extends TestCase
         $mapImageGenerator = $this->createStub(StorageMapImageGenerator::class);
         $mapImageGenerator->method('generate')->willReturn($mapBytes);
 
-        // Stub returns null → handler falls back to attaching DOCX directly,
-        // matching the existing test assertions about file extensions.
+        // Default: stub returns null → handler falls back to attaching DOCX
+        // bytes directly, matching the existing test assertions about file
+        // extensions. When a path is supplied, the stub returns it so the
+        // handler exercises the PDF-bytes-inlining branch.
         $pdfConverter = $this->createStub(DocumentPdfConverter::class);
-        $pdfConverter->method('convertToPdf')->willReturn(null);
+        $pdfConverter->method('convertToPdf')->willReturn($convertedPdfPath);
 
         return new SendContractReadyEmailHandler(
             $contractRepository,

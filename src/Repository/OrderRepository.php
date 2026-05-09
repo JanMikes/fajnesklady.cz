@@ -10,6 +10,7 @@ use App\Entity\Storage;
 use App\Entity\User;
 use App\Enum\OrderStatus;
 use App\Exception\OrderNotFound;
+use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -483,6 +484,25 @@ class OrderRepository
             ->where('o.goPayPaymentId = :paymentId')
             ->setParameter('paymentId', $paymentId)
             ->getQuery()
+            ->getOneOrNullResult();
+    }
+
+    /**
+     * Lookup + row lock used by the GoPay webhook. Concurrent deliveries of the
+     * same payment notification serialise on the order row: the second caller
+     * blocks until the first commits and then re-reads PAID, falling out of
+     * canBePaid(). Without this, both webhooks reach OrderService::completeOrder
+     * and the second crashes the contract.order_id unique constraint.
+     */
+    public function findByGoPayPaymentIdForUpdate(string $paymentId): ?Order
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('o')
+            ->from(Order::class, 'o')
+            ->where('o.goPayPaymentId = :paymentId')
+            ->setParameter('paymentId', $paymentId)
+            ->getQuery()
+            ->setLockMode(LockMode::PESSIMISTIC_WRITE)
             ->getOneOrNullResult();
     }
 

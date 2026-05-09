@@ -61,8 +61,15 @@ final readonly class ProcessPaymentNotificationHandler
         $status = $this->goPayClient->getStatus($command->goPayPaymentId);
         $now = $this->clock->now();
 
-        // Find order by GoPay payment ID
-        $order = $this->orderRepository->findByGoPayPaymentId($command->goPayPaymentId);
+        // SELECT … FOR UPDATE serialises concurrent webhook deliveries on the
+        // order row. The Payment.goPayPaymentId existence check above only
+        // covers the recurring path (first-payment Payments are inserted
+        // without a GoPay ID), so first-payment duplicates would otherwise
+        // both pass canBePaid(), both flip to PAID, and both dispatch
+        // CompleteOrderCommand — the loser tripping the contract.order_id
+        // unique constraint. With the lock, the second delivery blocks until
+        // the first commits and then sees PAID, falling out of canBePaid().
+        $order = $this->orderRepository->findByGoPayPaymentIdForUpdate($command->goPayPaymentId);
 
         if (null !== $order) {
             if ($status->isPaid() && $order->canBePaid()) {

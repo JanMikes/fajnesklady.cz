@@ -82,21 +82,34 @@ final readonly class SendContractReadyEmailHandler
             ]);
 
         // Attach the signed contract — prefer PDF, fall back to DOCX if conversion fails.
+        // Bytes must be embedded inline (not attachFromPath) because SendEmailMessage
+        // is routed to the async transport and consumed by a separate container.
+        // The PDF is written to /app/var/cache/prod/pdf_conversions which is NOT a
+        // shared volume between web and messenger-consumer (see compose.yaml), so a
+        // path reference would unconditionally fail in the worker.
         if ($contract->hasDocument() && null !== $contract->documentPath && file_exists($contract->documentPath)) {
             $contractNumber = $this->formatContractNumber($contract);
             $pdfPath = $this->pdfConverter->convertToPdf($contract->documentPath);
 
             if (null !== $pdfPath) {
-                $email->attachFromPath(
-                    $pdfPath,
-                    sprintf('smlouva_%s.pdf', $contractNumber),
-                    'application/pdf',
-                );
+                $pdfBytes = file_get_contents($pdfPath);
+                @unlink($pdfPath);
+
+                if (false !== $pdfBytes) {
+                    $email->attach(
+                        $pdfBytes,
+                        sprintf('smlouva_%s.pdf', $contractNumber),
+                        'application/pdf',
+                    );
+                }
             } else {
-                $email->attachFromPath(
-                    $contract->documentPath,
-                    sprintf('smlouva_%s.docx', $contractNumber),
-                );
+                $docxBytes = file_get_contents($contract->documentPath);
+                if (false !== $docxBytes) {
+                    $email->attach(
+                        $docxBytes,
+                        sprintf('smlouva_%s.docx', $contractNumber),
+                    );
+                }
             }
         }
 

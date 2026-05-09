@@ -104,6 +104,52 @@ class ProcessPaymentNotificationHandlerTest extends KernelTestCase
         $this->assertNotNull($refreshedOrder->goPayParentPaymentId);
     }
 
+    public function testDuplicateOrderWebhookDoesNotCrashContractUniqueConstraint(): void
+    {
+        // Regression: two GoPay deliveries of the same first-payment
+        // notification used to both pass canBePaid(), both flip the order to
+        // PAID, and both dispatch CompleteOrderCommand — the loser tripping
+        // the contract.order_id unique constraint and surfacing a Sentry
+        // error on the webhook controller. The pessimistic SELECT … FOR
+        // UPDATE in OrderRepository::findByGoPayPaymentIdForUpdate makes the
+        // second delivery serialise behind the first; in this sequential
+        // test the second simply observes COMPLETED and bails on canBePaid().
+        $order = $this->createAndInitiatePayment(RentalType::LIMITED);
+        $paymentId = $order->goPayPaymentId;
+        \assert(null !== $paymentId);
+
+        $this->goPayClient->simulatePaymentPaid($paymentId);
+
+        $this->commandBus->dispatch(new ProcessPaymentNotificationCommand($paymentId));
+        $this->entityManager->flush();
+        $this->entityManager->clear();
+
+        // Second delivery — must not throw, must not produce a second Contract.
+        $this->commandBus->dispatch(new ProcessPaymentNotificationCommand($paymentId));
+        $this->entityManager->flush();
+        $this->entityManager->clear();
+
+        $contractCount = (int) $this->entityManager->createQueryBuilder()
+            ->select('COUNT(c.id)')
+            ->from(\App\Entity\Contract::class, 'c')
+            ->where('c.order = :order')
+            ->setParameter('order', $order->id)
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        $this->assertSame(1, $contractCount, 'Duplicate first-payment webhook must not create a second Contract.');
+
+        $paymentCount = (int) $this->entityManager->createQueryBuilder()
+            ->select('COUNT(p.id)')
+            ->from(Payment::class, 'p')
+            ->where('p.order = :order')
+            ->setParameter('order', $order->id)
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        $this->assertSame(1, $paymentCount, 'Duplicate first-payment webhook must not create a second Payment row.');
+    }
+
     public function testProcessPaymentNotificationIsIdempotentForDuplicateRecurringWebhooks(): void
     {
         // Arrange: an active recurring contract.
