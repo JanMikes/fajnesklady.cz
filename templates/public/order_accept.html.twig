@@ -400,40 +400,56 @@
                             Parametry opakované platby
                         </h2>
 
+                        {# Parameters list per GoPay rule "Jaké informace musím prezentovat
+                           pro opakované platby" — every row is required and must be
+                           visible OUTSIDE of obchodní podmínky. Order and labels match
+                           the GoPay reviewer checklist verbatim; do not reword without
+                           re-reading the source. #}
                         <div class="space-y-2 text-sm">
-                            <div class="flex justify-between">
-                                <span class="text-gray-600">Účel platby</span>
-                                <span class="font-medium">Pronájem skladového kontejneru</span>
+                            <div class="flex justify-between gap-3">
+                                <span class="text-gray-600 shrink-0">Účel platby</span>
+                                <span class="font-medium text-right">Pronájem skladového kontejneru</span>
                             </div>
-                            <div class="flex justify-between">
-                                <span class="text-gray-600">Pevná částka pro tuto smlouvu</span>
-                                <span class="font-medium">{{ paymentSchedule.monthlyAmountInCzk|number_format(2, ',', ' ') }} Kč / měsíc <span class="text-xs text-gray-500 font-normal">vč. DPH</span></span>
+                            <div class="flex justify-between gap-3">
+                                <span class="text-gray-600 shrink-0">Maximální částka opakované platby</span>
+                                <span class="font-medium text-right">{{ recurringPaymentLegalMaxInCzk|number_format(0, ',', ' ') }} Kč</span>
                             </div>
-                            <div class="flex justify-between">
-                                <span class="text-gray-600">Maximální částka opakované platby</span>
-                                <span class="font-medium">{{ recurringPaymentLegalMaxInCzk|number_format(0, ',', ' ') }} Kč</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-gray-600">Frekvence</span>
-                                <span class="font-medium">Měsíční</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-gray-600">Den stržení</span>
-                                <span class="font-medium">Shodný s dnem první platby</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-gray-600">Doba trvání</span>
-                                <span class="font-medium">
-                                    {% if paymentSchedule.isOpenEnded %}
-                                        Po celou dobu trvání nájmu / do odvolání souhlasu
-                                    {% else %}
-                                        {{ paymentSchedule.entryCount }} platby do {{ formData.endDate|date('d.m.Y') }} (poslední doplatek prorátován)
+                            <div class="flex justify-between gap-3">
+                                <span class="text-gray-600 shrink-0">Částka jednotlivé platby</span>
+                                <span class="font-medium text-right">
+                                    <strong>Fixní</strong>, {{ paymentSchedule.monthlyAmountInCzk|number_format(2, ',', ' ') }} Kč / měsíc <span class="text-xs text-gray-500 font-normal">vč. DPH</span>
+                                    {% if not paymentSchedule.isOpenEnded %}
+                                        <br><span class="text-xs text-gray-500 font-normal">Poslední doplatek bude prorátován podle počtu zbývajících dní (jen u smluv na dobu určitou).</span>
                                     {% endif %}
                                 </span>
                             </div>
-                            <div class="flex justify-between">
-                                <span class="text-gray-600">Zrušení</span>
-                                <span class="font-medium"><a href="mailto:simek@fajnesklady.cz" class="text-accent hover:underline">simek@fajnesklady.cz</a></span>
+                            <div class="flex justify-between gap-3">
+                                <span class="text-gray-600 shrink-0">Frekvence a den strhávání</span>
+                                <span class="font-medium text-right">
+                                    <strong>Fixní</strong>, měsíční — vždy ke stejnému dni v měsíci jako první platba<br>
+                                    <span class="text-xs text-gray-500 font-normal">Pokud připadne na nepracovní den, strhne se následující pracovní den.</span>
+                                </span>
+                            </div>
+                            <div class="flex justify-between gap-3">
+                                <span class="text-gray-600 shrink-0">Doba trvání</span>
+                                <span class="font-medium text-right">
+                                    {% if paymentSchedule.isOpenEnded %}
+                                        Po celou dobu trvání nájmu / do odvolání souhlasu zákazníkem
+                                    {% else %}
+                                        {{ paymentSchedule.entryCount }} platby do {{ formData.endDate|date('d.m.Y') }}
+                                    {% endif %}
+                                </span>
+                            </div>
+                            <div class="flex justify-between gap-3">
+                                <span class="text-gray-600 shrink-0">Forma komunikace pro změnu nastavení</span>
+                                <span class="font-medium text-right"><a href="mailto:simek@fajnesklady.cz" class="text-accent hover:underline">simek@fajnesklady.cz</a></span>
+                            </div>
+                            <div class="flex justify-between gap-3">
+                                <span class="text-gray-600 shrink-0">Zrušení a storno opakované platby</span>
+                                <span class="font-medium text-right">
+                                    <a href="mailto:simek@fajnesklady.cz" class="text-accent hover:underline">simek@fajnesklady.cz</a> — kdykoli, bez sankce<br>
+                                    <span class="text-xs text-gray-500 font-normal">Podrobně viz Podmínky opakovaných plateb, čl. VI.</span>
+                                </span>
                             </div>
                         </div>
 
@@ -452,6 +468,13 @@
                             </span>
                         </label>
                         <input type="hidden" name="accept_recurring_payments" value="1" :disabled="!acceptRecurring">
+
+                        {# PCI-DSS Level 1 disclosure — GoPay rule requires this be
+                           visible AT the consent point, not just buried in the linked
+                           Podmínky modal. Keep adjacent to the checkbox. #}
+                        <p class="mt-3 text-xs text-gray-500">
+                            Společnost <strong>GOPAY s.r.o.</strong> nakládá s údaji Vaší platební karty podle mezinárodního bezpečnostního standardu <strong>PCI-DSS Level 1</strong> — nejvyšší úroveň datové bezpečnosti ve finančním sektoru. Čísla karet ani CVV s námi GoPay nesdílí a Pronajímatel k nim nemá přístup.
+                        </p>
                     </div>
                     {% endif %}
 

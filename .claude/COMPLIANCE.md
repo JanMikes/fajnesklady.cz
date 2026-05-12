@@ -67,14 +67,17 @@ Hard rules:
 Hard requirements drawn from GoPay rules and Podmínky opakovaných plateb:
 
 - **Consent MUST be obtained via a dedicated, visibly separate checkbox** — not folded into a bundled "I agree to everything" master checkbox. The parameters of the recurring payment must be visually adjacent to that checkbox. Buried-in-T&C consent is explicitly disallowed by GoPay.
-- Parameters that MUST be displayed at the consent point:
-  - Účel platby (e.g. "Pronájem skladového kontejneru")
-  - Pevná částka pro tuto smlouvu (in CZK)
-  - **Maximální částka opakované platby: 15 000 Kč** (legal ceiling per Podmínky III)
-  - Frekvence: Měsíční, vždy ke stejnému dni v měsíci jako první platba
-  - Doba trvání: po celou dobu trvání nájmu / do odvolání souhlasu
-  - Způsob zrušení: e-mailem na `simek@fajnesklady.cz`
-  - Odkaz na plné Podmínky opakovaných plateb
+- **GoPay recurrence type used by this site: `ON_DEMAND` for ALL recurring contracts** (fixed-end ≥ 28 dní *and* doba neurčitá). `recurrence_date_to = 2099-12-31` (effectively "no expiry"; per GoPay docs, must be strictly less than 2099-12-31, and our SDK accepts the boundary value). We never use `recurrence_cycle = DAY / WEEK / MONTH` (Automatic) — we want gate-per-charge on contract state, prorated tail support, and unified retry logic. If you ever consider switching unlimited rentals to Automatic, re-read [`specs/016-gopay-vop-compliance.md`](specs/016-gopay-vop-compliance.md) and the GoPay decision log first.
+- Parameters that MUST be displayed at the consent point — **in this order, with these exact labels**, because the order/labels are the ones we filed with GoPay underwriting:
+  - **Účel platby** — "Pronájem skladového kontejneru"
+  - **Maximální částka opakované platby** — **15 000 Kč** (legal ceiling per Podmínky III)
+  - **Částka jednotlivé platby** — explicit **Fixní** label + the actual monthly amount in CZK incl. VAT. For fixed-end ≥ 28 dní rentals, must also disclose that the last installment is prorated by remaining days (otherwise GoPay treats the disclosure as misleading).
+  - **Frekvence a den strhávání** — explicit **Fixní** label + "měsíční, vždy ke stejnému dni v měsíci jako první platba; pokud připadne na nepracovní den, strhne se následující pracovní den" (kept consistent with Podmínky opakovaných plateb čl. III).
+  - **Doba trvání** — "po celou dobu trvání nájmu / do odvolání souhlasu" (unlimited) **or** "{N} platby do {date}" (fixed-end).
+  - **Forma komunikace pro změnu nastavení** — e-mailem na `simek@fajnesklady.cz` (this is a SEPARATE row from cancellation per GoPay checklist — even if the channel is the same, both rows must be present).
+  - **Zrušení a storno opakované platby** — e-mailem na `simek@fajnesklady.cz`, kdykoli, bez sankce; odkaz na Podmínky čl. VI.
+- A **PCI-DSS Level 1** disclosure MUST appear immediately below the dedicated consent checkbox — not only inside the linked Podmínky modal. Required text:
+  > Společnost GOPAY s.r.o. nakládá s údaji platební karty podle mezinárodního bezpečnostního standardu PCI-DSS Level 1 — nejvyšší úroveň datové bezpečnosti ve finančním sektoru. Čísla karet ani CVV s námi GoPay nesdílí a Pronajímatel k nim nemá přístup.
 - **Customer notifications:**
   - Within **2 working days** of consent: confirmation that the recurring payment was established (Podmínky IV).
   - At least **7 working days** before any charge if more than 6 months elapsed since the last successful charge (Podmínky V).
