@@ -16,6 +16,8 @@ final readonly class SignOrderCommand
         public string $signingPlace,
         public ?string $typedName = null,
         public ?string $styleId = null,
+        public ?string $signerIpAddress = null,
+        public ?string $signerUserAgent = null,
     ) {
     }
 }

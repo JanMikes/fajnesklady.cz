@@ -65,6 +65,18 @@ class Order implements EntityWithEvents
     #[ORM\Column(length: 255, nullable: true)]
     public private(set) ?string $signingPlace = null;
 
+    /**
+     * Captured at the moment the customer signed the smlouva / consented to
+     * recurring payments. Stored verbatim so we can produce them as evidence
+     * if a chargeback or GoPay audit asks who consented from where. Not used
+     * by any business logic — write-once at sign-off, read-only afterwards.
+     */
+    #[ORM\Column(length: 45, nullable: true)]
+    public private(set) ?string $signerIpAddress = null;
+
+    #[ORM\Column(length: 500, nullable: true)]
+    public private(set) ?string $signerUserAgent = null;
+
     #[ORM\Column(nullable: true)]
     public private(set) ?bool $isAdminCreated = null;
 
@@ -304,12 +316,16 @@ class Order implements EntityWithEvents
         ?string $styleId,
         string $signingPlace,
         \DateTimeImmutable $now,
+        ?string $signerIpAddress = null,
+        ?string $signerUserAgent = null,
     ): void {
         $this->signaturePath = $signaturePath;
         $this->signingMethod = $signingMethod;
         $this->signatureTypedName = $typedName;
         $this->signatureStyleId = $styleId;
         $this->signingPlace = $signingPlace;
+        $this->signerIpAddress = $signerIpAddress;
+        $this->signerUserAgent = $signerUserAgent;
         $this->signedAt = $now;
     }
 

@@ -50,6 +50,8 @@ final readonly class CustomerSignOnboardingHandler
             typedName: $command->typedName,
             styleId: $command->styleId,
             signingPlace: $command->signingPlace,
+            signerIpAddress: $command->signerIpAddress,
+            signerUserAgent: $command->signerUserAgent,
             now: $now,
         );
 

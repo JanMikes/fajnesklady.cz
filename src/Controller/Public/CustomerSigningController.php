@@ -136,6 +136,8 @@ final class CustomerSigningController extends AbstractController
                 signingPlace: $signingPlace,
                 typedName: $typedName,
                 styleId: $styleId,
+                signerIpAddress: $request->getClientIp(),
+                signerUserAgent: substr((string) $request->headers->get('User-Agent', ''), 0, 500) ?: null,
             ));
 
             if (PaymentMethod::GOPAY === $order->paymentMethod) {

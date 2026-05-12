@@ -263,6 +263,8 @@ final class OrderAcceptController extends AbstractController
                 signingPlace: $signingPlace,
                 typedName: $typedName,
                 styleId: $styleId,
+                signerIpAddress: $request->getClientIp(),
+                signerUserAgent: substr((string) $request->headers->get('User-Agent', ''), 0, 500) ?: null,
             ));
 
             // 4. Accept terms + reserve storage
