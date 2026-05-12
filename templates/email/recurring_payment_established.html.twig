@@ -100,21 +100,51 @@
             </table>
         </div>
 
+        {# Parameters mirror the order_accept "Parametry opakované platby" block
+           verbatim (labels + order). GoPay reviewer expects the same disclosure
+           in the consent flow and in this confirmation; keep the two in sync. #}
         <div class="params">
             <h3>Parametry opakované platby</h3>
             <table>
-                <tr><td>Účel</td><td>Pronájem skladového kontejneru</td></tr>
-                <tr><td>Pevná částka</td><td>{{ amountInCzk }} Kč / měsíc vč. DPH</td></tr>
+                <tr><td>Účel platby</td><td>Pronájem skladového kontejneru</td></tr>
                 <tr><td>Maximální částka opakované platby</td><td>{{ recurringPaymentLegalMaxInCzk|number_format(0, ',', ' ') }} Kč</td></tr>
-                <tr><td>Frekvence</td><td>Měsíční</td></tr>
-                <tr><td>Den stržení</td><td>{{ debitDay }} v měsíci (shodný s dnem první platby)</td></tr>
-                <tr><td>Doba trvání</td><td>Po celou dobu trvání nájmu / do odvolání souhlasu</td></tr>
+                <tr>
+                    <td>Částka jednotlivé platby</td>
+                    <td>
+                        <strong>Fixní</strong>, {{ amountInCzk }} Kč / měsíc vč. DPH
+                        {% if not isOpenEnded %}
+                            <br><span style="font-size: 12px; color: #666;">Poslední doplatek bude prorátován podle počtu zbývajících dní (jen u smluv na dobu určitou).</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td>Frekvence a den strhávání</td>
+                    <td><strong>Fixní</strong>, měsíční — vždy {{ debitDay }} v měsíci (shodný s dnem první platby). Pokud připadne na nepracovní den, strhne se následující pracovní den.</td>
+                </tr>
+                <tr>
+                    <td>Doba trvání</td>
+                    <td>
+                        {% if isOpenEnded %}
+                            Po celou dobu trvání nájmu / do odvolání souhlasu zákazníkem
+                        {% else %}
+                            Měsíčně až do {{ endDateFormatted }} (poslední doplatek prorátován)
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr><td>Forma komunikace pro změnu nastavení</td><td><a href="mailto:simek@fajnesklady.cz">simek@fajnesklady.cz</a></td></tr>
             </table>
         </div>
 
         <div class="legal-note">
             <p style="margin: 0 0 8px 0;"><strong>Jak opakovanou platbu zrušit?</strong></p>
-            <p style="margin: 0;">Opakovanou platbu můžete kdykoli zrušit zasláním e-mailu na <a href="mailto:simek@fajnesklady.cz">simek@fajnesklady.cz</a>. Zrušení nemá vliv na povinnost uhradit již poskytnuté služby ani na další trvání nájemní smlouvy.</p>
+            <p style="margin: 0;">Opakovanou platbu můžete kdykoli zrušit zasláním e-mailu na <a href="mailto:simek@fajnesklady.cz">simek@fajnesklady.cz</a>. Zrušení nemá vliv na povinnost uhradit již poskytnuté služby ani na další trvání nájemní smlouvy. Podrobně viz Podmínky opakovaných plateb, čl. VI.</p>
+        </div>
+
+        {# PCI-DSS Level 1 disclosure — mirrors the footnote on order_accept; GoPay
+           requires this disclosure in every customer-facing recurring-payment
+           touchpoint (consent flow + confirmation e-mail). #}
+        <div class="legal-note">
+            <p style="margin: 0;">Společnost <strong>GOPAY s.r.o.</strong> nakládá s údaji Vaší platební karty podle mezinárodního bezpečnostního standardu <strong>PCI-DSS Level 1</strong> — nejvyšší úroveň datové bezpečnosti ve finančním sektoru. Čísla karet ani CVV s námi GoPay nesdílí a Pronajímatel k nim nemá přístup.</p>
         </div>
 
         <p>Stav objednávky a všechny dokumenty najdete kdykoli zde:</p>

@@ -57,6 +57,8 @@ final readonly class SendRecurringPaymentEstablishedEmailHandler
                 'recurringPaymentLegalMaxInCzk' => intdiv(PriceCalculator::MAX_RECURRING_PAYMENT_AMOUNT_IN_HALER, 100),
                 'debitDay' => $event->occurredOn->format('j.'),
                 'establishedOn' => $event->occurredOn->format('d.m.Y'),
+                'isOpenEnded' => null === $order->endDate,
+                'endDateFormatted' => $order->endDate?->format('d.m.Y'),
                 'statusUrl' => $statusUrl,
             ]);
 
