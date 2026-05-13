@@ -114,7 +114,7 @@
                             {% if invoiceToCompany %}
                                 <div class="space-y-4">
                                     <div>
-                                        {{ form_label(form.companyId) }}
+                                        {{ form_label(form.companyId, null, {label_attr: {class: 'form-label-required'}}) }}
                                         <div class="flex">
                                             {{ form_widget(form.companyId, {attr: {
                                                 'class': 'flex-1 min-w-0 rounded-r-none!',
@@ -132,7 +132,7 @@
 
                                     <div class="grid md:grid-cols-2 gap-4">
                                         <div>
-                                            {{ form_row(form.companyName, {attr: {
+                                            {{ form_row(form.companyName, {label_attr: {class: 'form-label-required'}, attr: {
                                                 'data-action': 'blur->live#action',
                                                 'data-live-action-param': 'validateField',
                                                 'data-live-field-param': 'companyName',
@@ -168,7 +168,7 @@
                             <p class="text-xs text-gray-500 mb-4">Vyžadováno pro účely nájemní smlouvy.</p>
 
                             <div>
-                                {{ form_row(form.billingStreet, {attr: {
+                                {{ form_row(form.billingStreet, {label_attr: {class: 'form-label-required'}, attr: {
                                     'data-action': 'blur->live#action',
                                     'data-live-action-param': 'validateField',
                                     'data-live-field-param': 'billingStreet',
@@ -177,14 +177,14 @@
 
                             <div class="grid md:grid-cols-2 gap-4">
                                 <div>
-                                    {{ form_row(form.billingCity, {attr: {
+                                    {{ form_row(form.billingCity, {label_attr: {class: 'form-label-required'}, attr: {
                                         'data-action': 'blur->live#action',
                                         'data-live-action-param': 'validateField',
                                         'data-live-field-param': 'billingCity',
                                     }}) }}
                                 </div>
                                 <div>
-                                    {{ form_row(form.billingPostalCode, {attr: {
+                                    {{ form_row(form.billingPostalCode, {label_attr: {class: 'form-label-required'}, attr: {
                                         'data-action': 'blur->live#action',
                                         'data-live-action-param': 'validateField',
                                         'data-live-field-param': 'billingPostalCode',
