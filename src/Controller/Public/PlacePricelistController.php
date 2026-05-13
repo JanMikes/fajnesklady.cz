@@ -1,0 +1,65 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Controller\Public;
+
+use App\Repository\PlaceRepository;
+use App\Repository\StorageRepository;
+use App\Repository\StorageTypeRepository;
+use App\Service\StorageAssignment;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Uid\Uuid;
+
+#[Route('/pobocka/{id}/cenik', name: 'public_place_pricelist', requirements: ['id' => '[0-9a-f-]{36}'])]
+final class PlacePricelistController extends AbstractController
+{
+    public function __construct(
+        private readonly PlaceRepository $placeRepository,
+        private readonly StorageTypeRepository $storageTypeRepository,
+        private readonly StorageRepository $storageRepository,
+        private readonly StorageAssignment $storageAssignment,
+    ) {
+    }
+
+    public function __invoke(string $id): Response
+    {
+        if (!Uuid::isValid($id)) {
+            throw new NotFoundHttpException('Pobočka nenalezena.');
+        }
+
+        $place = $this->placeRepository->find(Uuid::fromString($id));
+
+        if (null === $place || !$place->isActive) {
+            throw new NotFoundHttpException('Pobočka nenalezena.');
+        }
+
+        $storageTypes = $this->storageTypeRepository->findActiveByPlace($place);
+
+        $startDate = new \DateTimeImmutable('tomorrow');
+        $endDate = $startDate->modify('+30 days');
+
+        $availability = [];
+        $priceRanges = [];
+        foreach ($storageTypes as $storageType) {
+            $key = $storageType->id->toRfc4122();
+            $availability[$key] = $this->storageAssignment->countAvailableStorages(
+                $storageType,
+                $place,
+                $startDate,
+                $endDate,
+            ) > 0;
+            $priceRanges[$key] = $this->storageRepository->getEffectiveMonthlyPriceRangeForType($storageType, $place);
+        }
+
+        return $this->render('public/place_pricelist.html.twig', [
+            'place' => $place,
+            'storageTypes' => $storageTypes,
+            'availability' => $availability,
+            'priceRanges' => $priceRanges,
+        ]);
+    }
+}

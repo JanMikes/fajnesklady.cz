@@ -1,0 +1,225 @@
+{% extends 'user/layout.html.twig' %}
+
+{% block title %}Ceník - {{ place.name }} - Fajnesklady.cz{% endblock %}
+
+{% block content %}
+    {# Place header — name, address, optional description, navigate button. #}
+    <div class="card mb-6">
+        <div class="card-body">
+            <div class="md:flex md:justify-between md:items-start gap-6">
+                <div class="flex-1 min-w-0">
+                    <h1 class="text-2xl md:text-3xl font-bold text-gray-900 mb-2">Ceník skladů – {{ place.name }}</h1>
+                    <p class="text-gray-600 mb-3 flex items-start gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        <span>
+                            {% if place.address %}{{ place.address }}, {% endif %}{{ place.postalCode }} {{ place.city }}
+                        </span>
+                    </p>
+                    {% if place.description %}
+                        <p class="text-gray-700">{{ place.description }}</p>
+                    {% endif %}
+                </div>
+
+                {% if place.latitude and place.longitude %}
+                    <div class="mt-4 md:mt-0 flex-shrink-0">
+                        <a href="https://maps.google.com/?q={{ place.latitude }},{{ place.longitude }}"
+                           target="_blank"
+                           rel="noopener"
+                           class="btn btn-secondary">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                            </svg>
+                            Navigovat
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    {% if storageTypes|length == 0 %}
+        <div class="card">
+            <div class="card-body text-center py-12">
+                <p class="text-gray-600">Na této pobočce aktuálně nejsou žádné dostupné skladové jednotky.</p>
+            </div>
+        </div>
+    {% else %}
+        {# Desktop / tablet — table layout. #}
+        <div class="card hidden md:block">
+            <div class="overflow-x-auto">
+                <table class="table table-zebra">
+                    <thead>
+                        <tr>
+                            <th scope="col" class="w-24">Foto</th>
+                            <th scope="col">Sklad</th>
+                            <th scope="col">Rozměry</th>
+                            <th scope="col" class="text-right">Týdně</th>
+                            <th scope="col" class="text-right">Měsíčně</th>
+                            <th scope="col" class="text-center">Dostupnost</th>
+                            <th scope="col" class="text-right">Akce</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for storageType in storageTypes %}
+                            {% set key = storageType.id.toRfc4122() %}
+                            {% set isAvailable = availability[key] ?? false %}
+                            {% set priceRange = priceRanges[key] ?? null %}
+                            <tr class="{% if not isAvailable %}opacity-70{% endif %}">
+                                <td class="!py-3">
+                                    {% if storageType.hasPhotos %}
+                                        <img src="{{ asset('uploads/' ~ storageType.photos|first.path) }}"
+                                             alt="{{ storageType.name }}"
+                                             class="h-16 w-20 object-cover rounded bg-gray-50">
+                                    {% else %}
+                                        <div class="h-16 w-20 rounded bg-gray-100 flex items-center justify-center text-gray-400">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            </svg>
+                                        </div>
+                                    {% endif %}
+                                </td>
+                                <td class="!whitespace-normal">
+                                    <div class="font-semibold text-gray-900">{{ storageType.name }}</div>
+                                    {% if storageType.description %}
+                                        <div class="text-xs text-gray-500 mt-0.5 max-w-xs">{{ storageType.description }}</div>
+                                    {% endif %}
+                                </td>
+                                <td class="text-sm text-gray-700">
+                                    <div>{{ storageType.innerDimensionsInMeters }}</div>
+                                    <div class="text-xs text-gray-500">
+                                        {{ storageType.floorAreaInSquareMeters|number_format(1, ',', ' ') }} m²
+                                        · {{ storageType.volumeInCubicMeters|number_format(1, ',', ' ') }} m³
+                                    </div>
+                                </td>
+                                <td class="text-right font-medium">
+                                    {{ storageType.defaultPricePerWeekInCzk|number_format(0, ',', ' ') }} Kč
+                                </td>
+                                <td class="text-right">
+                                    {% if priceRange and priceRange.min != priceRange.max %}
+                                        <span class="font-semibold text-primary-600">{{ (priceRange.min / 100)|number_format(0, ',', ' ') }} – {{ (priceRange.max / 100)|number_format(0, ',', ' ') }} Kč</span>
+                                    {% elseif priceRange %}
+                                        <span class="font-semibold text-primary-600">{{ (priceRange.min / 100)|number_format(0, ',', ' ') }} Kč</span>
+                                    {% else %}
+                                        <span class="font-semibold text-primary-600">{{ storageType.defaultPricePerMonthInCzk|number_format(0, ',', ' ') }} Kč</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if isAvailable %}
+                                        <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+                                            </svg>
+                                            Dostupné
+                                        </span>
+                                    {% else %}
+                                        <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                            Obsazeno
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-right">
+                                    {% if isAvailable %}
+                                        <a href="{{ path('public_order_create', {placeId: place.id, storageTypeId: storageType.id}) }}"
+                                           class="btn btn-primary btn-sm">
+                                            Objednat
+                                        </a>
+                                    {% else %}
+                                        <span class="text-xs text-gray-400">—</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {# Mobile — card list, same data. #}
+        <div class="md:hidden space-y-4">
+            {% for storageType in storageTypes %}
+                {% set key = storageType.id.toRfc4122() %}
+                {% set isAvailable = availability[key] ?? false %}
+                {% set priceRange = priceRanges[key] ?? null %}
+                <div class="card {% if not isAvailable %}opacity-75{% endif %}">
+                    <div class="card-body">
+                        <div class="flex gap-3 mb-3">
+                            {% if storageType.hasPhotos %}
+                                <img src="{{ asset('uploads/' ~ storageType.photos|first.path) }}"
+                                     alt="{{ storageType.name }}"
+                                     class="h-20 w-24 object-cover rounded bg-gray-50 flex-shrink-0">
+                            {% else %}
+                                <div class="h-20 w-24 rounded bg-gray-100 flex items-center justify-center text-gray-400 flex-shrink-0">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                </div>
+                            {% endif %}
+                            <div class="flex-1 min-w-0">
+                                <h3 class="font-semibold text-gray-900">{{ storageType.name }}</h3>
+                                <div class="text-xs text-gray-600 mt-1">{{ storageType.innerDimensionsInMeters }}</div>
+                                <div class="text-xs text-gray-500">
+                                    {{ storageType.floorAreaInSquareMeters|number_format(1, ',', ' ') }} m²
+                                    · {{ storageType.volumeInCubicMeters|number_format(1, ',', ' ') }} m³
+                                </div>
+                            </div>
+                        </div>
+
+                        {% if storageType.description %}
+                            <p class="text-sm text-gray-600 mb-3">{{ storageType.description }}</p>
+                        {% endif %}
+
+                        <div class="grid grid-cols-2 gap-2 text-sm mb-3 py-2 border-t border-b border-gray-100">
+                            <div>
+                                <div class="text-xs text-gray-500 uppercase tracking-wide">Týdně</div>
+                                <div class="font-medium">{{ storageType.defaultPricePerWeekInCzk|number_format(0, ',', ' ') }} Kč</div>
+                            </div>
+                            <div>
+                                <div class="text-xs text-gray-500 uppercase tracking-wide">Měsíčně</div>
+                                <div class="font-semibold text-primary-600">
+                                    {% if priceRange and priceRange.min != priceRange.max %}
+                                        {{ (priceRange.min / 100)|number_format(0, ',', ' ') }} – {{ (priceRange.max / 100)|number_format(0, ',', ' ') }} Kč
+                                    {% elseif priceRange %}
+                                        {{ (priceRange.min / 100)|number_format(0, ',', ' ') }} Kč
+                                    {% else %}
+                                        {{ storageType.defaultPricePerMonthInCzk|number_format(0, ',', ' ') }} Kč
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between gap-3">
+                            {% if isAvailable %}
+                                <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                    Dostupné
+                                </span>
+                                <a href="{{ path('public_order_create', {placeId: place.id, storageTypeId: storageType.id}) }}"
+                                   class="btn btn-primary btn-sm">
+                                    Objednat
+                                </a>
+                            {% else %}
+                                <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                    Obsazeno
+                                </span>
+                                <span class="text-xs text-gray-400">—</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <p class="mt-4 text-xs text-gray-500">Všechny ceny jsou uvedeny vč. DPH. Dostupnost se týká nejbližších 30 dní.</p>
+    {% endif %}
+{% endblock %}
