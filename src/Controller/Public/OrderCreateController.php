@@ -8,6 +8,7 @@ use App\Repository\PlaceRepository;
 use App\Repository\StorageRepository;
 use App\Repository\StorageTypeRepository;
 use App\Service\StorageAssignment;
+use App\Service\StorageAvailabilityChecker;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
@@ -23,6 +24,7 @@ final class OrderCreateController extends AbstractController
         private readonly StorageTypeRepository $storageTypeRepository,
         private readonly StorageRepository $storageRepository,
         private readonly StorageAssignment $storageAssignment,
+        private readonly StorageAvailabilityChecker $availabilityChecker,
     ) {
     }
 
@@ -48,10 +50,11 @@ final class OrderCreateController extends AbstractController
             throw new NotFoundHttpException('Typ skladové jednotky nenalezen.');
         }
 
+        $startDate = new \DateTimeImmutable('tomorrow');
+        $endDate = $startDate->modify('+30 days');
+
         // Auto-select storage if not provided
         if (null === $storageId) {
-            $startDate = new \DateTimeImmutable('tomorrow');
-            $endDate = $startDate->modify('+30 days');
             $firstAvailable = $this->storageAssignment->findFirstAvailableStorage($storageType, $place, $startDate, $endDate);
 
             if (null === $firstAvailable) {
@@ -84,9 +87,10 @@ final class OrderCreateController extends AbstractController
         if (!$preSelectedStorage->place->id->equals($place->id)) {
             throw new BadRequestHttpException('Vybraná skladová jednotka nepatří k vybrané pobočce.');
         }
-        if (!$preSelectedStorage->isAvailable()) {
-            $startDate = new \DateTimeImmutable('tomorrow');
-            $endDate = $startDate->modify('+30 days');
+        // Use the same checker as findFirstAvailableStorage so we never redirect to a storage
+        // the checker would hand back to us — which would otherwise cause a redirect loop
+        // when the entity status (e.g. "occupied") disagrees with the date-window check.
+        if (!$this->availabilityChecker->isAvailable($preSelectedStorage, $startDate, $endDate)) {
             $alternative = $this->storageAssignment->findFirstAvailableStorage($storageType, $place, $startDate, $endDate);
 
             if (null !== $alternative) {
