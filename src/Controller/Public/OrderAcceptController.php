@@ -16,7 +16,10 @@ use App\Form\OrderFormData;
 use App\Repository\PlaceRepository;
 use App\Repository\StorageRepository;
 use App\Repository\StorageTypeRepository;
+use App\Service\Messenger\HandlerFailureUnwrap;
 use App\Service\PriceCalculator;
+use App\Service\StorageAssignment;
+use App\Service\StorageAvailabilityChecker;
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -37,6 +40,8 @@ final class OrderAcceptController extends AbstractController
         private readonly StorageRepository $storageRepository,
         private readonly MessageBusInterface $commandBus,
         private readonly PriceCalculator $priceCalculator,
+        private readonly StorageAvailabilityChecker $availabilityChecker,
+        private readonly StorageAssignment $storageAssignment,
         private readonly LoggerInterface $logger,
         private readonly ClockInterface $clock,
     ) {
@@ -83,6 +88,14 @@ final class OrderAcceptController extends AbstractController
             ]);
         }
 
+        // Re-validate availability against the actually-chosen dates (not the upstream 30-day window
+        // the OrderCreateController used). When the unit conflicts now, branch on the user's intent:
+        //   auto   → silently swap to another unit of the same type+place and redirect to its URL.
+        //   manual → surface a clear "the unit you picked was just taken" message and bounce to the map.
+        if (!$this->availabilityChecker->isAvailable($storage, $formData->startDate, $formData->endDate)) {
+            return $this->handleStorageNoLongerAvailable($place, $storageType, $storage, $formData);
+        }
+
         $now = $this->clock->now();
         $paymentSchedule = $this->priceCalculator->buildPaymentSchedule($storage, $formData->startDate, $formData->endDate);
         $requiresEarlyStartWaiver = $formData->startDate < $now->setTime(0, 0, 0)->modify('+14 days');
@@ -111,6 +124,47 @@ final class OrderAcceptController extends AbstractController
     private static function emptySubmittedValues(): array
     {
         return ['signingPlace' => '', 'acceptAll' => false, 'acceptRecurring' => false];
+    }
+
+    /**
+     * Pre-selected storage is no longer bookable for the user's chosen dates.
+     * In 'auto' mode we silently route to any other free unit of the same type+place;
+     * in 'manual' mode we surface the conflict so the user can pick a different unit themselves.
+     */
+    private function handleStorageNoLongerAvailable(
+        \App\Entity\Place $place,
+        \App\Entity\StorageType $storageType,
+        \App\Entity\Storage $storage,
+        OrderFormData $formData,
+    ): Response {
+        if ('manual' === $formData->selectionMode) {
+            $this->addFlash('error', sprintf('Vámi zvolená skladová jednotka č. %s byla mezitím obsazena. Vyberte prosím jinou.', $storage->number));
+
+            return $this->redirectToRoute('public_order_create', [
+                'placeId' => $place->id->toRfc4122(),
+                'storageTypeId' => $storageType->id->toRfc4122(),
+            ]);
+        }
+
+        // Auto mode — try to swap to another free unit of the same type+place silently.
+        $alternative = $this->storageAssignment->findFirstAvailableStorage(
+            $storageType,
+            $place,
+            $formData->startDate ?? new \DateTimeImmutable('tomorrow'),
+            $formData->endDate,
+        );
+
+        if (null !== $alternative) {
+            return $this->redirectToRoute('public_order_accept', [
+                'placeId' => $place->id->toRfc4122(),
+                'storageTypeId' => $storageType->id->toRfc4122(),
+                'storageId' => $alternative->id->toRfc4122(),
+            ]);
+        }
+
+        $this->addFlash('error', 'Omlouváme se, ale tento typ skladové jednotky již není pro vámi zvolené období dostupný.');
+
+        return $this->redirectToRoute('public_place_detail', ['id' => $place->id->toRfc4122()]);
     }
 
     private function handlePost(
@@ -279,19 +333,22 @@ final class OrderAcceptController extends AbstractController
             $this->addFlash('success', 'Smlouva byla podepsána a skladová jednotka zarezervována. Pokračujte k platbě.');
 
             return $this->redirectToRoute('public_order_payment', ['id' => $order->id]);
-        } catch (\App\Exception\NoStorageAvailable $e) {
-            $this->addFlash('error', 'Omlouváme se, ale vybraná skladová jednotka již není dostupná.');
+        } catch (\Throwable $rawException) {
+            // Messenger wraps handler exceptions in HandlerFailedException, so typed catches
+            // never match the original — unwrap before branching. See .claude/MESSENGER.md.
+            $exception = HandlerFailureUnwrap::unwrap($rawException);
 
-            return $this->redirectToRoute('public_order_create', [
-                'placeId' => $place->id,
-                'storageTypeId' => $storageType->id,
-                'storageId' => $storage->id,
-            ]);
-        } catch (\Exception $e) {
+            if ($exception instanceof \App\Exception\NoStorageAvailable) {
+                // Race: the unit became unavailable between the top-of-controller re-check and now.
+                // Route the user the same way as a stale GET: auto-swap silently, or surface a clear
+                // "your unit was just taken" message in manual mode.
+                return $this->handleStorageNoLongerAvailable($place, $storageType, $storage, $formData);
+            }
+
             $this->logger->error('Order creation failed during acceptance', [
                 'place_id' => $place->id->toRfc4122(),
                 'storage_id' => $storage->id->toRfc4122(),
-                'exception' => $e,
+                'exception' => $exception,
             ]);
             $this->addFlash('error', 'Při vytváření objednávky došlo k chybě. Zkuste to prosím znovu.');
 

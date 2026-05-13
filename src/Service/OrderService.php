@@ -29,6 +29,7 @@ final readonly class OrderService
         private OrderRepository $orderRepository,
         private ContractRepository $contractRepository,
         private StorageAssignment $storageAssignment,
+        private StorageAvailabilityChecker $availabilityChecker,
         private PriceCalculator $priceCalculator,
         private AuditLogger $auditLogger,
     ) {
@@ -60,7 +61,10 @@ final readonly class OrderService
             if (!$preSelectedStorage->place->id->equals($place->id)) {
                 throw new \InvalidArgumentException('Pre-selected storage does not belong to the specified place.');
             }
-            if (!$preSelectedStorage->isAvailable()) {
+            // Date-window check (matches the controller's check) instead of entity-status only —
+            // status drifts (e.g. OCCUPIED set at contract creation for a Sept booking) would otherwise
+            // reject perfectly free windows.
+            if (!$this->availabilityChecker->isAvailable($preSelectedStorage, $startDate, $endDate)) {
                 throw NoStorageAvailable::forStorageType($storageType, $startDate, $endDate);
             }
             $storage = $preSelectedStorage;

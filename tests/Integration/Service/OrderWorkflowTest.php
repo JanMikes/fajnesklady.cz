@@ -7,6 +7,7 @@ namespace App\Tests\Integration\Service;
 use App\DataFixtures\UserFixtures;
 use App\Entity\Order;
 use App\Entity\Place;
+use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\OrderStatus;
@@ -337,6 +338,75 @@ class OrderWorkflowTest extends KernelTestCase
         $this->assertNull($order->endDate);
         // Maly box has pricePerMonth = 500 CZK = 50000 halere
         $this->assertSame(50000, $order->firstPaymentPrice);
+    }
+
+    public function testPreSelectedStorageWithOccupiedStatusButFreeWindowIsAccepted(): void
+    {
+        // Reproduces the production bug: storage status is OCCUPIED (a contract was created at some
+        // point) but the contract's date window does NOT overlap the new booking. The pre-fix code
+        // rejected this via `Storage::isAvailable()` (entity-status only); the fix routes the check
+        // through StorageAvailabilityChecker which honors date windows.
+        [$tenant, , $place] = $this->getFixtures();
+
+        /** @var Storage $storage */
+        $storage = $this->entityManager->createQueryBuilder()
+            ->select('s')
+            ->from(Storage::class, 's')
+            ->where('s.number = :n')
+            ->setParameter('n', 'B3') // OCCUPIED, contract ends +29 days from MockClock (2025-07-14)
+            ->getQuery()
+            ->getSingleResult();
+        $this->assertSame(StorageStatus::OCCUPIED, $storage->status);
+
+        $now = $this->clock->now();
+        // Booking sits entirely after the existing contract ends → no date overlap.
+        $startDate = new \DateTimeImmutable('2025-08-01');
+        $endDate = new \DateTimeImmutable('2025-09-01');
+
+        $order = $this->orderService->createOrder(
+            $tenant,
+            $storage->storageType,
+            $place,
+            RentalType::LIMITED,
+            $startDate,
+            $endDate,
+            $now,
+            preSelectedStorage: $storage,
+        );
+
+        $this->assertSame($storage->id, $order->storage->id);
+        $this->assertSame(OrderStatus::CREATED, $order->status);
+    }
+
+    public function testPreSelectedStorageWithOverlappingContractIsRejected(): void
+    {
+        // Defense check: even with the new date-window logic, a real overlap must still throw.
+        [$tenant, , $place] = $this->getFixtures();
+
+        /** @var Storage $storage */
+        $storage = $this->entityManager->createQueryBuilder()
+            ->select('s')
+            ->from(Storage::class, 's')
+            ->where('s.number = :n')
+            ->setParameter('n', 'C1') // OCCUPIED, unlimited contract — always overlaps
+            ->getQuery()
+            ->getSingleResult();
+
+        $now = $this->clock->now();
+        $startDate = new \DateTimeImmutable('2025-08-01');
+        $endDate = new \DateTimeImmutable('2025-09-01');
+
+        $this->expectException(\App\Exception\NoStorageAvailable::class);
+        $this->orderService->createOrder(
+            $tenant,
+            $storage->storageType,
+            $place,
+            RentalType::LIMITED,
+            $startDate,
+            $endDate,
+            $now,
+            preSelectedStorage: $storage,
+        );
     }
 
     public function testPriceCalculationForLimitedRental(): void

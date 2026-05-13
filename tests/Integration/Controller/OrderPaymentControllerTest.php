@@ -247,6 +247,57 @@ class OrderPaymentControllerTest extends WebTestCase
         $this->assertTrue($response->isRedirect()); // Should succeed
     }
 
+    public function testAcceptPageInAutoModeSilentlySwapsToAlternativeStorage(): void
+    {
+        // Pre-selected unit is manually-unavailable, so it can never serve the booking. In 'auto'
+        // mode the controller should silently redirect to the accept page of another free unit of
+        // the same type+place — no user-facing error, no flash.
+        $unavailable = $this->findStorageByNumber('A4'); // MANUALLY_UNAVAILABLE
+        $this->setOrderSessionData(selectionMode: 'auto');
+
+        $this->client->request('GET', $this->buildAcceptUrl($unavailable));
+
+        $response = $this->client->getResponse();
+        $this->assertTrue($response->isRedirect());
+        $location = (string) $response->headers->get('Location');
+
+        $this->assertMatchesRegularExpression('#/objednavka/[0-9a-f-]{36}/[0-9a-f-]{36}/[0-9a-f-]{36}/prijmout$#', $location);
+        // Must NOT redirect back to the same storage.
+        $this->assertStringNotContainsString($unavailable->id->toRfc4122(), $location);
+        // Must stay on the same place + type.
+        $this->assertStringContainsString($unavailable->place->id->toRfc4122(), $location);
+        $this->assertStringContainsString($unavailable->storageType->id->toRfc4122(), $location);
+
+        $flashes = $this->client->getRequest()->getSession()->getFlashBag()->peekAll();
+        $this->assertArrayNotHasKey('error', $flashes);
+    }
+
+    public function testAcceptPageInManualModeShowsErrorAndBouncesToMap(): void
+    {
+        // Same setup but user explicitly picked the unavailable unit from the map. We want a
+        // clear "your unit was just taken" message and a redirect to the order-create map page
+        // (no storageId → user picks again).
+        $unavailable = $this->findStorageByNumber('A4');
+        $this->setOrderSessionData(selectionMode: 'manual');
+
+        $this->client->request('GET', $this->buildAcceptUrl($unavailable));
+
+        $response = $this->client->getResponse();
+        $this->assertTrue($response->isRedirect());
+        $location = (string) $response->headers->get('Location');
+
+        $expectedRedirect = sprintf(
+            '/objednavka/%s/%s',
+            $unavailable->place->id->toRfc4122(),
+            $unavailable->storageType->id->toRfc4122(),
+        );
+        $this->assertSame($expectedRedirect, $location);
+
+        $flashes = $this->client->getRequest()->getSession()->getFlashBag()->peekAll();
+        $this->assertArrayHasKey('error', $flashes);
+        $this->assertStringContainsString('obsazena', $flashes['error'][0]);
+    }
+
     public function testAcceptWithTypedSignature(): void
     {
         $storage = $this->findAvailableStorage();
@@ -458,7 +509,7 @@ class OrderPaymentControllerTest extends WebTestCase
         $this->entityManager->clear();
     }
 
-    private function setOrderSessionData(bool $unlimited = false, ?string $endDate = null): void
+    private function setOrderSessionData(bool $unlimited = false, ?string $endDate = null, string $selectionMode = 'auto'): void
     {
         /** @var SessionFactoryInterface $sessionFactory */
         $sessionFactory = static::getContainer()->get('session.factory');
@@ -479,6 +530,7 @@ class OrderPaymentControllerTest extends WebTestCase
             'rentalType' => $unlimited ? 'unlimited' : 'limited',
             'startDate' => '2025-06-22',
             'endDate' => $unlimited ? null : ($endDate ?? '2025-07-22'),
+            'selectionMode' => $selectionMode,
         ]);
         $session->save();
 
@@ -495,6 +547,21 @@ class OrderPaymentControllerTest extends WebTestCase
             $storage->storageType->id->toRfc4122(),
             $storage->id->toRfc4122()
         );
+    }
+
+    private function findStorageByNumber(string $number): Storage
+    {
+        $storage = $this->entityManager->createQueryBuilder()
+            ->select('s')
+            ->from(Storage::class, 's')
+            ->where('s.number = :number')
+            ->setParameter('number', $number)
+            ->getQuery()
+            ->getOneOrNullResult();
+
+        \assert($storage instanceof Storage, sprintf('No storage with number "%s" in fixtures', $number));
+
+        return $storage;
     }
 
     private function findAvailableStorage(): Storage

@@ -386,6 +386,7 @@ class AdminMigrateCustomerHandlerTest extends TestCase
             $orderRepository,
             $contractRepository,
             $storageAssignment,
+            $availabilityChecker,
             $priceCalculator,
             $auditLogger,
         );

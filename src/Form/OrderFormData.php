@@ -63,6 +63,13 @@ final class OrderFormData
 
     public ?\DateTimeImmutable $endDate = null;
 
+    /**
+     * 'auto' = system picks a storage of the type (silent re-assign if the current pick conflicts).
+     * 'manual' = user picked a specific unit from the map (must surface a clear error if it becomes unavailable).
+     * Read by OrderAcceptController to decide between auto-swap and an error redirect.
+     */
+    public string $selectionMode = 'auto';
+
     #[Assert\Callback]
     public function validatePassword(ExecutionContextInterface $context): void
     {
@@ -215,6 +222,7 @@ final class OrderFormData
             'rentalType' => $this->rentalType?->value,
             'startDate' => $this->startDate?->format('Y-m-d'),
             'endDate' => $this->endDate?->format('Y-m-d'),
+            'selectionMode' => $this->selectionMode,
         ];
     }
 
@@ -240,6 +248,8 @@ final class OrderFormData
         $formData->rentalType = isset($data['rentalType']) ? RentalType::tryFrom($data['rentalType']) : RentalType::LIMITED;
         $formData->startDate = isset($data['startDate']) ? new \DateTimeImmutable($data['startDate']) : null;
         $formData->endDate = isset($data['endDate']) ? new \DateTimeImmutable($data['endDate']) : null;
+        $mode = $data['selectionMode'] ?? null;
+        $formData->selectionMode = 'manual' === $mode ? 'manual' : 'auto';
 
         return $formData;
     }

@@ -178,6 +178,10 @@ final class OrderForm extends AbstractController
             $data->endDate = null;
         }
 
+        // Carry the auto/manual toggle into session so OrderAcceptController can decide
+        // between silent re-assignment ('auto') and a "this unit was just taken" error ('manual').
+        $data->selectionMode = 'manual' === $this->selectionMode ? 'manual' : 'auto';
+
         $this->requestStack->getSession()->set('order_form_data', $data->toSessionArray());
 
         return new RedirectResponse($this->urlGenerator->generate('public_order_accept', [
