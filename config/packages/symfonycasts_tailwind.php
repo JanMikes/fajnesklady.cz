@@ -6,6 +6,7 @@ namespace Symfony\Component\DependencyInjection\Loader\Configurator;
 
 return App::config([
     'symfonycasts_tailwind' => [
+        'binary' => '/usr/local/bin/tailwindcss',
         'binary_version' => 'v4.1.11',
     ],
 ]);

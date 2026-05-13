@@ -13,12 +13,12 @@ RUN composer install --no-dev --no-interaction --no-scripts
 
 COPY . .
 
-RUN bin/console importmap:install
+# Runs cache:clear + assets:install + importmap:install via Flex auto-scripts,
+# warming the prod container cache before the two console calls below.
+RUN composer install --no-dev --no-interaction --classmap-authoritative
+
 RUN bin/console tailwind:build
 RUN bin/console asset-map:compile
-
-# Need to run again to trigger scripts with application code present
-RUN composer install --no-dev --no-interaction --classmap-authoritative
 
 ARG APP_VERSION
 ENV SENTRY_RELEASE="${APP_VERSION}"

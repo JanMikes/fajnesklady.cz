@@ -36,6 +36,7 @@ yarn-error.log
 # Build artifacts
 /public/bundles/
 /public/assets/
+/assets/vendor/
 
 # Documentation
 *.md
