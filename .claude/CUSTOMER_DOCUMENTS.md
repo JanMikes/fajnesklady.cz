@@ -13,7 +13,7 @@ overview so we don't have to grep on every change.
 | 2 | Smlouva (DOCX) | `ContractDocumentGenerator` | `var/contracts/contract_{uuid}_{date}.docx` via `Contract.documentPath` | `ContractDownloadController` (auth) |
 | 3 | Smlouva (PDF) | `DocumentPdfConverter` (on-the-fly from DOCX) | not persisted | `ContractPdfController` (auth) + `OrderContractDownloadController` (public, UUID-gated) |
 | 4 | Mapa skladu (PNG, vyznačená jednotka) | `StorageMapImageGenerator::generate(Storage)` | not persisted (regenerated on every fetch) | `OrderMapDownloadController` at `/objednavka/{id}/dokumenty/mapa.png` (public, UUID-gated, COMPLETED only) |
-| 5 | VOP (PDF) | static asset | `public/documents/vop.pdf` | direct asset URL |
+| 5 | VOP (PDF, per-order, signed) | `VopDocumentGenerator` + `VopPdfStamper` | DOCX persisted at `var/vop/vop_{orderId}.docx`; PDF rendered on demand | `OrderVopDownloadController` (public, UriSigner-gated) + `VopPdfController` (auth, `OrderVoter::VIEW`) |
 | 6 | Poučení spotřebitele (PDF) | static asset | `public/documents/pouceni-spotrebitele.pdf` | direct asset URL |
 | 7 | Podmínky opakovaných plateb (PDF) | static asset | `public/documents/podminky-opakovanych-plateb.pdf` | direct asset URL — only relevant for recurring rentals (`order.endDate is null`) |
 | 8 | Provozní řád pobočky (PDF/DOCX) | per-place upload | `public/uploads/{Place.operatingRulesPath}` | `upload_url()` Twig helper — only when `place.hasOperatingRules()` |
@@ -48,6 +48,9 @@ renders the canonical "Vaše dokumenty" card on two pages:
 The partial is auth-aware: anonymous viewers get UUID-gated public download
 routes; logged-in viewers get per-invoice portal routes (so all monthly
 invoices on a recurring contract are individually downloadable).
+
+VOP is now per-order and bears the customer's signature on every body page;
+form annexes (withdrawal, complaint) intentionally remain unsigned.
 
 ## Adding a new document type
 

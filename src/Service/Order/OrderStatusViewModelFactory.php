@@ -72,6 +72,13 @@ final readonly class OrderStatusViewModelFactory
             $contractDownloadUrl = $this->statusUrlGenerator->generateContractDownload($order);
         }
 
+        // VOP is per-order from the moment the order is placed; only cancelled
+        // orders hide it. Other states (created, reserved, paid, completed,
+        // expired) all see the link.
+        $vopDownloadUrl = OrderStatus::CANCELLED === $order->status
+            ? null
+            : $this->statusUrlGenerator->generateVopDownload($order);
+
         $mapEmbedUrl = null;
         $mapDownloadUrl = null;
         if ($isCompleted && null !== $place->mapImagePath) {
@@ -114,6 +121,7 @@ final readonly class OrderStatusViewModelFactory
             payNowUrl: $payNowUrl,
             cancelRecurringUrl: $cancelRecurringUrl,
             contractDownloadUrl: $contractDownloadUrl,
+            vopDownloadUrl: $vopDownloadUrl,
             mapEmbedUrl: $mapEmbedUrl,
             mapDownloadUrl: $mapDownloadUrl,
             invoiceDownloads: $invoiceDownloads,

@@ -49,6 +49,17 @@ final readonly class OrderStatusUrlGenerator
         return $this->uriSigner->sign($url);
     }
 
+    public function generateVopDownload(Order $order): string
+    {
+        $url = $this->urlGenerator->generate(
+            'public_order_vop_download',
+            ['id' => $order->id->toRfc4122()],
+            UrlGeneratorInterface::ABSOLUTE_URL,
+        );
+
+        return $this->uriSigner->sign($url);
+    }
+
     public function generateInvoiceDownload(Order $order, Invoice $invoice): string
     {
         $url = $this->urlGenerator->generate(

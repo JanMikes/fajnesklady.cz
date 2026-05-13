@@ -32,6 +32,7 @@ final readonly class OrderStatusViewModel
         public ?string $payNowUrl,
         public ?string $cancelRecurringUrl,
         public ?string $contractDownloadUrl,
+        public ?string $vopDownloadUrl,
         public ?string $mapEmbedUrl,
         public ?string $mapDownloadUrl,
         public array $invoiceDownloads,

@@ -17,6 +17,8 @@ use App\Repository\OrderRepository;
 use App\Service\ContractDocumentGenerator;
 use App\Service\DocumentPdfConverter;
 use App\Service\OrderStatusUrlGenerator;
+use App\Service\Vop\VopDocumentGenerator;
+use App\Service\Vop\VopPdfStamper;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\UriSigner;
 use Symfony\Component\Mailer\MailerInterface;
@@ -34,8 +36,8 @@ class SendOrderConfirmationEmailHandlerTest extends TestCase
         mkdir($this->tempDir, 0755, true);
         mkdir($this->tempDir.'/public/documents', 0755, true);
 
-        // Create static document files
-        file_put_contents($this->tempDir.'/public/documents/vop.pdf', '%PDF-vop');
+        // Create remaining static document files. VOP is now generated per order
+        // — its bytes are produced by a stubbed VopPdfStamper in sendEmail().
         file_put_contents($this->tempDir.'/public/documents/pouceni-spotrebitele.pdf', '%PDF-consumer');
         file_put_contents($this->tempDir.'/public/documents/podminky-opakovanych-plateb.pdf', '%PDF-recurring');
     }
@@ -52,7 +54,7 @@ class SendOrderConfirmationEmailHandlerTest extends TestCase
 
         $names = $this->attachmentNames($sentEmail);
 
-        $this->assertContains('vop.pdf', $names);
+        $this->assertNotEmpty(array_filter($names, static fn ($n) => str_starts_with((string) $n, 'vop-')));
         $this->assertContains('pouceni-spotrebitele.pdf', $names);
         $this->assertNotContains('podminky-opakovanych-plateb.pdf', $names);
     }
@@ -64,9 +66,24 @@ class SendOrderConfirmationEmailHandlerTest extends TestCase
 
         $names = $this->attachmentNames($sentEmail);
 
-        $this->assertContains('vop.pdf', $names);
+        $this->assertNotEmpty(array_filter($names, static fn ($n) => str_starts_with((string) $n, 'vop-')));
         $this->assertContains('pouceni-spotrebitele.pdf', $names);
         $this->assertContains('podminky-opakovanych-plateb.pdf', $names);
+    }
+
+    public function testSkipsVopAttachmentWhenStamperReturnsNull(): void
+    {
+        $order = $this->createOrder(endDate: new \DateTimeImmutable('+30 days'), withSignature: true);
+
+        $vopStamper = $this->createStub(VopPdfStamper::class);
+        $vopStamper->method('stampSignedPdfBytes')->willReturn(null);
+
+        $sentEmail = $this->sendEmail($order, vopStamper: $vopStamper);
+
+        $names = $this->attachmentNames($sentEmail);
+        foreach ($names as $name) {
+            $this->assertStringStartsNotWith('vop-', (string) $name);
+        }
     }
 
     public function testDoesNotAttachOperatingRulesOrMap(): void
@@ -147,6 +164,7 @@ class SendOrderConfirmationEmailHandlerTest extends TestCase
         Order $order,
         ?ContractDocumentGenerator $contractGenerator = null,
         ?DocumentPdfConverter $pdfConverter = null,
+        ?VopPdfStamper $vopStamper = null,
     ): Email {
         $event = new OrderPlaced($order->id, new \DateTimeImmutable());
 
@@ -170,6 +188,14 @@ class SendOrderConfirmationEmailHandlerTest extends TestCase
             $pdfConverter->method('convertBytesToPdfBytes')->willReturn(null);
         }
 
+        $vopGenerator = $this->createStub(VopDocumentGenerator::class);
+        $vopGenerator->method('generate')->willReturn($this->tempDir.'/vop_stub.docx');
+
+        if (null === $vopStamper) {
+            $vopStamper = $this->createStub(VopPdfStamper::class);
+            $vopStamper->method('stampSignedPdfBytes')->willReturn('%PDF-vop');
+        }
+
         $sentEmail = null;
         $mailer = $this->createStub(MailerInterface::class);
         $mailer->method('send')->willReturnCallback(function (Email $email) use (&$sentEmail) {
@@ -182,8 +208,11 @@ class SendOrderConfirmationEmailHandlerTest extends TestCase
             $statusUrlGenerator,
             $contractGenerator,
             $pdfConverter,
+            $vopGenerator,
+            $vopStamper,
             $this->tempDir,
             $this->tempDir.'/template.docx',
+            $this->tempDir.'/vop_template.docx',
         );
         $handler($event);
 

@@ -102,6 +102,21 @@ return App::config([
                 '$cacheDirectory' => '%kernel.cache_dir%',
             ],
         ],
+        'App\\Service\\Vop\\VopDocumentGenerator' => [
+            'arguments' => [
+                '$vopDocumentsDirectory' => '%kernel.project_dir%/var/vop',
+            ],
+        ],
+        'App\\Service\\Vop\\VopPdfStamper' => [
+            'arguments' => [
+                // Page count to leave unsigned at the end of the VOP PDF.
+                // Today's template ends with two fillable form annexes
+                // (withdrawal + complaint) — those stay clean.
+                '$skipLastPages' => 2,
+                '$signatureWidthMm' => 60,
+                '$signatureMarginMm' => 12,
+            ],
+        ],
         'App\\Service\\ContractService' => [
             'arguments' => [
                 '$contractTemplatePath' => '%kernel.project_dir%/templates/documents/contract_template.docx',
@@ -111,6 +126,7 @@ return App::config([
             'arguments' => [
                 '$projectDir' => '%kernel.project_dir%',
                 '$contractTemplatePath' => '%kernel.project_dir%/templates/documents/contract_template.docx',
+                '$vopTemplatePath' => '%kernel.project_dir%/templates/documents/vop_template.docx',
             ],
         ],
         'App\\Event\\SendContractReadyEmailHandler' => [

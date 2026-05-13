@@ -8,6 +8,8 @@ use App\Repository\OrderRepository;
 use App\Service\ContractDocumentGenerator;
 use App\Service\DocumentPdfConverter;
 use App\Service\OrderStatusUrlGenerator;
+use App\Service\Vop\VopDocumentGenerator;
+use App\Service\Vop\VopPdfStamper;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -22,8 +24,11 @@ final readonly class SendOrderConfirmationEmailHandler
         private OrderStatusUrlGenerator $statusUrlGenerator,
         private ContractDocumentGenerator $contractDocumentGenerator,
         private DocumentPdfConverter $pdfConverter,
+        private VopDocumentGenerator $vopGenerator,
+        private VopPdfStamper $vopStamper,
         private string $projectDir,
         private string $contractTemplatePath,
+        private string $vopTemplatePath,
     ) {
     }
 
@@ -81,10 +86,15 @@ final readonly class SendOrderConfirmationEmailHandler
             }
         }
 
-        // Attach VOP
-        $vopPath = $this->projectDir.'/public/documents/vop.pdf';
-        if (file_exists($vopPath)) {
-            $email->attachFromPath($vopPath, 'vop.pdf', 'application/pdf');
+        // Per-order VOP: render DOCX from template, stamp signature on body pages, attach PDF.
+        $vopDocxPath = $this->vopGenerator->generate($order, $this->vopTemplatePath);
+        $vopPdfBytes = $this->vopStamper->stampSignedPdfBytes($vopDocxPath, $order->signaturePath);
+        if (null !== $vopPdfBytes) {
+            $email->attach(
+                $vopPdfBytes,
+                sprintf('vop-%s.pdf', substr($order->id->toRfc4122(), 0, 8)),
+                'application/pdf',
+            );
         }
 
         // Attach consumer notice
