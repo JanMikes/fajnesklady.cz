@@ -114,6 +114,32 @@ class OrderRepository
             ->getResult();
     }
 
+    /**
+     * Completed (paid) orders that should have an invoice by now but don't.
+     * Used by IssueMissingInvoicesCommand as a backstop for the (rare)
+     * case where SendRentalActivatedEmailHandler couldn't issue the invoice
+     * synchronously — e.g. Fakturoid was unreachable during the post-payment
+     * burst. Grace window keeps us out of the way of the synchronous path.
+     *
+     * @return Order[]
+     */
+    public function findCompletedWithoutInvoice(\DateTimeImmutable $cutoff): array
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('o')
+            ->from(Order::class, 'o')
+            ->where('o.status = :completed')
+            ->andWhere('o.firstPaymentPrice > 0')
+            ->andWhere('o.paidAt IS NOT NULL')
+            ->andWhere('o.paidAt < :cutoff')
+            ->andWhere('NOT EXISTS (SELECT 1 FROM App\\Entity\\Invoice i WHERE i.order = o)')
+            ->setParameter('completed', OrderStatus::COMPLETED)
+            ->setParameter('cutoff', $cutoff)
+            ->orderBy('o.paidAt', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
     public function countByUser(User $user): int
     {
         return (int) $this->entityManager->createQueryBuilder()

@@ -58,6 +58,7 @@ All cron jobs run inside the Docker container on the production server.
 | Command | Schedule | Description |
 |---------|----------|-------------|
 | `app:expire-orders` | Every hour | Expires orders past their reservation deadline (7 days) |
+| `app:issue-missing-invoices` | Every 5 minutes | Backstop for paid orders whose synchronous Fakturoid invoice issuance failed (15-min grace) |
 | `app:process-recurring-payments` | Daily at 7:00 | Charges due recurring payments via GoPay |
 | `app:retry-failed-payments` | Daily at 12:00 | Retries failed payments (3 days / 7 days after failure) |
 | `app:process-contract-terminations` | Daily at 6:00 | Terminates contracts at end date or after notice period |

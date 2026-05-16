@@ -258,6 +258,7 @@ Domain exceptions, most carrying `#[WithHttpStatus]`:
 | Command | Purpose |
 |---|---|
 | `app:expire-orders` | Mark unpaid orders past their per-place expiration window as expired |
+| `app:issue-missing-invoices` | Backstop: issue Fakturoid invoice for paid orders that ended up without one (15-min grace, avoids racing the synchronous path in `SendRentalActivatedEmailHandler`) |
 | `app:process-recurring-payments` | Charge contracts due today via GoPay (records `RecurringPaymentCharged` / `RecurringPaymentFailed`) |
 | `app:retry-failed-payments` | Retry recurring charges that previously failed |
 | `app:send-recurring-payment-advance-notice` | Email customer N days before next charge |
