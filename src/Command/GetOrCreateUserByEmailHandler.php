@@ -31,6 +31,7 @@ final readonly class GetOrCreateUserByEmailHandler
         $existingUser = $this->userRepository->findByEmail($command->email);
 
         if (null !== $existingUser) {
+            $this->syncProfileInfo($existingUser, $command, $now);
             $this->syncBillingInfo($existingUser, $command, $now);
             $this->userRepository->save($existingUser);
 
@@ -46,14 +47,7 @@ final readonly class GetOrCreateUserByEmailHandler
             createdAt: $now,
         );
 
-        if (null !== $command->phone) {
-            $user->updateProfile($command->firstName, $command->lastName, $command->phone, $now);
-        }
-
-        if (null !== $command->birthDate) {
-            $user->updateBirthDate($command->birthDate, $now);
-        }
-
+        $this->syncProfileInfo($user, $command, $now);
         $this->syncBillingInfo($user, $command, $now);
 
         // If password provided, hash it and auto-verify the user
@@ -66,6 +60,28 @@ final readonly class GetOrCreateUserByEmailHandler
         $this->userRepository->save($user);
 
         return $user;
+    }
+
+    /**
+     * Phone and birthDate live on User but are entered on every order form
+     * (required for personal-tenant orders, since the contract prints them).
+     * When the customer types a value, save it — both for new users and for
+     * re-orders by existing users — so a re-ordering customer doesn't end up
+     * with a contract showing "Nar. -" / "Telefon: -" because their profile
+     * was created passwordless before these fields existed.
+     *
+     * We never clobber a stored value with null: an empty form field on a
+     * re-order keeps the previously stored phone / birthDate intact.
+     */
+    private function syncProfileInfo(User $user, GetOrCreateUserByEmailCommand $command, \DateTimeImmutable $now): void
+    {
+        if (null !== $command->phone && '' !== $command->phone) {
+            $user->updateProfile($user->firstName, $user->lastName, $command->phone, $now);
+        }
+
+        if (null !== $command->birthDate) {
+            $user->updateBirthDate($command->birthDate, $now);
+        }
     }
 
     /**
