@@ -16,7 +16,6 @@ use App\Event\SendInvoiceEmailHandler;
 use App\Repository\InvoiceRepository;
 use App\Service\OrderStatusUrlGenerator;
 use PHPUnit\Framework\TestCase;
-use Psr\Clock\ClockInterface;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\HttpFoundation\UriSigner;
 use Symfony\Component\Mailer\MailerInterface;
