@@ -58,9 +58,9 @@ final class EmailLogFixtures extends Fixture
             [
                 'minutesAgo' => 120,
                 'status' => EmailLogStatus::SENT,
-                'subject' => 'Vaše smlouva je připravena k podpisu',
+                'subject' => 'Pronájem zahájen - Sklad Praha',
                 'to' => [['email' => 'landlord@example.com', 'name' => 'Marie Skladová']],
-                'template' => 'email/contract_ready',
+                'template' => 'email/rental_activated',
                 'attachments' => null,
                 'errorMessage' => null,
             ],

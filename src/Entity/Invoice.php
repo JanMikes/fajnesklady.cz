@@ -17,6 +17,9 @@ class Invoice implements EntityWithEvents
     #[ORM\Column(length: 500, nullable: true)]
     public private(set) ?string $pdfPath = null;
 
+    #[ORM\Column(nullable: true)]
+    public private(set) ?\DateTimeImmutable $emailedAt = null;
+
     public function __construct(
         #[ORM\Id]
         #[ORM\Column(type: UuidType::NAME, unique: true)]
@@ -53,6 +56,18 @@ class Invoice implements EntityWithEvents
     public function hasPdf(): bool
     {
         return null !== $this->pdfPath;
+    }
+
+    public function markEmailed(\DateTimeImmutable $now): void
+    {
+        if (null === $this->emailedAt) {
+            $this->emailedAt = $now;
+        }
+    }
+
+    public function isEmailed(): bool
+    {
+        return null !== $this->emailedAt;
     }
 
     public function getAmountInCzk(): float

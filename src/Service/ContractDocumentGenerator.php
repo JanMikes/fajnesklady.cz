@@ -66,11 +66,21 @@ readonly class ContractDocumentGenerator
     }
 
     /**
+     * Identifier printed as ${CONTRACT_NUMBER} inside the contract DOCX.
+     * Exposed so e-mail attachments can use a filename that matches the
+     * number the customer reads on page 1 of the document.
+     */
+    public function formatDocumentNumberForOrder(Order $order): string
+    {
+        return $this->formatDocumentNumber($order->id, $order->createdAt);
+    }
+
+    /**
      * Render a contract document for an order and return the DOCX bytes (not persisted).
      *
-     * Used to attach the signed contract to the order-placement email — at that point a
-     * Contract entity does not yet exist (it's created post-payment), but the order is
-     * already legally binding (signed + terms accepted).
+     * Used to attach the signed contract to both the order-placement email (no Contract
+     * entity exists yet — it's created post-payment) and the rental-activated email,
+     * so both messages carry byte-identical legal artefacts.
      */
     public function renderBytesForOrder(Order $order, string $templatePath): string
     {

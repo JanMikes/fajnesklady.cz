@@ -8,7 +8,7 @@ use App\Entity\Order;
 use App\Enum\PaymentFrequency;
 use App\Enum\RentalType;
 use App\Event\OrderPlaced;
-use App\Event\SendOrderConfirmationEmailHandler;
+use App\Event\SendOrderPlacedEmailHandler;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Clock\ClockInterface;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
@@ -18,10 +18,10 @@ use Symfony\Component\Mime\Email;
 use Symfony\Component\Uid\Uuid;
 use Twig\Environment;
 
-class SendOrderConfirmationEmailHandlerTest extends KernelTestCase
+class SendOrderPlacedEmailHandlerTest extends KernelTestCase
 {
     private EntityManagerInterface $entityManager;
-    private SendOrderConfirmationEmailHandler $handler;
+    private SendOrderPlacedEmailHandler $handler;
     private ClockInterface $clock;
     private Environment $twig;
 
@@ -33,7 +33,7 @@ class SendOrderConfirmationEmailHandlerTest extends KernelTestCase
         self::bootKernel();
         $container = static::getContainer();
         $this->entityManager = $container->get('doctrine')->getManager();
-        $this->handler = $container->get(SendOrderConfirmationEmailHandler::class);
+        $this->handler = $container->get(SendOrderPlacedEmailHandler::class);
         $this->clock = $container->get(ClockInterface::class);
         $this->twig = $container->get('test.twig');
 
