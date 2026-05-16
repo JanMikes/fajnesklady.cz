@@ -240,6 +240,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, EntityW
         $this->updatedAt = $now;
     }
 
+    /**
+     * Drop the stored Fakturoid subject ID — used when Fakturoid reports
+     * that the referenced subject no longer exists (deleted in the dashboard
+     * or wiped during an account merge), so the next invoicing attempt
+     * provisions a fresh one.
+     */
+    public function clearFakturoidSubjectId(\DateTimeImmutable $now): void
+    {
+        $this->fakturoidSubjectId = null;
+        $this->updatedAt = $now;
+    }
+
     public function hasFakturoidSubject(): bool
     {
         return null !== $this->fakturoidSubjectId;

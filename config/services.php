@@ -42,6 +42,7 @@ return App::config([
                 '../src/Service/Excel/ExcelColumn.php',
                 '../src/Service/Excel/ExcelColumnType.php',
                 '../src/Service/Excel/ExcelSheet.php',
+                '../src/Service/Fakturoid/StaleFakturoidSubjectException.php',
             ],
         ],
         'App\\Service\\Identity\\ProvideIdentity' => [

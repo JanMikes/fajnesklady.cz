@@ -13,11 +13,16 @@ use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\RentalType;
 use App\Service\Fakturoid\FakturoidApiClient;
+use App\Service\Fakturoid\StaleFakturoidSubjectException;
 use Fakturoid\DispatcherInterface;
+use Fakturoid\Exception\RequestException;
 use Fakturoid\FakturoidManager;
 use Fakturoid\Provider\InvoicesProvider;
 use Fakturoid\Response;
 use PHPUnit\Framework\TestCase;
+use Psr\Http\Message\RequestInterface;
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\StreamInterface;
 use Psr\Log\NullLogger;
 use Symfony\Component\Uid\Uuid;
 
@@ -51,6 +56,64 @@ class FakturoidApiClientTest extends TestCase
         $this->assertSame('from_total_with_vat', $captured['vat_price_mode']);
         $this->assertEquals(600, $captured['lines'][0]['unit_price']);
         $this->assertSame(21, $captured['lines'][0]['vat_rate']);
+    }
+
+    public function testCreateInvoiceTranslatesStaleSubject422IntoTypedException(): void
+    {
+        // Fakturoid returns this exact body when subject_id points at a
+        // contact that no longer exists in the account — match it so
+        // InvoicingService can catch the typed exception and recover.
+        $staleBody = '{"errors":{"client_name":["je povinná položka"],"subject_id":["Kontakt neexistuje."]}}';
+
+        $client = $this->buildClientThatThrowsOnCreate($this->buildRequestException(422, $staleBody));
+
+        $this->expectException(StaleFakturoidSubjectException::class);
+
+        try {
+            $client->createInvoice(30388961, $this->createOrder($this->createUser()));
+        } catch (StaleFakturoidSubjectException $e) {
+            $this->assertSame(30388961, $e->subjectId);
+
+            throw $e;
+        }
+    }
+
+    public function testCreateInvoiceLeavesOtherErrorsAlone(): void
+    {
+        // A different 422 (e.g. validation on the invoice payload itself)
+        // must NOT be converted — InvoicingService has no recovery path for it.
+        $unrelatedBody = '{"errors":{"lines":["Lines must not be empty."]}}';
+
+        $client = $this->buildClientThatThrowsOnCreate($this->buildRequestException(422, $unrelatedBody));
+
+        $this->expectException(RequestException::class);
+        $client->createInvoice(123, $this->createOrder($this->createUser()));
+    }
+
+    private function buildClientThatThrowsOnCreate(\Throwable $exception): FakturoidApiClient
+    {
+        $dispatcher = $this->createStub(DispatcherInterface::class);
+        $dispatcher->method('post')->willThrowException($exception);
+
+        $manager = $this->createStub(FakturoidManager::class);
+        $manager->method('getInvoicesProvider')->willReturn(new InvoicesProvider($dispatcher));
+
+        return new FakturoidApiClient($manager, new NullLogger(), 21);
+    }
+
+    private function buildRequestException(int $status, string $body): RequestException
+    {
+        $stream = $this->createStub(StreamInterface::class);
+        $stream->method('getContents')->willReturn($body);
+
+        $response = $this->createStub(ResponseInterface::class);
+        $response->method('getStatusCode')->willReturn($status);
+        $response->method('getReasonPhrase')->willReturn('Unprocessable Entity');
+        $response->method('getBody')->willReturn($stream);
+
+        $request = $this->createStub(RequestInterface::class);
+
+        return new RequestException($request, $response);
     }
 
     public function testCreateSelfBillingInvoiceSendsVatPriceModeFromTotalWithVat(): void

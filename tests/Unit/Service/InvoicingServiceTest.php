@@ -13,6 +13,7 @@ use App\Enum\RentalType;
 use App\Repository\InvoiceRepository;
 use App\Repository\UserRepository;
 use App\Service\Fakturoid\FakturoidClient;
+use App\Service\Fakturoid\StaleFakturoidSubjectException;
 use App\Service\Identity\ProvideIdentity;
 use App\Service\InvoicingService;
 use App\Value\FakturoidInvoice;
@@ -144,6 +145,66 @@ class InvoicingServiceTest extends TestCase
         $invoice = $service->issueInvoiceForOrder($order, $now);
 
         $this->assertSame('FV-2025-0002', $invoice->invoiceNumber);
+    }
+
+    public function testIssueInvoiceForOrderRecreatesSubjectWhenStaleAndRetries(): void
+    {
+        // Regression: a Fakturoid subject_id stored on a User can be deleted
+        // out-of-band (manually in the Fakturoid dashboard, or via an account
+        // merge). createInvoice then returns 422 "Kontakt neexistuje" wrapped
+        // in StaleFakturoidSubjectException. We must clear the stale ID,
+        // provision a fresh subject, and retry the invoice creation once.
+        $user = $this->createUser();
+        $user->setFakturoidSubjectId(30388961, new \DateTimeImmutable());
+        $order = $this->createOrder($user);
+        $now = new \DateTimeImmutable('2025-06-15 12:00:00');
+        $invoiceId = Uuid::v7();
+
+        $fakturoidClient = $this->createMock(FakturoidClient::class);
+
+        // 1st createInvoice call: stale subject, blows up.
+        // 2nd call (after recovery): succeeds against the new subject.
+        $fakturoidClient->expects($this->exactly(2))
+            ->method('createInvoice')
+            ->willReturnCallback(function (int $subjectId) use ($order): FakturoidInvoice {
+                if (30388961 === $subjectId) {
+                    throw new StaleFakturoidSubjectException($subjectId);
+                }
+
+                $this->assertSame(99999, $subjectId, 'Retry must use the freshly provisioned subject.');
+
+                return new FakturoidInvoice(77777, 'FV-2025-RECOVERED', $order->firstPaymentPrice);
+            });
+
+        $fakturoidClient->expects($this->once())
+            ->method('createSubject')
+            ->with($user)
+            ->willReturn(new FakturoidSubject(99999, 'Jan Novak'));
+
+        $fakturoidClient->expects($this->once())
+            ->method('downloadInvoicePdf')
+            ->with(77777)
+            ->willReturn('%PDF-1.4 recovered');
+
+        $identityProvider = $this->createStub(ProvideIdentity::class);
+        $identityProvider->method('next')->willReturn($invoiceId);
+
+        $invoiceRepository = $this->createStub(InvoiceRepository::class);
+        $userRepository = $this->createStub(UserRepository::class);
+
+        $service = new InvoicingService(
+            $fakturoidClient,
+            $identityProvider,
+            $invoiceRepository,
+            $userRepository,
+            new NullLogger(),
+            $this->tempDir,
+        );
+
+        $invoice = $service->issueInvoiceForOrder($order, $now);
+
+        $this->assertSame('FV-2025-RECOVERED', $invoice->invoiceNumber);
+        $this->assertSame(99999, $user->fakturoidSubjectId, 'User must end up pointing at the new subject.');
     }
 
     public function testIssueInvoiceForOrderStoresPdfLocally(): void

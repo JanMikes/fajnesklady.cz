@@ -148,6 +148,14 @@ final readonly class FakturoidApiClient implements FakturoidClient
                 $context['body'] = $body->getContents();
             }
 
+            if ($this->isStaleSubjectError($context)) {
+                // Caller (InvoicingService) recreates the subject and retries —
+                // log at info so the recovery doesn't pollute the error stream.
+                $this->logger->info('Fakturoid subject no longer exists; caller will recreate', $context);
+
+                throw new StaleFakturoidSubjectException($subjectId, $e);
+            }
+
             $this->logger->error('Fakturoid invoice creation failed', $context);
 
             throw $e;
@@ -201,6 +209,12 @@ final readonly class FakturoidApiClient implements FakturoidClient
                 $body->rewind();
                 $context['status'] = $e->getResponse()->getStatusCode();
                 $context['body'] = $body->getContents();
+            }
+
+            if ($this->isStaleSubjectError($context)) {
+                $this->logger->info('Fakturoid subject no longer exists; caller will recreate', $context);
+
+                throw new StaleFakturoidSubjectException($subjectId, $e);
             }
 
             $this->logger->error('Fakturoid recurring invoice creation failed', $context);
@@ -298,5 +312,38 @@ final readonly class FakturoidApiClient implements FakturoidClient
             number: (string) $body->number,
             total: (int) round((float) $body->total * 100),
         );
+    }
+
+    /**
+     * Detect Fakturoid's "subject_id refers to a contact that no longer
+     * exists" 422 response. Body shape: {"errors":{"subject_id":["Kontakt
+     * neexistuje."],"client_name":["je povinná položka"]}}.
+     *
+     * @param array<string, mixed> $context built in the catch block above —
+     *                                      carries the parsed 'status' and 'body'
+     */
+    private function isStaleSubjectError(array $context): bool
+    {
+        if (422 !== ($context['status'] ?? null)) {
+            return false;
+        }
+
+        $body = $context['body'] ?? null;
+        if (!\is_string($body)) {
+            return false;
+        }
+
+        $payload = json_decode($body, true);
+        if (!\is_array($payload) || !isset($payload['errors']['subject_id']) || !\is_array($payload['errors']['subject_id'])) {
+            return false;
+        }
+
+        foreach ($payload['errors']['subject_id'] as $message) {
+            if (\is_string($message) && str_contains($message, 'Kontakt neexistuje')) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

@@ -11,6 +11,7 @@ use App\Entity\User;
 use App\Repository\InvoiceRepository;
 use App\Repository\UserRepository;
 use App\Service\Fakturoid\FakturoidClient;
+use App\Service\Fakturoid\StaleFakturoidSubjectException;
 use App\Service\Identity\ProvideIdentity;
 use Psr\Log\LoggerInterface;
 
@@ -32,7 +33,12 @@ readonly class InvoicingService
 
         $subjectId = $this->ensureFakturoidSubject($user, $now);
 
-        $fakturoidInvoice = $this->fakturoidClient->createInvoice($subjectId, $order);
+        try {
+            $fakturoidInvoice = $this->fakturoidClient->createInvoice($subjectId, $order);
+        } catch (StaleFakturoidSubjectException $e) {
+            $subjectId = $this->recreateFakturoidSubject($user, $now, $e->subjectId);
+            $fakturoidInvoice = $this->fakturoidClient->createInvoice($subjectId, $order);
+        }
 
         // Invoice is created after payment, so mark it as paid immediately
         if (null !== $order->paidAt) {
@@ -74,7 +80,12 @@ readonly class InvoicingService
 
         $subjectId = $this->ensureFakturoidSubject($user, $chargedAt);
 
-        $fakturoidInvoice = $this->fakturoidClient->createRecurringInvoice($subjectId, $contract, $amount, $chargedAt);
+        try {
+            $fakturoidInvoice = $this->fakturoidClient->createRecurringInvoice($subjectId, $contract, $amount, $chargedAt);
+        } catch (StaleFakturoidSubjectException $e) {
+            $subjectId = $this->recreateFakturoidSubject($user, $chargedAt, $e->subjectId);
+            $fakturoidInvoice = $this->fakturoidClient->createRecurringInvoice($subjectId, $contract, $amount, $chargedAt);
+        }
 
         // Recurring payments are charged immediately, so mark as paid
         $this->fakturoidClient->markInvoiceAsPaid($fakturoidInvoice->id, $chargedAt);
@@ -121,6 +132,24 @@ readonly class InvoicingService
         $this->userRepository->save($user);
 
         return $subject->id;
+    }
+
+    /**
+     * Recovery for the case where Fakturoid reports our stored subject_id no
+     * longer exists (deleted manually in the dashboard, or wiped during an
+     * account merge). Drop the stale ID and provision a fresh subject so the
+     * invoicing call can be retried.
+     */
+    private function recreateFakturoidSubject(User $user, \DateTimeImmutable $now, int $staleSubjectId): int
+    {
+        $this->logger->warning('Recreating Fakturoid subject after stale subject_id rejection', [
+            'user_id' => $user->id->toRfc4122(),
+            'stale_subject_id' => $staleSubjectId,
+        ]);
+
+        $user->clearFakturoidSubjectId($now);
+
+        return $this->ensureFakturoidSubject($user, $now);
     }
 
     private function storePdf(Invoice $invoice, string $content): string
