@@ -16,6 +16,8 @@ use App\Event\SendInvoiceEmailHandler;
 use App\Repository\InvoiceRepository;
 use App\Service\OrderStatusUrlGenerator;
 use PHPUnit\Framework\TestCase;
+use Psr\Clock\ClockInterface;
+use Symfony\Component\Clock\MockClock;
 use Symfony\Component\HttpFoundation\UriSigner;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Email;
@@ -69,7 +71,7 @@ class SendInvoiceEmailHandlerTest extends TestCase
                 $sentEmail = $email;
             });
 
-        $handler = new SendInvoiceEmailHandler($invoiceRepository, $mailer, $this->createStatusUrlGenerator());
+        $handler = new SendInvoiceEmailHandler($invoiceRepository, $mailer, $this->createStatusUrlGenerator(), new MockClock('2025-06-15 12:00:00'));
         $handler($event);
 
         $this->assertNotNull($sentEmail);
@@ -93,7 +95,7 @@ class SendInvoiceEmailHandlerTest extends TestCase
             $sentEmail = $email;
         });
 
-        $handler = new SendInvoiceEmailHandler($invoiceRepository, $mailer, $this->createStatusUrlGenerator());
+        $handler = new SendInvoiceEmailHandler($invoiceRepository, $mailer, $this->createStatusUrlGenerator(), new MockClock('2025-06-15 12:00:00'));
         $handler($event);
 
         $this->assertNotNull($sentEmail);
@@ -119,7 +121,7 @@ class SendInvoiceEmailHandlerTest extends TestCase
             $sentEmail = $email;
         });
 
-        $handler = new SendInvoiceEmailHandler($invoiceRepository, $mailer, $this->createStatusUrlGenerator());
+        $handler = new SendInvoiceEmailHandler($invoiceRepository, $mailer, $this->createStatusUrlGenerator(), new MockClock('2025-06-15 12:00:00'));
         $handler($event);
 
         $this->assertNotNull($sentEmail);
@@ -145,7 +147,7 @@ class SendInvoiceEmailHandlerTest extends TestCase
             $sentEmail = $email;
         });
 
-        $handler = new SendInvoiceEmailHandler($invoiceRepository, $mailer, $this->createStatusUrlGenerator());
+        $handler = new SendInvoiceEmailHandler($invoiceRepository, $mailer, $this->createStatusUrlGenerator(), new MockClock('2025-06-15 12:00:00'));
         $handler($event);
 
         $this->assertNotNull($sentEmail);
@@ -155,6 +157,48 @@ class SendInvoiceEmailHandlerTest extends TestCase
         /** @var \Symfony\Bridge\Twig\Mime\TemplatedEmail $sentEmail */
         $context = $sentEmail->getContext();
         $this->assertFalse($context['hasPdfAttachment']);
+    }
+
+    public function testHandlerSkipsWhenInvoiceAlreadyEmailed(): void
+    {
+        // When SendRentalActivatedEmailHandler bundled the invoice into the
+        // post-payment e-mail, it marked emailedAt before the InvoiceCreated
+        // event was dispatched. By the time this handler runs, the standalone
+        // delivery is redundant and must be suppressed.
+        $invoice = $this->createInvoice();
+        $invoice->markEmailed(new \DateTimeImmutable('2025-06-15 11:59:30'));
+
+        $event = new InvoiceCreated($invoice->id, $invoice->order->id, new \DateTimeImmutable());
+
+        $invoiceRepository = $this->createStub(InvoiceRepository::class);
+        $invoiceRepository->method('get')->willReturn($invoice);
+
+        $mailer = $this->createMock(MailerInterface::class);
+        $mailer->expects($this->never())->method('send');
+
+        $handler = new SendInvoiceEmailHandler($invoiceRepository, $mailer, $this->createStatusUrlGenerator(), new MockClock('2025-06-15 12:00:00'));
+        $handler($event);
+    }
+
+    public function testHandlerMarksInvoiceEmailedWhenSending(): void
+    {
+        // The fallback / recurring path: emailedAt is null on entry, the
+        // handler sends the standalone e-mail, and stamps emailedAt with the
+        // clock's now so future re-dispatches (e.g. messenger retries) skip.
+        $invoice = $this->createInvoice();
+        $event = new InvoiceCreated($invoice->id, $invoice->order->id, new \DateTimeImmutable());
+
+        $invoiceRepository = $this->createStub(InvoiceRepository::class);
+        $invoiceRepository->method('get')->willReturn($invoice);
+
+        $mailer = $this->createStub(MailerInterface::class);
+
+        $clock = new MockClock('2025-06-15 12:34:56');
+        $handler = new SendInvoiceEmailHandler($invoiceRepository, $mailer, $this->createStatusUrlGenerator(), $clock);
+        $handler($event);
+
+        $this->assertTrue($invoice->isEmailed());
+        $this->assertEquals(new \DateTimeImmutable('2025-06-15 12:34:56'), $invoice->emailedAt);
     }
 
     private function createStatusUrlGenerator(): OrderStatusUrlGenerator

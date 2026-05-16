@@ -122,12 +122,15 @@ return App::config([
                 '$contractTemplatePath' => '%kernel.project_dir%/templates/documents/contract_template.docx',
             ],
         ],
-        'App\\Service\\OrderEmailAttachments' => [
+        'App\\Service\\OrderEmailAttachmentsService' => [
             'arguments' => [
                 '$projectDir' => '%kernel.project_dir%',
                 '$contractTemplatePath' => '%kernel.project_dir%/templates/documents/contract_template.docx',
                 '$vopTemplatePath' => '%kernel.project_dir%/templates/documents/vop_template.docx',
             ],
+        ],
+        'App\\Service\\OrderEmailAttachments' => [
+            'alias' => 'App\\Service\\OrderEmailAttachmentsService',
         ],
         'App\\Event\\SendOrderPlacedEmailHandler' => null,
         'App\\Event\\SendRentalActivatedEmailHandler' => [
