@@ -251,6 +251,47 @@ class ContractDocumentGeneratorTest extends TestCase
         $this->assertFileExists($outputPath);
     }
 
+    public function testPersistedContractDateMatchesOrderCreatedAtNotContractCreatedAt(): void
+    {
+        // The persisted file (portal/admin download) must carry the same
+        // ${CONTRACT_DATE} as the byte-identical copy attached to the
+        // order-placed and rental-activated e-mails — i.e. the date the
+        // customer signed and the contract was legally formed. Using
+        // $contract->createdAt (payment-confirmation timestamp) was the
+        // historical drift this test guards against.
+        $tenant = $this->createUser();
+        $storage = $this->createStorage();
+        $order = $this->createOrder($tenant, $storage);
+        $contract = new Contract(
+            id: Uuid::v7(),
+            order: $order,
+            user: $order->user,
+            storage: $order->storage,
+            rentalType: $order->rentalType,
+            startDate: $order->startDate,
+            endDate: $order->endDate,
+            createdAt: new \DateTimeImmutable('2024-02-10 14:30:00'),
+        );
+
+        $templatePath = $this->createTestTemplate();
+        $outputPath = $this->generator->generate($contract, $templatePath);
+        $xml = $this->extractDocumentXml($outputPath);
+
+        $this->assertStringContainsString('01.01.2024', $xml, '${CONTRACT_DATE} must be $order->createdAt (01.01.2024).');
+        $this->assertStringNotContainsString('10.02.2024', $xml, '${CONTRACT_DATE} must not leak $contract->createdAt (10.02.2024).');
+    }
+
+    private function extractDocumentXml(string $docxPath): string
+    {
+        $zip = new \ZipArchive();
+        $this->assertTrue($zip->open($docxPath));
+        $xml = $zip->getFromName('word/document.xml');
+        $zip->close();
+        $this->assertNotFalse($xml, 'word/document.xml not found in '.$docxPath);
+
+        return $xml;
+    }
+
     private function createTestTemplateWithSignature(): string
     {
         $templatePath = $this->tempDir.'/template_with_signature.docx';

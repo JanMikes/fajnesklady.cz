@@ -34,6 +34,13 @@ readonly class ContractDocumentGenerator
     /**
      * Generate a contract document from template and persist it on disk.
      *
+     * documentDate is sourced from $contract->order->createdAt — i.e. when
+     * the customer signed and the contract was legally formed — so that the
+     * persisted file (served by portal/admin download routes) carries the
+     * same ${CONTRACT_DATE} as the byte-identical copy attached to the
+     * order-placed and rental-activated e-mails. $contract->createdAt is the
+     * internal payment-confirmation timestamp and would drift by hours-to-days.
+     *
      * @return string Path to the generated document
      */
     public function generate(Contract $contract, string $templatePath, ?string $signaturePath = null, ?string $signingPlace = null, ?\DateTimeImmutable $signedAt = null): string
@@ -47,7 +54,7 @@ readonly class ContractDocumentGenerator
             rentalType: $contract->rentalType,
             startDate: $contract->startDate,
             endDate: $contract->endDate,
-            documentDate: $contract->createdAt,
+            documentDate: $contract->order->createdAt,
             signaturePath: $signaturePath,
             signingPlace: $signingPlace,
             signedAt: $signedAt,
