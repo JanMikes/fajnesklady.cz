@@ -158,7 +158,8 @@ final readonly class SendRentalActivatedEmailHandler
             return $invoice;
         }
 
-        // Free contracts produce no invoice (mirrors IssueInvoiceOnPaymentHandler).
+        // Free contracts produce no invoice. The recurring cron has the same
+        // early-return on $amount <= 0; spec 025 keeps invoicing in sync.
         if (0 === $order->firstPaymentPrice) {
             return null;
         }

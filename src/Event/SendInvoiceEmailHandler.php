@@ -6,11 +6,23 @@ namespace App\Event;
 
 use App\Repository\InvoiceRepository;
 use App\Service\OrderStatusUrlGenerator;
+use Psr\Clock\ClockInterface;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Mime\Address;
 
+/**
+ * Standalone invoice e-mail — the "Faktura X" message with a single PDF
+ * attachment. Active for every recurring monthly charge, and as a fallback
+ * for the first-payment invoice when SendRentalActivatedEmailHandler
+ * could not bundle it (Fakturoid PDF download failed, or
+ * IssueMissingInvoicesCommand later issued the invoice out-of-band).
+ *
+ * Skipped when Invoice.emailedAt is already set — i.e. the rental-activated
+ * handler already attached this invoice to its bigger e-mail and marked
+ * the delivery.
+ */
 #[AsMessageHandler]
 final readonly class SendInvoiceEmailHandler
 {
@@ -18,12 +30,18 @@ final readonly class SendInvoiceEmailHandler
         private InvoiceRepository $invoiceRepository,
         private MailerInterface $mailer,
         private OrderStatusUrlGenerator $statusUrlGenerator,
+        private ClockInterface $clock,
     ) {
     }
 
     public function __invoke(InvoiceCreated $event): void
     {
         $invoice = $this->invoiceRepository->get($event->invoiceId);
+
+        if ($invoice->isEmailed()) {
+            return;
+        }
+
         $user = $invoice->user;
         $order = $invoice->order;
         $storage = $order->storage;
@@ -57,6 +75,8 @@ final readonly class SendInvoiceEmailHandler
                 sprintf('faktura_%s.pdf', $invoice->invoiceNumber),
             );
         }
+
+        $invoice->markEmailed($this->clock->now());
 
         $this->mailer->send($email);
     }

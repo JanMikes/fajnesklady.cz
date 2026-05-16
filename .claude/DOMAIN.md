@@ -607,11 +607,14 @@ flowchart TD
 ```mermaid
 flowchart TD
     subgraph CustomerInvoice["Customer Invoice (Invoice entity)"]
-        A[Order completed] --> B[IssueInvoiceOnPaymentHandler]
+        A[Order completed] --> B[SendRentalActivatedEmailHandler]
         B --> C[Create Invoice via Fakturoid]
-        C --> D[Store fakturoidInvoiceId]
-        D --> E[InvoiceCreated event]
-        E --> F[Email invoice PDF to customer]
+        C --> D[Store fakturoidInvoiceId + PDF]
+        D --> E[Bundle PDF into rental-activated e-mail]
+        E --> F[Invoice.markEmailed - suppresses standalone]
+        E2[InvoiceCreated event] --> G{Invoice.isEmailed?}
+        G -- yes --> H[SendInvoiceEmailHandler skips]
+        G -- no --> I[Send standalone Faktura e-mail - fallback / recurring charges]
     end
 
     subgraph LandlordInvoice["Landlord Self-Billing Invoice"]

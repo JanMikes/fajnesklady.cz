@@ -203,7 +203,7 @@ Admin notifications: OverdueDigestRequested.
 
 Handlers (in `src/Event/`):
 - Email side-effects: `Send*EmailHandler` (welcome, verification, password reset, order confirmation, signing link, contract ready/expiring/terminated, handover request/reminder/completed, invoice, recurring-payment established/cancelled/failed/advance-notice + admin variants, place access approved/denied/requested, place proposed, payment default, amount mismatch alert, external-prepayment ending soon, termination notice).
-- Bookkeeping: `IssueInvoiceOnPaymentHandler`, `IssueInvoiceOnRecurringChargeHandler`, `RecordPaymentOnOrderPaidHandler`, `RecordPaymentOnRecurringChargeHandler`, `ReleaseStorageOnHandoverCompletedHandler`, `ForceReleaseStorageOnHandoverExpiredHandler`, `SendStorageAvailabilityWarningHandler`.
+- Bookkeeping: `IssueInvoiceOnRecurringChargeHandler`, `RecordPaymentOnOrderPaidHandler`, `RecordPaymentOnRecurringChargeHandler`, `ReleaseStorageOnHandoverCompletedHandler`, `ForceReleaseStorageOnHandoverExpiredHandler`, `SendStorageAvailabilityWarningHandler`. First-payment invoice is issued synchronously by `SendRentalActivatedEmailHandler` so the PDF can be bundled into the post-payment e-mail; the standalone `SendInvoiceEmailHandler` is the fallback (also used by every recurring charge).
 
 ## Enums
 
