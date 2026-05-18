@@ -78,7 +78,7 @@ class OrderFormDataTest extends TestCase
         $context = $this->createMock(ExecutionContextInterface::class);
         $context->expects($this->once())
             ->method('buildViolation')
-            ->with('Datum konce musí být po datu začátku.')
+            ->with('Minimální doba pronájmu je 7 dní.')
             ->willReturn($violationBuilder);
 
         $formData->validateDates($context);
@@ -103,7 +103,31 @@ class OrderFormDataTest extends TestCase
         $context = $this->createMock(ExecutionContextInterface::class);
         $context->expects($this->once())
             ->method('buildViolation')
-            ->with('Datum konce musí být po datu začátku.')
+            ->with('Minimální doba pronájmu je 7 dní.')
+            ->willReturn($violationBuilder);
+
+        $formData->validateDates($context);
+    }
+
+    public function testValidatesLimitedRentalShorterThanSevenDaysIsInvalid(): void
+    {
+        $formData = new OrderFormData();
+        $formData->startDate = new \DateTimeImmutable('+1 day');
+        $formData->rentalType = RentalType::LIMITED;
+        $formData->endDate = new \DateTimeImmutable('+6 days');
+
+        $violationBuilder = $this->createMock(ConstraintViolationBuilderInterface::class);
+        $violationBuilder->expects($this->once())
+            ->method('atPath')
+            ->with('endDate')
+            ->willReturnSelf();
+        $violationBuilder->expects($this->once())
+            ->method('addViolation');
+
+        $context = $this->createMock(ExecutionContextInterface::class);
+        $context->expects($this->once())
+            ->method('buildViolation')
+            ->with('Minimální doba pronájmu je 7 dní.')
             ->willReturn($violationBuilder);
 
         $formData->validateDates($context);

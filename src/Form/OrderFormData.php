@@ -184,8 +184,12 @@ final class OrderFormData
                 return;
             }
 
-            if ($this->endDate <= $this->startDate) {
-                $context->buildViolation('Datum konce musí být po datu začátku.')
+            $rentalDays = $this->endDate <= $this->startDate
+                ? 0
+                : (int) $this->startDate->diff($this->endDate)->days;
+
+            if ($rentalDays < 7) {
+                $context->buildViolation('Minimální doba pronájmu je 7 dní.')
                     ->atPath('endDate')
                     ->addViolation();
 

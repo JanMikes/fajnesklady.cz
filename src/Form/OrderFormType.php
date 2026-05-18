@@ -15,6 +15,8 @@ use Symfony\Component\Form\Extension\Core\Type\PasswordType;
 use Symfony\Component\Form\Extension\Core\Type\TelType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
+use Symfony\Component\Form\FormEvent;
+use Symfony\Component\Form\FormEvents;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
 /**
@@ -147,7 +149,7 @@ final class OrderFormType extends AbstractType
                 'widget' => 'single_text',
                 'input' => 'datetime_immutable',
                 'attr' => [
-                    'data-datepicker-min-date-value' => (new \DateTimeImmutable('tomorrow'))->format('Y-m-d'),
+                    'data-datepicker-min-date-value' => (new \DateTimeImmutable('today'))->format('Y-m-d'),
                 ],
             ])
             ->add('endDate', DateType::class, [
@@ -156,7 +158,7 @@ final class OrderFormType extends AbstractType
                 'required' => false,
                 'input' => 'datetime_immutable',
                 'attr' => [
-                    'data-datepicker-min-date-value' => (new \DateTimeImmutable('tomorrow'))->format('Y-m-d'),
+                    'data-datepicker-min-date-value' => (new \DateTimeImmutable('today'))->modify('+7 days')->format('Y-m-d'),
                 ],
             ])
             ->add('billingMode', EnumType::class, [
@@ -170,6 +172,26 @@ final class OrderFormType extends AbstractType
                 ],
                 'help' => 'Při ručně schvalované platbě Vám 7 dní před každou platbou pošleme e-mail s odkazem k zaplacení. Údaje o platební kartě se neukládají.',
             ]);
+
+        // Live-component re-instantiates the form on every interaction, so PRE_SET_DATA
+        // sees the latest startDate. Re-adding endDate bumps its datepicker min to
+        // startDate + 7 days (the LIMITED rental minimum enforced in OrderFormData::validateDates).
+        $builder->addEventListener(FormEvents::PRE_SET_DATA, function (FormEvent $event): void {
+            $data = $event->getData();
+            if (!$data instanceof OrderFormData || null === $data->startDate) {
+                return;
+            }
+
+            $event->getForm()->add('endDate', DateType::class, [
+                'label' => 'Datum konce',
+                'widget' => 'single_text',
+                'required' => false,
+                'input' => 'datetime_immutable',
+                'attr' => [
+                    'data-datepicker-min-date-value' => $data->startDate->modify('+7 days')->format('Y-m-d'),
+                ],
+            ]);
+        });
     }
 
     public function configureOptions(OptionsResolver $resolver): void
