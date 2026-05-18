@@ -132,6 +132,14 @@ final class AdminMigrateCustomerFormData
             $context->buildViolation('Zadejte datum narození.')
                 ->atPath('birthDate')
                 ->addViolation();
+
+            return;
+        }
+
+        if ($this->birthDate->modify('+18 years') > new \DateTimeImmutable('today')) {
+            $context->buildViolation('Nájemce musí být starší 18 let.')
+                ->atPath('birthDate')
+                ->addViolation();
         }
     }
 

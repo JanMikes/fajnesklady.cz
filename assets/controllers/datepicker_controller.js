@@ -51,6 +51,23 @@ export default class extends Controller {
         }
 
         this.picker = flatpickr(this.element, config);
+
+        // altInput is the visible input the user types/blurs; this.element
+        // is the hidden original that carries the form value and the
+        // `blur->live#action` Stimulus binding. Without this forward, manual
+        // typing followed by tabbing away never reaches Live UX — flatpickr
+        // parses the typed text on alt-blur and updates the hidden input, but
+        // the blur event itself stays on the alt input and the hidden one is
+        // already off-screen so it never fires its own blur. The user sees a
+        // stale "invalid date" until they re-open the picker and click. This
+        // listener runs after flatpickr's own blur handler (registered first
+        // during flatpickr() above), so the hidden input is up-to-date by the
+        // time we dispatch.
+        if (this.picker.altInput) {
+            this.picker.altInput.addEventListener('blur', () => {
+                this.element.dispatchEvent(new Event('blur'));
+            });
+        }
     }
 
     parseDate(dateString) {

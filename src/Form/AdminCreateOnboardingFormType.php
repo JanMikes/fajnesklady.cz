@@ -55,7 +55,7 @@ final class AdminCreateOnboardingFormType extends AbstractType
                 'required' => false,
                 'widget' => 'single_text',
                 'attr' => [
-                    'data-datepicker-max-date-value' => (new \DateTimeImmutable('today'))->format('Y-m-d'),
+                    'data-datepicker-max-date-value' => (new \DateTimeImmutable('today'))->modify('-18 years')->format('Y-m-d'),
                 ],
             ])
             ->add('invoiceToCompany', CheckboxType::class, [

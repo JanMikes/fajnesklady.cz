@@ -174,4 +174,114 @@ class OrderFormDataTest extends TestCase
 
         $formData->validateDates($context);
     }
+
+    public function testValidatesBirthDateRequiredForNonCompany(): void
+    {
+        $formData = new OrderFormData();
+        $formData->invoiceToCompany = false;
+        $formData->birthDate = null;
+
+        $violationBuilder = $this->createMock(ConstraintViolationBuilderInterface::class);
+        $violationBuilder->expects($this->once())
+            ->method('atPath')
+            ->with('birthDate')
+            ->willReturnSelf();
+        $violationBuilder->expects($this->once())
+            ->method('addViolation');
+
+        $context = $this->createMock(ExecutionContextInterface::class);
+        $context->expects($this->once())
+            ->method('buildViolation')
+            ->with('Zadejte datum narození.')
+            ->willReturn($violationBuilder);
+
+        $formData->validateBirthDate($context);
+    }
+
+    public function testValidatesBirthDateSkippedForCompany(): void
+    {
+        $formData = new OrderFormData();
+        $formData->invoiceToCompany = true;
+        $formData->birthDate = null;
+
+        $context = $this->createMock(ExecutionContextInterface::class);
+        $context->expects($this->never())
+            ->method('buildViolation');
+
+        $formData->validateBirthDate($context);
+    }
+
+    public function testValidatesBirthDateRejectsUnder18(): void
+    {
+        $formData = new OrderFormData();
+        $formData->invoiceToCompany = false;
+        // Birthday is tomorrow's date 17 years ago → 17 years and 364 days old → < 18.
+        $formData->birthDate = (new \DateTimeImmutable('today'))->modify('-18 years')->modify('+1 day');
+
+        $violationBuilder = $this->createMock(ConstraintViolationBuilderInterface::class);
+        $violationBuilder->expects($this->once())
+            ->method('atPath')
+            ->with('birthDate')
+            ->willReturnSelf();
+        $violationBuilder->expects($this->once())
+            ->method('addViolation');
+
+        $context = $this->createMock(ExecutionContextInterface::class);
+        $context->expects($this->once())
+            ->method('buildViolation')
+            ->with('Nájemce musí být starší 18 let.')
+            ->willReturn($violationBuilder);
+
+        $formData->validateBirthDate($context);
+    }
+
+    public function testValidatesBirthDateAcceptsExactly18(): void
+    {
+        $formData = new OrderFormData();
+        $formData->invoiceToCompany = false;
+        // 18th birthday is today.
+        $formData->birthDate = (new \DateTimeImmutable('today'))->modify('-18 years');
+
+        $context = $this->createMock(ExecutionContextInterface::class);
+        $context->expects($this->never())
+            ->method('buildViolation');
+
+        $formData->validateBirthDate($context);
+    }
+
+    public function testValidatesBirthDateAcceptsAdult(): void
+    {
+        $formData = new OrderFormData();
+        $formData->invoiceToCompany = false;
+        $formData->birthDate = new \DateTimeImmutable('1992-06-01');
+
+        $context = $this->createMock(ExecutionContextInterface::class);
+        $context->expects($this->never())
+            ->method('buildViolation');
+
+        $formData->validateBirthDate($context);
+    }
+
+    public function testValidatesBirthDateRejectsFutureDate(): void
+    {
+        $formData = new OrderFormData();
+        $formData->invoiceToCompany = false;
+        $formData->birthDate = (new \DateTimeImmutable('today'))->modify('+1 day');
+
+        $violationBuilder = $this->createMock(ConstraintViolationBuilderInterface::class);
+        $violationBuilder->expects($this->once())
+            ->method('atPath')
+            ->with('birthDate')
+            ->willReturnSelf();
+        $violationBuilder->expects($this->once())
+            ->method('addViolation');
+
+        $context = $this->createMock(ExecutionContextInterface::class);
+        $context->expects($this->once())
+            ->method('buildViolation')
+            ->with('Nájemce musí být starší 18 let.')
+            ->willReturn($violationBuilder);
+
+        $formData->validateBirthDate($context);
+    }
 }

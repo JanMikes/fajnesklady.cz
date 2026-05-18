@@ -67,10 +67,13 @@ final class OrderFormType extends AbstractType
                 'label' => 'Datum narození',
                 'widget' => 'single_text',
                 'input' => 'datetime_immutable',
-                'help' => 'Vyžadováno pro účely nájemní smlouvy.',
+                'help' => 'Vyžadováno pro účely nájemní smlouvy. Nájemce musí být starší 18 let.',
                 'attr' => [
                     'autocomplete' => 'bday',
-                    'data-datepicker-max-date-value' => (new \DateTimeImmutable('today'))->format('Y-m-d'),
+                    // Picker max = today − 18 years so the calendar can't even
+                    // offer an under-18 date. Server-side {@see OrderFormData::validateBirthDate}
+                    // is the source of truth (manual typing bypasses the picker).
+                    'data-datepicker-max-date-value' => (new \DateTimeImmutable('today'))->modify('-18 years')->format('Y-m-d'),
                 ],
             ])
             ->add('plainPassword', PasswordType::class, [
