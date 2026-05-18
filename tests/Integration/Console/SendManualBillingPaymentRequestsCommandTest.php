@@ -9,7 +9,6 @@ use App\Entity\Contract;
 use App\Entity\ManualPaymentRequest;
 use App\Entity\Order;
 use App\Entity\Place;
-use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\BillingMode;
