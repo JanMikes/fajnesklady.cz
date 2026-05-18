@@ -6,115 +6,73 @@
 
 ## 1. Email pro GoPay – připraven k odeslání
 
-> **Komu:** odpovídající adresa GoPay (reply na původní e-mail)
-> **Předmět:** Re: Aktivace opakovaných plateb – fajnesklady.cz (Mekmann s.r.o., IČO 11678631)
->
-> ---
->
-> Dobrý den,
->
-> děkujeme za rychlou reakci a za podrobné instrukce. Níže odpovídáme na všechny body z Vašeho e-mailu. Pro úplnost jsme zároveň aktualizovali objednávkový formulář, ať explicitně obsahuje všechny parametry v pořadí podle Vašeho checklistu.
->
-> ---
->
-> **1) Typ opakovaných plateb**
->
-> Žádáme o aktivaci opakovaných plateb typu **„Na vyžádání" (ON_DEMAND)** pro všechny opakované smlouvy — tj. jak pro nájem na dobu určitou s minimální délkou 1 měsíc, tak pro nájem na dobu neurčitou.
->
-> Důvod této volby:
->
-> - Většina smluv je na dobu neurčitou s měsíční úhradou; část smluv je na dobu určitou (max. 1 rok), kde **poslední úhrada bývá prorátovaná** podle počtu zbývajících dní. Standardní cyklus DAY/WEEK/MONTH (Automatic) by toto neumožnil.
-> - Potřebujeme u každého strhnutí ověřit aktuální stav smlouvy (aktivní / vypovězená / pozastavená) a dodržet 3 pokusy retry logiku doporučenou Vaší dokumentací — vlastní cron nám tuto kontrolu umožňuje.
-> - Volba ON_DEMAND zároveň snižuje riziko chargebacků: nestrháváme „naslepo".
->
-> Technické parametry inicializační platby (`createPayment`):
-> - `recurrence.recurrence_cycle = ON_DEMAND`
-> - `recurrence.recurrence_date_to = 2099-12-31` (efektivně „bez expirace" — strháváme do odvolání souhlasu zákazníkem nebo do konce nájmu na dobu určitou)
-> - Následné platby strháváme přes `createRecurrence($parentPaymentId, amount, orderNumber, description)` jednou měsíčně, vždy ke shodnému dni v měsíci jako první platba.
->
-> ---
->
-> **2) Parametry opakované platby v objednávkovém formuláři**
->
-> Parametry zobrazujeme v samostatném vizuálně odděleném bloku **„Parametry opakované platby"** přímo nad odesílacím tlačítkem objednávky (mimo obchodní podmínky, mimo VOP). Konkrétně:
->
-> | Parametr | Hodnota zobrazená zákazníkovi |
-> |---|---|
-> | Účel platby | Pronájem skladového kontejneru |
-> | Maximální částka opakované platby | 15 000 Kč |
-> | Částka jednotlivé platby | **Fixní**, např. 2 900 Kč / měsíc (vč. DPH). U smluv na dobu určitou je poslední doplatek prorátován podle počtu zbývajících dní — zákazník je o tom písemně informován min. 7 pracovních dní předem. |
-> | Frekvence a den strhávání | **Fixní**, měsíční — vždy ke stejnému dni v měsíci jako první platba (např. 12. v měsíci). Pokud připadne na nepracovní den, strhne se následující pracovní den. |
-> | Doba trvání | U doby neurčité: „Po celou dobu trvání nájmu / do odvolání souhlasu zákazníkem." U doby určité: „N plateb do {datum konce nájmu}." |
-> | Forma komunikace pro změnu nastavení | E-mailem na **simek@fajnesklady.cz** |
-> | Zrušení a storno opakované platby | E-mailem na **simek@fajnesklady.cz**, kdykoli, bez sankce; podrobně viz Podmínky opakovaných plateb (čl. VI) — odkaz dostupný přímo u checkboxu |
->
-> ---
->
-> **3) Samostatný checkbox pro souhlas s opakovanou platbou**
->
-> Pod uvedenými parametry je vizuálně i logicky **oddělený samostatný checkbox** (vlastní vizuální oddělovač, jiná barva pozadí než hlavní souhrnný checkbox s VOP). Text:
->
-> > **„Souhlasím s opakovanou platbou** v parametrech uvedených výše a s uložením platebních údajů na bráně GoPay."
->
-> Tento checkbox je oddělený od souhrnného souhlasu s VOP, Poučením spotřebitele, GDPR a obsahem smlouvy. Bez zaškrtnutí **obou** checkboxů (souhrnného i tohoto samostatného) **nelze objednávku odeslat** — odesílací tlačítko zůstává neaktivní (DOM `disabled`). Vedle / nad checkboxem je odkaz na úplné znění Podmínek opakovaných plateb (otevírá se v modálu i jako samostatná veřejná stránka).
->
-> ---
->
-> **4) PCI-DSS Level 1 a uložení platebních údajů**
->
-> Souhlas s uložením platebních údajů na straně GoPay je součástí textu samostatného checkboxu (viz výše).
->
-> Informaci, že GoPay nakládá s údaji platební karty podle mezinárodního bezpečnostního standardu **PCI-DSS Level 1** (nejvyšší úroveň datové bezpečnosti ve finančním sektoru), uvádíme:
->
-> - **přímo pod samostatným checkboxem na stránce „Přijetí smlouvy"** (jako vizuálně oddělený footnote) — text: *„Společnost GOPAY s.r.o. nakládá s údaji Vaší platební karty podle mezinárodního bezpečnostního standardu PCI-DSS Level 1 — nejvyšší úroveň datové bezpečnosti ve finančním sektoru. Čísla karet ani CVV s námi GoPay nesdílí a Pronajímatel k nim nemá přístup."*
-> - v Podmínkách opakovaných plateb, čl. II (dostupné z odkazu u checkboxu i jako veřejná URL),
-> - v potvrzovacím e-mailu o založení smlouvy (zasíláme do 2 pracovních dnů od udělení souhlasu).
->
-> ---
->
-> **5) Odkaz, na kterém zákazník uděluje souhlas**
->
-> Souhlas se zakládá na stránce **„Přijetí smlouvy"** v objednávkovém průvodci. Stránka je dostupná až po vyplnění objednávkového formuláře (kontaktní údaje, fakturační adresa, typ pronájmu, termíny), proto Vám pro Vaše posouzení posíláme **screenshoty kompletního souhlasového kroku v příloze** (varianta na dobu neurčitou i varianta s pevným koncem).
->
-> Veřejně dostupné odkazy:
->
-> - **Domovská stránka** (vstup do objednávkového průvodce): <https://www.fajnesklady.cz>
-> - **Předvyplněná objednávka pro Vaše posouzení** (souhlasový krok dostupný bez registrace): <!-- TODO: doplnit URL na předvyplněnou objednávku -->
-> - **Plné znění Podmínek opakovaných plateb**: <https://www.fajnesklady.cz/podminky-opakovanych-plateb>
-> - **Všeobecné obchodní podmínky (VOP)**: <https://www.fajnesklady.cz/obchodni-podminky>
-> - **Poučení o právech spotřebitele**: <https://www.fajnesklady.cz/pouceni-spotrebitele>
-> - **Ochrana osobních údajů (GDPR)**: <https://www.fajnesklady.cz/ochrana-osobnich-udaju>
->
-> Pro průchod *bez* předvyplněné URL: na hlavní stránce stačí kliknout na detail libovolné pobočky → tlačítko **„Pronajmout"** → vyplnit kontaktní údaje a zvolit typ pronájmu **„Na dobu neurčitou"** (pro zobrazení opakované platby) → **„Pokračovat k podpisu"** → zobrazí se stránka **„Přijetí smlouvy"** s blokem „Parametry opakované platby" + samostatným checkboxem.
->
-> ---
->
-> **6) Notifikace a uchování souhlasu**
->
-> Pro úplnost shrnujeme i následné povinnosti, které máme implementovány:
->
-> - **Potvrzení o založení opakované platby** zákazníkovi do **2 pracovních dnů** od udělení souhlasu (e-mailem, obsahuje výpis parametrů + PCI-DSS disclosure + návod na zrušení).
-> - **Předstih 7 pracovních dnů** před strhnutím platby, pokud uplynulo více než 6 měsíců od poslední úspěšné platby, **nebo** pokud se mění parametry opakované platby (frekvence, cena).
-> - **Záznam o souhlasu** (timestamp, IP, parametry, verze Podmínek, identifikace zákazníka, elektronický podpis smlouvy) je uložen v naší databázi minimálně **po dobu 12 měsíců od ukončení opakované platby**.
-> - **Zrušení ze strany zákazníka** je možné kdykoli e-mailem na simek@fajnesklady.cz, bez sankce; zrušení nemá zpětný vliv na již poskytnuté služby (per Podmínky čl. VI).
-> - **Retry logika**: 3 pokusy o stržení per Vaše doporučení, mezi pokusy 24h; po třetím neúspěšném pokusu opakovaná platba zrušena a zákazník upozorněn e-mailem.
->
-> ---
->
-> **7) Riziko chargebacků**
->
-> Bereme na vědomí Vaše upozornění na zvýšené riziko chargebacků u opakovaných plateb (CVV se neověřuje při následných strhnutích). **První platbu** inicializujeme přes standardní GoPay platební bránu s **3D Secure 2.0**, takže iniciační autorizace probíhá s plnou autentizací držitele karty. Pro následné platby vedeme záznam o souhlasu, jednotlivých strhnutích, e-mailové komunikaci se zákazníkem a stavu smlouvy — všechny tyto podklady jsme připraveni doložit při řešení případné reklamace.
->
-> ---
->
-> Pokud budete potřebovat jakékoli další informace, doplnění screenshotů z konkrétní varianty průchodu nebo screencast, dejte prosím vědět — obratem doplníme.
->
-> S pozdravem,
-> **Jan Mikeš**
-> Mekmann s.r.o., IČO 11678631
-> e-mail: skladmistr@fajnesklady.cz · tel.: +420 605 522 566
->
-> *Přílohy: 2 screenshoty stránky „Přijetí smlouvy" (varianta na dobu neurčitou + varianta na dobu určitou).*
+**Předmět:** Re: Aktivace opakovaných plateb – fajnesklady.cz (Mekmann s.r.o., IČO 11678631)
+
+---
+
+Dobrý den,
+
+děkujeme za rychlou reakci a podrobné instrukce. Níže odpovídáme na všechny body z Vašeho e-mailu; objednávkový formulář jsme zároveň aktualizovali tak, aby explicitně obsahoval všechny parametry v pořadí podle Vašeho checklistu.
+
+**1) Typ opakovaných plateb**
+
+Žádáme o aktivaci opakovaných plateb typu **„Na vyžádání"** pro všechny opakované smlouvy – jak pro pronájem na dobu určitou (od 1 měsíce do 1 roku), tak pro pronájem na dobu neurčitou. Důvod této volby: u smluv na dobu určitou bývá poslední úhrada prorátovaná podle počtu zbývajících dní, což standardní automatický cyklus neumožňuje. Volba „na vyžádání" nám zároveň umožňuje před každým strhnutím ověřit, zda je smlouva stále aktivní – to snižuje riziko chargebacků.
+
+**2) Parametry opakované platby v objednávkovém formuláři**
+
+Na stránce „Přijetí smlouvy" (těsně nad odesílacím tlačítkem, mimo obchodní podmínky) zobrazujeme:
+
+- Účel platby: Pronájem skladového kontejneru
+- Maximální částka opakované platby: 15 000 Kč
+- Částka jednotlivé platby: **fixní** (např. 2 900 Kč / měsíc vč. DPH); u smluv na dobu určitou je poslední doplatek prorátován podle zbývajících dní – zákazník je o této částce písemně informován min. 7 pracovních dní předem
+- Frekvence a den strhávání: **fixní**, měsíční, vždy ve stejný den jako první platba; pokud připadne na nepracovní den, strhne se následující pracovní den
+- Doba trvání: po celou dobu trvání nájmu / do odvolání souhlasu (doba neurčitá) nebo do konce nájmu (doba určitá)
+- Forma komunikace pro změnu nastavení: e-mailem na simek@fajnesklady.cz
+- Zrušení a storno: e-mailem na simek@fajnesklady.cz, kdykoli a bez sankce; podrobně viz Podmínky opakovaných plateb, čl. VI
+
+**3) Samostatný checkbox pro souhlas**
+
+Pod uvedenými parametry je samostatný checkbox s textem „Souhlasím s opakovanou platbou v parametrech uvedených výše a s uložením platebních údajů na bráně GoPay." Je vizuálně i logicky oddělený od souhrnného souhlasu s VOP, Poučením spotřebitele a obsahem smlouvy. Bez zaškrtnutí obou checkboxů nelze objednávku odeslat – odesílací tlačítko zůstává neaktivní. Vedle checkboxu je odkaz na úplné znění Podmínek opakovaných plateb.
+
+**4) PCI-DSS Level 1**
+
+Informaci, že GoPay nakládá s údaji platební karty podle mezinárodního bezpečnostního standardu PCI-DSS Level 1, uvádíme přímo pod samostatným checkboxem na stránce „Přijetí smlouvy", v Podmínkách opakovaných plateb (čl. II) a v potvrzovacím e-mailu, který zákazník dostává do 2 pracovních dnů od udělení souhlasu.
+
+**5) Odkaz, na kterém zákazník uděluje souhlas**
+
+Souhlas se zakládá na stránce „Přijetí smlouvy" v objednávkovém průvodci. Stránka je dostupná až po vyplnění objednávkového formuláře, proto Vám v příloze posíláme screenshoty obou variant souhlasového kroku (doba neurčitá + doba určitá).
+
+Pro Vaše posouzení jsme připravili dvě testovací objednávky, na kterých si můžete přímo otevřít stránku „Přijetí smlouvy" se souhlasovým checkboxem. Odkazy směřují na **vývojové prostředí** `fajnesklady.thedevs.cz`, které je obsahově i funkčně identické s produkcí (`fajnesklady.cz`); na produkci se vše překlopí po aktivaci produkční platební brány.
+
+- Objednávka s opakovanou (pravidelnou) platbou – zobrazí blok „Parametry opakované platby" + samostatný checkbox: https://fajnesklady.thedevs.cz/objednavka/019bd1f2-7cec-71f9-a929-dd1749a0a6d5/019c7587-7ffb-7bbc-818f-b6ad135d8fbf/019c85c8-93b0-79f2-aace-ce3cb798f397/prijmout
+- Objednávka s jednorázovou platbou (pro srovnání, bez opakované platby): https://fajnesklady.thedevs.cz/objednavka/019bd1f2-7cec-71f9-a929-dd1749a0a6d5/019c7587-7ffb-7bbc-818f-b6ad135d8fbf/019c85c8-9379-7c83-a931-771c3edd6756/prijmout
+
+Další relevantní odkazy:
+
+- Domovská stránka: https://www.fajnesklady.cz
+- Podmínky opakovaných plateb: https://www.fajnesklady.cz/podminky-opakovanych-plateb
+- Všeobecné obchodní podmínky: https://www.fajnesklady.cz/obchodni-podminky
+- Poučení o právech spotřebitele: https://www.fajnesklady.cz/pouceni-spotrebitele
+
+**6) Notifikace a uchování souhlasu**
+
+- Potvrzení o založení opakované platby zasíláme zákazníkovi do 2 pracovních dnů (e-mailem, obsahuje výpis parametrů, PCI-DSS informaci a návod na zrušení).
+- Min. 7 pracovních dnů předem zákazníka informujeme, pokud uplynulo více než 6 měsíců od poslední platby nebo pokud se mění parametry opakované platby.
+- Záznam o souhlasu (datum, IP adresa, parametry, elektronický podpis smlouvy) uchováváme min. 12 měsíců po ukončení opakované platby.
+- Zrušení ze strany zákazníka je možné kdykoli, bez sankce; nemá zpětný vliv na již poskytnuté služby.
+
+**7) Riziko chargebacků**
+
+Bereme na vědomí Vaše upozornění. První platbu zákazník provádí s plnou autentizací (3D Secure 2.0); ke každé následné platbě vedeme záznam o souhlasu, strhnutí i komunikaci se zákazníkem – tyto podklady jsme připraveni doložit při řešení případné reklamace.
+
+V případě dalších dotazů nebo doplnění materiálů nám prosím dejte vědět.
+
+S pozdravem,
+Jan Mikeš
+Mekmann s.r.o., IČO 11678631
+skladmistr@fajnesklady.cz · +420 605 522 566
+
+*Přílohy: 2 screenshoty stránky „Přijetí smlouvy" (varianta na dobu neurčitou + varianta na dobu určitou).*
 
 ---
 
