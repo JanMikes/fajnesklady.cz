@@ -253,15 +253,35 @@ class PriceCalculatorTest extends TestCase
 
     public function testRoundingHandling(): void
     {
-        // Test that rounding works correctly for prices that don't divide evenly
-        $storageType = $this->createStorageType(10000, 30100); // 301 Kč/month, ~10.03 Kč/day
+        // Prorated portion of the price always rounds UP to the nearest whole
+        // CZK (= 100 halere). The customer sees the same number on step 1, step
+        // 2 of the order flow, and on GoPay — no more "1 429 Kč here but charged
+        // 1 428,57 Kč there" surprises.
+        $storageType = $this->createStorageType(10000, 30100); // 100 Kč/week
         $startDate = new \DateTimeImmutable('2024-01-01');
-        $endDate = new \DateTimeImmutable('2024-01-02'); // 1 day, but >= 28 threshold doesn't apply
+        $endDate = new \DateTimeImmutable('2024-01-02'); // 1 day
 
         $price = $this->calculator->calculatePrice($storageType, $startDate, $endDate);
 
-        // 1 day = 10000 / 7 = 1428.57... rounded to 1429
-        $this->assertSame(1429, $price);
+        // 1 day = 10000 / 7 = 1428.57 halere → ceil to whole CZK = 1500 halere (15 Kč)
+        $this->assertSame(1500, $price);
+    }
+
+    public function testTenDaysAtWholeCzkWeeklyRoundsTailUp(): void
+    {
+        // The exact case from the customer bug report: 10-day rental against a
+        // weekly rate that doesn't divide cleanly into days. The displayed
+        // "Cena celkem" on step 1 must equal what the customer is actually
+        // charged at GoPay.
+        $storageType = $this->createStorageType(100000, 400000); // 1 000 Kč/week
+        $startDate = new \DateTimeImmutable('2024-01-01');
+        $endDate = new \DateTimeImmutable('2024-01-11'); // 10 days
+
+        $price = $this->calculator->calculatePrice($storageType, $startDate, $endDate);
+
+        // 1 week (100000) + 3 days × (100000/7 = 14 285,71…) = 142 857,14 halere
+        // ceil to whole CZK → 100000 + 42900 = 142 900 halere (1 429 Kč)
+        $this->assertSame(142900, $price);
     }
 
     public function testCalculatePriceForStorageWithoutCustomPrices(): void

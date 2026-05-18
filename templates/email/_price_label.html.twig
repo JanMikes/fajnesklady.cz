@@ -1,6 +1,6 @@
 {# Inputs: isRecurring (bool), priceCzk (float|int)
    Used by order_confirmation, order_cancelled. Renders a <td>/<td> row body. #}
-{% set formattedPrice = priceCzk|number_format(2, ',', ' ') ~ ' Kč' %}
+{% set formattedPrice = priceCzk|number_format(0, ',', ' ') ~ ' Kč' %}
 {% if isRecurring %}
     <td>Měsíční platba:</td>
     <td><strong>{{ formattedPrice }} / měsíc</strong></td>

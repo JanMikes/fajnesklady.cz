@@ -109,8 +109,7 @@ final readonly class PriceCalculator
         $remainingDays = $days % self::DAYS_PER_WEEK;
 
         $weeklyTotal = $fullWeeks * $weeklyRate;
-        $dailyRate = $weeklyRate / self::DAYS_PER_WEEK;
-        $remainingTotal = (int) round($remainingDays * $dailyRate);
+        $remainingTotal = self::roundUpToWholeCzk($remainingDays * $weeklyRate / self::DAYS_PER_WEEK);
 
         return $weeklyTotal + $remainingTotal;
     }
@@ -124,10 +123,24 @@ final readonly class PriceCalculator
         $remainingDays = $days % self::DAYS_PER_MONTH;
 
         $monthlyTotal = $fullMonths * $monthlyRate;
-        $dailyRate = $monthlyRate / self::DAYS_PER_MONTH;
-        $remainingTotal = (int) round($remainingDays * $dailyRate);
+        $remainingTotal = self::roundUpToWholeCzk($remainingDays * $monthlyRate / self::DAYS_PER_MONTH);
 
         return $monthlyTotal + $remainingTotal;
+    }
+
+    /**
+     * Round a haler amount UP to the nearest whole CZK (multiple of 100 halere).
+     *
+     * Why: every customer-facing surface — step 1 of the order flow, the
+     * recap, the GoPay charge — must show the same number. The step-1 sidebar
+     * formats with `number_format(0)`, so a prorated 1 428,57 Kč there reads
+     * as "1 429 Kč" while step 2 / GoPay see 1 428,57. Rounding the prorated
+     * tail UP to whole CZK at calc time keeps every surface in lockstep and
+     * never charges less than what was displayed.
+     */
+    public static function roundUpToWholeCzk(float $amountInHaler): int
+    {
+        return (int) ceil($amountInHaler / 100) * 100;
     }
 
     /**
@@ -299,8 +312,7 @@ final readonly class PriceCalculator
                 continue;
             }
             $remainingDays = max(1, $this->calculateDays($billingDate, $endDate));
-            $dailyRate = $monthlyRate / self::DAYS_PER_MONTH;
-            $proratedAmount = max(1, (int) round($remainingDays * $dailyRate));
+            $proratedAmount = max(100, self::roundUpToWholeCzk($remainingDays * $monthlyRate / self::DAYS_PER_MONTH));
             $entries[] = new PaymentScheduleEntry($billingDate, $proratedAmount);
 
             break;
@@ -346,8 +358,7 @@ final readonly class PriceCalculator
             $remainingDays = $days % self::DAYS_PER_WEEK;
             $weeklyRate = $storageType->defaultPricePerWeek;
             $periodPrice = $fullWeeks * $weeklyRate;
-            $dailyRate = $weeklyRate / self::DAYS_PER_WEEK;
-            $remainingPrice = (int) round($remainingDays * $dailyRate);
+            $remainingPrice = self::roundUpToWholeCzk($remainingDays * $weeklyRate / self::DAYS_PER_WEEK);
 
             return [
                 'days' => $days,
@@ -364,8 +375,7 @@ final readonly class PriceCalculator
         $remainingDays = $days % self::DAYS_PER_MONTH;
         $monthlyRate = $storageType->defaultPricePerMonth;
         $periodPrice = $fullMonths * $monthlyRate;
-        $dailyRate = $monthlyRate / self::DAYS_PER_MONTH;
-        $remainingPrice = (int) round($remainingDays * $dailyRate);
+        $remainingPrice = self::roundUpToWholeCzk($remainingDays * $monthlyRate / self::DAYS_PER_MONTH);
 
         return [
             'days' => $days,

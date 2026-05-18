@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service\Billing;
 
 use App\Entity\Contract;
+use App\Service\PriceCalculator;
 
 /**
  * Single source of truth for the expected amount of any recurring charge
@@ -48,10 +49,11 @@ final readonly class RecurringAmountCalculator
             return $monthlyRate;
         }
 
-        // Last cycle: prorate by remaining days over a 30-day month.
+        // Last cycle: prorate by remaining days over a 30-day month, rounded UP
+        // to whole CZK so this matches the schedule shown at order creation
+        // (see PriceCalculator::roundUpToWholeCzk).
         $remainingDays = max(1, (int) $billingPeriodStart->diff($effectiveEndDate)->days);
-        $dailyRate = $monthlyRate / self::DAYS_PER_MONTH;
 
-        return max(1, (int) round($remainingDays * $dailyRate));
+        return max(100, PriceCalculator::roundUpToWholeCzk($remainingDays * $monthlyRate / self::DAYS_PER_MONTH));
     }
 }

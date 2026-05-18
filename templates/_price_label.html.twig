@@ -5,8 +5,10 @@
      labelClass    string  optional (default 'text-sm font-medium text-gray-500')
      valueClass    string  optional (default 'text-sm text-gray-900 font-semibold')
    Never renders a lifetime total. For recurring it always appends "/ měsíc".
+   Whole-CZK output: PriceCalculator rounds up to whole CZK so the value
+   shown here matches step 1 of the order flow and the GoPay charge.
 #}
-{% set formattedPrice = priceCzk|number_format(2, ',', ' ') ~ ' Kč' %}
+{% set formattedPrice = priceCzk|number_format(0, ',', ' ') ~ ' Kč' %}
 <span class="{{ labelClass|default('text-sm font-medium text-gray-500') }}">
     {{ isRecurring ? 'Měsíční platba' : 'Celková cena' }}
 </span>

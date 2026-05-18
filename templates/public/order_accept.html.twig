@@ -442,7 +442,7 @@
                             <div class="flex justify-between gap-3">
                                 <span class="text-gray-600 shrink-0">Částka jednotlivé platby</span>
                                 <span class="font-medium text-right">
-                                    <strong>Fixní</strong>, {{ paymentSchedule.monthlyAmountInCzk|number_format(2, ',', ' ') }} Kč / měsíc <span class="text-xs text-gray-500 font-normal">vč. DPH</span>
+                                    <strong>Fixní</strong>, {{ paymentSchedule.monthlyAmountInCzk|number_format(0, ',', ' ') }} Kč / měsíc <span class="text-xs text-gray-500 font-normal">vč. DPH</span>
                                     {% if not paymentSchedule.isOpenEnded %}
                                         <br><span class="text-xs text-gray-500 font-normal">Poslední doplatek bude prorátován podle počtu zbývajících dní (jen u smluv na dobu určitou).</span>
                                     {% endif %}
