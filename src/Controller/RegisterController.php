@@ -49,6 +49,7 @@ final class RegisterController extends AbstractController
                     password: $formData->password,
                     firstName: $formData->firstName,
                     lastName: $formData->lastName,
+                    phone: (string) $formData->phone,
                     companyName: $formData->isCompany ? $formData->companyName : null,
                     companyId: $formData->isCompany ? $formData->companyId : null,
                     companyVatId: $formData->isCompany ? $formData->companyVatId : null,

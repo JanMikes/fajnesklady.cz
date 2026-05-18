@@ -12,6 +12,13 @@
                     {{ form_row(registrationForm.email) }}
                     {{ form_row(registrationForm.firstName) }}
                     {{ form_row(registrationForm.lastName) }}
+
+                    <div class="form-group">
+                        {{ form_label(registrationForm.phone, null, {label_attr: {class: 'form-label-required'}}) }}
+                        {{ form_widget(registrationForm.phone) }}
+                        {{ form_errors(registrationForm.phone) }}
+                    </div>
+
                     {{ form_row(registrationForm.password.first) }}
                     {{ form_row(registrationForm.password.second) }}
 

@@ -11,6 +11,7 @@ final readonly class RegisterUserCommand
         public string $password,
         public string $firstName,
         public string $lastName,
+        public string $phone,
         public ?string $companyName = null,
         public ?string $companyId = null,
         public ?string $companyVatId = null,

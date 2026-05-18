@@ -20,6 +20,12 @@ final class RegistrationFormData
     #[Assert\Length(max: 100, maxMessage: 'Příjmení nesmí být delší než {{ limit }} znaků.')]
     public string $lastName = '';
 
+    #[Assert\NotBlank(message: 'Zadejte telefonní číslo.')]
+    #[Assert\Length(max: 20, maxMessage: 'Telefon může mít maximálně {{ limit }} znaků.')]
+    #[Assert\Regex(pattern: '/^\+?[\d\s]+$/', message: 'Telefon může obsahovat pouze číslice, mezery a volitelně znak + na začátku.')]
+    #[Assert\Regex(pattern: '/(?:\D*\d){9}/', message: 'Telefon musí obsahovat alespoň 9 číslic.')]
+    public ?string $phone = null;
+
     #[Assert\NotBlank(message: 'Zadejte prosím heslo.')]
     #[Assert\Length(min: 8, minMessage: 'Heslo musí mít alespoň {{ limit }} znaků.')]
     public string $password = '';

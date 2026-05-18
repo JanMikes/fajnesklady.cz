@@ -44,6 +44,12 @@ final readonly class RegisterUserHandler
 
         $hashedPassword = $this->passwordHasher->hashPassword($user, $command->password);
         $user->changePassword($hashedPassword, $now);
+        $user->updateProfile(
+            $command->firstName,
+            $command->lastName,
+            $command->phone,
+            $now,
+        );
         $user->updateBillingInfo(
             $command->companyName,
             $command->companyId,
