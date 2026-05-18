@@ -207,7 +207,11 @@ final class OrderAcceptController extends AbstractController
         if (!$acceptGdpr) {
             $errors[] = 'Pro pokračování je nutné souhlasit se zpracováním osobních údajů.';
         }
-        if ($isRecurring && !$acceptRecurringPayments) {
+        // For MANUAL_RECURRING the customer is not consenting to a stored-card
+        // recurring charge — they pay each cycle one-time via an e-mail link.
+        // The dedicated "Souhlasím s opakovanou platbou" consent is hidden by
+        // order_accept.html.twig in that case, so the form does not send it.
+        if ($isRecurring && \App\Enum\BillingMode::AUTO_RECURRING === $formData->resolvedBillingMode() && !$acceptRecurringPayments) {
             $errors[] = 'Pro pokračování je nutné souhlasit s podmínkami opakovaných plateb.';
         }
         if ($requiresEarlyStartWaiver && !$acceptEarlyStartWaiver) {
@@ -303,6 +307,15 @@ final class OrderAcceptController extends AbstractController
 
             if (!$order instanceof Order) {
                 throw new \RuntimeException('Failed to create order.');
+            }
+
+            // Lock the customer's billing-mode choice onto the order. AUTO is
+            // the default; only MANUAL needs an explicit set. The form layer
+            // already enforced eligibility (UNLIMITED forced AUTO, short
+            // LIMITED forced ONE_TIME) via OrderFormData::validateBillingMode.
+            $billingMode = $formData->resolvedBillingMode();
+            if (\App\Enum\BillingMode::AUTO_RECURRING !== $billingMode) {
+                $order->setBillingMode($billingMode);
             }
 
             // 3. Sign order

@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Command;
 
+use App\Enum\BillingMode;
 use App\Service\GoPay\GoPayClient;
 use App\Service\OrderService;
-use App\Service\PriceCalculator;
 use App\Value\GoPayPayment;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -17,7 +17,6 @@ final readonly class InitiatePaymentHandler
     public function __construct(
         private GoPayClient $goPayClient,
         private OrderService $orderService,
-        private PriceCalculator $priceCalculator,
         private ClockInterface $clock,
     ) {
     }
@@ -27,27 +26,24 @@ final readonly class InitiatePaymentHandler
         $order = $command->order;
         $now = $this->clock->now();
 
-        // Mark order as awaiting payment
         $this->orderService->processPayment($order, $now);
 
-        // Create payment in GoPay - recurring for all orders >= 1 month
-        $needsRecurring = $this->priceCalculator->needsRecurringBilling($order->startDate, $order->endDate);
-
-        if ($needsRecurring) {
-            $payment = $this->goPayClient->createRecurringPayment(
+        // Branch on Order.billingMode — AUTO sets up a GoPay ON_DEMAND token,
+        // ONE_TIME and MANUAL_RECURRING take the same one-shot path because the
+        // customer is paying just the first month in both cases.
+        $payment = match ($order->billingMode) {
+            BillingMode::AUTO_RECURRING => $this->goPayClient->createRecurringPayment(
                 $order,
                 $command->returnUrl,
                 $command->notificationUrl,
-            );
-        } else {
-            $payment = $this->goPayClient->createPayment(
+            ),
+            BillingMode::ONE_TIME, BillingMode::MANUAL_RECURRING => $this->goPayClient->createPayment(
                 $order,
                 $command->returnUrl,
                 $command->notificationUrl,
-            );
-        }
+            ),
+        };
 
-        // Store GoPay payment ID on order
         $order->setGoPayPaymentId($payment->id);
 
         return $payment;

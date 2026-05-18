@@ -1,0 +1,6 @@
+{% set subjectLine = 'Vaše platba bude splatná za 7 dní' %}
+{% set headline = 'Platba za pronájem skladu — splatná za 7 dní' %}
+{% set intro %}
+    <p>blíží se splatnost další měsíční platby za pronájem vašeho skladu. Platbu prosím provedete <strong>7 dní před</strong> uvedeným dnem splatnosti pomocí níže uvedeného odkazu.</p>
+{% endset %}
+{{ include('email/_manual_billing_payment_body.html.twig') }}

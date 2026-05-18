@@ -64,6 +64,7 @@ final class PlaceEditController extends AbstractController
                 $instructionsPath = $this->fileUploader->uploadInstructions($formData->instructionsDocument, $place->id);
             }
 
+            $isAdmin = $this->isGranted('ROLE_ADMIN');
             $command = new UpdatePlaceCommand(
                 placeId: $place->id,
                 name: $formData->name,
@@ -78,6 +79,11 @@ final class PlaceEditController extends AbstractController
                 latitude: $formData->latitude,
                 longitude: $formData->longitude,
                 orderExpirationDays: $formData->orderExpirationDays,
+                manualBillingOffsetInitial: $isAdmin ? $formData->manualBillingOffsetInitial : null,
+                manualBillingOffsetReminder: $isAdmin ? $formData->manualBillingOffsetReminder : null,
+                manualBillingOffsetFinalDue: $isAdmin ? $formData->manualBillingOffsetFinalDue : null,
+                manualBillingOffsetOverdueFirst: $isAdmin ? $formData->manualBillingOffsetOverdueFirst : null,
+                manualBillingOffsetOverdueFinal: $isAdmin ? $formData->manualBillingOffsetOverdueFinal : null,
             );
 
             $this->commandBus->dispatch($command);

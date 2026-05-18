@@ -98,6 +98,18 @@ final readonly class OrderService
             createdAt: $now,
         );
 
+        // Snapshot the Place's manual-billing schedule onto the Order so any
+        // future MANUAL_RECURRING contract derived from it keeps the cadence
+        // it was placed under (operator edits to Place's offsets later must
+        // NOT retroactively shift schedules of running rentals).
+        $order->setManualBillingSchedule(
+            $place->manualBillingOffsetInitial,
+            $place->manualBillingOffsetReminder,
+            $place->manualBillingOffsetFinalDue,
+            $place->manualBillingOffsetOverdueFirst,
+            $place->manualBillingOffsetOverdueFinal,
+        );
+
         $this->orderRepository->save($order);
         $this->auditLogger->logOrderCreated($order);
 
@@ -155,6 +167,8 @@ final readonly class OrderService
             endDate: $order->endDate,
             createdAt: $now,
         );
+
+        $contract->applyBillingMode($order->billingMode);
 
         // Carry admin-onboarding billing terms onto the contract so the
         // recurring cron honours individual prices and external prepayment.

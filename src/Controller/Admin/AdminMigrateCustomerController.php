@@ -93,6 +93,7 @@ final class AdminMigrateCustomerController extends AbstractController
                     individualMonthlyAmount: $individualMonthlyAmount,
                     paidThroughDate: $formData->paidThroughDate,
                     createdByAdminId: $admin->id,
+                    billingMode: $formData->billingMode,
                 ));
 
                 $handledStamp = $envelope->last(HandledStamp::class);

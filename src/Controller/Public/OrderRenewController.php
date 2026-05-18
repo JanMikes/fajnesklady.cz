@@ -88,6 +88,9 @@ final class OrderRenewController extends AbstractController
         $formData->rentalType = RentalType::LIMITED;
         $formData->startDate = $newStart;
         $formData->endDate = $newEnd;
+        // Carry forward the previous order's billing mode — customer can still
+        // change it on the order form before signing.
+        $formData->billingMode = $previous->billingMode;
 
         $this->requestStack->getSession()->set('order_form_data', $formData->toSessionArray());
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Form;
 
+use App\Enum\BillingMode;
 use App\Enum\PaymentMethod;
 use App\Enum\RentalType;
 use Symfony\Component\Validator\Constraints as Assert;
@@ -66,6 +67,12 @@ final class AdminCreateOnboardingFormData
 
     #[Assert\NotNull(message: 'Vyberte způsob platby.')]
     public PaymentMethod $paymentMethod = PaymentMethod::EXTERNAL;
+
+    /**
+     * Decides the cadence of SUBSEQUENT payments — orthogonal to {@see self::$paymentMethod}
+     * which decides the FIRST one. UNLIMITED rentals are forced AUTO_RECURRING below.
+     */
+    public BillingMode $billingMode = BillingMode::AUTO_RECURRING;
 
     /**
      * Cenový model: 'standard' (sazba skladu), 'custom' (individuální měsíční cena),
@@ -149,6 +156,16 @@ final class AdminCreateOnboardingFormData
         if (null === $this->customMonthlyPriceInCzk || $this->customMonthlyPriceInCzk <= 0) {
             $context->buildViolation('Zadejte individuální měsíční cenu.')
                 ->atPath('customMonthlyPriceInCzk')
+                ->addViolation();
+        }
+    }
+
+    #[Assert\Callback]
+    public function validateBillingMode(ExecutionContextInterface $context): void
+    {
+        if (RentalType::UNLIMITED === $this->rentalType && BillingMode::AUTO_RECURRING !== $this->billingMode) {
+            $context->buildViolation('Pro pronájem na dobu neurčitou je dostupná pouze automatická platba kartou.')
+                ->atPath('billingMode')
                 ->addViolation();
         }
     }

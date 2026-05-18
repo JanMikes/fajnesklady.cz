@@ -89,6 +89,10 @@
     {% include 'components/customer_billing_status.html.twig' with {
         contract: contract,
         now: now,
+        manualNowUrl: manualNowUrl,
+        manualNowAmount: manualNowAmount,
+        manualNowPeriodStart: manualNowPeriodStart,
+        nextManualDate: nextManualDate,
     } only %}
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">

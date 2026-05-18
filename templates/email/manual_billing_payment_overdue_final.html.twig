@@ -1,0 +1,7 @@
+{% set subjectLine = 'Poslední upomínka: 7 dní po splatnosti' %}
+{% set headline = 'Poslední upomínka — 7 dní po splatnosti' %}
+{% set headerColor = '#991b1b' %}
+{% set intro %}
+    <p>toto je <strong>poslední automatická upomínka</strong> — platba za pronájem vašeho skladu je 7 dní po splatnosti. Pokud ji neuhradíte obratem, situaci bude řešit správce skladu individuálně a hrozí ukončení smlouvy.</p>
+{% endset %}
+{{ include('email/_manual_billing_payment_body.html.twig') }}

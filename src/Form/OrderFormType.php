@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Form;
 
+use App\Enum\BillingMode;
 use App\Enum\RentalType;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
@@ -157,6 +158,17 @@ final class OrderFormType extends AbstractType
                 'attr' => [
                     'data-datepicker-min-date-value' => (new \DateTimeImmutable('tomorrow'))->format('Y-m-d'),
                 ],
+            ])
+            ->add('billingMode', EnumType::class, [
+                'class' => BillingMode::class,
+                'label' => 'Způsob platby',
+                'expanded' => true,
+                'required' => false,
+                'choices' => [
+                    'Automatická platba kartou' => BillingMode::AUTO_RECURRING,
+                    'Ručně schvalovaná platba (výzva e-mailem)' => BillingMode::MANUAL_RECURRING,
+                ],
+                'help' => 'Při ručně schvalované platbě Vám 7 dní před každou platbou pošleme e-mail s odkazem k zaplacení. Údaje o platební kartě se neukládají.',
             ]);
     }
 

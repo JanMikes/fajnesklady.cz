@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Form;
 
+use App\Enum\BillingMode;
 use App\Enum\RentalType;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\Validator\Constraints as Assert;
@@ -94,6 +95,12 @@ final class AdminMigrateCustomerFormData
     #[Assert\NotNull(message: 'Zadejte datum, do kdy je předplaceno.')]
     public ?\DateTimeImmutable $paidThroughDate = null;
 
+    /**
+     * Cadence for charges AFTER the external prepayment runs out. UNLIMITED
+     * rentals are forced AUTO_RECURRING below.
+     */
+    public BillingMode $billingMode = BillingMode::AUTO_RECURRING;
+
     #[Assert\Callback]
     public function validateCompanyInfo(ExecutionContextInterface $context): void
     {
@@ -149,6 +156,16 @@ final class AdminMigrateCustomerFormData
                     ->atPath('endDate')
                     ->addViolation();
             }
+        }
+    }
+
+    #[Assert\Callback]
+    public function validateBillingMode(ExecutionContextInterface $context): void
+    {
+        if (RentalType::UNLIMITED === $this->rentalType && BillingMode::AUTO_RECURRING !== $this->billingMode) {
+            $context->buildViolation('Pro pronájem na dobu neurčitou je dostupná pouze automatická platba kartou.')
+                ->atPath('billingMode')
+                ->addViolation();
         }
     }
 

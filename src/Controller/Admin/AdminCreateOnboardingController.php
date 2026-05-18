@@ -79,6 +79,7 @@ final class AdminCreateOnboardingController extends AbstractController
                     individualMonthlyAmount: $individualMonthlyAmount,
                     paidThroughDate: $paidThroughDate,
                     createdByAdminId: $admin->id,
+                    billingMode: $formData->billingMode,
                 ));
 
                 $handledStamp = $envelope->last(HandledStamp::class);

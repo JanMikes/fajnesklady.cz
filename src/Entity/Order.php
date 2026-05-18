@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use App\Enum\BillingMode;
 use App\Enum\OrderStatus;
 use App\Enum\PaymentFrequency;
 use App\Enum\PaymentMethod;
@@ -85,6 +86,37 @@ class Order implements EntityWithEvents
 
     #[ORM\Column(length: 10, nullable: true, enumType: PaymentMethod::class)]
     public private(set) ?PaymentMethod $paymentMethod = null;
+
+    /**
+     * Decides the SUBSEQUENT billing cadence (orthogonal to paymentMethod which
+     * decides the first payment). AUTO_RECURRING = GoPay ON_DEMAND token + cron
+     * auto-charges; MANUAL_RECURRING = no token, cron emails one-time payment
+     * links each cycle; ONE_TIME = single payment, no further cycles. Locked
+     * at order creation; never mutated thereafter.
+     */
+    #[ORM\Column(length: 20, enumType: BillingMode::class, options: ['default' => 'auto_recurring'])]
+    public private(set) BillingMode $billingMode = BillingMode::AUTO_RECURRING;
+
+    /**
+     * Snapshot of the Place's manual-billing schedule at the moment this order
+     * was created. Read by SendManualBillingPaymentRequestsCommand so a running
+     * rental keeps the cadence it was placed under even if the operator later
+     * edits the Place's offsets.
+     */
+    #[ORM\Column(options: ['default' => -7])]
+    public private(set) int $manualBillingOffsetInitial = -7;
+
+    #[ORM\Column(options: ['default' => -2])]
+    public private(set) int $manualBillingOffsetReminder = -2;
+
+    #[ORM\Column(options: ['default' => 0])]
+    public private(set) int $manualBillingOffsetFinalDue = 0;
+
+    #[ORM\Column(options: ['default' => 3])]
+    public private(set) int $manualBillingOffsetOverdueFirst = 3;
+
+    #[ORM\Column(options: ['default' => 7])]
+    public private(set) int $manualBillingOffsetOverdueFinal = 7;
 
     /**
      * Per-order monthly override carried from admin onboarding into Contract
@@ -367,6 +399,29 @@ class Order implements EntityWithEvents
     public function setPaymentMethod(PaymentMethod $method): void
     {
         $this->paymentMethod = $method;
+    }
+
+    public function setBillingMode(BillingMode $mode): void
+    {
+        $this->billingMode = $mode;
+    }
+
+    /**
+     * Snapshot the Place's manual-billing schedule onto this order. Called
+     * once at creation by {@see \App\Service\OrderService::createOrder()}.
+     */
+    public function setManualBillingSchedule(
+        int $initial,
+        int $reminder,
+        int $finalDue,
+        int $overdueFirst,
+        int $overdueFinal,
+    ): void {
+        $this->manualBillingOffsetInitial = $initial;
+        $this->manualBillingOffsetReminder = $reminder;
+        $this->manualBillingOffsetFinalDue = $finalDue;
+        $this->manualBillingOffsetOverdueFirst = $overdueFirst;
+        $this->manualBillingOffsetOverdueFinal = $overdueFinal;
     }
 
     public function extendExpiration(\DateTimeImmutable $newExpiresAt): void

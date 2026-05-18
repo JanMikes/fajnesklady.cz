@@ -1,0 +1,7 @@
+{% set subjectLine = 'Připomenutí: platba splatná za 2 dny' %}
+{% set headline = 'Připomenutí — platba splatná za 2 dny' %}
+{% set headerColor = '#f59e0b' %}
+{% set intro %}
+    <p>připomínáme, že platba za pronájem vašeho skladu bude splatná <strong>za 2 dny</strong>. Pokud jste ji již uhradili, můžete tento e-mail ignorovat.</p>
+{% endset %}
+{{ include('email/_manual_billing_payment_body.html.twig') }}

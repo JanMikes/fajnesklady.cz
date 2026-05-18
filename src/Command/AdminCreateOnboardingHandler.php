@@ -64,6 +64,8 @@ final readonly class AdminCreateOnboardingHandler
             monthlyPriceOverride: $command->individualMonthlyAmount,
         );
 
+        $order->setBillingMode($command->billingMode);
+
         // 4. Mark as admin-created with signing token
         $order->markAsAdminCreated();
 

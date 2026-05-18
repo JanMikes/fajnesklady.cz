@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Form;
 
+use App\Enum\BillingMode;
 use App\Enum\PaymentMethod;
 use App\Enum\RentalType;
 use App\Service\Form\StorageChoiceBuilder;
@@ -120,6 +121,16 @@ final class AdminCreateOnboardingFormType extends AbstractType
                     PaymentMethod::EXTERNAL => 'Externí platba (bankovní převod, hotovost)',
                     PaymentMethod::GOPAY => 'GoPay (zákazník nastaví při podpisu)',
                 },
+            ])
+            ->add('billingMode', EnumType::class, [
+                'class' => BillingMode::class,
+                'label' => 'Způsob následných plateb',
+                'expanded' => true,
+                'choices' => [
+                    'Automatická (uloží se karta, strhává se sama)' => BillingMode::AUTO_RECURRING,
+                    'Ručně (každý měsíc dostane e-mail s platebním odkazem)' => BillingMode::MANUAL_RECURRING,
+                ],
+                'help' => 'Pro pronájem na dobu neurčitou je dostupná pouze automatická.',
             ])
             ->add('monthlyPriceMode', ChoiceType::class, [
                 'label' => 'Cenový model',

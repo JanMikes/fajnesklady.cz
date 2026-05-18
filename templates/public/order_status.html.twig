@@ -65,6 +65,10 @@
         {% include 'components/customer_billing_status.html.twig' with {
             contract: vm.contract,
             now: vm.now,
+            manualNowUrl: vm.payManualNowUrl,
+            manualNowAmount: vm.manualNowAmountInHaler,
+            manualNowPeriodStart: vm.manualNowPeriodStart,
+            nextManualDate: vm.nextManualPaymentRequestDate,
         } only %}
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">

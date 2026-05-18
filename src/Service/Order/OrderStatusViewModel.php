@@ -38,6 +38,10 @@ final readonly class OrderStatusViewModel
         public array $invoiceDownloads,
         public ?string $newOrderUrl,
         public \DateTimeImmutable $now,
+        public ?string $payManualNowUrl = null,
+        public ?\DateTimeImmutable $nextManualPaymentRequestDate = null,
+        public ?int $manualNowAmountInHaler = null,
+        public ?\DateTimeImmutable $manualNowPeriodStart = null,
     ) {
     }
 }

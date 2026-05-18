@@ -22,7 +22,41 @@ final readonly class GoPayApiClient implements GoPayClient
 
     public function createPayment(Order $order, string $returnUrl, string $notificationUrl): GoPayPayment
     {
-        $response = $this->gopay->createPayment($this->buildPaymentData($order, $returnUrl, $notificationUrl));
+        $storage = $order->storage;
+        $storageType = $storage->storageType;
+        $place = $storage->getPlace();
+
+        return $this->createOneTimeCharge(
+            amount: $order->firstPaymentPrice,
+            orderNumber: $order->id->toRfc4122(),
+            orderDescription: sprintf(
+                'Pronájem skladu %s - %s (%s)',
+                $storage->number,
+                $storageType->name,
+                $place->name,
+            ),
+            payerEmail: $order->user->email,
+            returnUrl: $returnUrl,
+            notificationUrl: $notificationUrl,
+        );
+    }
+
+    public function createOneTimeCharge(
+        int $amount,
+        string $orderNumber,
+        string $orderDescription,
+        string $payerEmail,
+        string $returnUrl,
+        string $notificationUrl,
+    ): GoPayPayment {
+        $response = $this->gopay->createPayment($this->buildOneTimeChargeData(
+            $amount,
+            $orderNumber,
+            $orderDescription,
+            $payerEmail,
+            $returnUrl,
+            $notificationUrl,
+        ));
 
         $this->assertSuccess($response);
 
@@ -35,7 +69,23 @@ final readonly class GoPayApiClient implements GoPayClient
 
     public function createRecurringPayment(Order $order, string $returnUrl, string $notificationUrl): GoPayPayment
     {
-        $paymentData = $this->buildPaymentData($order, $returnUrl, $notificationUrl);
+        $storage = $order->storage;
+        $storageType = $storage->storageType;
+        $place = $storage->getPlace();
+
+        $paymentData = $this->buildOneTimeChargeData(
+            $order->firstPaymentPrice,
+            $order->id->toRfc4122(),
+            sprintf(
+                'Pronájem skladu %s - %s (%s)',
+                $storage->number,
+                $storageType->name,
+                $place->name,
+            ),
+            $order->user->email,
+            $returnUrl,
+            $notificationUrl,
+        );
         $paymentData['recurrence'] = [
             'recurrence_cycle' => Recurrence::ON_DEMAND,
             'recurrence_date_to' => '2099-12-31',
@@ -97,27 +147,24 @@ final readonly class GoPayApiClient implements GoPayClient
     /**
      * @return array<string, mixed>
      */
-    private function buildPaymentData(Order $order, string $returnUrl, string $notificationUrl): array
-    {
-        $storage = $order->storage;
-        $storageType = $storage->storageType;
-        $place = $storage->getPlace();
-
+    private function buildOneTimeChargeData(
+        int $amount,
+        string $orderNumber,
+        string $orderDescription,
+        string $payerEmail,
+        string $returnUrl,
+        string $notificationUrl,
+    ): array {
         return [
             'payer' => [
                 'contact' => [
-                    'email' => $order->user->email,
+                    'email' => $payerEmail,
                 ],
             ],
-            'amount' => $order->firstPaymentPrice,
+            'amount' => $amount,
             'currency' => Currency::CZECH_CROWNS,
-            'order_number' => $order->id->toRfc4122(),
-            'order_description' => sprintf(
-                'Pronájem skladu %s - %s (%s)',
-                $storage->number,
-                $storageType->name,
-                $place->name,
-            ),
+            'order_number' => $orderNumber,
+            'order_description' => $orderDescription,
             'lang' => Language::CZECH,
             'callback' => [
                 'return_url' => $returnUrl,

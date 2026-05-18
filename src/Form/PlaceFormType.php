@@ -127,6 +127,32 @@ class PlaceFormType extends AbstractType
                 ],
                 'help' => 'Praktický návod pro zákazníky (PDF nebo DOCX, max 10 MB). Po platbě je přiložen k potvrzovacímu e-mailu.',
             ]);
+
+            $builder->add('manualBillingOffsetInitial', IntegerType::class, [
+                'label' => 'Úvodní výzva k platbě (záporné číslo = X dní před splatností)',
+                'help' => 'Výchozí: -7',
+                'attr' => ['inputmode' => 'numeric'],
+            ]);
+            $builder->add('manualBillingOffsetReminder', IntegerType::class, [
+                'label' => 'Připomenutí',
+                'help' => 'Výchozí: -2',
+                'attr' => ['inputmode' => 'numeric'],
+            ]);
+            $builder->add('manualBillingOffsetFinalDue', IntegerType::class, [
+                'label' => 'V den splatnosti',
+                'help' => 'Výchozí: 0',
+                'attr' => ['inputmode' => 'numeric'],
+            ]);
+            $builder->add('manualBillingOffsetOverdueFirst', IntegerType::class, [
+                'label' => 'První upomínka po splatnosti (kladné číslo)',
+                'help' => 'Výchozí: 3',
+                'attr' => ['inputmode' => 'numeric'],
+            ]);
+            $builder->add('manualBillingOffsetOverdueFinal', IntegerType::class, [
+                'label' => 'Poslední upomínka po splatnosti',
+                'help' => 'Výchozí: 7',
+                'attr' => ['inputmode' => 'numeric'],
+            ]);
         }
     }
 

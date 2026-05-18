@@ -45,7 +45,7 @@
             signed: false,
             signingPlace: {{ (submitted.signingPlace ?? '')|json_encode|e('html_attr') }},
             acceptAll: {{ (submitted.acceptAll ?? false) ? 'true' : 'false' }},
-            acceptRecurring: {{ isRecurring ? ((submitted.acceptRecurring ?? false) ? 'true' : 'false') : 'true' }}
+            acceptRecurring: {{ (isRecurring and formData.billingMode.value == 'auto_recurring') ? ((submitted.acceptRecurring ?? false) ? 'true' : 'false') : 'true' }}
          }"
          @signature:signed.window="signed = true"
          @signature:cleared.window="signed = false">
@@ -382,6 +382,27 @@
                         {% endif %}
                     </div>
 
+                    {# MANUAL_RECURRING information card. Replaces the AUTO recurring-
+                       payment disclosure + consent block when the customer chose to be
+                       reminded by e-mail before each cycle (spec 036). No "Parametry
+                       opakované platby" card and no dedicated GoPay-consent checkbox
+                       because there is no token stored. The master T&C consent above
+                       still applies to each one-time payment. #}
+                    {% if formData.billingMode.value == 'manual_recurring' %}
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                        <h2 class="font-semibold text-gray-900 mb-2 flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                            Ručně schvalovaná platba
+                        </h2>
+                        <p class="text-sm text-gray-700">
+                            První platbu zaplatíte hned po podpisu. Před každou další platbou Vám 7 dní předem pošleme e-mail s odkazem k zaplacení.
+                            <strong>Žádné údaje o platební kartě se neukládají.</strong>
+                        </p>
+                    </div>
+                    {% endif %}
+
                     {# Recurring-payment block — parameters + dedicated consent in one
                        visually unified card. Placed here, just above the submit
                        button, so the dedicated checkbox sits adjacent to the master
@@ -390,8 +411,12 @@
                        parameters MUST sit on a visible place SEPARATE from the
                        general T&C, and consent for recurring payments MUST be a
                        dedicated checkbox (not folded into the master "I agree").
-                       See .claude/COMPLIANCE.md. #}
-                    {% if isRecurring %}
+                       See .claude/COMPLIANCE.md.
+
+                       Shown only when billingMode is AUTO_RECURRING — for MANUAL
+                       the information card above takes its place (no token, no
+                       silent debit, no GoPay-managed parameters to disclose). #}
+                    {% if isRecurring and formData.billingMode.value == 'auto_recurring' %}
                     <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
                         <h2 class="font-semibold text-gray-900 mb-3 flex items-center">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-amber-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">

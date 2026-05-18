@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace App\Controller\Portal\User;
 
 use App\Entity\User;
+use App\Enum\BillingMode;
 use App\Repository\ContractRepository;
 use App\Repository\InvoiceRepository;
+use App\Repository\ManualPaymentRequestRepository;
 use App\Repository\OrderRepository;
+use App\Service\Billing\ManualBillingReminderSchedule;
 use App\Service\ContractService;
 use App\Service\PriceCalculator;
 use App\Service\Security\ContractVoter;
@@ -28,6 +31,7 @@ final class OrderDetailController extends AbstractController
         private readonly OrderRepository $orderRepository,
         private readonly ContractRepository $contractRepository,
         private readonly InvoiceRepository $invoiceRepository,
+        private readonly ManualPaymentRequestRepository $manualPaymentRequestRepository,
         private readonly ContractService $contractService,
         private readonly PriceCalculator $priceCalculator,
         private readonly ClockInterface $clock,
@@ -67,6 +71,25 @@ final class OrderDetailController extends AbstractController
 
         $paymentSchedule = $this->priceCalculator->buildScheduleFromOrder($order);
 
+        $manualNowUrl = null;
+        $manualNowAmount = null;
+        $manualNowPeriodStart = null;
+        $nextManualDate = null;
+        if (null !== $contract && BillingMode::MANUAL_RECURRING === $contract->billingMode) {
+            $pending = $this->manualPaymentRequestRepository->findPendingForCurrentCycle($contract, $now);
+            if (null !== $pending && null !== $pending->goPayGatewayUrl) {
+                $manualNowUrl = $pending->goPayGatewayUrl;
+                $manualNowAmount = $pending->amount;
+                $manualNowPeriodStart = $pending->periodStart;
+            }
+            if (null === $pending && null !== $contract->nextBillingDate) {
+                $schedule = ManualBillingReminderSchedule::fromOrder($contract->order);
+                $nextManualDate = $contract->nextBillingDate
+                    ->setTime(0, 0, 0)
+                    ->modify(sprintf('%d days', $schedule->offsetInitial));
+            }
+        }
+
         return $this->render('portal/user/order/detail.html.twig', [
             'order' => $order,
             'contract' => $contract,
@@ -78,6 +101,10 @@ final class OrderDetailController extends AbstractController
             'canTerminate' => $canTerminate,
             'paymentSchedule' => $paymentSchedule,
             'now' => $now,
+            'manualNowUrl' => $manualNowUrl,
+            'manualNowAmount' => $manualNowAmount,
+            'manualNowPeriodStart' => $manualNowPeriodStart,
+            'nextManualDate' => $nextManualDate,
         ]);
     }
 }

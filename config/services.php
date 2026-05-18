@@ -43,6 +43,7 @@ return App::config([
                 '../src/Service/Excel/ExcelColumnType.php',
                 '../src/Service/Excel/ExcelSheet.php',
                 '../src/Service/Fakturoid/StaleFakturoidSubjectException.php',
+                '../src/Service/Billing/ManualBillingReminderSchedule.php',
             ],
         ],
         'App\\Service\\Identity\\ProvideIdentity' => [

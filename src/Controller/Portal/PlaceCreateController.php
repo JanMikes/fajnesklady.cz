@@ -71,6 +71,11 @@ final class PlaceCreateController extends AbstractController
                 latitude: $formData->latitude,
                 longitude: $formData->longitude,
                 orderExpirationDays: $formData->orderExpirationDays,
+                manualBillingOffsetInitial: $formData->manualBillingOffsetInitial,
+                manualBillingOffsetReminder: $formData->manualBillingOffsetReminder,
+                manualBillingOffsetFinalDue: $formData->manualBillingOffsetFinalDue,
+                manualBillingOffsetOverdueFirst: $formData->manualBillingOffsetOverdueFirst,
+                manualBillingOffsetOverdueFinal: $formData->manualBillingOffsetOverdueFinal,
             );
 
             $this->commandBus->dispatch($command);

@@ -49,6 +49,27 @@ class Place
     #[ORM\Column(options: ['default' => 9999])]
     public private(set) int $storageCodeTo = 9999;
 
+    /**
+     * Days relative to {@see Contract::$nextBillingDate} on which each manual-
+     * billing reminder fires. Negative = before due date, positive = after.
+     * Snapshotted onto each new Order so running rentals keep their original
+     * cadence when the operator edits these later.
+     */
+    #[ORM\Column(options: ['default' => -7])]
+    public private(set) int $manualBillingOffsetInitial = -7;
+
+    #[ORM\Column(options: ['default' => -2])]
+    public private(set) int $manualBillingOffsetReminder = -2;
+
+    #[ORM\Column(options: ['default' => 0])]
+    public private(set) int $manualBillingOffsetFinalDue = 0;
+
+    #[ORM\Column(options: ['default' => 3])]
+    public private(set) int $manualBillingOffsetOverdueFirst = 3;
+
+    #[ORM\Column(options: ['default' => 7])]
+    public private(set) int $manualBillingOffsetOverdueFinal = 7;
+
     #[ORM\Column]
     public private(set) bool $isActive = true;
 
@@ -164,6 +185,22 @@ class Place
     public function storageCodeRangeSize(): int
     {
         return $this->storageCodeTo - $this->storageCodeFrom + 1;
+    }
+
+    public function updateManualBillingSchedule(
+        int $initial,
+        int $reminder,
+        int $finalDue,
+        int $overdueFirst,
+        int $overdueFinal,
+        \DateTimeImmutable $now,
+    ): void {
+        $this->manualBillingOffsetInitial = $initial;
+        $this->manualBillingOffsetReminder = $reminder;
+        $this->manualBillingOffsetFinalDue = $finalDue;
+        $this->manualBillingOffsetOverdueFirst = $overdueFirst;
+        $this->manualBillingOffsetOverdueFinal = $overdueFinal;
+        $this->updatedAt = $now;
     }
 
     public function activate(\DateTimeImmutable $now): void

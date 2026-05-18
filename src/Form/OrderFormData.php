@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Form;
 
 use App\Entity\User;
+use App\Enum\BillingMode;
 use App\Enum\RentalType;
+use App\Service\PriceCalculator;
 use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Component\Validator\Context\ExecutionContextInterface;
 
@@ -69,6 +71,24 @@ final class OrderFormData
      * Read by OrderAcceptController to decide between auto-swap and an error redirect.
      */
     public string $selectionMode = 'auto';
+
+    /**
+     * Selected by the customer when their rental is fixed-term LIMITED ≥ 28 days.
+     * Other durations are forced (UNLIMITED → AUTO_RECURRING, short LIMITED → ONE_TIME)
+     * by {@see self::validateBillingMode()} so a forged payload cannot bypass eligibility.
+     *
+     * Nullable so the Form DataMapper can map an empty radio submission back
+     * to the FormData without a TypeError (the per-field live-validation flow
+     * submits the form while individual fields are still empty). Consumers
+     * read it via {@see self::resolvedBillingMode()} which falls back to
+     * AUTO_RECURRING when not yet selected.
+     */
+    public ?BillingMode $billingMode = BillingMode::AUTO_RECURRING;
+
+    public function resolvedBillingMode(): BillingMode
+    {
+        return $this->billingMode ?? BillingMode::AUTO_RECURRING;
+    }
 
     #[Assert\Callback]
     public function validatePassword(ExecutionContextInterface $context): void
@@ -181,6 +201,25 @@ final class OrderFormData
         }
     }
 
+    #[Assert\Callback]
+    public function validateBillingMode(ExecutionContextInterface $context): void
+    {
+        if (RentalType::UNLIMITED === $this->rentalType && BillingMode::AUTO_RECURRING !== $this->billingMode) {
+            $context->buildViolation('Pro pronájem na dobu neurčitou je dostupná pouze automatická platba kartou.')
+                ->atPath('billingMode')
+                ->addViolation();
+        }
+
+        if (RentalType::LIMITED === $this->rentalType
+            && null !== $this->startDate && null !== $this->endDate
+            && (int) $this->startDate->diff($this->endDate)->days < PriceCalculator::WEEKLY_THRESHOLD_DAYS
+            && BillingMode::ONE_TIME !== $this->billingMode) {
+            $context->buildViolation('Pro krátkodobé pronájmy se platí jednorázově.')
+                ->atPath('billingMode')
+                ->addViolation();
+        }
+    }
+
     public static function fromUser(User $user): self
     {
         $formData = new self();
@@ -223,6 +262,7 @@ final class OrderFormData
             'startDate' => $this->startDate?->format('Y-m-d'),
             'endDate' => $this->endDate?->format('Y-m-d'),
             'selectionMode' => $this->selectionMode,
+            'billingMode' => $this->resolvedBillingMode()->value,
         ];
     }
 
@@ -250,6 +290,9 @@ final class OrderFormData
         $formData->endDate = isset($data['endDate']) ? new \DateTimeImmutable($data['endDate']) : null;
         $mode = $data['selectionMode'] ?? null;
         $formData->selectionMode = 'manual' === $mode ? 'manual' : 'auto';
+        if (isset($data['billingMode'])) {
+            $formData->billingMode = BillingMode::tryFrom($data['billingMode']) ?? BillingMode::AUTO_RECURRING;
+        }
 
         return $formData;
     }

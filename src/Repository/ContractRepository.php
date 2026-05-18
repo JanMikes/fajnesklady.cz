@@ -16,6 +16,15 @@ use Symfony\Component\Uid\Uuid;
 
 class ContractRepository
 {
+    /**
+     * Predicate identifying contracts that are on a recurring billing track
+     * (AUTO via GoPay token or MANUAL via per-cycle e-mail links). Used as a
+     * proxy for "owes us money every month" across MRR / active-recurring
+     * queries. Excludes ONE_TIME (short rentals) and externally-prepaid
+     * contracts that have not yet converted.
+     */
+    public const array RECURRING_BILLING_MODES = ['auto_recurring', 'manual_recurring'];
+
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
     ) {
@@ -685,8 +694,43 @@ class ContractRepository
             ->andWhere('c.terminatedAt IS NULL')
             ->andWhere('c.paidThroughDate BETWEEN :rangeStart AND :rangeEnd')
             ->andWhere('c.lastAdvanceNoticeSentAt IS NULL OR c.lastAdvanceNoticeSentAt < :rangeStart')
+            // MANUAL_RECURRING contracts get their own per-cycle payment-request
+            // e-mails (spec 036). Sending the "set up auto" notice in parallel
+            // would confuse the customer.
+            ->andWhere('c.billingMode != :manual')
             ->setParameter('rangeStart', $rangeStart)
             ->setParameter('rangeEnd', $rangeEnd)
+            ->setParameter('manual', \App\Enum\BillingMode::MANUAL_RECURRING->value)
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Wide pre-filter for the manual-billing cron. The per-Order schedule
+     * snapshot decides the exact stage day in PHP, so this query is just a
+     * coarse "any chance of a reminder today" gate over a ±90-day window
+     * (matches PlaceFormData's range constraint).
+     *
+     * @return Contract[]
+     */
+    public function findManualBillingCandidates(\DateTimeImmutable $now): array
+    {
+        $windowStart = $now->modify('-90 days');
+        $windowEnd = $now->modify('+90 days');
+
+        return $this->entityManager->createQueryBuilder()
+            ->select('c')
+            ->from(Contract::class, 'c')
+            ->where('c.billingMode = :manual')
+            ->andWhere('c.terminatedAt IS NULL')
+            ->andWhere('c.nextBillingDate IS NOT NULL')
+            ->andWhere('c.endDate IS NULL OR c.endDate >= :now')
+            ->andWhere('c.terminatesAt IS NULL OR c.terminatesAt >= :now')
+            ->andWhere('c.nextBillingDate BETWEEN :windowStart AND :windowEnd')
+            ->setParameter('manual', \App\Enum\BillingMode::MANUAL_RECURRING->value)
+            ->setParameter('now', $now)
+            ->setParameter('windowStart', $windowStart)
+            ->setParameter('windowEnd', $windowEnd)
             ->getQuery()
             ->getResult();
     }
@@ -737,9 +781,10 @@ class ContractRepository
             ->from(Contract::class, 'c')
             ->join('c.storage', 's')
             ->where('s.owner = :landlord')
-            ->andWhere('c.goPayParentPaymentId IS NOT NULL')
+            ->andWhere('c.billingMode IN (:recurringModes)')
             ->andWhere('c.terminatedAt IS NULL')
             ->setParameter('landlord', $landlord)
+            ->setParameter('recurringModes', self::RECURRING_BILLING_MODES)
             ->orderBy('c.createdAt', 'DESC')
             ->getQuery()
             ->getResult();
@@ -748,8 +793,12 @@ class ContractRepository
     /**
      * Sum expected recurring revenue for a landlord (active recurring contracts only).
      *
-     * Scoping: `goPayParentPaymentId IS NOT NULL` is intentional — landlord MRR
-     * excludes externally-prepaid contracts (spec 026, "Sync with landlord MRR formula").
+     * Includes both AUTO and MANUAL recurring tracks (spec 036) so landlord MRR
+     * reflects all on-going monthly revenue. Externally-prepaid-not-yet-converted
+     * contracts remain excluded because their billingMode is left at the default
+     * AUTO but they have no GoPay token — wait, the migration backfills them as
+     * recurring too. The semantic gate is now "billing mode = recurring track",
+     * irrespective of whether a token has been established.
      */
     public function sumExpectedRecurringByLandlord(User $landlord): int
     {
@@ -762,9 +811,10 @@ class ContractRepository
             ->join('c.storage', 's')
             ->join('c.order', 'o')
             ->where('s.owner = :landlord')
-            ->andWhere('c.goPayParentPaymentId IS NOT NULL')
+            ->andWhere('c.billingMode IN (:recurringModes)')
             ->andWhere('c.terminatedAt IS NULL')
             ->setParameter('landlord', $landlord)
+            ->setParameter('recurringModes', self::RECURRING_BILLING_MODES)
             ->getQuery()
             ->getSingleScalarResult();
 
@@ -783,8 +833,9 @@ class ContractRepository
             ->select('SUM(COALESCE(c.individualMonthlyAmount, o.firstPaymentPrice))')
             ->from(Contract::class, 'c')
             ->join('c.order', 'o')
-            ->where('c.goPayParentPaymentId IS NOT NULL')
+            ->where('c.billingMode IN (:recurringModes)')
             ->andWhere('c.terminatedAt IS NULL')
+            ->setParameter('recurringModes', self::RECURRING_BILLING_MODES)
             ->getQuery()
             ->getSingleScalarResult();
 
@@ -801,9 +852,10 @@ class ContractRepository
             ->from(Contract::class, 'c')
             ->join('c.storage', 's')
             ->where('s.owner = :landlord')
-            ->andWhere('c.goPayParentPaymentId IS NOT NULL')
+            ->andWhere('c.billingMode IN (:recurringModes)')
             ->andWhere('c.terminatedAt IS NULL')
             ->setParameter('landlord', $landlord)
+            ->setParameter('recurringModes', self::RECURRING_BILLING_MODES)
             ->getQuery()
             ->getSingleScalarResult();
     }
@@ -816,8 +868,9 @@ class ContractRepository
         return (int) $this->entityManager->createQueryBuilder()
             ->select('COUNT(c.id)')
             ->from(Contract::class, 'c')
-            ->where('c.goPayParentPaymentId IS NOT NULL')
+            ->where('c.billingMode IN (:recurringModes)')
             ->andWhere('c.terminatedAt IS NULL')
+            ->setParameter('recurringModes', self::RECURRING_BILLING_MODES)
             ->getQuery()
             ->getSingleScalarResult();
     }
@@ -857,12 +910,15 @@ class ContractRepository
                 INNER JOIN storage s ON s.id = c.storage_id
                 INNER JOIN orders o ON o.id = c.order_id
                 WHERE s.place_id IN (:placeIds)
-                  AND c.go_pay_parent_payment_id IS NOT NULL
+                  AND c.billing_mode IN (:recurringModes)
                   AND c.terminated_at IS NULL
                 GROUP BY s.place_id
                 SQL,
-            ['placeIds' => $idStrings],
-            ['placeIds' => \Doctrine\DBAL\ArrayParameterType::STRING]
+            ['placeIds' => $idStrings, 'recurringModes' => self::RECURRING_BILLING_MODES],
+            [
+                'placeIds' => \Doctrine\DBAL\ArrayParameterType::STRING,
+                'recurringModes' => \Doctrine\DBAL\ArrayParameterType::STRING,
+            ]
         )->fetchAllAssociative();
 
         $stats = [];
@@ -883,9 +939,10 @@ class ContractRepository
             ->from(Contract::class, 'c')
             ->join('c.storage', 's')
             ->where('s.place = :place')
-            ->andWhere('c.goPayParentPaymentId IS NOT NULL')
+            ->andWhere('c.billingMode IN (:recurringModes)')
             ->andWhere('c.terminatedAt IS NULL')
-            ->setParameter('place', $place);
+            ->setParameter('place', $place)
+            ->setParameter('recurringModes', self::RECURRING_BILLING_MODES);
 
         if (null !== $owner) {
             $qb->andWhere('s.owner = :owner')->setParameter('owner', $owner);
@@ -930,9 +987,10 @@ class ContractRepository
             ->join('c.storage', 's')
             ->join('c.order', 'o')
             ->where('s.place = :place')
-            ->andWhere('c.goPayParentPaymentId IS NOT NULL')
+            ->andWhere('c.billingMode IN (:recurringModes)')
             ->andWhere('c.terminatedAt IS NULL')
-            ->setParameter('place', $place);
+            ->setParameter('place', $place)
+            ->setParameter('recurringModes', self::RECURRING_BILLING_MODES);
 
         if (null !== $owner) {
             $qb->andWhere('s.owner = :owner')->setParameter('owner', $owner);

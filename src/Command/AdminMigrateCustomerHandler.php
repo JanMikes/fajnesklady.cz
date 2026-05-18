@@ -66,6 +66,7 @@ final readonly class AdminMigrateCustomerHandler
         // 4. Mark as admin-created with external payment
         $order->markAsAdminCreated();
         $order->setPaymentMethod(PaymentMethod::EXTERNAL);
+        $order->setBillingMode($command->billingMode);
 
         // Default paidThroughDate to endDate for LIMITED rentals when omitted
         $paidThroughDate = $command->paidThroughDate ?? $command->endDate;

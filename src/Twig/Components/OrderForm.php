@@ -98,6 +98,30 @@ final class OrderForm extends AbstractController
     }
 
     /**
+     * Whether the customer is currently eligible to choose between AUTO and
+     * MANUAL recurring billing. Only fixed-term LIMITED rentals of ≥ 28 days
+     * surface the radio — short LIMITED is forced ONE_TIME, UNLIMITED is
+     * forced AUTO. Re-evaluated reactively on every date change.
+     */
+    public function isEligibleForBillingModeChoice(): bool
+    {
+        $data = $this->getForm()->getData();
+        if (!$data instanceof OrderFormData) {
+            return false;
+        }
+
+        if (RentalType::LIMITED !== $data->rentalType) {
+            return false;
+        }
+
+        if (null === $data->startDate || null === $data->endDate) {
+            return false;
+        }
+
+        return (int) $data->startDate->diff($data->endDate)->days >= PriceCalculator::WEEKLY_THRESHOLD_DAYS;
+    }
+
+    /**
      * Authoritative payment schedule for the live preview. Same
      * {@see PriceCalculator::buildPaymentSchedule()} call the order_accept
      * page and the recurring-billing cron use — what's shown here is what

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use App\Enum\BillingMode;
 use App\Enum\RentalType;
 use App\Enum\TerminationReason;
 use App\Event\ContractPriceChanged;
@@ -88,6 +89,15 @@ class Contract implements EntityWithEvents
      */
     #[ORM\Column(nullable: true)]
     public private(set) ?int $individualMonthlyAmount = null;
+
+    /**
+     * Mirrors {@see Order::$billingMode}. Locked at order completion (carried
+     * from Order by {@see \App\Service\OrderService::completeOrder()}). Drives
+     * SendManualBillingPaymentRequestsCommand candidate selection + MRR /
+     * active-recurring predicates across ContractRepository.
+     */
+    #[ORM\Column(length: 20, enumType: BillingMode::class, options: ['default' => 'auto_recurring'])]
+    public private(set) BillingMode $billingMode = BillingMode::AUTO_RECURRING;
 
     public function __construct(
         #[ORM\Id]
@@ -325,6 +335,11 @@ class Contract implements EntityWithEvents
     public function getEffectiveMonthlyAmount(): int
     {
         return $this->individualMonthlyAmount ?? $this->storage->getEffectivePricePerMonth();
+    }
+
+    public function applyBillingMode(BillingMode $mode): void
+    {
+        $this->billingMode = $mode;
     }
 
     public function hasIndividualPrice(): bool

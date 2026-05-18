@@ -1,0 +1,8 @@
+{% set subjectLine = 'Platba je 3 dny po splatnosti' %}
+{% set headline = 'Platba je 3 dny po splatnosti' %}
+{% set headerColor = '#dc2626' %}
+{% set intro %}
+    <p>evidujeme, že platba za pronájem vašeho skladu je <strong>3 dny po splatnosti</strong>. Prosíme, uhraďte ji co nejdříve níže uvedeným odkazem.</p>
+    <p>Pokud nedojde k úhradě ani po další upomínce, kontaktuje vás správce skladu pro řešení situace.</p>
+{% endset %}
+{{ include('email/_manual_billing_payment_body.html.twig') }}

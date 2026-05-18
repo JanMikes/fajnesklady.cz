@@ -23,6 +23,11 @@ final readonly class CreatePlaceCommand
         public ?string $latitude = null,
         public ?string $longitude = null,
         public int $orderExpirationDays = 3,
+        public ?int $manualBillingOffsetInitial = null,
+        public ?int $manualBillingOffsetReminder = null,
+        public ?int $manualBillingOffsetFinalDue = null,
+        public ?int $manualBillingOffsetOverdueFirst = null,
+        public ?int $manualBillingOffsetOverdueFinal = null,
     ) {
     }
 }

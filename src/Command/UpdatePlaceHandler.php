@@ -48,6 +48,22 @@ final readonly class UpdatePlaceHandler
 
         $place->updateOrderExpirationDays($command->orderExpirationDays, $now);
 
+        if (null !== $command->manualBillingOffsetInitial
+            && null !== $command->manualBillingOffsetReminder
+            && null !== $command->manualBillingOffsetFinalDue
+            && null !== $command->manualBillingOffsetOverdueFirst
+            && null !== $command->manualBillingOffsetOverdueFinal
+        ) {
+            $place->updateManualBillingSchedule(
+                $command->manualBillingOffsetInitial,
+                $command->manualBillingOffsetReminder,
+                $command->manualBillingOffsetFinalDue,
+                $command->manualBillingOffsetOverdueFirst,
+                $command->manualBillingOffsetOverdueFinal,
+                $now,
+            );
+        }
+
         $this->placeRepository->save($place);
     }
 }

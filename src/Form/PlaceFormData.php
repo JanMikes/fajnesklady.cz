@@ -63,6 +63,38 @@ final class PlaceFormData
 
     public ?string $longitude = null;
 
+    #[Assert\Range(min: -90, max: 0, notInRangeMessage: 'Připomenutí před splatností musí být 0 až -90 dní.')]
+    public int $manualBillingOffsetInitial = -7;
+
+    #[Assert\Range(min: -90, max: 0, notInRangeMessage: 'Připomenutí před splatností musí být 0 až -90 dní.')]
+    public int $manualBillingOffsetReminder = -2;
+
+    #[Assert\Range(min: -90, max: 0, notInRangeMessage: 'Připomenutí před splatností musí být 0 až -90 dní.')]
+    public int $manualBillingOffsetFinalDue = 0;
+
+    #[Assert\Range(min: 1, max: 90, notInRangeMessage: 'Upomínka po splatnosti musí být 1 až 90 dní.')]
+    public int $manualBillingOffsetOverdueFirst = 3;
+
+    #[Assert\Range(min: 1, max: 90, notInRangeMessage: 'Upomínka po splatnosti musí být 1 až 90 dní.')]
+    public int $manualBillingOffsetOverdueFinal = 7;
+
+    #[Assert\Callback]
+    public function validateManualBillingOrdering(ExecutionContextInterface $context): void
+    {
+        if (!($this->manualBillingOffsetInitial < $this->manualBillingOffsetReminder
+            && $this->manualBillingOffsetReminder < $this->manualBillingOffsetFinalDue)) {
+            $context->buildViolation('Připomenutí před splatností musí být v pořadí: nejdříve nejvzdálenější, pak bližší (např. -7, -2, 0).')
+                ->atPath('manualBillingOffsetInitial')
+                ->addViolation();
+        }
+
+        if (!($this->manualBillingOffsetOverdueFirst < $this->manualBillingOffsetOverdueFinal)) {
+            $context->buildViolation('Upomínky po splatnosti musí být v pořadí (např. 3 < 7).')
+                ->atPath('manualBillingOffsetOverdueFinal')
+                ->addViolation();
+        }
+    }
+
     #[Assert\Callback]
     public function validate(ExecutionContextInterface $context): void
     {
@@ -96,6 +128,11 @@ final class PlaceFormData
         $formData->postalCode = $place->postalCode;
         $formData->description = $place->description;
         $formData->orderExpirationDays = $place->orderExpirationDays;
+        $formData->manualBillingOffsetInitial = $place->manualBillingOffsetInitial;
+        $formData->manualBillingOffsetReminder = $place->manualBillingOffsetReminder;
+        $formData->manualBillingOffsetFinalDue = $place->manualBillingOffsetFinalDue;
+        $formData->manualBillingOffsetOverdueFirst = $place->manualBillingOffsetOverdueFirst;
+        $formData->manualBillingOffsetOverdueFinal = $place->manualBillingOffsetOverdueFinal;
         $formData->latitude = $place->latitude;
         $formData->longitude = $place->longitude;
         $formData->useMapLocation = !$place->hasAddress() && null !== $place->latitude;

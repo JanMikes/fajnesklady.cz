@@ -7,10 +7,13 @@ namespace App\Service\Order;
 use App\Entity\AuditLog;
 use App\Entity\Contract;
 use App\Entity\Order;
+use App\Enum\BillingMode;
 use App\Enum\OrderStatus;
 use App\Repository\AuditLogRepository;
 use App\Repository\ContractRepository;
 use App\Repository\InvoiceRepository;
+use App\Repository\ManualPaymentRequestRepository;
+use App\Service\Billing\ManualBillingReminderSchedule;
 use App\Service\OrderStatusUrlGenerator;
 use App\Service\RecurringPaymentCancelUrlGenerator;
 use Psr\Clock\ClockInterface;
@@ -27,6 +30,7 @@ final readonly class OrderStatusViewModelFactory
         private RecurringPaymentCancelUrlGenerator $cancelUrlGenerator,
         private UrlGeneratorInterface $urlGenerator,
         private ClockInterface $clock,
+        private ManualPaymentRequestRepository $manualPaymentRequestRepository,
     ) {
     }
 
@@ -105,6 +109,26 @@ final readonly class OrderStatusViewModelFactory
             $newOrderUrl = $this->urlGenerator->generate('app_home', [], UrlGeneratorInterface::ABSOLUTE_URL);
         }
 
+        $payManualNowUrl = null;
+        $manualNowAmountInHaler = null;
+        $manualNowPeriodStart = null;
+        $nextManualPaymentRequestDate = null;
+        if (null !== $contract && BillingMode::MANUAL_RECURRING === $contract->billingMode) {
+            $pendingRequest = $this->manualPaymentRequestRepository->findPendingForCurrentCycle($contract, $now);
+            if (null !== $pendingRequest && null !== $pendingRequest->goPayGatewayUrl) {
+                $payManualNowUrl = $pendingRequest->goPayGatewayUrl;
+                $manualNowAmountInHaler = $pendingRequest->amount;
+                $manualNowPeriodStart = $pendingRequest->periodStart;
+            }
+
+            if (null === $pendingRequest && null !== $contract->nextBillingDate) {
+                $schedule = ManualBillingReminderSchedule::fromOrder($contract->order);
+                $nextManualPaymentRequestDate = $contract->nextBillingDate
+                    ->setTime(0, 0, 0)
+                    ->modify(sprintf('%d days', $schedule->offsetInitial));
+            }
+        }
+
         $timeline = $this->buildTimeline($order, $contract);
 
         return new OrderStatusViewModel(
@@ -127,6 +151,10 @@ final readonly class OrderStatusViewModelFactory
             invoiceDownloads: $invoiceDownloads,
             newOrderUrl: $newOrderUrl,
             now: $now,
+            payManualNowUrl: $payManualNowUrl,
+            nextManualPaymentRequestDate: $nextManualPaymentRequestDate,
+            manualNowAmountInHaler: $manualNowAmountInHaler,
+            manualNowPeriodStart: $manualNowPeriodStart,
         );
     }
 

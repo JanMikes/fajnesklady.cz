@@ -38,8 +38,39 @@ final readonly class AuditLogDescriptionRenderer
             'storage.manually_blocked' => $this->describeStorageManuallyBlocked($log),
             'storage.manually_released' => 'Sklad ručně uvolněn',
             'user.password_changed_by_admin' => $this->describeUserPasswordChangedByAdmin($log),
+            'manual_payment_request.requested' => $this->describeManualPaymentRequested($log),
+            'manual_payment_request.received' => 'Ručně schvalovaná platba přijata',
+            'order.billing_mode_set' => $this->describeBillingModeSet($log),
             default => sprintf('%s — %s', $log->entityType, $log->eventType),
         };
+    }
+
+    private function describeManualPaymentRequested(AuditLog $log): string
+    {
+        $stage = $log->payload['stage'] ?? null;
+        $stageLabel = match ($stage) {
+            'initial' => 'úvodní výzva',
+            'd_minus_2' => 'připomenutí (2 dny před splatností)',
+            'd_zero' => 'splatné dnes',
+            'd_plus_3' => 'po splatnosti (3 dny)',
+            'd_plus_7' => 'po splatnosti (7 dní)',
+            default => is_string($stage) ? $stage : 'neznámá fáze',
+        };
+
+        return sprintf('Ručně schvalovaná platba — %s', $stageLabel);
+    }
+
+    private function describeBillingModeSet(AuditLog $log): string
+    {
+        $mode = $log->payload['billing_mode'] ?? null;
+        $modeLabel = match ($mode) {
+            'one_time' => 'jednorázová platba',
+            'auto_recurring' => 'automatická opakovaná platba',
+            'manual_recurring' => 'ručně schvalovaná opakovaná platba',
+            default => is_string($mode) ? $mode : 'neznámý režim',
+        };
+
+        return sprintf('Způsob platby nastaven: %s', $modeLabel);
     }
 
     private function describeContractExpiringSoon(AuditLog $log): string

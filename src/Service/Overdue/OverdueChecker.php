@@ -6,6 +6,7 @@ namespace App\Service\Overdue;
 
 use App\Entity\Contract;
 use App\Entity\Place;
+use App\Enum\BillingMode;
 use App\Repository\ContractRepository;
 use App\Value\OverdueContractView;
 use App\Value\OverdueSeverity;
@@ -103,15 +104,19 @@ final readonly class OverdueChecker
         $anchor = $contract->nextBillingDate ?? $now;
         $monthlyRate = $contract->order->firstPaymentPrice;
         $attempts = $contract->failedBillingAttempts;
+        $isManual = BillingMode::MANUAL_RECURRING === $contract->billingMode;
 
         if ($attempts >= 1) {
             return new OverdueContractView(
                 contract: $contract,
                 daysOverdue: max(1, (int) $anchor->diff($now)->days),
                 // GoPay retries don't accrue a new period — same charge is being retried.
+                // For MANUAL, the same per-cycle payment-link is being chased.
                 overdueAmount: $monthlyRate,
                 severity: OverdueSeverity::ERROR,
-                reasonLabel: sprintf('Selhání platby (%d×)', $attempts),
+                reasonLabel: $isManual
+                    ? sprintf('Zákazník nezaplatil výzvu (%d×)', $attempts)
+                    : sprintf('Selhání platby (%d×)', $attempts),
                 anchorDate: $anchor,
             );
         }
@@ -121,7 +126,7 @@ final readonly class OverdueChecker
             daysOverdue: max(1, (int) $anchor->diff($now)->days),
             overdueAmount: $monthlyRate,
             severity: OverdueSeverity::WARNING,
-            reasonLabel: 'Strhnutí splatné',
+            reasonLabel: $isManual ? 'Zákazník nezaplatil výzvu' : 'Strhnutí splatné',
             anchorDate: $anchor,
         );
     }

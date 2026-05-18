@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ subjectLine }}</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: {{ headerColor|default('#2563eb') }}; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
+        .header h1 { margin: 0; font-size: 22px; }
+        .content { background-color: #f9f9f9; padding: 30px; border: 1px solid #ddd; border-top: none; }
+        .lead { margin-top: 0; }
+        .summary { background-color: #fff; border: 1px solid #ddd; border-radius: 5px; padding: 16px 20px; margin: 20px 0; }
+        .summary table { width: 100%; border-collapse: collapse; }
+        .summary td { padding: 8px 0; border-bottom: 1px solid #eee; font-size: 14px; }
+        .summary td:first-child { font-weight: 600; color: #555; width: 55%; }
+        .summary tr:last-child td { border-bottom: none; }
+        .cta { display: inline-block; background-color: #2563eb; color: #fff; padding: 12px 28px; text-decoration: none; border-radius: 5px; font-size: 15px; font-weight: 600; }
+        .secondary-cta { display: inline-block; background-color: #fff; border: 1px solid #d1d5db; color: #374151; padding: 10px 24px; text-decoration: none; border-radius: 5px; font-size: 14px; }
+        .footer { text-align: center; padding: 20px; font-size: 12px; color: #666; }
+        a { color: #2563eb; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>{{ headline }}</h1>
+    </div>
+
+    <div class="content">
+        <p class="lead">Dobrý den {{ name }},</p>
+
+        {{ intro|raw }}
+
+        <div class="summary">
+            <table>
+                <tr><td>Pobočka</td><td>{{ placeName }}</td></tr>
+                <tr><td>Typ skladu</td><td>{{ storageType }}</td></tr>
+                <tr><td>Číslo skladu</td><td>{{ storageNumber }}</td></tr>
+                <tr><td>Období</td><td>{{ periodStart|date('d.m.Y') }} – {{ periodEnd|date('d.m.Y') }}</td></tr>
+                <tr><td>Částka k úhradě</td><td><strong>{{ amountInCzk }} Kč vč. DPH</strong></td></tr>
+            </table>
+        </div>
+
+        {% if gatewayUrl %}
+            <p style="text-align: center; margin: 28px 0;">
+                <a href="{{ gatewayUrl }}" class="cta">Zaplatit přes GoPay</a>
+            </p>
+        {% endif %}
+
+        <p style="text-align: center; margin: 20px 0;">
+            <a href="{{ statusUrl }}" class="secondary-cta">Zobrazit stav objednávky</a>
+        </p>
+
+        <p>Pokud máte dotazy, kontaktujte nás na <a href="mailto:simek@fajnesklady.cz">simek@fajnesklady.cz</a>.</p>
+
+        <p>S pozdravem,<br><strong>Tým Fajnesklady.cz</strong></p>
+    </div>
+
+    <div class="footer">
+        <p>Mekmann s.r.o., IČO 11678631, Dvořákova 780, 739 11 Frýdlant nad Ostravicí</p>
+        <p>Toto je automaticky generovaný e-mail. V obecných záležitostech kontaktujte <a href="mailto:skladmistr@fajnesklady.cz">skladmistr@fajnesklady.cz</a> nebo +420 605 522 566.</p>
+        <p>&copy; {{ 'now'|date('Y') }} Fajnesklady.cz. Všechna práva vyhrazena.</p>
+    </div>
+</body>
+</html>

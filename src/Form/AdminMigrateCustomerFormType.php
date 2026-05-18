@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Form;
 
+use App\Enum\BillingMode;
 use App\Enum\RentalType;
 use App\Service\Form\StorageChoiceBuilder;
 use Symfony\Component\Form\AbstractType;
@@ -129,6 +130,16 @@ final class AdminMigrateCustomerFormType extends AbstractType
                 'label' => 'Předplaceno do',
                 'widget' => 'single_text',
                 'help' => 'Datum, do kterého externí platba pokrývá pronájem. Pro doby určité přednastavte datum konce smlouvy.',
+            ])
+            ->add('billingMode', EnumType::class, [
+                'class' => BillingMode::class,
+                'label' => 'Způsob následných plateb (po vypršení předplatného)',
+                'expanded' => true,
+                'choices' => [
+                    'Automatická (uloží se karta, strhává se sama)' => BillingMode::AUTO_RECURRING,
+                    'Ručně (každý měsíc dostane e-mail s platebním odkazem)' => BillingMode::MANUAL_RECURRING,
+                ],
+                'help' => 'Pro pronájem na dobu neurčitou je dostupná pouze automatická.',
             ])
             ->add('monthlyPriceMode', ChoiceType::class, [
                 'label' => 'Cenový model pro budoucí měsíční platby',

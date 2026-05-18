@@ -251,6 +251,14 @@
                             </div>
                         </div>
 
+                        {% if this.isEligibleForBillingModeChoice() %}
+                            <div class="space-y-2">
+                                {{ form_row(form.billingMode) }}
+                            </div>
+                        {% else %}
+                            {% do form.billingMode.setRendered %}
+                        {% endif %}
+
                         {# Dynamic Pricing — server-rendered via PriceCalculator (same schedule the
                            order acceptance flow + recurring-billing cron use). data-model="on(change)|*"
                            syncs form values on every change, so this re-renders naturally with each

@@ -1,0 +1,7 @@
+{% set subjectLine = 'Platba je splatná dnes' %}
+{% set headline = 'Platba je splatná dnes' %}
+{% set headerColor = '#dc2626' %}
+{% set intro %}
+    <p>platba za pronájem vašeho skladu je splatná <strong>dnes</strong>. Pokud jste ji ještě neuhradili, učiňte tak prosím co nejdříve níže uvedeným odkazem.</p>
+{% endset %}
+{{ include('email/_manual_billing_payment_body.html.twig') }}

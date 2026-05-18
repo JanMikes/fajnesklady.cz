@@ -247,6 +247,47 @@ final readonly class AuditLogger
         );
     }
 
+    public function logManualPaymentRequested(\App\Entity\ManualPaymentRequest $request, string $stage): void
+    {
+        $this->log(
+            entityType: 'manual_payment_request',
+            entityId: $request->id->toRfc4122(),
+            eventType: 'requested',
+            payload: [
+                'contract_id' => $request->contract->id->toRfc4122(),
+                'period_start' => $request->periodStart->format('Y-m-d'),
+                'stage' => $stage,
+                'amount' => $request->amount,
+                'gopay_payment_id' => $request->goPayPaymentId,
+            ],
+        );
+    }
+
+    public function logManualPaymentReceived(\App\Entity\ManualPaymentRequest $request): void
+    {
+        $this->log(
+            entityType: 'manual_payment_request',
+            entityId: $request->id->toRfc4122(),
+            eventType: 'received',
+            payload: [
+                'contract_id' => $request->contract->id->toRfc4122(),
+                'period_start' => $request->periodStart->format('Y-m-d'),
+                'amount' => $request->amount,
+                'gopay_payment_id' => $request->goPayPaymentId,
+            ],
+        );
+    }
+
+    public function logBillingModeSetOnOrder(Order $order): void
+    {
+        $this->log(
+            entityType: 'order',
+            entityId: $order->id->toRfc4122(),
+            eventType: 'billing_mode_set',
+            payload: ['billing_mode' => $order->billingMode->value],
+        );
+    }
+
     // User events
     public function logUserPasswordChangedByAdmin(User $targetUser): void
     {

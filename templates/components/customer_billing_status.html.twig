@@ -2,14 +2,50 @@
    Renders nothing for vanilla recurring contracts.
 
    Inputs:
-     contract  Contract|null       — null hides everything
-     now       \DateTimeImmutable  — used for the 7-day window calculation
+     contract           Contract|null         — null hides everything
+     now                \DateTimeImmutable    — used for the 7-day window calculation
+     manualNowUrl       string|null           — GoPay gateway URL of a pending unpaid manual-billing request
+     manualNowAmount    int|null              — amount in haler of the pending manual-billing request
+     manualNowPeriodStart \DateTimeImmutable|null — period-start date of the pending manual-billing request
+     nextManualDate     \DateTimeImmutable|null — date of the next d-7 reminder when no request is open right now
 
    Free wins over external prepayment when both are set: a zero-priced contract
    has no recurring charge to resume, so the prepayment banner would mislead.
+   MANUAL variants take priority over external-prepayment because the
+   immediate action (pay-now CTA) is more urgent than the future banner.
 #}
 {% if contract is not null %}
-    {% if contract.isFree() %}
+    {% if contract.billingMode.value == 'manual_recurring' and not contract.isFree() %}
+        {% if manualNowUrl is defined and manualNowUrl is not null %}
+            <div class="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-4">
+                <div class="flex items-start gap-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-amber-600 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                    </svg>
+                    <div class="flex-1 text-sm text-amber-900">
+                        <strong>Platba k zaplacení:</strong>
+                        {{ (manualNowAmount / 100)|number_format(2, ',', ' ') }} Kč vč. DPH — splatná {{ manualNowPeriodStart|date('d.m.Y') }}.
+                        <a href="{{ manualNowUrl }}" class="link font-medium">Zaplatit přes GoPay</a>
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <div class="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-4">
+                <div class="flex items-start gap-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-600 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    <div class="flex-1 text-sm text-blue-900">
+                        <strong>Platby probíhají ručně.</strong>
+                        Před každou platbou (7 dní předem) Vám pošleme e-mail s odkazem k zaplacení.
+                        {% if nextManualDate is defined and nextManualDate is not null %}
+                            Příští: <strong>{{ nextManualDate|date('d.m.Y') }}</strong>.
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    {% elseif contract.isFree() %}
         <div class="mb-4 inline-flex items-center gap-2 rounded-md bg-green-50 border border-green-200 px-3 py-2">
             <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-800">
                 Pronájem zdarma

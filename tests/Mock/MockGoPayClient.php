@@ -44,6 +44,38 @@ final class MockGoPayClient implements GoPayClient
         return $this->doCreatePayment();
     }
 
+    public function createOneTimeCharge(
+        int $amount,
+        string $orderNumber,
+        string $orderDescription,
+        string $payerEmail,
+        string $returnUrl,
+        string $notificationUrl,
+    ): GoPayPayment {
+        if ($this->shouldFailNextPayment) {
+            $this->shouldFailNextPayment = false;
+
+            throw new GoPayException('Simulated payment failure', 500);
+        }
+
+        $paymentId = 'gp_'.$this->nextPaymentId++;
+        $payment = new GoPayPayment(
+            id: $paymentId,
+            gwUrl: 'https://mock.gopay.test/gw/'.$paymentId,
+            state: 'CREATED',
+        );
+
+        $this->createdPayments[$paymentId] = $payment;
+        $this->paymentStatuses[$paymentId] = new GoPayPaymentStatus(
+            id: $paymentId,
+            state: 'CREATED',
+            parentId: null,
+            amount: $amount,
+        );
+
+        return $payment;
+    }
+
     public function createRecurrence(string $parentPaymentId, int $amount, string $orderNumber, string $description): GoPayPayment
     {
         if ($this->shouldFailNextRecurrence) {
