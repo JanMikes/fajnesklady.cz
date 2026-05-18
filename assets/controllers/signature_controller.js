@@ -38,9 +38,11 @@ export default class extends Controller {
 
     // Radio change on a typed-style option: render that style and capture
     // immediately so the user doesn't need a separate "confirm" click.
-    selectStyle(event) {
+    async selectStyle(event) {
         this.styleIdValue = event.currentTarget.dataset.styleId;
-        this._renderTypedSignature();
+        // Await the render: it has to load the web font before drawing, and
+        // capturing before that finishes would grab a blank white canvas.
+        await this._renderTypedSignature();
         this._captureSignature('typed');
     }
 
@@ -76,7 +78,10 @@ export default class extends Controller {
             const canvas = this.typedCanvasTarget;
             const ctx = canvas.getContext('2d');
             const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const hasContent = imageData.data.some((val, idx) => idx % 4 === 3 && val > 0);
+            // The canvas is pre-filled with opaque white (alpha=255 everywhere),
+            // so checking alpha tells us nothing. Look for any non-white RGB
+            // pixel — that's the actual text.
+            const hasContent = imageData.data.some((val, idx) => idx % 4 !== 3 && val < 200);
             if (!hasContent) {
                 return;
             }
@@ -127,7 +132,7 @@ export default class extends Controller {
         });
     }
 
-    _renderTypedSignature() {
+    async _renderTypedSignature() {
         if (!this.hasTypedCanvasTarget) return;
 
         const canvas = this.typedCanvasTarget;
@@ -148,16 +153,22 @@ export default class extends Controller {
 
         if (!text) return;
 
-        document.fonts.ready.then(() => {
-            ctx.fillStyle = 'white';
-            ctx.fillRect(0, 0, rect.width, rect.height);
+        const fontSize = Math.min(48, rect.width / (text.length * 0.5));
+        const fontSpec = `${fontSize}px "${style.family}"`;
 
-            const fontSize = Math.min(48, rect.width / (text.length * 0.5));
-            ctx.font = `${fontSize}px "${style.family}", cursive`;
-            ctx.fillStyle = 'black';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(text, rect.width / 2, rect.height / 2);
-        });
+        // Force-load this specific font+size+glyphs. document.fonts.ready can
+        // resolve before a swap-font has been requested, leaving us drawing
+        // with a fallback (or, worse, before the glyphs paint at all).
+        try {
+            await document.fonts.load(fontSpec, text);
+        } catch (e) {
+            // Fall through — cursive fallback is better than nothing.
+        }
+
+        ctx.font = `${fontSpec}, cursive`;
+        ctx.fillStyle = 'black';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, rect.width / 2, rect.height / 2);
     }
 }
