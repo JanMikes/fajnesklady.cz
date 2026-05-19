@@ -31,8 +31,8 @@ final class GenerateFixturePhotosCommand extends Command
         ['box-orange-wide.jpg',          1024,  576, '#f97316', 'Sklad — oranžový (16:9)'],
         ['box-gray-portrait.jpg',         480,  720, '#6b7280', 'Sklad — šedý (na výšku)'],
         ['box-green-square.jpg',          640,  640, '#10b981', 'Sklad — zelený (1:1)'],
-        ['container-red.jpg',            1200,  800, '#ef4444', 'Kontejner — červený'],
-        ['container-teal.jpg',            900,  600, '#14b8a6', 'Kontejner — tyrkysový'],
+        ['container-red.jpg',            1200,  800, '#ef4444', 'Skladovací jednotka — červená'],
+        ['container-teal.jpg',            900,  600, '#14b8a6', 'Skladovací jednotka — tyrkysová'],
         ['interior-purple.jpg',          1024,  768, '#8b5cf6', 'Interiér — fialový (4:3)'],
         ['interior-yellow-portrait.jpg',  600,  900, '#eab308', 'Interiér — žlutý (na výšku)'],
     ];

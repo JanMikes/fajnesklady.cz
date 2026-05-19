@@ -180,7 +180,7 @@ export default class extends Controller {
         if (place.storageTypes && place.storageTypes.length > 0) {
             html += `
                 <div class="mb-3">
-                    <h4 class="font-semibold text-sm mb-2 text-gray-700">Dostupné kontejnery:</h4>
+                    <h4 class="font-semibold text-sm mb-2 text-gray-700">Dostupné skladovací jednotky:</h4>
                     <div class="space-y-3">
             `;
 

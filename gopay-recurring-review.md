@@ -22,7 +22,7 @@ děkujeme za rychlou reakci a podrobné instrukce. Níže odpovídáme na všech
 
 Na stránce „Přijetí smlouvy" (těsně nad odesílacím tlačítkem, mimo obchodní podmínky) zobrazujeme:
 
-- Účel platby: Pronájem skladového kontejneru
+- Účel platby: Pronájem skladovací jednotky
 - Maximální částka opakované platby: 15 000 Kč
 - Částka jednotlivé platby: **fixní** (např. 2 900 Kč / měsíc vč. DPH); u smluv na dobu určitou je poslední doplatek prorátován podle zbývajících dní – zákazník je o této částce písemně informován min. 7 pracovních dní předem
 - Frekvence a den strhávání: **fixní**, měsíční, vždy ve stejný den jako první platba; pokud připadne na nepracovní den, strhne se následující pracovní den
