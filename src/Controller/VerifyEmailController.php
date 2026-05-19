@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Command\VerifyEmailCommand;
+use App\Service\Messenger\HandlerFailureUnwrap;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -46,14 +47,18 @@ final class VerifyEmailController extends AbstractController
             $this->addFlash('success', 'Váš email byl ověřen! Nyní se můžete přihlásit.');
 
             return $this->redirectToRoute('app_login');
-        } catch (VerifyEmailExceptionInterface $e) {
-            $this->addFlash('error', $e->getReason());
+        } catch (\Throwable $rawException) {
+            $exception = HandlerFailureUnwrap::unwrap($rawException);
 
-            return $this->redirectToRoute('app_register');
-        } catch (\Exception $e) {
+            if ($exception instanceof VerifyEmailExceptionInterface) {
+                $this->addFlash('error', $exception->getReason());
+
+                return $this->redirectToRoute('app_register');
+            }
+
             $this->logger->error('Email verification failed', [
                 'user_id' => $userId,
-                'exception' => $e,
+                'exception' => $exception,
             ]);
             $this->addFlash('error', 'Při ověřování emailu došlo k chybě. Zkuste to prosím znovu.');
 
