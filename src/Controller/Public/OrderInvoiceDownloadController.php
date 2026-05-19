@@ -9,8 +9,8 @@ use App\Repository\InvoiceRepository;
 use App\Repository\OrderRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\HeaderUtils;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Symfony\Component\HttpFoundation\UriSigner;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -56,9 +56,13 @@ final class OrderInvoiceDownloadController extends AbstractController
             throw new NotFoundHttpException('Faktura není k dispozici.');
         }
 
+        $disposition = $request->query->getBoolean('download')
+            ? HeaderUtils::DISPOSITION_ATTACHMENT
+            : HeaderUtils::DISPOSITION_INLINE;
+
         $response = new BinaryFileResponse($invoice->pdfPath);
         $response->setContentDisposition(
-            ResponseHeaderBag::DISPOSITION_ATTACHMENT,
+            $disposition,
             sprintf('faktura_%s.pdf', $invoice->invoiceNumber),
         );
 

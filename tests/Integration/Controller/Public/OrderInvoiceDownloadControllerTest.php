@@ -44,6 +44,19 @@ class OrderInvoiceDownloadControllerTest extends WebTestCase
         $this->assertSame('application/pdf', $this->client->getResponse()->headers->get('Content-Type'));
         $disposition = $this->client->getResponse()->headers->get('Content-Disposition');
         $this->assertNotNull($disposition);
+        $this->assertStringStartsWith('inline', $disposition);
+    }
+
+    public function testSignedUrlWithDownloadFlagSetsAttachmentDisposition(): void
+    {
+        $invoice = $this->findInvoiceWithPdf();
+        $order = $invoice->order;
+
+        $this->requestSigned($this->urlGenerator->generateInvoiceDownload($order, $invoice, forDownload: true));
+
+        $this->assertResponseIsSuccessful();
+        $disposition = $this->client->getResponse()->headers->get('Content-Disposition');
+        $this->assertNotNull($disposition);
         $this->assertStringStartsWith('attachment', $disposition);
     }
 

@@ -71,17 +71,22 @@ final readonly class OrderStatusViewModelFactory
 
         $isCompleted = OrderStatus::COMPLETED === $order->status;
 
+        $contractViewUrl = null;
         $contractDownloadUrl = null;
         if ($isCompleted && null !== $contract && $contract->hasDocument()) {
-            $contractDownloadUrl = $this->statusUrlGenerator->generateContractDownload($order);
+            $contractViewUrl = $this->statusUrlGenerator->generateContractDownload($order);
+            $contractDownloadUrl = $this->statusUrlGenerator->generateContractDownload($order, forDownload: true);
         }
 
         // VOP is per-order from the moment the order is placed; only cancelled
         // orders hide it. Other states (created, reserved, paid, completed,
         // expired) all see the link.
-        $vopDownloadUrl = OrderStatus::CANCELLED === $order->status
-            ? null
-            : $this->statusUrlGenerator->generateVopDownload($order);
+        $vopViewUrl = null;
+        $vopDownloadUrl = null;
+        if (OrderStatus::CANCELLED !== $order->status) {
+            $vopViewUrl = $this->statusUrlGenerator->generateVopDownload($order);
+            $vopDownloadUrl = $this->statusUrlGenerator->generateVopDownload($order, forDownload: true);
+        }
 
         $mapEmbedUrl = null;
         $mapDownloadUrl = null;
@@ -95,8 +100,11 @@ final readonly class OrderStatusViewModelFactory
             foreach ($invoices as $invoice) {
                 $invoiceDownloads[] = [
                     'name' => 'Faktura č. '.$invoice->invoiceNumber,
-                    'url' => $invoice->hasPdf()
+                    'viewUrl' => $invoice->hasPdf()
                         ? $this->statusUrlGenerator->generateInvoiceDownload($order, $invoice)
+                        : '',
+                    'downloadUrl' => $invoice->hasPdf()
+                        ? $this->statusUrlGenerator->generateInvoiceDownload($order, $invoice, forDownload: true)
                         : '',
                     'amountCzk' => $invoice->getAmountInCzk(),
                     'hasPdf' => $invoice->hasPdf(),
@@ -144,7 +152,9 @@ final readonly class OrderStatusViewModelFactory
             timeline: $timeline,
             payNowUrl: $payNowUrl,
             cancelRecurringUrl: $cancelRecurringUrl,
+            contractViewUrl: $contractViewUrl,
             contractDownloadUrl: $contractDownloadUrl,
+            vopViewUrl: $vopViewUrl,
             vopDownloadUrl: $vopDownloadUrl,
             mapEmbedUrl: $mapEmbedUrl,
             mapDownloadUrl: $mapDownloadUrl,

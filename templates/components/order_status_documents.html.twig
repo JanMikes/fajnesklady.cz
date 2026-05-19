@@ -3,8 +3,9 @@
    Inputs:
    - vm: OrderStatusViewModel
 
-   All download URLs are pre-signed by OrderStatusUrlGenerator and carried
-   on the view model — no `path()` calls for the four hardened routes here.
+   All view + download URLs are pre-signed by OrderStatusUrlGenerator and
+   carried on the view model — no `path()` calls for the four hardened
+   routes here.
 #}
 
 {% set isRecurring = vm.isRecurring %}
@@ -18,7 +19,7 @@
             </svg>
             Vaše dokumenty
         </h2>
-        <p class="text-sm text-gray-500 mb-5">Všechny dokumenty související s objednávkou si zde můžete kdykoli stáhnout.</p>
+        <p class="text-sm text-gray-500 mb-5">Dokumenty si můžete <span class="font-medium">zobrazit v prohlížeči</span> nebo <span class="font-medium">stáhnout</span>.</p>
 
         {% if hasContractRow or vm.invoiceDownloads is not empty %}
             <div class="mb-6">
@@ -26,6 +27,7 @@
                 <ul class="divide-y divide-gray-100 border border-gray-100 rounded-lg">
                     {% if hasContractRow %}
                         {{ _self.documentRow(
+                            vm.contractViewUrl,
                             vm.contractDownloadUrl,
                             'Nájemní smlouva',
                             vm.contractDownloadUrl ? 'Podepsaná smlouva o pronájmu skladové jednotky' : 'Dokument se připravuje, bude doručen e-mailem',
@@ -35,7 +37,8 @@
 
                     {% for invoice in vm.invoiceDownloads %}
                         {{ _self.documentRow(
-                            invoice.hasPdf ? invoice.url : null,
+                            invoice.hasPdf ? invoice.viewUrl : null,
+                            invoice.hasPdf ? invoice.downloadUrl : null,
                             invoice.name,
                             invoice.hasPdf
                                 ? 'Daňový doklad za platbu ' ~ (invoice.amountCzk|number_format(2, ',', ' ')) ~ ' Kč'
@@ -54,6 +57,7 @@
                     {% if vm.place.operatingRulesPath %}
                         {{ _self.documentRow(
                             upload_url(vm.place.operatingRulesPath),
+                            upload_url(vm.place.operatingRulesPath),
                             'Provozní řád pobočky',
                             'Pravidla pro užívání skladu a pobočky',
                             'pdf'
@@ -62,6 +66,7 @@
                     {% if vm.place.instructionsPath %}
                         {{ _self.documentRow(
                             upload_url(vm.place.instructionsPath),
+                            upload_url(vm.place.instructionsPath),
                             'Návod pro zákazníky',
                             'Praktický návod k používání skladu a pobočky',
                             'pdf'
@@ -69,6 +74,7 @@
                     {% endif %}
                     {% if vm.mapDownloadUrl %}
                         {{ _self.documentRow(
+                            vm.mapEmbedUrl,
                             vm.mapDownloadUrl,
                             'Mapa pobočky',
                             'Vaše skladová jednotka vyznačená v mapě',
@@ -83,12 +89,14 @@
             <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Právní a obchodní dokumenty</h3>
             <ul class="divide-y divide-gray-100 border border-gray-100 rounded-lg">
                 {{ _self.documentRow(
+                    vm.vopViewUrl,
                     vm.vopDownloadUrl,
                     'Všeobecné obchodní podmínky (VOP)',
                     'Podpis na každé straně, platné v době uzavření smlouvy',
                     'pdf'
                 ) }}
                 {{ _self.documentRow(
+                    asset('documents/pouceni-spotrebitele.pdf'),
                     asset('documents/pouceni-spotrebitele.pdf'),
                     'Poučení spotřebitele',
                     'Vaše práva při uzavření smlouvy distančním způsobem',
@@ -97,6 +105,7 @@
                 {% if isRecurring %}
                     {{ _self.documentRow(
                         asset('documents/podminky-opakovanych-plateb.pdf'),
+                        asset('documents/podminky-opakovanych-plateb.pdf'),
                         'Podmínky opakovaných plateb',
                         'Pravidla pro opakované strhávání platby z karty',
                         'pdf'
@@ -104,11 +113,13 @@
                 {% endif %}
                 {{ _self.documentRow(
                     asset('documents/formular-odstoupeni-od-smlouvy.pdf'),
+                    asset('documents/formular-odstoupeni-od-smlouvy.pdf'),
                     'Formulář pro odstoupení od smlouvy',
                     'Pro uplatnění práva na odstoupení (14denní lhůta)',
                     'pdf'
                 ) }}
                 {{ _self.documentRow(
+                    asset('documents/reklamacni-formular.pdf'),
                     asset('documents/reklamacni-formular.pdf'),
                     'Reklamační formulář',
                     'Pro uplatnění reklamace služby',
@@ -119,43 +130,57 @@
     </div>
 </div>
 
-{% macro documentRow(href, name, description, kind) %}
+{#
+   Renders a single document row. Two optional actions on the right:
+   - viewHref: opens inline in a new tab (eye icon)
+   - downloadHref: forces save (download arrow icon; uses HTML5 `download`
+     attribute so static assets without server-side Content-Disposition
+     still save instead of opening)
+   If both hrefs are null the row is rendered in a disabled / placeholder
+   state (used for "PDF se připravuje" cases).
+#}
+{% macro documentRow(viewHref, downloadHref, name, description, kind) %}
+    {% set isDisabled = viewHref is null and downloadHref is null %}
     <li>
-        {% if href %}
-            <a href="{{ href }}" target="_blank" rel="noopener" class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors group">
-                <div class="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center {% if kind == 'image' %}bg-blue-50 text-blue-600{% else %}bg-red-50 text-red-600{% endif %}">
-                    {% if kind == 'image' %}
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                    {% else %}
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                    {% endif %}
-                </div>
-                <div class="flex-1 min-w-0">
-                    <div class="font-medium text-gray-900 group-hover:text-accent transition-colors">{{ name }}</div>
-                    <div class="text-xs text-gray-500">{{ description }}</div>
-                </div>
-                <div class="flex-shrink-0 text-gray-400 group-hover:text-accent transition-colors">
+        <div class="flex items-center gap-3 px-4 py-3 {% if isDisabled %}opacity-60{% else %}hover:bg-gray-50 transition-colors{% endif %}">
+            <div class="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center {% if isDisabled %}bg-gray-100 text-gray-400{% elseif kind == 'image' %}bg-blue-50 text-blue-600{% else %}bg-red-50 text-red-600{% endif %}">
+                {% if kind == 'image' %}
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
-                </div>
-            </a>
-        {% else %}
-            <div class="flex items-center gap-3 px-4 py-3 opacity-60">
-                <div class="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center bg-gray-100 text-gray-400">
+                {% else %}
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
-                </div>
-                <div class="flex-1 min-w-0">
-                    <div class="font-medium text-gray-700">{{ name }}</div>
-                    <div class="text-xs text-gray-500">{{ description }}</div>
-                </div>
+                {% endif %}
             </div>
-        {% endif %}
+            <div class="flex-1 min-w-0">
+                <div class="font-medium {% if isDisabled %}text-gray-700{% else %}text-gray-900{% endif %}">{{ name }}</div>
+                <div class="text-xs text-gray-500">{{ description }}</div>
+            </div>
+            {% if not isDisabled %}
+                <div class="flex-shrink-0 flex items-center gap-1">
+                    {% if viewHref %}
+                        <a href="{{ viewHref }}" target="_blank" rel="noopener"
+                           title="Zobrazit v prohlížeči" aria-label="Zobrazit v prohlížeči"
+                           class="inline-flex items-center justify-center w-9 h-9 rounded-lg text-gray-500 hover:text-accent hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-1 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                        </a>
+                    {% endif %}
+                    {% if downloadHref %}
+                        <a href="{{ downloadHref }}" download
+                           title="Stáhnout" aria-label="Stáhnout"
+                           class="inline-flex items-center justify-center w-9 h-9 rounded-lg text-gray-500 hover:text-accent hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-1 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                        </a>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
     </li>
 {% endmacro %}

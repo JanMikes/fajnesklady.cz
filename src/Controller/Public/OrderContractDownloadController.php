@@ -11,8 +11,8 @@ use App\Service\DocumentPdfConverter;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\HeaderUtils;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Symfony\Component\HttpFoundation\UriSigner;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -68,9 +68,13 @@ final class OrderContractDownloadController extends AbstractController
             throw new NotFoundHttpException('Konverze do PDF není dostupná.');
         }
 
+        $disposition = $request->query->getBoolean('download')
+            ? HeaderUtils::DISPOSITION_ATTACHMENT
+            : HeaderUtils::DISPOSITION_INLINE;
+
         $response = new BinaryFileResponse($pdfPath);
         $response->setContentDisposition(
-            ResponseHeaderBag::DISPOSITION_ATTACHMENT,
+            $disposition,
             'smlouva-'.$contract->id->toBase32().'.pdf',
         );
 

@@ -11,6 +11,7 @@ use App\Service\Vop\VopDocumentGenerator;
 use App\Service\Vop\VopPdfStamper;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\HttpFoundation\HeaderUtils;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\UriSigner;
@@ -53,14 +54,18 @@ final class OrderVopDownloadController extends AbstractController
             throw new NotFoundHttpException('VOP PDF se nepodařilo vygenerovat.');
         }
 
+        $disposition = $request->query->getBoolean('download')
+            ? HeaderUtils::DISPOSITION_ATTACHMENT
+            : HeaderUtils::DISPOSITION_INLINE;
+
         return new Response(
             $pdfBytes,
             Response::HTTP_OK,
             [
                 'Content-Type' => 'application/pdf',
-                'Content-Disposition' => sprintf(
-                    'attachment; filename="vop-%s.pdf"',
-                    substr($order->id->toRfc4122(), 0, 8),
+                'Content-Disposition' => HeaderUtils::makeDisposition(
+                    $disposition,
+                    sprintf('vop-%s.pdf', substr($order->id->toRfc4122(), 0, 8)),
                 ),
             ],
         );

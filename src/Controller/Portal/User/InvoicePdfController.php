@@ -8,7 +8,8 @@ use App\Repository\InvoiceRepository;
 use App\Service\Security\OrderVoter;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
-use Symfony\Component\HttpFoundation\ResponseHeaderBag;
+use Symfony\Component\HttpFoundation\HeaderUtils;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
@@ -23,7 +24,7 @@ final class InvoicePdfController extends AbstractController
     ) {
     }
 
-    public function __invoke(string $id): BinaryFileResponse
+    public function __invoke(string $id, Request $request): BinaryFileResponse
     {
         if (!Uuid::isValid($id)) {
             throw new NotFoundHttpException('Faktura nenalezena.');
@@ -42,9 +43,13 @@ final class InvoicePdfController extends AbstractController
             throw new NotFoundHttpException('PDF faktury není k dispozici.');
         }
 
+        $disposition = $request->query->getBoolean('download')
+            ? HeaderUtils::DISPOSITION_ATTACHMENT
+            : HeaderUtils::DISPOSITION_INLINE;
+
         $response = new BinaryFileResponse($invoice->pdfPath);
         $response->setContentDisposition(
-            ResponseHeaderBag::DISPOSITION_ATTACHMENT,
+            $disposition,
             sprintf('faktura_%s.pdf', $invoice->invoiceNumber),
         );
 

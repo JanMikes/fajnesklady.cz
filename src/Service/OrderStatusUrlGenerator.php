@@ -38,36 +38,43 @@ final readonly class OrderStatusUrlGenerator
         return $this->uriSigner->sign($url);
     }
 
-    public function generateContractDownload(Order $order): string
+    public function generateContractDownload(Order $order, bool $forDownload = false): string
     {
         $url = $this->urlGenerator->generate(
             'public_order_contract_download',
-            ['id' => $order->id->toRfc4122()],
+            array_filter([
+                'id' => $order->id->toRfc4122(),
+                'download' => $forDownload ? 1 : null,
+            ], static fn ($v) => null !== $v),
             UrlGeneratorInterface::ABSOLUTE_URL,
         );
 
         return $this->uriSigner->sign($url);
     }
 
-    public function generateVopDownload(Order $order): string
+    public function generateVopDownload(Order $order, bool $forDownload = false): string
     {
         $url = $this->urlGenerator->generate(
             'public_order_vop_download',
-            ['id' => $order->id->toRfc4122()],
+            array_filter([
+                'id' => $order->id->toRfc4122(),
+                'download' => $forDownload ? 1 : null,
+            ], static fn ($v) => null !== $v),
             UrlGeneratorInterface::ABSOLUTE_URL,
         );
 
         return $this->uriSigner->sign($url);
     }
 
-    public function generateInvoiceDownload(Order $order, Invoice $invoice): string
+    public function generateInvoiceDownload(Order $order, Invoice $invoice, bool $forDownload = false): string
     {
         $url = $this->urlGenerator->generate(
             'public_order_invoice_download',
-            [
+            array_filter([
                 'id' => $order->id->toRfc4122(),
                 'invoiceId' => $invoice->id->toRfc4122(),
-            ],
+                'download' => $forDownload ? 1 : null,
+            ], static fn ($v) => null !== $v),
             UrlGeneratorInterface::ABSOLUTE_URL,
         );
 
