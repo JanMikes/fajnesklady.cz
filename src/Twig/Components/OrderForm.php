@@ -122,6 +122,43 @@ final class OrderForm extends AbstractController
     }
 
     /**
+     * Which storage rate will actually be charged given the customer's current
+     * selections. Mirrors {@see PriceCalculator::buildPaymentSchedule()} cutover:
+     *
+     *   - UNLIMITED                          → 'monthly'
+     *   - LIMITED, days < 28                 → 'weekly'
+     *   - LIMITED, days >= 28                → 'monthly'
+     *   - LIMITED, dates missing or invalid  → null (undecided — show both)
+     *
+     * The Ceník sidebar collapses to the single applicable row when this
+     * returns a string, and falls back to "both rates + explainer" on null.
+     *
+     * @return 'weekly'|'monthly'|null
+     */
+    public function getApplicableRate(): ?string
+    {
+        $data = $this->getForm()->getData();
+        if (!$data instanceof OrderFormData) {
+            return null;
+        }
+
+        if (RentalType::UNLIMITED === $data->rentalType) {
+            return 'monthly';
+        }
+
+        if (null === $data->startDate || null === $data->endDate) {
+            return null;
+        }
+
+        $days = (int) $data->startDate->diff($data->endDate)->days;
+        if ($days <= 0) {
+            return null;
+        }
+
+        return $days < PriceCalculator::WEEKLY_THRESHOLD_DAYS ? 'weekly' : 'monthly';
+    }
+
+    /**
      * Authoritative payment schedule for the live preview. Same
      * {@see PriceCalculator::buildPaymentSchedule()} call the order_accept
      * page and the recurring-billing cron use — what's shown here is what

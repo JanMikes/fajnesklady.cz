@@ -185,13 +185,22 @@
                                 {{ form_widget(form.rentalType) }}
                             </div>
 
-                            {% if not rentalIsLimited %}
+                            {% if rentalIsLimited %}
+                                <div class="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                                    <p class="text-sm text-amber-800">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M5.07 19h13.86a2 2 0 001.74-3L13.74 4a2 2 0 00-3.48 0L3.33 16a2 2 0 001.74 3z" />
+                                        </svg>
+                                        Negarantujeme dostupnost stejné skladovací jednotky při prodloužení smlouvy – skladovací jednotka může být již rezervovaná.
+                                    </p>
+                                </div>
+                            {% else %}
                                 <div class="mt-4 p-4 bg-accent/10 border border-accent/20 rounded-lg">
                                     <p class="text-sm text-gray-700">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                         </svg>
-                                        Pronájem na dobu neurčitou s možností ukončení kdykoliv.
+                                        Pronájem na dobu neurčitou s možností ukončení kdykoliv. Skladovací jednotka zůstává vaše, dokud smlouvu sami neukončíte.
                                     </p>
                                 </div>
                             {% endif %}
@@ -438,20 +447,40 @@
 
                     <hr class="my-4">
 
+                    {% set applicableRate = this.applicableRate %}
                     <div class="space-y-2">
                         <h3 class="font-semibold text-gray-900">Ceník</h3>
-                        <div class="flex justify-between text-sm">
-                            <span class="text-gray-600">Týdenní sazba</span>
-                            <span class="font-semibold text-gray-900">{{ weeklyPrice|number_format(0, ',', ' ') }} Kč <span class="text-xs text-gray-500 font-normal">vč. DPH</span></span>
-                        </div>
-                        <div class="flex justify-between text-sm">
-                            <span class="text-gray-600">Měsíční sazba</span>
-                            <span class="font-semibold text-accent">{{ monthlyPrice|number_format(0, ',', ' ') }} Kč <span class="text-xs text-gray-500 font-normal">vč. DPH</span></span>
-                        </div>
-                        <p class="text-xs text-gray-500 mt-2 bg-gray-50 p-2 rounded">
-                            Pronájem kratší než 4 týdny se účtuje týdenní sazbou,
-                            delší pronájem měsíční sazbou (výhodnější).
-                        </p>
+
+                        {% if applicableRate is null or applicableRate == 'weekly' %}
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-600">
+                                    Týdenní sazba
+                                    {% if applicableRate == 'weekly' %}
+                                        <span class="ml-1 text-xs font-medium text-accent">(platí pro vás)</span>
+                                    {% endif %}
+                                </span>
+                                <span class="font-semibold {{ applicableRate == 'weekly' ? 'text-accent' : 'text-gray-900' }}">{{ weeklyPrice|number_format(0, ',', ' ') }} Kč <span class="text-xs text-gray-500 font-normal">vč. DPH</span></span>
+                            </div>
+                        {% endif %}
+
+                        {% if applicableRate is null or applicableRate == 'monthly' %}
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-600">
+                                    Měsíční sazba
+                                    {% if applicableRate == 'monthly' %}
+                                        <span class="ml-1 text-xs font-medium text-accent">(platí pro vás)</span>
+                                    {% endif %}
+                                </span>
+                                <span class="font-semibold {{ applicableRate == 'monthly' ? 'text-accent' : 'text-gray-900' }}">{{ monthlyPrice|number_format(0, ',', ' ') }} Kč <span class="text-xs text-gray-500 font-normal">vč. DPH</span></span>
+                            </div>
+                        {% endif %}
+
+                        {% if applicableRate is null %}
+                            <p class="text-xs text-gray-500 mt-2 bg-gray-50 p-2 rounded">
+                                Pronájem kratší než 4 týdny se účtuje týdenní sazbou,
+                                delší pronájem měsíční sazbou (výhodnější).
+                            </p>
+                        {% endif %}
                     </div>
 
                     <hr class="my-4">
