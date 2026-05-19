@@ -134,6 +134,12 @@
                     {% endif %}
                 </div>
 
+                {# Own-padlock reminder — insurance coverage depends on it, so
+                   surface it before the customer signs the contract. #}
+                <div class="mb-6">
+                    {% include 'components/lock_disclaimer.html.twig' %}
+                </div>
+
                 {# Customer Info #}
                 <div class="bg-blue-50 rounded-lg p-4 mb-6">
                     <h2 class="font-semibold text-gray-900 mb-3">Vaše údaje</h2>

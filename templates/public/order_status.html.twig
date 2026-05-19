@@ -173,6 +173,13 @@
                     </div>
                 {% endif %}
 
+                {# Own-padlock reminder — show whenever the rental has been
+                   activated (contract exists) so the customer is reminded
+                   each time they revisit the status page. #}
+                {% if contract %}
+                    {% include 'components/lock_disclaimer.html.twig' %}
+                {% endif %}
+
                 {# Failed-billing notice #}
                 {% if status.case.value == 'active_billing_failed' %}
                     <div class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">

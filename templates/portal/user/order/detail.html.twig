@@ -86,6 +86,14 @@
 
     {% include 'components/order_access_code.html.twig' with {storage: storage, contract: contract} only %}
 
+    {# Own-padlock reminder — insurance is conditional on it, so keep it
+       visible alongside the access code customers come here to look up. #}
+    {% if contract %}
+        <div class="mt-6">
+            {% include 'components/lock_disclaimer.html.twig' %}
+        </div>
+    {% endif %}
+
     {% include 'components/customer_billing_status.html.twig' with {
         contract: contract,
         now: now,
