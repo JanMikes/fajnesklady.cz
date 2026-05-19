@@ -283,10 +283,10 @@
                                         <span class="text-lg font-bold text-accent">{{ schedule.firstPayment.amountInCzk|number_format(0, ',', ' ') }} Kč <span class="text-xs text-gray-500 font-normal">vč. DPH</span></span>
                                     </div>
                                 {% else %}
-                                    {# FIXED-END ≥ 28 dní — full schedule with prorated tail #}
+                                    {# FIXED-END ≥ 28 dní — monthly rate header (no lifetime sum, per spec 042); breakdown below lists individual charges with dates. #}
                                     <div class="flex items-center justify-between border-b border-accent/20 pb-2">
-                                        <span class="text-sm text-gray-600">Cena celkem ({{ schedule.entryCount }} platby)</span>
-                                        <span class="text-lg font-bold text-accent">{{ schedule.totalKnownAmountInCzk|number_format(0, ',', ' ') }} Kč <span class="text-xs text-gray-500 font-normal">vč. DPH</span></span>
+                                        <span class="text-sm text-gray-600">Měsíční platba</span>
+                                        <span class="text-lg font-bold text-accent">{{ schedule.monthlyAmountInCzk|number_format(0, ',', ' ') }} Kč / měsíc <span class="text-xs text-gray-500 font-normal">vč. DPH</span></span>
                                     </div>
                                     <ul class="space-y-1 text-xs text-gray-600">
                                         {% for entry in schedule.entries %}
