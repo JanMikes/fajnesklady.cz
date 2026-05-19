@@ -56,27 +56,71 @@ jobs:
                     cache-to: type=gha, scope=${{ github.workflow }}
                     build-args: APP_VERSION=${{ github.sha }}
 
-    deploy:
+    deploy-staging:
         runs-on: ubuntu-latest
         if: ${{ github.event.workflow_run.conclusion == 'success' }}
         needs:
             - docker
         concurrency:
+            group: deploy-staging
+            cancel-in-progress: false
+        environment:
+            name: staging
+            url: https://fajnesklady.thedevs.cz
+        steps:
+            -   name: Deploy to staging
+                uses: appleboy/ssh-action@v1.2.5
+                with:
+                    host: spare.srv.thedevs.cz
+                    username: ${{ secrets.DEPLOY_USERNAME }}
+                    key: ${{ secrets.DEPLOY_PRIVATE_KEY }}
+                    script: cd /deployment/fajnesklady-staging && ./deploy.sh
+
+            -   name: Verify staging health
+                run: |
+                    for i in 1 2 3 4 5 6 7 8 9 10; do
+                      code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 https://fajnesklady.thedevs.cz/-/health-check/liveness || true)
+                      echo "attempt $i: $code"
+                      if [ "$code" = "200" ]; then
+                        curl -s --max-time 15 https://fajnesklady.thedevs.cz/-/health-check/liveness
+                        exit 0
+                      fi
+                      sleep 6
+                    done
+                    echo "Staging health check failed after retries"
+                    exit 1
+
+    deploy-production:
+        runs-on: ubuntu-latest
+        if: ${{ github.event.workflow_run.conclusion == 'success' }}
+        needs:
+            - docker
+            - deploy-staging
+        concurrency:
             group: deploy-production
             cancel-in-progress: false
         environment:
             name: production
-            url: https://fajnesklady.thedevs.cz
+            url: https://new.fajnesklady.cz
         steps:
-            -   name: Checkout
-                uses: actions/checkout@v6
-                with:
-                    fetch-depth: 0
-
             -   name: Deploy to production
                 uses: appleboy/ssh-action@v1.2.5
                 with:
-                    host: fajnesklady.thedevs.cz
+                    host: spare.srv.thedevs.cz
                     username: ${{ secrets.DEPLOY_USERNAME }}
                     key: ${{ secrets.DEPLOY_PRIVATE_KEY }}
                     script: cd /deployment/fajnesklady && ./deploy.sh
+
+            -   name: Verify production health
+                run: |
+                    for i in 1 2 3 4 5 6 7 8 9 10; do
+                      code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 https://new.fajnesklady.cz/-/health-check/liveness || true)
+                      echo "attempt $i: $code"
+                      if [ "$code" = "200" ]; then
+                        curl -s --max-time 15 https://new.fajnesklady.cz/-/health-check/liveness
+                        exit 0
+                      fi
+                      sleep 6
+                    done
+                    echo "Production health check failed after retries"
+                    exit 1
