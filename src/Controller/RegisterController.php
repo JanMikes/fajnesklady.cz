@@ -7,6 +7,7 @@ namespace App\Controller;
 use App\Command\RegisterUserCommand;
 use App\Form\RegistrationFormData;
 use App\Form\RegistrationFormType;
+use App\Service\Messenger\HandlerFailureUnwrap;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -63,13 +64,17 @@ final class RegisterController extends AbstractController
                 $this->addFlash('success', 'Registrace proběhla úspěšně! Zkontrolujte prosím svůj email pro ověření účtu.');
 
                 return $this->redirectToRoute('app_verify_email_confirmation');
-            } catch (\DomainException $e) {
-                $this->addFlash('error', $e->getMessage());
-            } catch (\Exception $e) {
-                $this->logger->error('User registration failed', [
-                    'exception' => $e,
-                ]);
-                $this->addFlash('error', 'Při registraci došlo k chybě. Zkuste to prosím znovu.');
+            } catch (\Throwable $rawException) {
+                $exception = HandlerFailureUnwrap::unwrap($rawException);
+
+                if ($exception instanceof \DomainException) {
+                    $this->addFlash('error', $exception->getMessage());
+                } else {
+                    $this->logger->error('User registration failed', [
+                        'exception' => $exception,
+                    ]);
+                    $this->addFlash('error', 'Při registraci došlo k chybě. Zkuste to prosím znovu.');
+                }
             }
         }
 
