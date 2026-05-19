@@ -167,6 +167,7 @@ Stack: PHP 8.5 (Docker image `ghcr.io/thedevs-cz/php:8.5-fajnesklady`) · Symfon
 | `PlaceStorageCodeUsage` | Tracks which storage codes have been issued at a place | place; supports bulk + on-demand allocation |
 | `EmailLog` | Persistent record of every outbound email (status, recipient, template, payload) | user (nullable); written out-of-band so survives rollback |
 | `OverdueDigestSent` | Audit row marking a daily overdue digest e-mail was sent to one admin (unique per admin per day) | admin:User |
+| `OnboardingReminderSent` | Idempotency row for `app:send-onboarding-payment-reminders` (D+2 / D+5 stages). Unique on `(order_id, stage)` | order |
 | `AuditLog` | Activity log | user |
 | `ResetPasswordRequest` | Password reset token | user |
 | `LandlordInvoiceSequence` | Invoice numbering | landlord |
@@ -179,7 +180,7 @@ User / auth: RegisterUser, RegisterLandlord, VerifyEmail, ResendVerificationEmai
 
 Place / storage: CreatePlace, UpdatePlace, DeletePlace, UpdatePlaceStorageCodeConfig, CreateStorage, UpdateStorage, DeleteStorage, AddStoragePhoto, DeleteStoragePhoto, CreateStorageType, UpdateStorageType, DeleteStorageType, AddStorageTypePhoto, DeleteStorageTypePhoto, CreateStorageUnavailability, DeleteStorageUnavailability, BulkGenerateStorageCodes, ReleaseUnusedStorageCodes.
 
-Order / payment / contract: CreateOrder, CancelOrder, CompleteOrder, AcceptOrderTerms, SignOrder, ConfirmOrderPayment, InitiatePayment, ProcessPaymentNotification, ChargeRecurringPayment, CancelRecurringPayment, RequestTerminationNotice, DispatchManualBillingNotification.
+Order / payment / contract: CreateOrder, CancelOrder, CompleteOrder, AcceptOrderTerms, SignOrder, ConfirmOrderPayment, InitiatePayment, ProcessPaymentNotification, ChargeRecurringPayment, CancelRecurringPayment, RequestTerminationNotice, DispatchManualBillingNotification, DispatchOnboardingReminder.
 
 Onboarding (admin-driven): AdminCreateOnboarding, AdminMigrateCustomer, CustomerSignOnboarding.
 
@@ -201,7 +202,7 @@ Order: OrderCreated, OrderPlaced, OrderPaid, OrderCompleted, OrderCancelled, Ord
 
 Place / handover: PlaceProposed, PlaceAccessRequested, PlaceAccessRequestApproved, PlaceAccessRequestDenied, HandoverProtocolCreated, HandoverCompleted, HandoverExpired, HandoverReminderDue.
 
-Contracts / billing: ContractExpiringSoon, ContractPriceChanged, ContractTerminated, ContractTerminatedDueToPaymentFailure, InvoiceCreated, RecurringPaymentEstablished, RecurringPaymentCharged, RecurringPaymentFailed, RecurringPaymentCancelled, RecurringPaymentAdvanceNoticeNeeded, TerminationNoticeRequested, ExternalPrepaymentEndingSoon, PaymentAmountMismatch, ManualBillingPaymentRequested, ManualBillingPaymentOverdue.
+Contracts / billing: ContractExpiringSoon, ContractPriceChanged, ContractTerminated, ContractTerminatedDueToPaymentFailure, InvoiceCreated, RecurringPaymentEstablished, RecurringPaymentCharged, RecurringPaymentFailed, RecurringPaymentCancelled, RecurringPaymentAdvanceNoticeNeeded, TerminationNoticeRequested, ExternalPrepaymentEndingSoon, PaymentAmountMismatch, ManualBillingPaymentRequested, ManualBillingPaymentOverdue, OnboardingPaymentReminderRequested.
 
 Admin notifications: OverdueDigestRequested.
 
@@ -222,12 +223,14 @@ Registration, LandlordRegistration, RequestPasswordReset, ResetPassword, ChangeP
 
 Compose `EntityManagerInterface` only — never extend `ServiceEntityRepository`, never call `flush()` (exception: `EmailLogRepository`, audit-log writers commit out-of-band so the row survives a parent rollback).
 
-User, Place, PlaceAccess, PlaceAccessRequest, PlaceChangeRequest, PlaceStorageCodeUsage, CreatePlaceRequest, Storage, StorageType, StoragePhoto, StorageTypePhoto, StorageUnavailability, Order, Contract, ContractPriceChange, ManualPaymentRequest, Invoice, SelfBillingInvoice, LandlordInvoiceSequence, Payment, HandoverProtocol, HandoverPhoto, AuditLog, EmailLog (+ `EmailLogFilter` value-object), OverdueDigestSent, ResetPasswordRequest.
+User, Place, PlaceAccess, PlaceAccessRequest, PlaceChangeRequest, PlaceStorageCodeUsage, CreatePlaceRequest, Storage, StorageType, StoragePhoto, StorageTypePhoto, StorageUnavailability, Order (incl. `findUnpaidSignedOnboarding` for the spec 043 reminder cron), Contract, ContractPriceChange, ManualPaymentRequest, Invoice, SelfBillingInvoice, LandlordInvoiceSequence, Payment, HandoverProtocol, HandoverPhoto, AuditLog, EmailLog (+ `EmailLogFilter` value-object), OverdueDigestSent, OnboardingReminderSent, ResetPasswordRequest.
 
 ## Services (`src/Service/`)
 
 - **Payment / GoPay**: `GoPay\GoPayClient`, `GoPay\GoPayApiClient`, `GoPay\GoPayException`, `GoPay\PaymentNotConfirmedException`, `RecurringPaymentCancelUrlGenerator`, `OrderStatusUrlGenerator`.
-- **Order display**: `Order\OrderDisplayStatus`, `Order\OrderDisplayStatusCase`, `Order\OrderDisplayStatusResolver`, `Order\OrderStatusViewModel`, `Order\OrderStatusViewModelFactory`. `OrderService` orchestrates higher-level order operations. `OrderEmailAttachments` + `OrderEmailAttachmentsService` bundle contract/invoice/map/VOP PDFs into outbound mail.
+- **Order display**: `Order\OrderDisplayStatus`, `Order\OrderDisplayStatusCase`, `Order\OrderDisplayStatusResolver`, `Order\OrderStatusViewModel`, `Order\OrderStatusViewModelFactory`. `OrderService` orchestrates higher-level order operations. `OrderEmailAttachments` + `OrderEmailAttachmentsService` bundle contract/invoice/map/VOP PDFs into outbound mail (falls back to `Contract.documentPath` paper PDF when `Order.hasSignature()` is false — migrate flow).
+- **Customer billing situation (spec 043)**: `Order\CustomerBillingSituation` (the enum spine: GOPAY_FIRST_CHARGE / EXTERNALLY_PREPAID / FREE; `fromOrder(Order)` + `fromContract(Contract)` factories — free wins over prepaid). Feeds four content VOs read by signing/onboarding surfaces: `Order\SigningPriceViewModel` (signing page), `Order\SigningEmailContent` (signing-link email), `Order\CompletionPageViewModel` (signing complete page), `Order\RentalActivatedEmailContent` (rental activated email).
+- **Onboarding**: `Onboarding\OnboardingReminderSchedule` (D+2 / D+5 calendar-day stage matcher for `app:send-onboarding-payment-reminders`).
 - **Invoicing / billing**: `Fakturoid\FakturoidClient`, `Fakturoid\FakturoidApiClient`, `Fakturoid\StaleFakturoidSubjectException`, `InvoicingService`, `SelfBillingService`, `Billing\RecurringAmountCalculator`, `Billing\ManualBillingReminderSchedule` (per-stage cron offsets for `MANUAL_RECURRING` contracts).
 - **VOP generation**: `Vop\VopDocumentGenerator` (fills `${PRICELIST_URL}` / `${OPERATING_RULES_URL}` into `vop_template.docx` per order), `Vop\VopPdfStamper` (overlays customer signature; `$skipLastPages` excludes annex pages).
 - **Overdue & contract risk**: `Overdue\OverdueChecker`, `AtRiskContractChecker`.
@@ -271,6 +274,7 @@ Domain exceptions, most carrying `#[WithHttpStatus]`:
 | `app:send-manual-billing-payment-requests` | Per-cycle payment-request & overdue reminders for `MANUAL_RECURRING` contracts; idempotent via `ManualPaymentRequest.sentStages` |
 | `app:send-external-prepayment-ending-soon` | Email customer when external-prepayment runway nearly used up |
 | `app:send-overdue-digest-email` | Daily 08:00 Europe/Prague — one e-mail per admin when ≥1 overdue contract; idempotent via `OverdueDigestSent` |
+| `app:send-onboarding-payment-reminders` | Daily — D+2 / D+5 payment-reminder e-mails to admin-onboarded GoPay customers who signed but never paid; idempotent via `OnboardingReminderSent` |
 | `app:send-expiration-reminders` | Email customer ahead of fixed-term contract end |
 | `app:process-contract-terminations` | Apply scheduled terminations + emit `ContractTerminated` |
 | `app:process-handover-protocols` | Send handover requests/reminders, expire stale protocols |

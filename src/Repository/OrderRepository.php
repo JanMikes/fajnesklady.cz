@@ -9,6 +9,7 @@ use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\User;
 use App\Enum\OrderStatus;
+use App\Enum\PaymentMethod;
 use App\Exception\OrderNotFound;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
@@ -110,6 +111,33 @@ class OrderRepository
                 OrderStatus::EXPIRED,
             ])
             ->setParameter('paidStatus', OrderStatus::PAID)
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Admin-created GoPay onboardings that the customer signed but never paid.
+     * Candidates for `app:send-onboarding-payment-reminders`. Window is bounded
+     * by `expiresAt > now` so we don't email customers whose orders are about
+     * to be swept up by `app:expire-orders`.
+     *
+     * @return Order[]
+     */
+    public function findUnpaidSignedOnboarding(\DateTimeImmutable $now): array
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('o')
+            ->from(Order::class, 'o')
+            ->where('o.isAdminCreated = :true')
+            ->andWhere('o.paymentMethod = :gopay')
+            ->andWhere('o.status IN (:openStatuses)')
+            ->andWhere('o.signedAt IS NOT NULL')
+            ->andWhere('o.expiresAt > :now')
+            ->setParameter('true', true)
+            ->setParameter('gopay', PaymentMethod::GOPAY)
+            ->setParameter('openStatuses', [OrderStatus::RESERVED, OrderStatus::AWAITING_PAYMENT])
+            ->setParameter('now', $now)
+            ->orderBy('o.signedAt', 'ASC')
             ->getQuery()
             ->getResult();
     }

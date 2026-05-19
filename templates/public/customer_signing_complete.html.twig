@@ -9,11 +9,8 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
         </div>
-        <h1 class="text-2xl font-bold text-gray-900 mb-4">Smlouva byla podepsána</h1>
-        <p class="text-gray-600 mb-8">
-            Vaše smlouva byla úspěšně podepsána. Na váš e-mail jsme odeslali potvrzení
-            s kopií smlouvy. Nyní se můžete přihlásit do svého účtu.
-        </p>
-        <a href="{{ path('app_login') }}" class="btn btn-primary">Přihlásit se</a>
+        <h1 class="text-2xl font-bold text-gray-900 mb-4">{{ viewModel.headline }}</h1>
+        <p class="text-gray-600 mb-8">{{ viewModel.body }}</p>
+        <a href="{{ viewModel.statusUrl }}" class="btn btn-primary">{{ viewModel.ctaLabel }}</a>
     </div>
 {% endblock %}

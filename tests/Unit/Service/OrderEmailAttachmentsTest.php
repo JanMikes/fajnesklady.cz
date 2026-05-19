@@ -11,6 +11,7 @@ use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\RentalType;
 use App\Enum\SigningMethod;
+use App\Repository\ContractRepository;
 use App\Service\ContractDocumentGenerator;
 use App\Service\DocumentPdfConverter;
 use App\Service\OrderEmailAttachmentsService;
@@ -176,14 +177,19 @@ class OrderEmailAttachmentsTest extends TestCase
             $vopStamper->method('stampSignedPdfBytes')->willReturn('%PDF-vop');
         }
 
+        $contractRepository = $this->createStub(ContractRepository::class);
+        $contractRepository->method('findByOrder')->willReturn(null);
+
         return new OrderEmailAttachmentsService(
             $contractGenerator,
             $pdfConverter,
             $vopGenerator,
             $vopStamper,
+            $contractRepository,
             $this->tempDir,
             $this->tempDir.'/template.docx',
             $this->tempDir.'/vop_template.docx',
+            $this->tempDir.'/contracts',
         );
     }
 

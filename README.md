@@ -63,6 +63,7 @@ All cron jobs run inside the Docker container on the production server.
 | `app:retry-failed-payments` | Daily at 12:00 | Retries failed payments (3 days / 7 days after failure) |
 | `app:process-contract-terminations` | Daily at 6:00 | Terminates contracts at end date or after notice period |
 | `app:send-expiration-reminders` | Daily at 8:00 | Sends reminder emails 30, 7, and 1 day before contract expiry |
+| `app:send-onboarding-payment-reminders` | Daily at 8:00 | Nudges admin-onboarded GoPay customers who signed but never paid (D+2 / D+5) |
 | `app:generate-self-billing-invoices` | 1st of month at 3:00 | Generates self-billing invoices for landlords |
 
 ## Tech Stack

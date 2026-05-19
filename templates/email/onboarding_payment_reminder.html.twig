@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ content.subject }}</title>
+    <title>{{ stage == 'd_plus_5' ? 'Druhá připomínka platby' : 'Připomínáme dokončení platby' }}</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -14,7 +14,7 @@
             padding: 20px;
         }
         .header {
-            background-color: #570df8;
+            background-color: #f59e0b;
             color: white;
             padding: 20px;
             text-align: center;
@@ -33,10 +33,6 @@
             padding: 16px 20px;
             margin: 16px 0 24px;
         }
-        .summary h3 {
-            margin: 0 0 12px;
-            font-size: 16px;
-        }
         .summary table {
             width: 100%;
             border-collapse: collapse;
@@ -49,17 +45,6 @@
         .summary td.label {
             color: #6b7280;
             width: 45%;
-        }
-        .banner {
-            border-radius: 6px;
-            padding: 14px 18px;
-            text-align: center;
-            margin: 16px 0 24px;
-        }
-        .banner-green {
-            background-color: #ecfdf5;
-            border: 2px solid #6ee7b7;
-            color: #065f46;
         }
         .button {
             display: inline-block;
@@ -81,34 +66,23 @@
 </head>
 <body>
     <div class="header">
-        <h1>{{ content.headline }}</h1>
+        <h1>{{ stage == 'd_plus_5' ? 'Druhá připomínka platby' : 'Připomínáme dokončení platby' }}</h1>
     </div>
 
     <div class="content">
         <h2>Dobrý den, {{ name }}!</h2>
 
-        {% if content.situation.value == 'externally_prepaid' %}
-            <div class="banner banner-green">
-                <strong>Pronájem je již předplacen externě do {{ content.paidThroughDate|date('d.m.Y') }}</strong>
-                <br>
-                <span style="font-size: 13px;">Po podpisu smlouvy nemusíte nic platit.</span>
-            </div>
-        {% elseif content.situation.value == 'free' %}
-            <div class="banner banner-green">
-                <strong>Bezplatný pronájem</strong>
-                <br>
-                <span style="font-size: 13px;">U této smlouvy se neúčtuje žádné nájemné. Po podpisu smlouvy nemusíte nic platit.</span>
-            </div>
+        {% if stage == 'd_plus_5' %}
+            <p>Vaše objednávka pronájmu skladu stále čeká na platbu. Pokud platbu neprovedete, objednávka bude brzy zrušena a sklad bude opět k dispozici dalším zájemcům.</p>
+        {% else %}
+            <p>Před pár dny jste podepsali smlouvu na pronájem skladu. Pro dokončení objednávky je ještě potřeba provést platbu. Můžete tak učinit jednoduše pomocí níže uvedeného odkazu.</p>
         {% endif %}
 
-        <p>{{ content.nextStepLine }}</p>
-
         <div class="summary">
-            <h3>Shrnutí objednávky</h3>
             <table>
                 <tr>
                     <td class="label">Pobočka:</td>
-                    <td><strong>{{ place.name }}</strong></td>
+                    <td><strong>{{ placeName }}</strong></td>
                 </tr>
                 {% if placeAddress %}
                 <tr>
@@ -118,37 +92,36 @@
                 {% endif %}
                 <tr>
                     <td class="label">Skladová jednotka:</td>
-                    <td>{{ storageType.name }} ({{ storage.number }})</td>
+                    <td>{{ storageType }} ({{ storageNumber }})</td>
                 </tr>
                 <tr>
                     <td class="label">Začátek:</td>
-                    <td>{{ order.startDate|date('d.m.Y') }}</td>
+                    <td>{{ startDate }}</td>
                 </tr>
-                {% if order.endDate %}
                 <tr>
                     <td class="label">Konec:</td>
-                    <td>{{ order.endDate|date('d.m.Y') }}</td>
+                    <td>{{ endDate }}</td>
                 </tr>
-                {% endif %}
-                {% if content.situation.value == 'gopay_first_charge' %}
                 <tr>
-                    <td class="label">{{ order.isRecurring() ? 'Měsíční platba:' : 'Celková cena:' }}</td>
-                    <td><strong>{{ (content.monthlyPriceInHaler / 100)|number_format(0, ',', ' ') }} Kč{% if order.isRecurring() %} / měsíc{% endif %}</strong></td>
+                    <td class="label">{{ isRecurring ? 'Měsíční platba:' : 'Celková cena:' }}</td>
+                    <td><strong>{{ amountInCzk }} Kč{% if isRecurring %} / měsíc{% endif %}</strong></td>
                 </tr>
-                {% endif %}
             </table>
         </div>
 
         <div style="text-align: center;">
-            <a href="{{ signingUrl }}" class="button">{{ content.buttonLabel }}</a>
+            <a href="{{ statusUrl }}" class="button">Zaplatit nyní</a>
         </div>
 
         <p style="font-size: 13px; color: #666;">
             Pokud tlačítko nefunguje, zkopírujte tento odkaz do prohlížeče:<br>
-            <a href="{{ signingUrl }}" style="color: #570df8; word-break: break-all;">{{ signingUrl }}</a>
+            <a href="{{ statusUrl }}" style="color: #570df8; word-break: break-all;">{{ statusUrl }}</a>
         </p>
 
-        <p>Pokud jste tuto žádost neočekávali, můžete tento e-mail ignorovat.</p>
+        <p style="font-size: 13px; color: #666;">
+            Pokud jste platbu již provedl/a, prosím ignorujte tuto zprávu. Pokud potřebujete pomoc, kontaktujte nás na
+            <a href="mailto:simek@fajnesklady.cz" style="color: #570df8;">simek@fajnesklady.cz</a>.
+        </p>
 
         <p>S pozdravem,<br>
         <strong>Tým Fajnesklady.cz</strong></p>

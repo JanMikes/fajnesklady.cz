@@ -8,7 +8,7 @@ use App\Command\CustomerSignOnboardingCommand;
 use App\Enum\PaymentMethod;
 use App\Enum\SigningMethod;
 use App\Repository\OrderRepository;
-use App\Service\PriceCalculator;
+use App\Service\Order\SigningPriceViewModel;
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -23,7 +23,6 @@ final class CustomerSigningController extends AbstractController
     public function __construct(
         private readonly OrderRepository $orderRepository,
         private readonly MessageBusInterface $commandBus,
-        private readonly PriceCalculator $priceCalculator,
         private readonly ClockInterface $clock,
         private readonly LoggerInterface $logger,
     ) {
@@ -47,12 +46,6 @@ final class CustomerSigningController extends AbstractController
             ]);
         }
 
-        $firstPaymentPrice = $this->priceCalculator->calculateFirstPaymentPrice(
-            $order->storage,
-            $order->startDate,
-            $order->endDate,
-        );
-
         if ($request->isMethod('POST')) {
             return $this->handlePost($request, $order);
         }
@@ -61,9 +54,8 @@ final class CustomerSigningController extends AbstractController
             'order' => $order,
             'storage' => $order->storage,
             'storageType' => $order->storage->storageType,
-            'place' => $order->storage->place,
-            'firstPaymentPrice' => $firstPaymentPrice,
-            'isRecurring' => null === $order->endDate,
+            'place' => $order->storage->getPlace(),
+            'priceViewModel' => SigningPriceViewModel::fromOrder($order),
         ]);
     }
 
@@ -107,19 +99,12 @@ final class CustomerSigningController extends AbstractController
                 $this->addFlash('error', $error);
             }
 
-            $firstPaymentPrice = $this->priceCalculator->calculateFirstPaymentPrice(
-                $order->storage,
-                $order->startDate,
-                $order->endDate,
-            );
-
             return $this->render('public/customer_signing.html.twig', [
                 'order' => $order,
                 'storage' => $order->storage,
                 'storageType' => $order->storage->storageType,
-                'place' => $order->storage->place,
-                'firstPaymentPrice' => $firstPaymentPrice,
-                'isRecurring' => null === $order->endDate,
+                'place' => $order->storage->getPlace(),
+                'priceViewModel' => SigningPriceViewModel::fromOrder($order),
             ]);
         }
 
@@ -149,19 +134,12 @@ final class CustomerSigningController extends AbstractController
             $this->logger->error('Customer signing failed', ['exception' => $e]);
             $this->addFlash('error', 'Při podpisu smlouvy došlo k chybě. Zkuste to prosím znovu.');
 
-            $firstPaymentPrice = $this->priceCalculator->calculateFirstPaymentPrice(
-                $order->storage,
-                $order->startDate,
-                $order->endDate,
-            );
-
             return $this->render('public/customer_signing.html.twig', [
                 'order' => $order,
                 'storage' => $order->storage,
                 'storageType' => $order->storage->storageType,
-                'place' => $order->storage->place,
-                'firstPaymentPrice' => $firstPaymentPrice,
-                'isRecurring' => null === $order->endDate,
+                'place' => $order->storage->getPlace(),
+                'priceViewModel' => SigningPriceViewModel::fromOrder($order),
             ]);
         }
     }

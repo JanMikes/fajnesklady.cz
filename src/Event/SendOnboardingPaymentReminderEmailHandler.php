@@ -4,58 +4,66 @@ declare(strict_types=1);
 
 namespace App\Event;
 
-use App\Enum\OrderStatus;
 use App\Repository\OrderRepository;
-use App\Service\OrderEmailAttachments;
+use App\Service\Onboarding\OnboardingReminderSchedule;
 use App\Service\OrderStatusUrlGenerator;
 use App\Service\Place\PlaceAddressFormatter;
+use Psr\Log\LoggerInterface;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Mime\Address;
 
+/**
+ * Sends the D+2 / D+5 nudge for admin-onboarded customers who signed but
+ * never completed payment. The status URL exposes the "Zaplatit nyní" CTA
+ * (per spec 020) so the customer can pick up where they left off.
+ */
 #[AsMessageHandler]
-final readonly class SendOrderPlacedEmailHandler
+final readonly class SendOnboardingPaymentReminderEmailHandler
 {
     public function __construct(
         private OrderRepository $orderRepository,
-        private MailerInterface $mailer,
         private OrderStatusUrlGenerator $statusUrlGenerator,
-        private OrderEmailAttachments $attachments,
         private PlaceAddressFormatter $addressFormatter,
+        private MailerInterface $mailer,
+        private LoggerInterface $logger,
     ) {
     }
 
-    public function __invoke(OrderPlaced $event): void
+    public function __invoke(OnboardingPaymentReminderRequested $event): void
     {
         $order = $this->orderRepository->get($event->orderId);
-
-        // Admin onboardings that complete in a single transaction (migrate;
-        // digital EXTERNAL/prepaid; digital free) queue OrderPlaced → OrderPaid
-        // → OrderCompleted together. By the time this handler runs post-commit,
-        // the order is already COMPLETED and SendRentalActivatedEmailHandler is
-        // about to send the richer e-mail. Suppressing this one avoids a
-        // near-duplicate "Potvrzení objednávky" with a misleading "rezervace
-        // platná do" warning landing seconds before "Pronájem zahájen".
-        if (true === $order->isAdminCreated && OrderStatus::COMPLETED === $order->status) {
-            return;
-        }
-
         $user = $order->user;
         $storage = $order->storage;
         $storageType = $storage->storageType;
         $place = $storage->getPlace();
+
+        $subject = match ($event->stage) {
+            OnboardingReminderSchedule::STAGE_D_PLUS_2 => 'Připomínáme: dokončete platbu objednávky — Fajnesklady.cz',
+            OnboardingReminderSchedule::STAGE_D_PLUS_5 => 'Druhá připomínka: vaše objednávka stále čeká na platbu',
+            default => null,
+        };
+
+        if (null === $subject) {
+            $this->logger->warning('Unknown onboarding reminder stage', [
+                'stage' => $event->stage,
+                'order_id' => $order->id->toRfc4122(),
+            ]);
+
+            return;
+        }
 
         $statusUrl = $this->statusUrlGenerator->generate($order);
 
         $email = (new TemplatedEmail())
             ->from(new Address('noreply@fajnesklady.cz', 'Fajnesklady.cz'))
             ->to(new Address($user->email, $user->fullName))
-            ->subject('Potvrzení objednávky - '.$place->name)
-            ->htmlTemplate('email/order_placed.html.twig')
+            ->subject($subject)
+            ->htmlTemplate('email/onboarding_payment_reminder.html.twig')
             ->context([
                 'name' => $user->fullName,
-                'orderNumber' => substr($order->id->toRfc4122(), 0, 8),
+                'stage' => $event->stage,
                 'placeName' => $place->name,
                 'placeAddress' => $this->addressFormatter->format($place),
                 'placeNavigationUrl' => $this->addressFormatter->navigationUrl($place),
@@ -63,15 +71,19 @@ final readonly class SendOrderPlacedEmailHandler
                 'storageNumber' => $storage->number,
                 'startDate' => $order->startDate->format('d.m.Y'),
                 'endDate' => $order->endDate?->format('d.m.Y') ?? 'Na dobu neurčitou',
-                'priceCzk' => $order->getFirstPaymentPriceInCzk(),
+                'amountInCzk' => number_format($order->getFirstPaymentPriceInCzk(), 0, ',', ' '),
                 'isRecurring' => $order->isRecurring(),
-                'expiresAt' => $order->expiresAt->format('d.m.Y H:i'),
-                'lockCode' => $storage->lockCode,
                 'statusUrl' => $statusUrl,
             ]);
 
-        $this->attachments->attachLegalDocuments($email, $order);
-
-        $this->mailer->send($email);
+        try {
+            $this->mailer->send($email);
+        } catch (\Throwable $e) {
+            $this->logger->error('Failed to send onboarding payment reminder email', [
+                'order_id' => $order->id->toRfc4122(),
+                'stage' => $event->stage,
+                'exception' => $e,
+            ]);
+        }
     }
 }

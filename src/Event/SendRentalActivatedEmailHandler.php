@@ -9,6 +9,7 @@ use App\Entity\Order;
 use App\Repository\ContractRepository;
 use App\Repository\InvoiceRepository;
 use App\Service\InvoicingService;
+use App\Service\Order\RentalActivatedEmailContent;
 use App\Service\OrderEmailAttachments;
 use App\Service\OrderStatusUrlGenerator;
 use App\Service\Place\PlaceAddressFormatter;
@@ -86,10 +87,12 @@ final readonly class SendRentalActivatedEmailHandler
             }
         }
 
+        $content = RentalActivatedEmailContent::fromContract($contract);
+
         $email = (new TemplatedEmail())
             ->from(new Address('noreply@fajnesklady.cz', 'Fajnesklady.cz'))
             ->to(new Address($user->email, $user->fullName))
-            ->subject('Pronájem zahájen - '.$place->name)
+            ->subject($content->subject)
             ->htmlTemplate('email/rental_activated.html.twig');
 
         // Same legal pack as the order-placed e-mail.
@@ -131,6 +134,7 @@ final readonly class SendRentalActivatedEmailHandler
 
         $email->context([
             'name' => $user->fullName,
+            'content' => $content,
             'contractNumber' => $this->formatContractNumber($contract),
             'placeName' => $place->name,
             'placeAddress' => $this->addressFormatter->format($place),

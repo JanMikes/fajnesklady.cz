@@ -103,7 +103,7 @@ final readonly class ContractService
             return 0;
         }
 
-        $monthlyRate = $contract->storage->getEffectivePricePerMonth();
+        $monthlyRate = $contract->getEffectiveMonthlyAmount();
         $dailyRate = $monthlyRate / 30;
 
         return (int) round($unpaidDays * $dailyRate);

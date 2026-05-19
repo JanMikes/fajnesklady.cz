@@ -195,6 +195,33 @@ final class AdminCreateOnboardingFormData implements HasBillingAddress
     }
 
     #[Assert\Callback]
+    public function validateExternalIsPrepaid(ExecutionContextInterface $context): void
+    {
+        if (PaymentMethod::EXTERNAL !== $this->paymentMethod) {
+            return;
+        }
+
+        if ('free' === $this->monthlyPriceMode) {
+            return;
+        }
+
+        // Catch the limbo state: EXTERNAL + standard price + the prepayment
+        // checkbox left unticked. When the checkbox IS ticked but the date is
+        // missing, the existing validatePaidThroughDate already produces a
+        // violation — bail here to avoid stacking two messages on the same
+        // field.
+        if ($this->isExternallyPrepaid) {
+            return;
+        }
+
+        if (null === $this->paidThroughDate) {
+            $context->buildViolation('Externí platba znamená, že zákazník již zaplatil — vyplňte datum, do kdy je předplaceno (zaškrtněte „Externí předplatné" a vyberte datum). Pro pronájem bez nutnosti platby zvolte „Zdarma".')
+                ->atPath('paidThroughDate')
+                ->addViolation();
+        }
+    }
+
+    #[Assert\Callback]
     public function validatePaidThroughDate(ExecutionContextInterface $context): void
     {
         if (!$this->isExternallyPrepaid) {

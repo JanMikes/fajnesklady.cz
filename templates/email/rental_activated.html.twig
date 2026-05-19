@@ -86,11 +86,11 @@
     <div class="content">
         <h2>Dobrý den, {{ name }}!</h2>
 
-        <div class="success-message">
-            <strong>Vaše platba byla úspěšně zpracována — pronájem skladu je aktivní.</strong>
+        <div class="success-message"{% if content.situation.value == 'externally_prepaid' %} style="background-color: #dbeafe; border-color: #3b82f6;"{% endif %}>
+            <strong{% if content.situation.value == 'externally_prepaid' %} style="color: #1e3a8a;"{% endif %}>{{ content.headline }}</strong>
         </div>
 
-        <p>Děkujeme za Vaši platbu. V příloze tohoto e-mailu najdete kompletní sadu dokumentů (smlouva, VOP, poučení spotřebitele{% if hasInvoiceAttachment %}, faktura č. {{ invoiceNumber }}{% endif %}) — vše na jednom místě, abyste je nemuseli hledat napříč doručenými zprávami.</p>
+        <p>{{ content.body }}{% if content.situation.value == 'gopay_first_charge' and hasInvoiceAttachment %} Faktura č. {{ invoiceNumber }} je rovněž přiložena.{% endif %}</p>
 
         <div class="contract-details">
             <table>

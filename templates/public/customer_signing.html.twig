@@ -26,6 +26,19 @@
            data-signature-customer-name-value="{{ customerFullName }}">
         <div class="card">
             <div class="card-body">
+                {# Situation banner — first thing the customer reads, before the order summary. #}
+                {% if priceViewModel.situation.value == 'externally_prepaid' %}
+                    <div class="rounded-lg bg-green-50 border-2 border-green-300 p-4 mb-6 text-center">
+                        <strong class="text-green-900 text-lg">Pronájem je již předplacen externě do {{ priceViewModel.paidThroughDate|date('d.m.Y') }}</strong>
+                        <p class="mt-2 text-green-800 text-sm">Po podpisu smlouvy nemusíte nic platit. Po vypršení předplatného Vás kontaktujeme s pokyny pro další platby.</p>
+                    </div>
+                {% elseif priceViewModel.situation.value == 'free' %}
+                    <div class="rounded-lg bg-green-50 border-2 border-green-300 p-4 mb-6 text-center">
+                        <strong class="text-green-900 text-lg">Bezplatný pronájem</strong>
+                        <p class="mt-2 text-green-800 text-sm">U této smlouvy se neúčtuje žádné nájemné. Po podpisu smlouvy nemusíte nic platit.</p>
+                    </div>
+                {% endif %}
+
                 <h1 class="text-2xl font-bold text-gray-900 mb-6">Podpis smlouvy</h1>
 
                 <p class="text-sm text-gray-600 mb-6">
@@ -63,11 +76,13 @@
                             <span class="font-medium">{{ order.endDate|date('d.m.Y') }}</span>
                         </div>
                         {% endif %}
-                        <hr class="border-gray-200 my-2">
-                        <div class="flex justify-between font-semibold">
-                            <span>{{ isRecurring ? 'Měsíční platba:' : 'Celková cena:' }}</span>
-                            <span>{{ (firstPaymentPrice / 100)|number_format(0, ',', ' ') }} Kč{% if isRecurring %} / měsíc{% endif %}</span>
-                        </div>
+                        {% if priceViewModel.situation.value == 'gopay_first_charge' %}
+                            <hr class="border-gray-200 my-2">
+                            <div class="flex justify-between font-semibold">
+                                <span>{{ priceViewModel.isRecurring ? 'Měsíční platba:' : 'Celková cena:' }}</span>
+                                <span>{{ (priceViewModel.monthlyPriceInHaler / 100)|number_format(0, ',', ' ') }} Kč{% if priceViewModel.isRecurring %} / měsíc{% endif %}</span>
+                            </div>
+                        {% endif %}
                     </div>
 
                     {% if storage.hasPhotos %}

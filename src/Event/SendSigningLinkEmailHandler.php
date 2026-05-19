@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Event;
 
+use App\Repository\OrderRepository;
 use App\Repository\UserRepository;
+use App\Service\Order\SigningEmailContent;
+use App\Service\Place\PlaceAddressFormatter;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -16,8 +19,10 @@ final readonly class SendSigningLinkEmailHandler
 {
     public function __construct(
         private UserRepository $userRepository,
+        private OrderRepository $orderRepository,
         private MailerInterface $mailer,
         private UrlGeneratorInterface $urlGenerator,
+        private PlaceAddressFormatter $addressFormatter,
     ) {
     }
 
@@ -28,6 +33,9 @@ final readonly class SendSigningLinkEmailHandler
         }
 
         $user = $this->userRepository->get($event->userId);
+        $order = $this->orderRepository->get($event->orderId);
+        $place = $order->storage->getPlace();
+        $storageType = $order->storage->storageType;
 
         $signingUrl = $this->urlGenerator->generate(
             'public_customer_signing',
@@ -35,14 +43,23 @@ final readonly class SendSigningLinkEmailHandler
             UrlGeneratorInterface::ABSOLUTE_URL,
         );
 
+        $content = SigningEmailContent::fromOrder($order);
+
         $email = (new TemplatedEmail())
             ->from(new Address('noreply@fajnesklady.cz', 'Fajnesklady.cz'))
             ->to(new Address($event->customerEmail, $user->fullName))
-            ->subject('Podepište smlouvu - Fajnesklady.cz')
+            ->subject($content->subject)
             ->htmlTemplate('email/signing_link.html.twig')
             ->context([
                 'name' => $user->fullName,
                 'signingUrl' => $signingUrl,
+                'content' => $content,
+                'order' => $order,
+                'storage' => $order->storage,
+                'place' => $place,
+                'storageType' => $storageType,
+                'placeAddress' => $this->addressFormatter->format($place),
+                'placeNavigationUrl' => $this->addressFormatter->navigationUrl($place),
             ]);
 
         $this->mailer->send($email);

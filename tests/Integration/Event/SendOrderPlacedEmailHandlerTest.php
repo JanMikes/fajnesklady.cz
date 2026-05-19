@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Integration\Event;
 
 use App\Entity\Order;
+use App\Enum\OrderStatus;
 use App\Enum\PaymentFrequency;
 use App\Enum\RentalType;
 use App\Event\OrderPlaced;
@@ -85,6 +86,38 @@ class SendOrderPlacedEmailHandlerTest extends KernelTestCase
         $this->assertStringContainsString('Celková cena', $body);
         $this->assertStringNotContainsString('Měsíční platba', $body);
         $this->assertStringNotContainsString('/ měsíc', $body);
+    }
+
+    public function testSkipsEmailWhenAdminCreatedAndAlreadyCompleted(): void
+    {
+        // Mirrors the one-transaction onboarding (migrate / digital
+        // prepaid / digital free). By the time SendOrderPlacedEmailHandler
+        // runs, the order is COMPLETED — sending an "objednávka přijata"
+        // here is just noise between sign-off and rental_activated.
+        $order = $this->findCompletedAdminCreatedOrder();
+        $this->sentEmails = [];
+
+        ($this->handler)(new OrderPlaced($order->id, $this->clock->now()));
+
+        $this->assertCount(0, $this->sentEmails);
+    }
+
+    private function findCompletedAdminCreatedOrder(): Order
+    {
+        $order = $this->entityManager->createQueryBuilder()
+            ->select('o')
+            ->from(Order::class, 'o')
+            ->where('o.isAdminCreated = :true')
+            ->andWhere('o.status = :completed')
+            ->setParameter('true', true)
+            ->setParameter('completed', OrderStatus::COMPLETED)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+
+        \assert($order instanceof Order, 'No admin-created COMPLETED fixture order available — check OnboardingFixtures.');
+
+        return $order;
     }
 
     private function findOrderByStorageNumber(string $number): Order

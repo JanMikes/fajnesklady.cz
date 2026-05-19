@@ -11,6 +11,7 @@ use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\OrderStatus;
 use App\Enum\PaymentFrequency;
+use App\Enum\PaymentMethod;
 use App\Enum\RentalType;
 use App\Repository\OrderRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -581,5 +582,67 @@ class OrderRepositoryTest extends KernelTestCase
         $now = new \DateTimeImmutable('2025-06-15');
 
         $this->assertSame([], $this->repository->findNextStartByStorages([], $now));
+    }
+
+    public function testFindUnpaidSignedOnboardingMatchesAdminGoPayReservedSigned(): void
+    {
+        $tenant = $this->createUser('signed-unpaid@test.com');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storage = $this->createStorage($storageType, $place, 'SU1');
+
+        $now = new \DateTimeImmutable('2026-05-19 09:00:00');
+
+        $matching = $this->createOrder($tenant, $storage, $now->modify('-2 days'), $now->modify('+30 days'));
+        $matching->markAsAdminCreated();
+        $matching->setPaymentMethod(PaymentMethod::GOPAY);
+        $matching->reserve($now->modify('-3 days'));
+        $matching->attachSignature(
+            signaturePath: '/tmp/sig.png',
+            signingMethod: \App\Enum\SigningMethod::DRAW,
+            typedName: null,
+            styleId: null,
+            signingPlace: 'Praha',
+            now: $now->modify('-2 days'),
+        );
+        $matching->extendExpiration($now->modify('+30 days'));
+
+        // Non-matching variants
+        $notAdmin = $this->createOrder($tenant, $this->createStorage($storageType, $place, 'SU2'), $now->modify('-2 days'));
+        $notAdmin->setPaymentMethod(PaymentMethod::GOPAY);
+        $notAdmin->reserve($now->modify('-2 days'));
+        $notAdmin->attachSignature('/tmp/sig.png', \App\Enum\SigningMethod::DRAW, null, null, 'Praha', $now->modify('-2 days'));
+        $notAdmin->extendExpiration($now->modify('+30 days'));
+
+        $notGoPay = $this->createOrder($tenant, $this->createStorage($storageType, $place, 'SU3'), $now->modify('-2 days'));
+        $notGoPay->markAsAdminCreated();
+        $notGoPay->setPaymentMethod(PaymentMethod::EXTERNAL);
+        $notGoPay->reserve($now->modify('-2 days'));
+        $notGoPay->attachSignature('/tmp/sig.png', \App\Enum\SigningMethod::DRAW, null, null, 'Praha', $now->modify('-2 days'));
+        $notGoPay->extendExpiration($now->modify('+30 days'));
+
+        $notSigned = $this->createOrder($tenant, $this->createStorage($storageType, $place, 'SU4'), $now->modify('-2 days'));
+        $notSigned->markAsAdminCreated();
+        $notSigned->setPaymentMethod(PaymentMethod::GOPAY);
+        $notSigned->reserve($now->modify('-2 days'));
+        $notSigned->extendExpiration($now->modify('+30 days'));
+
+        $expired = $this->createOrder($tenant, $this->createStorage($storageType, $place, 'SU5'), $now->modify('-2 days'));
+        $expired->markAsAdminCreated();
+        $expired->setPaymentMethod(PaymentMethod::GOPAY);
+        $expired->reserve($now->modify('-2 days'));
+        $expired->attachSignature('/tmp/sig.png', \App\Enum\SigningMethod::DRAW, null, null, 'Praha', $now->modify('-2 days'));
+        $expired->extendExpiration($now->modify('-1 day'));
+
+        $this->entityManager->flush();
+
+        $found = $this->repository->findUnpaidSignedOnboarding($now);
+        $foundIds = array_map(static fn (Order $o): string => $o->id->toRfc4122(), $found);
+
+        $this->assertContains($matching->id->toRfc4122(), $foundIds);
+        $this->assertNotContains($notAdmin->id->toRfc4122(), $foundIds);
+        $this->assertNotContains($notGoPay->id->toRfc4122(), $foundIds);
+        $this->assertNotContains($notSigned->id->toRfc4122(), $foundIds);
+        $this->assertNotContains($expired->id->toRfc4122(), $foundIds);
     }
 }

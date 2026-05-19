@@ -55,7 +55,7 @@ class SendRentalActivatedEmailHandlerTest extends TestCase
 
         $this->assertNotNull($sentEmail);
         $this->assertNotNull($sentEmail->getSubject());
-        $this->assertStringStartsWith('Pronájem zahájen - ', $sentEmail->getSubject());
+        $this->assertStringStartsWith('Pronájem zahájen — ', $sentEmail->getSubject());
     }
 
     public function testBundlesInvoicePdfAndMarksInvoiceEmailedWhenAvailable(): void
