@@ -215,12 +215,29 @@
                                     }}) }}
                                 </div>
                                 {% if rentalIsLimited %}
-                                    <div>
+                                    <div data-controller="duration-preset">
                                         {{ form_row(form.endDate, {attr: {
                                             'data-action': 'blur->live#action',
                                             'data-live-action-param': 'validateField',
                                             'data-live-field-param': 'endDate',
                                         }}) }}
+
+                                        <div class="mt-2 flex flex-wrap gap-2">
+                                            <span class="text-xs text-gray-500 self-center mr-1">Rychlá volba:</span>
+                                            {% for months in [1, 3, 6] %}
+                                                <button type="button"
+                                                        data-duration-preset-target="button"
+                                                        data-action="duration-preset#apply"
+                                                        data-months="{{ months }}"
+                                                        class="btn btn-outline btn-sm">
+                                                    {{ months }} {{ months == 1 ? 'měsíc' : (months < 5 ? 'měsíce' : 'měsíců') }}
+                                                </button>
+                                            {% endfor %}
+                                        </div>
+
+                                        <p data-duration-preset-target="hint" class="text-xs text-gray-500 mt-1" hidden>
+                                            Nejdříve zvolte datum začátku.
+                                        </p>
                                     </div>
                                 {% else %}
                                     {# Suppress form_end's auto-render. validateDates skips endDate for unlimited rentals. #}
