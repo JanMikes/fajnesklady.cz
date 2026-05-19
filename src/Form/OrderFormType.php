@@ -173,6 +173,10 @@ final class OrderFormType extends AbstractType
                 'label' => 'Způsob platby',
                 'expanded' => true,
                 'required' => false,
+                // required: false is needed so live per-field validation doesn't fail when
+                // the form is re-submitted with an empty radio; without placeholder: false
+                // Symfony would render a stray empty "None" radio above the real choices.
+                'placeholder' => false,
                 'choices' => [
                     'Automatická platba kartou' => BillingMode::AUTO_RECURRING,
                     'Ručně schvalovaná platba (výzva e-mailem)' => BillingMode::MANUAL_RECURRING,
