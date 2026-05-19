@@ -2,6 +2,8 @@
 
 {% block title %}Registrace - {{ parent() }}{% endblock %}
 
+{% import 'components/_address_override.html.twig' as addr %}
+
 {% block content %}
     <div class="flex justify-center">
         <div class="card w-full max-w-md">
@@ -40,9 +42,7 @@
                         </div>
                         {{ form_row(registrationForm.companyName) }}
                         {{ form_row(registrationForm.companyVatId) }}
-                        {{ form_row(registrationForm.billingStreet) }}
-                        {{ form_row(registrationForm.billingCity) }}
-                        {{ form_row(registrationForm.billingPostalCode) }}
+                        {{ addr.render(registrationForm) }}
                     </div>
 
                     {{ form_row(registrationForm.agreeTerms) }}

@@ -6,9 +6,12 @@ namespace App\Form;
 
 use App\Entity\User;
 use App\Enum\UserRole;
+use App\Form\Address\HasBillingAddress;
+use App\Validator\AddressExists;
 use Symfony\Component\Validator\Constraints as Assert;
 
-final class AdminUserFormData
+#[AddressExists]
+final class AdminUserFormData implements HasBillingAddress
 {
     #[Assert\NotBlank(message: 'Zadejte jméno.')]
     #[Assert\Length(max: 100, maxMessage: 'Jméno může mít maximálně {{ limit }} znaků.')]
@@ -40,6 +43,8 @@ final class AdminUserFormData
 
     #[Assert\Length(max: 10, maxMessage: 'PSČ může mít maximálně {{ limit }} znaků.')]
     public ?string $billingPostalCode = null;
+
+    public bool $addressOverride = false;
 
     public UserRole $role = UserRole::USER;
 
@@ -89,5 +94,12 @@ final class AdminUserFormData
         $formData->adminNote = $user->adminNote;
 
         return $formData;
+    }
+
+    public function hasCompleteAddress(): bool
+    {
+        return null !== $this->billingStreet && '' !== $this->billingStreet
+            && null !== $this->billingCity && '' !== $this->billingCity
+            && null !== $this->billingPostalCode && '' !== $this->billingPostalCode;
     }
 }

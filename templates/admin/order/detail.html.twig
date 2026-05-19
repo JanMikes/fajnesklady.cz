@@ -209,7 +209,9 @@
                 </div>
                 <div class="sm:col-span-2 lg:col-span-4">
                     <dt class="text-sm font-medium text-gray-500">Adresa</dt>
-                    <dd class="mt-1 text-sm text-gray-900">{{ place.address }}, {{ place.postalCode }} {{ place.city }}</dd>
+                    <dd class="mt-1 text-sm text-gray-900">
+                        {% include 'components/place_address.html.twig' with {place: place} only %}
+                    </dd>
                 </div>
             </dl>
         </div>

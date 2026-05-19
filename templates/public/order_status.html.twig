@@ -98,7 +98,9 @@
                             </div>
                             <div class="sm:col-span-2">
                                 <dt class="text-gray-500">Adresa</dt>
-                                <dd class="font-medium text-gray-900">{{ place.address }}, {{ place.postalCode }} {{ place.city }}</dd>
+                                <dd class="font-medium text-gray-900">
+                                    {% include 'components/place_address.html.twig' with {place: place} only %}
+                                </dd>
                             </div>
                             <div>
                                 <dt class="text-gray-500">Skladová jednotka</dt>
@@ -248,7 +250,9 @@
                 {# Pobočka contact #}
                 <div class="bg-accent/5 rounded-lg p-4 border border-accent/10">
                     <h3 class="font-semibold text-gray-900 mb-2">Pobočka {{ place.name }}</h3>
-                    <p class="text-sm text-gray-600 mb-3">{{ place.address }}, {{ place.postalCode }} {{ place.city }}</p>
+                    <div class="text-sm text-gray-600 mb-3">
+                        {% include 'components/place_address.html.twig' with {place: place} only %}
+                    </div>
                     {% if place.description %}
                         <p class="text-xs text-gray-500 mb-3 whitespace-pre-line">{{ place.description }}</p>
                     {% endif %}

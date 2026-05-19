@@ -1,5 +1,7 @@
 {% extends 'user/layout.html.twig' %}
 
+{% import 'components/_address_override.html.twig' as addr %}
+
 {% block title %}Registrace pronajímatele - {{ parent() }}{% endblock %}
 
 {% block content %}
@@ -88,18 +90,7 @@
                         </div>
 
                         {# Billing address #}
-                        <div class="mb-4">
-                            {{ form_row(form.billingStreet) }}
-                        </div>
-
-                        <div class="grid md:grid-cols-2 gap-4">
-                            <div>
-                                {{ form_row(form.billingCity) }}
-                            </div>
-                            <div>
-                                {{ form_row(form.billingPostalCode) }}
-                            </div>
-                        </div>
+                        {{ addr.render(form) }}
                     </div>
 
                     {# Bank Account #}

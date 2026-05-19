@@ -1,0 +1,17 @@
+{# Inputs:
+   - url: string (caller MUST ensure non-null)
+   - label: string (default 'Navigovat')
+
+   Rendered as a `<tr>` so the caller can drop it directly under the
+   "Adresa" row inside the same details `<table>`. The button itself is a
+   table-friendly inline-styled anchor (no Tailwind in e-mails). #}
+<tr>
+    <td colspan="2" style="padding-top: 8px;">
+        <a href="{{ url }}"
+           target="_blank"
+           rel="noopener"
+           style="display: inline-block; padding: 8px 16px; background-color: #2563eb; color: #ffffff; text-decoration: none; border-radius: 6px; font-size: 14px; font-weight: 500;">
+            {{ label|default('Navigovat') }}
+        </a>
+    </td>
+</tr>

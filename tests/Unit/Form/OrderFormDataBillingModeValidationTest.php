@@ -7,7 +7,10 @@ namespace App\Tests\Unit\Form;
 use App\Enum\BillingMode;
 use App\Enum\RentalType;
 use App\Form\OrderFormData;
+use App\Tests\Mock\MockAddressValidator;
+use App\Validator\AddressExistsValidator;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Validator\ConstraintValidatorFactory;
 use Symfony\Component\Validator\Validation;
 
 final class OrderFormDataBillingModeValidationTest extends TestCase
@@ -89,8 +92,13 @@ final class OrderFormDataBillingModeValidationTest extends TestCase
 
     private function validator(): \Symfony\Component\Validator\Validator\ValidatorInterface
     {
+        $factory = new ConstraintValidatorFactory([
+            AddressExistsValidator::class => new AddressExistsValidator(new MockAddressValidator()),
+        ]);
+
         return Validation::createValidatorBuilder()
             ->enableAttributeMapping()
+            ->setConstraintValidatorFactory($factory)
             ->getValidator();
     }
 }

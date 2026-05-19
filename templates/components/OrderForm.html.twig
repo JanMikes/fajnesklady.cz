@@ -4,6 +4,7 @@
 {% set weeklyPrice = selectedStorage.getEffectivePricePerWeekInCzk() %}
 {% set monthlyPrice = selectedStorage.getEffectivePricePerMonthInCzk() %}
 {% set isAutoSelection = this.selectionMode == 'auto' %}
+{% import 'components/_address_override.html.twig' as addr %}
 {# Show/hide of conditional sections is server-driven (not Alpine x-show) so it survives Live UX morphing. #}
 {% set invoiceToCompany = form.vars.data.invoiceToCompany ?? false %}
 {% set rentalIsLimited = form.vars.data.rentalType is null or form.vars.data.rentalType.value == 'limited' %}
@@ -167,30 +168,7 @@
 
                             <p class="text-xs text-gray-500 mb-4">Vyžadováno pro účely nájemní smlouvy.</p>
 
-                            <div>
-                                {{ form_row(form.billingStreet, {label_attr: {class: 'form-label-required'}, attr: {
-                                    'data-action': 'blur->live#action',
-                                    'data-live-action-param': 'validateField',
-                                    'data-live-field-param': 'billingStreet',
-                                }}) }}
-                            </div>
-
-                            <div class="grid md:grid-cols-2 gap-4">
-                                <div>
-                                    {{ form_row(form.billingCity, {label_attr: {class: 'form-label-required'}, attr: {
-                                        'data-action': 'blur->live#action',
-                                        'data-live-action-param': 'validateField',
-                                        'data-live-field-param': 'billingCity',
-                                    }}) }}
-                                </div>
-                                <div>
-                                    {{ form_row(form.billingPostalCode, {label_attr: {class: 'form-label-required'}, attr: {
-                                        'data-action': 'blur->live#action',
-                                        'data-live-action-param': 'validateField',
-                                        'data-live-field-param': 'billingPostalCode',
-                                    }}) }}
-                                </div>
-                            </div>
+                            {{ addr.render_live(form) }}
                         </div>
                         </div>
 

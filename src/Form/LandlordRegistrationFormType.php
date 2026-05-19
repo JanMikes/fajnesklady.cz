@@ -114,6 +114,10 @@ final class LandlordRegistrationFormType extends AbstractType
                     'maxlength' => 10,
                 ],
             ])
+            ->add('addressOverride', CheckboxType::class, [
+                'label' => 'Adresa je správná, pokračovat',
+                'required' => false,
+            ])
             ->add('bankAccountNumber', TextType::class, [
                 'label' => 'Číslo účtu',
                 'attr' => [

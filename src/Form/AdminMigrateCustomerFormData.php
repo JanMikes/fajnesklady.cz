@@ -6,11 +6,14 @@ namespace App\Form;
 
 use App\Enum\BillingMode;
 use App\Enum\RentalType;
+use App\Form\Address\HasBillingAddress;
+use App\Validator\AddressExists;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Component\Validator\Context\ExecutionContextInterface;
 
-final class AdminMigrateCustomerFormData
+#[AddressExists]
+final class AdminMigrateCustomerFormData implements HasBillingAddress
 {
     #[Assert\NotBlank(message: 'Zadejte e-mailovou adresu.')]
     #[Assert\Email(message: 'Zadejte platnou e-mailovou adresu.')]
@@ -53,6 +56,8 @@ final class AdminMigrateCustomerFormData
     #[Assert\NotBlank(message: 'Zadejte PSČ.')]
     #[Assert\Length(max: 10, maxMessage: 'PSČ může mít maximálně {{ limit }} znaků.')]
     public ?string $billingPostalCode = null;
+
+    public bool $addressOverride = false;
 
     #[Assert\NotNull(message: 'Vyberte skladovou jednotku.')]
     public ?string $storageId = null;
@@ -100,6 +105,13 @@ final class AdminMigrateCustomerFormData
      * rentals are forced AUTO_RECURRING below.
      */
     public BillingMode $billingMode = BillingMode::AUTO_RECURRING;
+
+    public function hasCompleteAddress(): bool
+    {
+        return null !== $this->billingStreet && '' !== $this->billingStreet
+            && null !== $this->billingCity && '' !== $this->billingCity
+            && null !== $this->billingPostalCode && '' !== $this->billingPostalCode;
+    }
 
     #[Assert\Callback]
     public function validateCompanyInfo(ExecutionContextInterface $context): void

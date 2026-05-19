@@ -31,6 +31,14 @@ return App::config([
                 'limit' => 60,
                 'interval' => '1 hour',
             ],
+            // Address autocomplete rate limiter - typeahead is chatty (fires per
+            // keystroke debounce), so it needs more headroom than ARES which is
+            // an explicit button click.
+            'address_suggest' => [
+                'policy' => 'sliding_window',
+                'limit' => 300,
+                'interval' => '1 hour',
+            ],
             // GoPay webhook rate limiter - per-IP, token bucket so legitimate
             // GoPay retries get burst capacity while abuse gets throttled.
             // 60 burst + 60 refill/min is generous for real traffic but

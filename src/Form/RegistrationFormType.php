@@ -131,6 +131,11 @@ class RegistrationFormType extends AbstractType
             ],
         ]);
 
+        $builder->add('addressOverride', CheckboxType::class, [
+            'label' => 'Adresa je správná, pokračovat',
+            'required' => false,
+        ]);
+
         $termsUrl = $this->urlGenerator->generate('public_terms_and_conditions');
         $builder->add('agreeTerms', CheckboxType::class, [
             'label' => sprintf('Souhlasím s <a href="%s" target="_blank" class="link">obchodními podmínkami</a>', $termsUrl),

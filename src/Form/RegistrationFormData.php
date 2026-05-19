@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace App\Form;
 
+use App\Form\Address\HasBillingAddress;
+use App\Validator\AddressExists;
 use Symfony\Component\Validator\Constraints as Assert;
 
-final class RegistrationFormData
+#[AddressExists]
+final class RegistrationFormData implements HasBillingAddress
 {
     #[Assert\NotBlank(message: 'Zadejte prosím e-mailovou adresu.')]
     #[Assert\Email(message: 'Zadejte prosím platnou e-mailovou adresu.')]
@@ -57,6 +60,15 @@ final class RegistrationFormData
     #[Assert\NotBlank(message: 'Zadejte PSČ.', groups: ['company'])]
     public ?string $billingPostalCode = null;
 
+    public bool $addressOverride = false;
+
     #[Assert\IsTrue(message: 'Musíte souhlasit s obchodními podmínkami.')]
     public bool $agreeTerms = false;
+
+    public function hasCompleteAddress(): bool
+    {
+        return null !== $this->billingStreet && '' !== $this->billingStreet
+            && null !== $this->billingCity && '' !== $this->billingCity
+            && null !== $this->billingPostalCode && '' !== $this->billingPostalCode;
+    }
 }

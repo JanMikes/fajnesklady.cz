@@ -42,7 +42,7 @@
                                     </span>
                                 {% endif %}
                             </td>
-                            <td class="text-gray-500">{{ place.address }}, {{ place.city }}</td>
+                            <td class="text-gray-500">{% include 'components/place_address.html.twig' with {place: place, inline: true} only %}</td>
                             <td>
                                 {% if place.isActive %}
                                     <span class="badge badge-success">Aktivní</span>

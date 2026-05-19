@@ -58,6 +58,12 @@ return App::config([
             'alias' => 'limiter.ares_lookup',
             'public' => true,
         ],
+        // Address-suggest rate limiter — exposed publicly so test setUp can
+        // reset it between cases (the rate-limit test exhausts the bucket).
+        'test.limiter.address_suggest' => [
+            'alias' => 'limiter.address_suggest',
+            'public' => true,
+        ],
         // GoPay webhook rate limiter — exposed publicly so the webhook test
         // can reset the bucket between cases.
         'test.limiter.gopay_webhook' => [

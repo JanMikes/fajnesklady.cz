@@ -89,6 +89,10 @@ final class AdminMigrateCustomerFormType extends AbstractType
                 'label' => 'PSČ',
                 'attr' => ['placeholder' => '110 00', 'maxlength' => 10],
             ])
+            ->add('addressOverride', CheckboxType::class, [
+                'label' => 'Adresa je správná, pokračovat',
+                'required' => false,
+            ])
             ->add('storageId', ChoiceType::class, [
                 'label' => 'Skladová jednotka',
                 'choices' => $this->storageChoiceBuilder->buildAvailableGroupedChoices(),

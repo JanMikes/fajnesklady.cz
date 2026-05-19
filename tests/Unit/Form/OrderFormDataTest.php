@@ -284,4 +284,38 @@ class OrderFormDataTest extends TestCase
 
         $formData->validateBirthDate($context);
     }
+
+    public function testHasCompleteAddressReturnsTrueWhenAllThreeFieldsArePresent(): void
+    {
+        $formData = new OrderFormData();
+        $formData->billingStreet = 'Vinohradská 52';
+        $formData->billingCity = 'Praha';
+        $formData->billingPostalCode = '120 00';
+
+        self::assertTrue($formData->hasCompleteAddress());
+    }
+
+    public function testHasCompleteAddressReturnsFalseWhenAnyFieldIsBlank(): void
+    {
+        $formData = new OrderFormData();
+        $formData->billingStreet = 'Vinohradská 52';
+        $formData->billingCity = '';
+        $formData->billingPostalCode = '120 00';
+
+        self::assertFalse($formData->hasCompleteAddress());
+    }
+
+    public function testSessionRoundTripPersistsAddressOverride(): void
+    {
+        $formData = new OrderFormData();
+        $formData->billingStreet = 'Asdfghj 999';
+        $formData->billingCity = 'Tatratata';
+        $formData->billingPostalCode = '99999';
+        $formData->addressOverride = true;
+
+        $restored = OrderFormData::fromSessionArray($formData->toSessionArray());
+
+        self::assertTrue($restored->addressOverride);
+        self::assertSame('Asdfghj 999', $restored->billingStreet);
+    }
 }

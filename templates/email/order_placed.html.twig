@@ -101,6 +101,9 @@
                     <td>Adresa:</td>
                     <td>{{ placeAddress }}</td>
                 </tr>
+                {% if placeNavigationUrl %}
+                    {% include 'email/_place_navigate_button.html.twig' with {url: placeNavigationUrl} only %}
+                {% endif %}
                 <tr>
                     <td>Typ skladu:</td>
                     <td>{{ storageType }}</td>

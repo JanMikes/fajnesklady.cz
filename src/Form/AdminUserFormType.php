@@ -6,6 +6,7 @@ namespace App\Form;
 
 use App\Enum\UserRole;
 use Symfony\Component\Form\AbstractType;
+use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\Extension\Core\Type\EnumType;
 use Symfony\Component\Form\Extension\Core\Type\NumberType;
 use Symfony\Component\Form\Extension\Core\Type\TelType;
@@ -93,6 +94,11 @@ final class AdminUserFormType extends AbstractType
 
                 'maxlength' => 10,
             ],
+        ]);
+
+        $builder->add('addressOverride', CheckboxType::class, [
+            'label' => 'Adresa je správná, pokračovat',
+            'required' => false,
         ]);
 
         $builder->add('role', EnumType::class, [

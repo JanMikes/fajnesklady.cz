@@ -11,6 +11,7 @@ use App\Repository\InvoiceRepository;
 use App\Service\InvoicingService;
 use App\Service\OrderEmailAttachments;
 use App\Service\OrderStatusUrlGenerator;
+use App\Service\Place\PlaceAddressFormatter;
 use App\Service\RecurringPaymentCancelUrlGenerator;
 use App\Service\StorageMapImageGenerator;
 use Psr\Clock\ClockInterface;
@@ -48,6 +49,7 @@ final readonly class SendRentalActivatedEmailHandler
         private OrderStatusUrlGenerator $statusUrlGenerator,
         private RecurringPaymentCancelUrlGenerator $cancelUrlGenerator,
         private StorageMapImageGenerator $mapImageGenerator,
+        private PlaceAddressFormatter $addressFormatter,
         private ClockInterface $clock,
         private LoggerInterface $logger,
         private string $uploadsDirectory,
@@ -131,7 +133,8 @@ final readonly class SendRentalActivatedEmailHandler
             'name' => $user->fullName,
             'contractNumber' => $this->formatContractNumber($contract),
             'placeName' => $place->name,
-            'placeAddress' => sprintf('%s, %s %s', $place->address, $place->postalCode, $place->city),
+            'placeAddress' => $this->addressFormatter->format($place),
+            'placeNavigationUrl' => $this->addressFormatter->navigationUrl($place),
             'storageType' => $storageType->name,
             'storageNumber' => $storage->number,
             'startDate' => $contract->startDate->format('d.m.Y'),

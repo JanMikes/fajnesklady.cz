@@ -7,11 +7,14 @@ namespace App\Form;
 use App\Entity\User;
 use App\Enum\BillingMode;
 use App\Enum\RentalType;
+use App\Form\Address\HasBillingAddress;
 use App\Service\PriceCalculator;
+use App\Validator\AddressExists;
 use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Component\Validator\Context\ExecutionContextInterface;
 
-final class OrderFormData
+#[AddressExists]
+final class OrderFormData implements HasBillingAddress
 {
     #[Assert\NotBlank(message: 'Zadejte e-mailovou adresu.')]
     #[Assert\Email(message: 'Zadejte platnou e-mailovou adresu.')]
@@ -56,6 +59,13 @@ final class OrderFormData
 
     #[Assert\Length(max: 10, maxMessage: 'PSČ může mít maximálně {{ limit }} znaků.')]
     public ?string $billingPostalCode = null;
+
+    /**
+     * Surfaced server-side only after an {@see AddressExists} violation has
+     * fired; ticking it lets the customer proceed with an address that the
+     * Photon registry didn't match (false-negatives are part of the trade-off).
+     */
+    public bool $addressOverride = false;
 
     #[Assert\NotNull(message: 'Vyberte typ pronájmu.')]
     public ?RentalType $rentalType = RentalType::LIMITED;
@@ -124,6 +134,13 @@ final class OrderFormData
                 ->atPath('billingPostalCode')
                 ->addViolation();
         }
+    }
+
+    public function hasCompleteAddress(): bool
+    {
+        return null !== $this->billingStreet && '' !== $this->billingStreet
+            && null !== $this->billingCity && '' !== $this->billingCity
+            && null !== $this->billingPostalCode && '' !== $this->billingPostalCode;
     }
 
     #[Assert\Callback]
@@ -270,6 +287,7 @@ final class OrderFormData
             'billingStreet' => $this->billingStreet,
             'billingCity' => $this->billingCity,
             'billingPostalCode' => $this->billingPostalCode,
+            'addressOverride' => $this->addressOverride,
             'rentalType' => $this->rentalType?->value,
             'startDate' => $this->startDate?->format('Y-m-d'),
             'endDate' => $this->endDate?->format('Y-m-d'),
@@ -297,6 +315,7 @@ final class OrderFormData
         $formData->billingStreet = $data['billingStreet'] ?? null;
         $formData->billingCity = $data['billingCity'] ?? null;
         $formData->billingPostalCode = $data['billingPostalCode'] ?? null;
+        $formData->addressOverride = (bool) ($data['addressOverride'] ?? false);
         $formData->rentalType = isset($data['rentalType']) ? RentalType::tryFrom($data['rentalType']) : RentalType::LIMITED;
         $formData->startDate = isset($data['startDate']) ? new \DateTimeImmutable($data['startDate']) : null;
         $formData->endDate = isset($data['endDate']) ? new \DateTimeImmutable($data['endDate']) : null;

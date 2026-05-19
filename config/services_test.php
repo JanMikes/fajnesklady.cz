@@ -27,6 +27,12 @@ return App::config([
         'App\\Service\\AresLookup' => [
             'alias' => 'App\\Tests\\Mock\\MockAresLookup',
         ],
+        'App\\Tests\\Mock\\MockAddressValidator' => [
+            'tags' => [['name' => 'kernel.reset', 'method' => 'reset']],
+        ],
+        'App\\Service\\Address\\AddressValidator' => [
+            'alias' => 'App\\Tests\\Mock\\MockAddressValidator',
+        ],
         'App\\Tests\\Mock\\MockFakturoidClient' => [
             'tags' => [['name' => 'kernel.reset', 'method' => 'reset']],
         ],

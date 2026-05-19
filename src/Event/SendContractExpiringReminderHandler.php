@@ -7,6 +7,7 @@ namespace App\Event;
 use App\Enum\RentalType;
 use App\Repository\ContractRepository;
 use App\Service\OrderStatusUrlGenerator;
+use App\Service\Place\PlaceAddressFormatter;
 use Psr\Log\LoggerInterface;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\Mailer\MailerInterface;
@@ -22,6 +23,7 @@ final readonly class SendContractExpiringReminderHandler
         private MailerInterface $mailer,
         private UrlGeneratorInterface $urlGenerator,
         private OrderStatusUrlGenerator $statusUrlGenerator,
+        private PlaceAddressFormatter $addressFormatter,
         private LoggerInterface $logger,
     ) {
     }
@@ -55,7 +57,8 @@ final readonly class SendContractExpiringReminderHandler
                 'name' => $user->fullName,
                 'contractNumber' => $this->formatContractNumber($contract),
                 'placeName' => $place->name,
-                'placeAddress' => sprintf('%s, %s %s', $place->address, $place->postalCode, $place->city),
+                'placeAddress' => $this->addressFormatter->format($place),
+                'placeNavigationUrl' => $this->addressFormatter->navigationUrl($place),
                 'storageType' => $storageType->name,
                 'storageNumber' => $storage->number,
                 'endDate' => $contract->endDate?->format('d.m.Y'),

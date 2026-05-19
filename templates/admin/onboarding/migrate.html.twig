@@ -1,5 +1,7 @@
 {% extends 'portal/layout.html.twig' %}
 
+{% import 'components/_address_override.html.twig' as addr %}
+
 {% block title %}Migrace zákazníka - Admin{% endblock %}
 
 {% block breadcrumb %}
@@ -77,19 +79,7 @@
                             {{ form_errors(form.companyVatId) }}
                         </div>
                         <div class="md:col-span-2">
-                            {{ form_label(form.billingStreet) }}
-                            {{ form_widget(form.billingStreet) }}
-                            {{ form_errors(form.billingStreet) }}
-                        </div>
-                        <div>
-                            {{ form_label(form.billingCity) }}
-                            {{ form_widget(form.billingCity) }}
-                            {{ form_errors(form.billingCity) }}
-                        </div>
-                        <div>
-                            {{ form_label(form.billingPostalCode) }}
-                            {{ form_widget(form.billingPostalCode) }}
-                            {{ form_errors(form.billingPostalCode) }}
+                            {{ addr.render(form) }}
                         </div>
                     </div>
 

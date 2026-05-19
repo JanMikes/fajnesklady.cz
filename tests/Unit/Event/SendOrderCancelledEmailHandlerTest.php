@@ -14,6 +14,7 @@ use App\Event\OrderCancelled;
 use App\Event\SendOrderCancelledEmailHandler;
 use App\Repository\OrderRepository;
 use App\Service\OrderStatusUrlGenerator;
+use App\Service\Place\PlaceAddressFormatter;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\UriSigner;
 use Symfony\Component\Mailer\MailerInterface;
@@ -42,7 +43,7 @@ class SendOrderCancelledEmailHandlerTest extends TestCase
                 $sentEmail = $email;
             });
 
-        $handler = new SendOrderCancelledEmailHandler($orderRepository, $mailer, $this->createStatusUrlGenerator());
+        $handler = new SendOrderCancelledEmailHandler($orderRepository, $mailer, $this->createStatusUrlGenerator(), new PlaceAddressFormatter());
         $handler($event);
 
         $this->assertNotNull($sentEmail);
@@ -66,7 +67,7 @@ class SendOrderCancelledEmailHandlerTest extends TestCase
             $sentEmail = $email;
         });
 
-        $handler = new SendOrderCancelledEmailHandler($orderRepository, $mailer, $this->createStatusUrlGenerator());
+        $handler = new SendOrderCancelledEmailHandler($orderRepository, $mailer, $this->createStatusUrlGenerator(), new PlaceAddressFormatter());
         $handler($event);
 
         $this->assertNotNull($sentEmail);

@@ -6,6 +6,7 @@ namespace App\Event;
 
 use App\Repository\OrderRepository;
 use App\Service\OrderStatusUrlGenerator;
+use App\Service\Place\PlaceAddressFormatter;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -18,6 +19,7 @@ final readonly class SendOrderCancelledEmailHandler
         private OrderRepository $orderRepository,
         private MailerInterface $mailer,
         private OrderStatusUrlGenerator $statusUrlGenerator,
+        private PlaceAddressFormatter $addressFormatter,
     ) {
     }
 
@@ -38,7 +40,8 @@ final readonly class SendOrderCancelledEmailHandler
                 'name' => $user->fullName,
                 'orderNumber' => substr($order->id->toRfc4122(), 0, 8),
                 'placeName' => $place->name,
-                'placeAddress' => sprintf('%s, %s %s', $place->address, $place->postalCode, $place->city),
+                'placeAddress' => $this->addressFormatter->format($place),
+                'placeNavigationUrl' => $this->addressFormatter->navigationUrl($place),
                 'storageType' => $storageType->name,
                 'storageNumber' => $storage->number,
                 'startDate' => $order->startDate->format('d.m.Y'),

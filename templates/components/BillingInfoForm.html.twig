@@ -1,3 +1,5 @@
+{% import 'components/_address_override.html.twig' as addr %}
+
 <div {{ attributes }}>
     {{ form_start(form) }}
         <div class="space-y-4" data-controller="ares-lookup">
@@ -35,31 +37,7 @@
             <hr class="my-4 border-t border-gray-200">
             <h3 class="text-lg font-semibold">Fakturační adresa</h3>
 
-            <div>
-                <label class="block text-sm font-semibold text-gray-700 mb-2">Ulice a číslo popisné</label>
-                {{ form_widget(form.billingStreet, {
-                    attr: {'placeholder': 'Hlavní 123'}
-                }) }}
-                {{ form_errors(form.billingStreet) }}
-            </div>
-
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">Město</label>
-                    {{ form_widget(form.billingCity, {
-                        attr: {'placeholder': 'Praha'}
-                    }) }}
-                    {{ form_errors(form.billingCity) }}
-                </div>
-
-                <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">PSČ</label>
-                    {{ form_widget(form.billingPostalCode, {
-                        attr: {'placeholder': '110 00'}
-                    }) }}
-                    {{ form_errors(form.billingPostalCode) }}
-                </div>
-            </div>
+            {{ addr.render(form) }}
         </div>
 
         <div class="flex justify-end gap-2 mt-6">

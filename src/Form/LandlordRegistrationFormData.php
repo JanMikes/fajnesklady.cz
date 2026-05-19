@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace App\Form;
 
+use App\Form\Address\HasBillingAddress;
+use App\Validator\AddressExists;
 use Symfony\Component\Validator\Constraints as Assert;
 
-final class LandlordRegistrationFormData
+#[AddressExists]
+final class LandlordRegistrationFormData implements HasBillingAddress
 {
     #[Assert\NotBlank(message: 'Zadejte prosím e-mailovou adresu')]
     #[Assert\Email(message: 'Zadejte platnou e-mailovou adresu')]
@@ -40,15 +43,17 @@ final class LandlordRegistrationFormData
 
     #[Assert\NotBlank(message: 'Ulice je povinná')]
     #[Assert\Length(max: 255, maxMessage: 'Ulice může mít maximálně {{ limit }} znaků')]
-    public string $billingStreet = '';
+    public ?string $billingStreet = null;
 
     #[Assert\NotBlank(message: 'Město je povinné')]
     #[Assert\Length(max: 100, maxMessage: 'Město může mít maximálně {{ limit }} znaků')]
-    public string $billingCity = '';
+    public ?string $billingCity = null;
 
     #[Assert\NotBlank(message: 'PSČ je povinné')]
     #[Assert\Regex(pattern: '/^\d{3}\s?\d{2}$/', message: 'PSČ musí být ve formátu XXX XX')]
-    public string $billingPostalCode = '';
+    public ?string $billingPostalCode = null;
+
+    public bool $addressOverride = false;
 
     #[Assert\NotBlank(message: 'Číslo účtu je povinné')]
     #[Assert\Length(max: 17, maxMessage: 'Číslo účtu může mít maximálně {{ limit }} znaků.')]
@@ -61,4 +66,11 @@ final class LandlordRegistrationFormData
 
     #[Assert\IsTrue(message: 'Musíte souhlasit s podmínkami.')]
     public bool $agreeTerms = false;
+
+    public function hasCompleteAddress(): bool
+    {
+        return null !== $this->billingStreet && '' !== $this->billingStreet
+            && null !== $this->billingCity && '' !== $this->billingCity
+            && null !== $this->billingPostalCode && '' !== $this->billingPostalCode;
+    }
 }

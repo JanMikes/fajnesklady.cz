@@ -70,7 +70,7 @@
                         </div>
                         <div class="flex justify-between">
                             <span class="text-gray-600">Adresa</span>
-                            <span class="font-medium">{{ place.address }}, {{ place.city }}</span>
+                            <span class="font-medium">{% include 'components/place_address.html.twig' with {place: place, inline: true} only %}</span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-gray-600">Skladová jednotka</span>

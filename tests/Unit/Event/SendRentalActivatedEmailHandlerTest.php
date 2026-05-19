@@ -19,6 +19,7 @@ use App\Repository\InvoiceRepository;
 use App\Service\InvoicingService;
 use App\Service\OrderEmailAttachments;
 use App\Service\OrderStatusUrlGenerator;
+use App\Service\Place\PlaceAddressFormatter;
 use App\Service\RecurringPaymentCancelUrlGenerator;
 use App\Service\StorageMapImageGenerator;
 use PHPUnit\Framework\TestCase;
@@ -271,6 +272,7 @@ class SendRentalActivatedEmailHandlerTest extends TestCase
             $statusUrlGenerator,
             $cancelUrlGenerator,
             $mapGenerator,
+            new PlaceAddressFormatter(),
             new MockClock('2025-06-15 12:00:00'),
             new NullLogger(),
             $this->tempDir,

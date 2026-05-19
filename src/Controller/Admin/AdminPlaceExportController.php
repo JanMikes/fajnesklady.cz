@@ -12,6 +12,7 @@ use App\Service\Excel\ExcelColumn;
 use App\Service\Excel\ExcelColumnType;
 use App\Service\Excel\ExcelExporter;
 use App\Service\Excel\ExcelSheet;
+use App\Service\Place\PlaceAddressFormatter;
 use Psr\Clock\ClockInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
@@ -27,6 +28,7 @@ final class AdminPlaceExportController extends AbstractController
         private readonly StorageRepository $storageRepository,
         private readonly ContractRepository $contractRepository,
         private readonly ExcelExporter $excelExporter,
+        private readonly PlaceAddressFormatter $addressFormatter,
         private readonly ClockInterface $clock,
     ) {
     }
@@ -68,7 +70,7 @@ final class AdminPlaceExportController extends AbstractController
                 $place->name,
                 implode(', ', array_map(static fn (array $o): string => $o['fullName'], $placeOwners)),
                 implode(', ', array_map(static fn (array $o): string => $o['email'], $placeOwners)),
-                trim(sprintf('%s, %s %s', (string) $place->address, $place->postalCode, $place->city), ', '),
+                $this->addressFormatter->format($place),
                 $placeStorageStats['total'],
                 $placeStorageStats['occupied'],
                 $placeStorageStats['available'],

@@ -1,0 +1,94 @@
+{# Renders the three billing-address fields with an autocomplete dropdown +
+   override checkbox (soft-warn UX from spec 037). Use render() in plain
+   templates; render_live() emits the same structure with per-field
+   `blur->live#action validateField` wiring for Live Components that drive
+   on-blur server validation. #}
+
+{% macro render(form) %}
+    {{ _self.render_inner(form, false) }}
+{% endmacro %}
+
+{% macro render_live(form) %}
+    {{ _self.render_inner(form, true) }}
+{% endmacro %}
+
+{% macro render_inner(form, liveValidate) %}
+    {% set streetAttr = {
+        'data-address-autocomplete-target': 'streetInput',
+        'autocomplete': 'street-address',
+    } %}
+    {% set cityAttr = {
+        'data-address-autocomplete-target': 'cityInput',
+        'autocomplete': 'address-level2',
+    } %}
+    {% set postalAttr = {
+        'data-address-autocomplete-target': 'postalCodeInput',
+        'autocomplete': 'postal-code',
+    } %}
+
+    {% if liveValidate %}
+        {% set streetAttr = streetAttr|merge({
+            'data-action': 'blur->live#action',
+            'data-live-action-param': 'validateField',
+            'data-live-field-param': 'billingStreet',
+        }) %}
+        {% set cityAttr = cityAttr|merge({
+            'data-action': 'blur->live#action',
+            'data-live-action-param': 'validateField',
+            'data-live-field-param': 'billingCity',
+        }) %}
+        {% set postalAttr = postalAttr|merge({
+            'data-action': 'blur->live#action',
+            'data-live-action-param': 'validateField',
+            'data-live-field-param': 'billingPostalCode',
+        }) %}
+    {% endif %}
+
+    {# Show the override container only when billingStreet has BOTH a value
+       and a violation — the AddressExists validator only fires for non-empty
+       addresses, so an empty-and-erroring field is just a NotBlank failure
+       where the override doesn't apply. #}
+    {% set streetHasValue = form.billingStreet.vars.value is not empty %}
+    {% set streetHasViolation = streetHasValue and form.billingStreet.vars.errors|length > 0 %}
+
+    <div {{ stimulus_controller('address-autocomplete') }} class="space-y-4">
+        <div>
+            {{ form_row(form.billingStreet, {
+                label_attr: {class: 'form-label-required'},
+                attr: streetAttr,
+            }) }}
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-4">
+            <div>
+                {{ form_row(form.billingCity, {
+                    label_attr: {class: 'form-label-required'},
+                    attr: cityAttr,
+                }) }}
+            </div>
+            <div>
+                {{ form_row(form.billingPostalCode, {
+                    label_attr: {class: 'form-label-required'},
+                    attr: postalAttr,
+                }) }}
+            </div>
+        </div>
+
+        {# Override checkbox surfaces when the server-side check emitted an
+           AddressExists violation (lands at path 'billingStreet'). Hidden by
+           default; revealed by removing the 'hidden' class once a violation
+           lands so the customer can confirm an edge-case address. #}
+        <div data-address-autocomplete-target="overrideContainer"
+             class="{{ streetHasViolation ? '' : 'hidden ' }}rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+            <p class="font-medium mb-1">Tuto adresu se nepodařilo ověřit v registru.</p>
+            <p class="mb-2 text-amber-800">Zkontrolujte ulici, město i PSČ. Pokud je adresa správná, pokračujte zaškrtnutím níže.</p>
+            <label class="flex items-center cursor-pointer">
+                {{ form_widget(form.addressOverride, {attr: {
+                    'data-address-autocomplete-target': 'overrideCheckbox',
+                    'class': 'mr-2',
+                }}) }}
+                <span>{{ form.addressOverride.vars.label|default('Adresa je správná, pokračovat') }}</span>
+            </label>
+        </div>
+    </div>
+{% endmacro %}

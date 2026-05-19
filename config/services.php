@@ -46,11 +46,17 @@ return App::config([
                 '../src/Service/Billing/ManualBillingReminderSchedule.php',
             ],
         ],
+        'App\\Validator\\' => [
+            'resource' => '../src/Validator/',
+        ],
         'App\\Service\\Identity\\ProvideIdentity' => [
             'alias' => 'App\\Service\\Identity\\RandomIdentityProvider',
         ],
         'App\\Service\\AresLookup' => [
             'alias' => 'App\\Service\\AresService',
+        ],
+        'App\\Service\\Address\\AddressValidator' => [
+            'alias' => 'App\\Service\\Address\\PhotonAddressValidator',
         ],
         'App\\Service\\Fakturoid\\FakturoidApiClient' => [
             'arguments' => [

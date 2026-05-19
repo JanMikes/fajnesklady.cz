@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace App\Form;
 
 use App\Entity\User;
+use App\Form\Address\HasBillingAddress;
+use App\Validator\AddressExists;
 use Symfony\Component\Validator\Constraints as Assert;
 
-final class BillingInfoFormData
+#[AddressExists]
+final class BillingInfoFormData implements HasBillingAddress
 {
     #[Assert\Length(max: 255, maxMessage: 'Název firmy může mít maximálně {{ limit }} znaků.')]
     public ?string $companyName = null;
@@ -28,6 +31,15 @@ final class BillingInfoFormData
 
     #[Assert\Length(max: 10, maxMessage: 'PSČ může mít maximálně {{ limit }} znaků.')]
     public ?string $billingPostalCode = null;
+
+    public bool $addressOverride = false;
+
+    public function hasCompleteAddress(): bool
+    {
+        return null !== $this->billingStreet && '' !== $this->billingStreet
+            && null !== $this->billingCity && '' !== $this->billingCity
+            && null !== $this->billingPostalCode && '' !== $this->billingPostalCode;
+    }
 
     public static function fromUser(User $user): self
     {

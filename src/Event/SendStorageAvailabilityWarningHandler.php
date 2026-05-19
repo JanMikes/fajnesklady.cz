@@ -9,6 +9,7 @@ use App\Enum\UserRole;
 use App\Repository\OrderRepository;
 use App\Repository\UserRepository;
 use App\Service\AtRiskContractChecker;
+use App\Service\Place\PlaceAddressFormatter;
 use Psr\Clock\ClockInterface;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\Mailer\MailerInterface;
@@ -25,6 +26,7 @@ final readonly class SendStorageAvailabilityWarningHandler
         private AtRiskContractChecker $atRiskContractChecker,
         private MailerInterface $mailer,
         private UrlGeneratorInterface $urlGenerator,
+        private PlaceAddressFormatter $addressFormatter,
         private ClockInterface $clock,
     ) {
     }
@@ -79,7 +81,8 @@ final readonly class SendStorageAvailabilityWarningHandler
             ->context([
                 'name' => $user->fullName,
                 'placeName' => $place->name,
-                'placeAddress' => sprintf('%s, %s %s', $place->address, $place->postalCode, $place->city),
+                'placeAddress' => $this->addressFormatter->format($place),
+                'placeNavigationUrl' => $this->addressFormatter->navigationUrl($place),
                 'storageTypeName' => $storageType->name,
                 'storageNumber' => $storage->number,
                 'endDate' => $contract->endDate?->format('d.m.Y'),
@@ -111,7 +114,8 @@ final readonly class SendStorageAvailabilityWarningHandler
                 ->context([
                     'adminName' => $admin->fullName,
                     'placeName' => $place->name,
-                    'placeAddress' => sprintf('%s, %s %s', $place->address, $place->postalCode, $place->city),
+                    'placeAddress' => $this->addressFormatter->format($place),
+                    'placeNavigationUrl' => $this->addressFormatter->navigationUrl($place),
                     'storageTypeName' => $storageType->name,
                     'notifiedUsers' => $notifiedUsers,
                     'notificationCount' => $notificationCount,

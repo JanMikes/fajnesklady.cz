@@ -43,6 +43,8 @@ final class LandlordRegisterController extends AbstractController
             $formData = $form->getData();
 
             try {
+                // Address fields are NotBlank-asserted on the FormData, so reaching
+                // here with a valid form guarantees they are non-null strings.
                 $command = new RegisterLandlordCommand(
                     email: $formData->email,
                     password: $formData->password,
@@ -52,9 +54,9 @@ final class LandlordRegisterController extends AbstractController
                     companyId: $formData->companyId,
                     companyName: $formData->companyName,
                     companyVatId: $formData->companyVatId,
-                    billingStreet: $formData->billingStreet,
-                    billingCity: $formData->billingCity,
-                    billingPostalCode: $formData->billingPostalCode,
+                    billingStreet: (string) $formData->billingStreet,
+                    billingCity: (string) $formData->billingCity,
+                    billingPostalCode: (string) $formData->billingPostalCode,
                     bankAccountNumber: $formData->bankAccountNumber,
                     bankCode: $formData->bankCode,
                 );

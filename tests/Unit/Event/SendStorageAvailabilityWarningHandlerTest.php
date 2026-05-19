@@ -17,6 +17,7 @@ use App\Event\SendStorageAvailabilityWarningHandler;
 use App\Repository\OrderRepository;
 use App\Repository\UserRepository;
 use App\Service\AtRiskContractChecker;
+use App\Service\Place\PlaceAddressFormatter;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
@@ -51,6 +52,7 @@ class SendStorageAvailabilityWarningHandlerTest extends TestCase
             $this->atRiskContractChecker,
             $this->mailer,
             $this->urlGenerator,
+            new PlaceAddressFormatter(),
             $this->clock,
         );
 

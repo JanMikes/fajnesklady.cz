@@ -7,10 +7,13 @@ namespace App\Form;
 use App\Enum\BillingMode;
 use App\Enum\PaymentMethod;
 use App\Enum\RentalType;
+use App\Form\Address\HasBillingAddress;
+use App\Validator\AddressExists;
 use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Component\Validator\Context\ExecutionContextInterface;
 
-final class AdminCreateOnboardingFormData
+#[AddressExists]
+final class AdminCreateOnboardingFormData implements HasBillingAddress
 {
     #[Assert\NotBlank(message: 'Zadejte e-mailovou adresu.')]
     #[Assert\Email(message: 'Zadejte platnou e-mailovou adresu.')]
@@ -54,6 +57,8 @@ final class AdminCreateOnboardingFormData
     #[Assert\Length(max: 10, maxMessage: 'PSČ může mít maximálně {{ limit }} znaků.')]
     public ?string $billingPostalCode = null;
 
+    public bool $addressOverride = false;
+
     #[Assert\NotNull(message: 'Vyberte skladovou jednotku.')]
     public ?string $storageId = null;
 
@@ -87,6 +92,13 @@ final class AdminCreateOnboardingFormData
     public bool $isExternallyPrepaid = false;
 
     public ?\DateTimeImmutable $paidThroughDate = null;
+
+    public function hasCompleteAddress(): bool
+    {
+        return null !== $this->billingStreet && '' !== $this->billingStreet
+            && null !== $this->billingCity && '' !== $this->billingCity
+            && null !== $this->billingPostalCode && '' !== $this->billingPostalCode;
+    }
 
     #[Assert\Callback]
     public function validateCompanyInfo(ExecutionContextInterface $context): void

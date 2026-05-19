@@ -138,6 +138,10 @@ final class OrderFormType extends AbstractType
                     'maxlength' => 10,
                 ],
             ])
+            ->add('addressOverride', CheckboxType::class, [
+                'label' => 'Adresa je správná, pokračovat',
+                'required' => false,
+            ])
             ->add('rentalType', EnumType::class, [
                 'class' => RentalType::class,
                 'label' => 'Typ pronájmu',
