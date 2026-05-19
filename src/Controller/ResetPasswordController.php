@@ -7,6 +7,7 @@ namespace App\Controller;
 use App\Command\ResetPasswordCommand;
 use App\Form\ResetPasswordFormData;
 use App\Form\ResetPasswordFormType;
+use App\Service\Messenger\HandlerFailureUnwrap;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -42,10 +43,16 @@ final class ResetPasswordController extends AbstractController
                 $this->addFlash('success', 'Vaše heslo bylo úspěšně obnoveno. Nyní se můžete přihlásit s novým heslem.');
 
                 return $this->redirectToRoute('app_login');
-            } catch (ResetPasswordExceptionInterface $e) {
-                $this->addFlash('error', 'Při ověřování požadavku na obnovení hesla došlo k chybě. Odkaz mohl vypršet nebo je neplatný.');
+            } catch (\Throwable $rawException) {
+                $exception = HandlerFailureUnwrap::unwrap($rawException);
 
-                return $this->redirectToRoute('app_request_password_reset');
+                if ($exception instanceof ResetPasswordExceptionInterface) {
+                    $this->addFlash('error', 'Při ověřování požadavku na obnovení hesla došlo k chybě. Odkaz mohl vypršet nebo je neplatný.');
+
+                    return $this->redirectToRoute('app_request_password_reset');
+                }
+
+                throw $rawException;
             }
         }
 
