@@ -33,6 +33,7 @@ Stack: PHP 8.5 (Docker image `ghcr.io/thedevs-cz/php:8.5-fajnesklady`) · Symfon
 - `/objednavka/{id}/dokumenty/faktura/{invoiceId}.pdf` → `OrderInvoiceDownloadController` (UriSigner-protected)
 - `/objednavka/{id}/dokumenty/mapa.png` → `OrderMapDownloadController` (UriSigner-protected)
 - `/objednavka/{id}/dokumenty/vop.pdf` → `OrderVopDownloadController` (UriSigner-protected)
+- `/predavaci-protokol/{id}` → `Public\HandoverViewController` (UriSigner-protected — signed link mailed to tenant; lets them upload signature/photos without logging in)
 - `/podpis/{token}` → `CustomerSigningController`
 - `/podpis/dokonceno/{id}` → `CustomerSigningCompleteController`
 - `/opakovana-platba/{contractId}/zrusit` → `CancelRecurringPaymentController`
@@ -136,6 +137,7 @@ Stack: PHP 8.5 (Docker image `ghcr.io/thedevs-cz/php:8.5-fajnesklady`) · Symfon
 - `DELETE /api/places/{placeId}/storages/{storageId}` → `Api\StorageApiDeleteController`
 - `POST /api/places/{placeId}/storages/generate-code` → `Api\StorageApiGenerateCodeController`
 - `GET /api/ares/{companyId}` → `Api\AresLookupController`
+- `GET /api/address/suggest` → `Api\AddressSuggestController` — rate-limited Photon (Komoot) autocomplete; backs the address field on the order/billing forms
 - (Shared validation in `Api\StorageApiValidationTrait`)
 
 ### Ops
@@ -146,7 +148,7 @@ Stack: PHP 8.5 (Docker image `ghcr.io/thedevs-cz/php:8.5-fajnesklady`) · Symfon
 | Entity | Purpose | Key relations / notes |
 |---|---|---|
 | `User` (records events) | Platform user (tenant/landlord/admin); records events via `HasEvents` | billing info; orders, places, contracts, audit logs |
-| `Place` | Physical storage location | owner:User; storages, storage types; carries storage-code config |
+| `Place` | Physical storage location | owner:User; storages, storage types; carries storage-code config; latitude/longitude used by `PlaceAddressFormatter` for navigation links |
 | `Storage` | Unit inside a place | user, storageType, place; photos, unavailability; nullable `storageCode` |
 | `StorageType` | Template/category for storage | place; storages, photos |
 | `StoragePhoto` / `StorageTypePhoto` | Images | parent |
@@ -219,6 +221,8 @@ Handlers (in `src/Event/`):
 
 Registration, LandlordRegistration, RequestPasswordReset, ResetPassword, ChangePassword, Profile, BillingInfo, Place, PlaceProposal, PlaceStorageCodeConfig, Storage, StorageType, StorageUnavailability, Order, UserRole (admin), AdminUser, AdminUserPassword, AdminCreateOnboarding, AdminMigrateCustomer, LandlordHandover, TenantHandover.
 
+Address helper interface: `Form\Address\HasBillingAddress` — implemented by every FormData that owns a billing address (`billingStreet`/`billingCity`/`billingPostalCode` + `addressOverride` + `hasCompleteAddress()`); lets the address-validation/autocomplete UI bind to any of them generically.
+
 ## Repositories (`src/Repository/`)
 
 Compose `EntityManagerInterface` only — never extend `ServiceEntityRepository`, never call `flush()` (exception: `EmailLogRepository`, audit-log writers commit out-of-band so the row survives a parent rollback).
@@ -234,7 +238,10 @@ User, Place, PlaceAccess, PlaceAccessRequest, PlaceChangeRequest, PlaceStorageCo
 - **Invoicing / billing**: `Fakturoid\FakturoidClient`, `Fakturoid\FakturoidApiClient`, `Fakturoid\StaleFakturoidSubjectException`, `InvoicingService`, `SelfBillingService`, `Billing\RecurringAmountCalculator`, `Billing\ManualBillingReminderSchedule` (per-stage cron offsets for `MANUAL_RECURRING` contracts).
 - **VOP generation**: `Vop\VopDocumentGenerator` (fills `${PRICELIST_URL}` / `${OPERATING_RULES_URL}` into `vop_template.docx` per order), `Vop\VopPdfStamper` (overlays customer signature; `$skipLastPages` excludes annex pages).
 - **Overdue & contract risk**: `Overdue\OverdueChecker`, `AtRiskContractChecker`.
-- **Security voters / subscribers**: `Security\ContractVoter`, `Security\OrderVoter`, `Security\PlaceVoter`, `Security\StorageVoter`, `Security\StorageTypeVoter`, `Security\HandoverProtocolVoter`, `Security\DeactivatedUserChecker`, `Security\LoginSubscriber`, `Security\RecordLoginSubscriber`.
+- **Address validation / autocomplete**: `Address\AddressValidator` (interface) + `Address\PhotonAddressValidator` (Photon Komoot impl with HTTP cache + 3 s timeout; powers `/api/address/suggest` and `BillingInfoForm` validation). Result VOs in `Value\Address\` (`AddressSuggestion`, `AddressValidationResult`).
+- **Handover signed links**: `Handover\HandoverUrlGenerator` (HMAC-signs `public_handover_view` URLs — mirrors `OrderStatusUrlGenerator`).
+- **Place address rendering**: `Place\PlaceAddressFormatter` (single-line address, Google Maps navigation URL, fallback when no GPS); surfaced via `Twig\PlaceAddressExtension`.
+- **Security voters / subscribers / listeners**: `Security\ContractVoter`, `Security\OrderVoter`, `Security\PlaceVoter`, `Security\StorageVoter`, `Security\StorageTypeVoter`, `Security\HandoverProtocolVoter`, `Security\DeactivatedUserChecker`, `Security\LoginSubscriber`, `Security\RecordLoginSubscriber`, `Security\HandoverAccessDeniedListener` (kernel exception listener: turns `AccessDeniedException` on the three portal handover routes into a logout + redirect to `/login?_target_path=…`, so a wrong-account user re-authenticates instead of being bounced to home).
 - **Identity**: `Identity\ProvideIdentity` (UUID v7), `Identity\RandomIdentityProvider` (prod), `tests/.../PredictableIdentityProvider`.
 - **ARES lookup**: `AresService`, `AresLookup` (+ `Value\AresResult`, `Value\AresSubject`, `Value\AresAddress`).
 - **Uploads / files**: `PlaceFileUploader`, `StoragePhotoUploader`, `StorageTypePhotoUploader`, `HandoverPhotoUploader`, `PublicFilesystem`, `SignatureStorage`.
@@ -250,11 +257,11 @@ User, Place, PlaceAccess, PlaceAccessRequest, PlaceChangeRequest, PlaceStorageCo
 ## Twig (`src/Twig/`)
 
 - Components: `BillingInfoForm`, `OrderForm`, `RevenueChart`.
-- Extensions: `OverdueExtension` (severity badges / labels), `RoleLabelExtension`, `UploadExtension`.
+- Extensions: `OverdueExtension` (severity badges / labels), `RoleLabelExtension`, `UploadExtension`, `PlaceAddressExtension` (`place_address`, `place_navigation_url`, `place_has_navigation`).
 
 ## Value objects (`src/Value/`)
 
-`AresResult`, `AresSubject`, `AresAddress`, `FakturoidInvoice`, `FakturoidSubject`, `GoPayPayment`, `GoPayPaymentStatus`, `OverdueSummary`, `OverdueContractView`, `OverdueSeverity`, `PaymentSchedule`, `PaymentScheduleEntry`, `RentalSpan`, `RentalSpanKind`, `StorageRentalView`.
+`AresResult`, `AresSubject`, `AresAddress`, `Address\AddressSuggestion`, `Address\AddressValidationResult`, `FakturoidInvoice`, `FakturoidSubject`, `GoPayPayment`, `GoPayPaymentStatus`, `OverdueSummary`, `OverdueContractView`, `OverdueSeverity`, `PaymentSchedule`, `PaymentScheduleEntry`, `RentalSpan`, `RentalSpanKind`, `StorageRentalView`.
 
 ## Exceptions (`src/Exception/`)
 
