@@ -6,6 +6,8 @@ namespace App\Controller\Portal;
 
 use App\Command\RequestPlaceAccessCommand;
 use App\Entity\User;
+use App\Service\Messenger\HandlerFailureUnwrap;
+use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Messenger\MessageBusInterface;
@@ -19,6 +21,7 @@ final class PlaceAccessRequestController extends AbstractController
 {
     public function __construct(
         private readonly MessageBusInterface $commandBus,
+        private readonly LoggerInterface $logger,
     ) {
     }
 
@@ -34,8 +37,15 @@ final class PlaceAccessRequestController extends AbstractController
             ));
 
             $this->addFlash('success', 'Žádost o přístup byla odeslána.');
-        } catch (\DomainException $e) {
-            $this->addFlash('warning', $e->getMessage());
+        } catch (\Throwable $rawException) {
+            $exception = HandlerFailureUnwrap::unwrap($rawException);
+
+            if ($exception instanceof \DomainException) {
+                $this->addFlash('warning', $exception->getMessage());
+            } else {
+                $this->logger->error('Place access request failed', ['exception' => $exception]);
+                $this->addFlash('error', 'Žádost o přístup se nepodařilo odeslat. Zkuste to prosím znovu.');
+            }
         }
 
         return $this->redirectToRoute('portal_places_list');
