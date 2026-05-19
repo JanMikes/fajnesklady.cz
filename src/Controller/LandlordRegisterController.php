@@ -7,6 +7,7 @@ namespace App\Controller;
 use App\Command\RegisterLandlordCommand;
 use App\Form\LandlordRegistrationFormData;
 use App\Form\LandlordRegistrationFormType;
+use App\Service\Messenger\HandlerFailureUnwrap;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -66,13 +67,17 @@ final class LandlordRegisterController extends AbstractController
                 $this->addFlash('success', 'Registrace proběhla úspěšně! Váš účet bude brzy ověřen naším týmem.');
 
                 return $this->redirectToRoute('app_landlord_awaiting_verification');
-            } catch (\DomainException $e) {
-                $this->addFlash('error', $e->getMessage());
-            } catch (\Exception $e) {
-                $this->logger->error('Landlord registration failed', [
-                    'exception' => $e,
-                ]);
-                $this->addFlash('error', 'Při registraci došlo k chybě. Zkuste to prosím znovu.');
+            } catch (\Throwable $rawException) {
+                $exception = HandlerFailureUnwrap::unwrap($rawException);
+
+                if ($exception instanceof \DomainException) {
+                    $this->addFlash('error', $exception->getMessage());
+                } else {
+                    $this->logger->error('Landlord registration failed', [
+                        'exception' => $exception,
+                    ]);
+                    $this->addFlash('error', 'Při registraci došlo k chybě. Zkuste to prosím znovu.');
+                }
             }
         }
 
