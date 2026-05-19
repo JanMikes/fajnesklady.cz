@@ -14,9 +14,9 @@ use App\Entity\StorageType;
 final readonly class OrderStatusViewModel
 {
     /**
-     * @param Invoice[]                                                                                                 $invoices
-     * @param array<int, array{occurredAt: \DateTimeImmutable, label: string, icon: string}>                            $timeline
-     * @param array<int, array{name: string, viewUrl: string, downloadUrl: string, amountCzk: float, hasPdf: bool}>     $invoiceDownloads
+     * @param Invoice[]                                                                                             $invoices
+     * @param array<int, array{occurredAt: \DateTimeImmutable, label: string, icon: string}>                        $timeline
+     * @param array<int, array{name: string, viewUrl: string, downloadUrl: string, amountCzk: float, hasPdf: bool}> $invoiceDownloads
      */
     public function __construct(
         public Order $order,
