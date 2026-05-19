@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace App\Event;
 
 use App\Repository\HandoverProtocolRepository;
+use App\Service\Handover\HandoverUrlGenerator;
 use Psr\Log\LoggerInterface;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Mime\Address;
-use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 #[AsMessageHandler]
 final readonly class SendHandoverRequestToTenantHandler
@@ -18,7 +18,7 @@ final readonly class SendHandoverRequestToTenantHandler
     public function __construct(
         private HandoverProtocolRepository $handoverProtocolRepository,
         private MailerInterface $mailer,
-        private UrlGeneratorInterface $urlGenerator,
+        private HandoverUrlGenerator $handoverUrlGenerator,
         private LoggerInterface $logger,
     ) {
     }
@@ -31,11 +31,7 @@ final readonly class SendHandoverRequestToTenantHandler
         $storage = $contract->storage;
         $place = $storage->getPlace();
 
-        $handoverUrl = $this->urlGenerator->generate(
-            'portal_user_handover_view',
-            ['id' => $protocol->id],
-            UrlGeneratorInterface::ABSOLUTE_URL,
-        );
+        $handoverUrl = $this->handoverUrlGenerator->generateTenantView($protocol);
 
         $email = (new TemplatedEmail())
             ->from(new Address('noreply@fajnesklady.cz', 'Fajnesklady.cz'))

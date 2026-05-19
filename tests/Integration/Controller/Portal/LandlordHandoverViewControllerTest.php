@@ -95,6 +95,57 @@ class LandlordHandoverViewControllerTest extends WebTestCase
         $this->assertTrue($reloaded->needsLandlordCompletion());
     }
 
+    public function testRoleUserHittingLandlordUrlIsRedirectedToLoginAndSessionCleared(): void
+    {
+        $protocol = $this->createPendingHandoverForUnlimitedContract();
+
+        $tenant = $this->findUserByEmail('user@example.com');
+        $this->client->loginUser($tenant, 'main');
+
+        $this->client->request('GET', '/portal/pronajimatel/predavaci-protokol/'.$protocol->id->toRfc4122());
+
+        $this->assertResponseRedirects();
+        $location = (string) $this->client->getResponse()->headers->get('Location');
+        $this->assertStringContainsString('/login', $location);
+        $this->assertStringContainsString(
+            '_target_path=',
+            $location,
+            'Login redirect must carry _target_path so user lands back on the handover page.',
+        );
+        $this->assertStringContainsString('predavaci-protokol', urldecode($location));
+
+        // Session token must be cleared so a follow-up portal hit redirects to
+        // /login (firewall, anonymous) rather than 403 (still authenticated).
+        $this->client->request('GET', '/portal/dashboard');
+        $this->assertResponseRedirects();
+        $this->assertStringContainsString(
+            '/login',
+            (string) $this->client->getResponse()->headers->get('Location'),
+        );
+    }
+
+    public function testWrongLandlordIsRedirectedToLoginAndSessionCleared(): void
+    {
+        // C1 belongs to landlord@; landlord2@ owns Ostrava, so the voter denies VIEW.
+        $protocol = $this->createPendingHandoverForUnlimitedContract();
+
+        $otherLandlord = $this->findUserByEmail('landlord2@example.com');
+        $this->client->loginUser($otherLandlord, 'main');
+
+        $this->client->request('GET', '/portal/pronajimatel/predavaci-protokol/'.$protocol->id->toRfc4122());
+
+        $this->assertResponseRedirects();
+        $location = (string) $this->client->getResponse()->headers->get('Location');
+        $this->assertStringContainsString('/login', $location);
+
+        $this->client->request('GET', '/portal/dashboard');
+        $this->assertResponseRedirects();
+        $this->assertStringContainsString(
+            '/login',
+            (string) $this->client->getResponse()->headers->get('Location'),
+        );
+    }
+
     private function createPendingHandoverForUnlimitedContract(): HandoverProtocol
     {
         // REF_CONTRACT_UNLIMITED → C1 in Praha Centrum (storageCodesEnabled=true).
