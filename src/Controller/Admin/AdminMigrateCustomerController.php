@@ -10,6 +10,7 @@ use App\Entity\User;
 use App\Form\AdminMigrateCustomerFormData;
 use App\Form\AdminMigrateCustomerFormType;
 use App\Repository\StorageRepository;
+use App\Service\Messenger\HandlerFailureUnwrap;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -108,9 +109,15 @@ final class AdminMigrateCustomerController extends AbstractController
 
                     return $this->redirectToRoute('admin_orders_list');
                 }
-            } catch (\Exception $e) {
-                $this->logger->error('Customer migration failed', ['exception' => $e]);
-                $this->addFlash('error', 'Při migraci zákazníka došlo k chybě: '.$e->getMessage());
+            } catch (\Throwable $rawException) {
+                $exception = HandlerFailureUnwrap::unwrap($rawException);
+
+                if ($exception instanceof \DomainException) {
+                    $this->addFlash('error', 'Při migraci zákazníka došlo k chybě: '.$exception->getMessage());
+                } else {
+                    $this->logger->error('Customer migration failed', ['exception' => $exception]);
+                    $this->addFlash('error', 'Při migraci zákazníka došlo k chybě. Zkuste to prosím znovu.');
+                }
             }
         }
 
