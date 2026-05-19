@@ -11,6 +11,7 @@ use App\Exception\StorageCodeRangeExhausted;
 use App\Form\LandlordHandoverFormData;
 use App\Form\LandlordHandoverFormType;
 use App\Repository\HandoverProtocolRepository;
+use App\Service\Messenger\HandlerFailureUnwrap;
 use App\Service\Security\HandoverProtocolVoter;
 use App\Service\StorageCodeGenerator;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -18,7 +19,6 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Form\FormError;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Messenger\Exception\HandlerFailedException;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
@@ -76,10 +76,10 @@ final class LandlordHandoverViewController extends AbstractController
                     comment: $formData->comment,
                     newLockCode: $formData->newLockCode,
                 ));
-            } catch (HandlerFailedException $e) {
-                $nested = $e->getPrevious();
-                if ($nested instanceof InvalidStorageCode) {
-                    $form->get('newLockCode')->addError(new FormError($nested->getMessage()));
+            } catch (\Throwable $rawException) {
+                $exception = HandlerFailureUnwrap::unwrap($rawException);
+                if ($exception instanceof InvalidStorageCode) {
+                    $form->get('newLockCode')->addError(new FormError($exception->getMessage()));
 
                     return $this->render('portal/landlord/handover/view.html.twig', [
                         'protocol' => $protocol,
@@ -91,7 +91,7 @@ final class LandlordHandoverViewController extends AbstractController
                     ]);
                 }
 
-                throw $e;
+                throw $rawException;
             }
 
             $this->addFlash('success', 'Předávací protokol byl úspěšně vyplněn.');
