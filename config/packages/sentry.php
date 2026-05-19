@@ -13,7 +13,7 @@ return App::config([
         'register_error_listener' => false,
         'register_error_handler' => false,
         'options' => [
-            'environment' => '%kernel.environment%',
+            'environment' => '%env(SENTRY_ENVIRONMENT)%',
             'send_default_pii' => true,
             'ignore_exceptions' => [
                 AccessDeniedException::class,
