@@ -10,6 +10,7 @@ use App\Entity\User;
 use App\Form\AdminCreateOnboardingFormData;
 use App\Form\AdminCreateOnboardingFormType;
 use App\Repository\StorageRepository;
+use App\Service\Messenger\HandlerFailureUnwrap;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -102,9 +103,15 @@ final class AdminCreateOnboardingController extends AbstractController
 
                     return $this->redirectToRoute('admin_onboarding');
                 }
-            } catch (\Exception $e) {
-                $this->logger->error('Digital onboarding creation failed', ['exception' => $e]);
-                $this->addFlash('error', 'Při vytváření onboardingu došlo k chybě: '.$e->getMessage());
+            } catch (\Throwable $rawException) {
+                $exception = HandlerFailureUnwrap::unwrap($rawException);
+
+                if ($exception instanceof \DomainException) {
+                    $this->addFlash('error', 'Při vytváření onboardingu došlo k chybě: '.$exception->getMessage());
+                } else {
+                    $this->logger->error('Digital onboarding creation failed', ['exception' => $exception]);
+                    $this->addFlash('error', 'Při vytváření onboardingu došlo k chybě. Zkuste to prosím znovu.');
+                }
             }
         }
 
