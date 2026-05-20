@@ -44,7 +44,30 @@ final class OrderFormDataBillingModeValidationTest extends TestCase
         self::assertCount(0, $billingModeViolations);
     }
 
-    public function testShortLimitedWithManualFails(): void
+    public function testShortLimitedSilentlyPinsToOneTime(): void
+    {
+        // Short LIMITED hides the billingMode radio (only LIMITED ≥ 28 days
+        // surfaces the choice), so the FormData default AUTO_RECURRING reaches
+        // validation unchanged. Auto-correct silently — raising a violation on
+        // a hidden field would stall the form with no visible error and a
+        // generic 422 in the console.
+        $data = $this->validData();
+        $data->rentalType = RentalType::LIMITED;
+        $data->startDate = new \DateTimeImmutable('2025-06-16');
+        $data->endDate = new \DateTimeImmutable('2025-06-23'); // 7 days
+        $data->billingMode = BillingMode::AUTO_RECURRING;
+
+        $violations = $this->validator()->validate($data);
+        $billingModeViolations = array_filter(
+            iterator_to_array($violations),
+            static fn ($v): bool => 'billingMode' === $v->getPropertyPath(),
+        );
+
+        self::assertCount(0, $billingModeViolations);
+        self::assertSame(BillingMode::ONE_TIME, $data->billingMode);
+    }
+
+    public function testShortLimitedAutoCorrectsManualToOneTime(): void
     {
         $data = $this->validData();
         $data->rentalType = RentalType::LIMITED;
@@ -53,9 +76,13 @@ final class OrderFormDataBillingModeValidationTest extends TestCase
         $data->billingMode = BillingMode::MANUAL_RECURRING;
 
         $violations = $this->validator()->validate($data);
-        $messages = array_map(static fn ($v): string => (string) $v->getMessage(), iterator_to_array($violations));
+        $billingModeViolations = array_filter(
+            iterator_to_array($violations),
+            static fn ($v): bool => 'billingMode' === $v->getPropertyPath(),
+        );
 
-        self::assertContains('Pro krátkodobé pronájmy se platí jednorázově.', $messages);
+        self::assertCount(0, $billingModeViolations);
+        self::assertSame(BillingMode::ONE_TIME, $data->billingMode);
     }
 
     public function testLongLimitedWithManualPasses(): void

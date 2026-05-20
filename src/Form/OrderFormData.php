@@ -281,13 +281,17 @@ final class OrderFormData implements HasBillingAddress
                 ->addViolation();
         }
 
+        // Short LIMITED rentals are always ONE_TIME — auto-correct silently. The
+        // form layer hides the billingMode radio in this case (see
+        // OrderForm::isEligibleForBillingModeChoice), so the FormData default
+        // AUTO_RECURRING reaches us unchanged for legitimate submissions.
+        // Raising a violation on a hidden field would stall the form with no
+        // surfaced error; pin the value instead.
         if (RentalType::LIMITED === $this->rentalType
             && null !== $this->startDate && null !== $this->endDate
             && (int) $this->startDate->diff($this->endDate)->days < PriceCalculator::WEEKLY_THRESHOLD_DAYS
             && BillingMode::ONE_TIME !== $this->billingMode) {
-            $context->buildViolation('Pro krátkodobé pronájmy se platí jednorázově.')
-                ->atPath('billingMode')
-                ->addViolation();
+            $this->billingMode = BillingMode::ONE_TIME;
         }
     }
 
