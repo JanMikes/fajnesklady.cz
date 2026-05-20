@@ -7,7 +7,7 @@
         <h1 class="text-3xl font-bold text-gray-900">Kalendář obsazenosti</h1>
     </div>
 
-    <div class="card mb-6">
+    <div class="card mb-6 overflow-visible">
         <div class="card-body">
             <form method="get" action="{{ path('portal_calendar') }}" class="flex flex-wrap items-end gap-4">
                 <input type="hidden" name="year" value="{{ year }}">

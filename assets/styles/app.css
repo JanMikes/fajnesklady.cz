@@ -80,8 +80,12 @@ button {
 }
 
 /* Card component */
-.card {
-    @apply bg-white rounded-lg shadow overflow-hidden;
+@layer components {
+    /* In @layer components so per-instance utilities (e.g. `overflow-visible`
+       on filter cards that host a TomSelect dropdown) can override defaults. */
+    .card {
+        @apply bg-white rounded-lg shadow overflow-hidden;
+    }
 }
 
 .card-body {
