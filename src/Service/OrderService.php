@@ -10,6 +10,7 @@ use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
+use App\Enum\ExpectedDuration;
 use App\Enum\PaymentFrequency;
 use App\Enum\RentalType;
 use App\Exception\NoStorageAvailable;
@@ -52,6 +53,7 @@ final readonly class OrderService
         ?PaymentFrequency $paymentFrequency = null,
         ?Storage $preSelectedStorage = null,
         ?int $monthlyPriceOverride = null,
+        ?ExpectedDuration $expectedDuration = null,
     ): Order {
         if (null !== $preSelectedStorage) {
             // Validate pre-selected storage
@@ -109,6 +111,12 @@ final readonly class OrderService
             $place->manualBillingOffsetOverdueFirst,
             $place->manualBillingOffsetOverdueFinal,
         );
+
+        // Drop a non-null expectedDuration on the floor when the rental is LIMITED —
+        // the field only applies to UNLIMITED orders and must never poison the column.
+        if (RentalType::UNLIMITED === $rentalType) {
+            $order->setExpectedDuration($expectedDuration);
+        }
 
         $this->orderRepository->save($order);
         $this->auditLogger->logOrderCreated($order);

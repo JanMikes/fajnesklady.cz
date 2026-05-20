@@ -300,6 +300,7 @@ final class OrderAcceptController extends AbstractController
                 endDate: $formData->endDate,
                 paymentFrequency: PaymentFrequency::MONTHLY,
                 preSelectedStorage: $storage,
+                expectedDuration: $formData->expectedDuration,
             ));
 
             $orderHandledStamp = $orderEnvelope->last(HandledStamp::class);

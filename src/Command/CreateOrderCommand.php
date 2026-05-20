@@ -8,6 +8,7 @@ use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
+use App\Enum\ExpectedDuration;
 use App\Enum\PaymentFrequency;
 use App\Enum\RentalType;
 
@@ -25,6 +26,7 @@ final readonly class CreateOrderCommand
         public ?\DateTimeImmutable $endDate,
         public ?PaymentFrequency $paymentFrequency = null,
         public ?Storage $preSelectedStorage = null,
+        public ?ExpectedDuration $expectedDuration = null,
     ) {
     }
 }

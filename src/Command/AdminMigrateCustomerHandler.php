@@ -61,6 +61,7 @@ final readonly class AdminMigrateCustomerHandler
             paymentFrequency: PaymentFrequency::MONTHLY,
             preSelectedStorage: $command->storage,
             monthlyPriceOverride: $command->individualMonthlyAmount,
+            expectedDuration: $command->expectedDuration,
         );
 
         // 4. Mark as admin-created with external payment

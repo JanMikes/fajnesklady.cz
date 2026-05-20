@@ -62,6 +62,7 @@ final readonly class AdminCreateOnboardingHandler
             paymentFrequency: PaymentFrequency::MONTHLY,
             preSelectedStorage: $command->storage,
             monthlyPriceOverride: $command->individualMonthlyAmount,
+            expectedDuration: $command->expectedDuration,
         );
 
         $order->setBillingMode($command->billingMode);

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Form;
 
 use App\Enum\BillingMode;
+use App\Enum\ExpectedDuration;
 use App\Enum\RentalType;
 use App\Service\Form\StorageChoiceBuilder;
 use Symfony\Component\Form\AbstractType;
@@ -107,6 +108,15 @@ final class AdminMigrateCustomerFormType extends AbstractType
                     RentalType::LIMITED => 'Doba určitá',
                     RentalType::UNLIMITED => 'Doba neurčitá',
                 },
+            ])
+            ->add('expectedDuration', EnumType::class, [
+                'class' => ExpectedDuration::class,
+                'label' => 'Předpokládaná doba pronájmu',
+                'expanded' => true,
+                'required' => false,
+                'placeholder' => false,
+                'choice_label' => static fn (ExpectedDuration $d): string => $d->label(),
+                'help' => 'Jen pro pronájem na dobu neurčitou. Informativní údaj pro provozovatele.',
             ])
             ->add('startDate', DateType::class, [
                 'label' => 'Datum začátku',

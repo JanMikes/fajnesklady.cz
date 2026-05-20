@@ -215,7 +215,7 @@ Handlers (in `src/Event/`):
 
 ## Enums
 
-`UserRole`, `OrderStatus`, `StorageStatus`, `HandoverStatus`, `PlaceAccessRequestStatus`, `PlaceType`, `RentalType` (UNLIMITED/FIXED_TERM), `RequestStatus`, `TerminationReason`, `PaymentMethod`, `PaymentFrequency` (ONCE/MONTHLY/QUARTERLY/ANNUALLY), `SigningMethod` (DIGITAL/PHYSICAL), `AdvanceNoticeReason`, `EmailLogStatus`, `BillingMode` (ONE_TIME/AUTO_RECURRING/MANUAL_RECURRING — locked at order completion, copied to Contract).
+`UserRole`, `OrderStatus`, `StorageStatus`, `HandoverStatus`, `PlaceAccessRequestStatus`, `PlaceType`, `RentalType` (UNLIMITED/FIXED_TERM), `RequestStatus`, `TerminationReason`, `PaymentMethod`, `PaymentFrequency` (ONCE/MONTHLY/QUARTERLY/ANNUALLY), `SigningMethod` (DIGITAL/PHYSICAL), `AdvanceNoticeReason`, `EmailLogStatus`, `BillingMode` (ONE_TIME/AUTO_RECURRING/MANUAL_RECURRING — locked at order completion, copied to Contract), `ExpectedDuration` (SHORT/MEDIUM/LONG — research-only; populated only for UNLIMITED orders).
 
 ## Forms (FormData + FormType pairs)
 

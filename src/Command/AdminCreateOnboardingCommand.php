@@ -8,6 +8,7 @@ use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Enum\BillingMode;
+use App\Enum\ExpectedDuration;
 use App\Enum\PaymentMethod;
 use App\Enum\RentalType;
 use Symfony\Component\Uid\Uuid;
@@ -42,6 +43,7 @@ final readonly class AdminCreateOnboardingCommand
         public ?\DateTimeImmutable $paidThroughDate = null,
         public ?Uuid $createdByAdminId = null,
         public BillingMode $billingMode = BillingMode::AUTO_RECURRING,
+        public ?ExpectedDuration $expectedDuration = null,
     ) {
     }
 }

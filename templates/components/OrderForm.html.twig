@@ -194,6 +194,8 @@
                                         Negarantujeme dostupnost stejné skladovací jednotky při prodloužení smlouvy – skladovací jednotka může být již rezervovaná.
                                     </p>
                                 </div>
+                                {# Hidden in LIMITED branch — form_end's setRendered cleanup keeps the unsubmitted field happy. #}
+                                {% do form.expectedDuration.setRendered %}
                             {% else %}
                                 <div class="mt-4 p-4 bg-accent/10 border border-accent/20 rounded-lg">
                                     <p class="text-sm text-gray-700">
@@ -202,6 +204,14 @@
                                         </svg>
                                         Pronájem na dobu neurčitou s možností ukončení kdykoliv. Skladovací jednotka zůstává vaše, dokud smlouvu sami neukončíte.
                                     </p>
+                                </div>
+
+                                <div class="mt-4">
+                                    {{ form_row(form.expectedDuration, {attr: {
+                                        'data-action': 'change->live#action',
+                                        'data-live-action-param': 'validateField',
+                                        'data-live-field-param': 'expectedDuration',
+                                    }}) }}
                                 </div>
                             {% endif %}
                         </div>

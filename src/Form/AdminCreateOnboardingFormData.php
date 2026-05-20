@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Form;
 
 use App\Enum\BillingMode;
+use App\Enum\ExpectedDuration;
 use App\Enum\PaymentMethod;
 use App\Enum\RentalType;
 use App\Form\Address\HasBillingAddress;
@@ -64,6 +65,8 @@ final class AdminCreateOnboardingFormData implements HasBillingAddress
 
     #[Assert\NotNull(message: 'Vyberte typ pronájmu.')]
     public RentalType $rentalType = RentalType::UNLIMITED;
+
+    public ?ExpectedDuration $expectedDuration = null;
 
     #[Assert\NotNull(message: 'Zadejte datum začátku.')]
     public ?\DateTimeImmutable $startDate = null;
@@ -190,6 +193,20 @@ final class AdminCreateOnboardingFormData implements HasBillingAddress
         if (RentalType::UNLIMITED === $this->rentalType && BillingMode::AUTO_RECURRING !== $this->billingMode) {
             $context->buildViolation('Pro pronájem na dobu neurčitou je dostupná pouze automatická platba kartou.')
                 ->atPath('billingMode')
+                ->addViolation();
+        }
+    }
+
+    #[Assert\Callback]
+    public function validateExpectedDuration(ExecutionContextInterface $context): void
+    {
+        if (RentalType::UNLIMITED !== $this->rentalType) {
+            return;
+        }
+
+        if (null === $this->expectedDuration) {
+            $context->buildViolation('Vyberte předpokládanou dobu pronájmu.')
+                ->atPath('expectedDuration')
                 ->addViolation();
         }
     }

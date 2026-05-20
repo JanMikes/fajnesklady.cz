@@ -104,6 +104,19 @@
                             </div>
                             {{ form_errors(form.rentalType) }}
                         </div>
+                        <div class="md:col-span-2">
+                            {{ form_label(form.expectedDuration) }}
+                            <div class="flex flex-wrap gap-4 mt-1">
+                                {% for choice in form.expectedDuration %}
+                                    <label class="flex items-center cursor-pointer gap-2">
+                                        {{ form_widget(choice, {'attr': {'class': 'h-4 w-4 text-accent focus:ring-accent border-gray-300'}}) }}
+                                        <span class="text-sm text-gray-700">{{ choice.vars.label }}</span>
+                                    </label>
+                                {% endfor %}
+                            </div>
+                            {{ form_errors(form.expectedDuration) }}
+                            <p class="mt-1 text-xs text-gray-500">Jen pro pronájem na dobu neurčitou. Informativní údaj pro provozovatele.</p>
+                        </div>
                         <div>
                             {{ form_label(form.startDate) }}
                             {{ form_widget(form.startDate) }}

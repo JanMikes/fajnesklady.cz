@@ -10,6 +10,7 @@ use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
+use App\Enum\ExpectedDuration;
 use App\Enum\OrderStatus;
 use App\Enum\RentalType;
 use App\Enum\StorageStatus;
@@ -428,6 +429,49 @@ class OrderWorkflowTest extends KernelTestCase
 
         // Maly box has pricePerWeek = 150 CZK = 15000 halere
         $this->assertSame(15000, $order->firstPaymentPrice);
+    }
+
+    public function testExpectedDurationIsStoredForUnlimitedRental(): void
+    {
+        [$tenant, $storageType, $place] = $this->getFixtures();
+
+        $now = $this->clock->now();
+
+        $order = $this->orderService->createOrder(
+            $tenant,
+            $storageType,
+            $place,
+            RentalType::UNLIMITED,
+            $now->modify('+1 day'),
+            null,
+            $now,
+            expectedDuration: ExpectedDuration::MEDIUM,
+        );
+
+        $this->assertSame(ExpectedDuration::MEDIUM, $order->expectedDuration);
+    }
+
+    public function testExpectedDurationIsDroppedForLimitedRental(): void
+    {
+        [$tenant, $storageType, $place] = $this->getFixtures();
+
+        $now = $this->clock->now();
+
+        // Defensive guard: even if a caller accidentally hands a non-null
+        // expectedDuration to a LIMITED rental, OrderService MUST drop it on
+        // the floor — the column is research-only and exclusive to UNLIMITED.
+        $order = $this->orderService->createOrder(
+            $tenant,
+            $storageType,
+            $place,
+            RentalType::LIMITED,
+            new \DateTimeImmutable('2024-01-01'),
+            new \DateTimeImmutable('2024-01-08'),
+            $now,
+            expectedDuration: ExpectedDuration::LONG,
+        );
+
+        $this->assertNull($order->expectedDuration);
     }
 
     private function countExpirableOrders(\DateTimeImmutable $now): int

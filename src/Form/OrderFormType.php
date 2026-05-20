@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Form;
 
 use App\Enum\BillingMode;
+use App\Enum\ExpectedDuration;
 use App\Enum\RentalType;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
@@ -150,6 +151,19 @@ final class OrderFormType extends AbstractType
                     RentalType::LIMITED => 'Na dobu určitou',
                     RentalType::UNLIMITED => 'Na dobu neurčitou',
                 },
+            ])
+            ->add('expectedDuration', EnumType::class, [
+                'class' => ExpectedDuration::class,
+                'label' => 'Předpokládaná doba pronájmu',
+                'label_attr' => ['class' => 'required'],
+                'expanded' => true,
+                // Live UX re-submits the form on every per-field blur with the
+                // radio potentially empty; server-side validateExpectedDuration
+                // is the source of truth when UNLIMITED is selected.
+                'required' => false,
+                'placeholder' => false,
+                'choice_label' => fn (ExpectedDuration $d) => $d->label(),
+                'help' => 'Informativní údaj pro provozovatele, nemá vliv na cenu ani podmínky pronájmu.',
             ])
             ->add('startDate', DateType::class, [
                 'label' => 'Datum začátku',

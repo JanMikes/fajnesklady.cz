@@ -30,6 +30,7 @@ final readonly class CreateOrderHandler
             now: $this->clock->now(),
             paymentFrequency: $command->paymentFrequency,
             preSelectedStorage: $command->preSelectedStorage,
+            expectedDuration: $command->expectedDuration,
         );
     }
 }

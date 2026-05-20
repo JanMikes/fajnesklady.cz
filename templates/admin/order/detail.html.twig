@@ -141,6 +141,12 @@
                             {% endif %}
                         </dd>
                     </div>
+                    {% if order.expectedDuration %}
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500">Předpokládaná doba pronájmu</dt>
+                            <dd class="mt-1 text-sm text-gray-900">{{ order.expectedDuration.label }}</dd>
+                        </div>
+                    {% endif %}
                     <div>
                         <dt class="text-sm font-medium text-gray-500">Datum začátku</dt>
                         <dd class="mt-1 text-sm text-gray-900">{{ order.startDate|date('d.m.Y') }}</dd>

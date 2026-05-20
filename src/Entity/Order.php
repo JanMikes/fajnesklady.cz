@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Enum\BillingMode;
+use App\Enum\ExpectedDuration;
 use App\Enum\OrderStatus;
 use App\Enum\PaymentFrequency;
 use App\Enum\PaymentMethod;
@@ -143,6 +144,15 @@ class Order implements EntityWithEvents
     #[ORM\ManyToOne(targetEntity: User::class)]
     #[ORM\JoinColumn(nullable: true)]
     public private(set) ?User $createdByAdmin = null;
+
+    /**
+     * Customer's self-reported expected stay length, asked only when they pick
+     * UNLIMITED. Research signal for admins/landlords — never read by billing,
+     * pricing, or any business rule. NULL for LIMITED orders and for legacy
+     * UNLIMITED orders placed before this column existed.
+     */
+    #[ORM\Column(length: 10, nullable: true, enumType: ExpectedDuration::class)]
+    public private(set) ?ExpectedDuration $expectedDuration = null;
 
     public function __construct(
         #[ORM\Id]
@@ -427,6 +437,11 @@ class Order implements EntityWithEvents
     public function extendExpiration(\DateTimeImmutable $newExpiresAt): void
     {
         $this->expiresAt = $newExpiresAt;
+    }
+
+    public function setExpectedDuration(?ExpectedDuration $duration): void
+    {
+        $this->expectedDuration = $duration;
     }
 
     /**

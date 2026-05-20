@@ -6,6 +6,7 @@ namespace App\Form;
 
 use App\Entity\User;
 use App\Enum\BillingMode;
+use App\Enum\ExpectedDuration;
 use App\Enum\RentalType;
 use App\Form\Address\HasBillingAddress;
 use App\Service\PriceCalculator;
@@ -69,6 +70,8 @@ final class OrderFormData implements HasBillingAddress
 
     #[Assert\NotNull(message: 'Vyberte typ pronájmu.')]
     public ?RentalType $rentalType = RentalType::LIMITED;
+
+    public ?ExpectedDuration $expectedDuration = null;
 
     #[Assert\NotNull(message: 'Vyberte datum začátku.')]
     public ?\DateTimeImmutable $startDate = null;
@@ -231,6 +234,20 @@ final class OrderFormData implements HasBillingAddress
     }
 
     #[Assert\Callback]
+    public function validateExpectedDuration(ExecutionContextInterface $context): void
+    {
+        if (RentalType::UNLIMITED !== $this->rentalType) {
+            return;
+        }
+
+        if (null === $this->expectedDuration) {
+            $context->buildViolation('Vyberte předpokládanou dobu pronájmu.')
+                ->atPath('expectedDuration')
+                ->addViolation();
+        }
+    }
+
+    #[Assert\Callback]
     public function validateBillingMode(ExecutionContextInterface $context): void
     {
         if (RentalType::UNLIMITED === $this->rentalType && BillingMode::AUTO_RECURRING !== $this->billingMode) {
@@ -289,6 +306,7 @@ final class OrderFormData implements HasBillingAddress
             'billingPostalCode' => $this->billingPostalCode,
             'addressOverride' => $this->addressOverride,
             'rentalType' => $this->rentalType?->value,
+            'expectedDuration' => $this->expectedDuration?->value,
             'startDate' => $this->startDate?->format('Y-m-d'),
             'endDate' => $this->endDate?->format('Y-m-d'),
             'selectionMode' => $this->selectionMode,
@@ -317,6 +335,9 @@ final class OrderFormData implements HasBillingAddress
         $formData->billingPostalCode = $data['billingPostalCode'] ?? null;
         $formData->addressOverride = (bool) ($data['addressOverride'] ?? false);
         $formData->rentalType = isset($data['rentalType']) ? RentalType::tryFrom($data['rentalType']) : RentalType::LIMITED;
+        if (isset($data['expectedDuration'])) {
+            $formData->expectedDuration = ExpectedDuration::tryFrom($data['expectedDuration']);
+        }
         $formData->startDate = isset($data['startDate']) ? new \DateTimeImmutable($data['startDate']) : null;
         $formData->endDate = isset($data['endDate']) ? new \DateTimeImmutable($data['endDate']) : null;
         $mode = $data['selectionMode'] ?? null;

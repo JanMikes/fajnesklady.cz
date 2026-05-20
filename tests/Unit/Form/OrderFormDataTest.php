@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Form;
 
+use App\Enum\ExpectedDuration;
 use App\Enum\RentalType;
 use App\Form\OrderFormData;
 use PHPUnit\Framework\TestCase;
@@ -317,5 +318,65 @@ class OrderFormDataTest extends TestCase
 
         self::assertTrue($restored->addressOverride);
         self::assertSame('Asdfghj 999', $restored->billingStreet);
+    }
+
+    public function testValidatesExpectedDurationRequiredForUnlimitedRental(): void
+    {
+        $formData = new OrderFormData();
+        $formData->rentalType = RentalType::UNLIMITED;
+        $formData->expectedDuration = null;
+
+        $violationBuilder = $this->createMock(ConstraintViolationBuilderInterface::class);
+        $violationBuilder->expects($this->once())
+            ->method('atPath')
+            ->with('expectedDuration')
+            ->willReturnSelf();
+        $violationBuilder->expects($this->once())
+            ->method('addViolation');
+
+        $context = $this->createMock(ExecutionContextInterface::class);
+        $context->expects($this->once())
+            ->method('buildViolation')
+            ->with('Vyberte předpokládanou dobu pronájmu.')
+            ->willReturn($violationBuilder);
+
+        $formData->validateExpectedDuration($context);
+    }
+
+    public function testValidatesExpectedDurationAcceptsValueForUnlimitedRental(): void
+    {
+        $formData = new OrderFormData();
+        $formData->rentalType = RentalType::UNLIMITED;
+        $formData->expectedDuration = ExpectedDuration::SHORT;
+
+        $context = $this->createMock(ExecutionContextInterface::class);
+        $context->expects($this->never())
+            ->method('buildViolation');
+
+        $formData->validateExpectedDuration($context);
+    }
+
+    public function testValidatesExpectedDurationSkippedForLimitedRental(): void
+    {
+        $formData = new OrderFormData();
+        $formData->rentalType = RentalType::LIMITED;
+        $formData->expectedDuration = null;
+
+        $context = $this->createMock(ExecutionContextInterface::class);
+        $context->expects($this->never())
+            ->method('buildViolation');
+
+        $formData->validateExpectedDuration($context);
+    }
+
+    public function testSessionRoundTripPersistsExpectedDuration(): void
+    {
+        $formData = new OrderFormData();
+        $formData->rentalType = RentalType::UNLIMITED;
+        $formData->expectedDuration = ExpectedDuration::LONG;
+
+        $restored = OrderFormData::fromSessionArray($formData->toSessionArray());
+
+        self::assertSame(ExpectedDuration::LONG, $restored->expectedDuration);
     }
 }
