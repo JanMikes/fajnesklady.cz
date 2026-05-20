@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\Entity\Contract;
+use App\Entity\HandoverProtocol;
 use App\Entity\Order;
 use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
+use App\Enum\BillingMode;
 use App\Exception\ContractNotFound;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
@@ -218,6 +220,50 @@ class ContractRepository
         }
 
         return $result;
+    }
+
+    /**
+     * Contracts ending within $days where no HandoverProtocol row exists yet —
+     * surfaces the gap between contract expiry and the daily protocol-creation
+     * cron firing (operator's sanity check).
+     *
+     * @return Contract[]
+     */
+    public function findExpiringWithoutProtocol(int $days, \DateTimeImmutable $now): array
+    {
+        $threshold = $now->modify("+{$days} days");
+
+        return $this->entityManager->createQueryBuilder()
+            ->select('c')
+            ->from(Contract::class, 'c')
+            ->leftJoin(HandoverProtocol::class, 'hp', 'WITH', 'hp.contract = c')
+            ->where('c.endDate IS NOT NULL')
+            ->andWhere('c.endDate BETWEEN :now AND :threshold')
+            ->andWhere('c.terminatedAt IS NULL')
+            ->andWhere('hp.id IS NULL')
+            ->setParameter('now', $now)
+            ->setParameter('threshold', $threshold)
+            ->orderBy('c.endDate', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    public function countExpiringWithoutProtocol(int $days, \DateTimeImmutable $now): int
+    {
+        $threshold = $now->modify("+{$days} days");
+
+        return (int) $this->entityManager->createQueryBuilder()
+            ->select('COUNT(c.id)')
+            ->from(Contract::class, 'c')
+            ->leftJoin(HandoverProtocol::class, 'hp', 'WITH', 'hp.contract = c')
+            ->where('c.endDate IS NOT NULL')
+            ->andWhere('c.endDate BETWEEN :now AND :threshold')
+            ->andWhere('c.terminatedAt IS NULL')
+            ->andWhere('hp.id IS NULL')
+            ->setParameter('now', $now)
+            ->setParameter('threshold', $threshold)
+            ->getQuery()
+            ->getSingleScalarResult();
     }
 
     /**
@@ -719,6 +765,53 @@ class ContractRepository
             ->setParameter('manual', \App\Enum\BillingMode::MANUAL_RECURRING->value)
             ->getQuery()
             ->getResult();
+    }
+
+    /**
+     * Externally-prepaid contracts whose paidThroughDate lands in the next
+     * $days. Used by the admin Operations hub — unlike
+     * findExternalPrepaymentsEndingInRange this does not respect cron
+     * idempotency (already-noticed contracts still appear in the hub).
+     *
+     * @return Contract[]
+     */
+    public function findExternalPrepaymentEndingWithinDays(int $days, \DateTimeImmutable $now): array
+    {
+        $threshold = $now->modify("+{$days} days");
+
+        return $this->entityManager->createQueryBuilder()
+            ->select('c')
+            ->from(Contract::class, 'c')
+            ->where('c.paidThroughDate IS NOT NULL')
+            ->andWhere('c.goPayParentPaymentId IS NULL')
+            ->andWhere('c.terminatedAt IS NULL')
+            ->andWhere('c.paidThroughDate BETWEEN :now AND :threshold')
+            ->andWhere('c.billingMode != :manual')
+            ->setParameter('now', $now)
+            ->setParameter('threshold', $threshold)
+            ->setParameter('manual', BillingMode::MANUAL_RECURRING->value)
+            ->orderBy('c.paidThroughDate', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    public function countExternalPrepaymentEndingWithinDays(int $days, \DateTimeImmutable $now): int
+    {
+        $threshold = $now->modify("+{$days} days");
+
+        return (int) $this->entityManager->createQueryBuilder()
+            ->select('COUNT(c.id)')
+            ->from(Contract::class, 'c')
+            ->where('c.paidThroughDate IS NOT NULL')
+            ->andWhere('c.goPayParentPaymentId IS NULL')
+            ->andWhere('c.terminatedAt IS NULL')
+            ->andWhere('c.paidThroughDate BETWEEN :now AND :threshold')
+            ->andWhere('c.billingMode != :manual')
+            ->setParameter('now', $now)
+            ->setParameter('threshold', $threshold)
+            ->setParameter('manual', BillingMode::MANUAL_RECURRING->value)
+            ->getQuery()
+            ->getSingleScalarResult();
     }
 
     /**

@@ -6,6 +6,7 @@ namespace App\Controller\Admin;
 
 use App\Repository\ContractPriceChangeRepository;
 use App\Repository\ContractRepository;
+use App\Repository\HandoverProtocolRepository;
 use App\Repository\InvoiceRepository;
 use App\Repository\OrderRepository;
 use App\Repository\PaymentRepository;
@@ -28,6 +29,7 @@ final class AdminOrderDetailController extends AbstractController
         private readonly OrderRepository $orderRepository,
         private readonly ContractRepository $contractRepository,
         private readonly ContractPriceChangeRepository $priceChangeRepository,
+        private readonly HandoverProtocolRepository $handoverProtocolRepository,
         private readonly InvoiceRepository $invoiceRepository,
         private readonly PaymentRepository $paymentRepository,
         private readonly ContractService $contractService,
@@ -47,6 +49,9 @@ final class AdminOrderDetailController extends AbstractController
         $place = $storage->getPlace();
         $contract = $this->contractRepository->findByOrder($order);
         $invoices = $this->invoiceRepository->findAllByOrder($order);
+        $handoverProtocol = null !== $contract
+            ? $this->handoverProtocolRepository->findByContract($contract)
+            : null;
         $now = $this->clock->now();
 
         $daysRemaining = null;
@@ -85,6 +90,7 @@ final class AdminOrderDetailController extends AbstractController
             'isUserOverdue' => $isUserOverdue,
             'priceChanges' => $priceChanges,
             'now' => $now,
+            'handoverProtocol' => $handoverProtocol,
         ]);
     }
 }

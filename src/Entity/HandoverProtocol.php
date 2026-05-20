@@ -55,7 +55,7 @@ class HandoverProtocol implements EntityWithEvents
         #[ORM\Column(type: UuidType::NAME, unique: true)]
         private(set) Uuid $id,
         #[ORM\OneToOne(targetEntity: Contract::class)]
-        #[ORM\JoinColumn(nullable: false)]
+        #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
         private(set) Contract $contract,
         #[ORM\Column]
         private(set) \DateTimeImmutable $createdAt,

@@ -1,0 +1,53 @@
+{#
+    Inputs:
+      - protocol: HandoverProtocol  (required)
+      - actor: 'tenant' | 'landlord' | 'admin'  (required)
+      - viewUrl: string  (already actor-correct)
+      - now: \DateTimeImmutable  (optional; only needed for admin dwell-time subline)
+#}
+{% if protocol.isFullyCompleted %}
+    {# Compact green completed row #}
+    <div class="mb-4 flex items-center justify-between gap-4 rounded-lg border border-green-200 bg-green-50 p-4">
+        <div class="flex items-center gap-3">
+            <svg class="h-5 w-5 text-green-600 flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+            <div>
+                <p class="text-sm font-medium text-green-800">Předávací protokol vyplněn</p>
+                {% if protocol.completedAt %}
+                    <p class="text-xs text-green-700">{{ protocol.completedAt|date('d.m.Y') }}</p>
+                {% endif %}
+            </div>
+        </div>
+        <a href="{{ viewUrl }}" class="text-sm font-medium text-green-700 hover:text-green-900 underline">
+            Zobrazit
+        </a>
+    </div>
+{% else %}
+    {# Amber pending/partial card #}
+    <div class="mb-6 rounded-lg border border-amber-300 bg-amber-50 p-5">
+        <div class="flex items-start gap-4">
+            <svg class="h-6 w-6 text-amber-600 flex-shrink-0 mt-0.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <div class="flex-1">
+                <h2 class="text-base font-semibold text-amber-900">Předávací protokol</h2>
+                {% if protocol.status.isWaitingOn(actor) %}
+                    <p class="mt-1 text-sm text-amber-800">Vyplňte protokol, abychom mohli ukončit nájem.</p>
+                {% else %}
+                    <p class="mt-1 text-sm text-amber-800">Čeká se na druhou stranu.</p>
+                {% endif %}
+                {% if actor == 'admin' and now is defined and now is not null %}
+                    {% set days = (now.timestamp - protocol.createdAt.timestamp) // 86400 %}
+                    <p class="mt-1 text-xs text-amber-700">
+                        Vytvořeno {{ days }} {{ days == 1 ? 'den' : (days < 5 ? 'dny' : 'dní') }}
+                        {% if days > 14 %}<span class="font-semibold text-red-700">(po termínu)</span>{% endif %}
+                    </p>
+                {% endif %}
+                <a href="{{ viewUrl }}" class="mt-3 inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-white bg-amber-600 hover:bg-amber-700">
+                    Otevřít protokol
+                </a>
+            </div>
+        </div>
+    </div>
+{% endif %}

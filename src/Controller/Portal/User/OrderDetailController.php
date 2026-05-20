@@ -7,6 +7,7 @@ namespace App\Controller\Portal\User;
 use App\Entity\User;
 use App\Enum\BillingMode;
 use App\Repository\ContractRepository;
+use App\Repository\HandoverProtocolRepository;
 use App\Repository\InvoiceRepository;
 use App\Repository\ManualPaymentRequestRepository;
 use App\Repository\OrderRepository;
@@ -30,6 +31,7 @@ final class OrderDetailController extends AbstractController
     public function __construct(
         private readonly OrderRepository $orderRepository,
         private readonly ContractRepository $contractRepository,
+        private readonly HandoverProtocolRepository $handoverProtocolRepository,
         private readonly InvoiceRepository $invoiceRepository,
         private readonly ManualPaymentRequestRepository $manualPaymentRequestRepository,
         private readonly ContractService $contractService,
@@ -59,6 +61,9 @@ final class OrderDetailController extends AbstractController
 
         $contract = $this->contractRepository->findByOrder($order);
         $invoices = $this->invoiceRepository->findAllByOrder($order);
+        $handoverProtocol = null !== $contract
+            ? $this->handoverProtocolRepository->findByContract($contract)
+            : null;
         $now = $this->clock->now();
 
         $daysRemaining = null;
@@ -105,6 +110,7 @@ final class OrderDetailController extends AbstractController
             'manualNowAmount' => $manualNowAmount,
             'manualNowPeriodStart' => $manualNowPeriodStart,
             'nextManualDate' => $nextManualDate,
+            'handoverProtocol' => $handoverProtocol,
         ]);
     }
 }

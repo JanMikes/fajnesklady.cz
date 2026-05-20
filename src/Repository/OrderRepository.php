@@ -142,6 +142,24 @@ class OrderRepository
             ->getResult();
     }
 
+    public function countUnpaidSignedOnboarding(\DateTimeImmutable $now): int
+    {
+        return (int) $this->entityManager->createQueryBuilder()
+            ->select('COUNT(o.id)')
+            ->from(Order::class, 'o')
+            ->where('o.isAdminCreated = :true')
+            ->andWhere('o.paymentMethod = :gopay')
+            ->andWhere('o.status IN (:openStatuses)')
+            ->andWhere('o.signedAt IS NOT NULL')
+            ->andWhere('o.expiresAt > :now')
+            ->setParameter('true', true)
+            ->setParameter('gopay', PaymentMethod::GOPAY)
+            ->setParameter('openStatuses', [OrderStatus::RESERVED, OrderStatus::AWAITING_PAYMENT])
+            ->setParameter('now', $now)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
     /**
      * Completed (paid) orders that should have an invoice by now but don't.
      * Used by IssueMissingInvoicesCommand as a backstop for the (rare)

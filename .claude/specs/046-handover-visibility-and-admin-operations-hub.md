@@ -1,6 +1,6 @@
 # 046 — Handover protocol visibility & admin operations hub
 
-**Status:** ready
+**Status:** done
 **Type:** feature
 **Scope:** large (~22 files: 3 new controllers, 1 new query/service, 1 new admin view template, 5 templates touched, 1 partial extended, 1 Twig extension, sidebar nav entry, repository extensions, fixtures, tests)
 **Depends on:** spec 023 (overdue dashboard pattern, mirrored verbatim), spec 041 (handover signed-URL infrastructure, reused unchanged)

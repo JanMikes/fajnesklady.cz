@@ -293,6 +293,35 @@ class OrderStatusControllerTest extends WebTestCase
         return $order;
     }
 
+    public function testHandoverBannerAppearsWithFreshlySignedTenantUrl(): void
+    {
+        // REF_CONTRACT_ACTIVE (storage B3) has a fixture handover protocol
+        // (HandoverProtocolFixtures::REF_HANDOVER_PENDING). The /stav page must
+        // render the banner with a freshly-minted signed tenant URL.
+        $order = $this->findOrderByReference(OrderFixtures::REF_ORDER_COMPLETED);
+        $this->requestSigned($this->urlGenerator->generate($order));
+
+        $this->assertResponseIsSuccessful();
+        $crawler = $this->client->getCrawler();
+        $handoverLinks = $crawler->filter('a[href*="/predavaci-protokol/"]');
+        self::assertGreaterThan(0, $handoverLinks->count(), 'Expected a handover link on /stav.');
+        $href = $handoverLinks->first()->attr('href') ?? '';
+        $this->assertStringContainsString('_hash=', $href, 'Tenant handover link must be HMAC-signed.');
+    }
+
+    public function testHandoverBannerAbsentWhenNoProtocol(): void
+    {
+        // REF_ORDER_COMPLETED_UNLIMITED → storage C1 → REF_CONTRACT_UNLIMITED has no
+        // fixture handover protocol.
+        $order = $this->findOrderByReference(OrderFixtures::REF_ORDER_COMPLETED_UNLIMITED);
+        $this->requestSigned($this->urlGenerator->generate($order));
+
+        $this->assertResponseIsSuccessful();
+        $crawler = $this->client->getCrawler();
+        $handoverLinks = $crawler->filter('a[href*="/predavaci-protokol/"]');
+        self::assertSame(0, $handoverLinks->count(), 'Expected no handover link when there is no protocol.');
+    }
+
     /**
      * Request the signed URL via the test client, preserving the host:port
      * that UriSigner used to compute the hash. Without aligning HTTP_HOST,

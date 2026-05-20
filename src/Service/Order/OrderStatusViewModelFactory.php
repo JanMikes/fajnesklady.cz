@@ -11,9 +11,11 @@ use App\Enum\BillingMode;
 use App\Enum\OrderStatus;
 use App\Repository\AuditLogRepository;
 use App\Repository\ContractRepository;
+use App\Repository\HandoverProtocolRepository;
 use App\Repository\InvoiceRepository;
 use App\Repository\ManualPaymentRequestRepository;
 use App\Service\Billing\ManualBillingReminderSchedule;
+use App\Service\Handover\HandoverUrlGenerator;
 use App\Service\OrderStatusUrlGenerator;
 use App\Service\RecurringPaymentCancelUrlGenerator;
 use Psr\Clock\ClockInterface;
@@ -31,6 +33,8 @@ final readonly class OrderStatusViewModelFactory
         private UrlGeneratorInterface $urlGenerator,
         private ClockInterface $clock,
         private ManualPaymentRequestRepository $manualPaymentRequestRepository,
+        private HandoverProtocolRepository $handoverProtocolRepository,
+        private HandoverUrlGenerator $handoverUrlGenerator,
     ) {
     }
 
@@ -139,6 +143,18 @@ final readonly class OrderStatusViewModelFactory
 
         $timeline = $this->buildTimeline($order, $contract);
 
+        $handoverProtocol = null;
+        $handoverViewUrl = null;
+        if (null !== $contract) {
+            $handoverProtocol = $this->handoverProtocolRepository->findByContract($contract);
+            if (null !== $handoverProtocol) {
+                // Same trust gradient as the other signed-download links on this page:
+                // the caller already passed UriSigner::checkRequest on /stav so it is
+                // safe to mint a fresh tenant signature for the embedded CTA.
+                $handoverViewUrl = $this->handoverUrlGenerator->generateTenantView($handoverProtocol);
+            }
+        }
+
         return new OrderStatusViewModel(
             order: $order,
             contract: $contract,
@@ -165,6 +181,8 @@ final readonly class OrderStatusViewModelFactory
             nextManualPaymentRequestDate: $nextManualPaymentRequestDate,
             manualNowAmountInHaler: $manualNowAmountInHaler,
             manualNowPeriodStart: $manualNowPeriodStart,
+            handoverProtocol: $handoverProtocol,
+            handoverViewUrl: $handoverViewUrl,
         );
     }
 

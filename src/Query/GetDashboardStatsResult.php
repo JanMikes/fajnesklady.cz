@@ -28,6 +28,7 @@ final readonly class GetDashboardStatsResult
         public int $overdueCount,
         public int $overdueAmount,
         public array $overdueTop,
+        public int $operationsPendingCount,
     ) {
     }
 }

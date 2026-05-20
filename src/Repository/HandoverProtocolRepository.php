@@ -6,6 +6,7 @@ namespace App\Repository;
 
 use App\Entity\Contract;
 use App\Entity\HandoverProtocol;
+use App\Enum\HandoverStatus;
 use App\Exception\HandoverProtocolNotFound;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
@@ -58,6 +59,35 @@ class HandoverProtocolRepository
             ->setParameter('threshold', $reminderThreshold)
             ->getQuery()
             ->getResult();
+    }
+
+    /**
+     * Non-completed protocols across the whole portfolio. Drives the
+     * admin Operations hub list and the count badge.
+     *
+     * @return HandoverProtocol[]
+     */
+    public function findPending(): array
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('hp')
+            ->from(HandoverProtocol::class, 'hp')
+            ->where('hp.status != :completed')
+            ->setParameter('completed', HandoverStatus::COMPLETED->value)
+            ->orderBy('hp.createdAt', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    public function countPending(): int
+    {
+        return (int) $this->entityManager->createQueryBuilder()
+            ->select('COUNT(hp.id)')
+            ->from(HandoverProtocol::class, 'hp')
+            ->where('hp.status != :completed')
+            ->setParameter('completed', HandoverStatus::COMPLETED->value)
+            ->getQuery()
+            ->getSingleScalarResult();
     }
 
     /**

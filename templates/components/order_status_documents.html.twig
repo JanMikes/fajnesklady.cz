@@ -10,6 +10,7 @@
 
 {% set isRecurring = vm.isRecurring %}
 {% set hasContractRow = vm.contract is not null %}
+{% set hasHandoverRow = vm.handoverProtocol is not null and vm.handoverProtocol.isFullyCompleted and vm.handoverViewUrl is not null %}
 
 <div class="card">
     <div class="card-body">
@@ -21,7 +22,7 @@
         </h2>
         <p class="text-sm text-gray-500 mb-5">Dokumenty si můžete <span class="font-medium">zobrazit v prohlížeči</span> nebo <span class="font-medium">stáhnout</span>.</p>
 
-        {% if hasContractRow or vm.invoiceDownloads is not empty %}
+        {% if hasContractRow or hasHandoverRow or vm.invoiceDownloads is not empty %}
             <div class="mb-6">
                 <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Smluvní dokumenty</h3>
                 <ul class="divide-y divide-gray-100 border border-gray-100 rounded-lg">
@@ -31,6 +32,16 @@
                             vm.contractDownloadUrl,
                             'Nájemní smlouva',
                             vm.contractDownloadUrl ? 'Podepsaná smlouva o pronájmu skladové jednotky' : 'Dokument se připravuje, bude doručen e-mailem',
+                            'pdf'
+                        ) }}
+                    {% endif %}
+
+                    {% if hasHandoverRow %}
+                        {{ _self.documentRow(
+                            vm.handoverViewUrl,
+                            null,
+                            'Předávací protokol',
+                            'Vyplněn ' ~ vm.handoverProtocol.completedAt|date('d.m.Y'),
                             'pdf'
                         ) }}
                     {% endif %}

@@ -11,6 +11,7 @@ use App\Repository\PlaceRepository;
 use App\Repository\SelfBillingInvoiceRepository;
 use App\Repository\StorageRepository;
 use App\Repository\UserRepository;
+use App\Service\Operations\OperationsAlertsBuilder;
 use App\Service\Overdue\OverdueChecker;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -26,6 +27,7 @@ final readonly class GetDashboardStatsQuery
         private PlaceRepository $placeRepository,
         private StorageRepository $storageRepository,
         private OverdueChecker $overdueChecker,
+        private OperationsAlertsBuilder $operationsAlertsBuilder,
         private ClockInterface $clock,
     ) {
     }
@@ -57,6 +59,7 @@ final readonly class GetDashboardStatsQuery
         $activeRecurringContracts = $this->contractRepository->countActiveRecurringAll();
 
         $overdueSummary = $this->overdueChecker->summarise($now);
+        $operationsPendingCount = $this->operationsAlertsBuilder->totalPendingCount($now);
 
         return new GetDashboardStatsResult(
             totalUsers: $totalUsers,
@@ -75,6 +78,7 @@ final readonly class GetDashboardStatsQuery
             overdueCount: $overdueSummary->count,
             overdueAmount: $overdueSummary->totalAmount,
             overdueTop: $overdueSummary->top,
+            operationsPendingCount: $operationsPendingCount,
         );
     }
 }

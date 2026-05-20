@@ -103,6 +103,14 @@
         nextManualDate: nextManualDate,
     } only %}
 
+    {% if handoverProtocol %}
+        {% include 'components/handover_banner.html.twig' with {
+            protocol: handoverProtocol,
+            actor: 'tenant',
+            viewUrl: path('portal_user_handover_view', {id: handoverProtocol.id}),
+        } only %}
+    {% endif %}
+
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
         {# Order Details #}
         <div class="bg-white shadow overflow-hidden sm:rounded-lg">
@@ -242,7 +250,7 @@
     {# Documents — unified panel shown once the order is paid #}
     {% if order.status.value in ['paid', 'completed'] %}
     <div id="dokumenty" class="mt-6">
-        {% include 'components/order_documents.html.twig' with {order, contract, invoices, place} only %}
+        {% include 'components/order_documents.html.twig' with {order, contract, invoices, place, handoverProtocol} only %}
     </div>
     {% endif %}
 

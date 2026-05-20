@@ -8,6 +8,7 @@
    - contract: ?Contract
    - invoices: list<Invoice>
    - place: Place
+   - handoverProtocol: ?HandoverProtocol  (only the COMPLETED state renders a row)
 
    Always invoked from a logged-in context — the shared layout already
    guards on ROLE_USER, so per-invoice `portal_user_invoice_pdf` and the
@@ -47,6 +48,16 @@
                         null,
                         'Nájemní smlouva',
                         'Dokument se připravuje, bude doručen e-mailem',
+                        'pdf'
+                    ) }}
+                {% endif %}
+
+                {% if handoverProtocol is defined and handoverProtocol and handoverProtocol.isFullyCompleted %}
+                    {{ _self.documentRow(
+                        path('portal_user_handover_view', {id: handoverProtocol.id}),
+                        null,
+                        'Předávací protokol',
+                        'Vyplněn ' ~ handoverProtocol.completedAt|date('d.m.Y'),
                         'pdf'
                     ) }}
                 {% endif %}

@@ -71,6 +71,14 @@
             nextManualDate: vm.nextManualPaymentRequestDate,
         } only %}
 
+        {% if vm.handoverProtocol and vm.handoverViewUrl %}
+            {% include 'components/handover_banner.html.twig' with {
+                protocol: vm.handoverProtocol,
+                actor: 'tenant',
+                viewUrl: vm.handoverViewUrl,
+            } only %}
+        {% endif %}
+
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div class="lg:col-span-2 space-y-6">
                 {% include 'components/order_access_code.html.twig' with {storage: storage, contract: contract} only %}

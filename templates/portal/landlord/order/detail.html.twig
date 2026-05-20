@@ -66,6 +66,14 @@
     </div>
     {% endif %}
 
+    {% if handoverProtocol %}
+        {% include 'components/handover_banner.html.twig' with {
+            protocol: handoverProtocol,
+            actor: 'landlord',
+            viewUrl: path('portal_landlord_handover_view', {id: handoverProtocol.id}),
+        } only %}
+    {% endif %}
+
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {# Customer Details #}
         <div class="bg-white shadow overflow-hidden sm:rounded-lg">
@@ -277,6 +285,27 @@
                         </span>
                     {% endif %}
                 </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if handoverProtocol and handoverProtocol.isFullyCompleted %}
+    <div class="mt-6 bg-white shadow overflow-hidden sm:rounded-lg">
+        <div class="px-4 py-5 sm:p-6">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center">
+                    <svg class="h-10 w-10 text-accent" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <div class="ml-4">
+                        <h3 class="text-lg font-medium text-gray-900">Předávací protokol</h3>
+                        <p class="text-sm text-gray-500">Vyplněn {{ handoverProtocol.completedAt|date('d.m.Y') }}</p>
+                    </div>
+                </div>
+                <a href="{{ path('portal_landlord_handover_view', {id: handoverProtocol.id}) }}" class="btn btn-primary">
+                    Zobrazit protokol
+                </a>
             </div>
         </div>
     </div>

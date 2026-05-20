@@ -1,0 +1,175 @@
+{% extends 'portal/layout.html.twig' %}
+
+{% block title %}Předávací protokol — Admin{% endblock %}
+
+{% block breadcrumb %}
+    {% include 'components/breadcrumb.html.twig' with {breadcrumb_items: [
+        {label: 'Objednávky', url: path('admin_orders_list')},
+        {label: 'Detail objednávky', url: path('admin_order_detail', {id: contract.order.id})},
+        {label: 'Předávací protokol'},
+    ]} %}
+{% endblock %}
+
+{% block content %}
+    <div class="mb-8">
+        <div class="flex items-center justify-between flex-wrap gap-3">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900">Předávací protokol</h1>
+                <p class="mt-2 text-gray-600">{{ place.name }} — Sklad č. {{ storage.number }}</p>
+            </div>
+            <span class="badge {{ protocol.status.badgeClass }}">{{ protocol.status.label }}</span>
+        </div>
+    </div>
+
+    {# Customer + storage card #}
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div class="card">
+            <div class="card-body">
+                <h2 class="text-sm font-medium text-gray-500 uppercase mb-2">Zákazník</h2>
+                <p class="text-lg font-semibold text-gray-900">{{ contract.user.fullName }}</p>
+                <p class="text-sm text-gray-500">{{ contract.user.email }}</p>
+                {% if contract.user.phone %}
+                    <p class="text-sm text-gray-500">{{ contract.user.phone }}</p>
+                {% endif %}
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-body">
+                <h2 class="text-sm font-medium text-gray-500 uppercase mb-2">Sklad</h2>
+                <p class="text-lg font-semibold text-gray-900">{{ storage.storageType.name }} #{{ storage.number }}</p>
+                <p class="text-sm text-gray-500">{{ place.name }}</p>
+                {% if contract.effectiveEndDate %}
+                    <p class="text-sm text-gray-500 mt-1">Konec pronájmu: {{ contract.effectiveEndDate|date('d.m.Y') }}</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    {# Timeline #}
+    <div class="card mb-6">
+        <div class="card-body">
+            <h2 class="text-lg font-semibold text-gray-900 mb-4">Časová osa</h2>
+            <ul class="space-y-3">
+                <li class="flex items-start gap-3">
+                    <span class="mt-1 inline-flex h-2 w-2 rounded-full bg-blue-500"></span>
+                    <div>
+                        <p class="text-sm font-medium text-gray-900">Protokol vytvořen</p>
+                        <p class="text-sm text-gray-500">{{ protocol.createdAt|date('d.m.Y H:i') }}</p>
+                    </div>
+                </li>
+                <li class="flex items-start gap-3">
+                    <span class="mt-1 inline-flex h-2 w-2 rounded-full {{ protocol.tenantCompletedAt ? 'bg-green-500' : 'bg-gray-300' }}"></span>
+                    <div>
+                        <p class="text-sm font-medium text-gray-900">Nájemce vyplnil</p>
+                        {% if protocol.tenantCompletedAt %}
+                            <p class="text-sm text-gray-500">{{ protocol.tenantCompletedAt|date('d.m.Y H:i') }}</p>
+                        {% else %}
+                            {% set days = (now.timestamp - protocol.createdAt.timestamp) // 86400 %}
+                            <p class="text-sm text-amber-700">Čeká {{ days }} {{ days == 1 ? 'den' : (days < 5 ? 'dny' : 'dní') }}</p>
+                        {% endif %}
+                    </div>
+                </li>
+                <li class="flex items-start gap-3">
+                    <span class="mt-1 inline-flex h-2 w-2 rounded-full {{ protocol.landlordCompletedAt ? 'bg-green-500' : 'bg-gray-300' }}"></span>
+                    <div>
+                        <p class="text-sm font-medium text-gray-900">Pronajímatel vyplnil</p>
+                        {% if protocol.landlordCompletedAt %}
+                            <p class="text-sm text-gray-500">{{ protocol.landlordCompletedAt|date('d.m.Y H:i') }}</p>
+                        {% else %}
+                            {% set days = (now.timestamp - protocol.createdAt.timestamp) // 86400 %}
+                            <p class="text-sm text-amber-700">Čeká {{ days }} {{ days == 1 ? 'den' : (days < 5 ? 'dny' : 'dní') }}</p>
+                        {% endif %}
+                    </div>
+                </li>
+                <li class="flex items-start gap-3">
+                    <span class="mt-1 inline-flex h-2 w-2 rounded-full {{ protocol.completedAt ? 'bg-green-500' : 'bg-gray-300' }}"></span>
+                    <div>
+                        <p class="text-sm font-medium text-gray-900">Dokončeno</p>
+                        {% if protocol.completedAt %}
+                            <p class="text-sm text-gray-500">{{ protocol.completedAt|date('d.m.Y H:i') }}</p>
+                        {% else %}
+                            <p class="text-sm text-gray-400">—</p>
+                        {% endif %}
+                    </div>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    {# Tenant section #}
+    <div class="card mb-6">
+        <div class="card-body">
+            <h2 class="text-lg font-semibold text-gray-900 mb-3">
+                {% if protocol.tenantCompletedAt %}
+                    <span class="text-green-600">✓</span>
+                {% endif %}
+                Nájemce
+            </h2>
+            {% if protocol.tenantCompletedAt %}
+                {% if protocol.tenantComment %}
+                    <div class="prose prose-sm max-w-none text-gray-700">
+                        {{ protocol.tenantComment|nl2br }}
+                    </div>
+                {% else %}
+                    <p class="text-sm text-gray-500">Bez komentáře.</p>
+                {% endif %}
+                {% if protocol.tenantPhotos|length > 0 %}
+                    <div class="mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                        {% for photo in protocol.tenantPhotos %}
+                            <a href="{{ upload_url(photo.path) }}" target="_blank" rel="noopener">
+                                <img src="{{ upload_url(photo.path) }}" alt="Foto nájemce" class="rounded-lg object-cover w-full h-32 hover:opacity-90 transition-opacity">
+                            </a>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% else %}
+                <p class="text-sm text-gray-500">Nájemce zatím protokol nevyplnil.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    {# Landlord section #}
+    <div class="card mb-6">
+        <div class="card-body">
+            <h2 class="text-lg font-semibold text-gray-900 mb-3">
+                {% if protocol.landlordCompletedAt %}
+                    <span class="text-green-600">✓</span>
+                {% endif %}
+                Pronajímatel
+            </h2>
+            {% if protocol.landlordCompletedAt %}
+                {% if protocol.newLockCode %}
+                    <p class="text-sm text-gray-700 mb-3">
+                        <span class="font-medium">Nový kód zámku:</span>
+                        <span class="font-mono">{{ protocol.newLockCode }}</span>
+                    </p>
+                {% endif %}
+                {% if protocol.landlordComment %}
+                    <div class="prose prose-sm max-w-none text-gray-700">
+                        {{ protocol.landlordComment|nl2br }}
+                    </div>
+                {% else %}
+                    <p class="text-sm text-gray-500">Bez komentáře.</p>
+                {% endif %}
+                {% if protocol.landlordPhotos|length > 0 %}
+                    <div class="mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                        {% for photo in protocol.landlordPhotos %}
+                            <a href="{{ upload_url(photo.path) }}" target="_blank" rel="noopener">
+                                <img src="{{ upload_url(photo.path) }}" alt="Foto pronajímatele" class="rounded-lg object-cover w-full h-32 hover:opacity-90 transition-opacity">
+                            </a>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% else %}
+                <p class="text-sm text-gray-500">Pronajímatel zatím protokol nevyplnil.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    {# Footer links #}
+    <div class="flex gap-4">
+        <a href="{{ path('admin_order_detail', {id: contract.order.id}) }}" class="btn btn-outline btn-sm">
+            Detail objednávky
+        </a>
+    </div>
+{% endblock %}

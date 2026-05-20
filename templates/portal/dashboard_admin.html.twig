@@ -5,32 +5,61 @@
 {% block content %}
     <h1 class="text-3xl font-bold text-gray-900 mb-8">Přehled platformy</h1>
 
-    {# Po splatnosti — always visible, red when > 0, green when 0 #}
-    <a href="{{ path('admin_overdue') }}" class="block mb-8 overflow-hidden shadow rounded-lg {% if stats.overdueCount > 0 %}bg-red-50 hover:bg-red-100 border border-red-300{% else %}bg-green-50 hover:bg-green-100 border border-green-200{% endif %}">
-        <div class="p-5">
-            <div class="flex items-center">
-                <div class="flex-shrink-0">
-                    <svg class="h-7 w-7 {% if stats.overdueCount > 0 %}text-red-600{% else %}text-green-600{% endif %}" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                </div>
-                <div class="ml-5 w-0 flex-1">
-                    <dl>
-                        <dt class="text-sm font-medium {% if stats.overdueCount > 0 %}text-red-700{% else %}text-green-700{% endif %} truncate uppercase">Po splatnosti</dt>
-                        {% if stats.overdueCount > 0 %}
-                            <dd class="flex items-baseline gap-3 flex-wrap">
-                                <span class="text-3xl font-bold text-red-700">{{ stats.overdueCount }}</span>
-                                <span class="text-sm text-red-700">{{ stats.overdueCount == 1 ? 'smlouva' : (stats.overdueCount < 5 ? 'smlouvy' : 'smluv') }}</span>
-                                <span class="text-2xl font-semibold text-red-700">· {{ (stats.overdueAmount / 100)|number_format(0, ',', ' ') }} Kč</span>
-                            </dd>
-                        {% else %}
-                            <dd class="text-lg font-semibold text-green-700">Žádné platby po splatnosti.</dd>
-                        {% endif %}
-                    </dl>
+    {# Po splatnosti + Operace — always visible, red/amber when > 0, green when 0 #}
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+        <a href="{{ path('admin_overdue') }}" class="block overflow-hidden shadow rounded-lg {% if stats.overdueCount > 0 %}bg-red-50 hover:bg-red-100 border border-red-300{% else %}bg-green-50 hover:bg-green-100 border border-green-200{% endif %}">
+            <div class="p-5">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <svg class="h-7 w-7 {% if stats.overdueCount > 0 %}text-red-600{% else %}text-green-600{% endif %}" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium {% if stats.overdueCount > 0 %}text-red-700{% else %}text-green-700{% endif %} truncate uppercase">Po splatnosti</dt>
+                            {% if stats.overdueCount > 0 %}
+                                <dd class="flex items-baseline gap-3 flex-wrap">
+                                    <span class="text-3xl font-bold text-red-700">{{ stats.overdueCount }}</span>
+                                    <span class="text-sm text-red-700">{{ stats.overdueCount == 1 ? 'smlouva' : (stats.overdueCount < 5 ? 'smlouvy' : 'smluv') }}</span>
+                                    <span class="text-2xl font-semibold text-red-700">· {{ (stats.overdueAmount / 100)|number_format(0, ',', ' ') }} Kč</span>
+                                </dd>
+                            {% else %}
+                                <dd class="text-lg font-semibold text-green-700">Žádné platby po splatnosti.</dd>
+                            {% endif %}
+                        </dl>
+                    </div>
                 </div>
             </div>
-        </div>
-    </a>
+        </a>
+
+        <a href="{{ path('admin_operations') }}" class="block overflow-hidden shadow rounded-lg {% if stats.operationsPendingCount > 0 %}bg-amber-50 hover:bg-amber-100 border border-amber-300{% else %}bg-green-50 hover:bg-green-100 border border-green-200{% endif %}">
+            <div class="p-5">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <svg class="h-7 w-7 {% if stats.operationsPendingCount > 0 %}text-amber-600{% else %}text-green-600{% endif %}" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                        </svg>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium {% if stats.operationsPendingCount > 0 %}text-amber-700{% else %}text-green-700{% endif %} truncate uppercase">Operace</dt>
+                            {% if stats.operationsPendingCount > 0 %}
+                                <dd class="flex items-baseline gap-3 flex-wrap">
+                                    <span class="text-3xl font-bold text-amber-700">{{ stats.operationsPendingCount }}</span>
+                                    <span class="text-sm text-amber-700">
+                                        {{ stats.operationsPendingCount == 1 ? 'úkol k vyřízení' : (stats.operationsPendingCount < 5 ? 'úkoly k vyřízení' : 'úkolů k vyřízení') }}
+                                    </span>
+                                </dd>
+                            {% else %}
+                                <dd class="text-lg font-semibold text-green-700">Žádné čekající úkoly.</dd>
+                            {% endif %}
+                        </dl>
+                    </div>
+                </div>
+            </div>
+        </a>
+    </div>
 
     {# Revenue Stats Cards #}
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">

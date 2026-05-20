@@ -1,0 +1,263 @@
+{% extends 'portal/layout.html.twig' %}
+
+{% block title %}Operace — Admin{% endblock %}
+
+{% block content %}
+    <div class="mb-6">
+        <h1 class="text-3xl font-bold text-gray-900">Operace</h1>
+        <p class="text-gray-600 mt-1">Co dnes potřebuje vaši pozornost.</p>
+    </div>
+
+    {# Summary cards #}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div class="card {{ summary.handoverViews|length > 0 ? 'bg-amber-50 border-amber-300' : 'bg-green-50 border-green-200' }}">
+            <div class="card-body">
+                <h2 class="text-sm font-medium uppercase {{ summary.handoverViews|length > 0 ? 'text-amber-700' : 'text-green-700' }}">Předávací protokoly</h2>
+                <p class="text-3xl font-bold {{ summary.handoverViews|length > 0 ? 'text-amber-700' : 'text-green-700' }}">
+                    {{ summary.handoverViews|length }}
+                </p>
+                {% if summary.handoverOverdueCount > 0 %}
+                    <p class="text-xs text-red-700 mt-1">{{ summary.handoverOverdueCount }} po termínu (&gt; 14 dní)</p>
+                {% endif %}
+            </div>
+        </div>
+        <div class="card {{ summary.contractsEndingWithoutProtocolCount > 0 ? 'bg-amber-50 border-amber-300' : 'bg-green-50 border-green-200' }}">
+            <div class="card-body">
+                <h2 class="text-sm font-medium uppercase {{ summary.contractsEndingWithoutProtocolCount > 0 ? 'text-amber-700' : 'text-green-700' }}">Smlouvy končící</h2>
+                <p class="text-3xl font-bold {{ summary.contractsEndingWithoutProtocolCount > 0 ? 'text-amber-700' : 'text-green-700' }}">
+                    {{ summary.contractsEndingWithoutProtocolCount }}
+                </p>
+            </div>
+        </div>
+        <div class="card {{ summary.onboardingSignedUnpaidCount > 0 ? 'bg-amber-50 border-amber-300' : 'bg-green-50 border-green-200' }}">
+            <div class="card-body">
+                <h2 class="text-sm font-medium uppercase {{ summary.onboardingSignedUnpaidCount > 0 ? 'text-amber-700' : 'text-green-700' }}">Onboarding bez platby</h2>
+                <p class="text-3xl font-bold {{ summary.onboardingSignedUnpaidCount > 0 ? 'text-amber-700' : 'text-green-700' }}">
+                    {{ summary.onboardingSignedUnpaidCount }}
+                </p>
+            </div>
+        </div>
+        <a href="{{ path('admin_overdue') }}" class="card {{ summary.overdueCount > 0 ? 'bg-red-50 border-red-300 hover:bg-red-100' : 'bg-green-50 border-green-200' }} transition-colors">
+            <div class="card-body">
+                <h2 class="text-sm font-medium uppercase {{ summary.overdueCount > 0 ? 'text-red-700' : 'text-green-700' }}">Po splatnosti</h2>
+                <p class="text-3xl font-bold {{ summary.overdueCount > 0 ? 'text-red-700' : 'text-green-700' }}">
+                    {{ summary.overdueCount }}
+                </p>
+                {% if summary.overdueCount > 0 %}
+                    <p class="text-xs text-red-700 mt-1">{{ (summary.overdueAmount / 100)|number_format(0, ',', ' ') }} Kč</p>
+                {% endif %}
+            </div>
+        </a>
+    </div>
+
+    {# Section: Předávací protokoly #}
+    <section class="mb-8">
+        <div class="flex justify-between items-center mb-3">
+            <h2 class="text-xl font-semibold text-gray-900">Předávací protokoly</h2>
+            {% if summary.handoverWaitingTenantCount > 0 and summary.handoverWaitingLandlordCount > 0 %}
+                <p class="text-sm text-gray-500">Některé protokoly čekají na obě strany současně.</p>
+            {% endif %}
+        </div>
+
+        {% if summary.handoverViews|length == 0 %}
+            <div class="card bg-green-50 border-green-200">
+                <div class="card-body text-green-700">Žádné protokoly nečekají na vyplnění.</div>
+            </div>
+        {% else %}
+            <div class="card">
+                <div class="overflow-x-auto">
+                    <table class="table table-zebra">
+                        <thead>
+                            <tr>
+                                <th>Zákazník</th>
+                                <th>Sklad</th>
+                                <th>Stav</th>
+                                <th>Čeká od</th>
+                                <th>Akce</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for protocol in summary.handoverViews %}
+                                {% set days = (now.timestamp - protocol.createdAt.timestamp) // 86400 %}
+                                <tr class="{{ days > 14 ? 'bg-red-50' : '' }}">
+                                    <td>
+                                        <a href="{{ path('portal_users_view', {id: protocol.contract.user.id}) }}" class="link font-semibold">
+                                            {{ protocol.contract.user.fullName }}
+                                        </a>
+                                        <div class="text-sm text-gray-500">{{ protocol.contract.user.email }}</div>
+                                    </td>
+                                    <td>
+                                        <div>{{ protocol.contract.storage.storageType.name }} #{{ protocol.contract.storage.number }}</div>
+                                        <div class="text-sm text-gray-500">{{ protocol.contract.storage.place.name }}</div>
+                                    </td>
+                                    <td>
+                                        <span class="badge {{ protocol.status.badgeClass }}">{{ protocol.status.label }}</span>
+                                    </td>
+                                    <td>
+                                        <div class="font-bold">{{ days }} {{ days == 1 ? 'den' : (days < 5 ? 'dny' : 'dní') }}</div>
+                                        <div class="text-xs text-gray-500">od {{ protocol.createdAt|date('d.m.Y') }}</div>
+                                    </td>
+                                    <td>
+                                        <a href="{{ path('admin_handover_view', {id: protocol.id}) }}" class="link text-sm">Zobrazit protokol</a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        {% endif %}
+    </section>
+
+    {# Section: Smlouvy končící bez protokolu #}
+    <section class="mb-8">
+        <div class="flex justify-between items-center mb-3">
+            <h2 class="text-xl font-semibold text-gray-900">Smlouvy končící bez protokolu (≤ 7 dní)</h2>
+        </div>
+        <p class="text-sm text-gray-500 mb-3">
+            Protokol se vytváří automaticky 7 dní před koncem nájmu — pokud zde čekající smlouva sedí déle, zkontrolujte cron.
+        </p>
+
+        {% if summary.contractsEndingWithoutProtocolCount == 0 %}
+            <div class="card bg-green-50 border-green-200">
+                <div class="card-body text-green-700">Žádné smlouvy nečekají na vytvoření protokolu.</div>
+            </div>
+        {% else %}
+            <div class="card">
+                <div class="overflow-x-auto">
+                    <table class="table table-zebra">
+                        <thead>
+                            <tr>
+                                <th>Zákazník</th>
+                                <th>Sklad</th>
+                                <th>Končí</th>
+                                <th>Akce</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for contract in summary.contractsEndingWithoutProtocol %}
+                                <tr>
+                                    <td>
+                                        <a href="{{ path('portal_users_view', {id: contract.user.id}) }}" class="link font-semibold">
+                                            {{ contract.user.fullName }}
+                                        </a>
+                                        <div class="text-sm text-gray-500">{{ contract.user.email }}</div>
+                                    </td>
+                                    <td>
+                                        <div>{{ contract.storage.storageType.name }} #{{ contract.storage.number }}</div>
+                                        <div class="text-sm text-gray-500">{{ contract.storage.place.name }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="font-bold">{{ contract.endDate|date('d.m.Y') }}</div>
+                                    </td>
+                                    <td>
+                                        <a href="{{ path('admin_order_detail', {id: contract.order.id}) }}" class="link text-sm">Detail objednávky</a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        {% endif %}
+    </section>
+
+    {# Section: Onboarding podepsaný bez platby #}
+    <section class="mb-8">
+        <h2 class="text-xl font-semibold text-gray-900 mb-3">Onboarding podepsaný bez platby</h2>
+
+        {% if summary.onboardingSignedUnpaidCount == 0 %}
+            <div class="card bg-green-50 border-green-200">
+                <div class="card-body text-green-700">Žádné onboardované objednávky nečekají na platbu.</div>
+            </div>
+        {% else %}
+            <div class="card">
+                <div class="overflow-x-auto">
+                    <table class="table table-zebra">
+                        <thead>
+                            <tr>
+                                <th>Zákazník</th>
+                                <th>Pobočka</th>
+                                <th>Vytvořeno</th>
+                                <th>Akce</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for order in summary.onboardingSignedUnpaid %}
+                                <tr>
+                                    <td>
+                                        <a href="{{ path('portal_users_view', {id: order.user.id}) }}" class="link font-semibold">
+                                            {{ order.user.fullName }}
+                                        </a>
+                                        <div class="text-sm text-gray-500">{{ order.user.email }}</div>
+                                    </td>
+                                    <td>
+                                        <div>{{ order.storage.place.name }}</div>
+                                        <div class="text-sm text-gray-500">#{{ order.storage.number }}</div>
+                                    </td>
+                                    <td>
+                                        <div>{{ order.createdAt|date('d.m.Y') }}</div>
+                                        {% if order.signedAt %}
+                                            <div class="text-xs text-gray-500">podepsáno {{ order.signedAt|date('d.m.Y') }}</div>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{{ path('admin_order_detail', {id: order.id}) }}" class="link text-sm">Detail objednávky</a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        {% endif %}
+    </section>
+
+    {# Section: Externí předplatné brzy končící #}
+    <section class="mb-8">
+        <h2 class="text-xl font-semibold text-gray-900 mb-3">Externí předplatné brzy končící (≤ 7 dní)</h2>
+
+        {% if summary.externalPrepaymentEndingCount == 0 %}
+            <div class="card bg-green-50 border-green-200">
+                <div class="card-body text-green-700">Žádné externě předplacené smlouvy brzy nekončí.</div>
+            </div>
+        {% else %}
+            <div class="card">
+                <div class="overflow-x-auto">
+                    <table class="table table-zebra">
+                        <thead>
+                            <tr>
+                                <th>Zákazník</th>
+                                <th>Sklad</th>
+                                <th>Předplaceno do</th>
+                                <th>Akce</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for contract in summary.externalPrepaymentEnding %}
+                                <tr>
+                                    <td>
+                                        <a href="{{ path('portal_users_view', {id: contract.user.id}) }}" class="link font-semibold">
+                                            {{ contract.user.fullName }}
+                                        </a>
+                                        <div class="text-sm text-gray-500">{{ contract.user.email }}</div>
+                                    </td>
+                                    <td>
+                                        <div>{{ contract.storage.storageType.name }} #{{ contract.storage.number }}</div>
+                                        <div class="text-sm text-gray-500">{{ contract.storage.place.name }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="font-bold">{{ contract.paidThroughDate|date('d.m.Y') }}</div>
+                                    </td>
+                                    <td>
+                                        <a href="{{ path('admin_order_detail', {id: contract.order.id}) }}" class="link text-sm">Detail objednávky</a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        {% endif %}
+    </section>
+{% endblock %}

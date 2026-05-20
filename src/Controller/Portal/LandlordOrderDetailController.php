@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller\Portal;
 
 use App\Repository\ContractRepository;
+use App\Repository\HandoverProtocolRepository;
 use App\Repository\InvoiceRepository;
 use App\Repository\OrderRepository;
 use App\Repository\PaymentRepository;
@@ -26,6 +27,7 @@ final class LandlordOrderDetailController extends AbstractController
     public function __construct(
         private readonly OrderRepository $orderRepository,
         private readonly ContractRepository $contractRepository,
+        private readonly HandoverProtocolRepository $handoverProtocolRepository,
         private readonly InvoiceRepository $invoiceRepository,
         private readonly PaymentRepository $paymentRepository,
         private readonly ContractService $contractService,
@@ -44,6 +46,9 @@ final class LandlordOrderDetailController extends AbstractController
         $place = $storage->getPlace();
         $contract = $this->contractRepository->findByOrder($order);
         $invoice = $this->invoiceRepository->findByOrder($order);
+        $handoverProtocol = null !== $contract
+            ? $this->handoverProtocolRepository->findByContract($contract)
+            : null;
         $now = $this->clock->now();
 
         $daysRemaining = null;
@@ -71,6 +76,7 @@ final class LandlordOrderDetailController extends AbstractController
             'paymentSchedule' => $paymentSchedule,
             'totalPaid' => $totalPaid,
             'now' => $now,
+            'handoverProtocol' => $handoverProtocol,
         ]);
     }
 }

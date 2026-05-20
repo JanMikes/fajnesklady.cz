@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service\Order;
 
 use App\Entity\Contract;
+use App\Entity\HandoverProtocol;
 use App\Entity\Invoice;
 use App\Entity\Order;
 use App\Entity\Place;
@@ -44,6 +45,8 @@ final readonly class OrderStatusViewModel
         public ?\DateTimeImmutable $nextManualPaymentRequestDate = null,
         public ?int $manualNowAmountInHaler = null,
         public ?\DateTimeImmutable $manualNowPeriodStart = null,
+        public ?HandoverProtocol $handoverProtocol = null,
+        public ?string $handoverViewUrl = null,
     ) {
     }
 }

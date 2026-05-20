@@ -137,6 +137,18 @@
                             </span>
                         {% endif %}
                     </a>
+                    <a href="{{ path('admin_operations') }}" class="{% if app.request.attributes.get('_route') starts with 'admin_operations' or app.request.attributes.get('_route') == 'admin_handover_view' %}bg-gray-900 text-white{% else %}text-gray-300 hover:bg-gray-700 hover:text-white{% endif %} group flex items-center px-3 py-2 text-sm font-medium rounded-md">
+                        <svg class="text-gray-400 mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                        </svg>
+                        <span>Operace</span>
+                        {% set operations = operations_alerts_count() %}
+                        {% if operations > 0 %}
+                            <span class="ml-auto inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-4 bg-amber-500 text-white rounded-full">
+                                {{ operations }}
+                            </span>
+                        {% endif %}
+                    </a>
                     <a href="{{ path('admin_email_log') }}" class="{% if app.request.attributes.get('_route') starts with 'admin_email_log' %}bg-gray-900 text-white{% else %}text-gray-300 hover:bg-gray-700 hover:text-white{% endif %} group flex items-center px-3 py-2 text-sm font-medium rounded-md">
                         <svg class="mr-3 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -329,6 +341,18 @@
                         {% if overdue > 0 %}
                             <span class="ml-auto inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-4 bg-red-600 text-white rounded-full">
                                 {{ overdue }}
+                            </span>
+                        {% endif %}
+                    </a>
+                    <a href="{{ path('admin_operations') }}" class="{% if app.request.attributes.get('_route') starts with 'admin_operations' or app.request.attributes.get('_route') == 'admin_handover_view' %}bg-gray-900 text-white{% else %}text-gray-300 hover:bg-gray-700 hover:text-white{% endif %} group flex items-center px-3 py-2 text-sm font-medium rounded-md">
+                        <svg class="text-gray-400 mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                        </svg>
+                        <span>Operace</span>
+                        {% set operations = operations_alerts_count() %}
+                        {% if operations > 0 %}
+                            <span class="ml-auto inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-4 bg-amber-500 text-white rounded-full">
+                                {{ operations }}
                             </span>
                         {% endif %}
                     </a>
