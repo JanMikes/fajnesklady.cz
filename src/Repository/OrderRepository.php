@@ -167,6 +167,11 @@ class OrderRepository
      * synchronously — e.g. Fakturoid was unreachable during the post-payment
      * burst. Grace window keeps us out of the way of the synchronous path.
      *
+     * EXTERNAL-payment orders are excluded: those were marked "paid"
+     * administratively (paper-contract migration, bank-transfer prepayment)
+     * without money flowing through the system, so they must never produce
+     * an invoice here.
+     *
      * @return Order[]
      */
     public function findCompletedWithoutInvoice(\DateTimeImmutable $cutoff): array
@@ -178,8 +183,10 @@ class OrderRepository
             ->andWhere('o.firstPaymentPrice > 0')
             ->andWhere('o.paidAt IS NOT NULL')
             ->andWhere('o.paidAt < :cutoff')
+            ->andWhere('o.paymentMethod IS NULL OR o.paymentMethod != :external')
             ->andWhere('NOT EXISTS (SELECT 1 FROM App\\Entity\\Invoice i WHERE i.order = o)')
             ->setParameter('completed', OrderStatus::COMPLETED)
+            ->setParameter('external', PaymentMethod::EXTERNAL)
             ->setParameter('cutoff', $cutoff)
             ->orderBy('o.paidAt', 'ASC')
             ->getQuery()

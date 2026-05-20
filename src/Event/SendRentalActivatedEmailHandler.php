@@ -6,6 +6,7 @@ namespace App\Event;
 
 use App\Entity\Invoice;
 use App\Entity\Order;
+use App\Enum\PaymentMethod;
 use App\Repository\ContractRepository;
 use App\Repository\InvoiceRepository;
 use App\Service\InvoicingService;
@@ -168,6 +169,16 @@ final readonly class SendRentalActivatedEmailHandler
         // Free contracts produce no invoice. The recurring cron has the same
         // early-return on $amount <= 0; spec 025 keeps invoicing in sync.
         if (0 === $order->firstPaymentPrice) {
+            return null;
+        }
+
+        // EXTERNAL = admin recorded "paid" administratively (paper-contract
+        // migration, bank-transfer prepayment). No money was actually received
+        // through the system, so we don't issue an invoice — the rule is "no
+        // invoice without a real payment". When the customer eventually pays
+        // via GoPay (per-cycle or recurring), that charge fires
+        // RecurringPaymentCharged → IssueInvoiceOnRecurringChargeHandler.
+        if (PaymentMethod::EXTERNAL === $order->paymentMethod) {
             return null;
         }
 

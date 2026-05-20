@@ -11,6 +11,7 @@ use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
+use App\Enum\PaymentMethod;
 use App\Enum\RentalType;
 use App\Event\OrderCompleted;
 use App\Event\SendRentalActivatedEmailHandler;
@@ -106,6 +107,38 @@ class SendRentalActivatedEmailHandlerTest extends TestCase
         $names = $this->attachmentNames($sentEmail);
         $this->assertContains(sprintf('faktura_%s.pdf', $issuedInvoice->invoiceNumber), $names);
         $this->assertTrue($issuedInvoice->isEmailed());
+    }
+
+    public function testDoesNotIssueInvoiceForExternalPaymentOrder(): void
+    {
+        // EXTERNAL paymentMethod = admin recorded "paid" administratively
+        // (paper-contract migration or bank-transfer prepayment) — no money
+        // flowed through the system. The rental-activated e-mail still ships
+        // (the contract is real, just unpaid-via-system), but no invoice is
+        // issued; the customer will be invoiced when an actual payment is
+        // received via the recurring path.
+        $contract = $this->createContract(paymentMethod: PaymentMethod::EXTERNAL);
+
+        $invoicingService = $this->createMock(InvoicingService::class);
+        $invoicingService->expects($this->never())->method('issueInvoiceForOrder');
+
+        $invoiceRepository = $this->createStub(InvoiceRepository::class);
+        $invoiceRepository->method('findByOrder')->willReturn(null);
+
+        $sentEmail = $this->dispatch(
+            $contract,
+            invoiceRepository: $invoiceRepository,
+            invoicingService: $invoicingService,
+        );
+
+        $this->assertNotNull($sentEmail);
+        $names = $this->attachmentNames($sentEmail);
+        foreach ($names as $name) {
+            $this->assertStringStartsNotWith('faktura_', (string) $name);
+        }
+
+        \assert($sentEmail instanceof TemplatedEmail);
+        $this->assertFalse($sentEmail->getContext()['hasInvoiceAttachment']);
     }
 
     public function testSkipsInvoiceForFreeOrder(): void
@@ -284,7 +317,7 @@ class SendRentalActivatedEmailHandlerTest extends TestCase
         return $sentEmail;
     }
 
-    private function createContract(int $firstPaymentPrice = 35000): Contract
+    private function createContract(int $firstPaymentPrice = 35000, ?PaymentMethod $paymentMethod = null): Contract
     {
         $place = new Place(
             id: Uuid::v7(),
@@ -331,6 +364,10 @@ class SendRentalActivatedEmailHandlerTest extends TestCase
             expiresAt: new \DateTimeImmutable('+7 days'),
             createdAt: new \DateTimeImmutable('2025-06-15'),
         );
+
+        if (null !== $paymentMethod) {
+            $order->setPaymentMethod($paymentMethod);
+        }
 
         return new Contract(
             id: Uuid::v7(),

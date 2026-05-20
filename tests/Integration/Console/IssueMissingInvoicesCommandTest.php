@@ -8,6 +8,7 @@ use App\DataFixtures\InvoiceFixtures;
 use App\DataFixtures\OrderFixtures;
 use App\Entity\Invoice;
 use App\Entity\Order;
+use App\Enum\PaymentMethod;
 use App\Repository\InvoiceRepository;
 use App\Tests\Mock\MockFakturoidClient;
 use Doctrine\ORM\EntityManagerInterface;
@@ -82,6 +83,27 @@ class IssueMissingInvoicesCommandTest extends KernelTestCase
         $this->assertNull(
             $this->invoiceRepository->findByOrder($refreshed),
             'Target order is inside the grace window — no invoice should be issued yet.',
+        );
+    }
+
+    public function testSkipsExternalPaymentOrder(): void
+    {
+        // Admin-onboarded / migrated orders have paymentMethod = EXTERNAL —
+        // they were marked "paid" administratively, no money ran through the
+        // system. The backstop must skip them; an invoice would be wrong.
+        $order = $this->getOrder(OrderFixtures::REF_ORDER_COMPLETED);
+        $existingInvoice = $this->getInvoice(InvoiceFixtures::REF_INVOICE_COMPLETED);
+        $this->entityManager->remove($existingInvoice);
+        $order->setPaymentMethod(PaymentMethod::EXTERNAL);
+        $this->entityManager->flush();
+
+        $this->runCommand()->assertCommandIsSuccessful();
+        $this->entityManager->clear();
+
+        $refreshed = $this->getOrder(OrderFixtures::REF_ORDER_COMPLETED);
+        $this->assertNull(
+            $this->invoiceRepository->findByOrder($refreshed),
+            'EXTERNAL-payment orders must not be invoiced by the cron backstop.',
         );
     }
 
