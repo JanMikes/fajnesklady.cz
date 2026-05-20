@@ -123,7 +123,7 @@ final readonly class FakturoidApiClient implements FakturoidClient
                 'lines' => [
                     [
                         'name' => sprintf(
-                            'Pronájem skladového boxu %s - %s (%s)',
+                            'Pronájem skladovací jednotky %s - %s (%s)',
                             $storage->number,
                             $storageType->name,
                             $place->name,
