@@ -47,6 +47,7 @@ final class AdminPlaceExportController extends AbstractController
             new ExcelColumn('Skladů volných', ExcelColumnType::INTEGER),
             new ExcelColumn('Aktivních smluv', ExcelColumnType::INTEGER),
             new ExcelColumn('MRR (Kč/měs)', ExcelColumnType::MONEY_KC),
+            new ExcelColumn('YRR (Kč/rok)', ExcelColumnType::MONEY_KC),
         ];
 
         $places = $this->placeRepository->findAllForExport();
@@ -63,7 +64,7 @@ final class AdminPlaceExportController extends AbstractController
         foreach ($places as $place) {
             $key = (string) $place->id;
             $placeStorageStats = $storageStats[$key] ?? ['total' => 0, 'occupied' => 0, 'available' => 0];
-            $placeContractStats = $contractStats[$key] ?? ['activeRecurring' => 0, 'expectedMrrInHaler' => 0];
+            $placeContractStats = $contractStats[$key] ?? ['activeRecurring' => 0, 'expectedMrrInHaler' => 0, 'expectedYrrInHaler' => 0];
             $placeOwners = $owners[$key] ?? [];
 
             $rows[] = [
@@ -76,6 +77,7 @@ final class AdminPlaceExportController extends AbstractController
                 $placeStorageStats['available'],
                 $placeContractStats['activeRecurring'],
                 $placeContractStats['expectedMrrInHaler'],
+                $placeContractStats['expectedYrrInHaler'],
             ];
         }
 

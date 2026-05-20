@@ -85,6 +85,16 @@ Hard requirements drawn from GoPay rules and Podmínky opakovaných plateb:
 - Customer's consent record (timestamp, IP, params) MUST be retained for **at least 12 months past termination** of the recurring agreement.
 - Customer MUST be able to cancel the recurring payment at any time. Cancellation does not retroactively affect already-rendered services.
 
+### Yearly cadence (spec 045)
+
+When the customer (or admin during onboarding) picks **Roční platba**, the contract is billed as a one-shot annual GoPay payment, NOT as an `ON_DEMAND` recurring charge. The legal consequences:
+
+- The **15 000 Kč single-charge ceiling** from Podmínky opakovaných plateb čl. III does NOT apply — a yearly payment is a normal one-time charge, not a "single recurring charge". `MAX_RECURRING_PAYMENT_AMOUNT_IN_HALER` and the Podmínky PDF text remain accurate as written.
+- The **dedicated recurring-payment consent checkbox** described above MUST NOT be shown for YEARLY orders. The order accept template gates the consent block on `formData.billingMode.value == 'auto_recurring'`; YEARLY forces `MANUAL_RECURRING`, so the block is hidden by construction. Don't add a parallel block for yearly — there is no token, no silent debit, and no Podmínky-čl.-III parameter disclosure obligation.
+- **No Podmínky PDF re-issuance** is required when yearly is enabled per place — the document covers ON_DEMAND recurring charges, which yearly does not use.
+- Customer is reminded by e-mail 7 days before each yearly cycle (per `ManualBillingReminderSchedule`) and pays via a fresh one-shot GoPay link. This is the same MANUAL track spec 036 introduced; the only difference is the cadence anchor (`+1 year` instead of `+1 month`).
+- The "platba předem na celý rok" VOP wording is implicit in the per-order schedule; no new disclosure obligation under § 1826a OZ (no auto-renewal on a stored token).
+
 ## Payment-method logos & security indicators
 
 The following MUST appear on the order form, order accept page, payment page, and footer (any page where the sale or payment happens):

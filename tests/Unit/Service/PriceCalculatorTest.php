@@ -24,7 +24,7 @@ class PriceCalculatorTest extends TestCase
         $this->calculator = new PriceCalculator();
     }
 
-    private function createStorageType(int $pricePerWeek, int $pricePerMonth): StorageType
+    private function createStorageType(int $pricePerWeek, int $pricePerMonth, ?int $pricePerYear = null): StorageType
     {
         return new StorageType(
             id: Uuid::v7(),
@@ -36,6 +36,7 @@ class PriceCalculatorTest extends TestCase
             defaultPricePerWeek: $pricePerWeek,
             defaultPricePerMonth: $pricePerMonth,
             createdAt: new \DateTimeImmutable(),
+            defaultPricePerYear: $pricePerYear,
         );
     }
 
@@ -307,7 +308,7 @@ class PriceCalculatorTest extends TestCase
         $storage = $this->createStorage($storageType, $place);
 
         // Set custom prices (150 Kč/week, 500 Kč/month)
-        $storage->updatePrices(15000, 50000, new \DateTimeImmutable());
+        $storage->updatePrices(15000, 50000, null, new \DateTimeImmutable());
 
         $startDate = new \DateTimeImmutable('2024-01-01');
         $endDate = new \DateTimeImmutable('2024-01-08'); // 7 days
@@ -326,7 +327,7 @@ class PriceCalculatorTest extends TestCase
         $storage = $this->createStorage($storageType, $place);
 
         // Set custom prices (200 Kč/week, 600 Kč/month)
-        $storage->updatePrices(20000, 60000, new \DateTimeImmutable());
+        $storage->updatePrices(20000, 60000, null, new \DateTimeImmutable());
 
         $startDate = new \DateTimeImmutable('2024-01-01');
         $endDate = new \DateTimeImmutable('2024-01-31'); // 30 days
@@ -345,7 +346,7 @@ class PriceCalculatorTest extends TestCase
         $storage = $this->createStorage($storageType, $place);
 
         // Set custom prices
-        $storage->updatePrices(15000, 50000, new \DateTimeImmutable());
+        $storage->updatePrices(15000, 50000, null, new \DateTimeImmutable());
 
         $startDate = new \DateTimeImmutable('2024-01-01');
 
@@ -548,7 +549,7 @@ class PriceCalculatorTest extends TestCase
         );
 
         // Storage price hike *after* the order is placed.
-        $storage->updatePrices(70000, 700000, new \DateTimeImmutable('2025-07-01'));
+        $storage->updatePrices(70000, 700000, null, new \DateTimeImmutable('2025-07-01'));
 
         $schedule = $this->calculator->buildScheduleFromOrder($order);
 
@@ -587,6 +588,7 @@ class PriceCalculatorTest extends TestCase
         \DateTimeImmutable $startDate,
         ?\DateTimeImmutable $endDate,
         int $firstPaymentPrice,
+        PaymentFrequency $paymentFrequency = PaymentFrequency::MONTHLY,
     ): Order {
         $createdAt = new \DateTimeImmutable('2025-06-01');
 
@@ -595,12 +597,138 @@ class PriceCalculatorTest extends TestCase
             user: $this->createUser(),
             storage: $storage,
             rentalType: $rentalType,
-            paymentFrequency: PaymentFrequency::MONTHLY,
+            paymentFrequency: $paymentFrequency,
             startDate: $startDate,
             endDate: $endDate,
             firstPaymentPrice: $firstPaymentPrice,
             expiresAt: $createdAt->modify('+7 days'),
             createdAt: $createdAt,
         );
+    }
+
+    // -- Spec 045: yearly pricing tier ----------------------------------------
+
+    public function testResolveRateTypeYearlyAlwaysReturnsYearly(): void
+    {
+        $this->assertSame(
+            'yearly',
+            $this->calculator->resolveRateType(
+                PaymentFrequency::YEARLY,
+                new \DateTimeImmutable('2026-06-01'),
+                new \DateTimeImmutable('2027-06-01'),
+            ),
+        );
+
+        // Unlimited yearly also resolves to yearly.
+        $this->assertSame(
+            'yearly',
+            $this->calculator->resolveRateType(
+                PaymentFrequency::YEARLY,
+                new \DateTimeImmutable('2026-06-01'),
+                null,
+            ),
+        );
+    }
+
+    public function testResolveRateTypeMonthlyCutoverAt28Days(): void
+    {
+        $start = new \DateTimeImmutable('2026-06-01');
+
+        $this->assertSame(
+            'weekly',
+            $this->calculator->resolveRateType(PaymentFrequency::MONTHLY, $start, $start->modify('+27 days')),
+        );
+        $this->assertSame(
+            'monthly',
+            $this->calculator->resolveRateType(PaymentFrequency::MONTHLY, $start, $start->modify('+28 days')),
+        );
+        $this->assertSame(
+            'monthly',
+            $this->calculator->resolveRateType(PaymentFrequency::MONTHLY, $start, null),
+        );
+    }
+
+    public function testIsEligibleForYearlyMatchesThreshold(): void
+    {
+        $start = new \DateTimeImmutable('2026-06-01');
+
+        $this->assertTrue($this->calculator->isEligibleForYearly(RentalType::UNLIMITED, $start, null));
+        $this->assertFalse($this->calculator->isEligibleForYearly(RentalType::LIMITED, $start, $start->modify('+359 days')));
+        $this->assertTrue($this->calculator->isEligibleForYearly(RentalType::LIMITED, $start, $start->modify('+360 days')));
+    }
+
+    public function testBuildPaymentScheduleUnlimitedYearlyEmitsOneEntry(): void
+    {
+        // monthly × 12 × 0.85 = 510 000 halere
+        $storageType = $this->createStorageType(20000, 50000, 510000);
+        $storage = $this->createStorage($storageType, $this->createPlace());
+
+        $schedule = $this->calculator->buildPaymentSchedule(
+            $storage,
+            new \DateTimeImmutable('2026-06-01'),
+            null,
+            PaymentFrequency::YEARLY,
+        );
+
+        $this->assertTrue($schedule->isYearly());
+        $this->assertTrue($schedule->isOpenEnded);
+        $this->assertCount(1, $schedule->entries);
+        $this->assertSame(510000, $schedule->yearlyAmount);
+        $this->assertNull($schedule->monthlyAmount);
+        $this->assertSame(510000, $schedule->firstPayment()->amount);
+    }
+
+    public function testBuildPaymentScheduleFixedTermYearlyWalksByYear(): void
+    {
+        $storageType = $this->createStorageType(20000, 50000, 510000);
+        $storage = $this->createStorage($storageType, $this->createPlace());
+
+        // 2-year LIMITED rental → exactly 2 yearly charges, no proration.
+        $schedule = $this->calculator->buildPaymentSchedule(
+            $storage,
+            new \DateTimeImmutable('2026-06-01'),
+            new \DateTimeImmutable('2028-06-01'),
+            PaymentFrequency::YEARLY,
+        );
+
+        $this->assertTrue($schedule->isYearly());
+        $this->assertFalse($schedule->isOpenEnded);
+        $this->assertCount(2, $schedule->entries);
+        $this->assertSame(510000, $schedule->entries[0]->amount);
+        $this->assertSame(510000, $schedule->entries[1]->amount);
+        $this->assertSame('2026-06-01', $schedule->entries[0]->chargeDate->format('Y-m-d'));
+        $this->assertSame('2027-06-01', $schedule->entries[1]->chargeDate->format('Y-m-d'));
+    }
+
+    public function testGetEffectivePricePerYearFallsBackToMonthlyTimesTwelve(): void
+    {
+        $storageType = $this->createStorageType(20000, 50000, null);
+        $storage = $this->createStorage($storageType, $this->createPlace());
+
+        // monthly × 12 = 600 000 halere when no explicit yearly rate.
+        $this->assertSame(600000, $storage->getEffectivePricePerYear());
+    }
+
+    public function testBuildScheduleFromOrderHonoursYearlyFrequency(): void
+    {
+        $storageType = $this->createStorageType(20000, 50000, 510000);
+        $storage = $this->createStorage($storageType, $this->createPlace());
+
+        $order = $this->createOrderWithStorage(
+            $storage,
+            rentalType: RentalType::UNLIMITED,
+            startDate: new \DateTimeImmutable('2026-06-01'),
+            endDate: null,
+            firstPaymentPrice: 510000,
+            paymentFrequency: PaymentFrequency::YEARLY,
+        );
+
+        $schedule = $this->calculator->buildScheduleFromOrder($order);
+
+        $this->assertTrue($schedule->isYearly());
+        $this->assertSame(510000, $schedule->yearlyAmount);
+        $this->assertNull($schedule->monthlyAmount);
+        // 510 000 halere / 12 months / 100 = 425 Kč per month equivalent.
+        $this->assertSame(425.0, $schedule->getYearlyMonthlyEquivalentInCzk());
     }
 }

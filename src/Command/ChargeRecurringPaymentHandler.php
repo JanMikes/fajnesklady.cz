@@ -174,7 +174,7 @@ final readonly class ChargeRecurringPaymentHandler
         /** @var \DateTimeImmutable $billingPeriodStart */
         $billingPeriodStart = $contract->nextBillingDate ?? $now;
         $effectiveEndDate = $contract->getEffectiveEndDate();
-        $nextBillingDate = $billingPeriodStart->modify('+1 month');
+        $nextBillingDate = $billingPeriodStart->modify($contract->getBillingCadenceStep());
         $paidThroughDate = $nextBillingDate;
 
         // If this was the last billing cycle, stop future charges

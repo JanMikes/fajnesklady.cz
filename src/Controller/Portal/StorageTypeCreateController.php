@@ -43,6 +43,9 @@ final class StorageTypeCreateController extends AbstractController
             // Convert CZK to halire (cents)
             $defaultPricePerWeek = (int) round(($formData->defaultPricePerWeek ?? 0.0) * 100);
             $defaultPricePerMonth = (int) round(($formData->defaultPricePerMonth ?? 0.0) * 100);
+            $defaultPricePerYear = null !== $formData->defaultPricePerYear
+                ? (int) round($formData->defaultPricePerYear * 100)
+                : null;
 
             $command = new CreateStorageTypeCommand(
                 placeId: $place->id,
@@ -55,6 +58,7 @@ final class StorageTypeCreateController extends AbstractController
                 outerLength: $formData->outerLength,
                 defaultPricePerWeek: $defaultPricePerWeek,
                 defaultPricePerMonth: $defaultPricePerMonth,
+                defaultPricePerYear: $defaultPricePerYear,
                 description: $formData->description,
                 uniformStorages: $formData->uniformStorages,
             );

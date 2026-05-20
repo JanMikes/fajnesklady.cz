@@ -41,6 +41,7 @@ final readonly class CreateStorageTypeHandler
             outerWidth: $command->outerWidth,
             outerHeight: $command->outerHeight,
             outerLength: $command->outerLength,
+            defaultPricePerYear: $command->defaultPricePerYear,
         );
 
         if (null !== $command->description) {
@@ -54,6 +55,7 @@ final readonly class CreateStorageTypeHandler
                 outerLength: $command->outerLength,
                 defaultPricePerWeek: $command->defaultPricePerWeek,
                 defaultPricePerMonth: $command->defaultPricePerMonth,
+                defaultPricePerYear: $command->defaultPricePerYear,
                 description: $command->description,
                 uniformStorages: $command->uniformStorages,
                 now: $now,

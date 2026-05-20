@@ -298,7 +298,7 @@ final class OrderAcceptController extends AbstractController
                 rentalType: $formData->rentalType,
                 startDate: $startDate,
                 endDate: $formData->endDate,
-                paymentFrequency: PaymentFrequency::MONTHLY,
+                paymentFrequency: $formData->resolvedPaymentFrequency(),
                 preSelectedStorage: $storage,
                 expectedDuration: $formData->expectedDuration,
             ));

@@ -6,6 +6,7 @@ namespace App\Form;
 
 use App\Enum\BillingMode;
 use App\Enum\ExpectedDuration;
+use App\Enum\PaymentFrequency;
 use App\Enum\RentalType;
 use App\Service\Form\StorageChoiceBuilder;
 use Symfony\Component\Form\AbstractType;
@@ -153,7 +154,17 @@ final class AdminMigrateCustomerFormType extends AbstractType
                     'Automatická (uloží se karta, strhává se sama)' => BillingMode::AUTO_RECURRING,
                     'Ručně (každý měsíc dostane e-mail s platebním odkazem)' => BillingMode::MANUAL_RECURRING,
                 ],
-                'help' => 'Pro pronájem na dobu neurčitou je dostupná pouze automatická.',
+                'help' => 'Pro pronájem na dobu neurčitou je dostupná pouze automatická. Roční platba je vždy ruční.',
+            ])
+            ->add('paymentFrequency', EnumType::class, [
+                'class' => PaymentFrequency::class,
+                'label' => 'Frekvence platby',
+                'expanded' => true,
+                'choices' => [
+                    PaymentFrequency::MONTHLY->label() => PaymentFrequency::MONTHLY,
+                    PaymentFrequency::YEARLY->label() => PaymentFrequency::YEARLY,
+                ],
+                'help' => 'Roční platba je dostupná, pokud má typ skladu nastavenou roční sazbu a doba pronájmu je 12+ měsíců (nebo neurčitá). Vždy se účtuje ručně.',
             ])
             ->add('monthlyPriceMode', ChoiceType::class, [
                 'label' => 'Cenový model pro budoucí měsíční platby',

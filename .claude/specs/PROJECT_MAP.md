@@ -215,7 +215,7 @@ Handlers (in `src/Event/`):
 
 ## Enums
 
-`UserRole`, `OrderStatus`, `StorageStatus`, `HandoverStatus`, `PlaceAccessRequestStatus`, `PlaceType`, `RentalType` (UNLIMITED/FIXED_TERM), `RequestStatus`, `TerminationReason`, `PaymentMethod`, `PaymentFrequency` (ONCE/MONTHLY/QUARTERLY/ANNUALLY), `SigningMethod` (DIGITAL/PHYSICAL), `AdvanceNoticeReason`, `EmailLogStatus`, `BillingMode` (ONE_TIME/AUTO_RECURRING/MANUAL_RECURRING — locked at order completion, copied to Contract), `ExpectedDuration` (SHORT/MEDIUM/LONG — research-only; populated only for UNLIMITED orders).
+`UserRole`, `OrderStatus`, `StorageStatus`, `HandoverStatus`, `PlaceAccessRequestStatus`, `PlaceType`, `RentalType` (UNLIMITED/FIXED_TERM), `RequestStatus`, `TerminationReason`, `PaymentMethod`, `PaymentFrequency` (MONTHLY/YEARLY — locked at order completion, copied to Contract; YEARLY always implies MANUAL_RECURRING), `SigningMethod` (DIGITAL/PHYSICAL), `AdvanceNoticeReason`, `EmailLogStatus`, `BillingMode` (ONE_TIME/AUTO_RECURRING/MANUAL_RECURRING — locked at order completion, copied to Contract), `ExpectedDuration` (SHORT/MEDIUM/LONG — research-only; populated only for UNLIMITED orders).
 
 ## Forms (FormData + FormType pairs)
 
@@ -235,7 +235,7 @@ User, Place, PlaceAccess, PlaceAccessRequest, PlaceChangeRequest, PlaceStorageCo
 - **Order display**: `Order\OrderDisplayStatus`, `Order\OrderDisplayStatusCase`, `Order\OrderDisplayStatusResolver`, `Order\OrderStatusViewModel`, `Order\OrderStatusViewModelFactory`. `OrderService` orchestrates higher-level order operations. `OrderEmailAttachments` + `OrderEmailAttachmentsService` bundle contract/invoice/map/VOP PDFs into outbound mail (falls back to `Contract.documentPath` paper PDF when `Order.hasSignature()` is false — migrate flow).
 - **Customer billing situation (spec 043)**: `Order\CustomerBillingSituation` (the enum spine: GOPAY_FIRST_CHARGE / EXTERNALLY_PREPAID / FREE; `fromOrder(Order)` + `fromContract(Contract)` factories — free wins over prepaid). Feeds four content VOs read by signing/onboarding surfaces: `Order\SigningPriceViewModel` (signing page), `Order\SigningEmailContent` (signing-link email), `Order\CompletionPageViewModel` (signing complete page), `Order\RentalActivatedEmailContent` (rental activated email).
 - **Onboarding**: `Onboarding\OnboardingReminderSchedule` (D+2 / D+5 calendar-day stage matcher for `app:send-onboarding-payment-reminders`).
-- **Invoicing / billing**: `Fakturoid\FakturoidClient`, `Fakturoid\FakturoidApiClient`, `Fakturoid\StaleFakturoidSubjectException`, `InvoicingService`, `SelfBillingService`, `Billing\RecurringAmountCalculator`, `Billing\ManualBillingReminderSchedule` (per-stage cron offsets for `MANUAL_RECURRING` contracts).
+- **Invoicing / billing**: `Fakturoid\FakturoidClient`, `Fakturoid\FakturoidApiClient`, `Fakturoid\StaleFakturoidSubjectException`, `InvoicingService`, `SelfBillingService`, `Billing\RecurringAmountCalculator` (frequency-aware; reads `Contract::getEffectiveRecurringAmount()` + cadence-aware proration), `Billing\ManualBillingReminderSchedule` (per-stage cron offsets for `MANUAL_RECURRING` contracts).
 - **VOP generation**: `Vop\VopDocumentGenerator` (fills `${PRICELIST_URL}` / `${OPERATING_RULES_URL}` into `vop_template.docx` per order), `Vop\VopPdfStamper` (overlays customer signature; `$skipLastPages` excludes annex pages).
 - **Overdue & contract risk**: `Overdue\OverdueChecker`, `AtRiskContractChecker`.
 - **Address validation / autocomplete**: `Address\AddressValidator` (interface) + `Address\PhotonAddressValidator` (Photon Komoot impl with HTTP cache + 3 s timeout; powers `/api/address/suggest` and `BillingInfoForm` validation). Result VOs in `Value\Address\` (`AddressSuggestion`, `AddressValidationResult`).
@@ -249,6 +249,21 @@ User, Place, PlaceAccess, PlaceAccessRequest, PlaceChangeRequest, PlaceStorageCo
 - **Excel export**: `Excel\ExcelExporter`, `Excel\ExcelSheet`, `Excel\ExcelColumn`, `Excel\ExcelColumnType`. Drives every `*Export*Controller`.
 - **Form helpers**: `Form\StorageChoiceBuilder`, `Form\EmailLogFilterFactory`.
 - **Messenger**: `Messenger\HandlerFailureUnwrap` (mandatory at every dispatch site that catches handler exceptions — see `.claude/MESSENGER.md`).
+
+## Yearly pricing tier (spec 045)
+
+- `StorageType.defaultPricePerYear` (nullable, halere) + `Storage.pricePerYear` override.
+- `Storage::getEffectivePricePerYear()` — falls back to monthly × 12 when both unset; `hasExplicitYearlyRate()` flags whether an explicit rate exists (admin UI uses this to decide whether to surface the YEARLY radio).
+- `Contract.paymentFrequency` (`MONTHLY` | `YEARLY`) mirrors `Order.paymentFrequency`; locked at completion.
+- `Contract::getBillingCadenceStep()` → `+1 month` or `+1 year`; consumed by both billing crons (`ChargeRecurringPaymentHandler`, `DispatchManualBillingNotificationHandler`) and webhook reconciliation (`ProcessPaymentNotificationHandler`). `Contract::getBillingPeriodDays()` returns 30 vs 365 for proration.
+- `Contract::getEffectiveRecurringAmount()` returns the cadence-appropriate amount (monthly individual / storage monthly / storage yearly).
+- YEARLY is always `BillingMode::MANUAL_RECURRING` (form-layer constraint + entity-level defence in `OrderFormData::validatePaymentFrequency` + admin equivalents).
+- `PriceCalculator::YEARLY_THRESHOLD_DAYS = 360` (LIMITED eligibility); `resolveRateType()` + `isEligibleForYearly()` are the public eligibility helpers.
+- `PaymentSchedule.yearlyAmount` + `isYearly()` + `getYearlyMonthlyEquivalentInCzk()` power customer-facing "X Kč / měsíc (účtováno jednou ročně, Y Kč)" display.
+- GoPay 15 000 Kč ON_DEMAND cap does not apply — yearly is a one-shot charge per period, no token saved. Recurring-payment consent checkbox on `/prijmout` is suppressed for YEARLY (already gated on `billingMode = AUTO_RECURRING`).
+- `daysUntilExternalPrepaymentEnds()` returns `null` for yearly contracts so they don't trip the "Předplaceno externě" customer banner; `customer_billing_status.html.twig` has a dedicated teal "Platíte ročně" variant.
+- MRR: yearly contracts are excluded from `mrrInHaler` (would inflate 12×). Sibling `yrrInHaler` / `expectedYrrInHaler` tally yearly amounts; surfaced on the user list and admin places export, plus a per-place "Očekávané YRR" tile when non-zero.
+- `CompleteOrderHandler` seeds the initial `nextBillingDate` for MANUAL_RECURRING contracts (cadence-aware) — previously the cron was blind to any MANUAL contract without external prepayment, so this fix is both yearly-required and an incidental monthly-MANUAL bugfix.
 
 ## Middleware
 

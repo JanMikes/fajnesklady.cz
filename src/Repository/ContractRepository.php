@@ -589,15 +589,19 @@ class ContractRepository
      *  - totalCount  — every contract ever (including terminated and expired)
      *  - activeCount — non-terminated contracts whose endDate is null or future
      *  - mrrInHaler  — sum of Order.firstPaymentPrice across active "recurring shape" contracts
-     *                  ("recurring shape" = endDate IS NULL OR (endDate - startDate) >= 28 days,
-     *                  matching PriceCalculator::WEEKLY_THRESHOLD_DAYS — short LIMITED rentals
-     *                  are one-shots and must not inflate monthly revenue)
+     *                  with MONTHLY frequency ("recurring shape" = endDate IS NULL OR
+     *                  (endDate - startDate) >= 28 days, matching PriceCalculator::WEEKLY_THRESHOLD_DAYS).
+     *                  Yearly contracts are intentionally excluded — their first_payment_price
+     *                  is the yearly amount and would inflate MRR by 12×.
+     *  - yrrInHaler  — sum of Order.firstPaymentPrice across active YEARLY contracts
+     *                  (spec 045). Tracked separately so the operator can see
+     *                  yearly cash collection alongside the monthly run-rate.
      *
      * Users with no contracts are absent from the result; callers default to zeros.
      *
      * @param Uuid[] $userIds
      *
-     * @return array<string, array{activeCount: int, totalCount: int, mrrInHaler: int}>
+     * @return array<string, array{activeCount: int, totalCount: int, mrrInHaler: int, yrrInHaler: int}>
      */
     public function loadCustomerStatsByUserIds(array $userIds, \DateTimeImmutable $now): array
     {
@@ -610,6 +614,11 @@ class ContractRepository
         // COALESCE so per-customer overrides (contract.individual_monthly_amount, spec 025)
         // win over the order's locked-in monthly. Free contracts (override = 0) contribute 0
         // to the MRR sum by construction.
+        //
+        // MRR predicate gains `payment_frequency != 'yearly'` (spec 045) so yearly
+        // contracts don't leak their annual amount into the monthly run-rate.
+        // YRR is its own column, summing yearly first_payment_price across the
+        // same "active recurring shape" window.
         $rows = $this->entityManager->getConnection()->executeQuery(
             <<<'SQL'
                 SELECT
@@ -623,7 +632,13 @@ class ContractRepository
                         WHERE c.terminated_at IS NULL
                           AND (c.end_date IS NULL OR c.end_date >= :now)
                           AND (c.end_date IS NULL OR (c.end_date - c.start_date) >= 28)
-                    ), 0) AS mrr
+                          AND c.payment_frequency != 'yearly'
+                    ), 0) AS mrr,
+                    COALESCE(SUM(o.total_price) FILTER (
+                        WHERE c.terminated_at IS NULL
+                          AND (c.end_date IS NULL OR c.end_date >= :now)
+                          AND c.payment_frequency = 'yearly'
+                    ), 0) AS yrr
                 FROM contract c
                 INNER JOIN orders o ON o.id = c.order_id
                 WHERE c.user_id IN (:userIds)
@@ -642,6 +657,7 @@ class ContractRepository
                 'activeCount' => (int) $row['active_count'],
                 'totalCount' => (int) $row['total_count'],
                 'mrrInHaler' => (int) $row['mrr'],
+                'yrrInHaler' => (int) $row['yrr'],
             ];
         }
 
@@ -888,7 +904,7 @@ class ContractRepository
      *
      * @param Uuid[] $placeIds
      *
-     * @return array<string, array{activeRecurring: int, expectedMrrInHaler: int}>
+     * @return array<string, array{activeRecurring: int, expectedMrrInHaler: int, expectedYrrInHaler: int}>
      */
     public function loadContractStatsByPlaceIds(array $placeIds): array
     {
@@ -900,12 +916,21 @@ class ContractRepository
 
         // COALESCE so per-customer overrides (Contract.individualMonthlyAmount, spec 025)
         // win over Order.firstPaymentPrice — same rule as sumExpectedRecurringAtPlace.
+        //
+        // MRR excludes YEARLY (yearly first_payment_price is annual amount and
+        // would inflate by 12×). YRR sums yearly contracts separately so place
+        // dashboards can show "monthly run-rate" + "yearly cash" side by side.
         $rows = $this->entityManager->getConnection()->executeQuery(
             <<<'SQL'
                 SELECT
                     s.place_id::text AS place_id,
                     COUNT(*) AS active_recurring,
-                    COALESCE(SUM(COALESCE(c.individual_monthly_amount, o.total_price)), 0) AS expected_mrr
+                    COALESCE(SUM(COALESCE(c.individual_monthly_amount, o.total_price)) FILTER (
+                        WHERE c.payment_frequency != 'yearly'
+                    ), 0) AS expected_mrr,
+                    COALESCE(SUM(o.total_price) FILTER (
+                        WHERE c.payment_frequency = 'yearly'
+                    ), 0) AS expected_yrr
                 FROM contract c
                 INNER JOIN storage s ON s.id = c.storage_id
                 INNER JOIN orders o ON o.id = c.order_id
@@ -926,6 +951,7 @@ class ContractRepository
             $stats[(string) $row['place_id']] = [
                 'activeRecurring' => (int) $row['active_recurring'],
                 'expectedMrrInHaler' => (int) $row['expected_mrr'],
+                'expectedYrrInHaler' => (int) $row['expected_yrr'],
             ];
         }
 
@@ -981,6 +1007,9 @@ class ContractRepository
         // Use COALESCE so per-customer overrides (Contract.individualMonthlyAmount, spec 025)
         // win over Order.firstPaymentPrice. Free contracts (override = 0) contribute 0
         // to the sum by construction.
+        //
+        // Yearly contracts are excluded from MRR (spec 045) — their firstPaymentPrice
+        // is annual. See {@see self::sumExpectedYearlyAtPlace()} for the YRR pair.
         $qb = $this->entityManager->createQueryBuilder()
             ->select('SUM(COALESCE(c.individualMonthlyAmount, o.firstPaymentPrice))')
             ->from(Contract::class, 'c')
@@ -989,6 +1018,35 @@ class ContractRepository
             ->where('s.place = :place')
             ->andWhere('c.billingMode IN (:recurringModes)')
             ->andWhere('c.terminatedAt IS NULL')
+            ->andWhere("c.paymentFrequency != 'yearly'")
+            ->setParameter('place', $place)
+            ->setParameter('recurringModes', self::RECURRING_BILLING_MODES);
+
+        if (null !== $owner) {
+            $qb->andWhere('s.owner = :owner')->setParameter('owner', $owner);
+        }
+
+        return (int) ($qb->getQuery()->getSingleScalarResult() ?? 0);
+    }
+
+    /**
+     * Yearly Recurring Revenue at $place — sum of {@see Order::$firstPaymentPrice}
+     * across active YEARLY contracts (spec 045). Sibling of
+     * {@see self::sumExpectedRecurringAtPlace()}; yearly contracts are excluded
+     * from MRR there and tallied separately here so dashboards can show both
+     * cash flows without inflating MRR by 12×.
+     */
+    public function sumExpectedYearlyAtPlace(Place $place, ?User $owner): int
+    {
+        $qb = $this->entityManager->createQueryBuilder()
+            ->select('SUM(o.firstPaymentPrice)')
+            ->from(Contract::class, 'c')
+            ->join('c.storage', 's')
+            ->join('c.order', 'o')
+            ->where('s.place = :place')
+            ->andWhere('c.billingMode IN (:recurringModes)')
+            ->andWhere('c.terminatedAt IS NULL')
+            ->andWhere("c.paymentFrequency = 'yearly'")
             ->setParameter('place', $place)
             ->setParameter('recurringModes', self::RECURRING_BILLING_MODES);
 

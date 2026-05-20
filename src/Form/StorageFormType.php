@@ -123,6 +123,17 @@ class StorageFormType extends AbstractType
                 ],
                 'help' => 'Nechte prázdné pro použití výchozí ceny typu skladu',
             ]);
+
+            $builder->add('pricePerYear', NumberType::class, [
+                'label' => 'Vlastní cena za rok (CZK)',
+                'required' => false,
+                'scale' => 2,
+                'attr' => [
+                    'placeholder' => 'Použije se výchozí roční cena typu',
+                    'step' => '0.01',
+                ],
+                'help' => 'Nechte prázdné pro použití výchozí roční ceny typu skladu',
+            ]);
         }
 
         $builder->add('photos', FileType::class, [

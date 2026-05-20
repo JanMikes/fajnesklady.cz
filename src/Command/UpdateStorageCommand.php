@@ -18,6 +18,7 @@ final readonly class UpdateStorageCommand
         public ?Uuid $storageTypeId = null,
         public ?int $pricePerWeek = null,
         public ?int $pricePerMonth = null,
+        public ?int $pricePerYear = null,
         public bool $updatePrices = false,
         public ?string $commissionRate = null,
         public bool $updateCommissionRate = false,

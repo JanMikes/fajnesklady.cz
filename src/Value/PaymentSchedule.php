@@ -23,6 +23,7 @@ final readonly class PaymentSchedule
         public bool $isRecurring,
         public bool $isOpenEnded,
         public ?int $monthlyAmount,
+        public ?int $yearlyAmount = null,
     ) {
     }
 
@@ -57,6 +58,26 @@ final readonly class PaymentSchedule
     public function getMonthlyAmountInCzk(): ?float
     {
         return null === $this->monthlyAmount ? null : $this->monthlyAmount / 100;
+    }
+
+    public function isYearly(): bool
+    {
+        return null !== $this->yearlyAmount;
+    }
+
+    public function getYearlyAmountInCzk(): ?float
+    {
+        return null === $this->yearlyAmount ? null : $this->yearlyAmount / 100;
+    }
+
+    /**
+     * Customer-facing equivalent monthly figure for yearly schedules — the
+     * spec 045 direct user brief is "I want to see how much it will cost me
+     * per month, not per year". Returns null for non-yearly schedules.
+     */
+    public function getYearlyMonthlyEquivalentInCzk(): ?float
+    {
+        return null === $this->yearlyAmount ? null : $this->yearlyAmount / 12 / 100;
     }
 
     /**

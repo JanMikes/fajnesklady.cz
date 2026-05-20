@@ -7,14 +7,27 @@ namespace App\Service;
 use App\Entity\Order;
 use App\Entity\Storage;
 use App\Entity\StorageType;
+use App\Enum\PaymentFrequency;
+use App\Enum\RentalType;
 use App\Value\PaymentSchedule;
 use App\Value\PaymentScheduleEntry;
 
 final readonly class PriceCalculator
 {
     public const int WEEKLY_THRESHOLD_DAYS = 28;
+
+    /**
+     * Customer eligibility cutoff for the "Frekvence platby: Roční" radio on
+     * LIMITED rentals (spec 045). 360 days — chosen for clarity over the exact
+     * "≥ 12 calendar months" rule. A 360-day LIMITED rental either tail-prorates
+     * the final 5 days at the yearly daily rate, or runs 5 days short of a full
+     * year — either is acceptable. UNLIMITED rentals are always eligible.
+     */
+    public const int YEARLY_THRESHOLD_DAYS = 360;
+
     private const int DAYS_PER_WEEK = 7;
     private const int DAYS_PER_MONTH = 30;
+    private const int DAYS_PER_YEAR = 365;
 
     /**
      * Legal maximum for any single recurring (ON_DEMAND) GoPay charge, in
@@ -159,6 +172,7 @@ final readonly class PriceCalculator
      *
      * For rentals < 28 days: full price (no recurring).
      * For rentals >= 28 days or unlimited: first month's price.
+     * For YEARLY frequency: yearly amount (one-shot annual charge).
      *
      * @return int Price in halire
      */
@@ -166,10 +180,56 @@ final readonly class PriceCalculator
         Storage $storage,
         \DateTimeImmutable $startDate,
         ?\DateTimeImmutable $endDate,
+        PaymentFrequency $frequency = PaymentFrequency::MONTHLY,
     ): int {
-        $schedule = $this->buildPaymentSchedule($storage, $startDate, $endDate);
+        $schedule = $this->buildPaymentSchedule($storage, $startDate, $endDate, $frequency);
 
         return $schedule->isEmpty() ? 0 : $schedule->firstPayment()->amount;
+    }
+
+    /**
+     * Which rate type applies to a rental given duration + customer-chosen
+     * frequency. Returns 'weekly' | 'monthly' | 'yearly' — the OrderForm Ceník
+     * panel collapses to the corresponding single row.
+     *
+     * - YEARLY  → 'yearly' (eligibility validated at form layer)
+     * - MONTHLY + UNLIMITED → 'monthly'
+     * - MONTHLY + LIMITED, days <  28 → 'weekly'
+     * - MONTHLY + LIMITED, days >= 28 → 'monthly'
+     *
+     * @return 'weekly'|'monthly'|'yearly'
+     */
+    public function resolveRateType(
+        PaymentFrequency $frequency,
+        \DateTimeImmutable $startDate,
+        ?\DateTimeImmutable $endDate,
+    ): string {
+        if (PaymentFrequency::YEARLY === $frequency) {
+            return 'yearly';
+        }
+
+        if (null === $endDate) {
+            return 'monthly';
+        }
+
+        return $this->calculateDays($startDate, $endDate) < self::WEEKLY_THRESHOLD_DAYS ? 'weekly' : 'monthly';
+    }
+
+    /**
+     * Whether a rental is eligible for the YEARLY frequency choice — UNLIMITED
+     * or LIMITED with at least {@see self::YEARLY_THRESHOLD_DAYS}.
+     */
+    public function isEligibleForYearly(RentalType $rentalType, \DateTimeImmutable $startDate, ?\DateTimeImmutable $endDate): bool
+    {
+        if (RentalType::UNLIMITED === $rentalType) {
+            return true;
+        }
+
+        if (null === $endDate) {
+            return false;
+        }
+
+        return $this->calculateDays($startDate, $endDate) >= self::YEARLY_THRESHOLD_DAYS;
     }
 
     /**
@@ -198,9 +258,35 @@ final readonly class PriceCalculator
         Storage $storage,
         \DateTimeImmutable $startDate,
         ?\DateTimeImmutable $endDate,
+        PaymentFrequency $frequency = PaymentFrequency::MONTHLY,
     ): PaymentSchedule {
         $monthlyRate = $storage->getEffectivePricePerMonth();
         $weeklyRate = $storage->getEffectivePricePerWeek();
+
+        if (PaymentFrequency::YEARLY === $frequency) {
+            $yearlyRate = $storage->getEffectivePricePerYear();
+
+            // UNLIMITED yearly: open-ended yearly recurrence — only the first
+            // charge is on the schedule, the rest are added by the manual cron
+            // after each successful billing cycle.
+            if (null === $endDate) {
+                return new PaymentSchedule(
+                    entries: [new PaymentScheduleEntry($startDate, $yearlyRate)],
+                    isRecurring: true,
+                    isOpenEnded: true,
+                    monthlyAmount: null,
+                    yearlyAmount: $yearlyRate,
+                );
+            }
+
+            return new PaymentSchedule(
+                entries: $this->walkYearsFromAnchor($yearlyRate, $startDate, $endDate),
+                isRecurring: true,
+                isOpenEnded: false,
+                monthlyAmount: null,
+                yearlyAmount: $yearlyRate,
+            );
+        }
 
         // UNLIMITED: open-ended monthly recurrence — only the first charge
         // is on the schedule, the rest are added by the cron after each
@@ -254,6 +340,33 @@ final readonly class PriceCalculator
      */
     public function buildScheduleFromOrder(Order $order): PaymentSchedule
     {
+        $isYearly = PaymentFrequency::YEARLY === $order->paymentFrequency;
+
+        if ($isYearly) {
+            $yearlyRate = $order->firstPaymentPrice;
+
+            if ($order->isUnlimited()) {
+                return new PaymentSchedule(
+                    entries: [new PaymentScheduleEntry($order->startDate, $yearlyRate)],
+                    isRecurring: true,
+                    isOpenEnded: true,
+                    monthlyAmount: null,
+                    yearlyAmount: $yearlyRate,
+                );
+            }
+
+            $endDate = $order->endDate;
+            \assert(null !== $endDate);
+
+            return new PaymentSchedule(
+                entries: $this->walkYearsFromAnchor($yearlyRate, $order->startDate, $endDate),
+                isRecurring: true,
+                isOpenEnded: false,
+                monthlyAmount: null,
+                yearlyAmount: $yearlyRate,
+            );
+        }
+
         if ($order->isUnlimited()) {
             return new PaymentSchedule(
                 entries: [new PaymentScheduleEntry($order->startDate, $order->firstPaymentPrice)],
@@ -313,6 +426,35 @@ final readonly class PriceCalculator
             }
             $remainingDays = max(1, $this->calculateDays($billingDate, $endDate));
             $proratedAmount = max(100, self::roundUpToWholeCzk($remainingDays * $monthlyRate / self::DAYS_PER_MONTH));
+            $entries[] = new PaymentScheduleEntry($billingDate, $proratedAmount);
+
+            break;
+        }
+
+        return $entries;
+    }
+
+    /**
+     * Same walking logic as {@see self::walkMonthsFromAnchor()}, but cadence
+     * is `+1 year` and tail proration uses a 365-day denominator. Used for
+     * fixed-term YEARLY schedules (LIMITED rentals ≥ {@see self::YEARLY_THRESHOLD_DAYS}).
+     *
+     * @return list<PaymentScheduleEntry>
+     */
+    private function walkYearsFromAnchor(int $yearlyRate, \DateTimeImmutable $startDate, \DateTimeImmutable $endDate): array
+    {
+        $entries = [];
+        $billingDate = $startDate;
+        while ($billingDate < $endDate) {
+            $nextBillingDate = $billingDate->modify('+1 year');
+            if ($nextBillingDate <= $endDate) {
+                $entries[] = new PaymentScheduleEntry($billingDate, $yearlyRate);
+                $billingDate = $nextBillingDate;
+
+                continue;
+            }
+            $remainingDays = max(1, $this->calculateDays($billingDate, $endDate));
+            $proratedAmount = max(100, self::roundUpToWholeCzk($remainingDays * $yearlyRate / self::DAYS_PER_YEAR));
             $entries[] = new PaymentScheduleEntry($billingDate, $proratedAmount);
 
             break;

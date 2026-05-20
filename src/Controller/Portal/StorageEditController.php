@@ -51,6 +51,9 @@ final class StorageEditController extends AbstractController
             $pricePerMonth = null !== $formData->pricePerMonth
                 ? (int) round($formData->pricePerMonth * 100)
                 : null;
+            $pricePerYear = null !== $formData->pricePerYear
+                ? (int) round($formData->pricePerYear * 100)
+                : null;
 
             // Convert percentage to decimal for commission rate (only for admins)
             $commissionRate = null;
@@ -69,6 +72,7 @@ final class StorageEditController extends AbstractController
                 storageTypeId: null !== $formData->storageTypeId ? Uuid::fromString($formData->storageTypeId) : null,
                 pricePerWeek: $pricePerWeek,
                 pricePerMonth: $pricePerMonth,
+                pricePerYear: $pricePerYear,
                 updatePrices: !$storage->storageType->uniformStorages,
                 commissionRate: $commissionRate,
                 updateCommissionRate: $updateCommissionRate,

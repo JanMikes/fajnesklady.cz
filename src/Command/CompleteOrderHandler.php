@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Command;
 
 use App\Entity\Contract;
+use App\Enum\BillingMode;
 use App\Service\ContractService;
 use App\Service\OrderService;
 use Psr\Clock\ClockInterface;
@@ -26,9 +27,14 @@ final readonly class CompleteOrderHandler
         $order = $command->order;
         $contract = $this->orderService->completeOrder($order, $now);
 
-        // Set up recurring payment for all orders with recurrence (both LIMITED >= 1 month and UNLIMITED)
+        // Set up recurring billing dates. AUTO needs the GoPay parent token to be
+        // stored on the contract; MANUAL has no token but still needs nextBillingDate
+        // populated so SendManualBillingPaymentRequestsCommand picks it up. Cadence
+        // is +1 month or +1 year depending on the contract's paymentFrequency
+        // (spec 045 — yearly is always MANUAL_RECURRING).
         if (null !== $order->goPayParentPaymentId) {
-            $nextBillingDate = $now->modify('+1 month');
+            $cadenceStep = $contract->getBillingCadenceStep();
+            $nextBillingDate = $now->modify($cadenceStep);
             $paidThroughDate = $nextBillingDate;
 
             // Cap paidThroughDate to endDate for LIMITED contracts
@@ -42,6 +48,25 @@ final readonly class CompleteOrderHandler
             }
 
             $contract->setRecurringPayment($order->goPayParentPaymentId, $nextBillingDate, $paidThroughDate);
+        } elseif (BillingMode::MANUAL_RECURRING === $contract->billingMode && null === $contract->nextBillingDate) {
+            // MANUAL_RECURRING + no external prepayment: seed the first nextBillingDate
+            // so the per-cycle reminder cron has an anchor. The customer just paid
+            // their first cycle externally / one-shot — the next one is due in one
+            // cadence step. Skip when markExternallyPrepaid already set it (external
+            // prepayment path in OrderService::completeOrder).
+            $cadenceStep = $contract->getBillingCadenceStep();
+            $nextBillingDate = $now->modify($cadenceStep);
+            $paidThroughDate = $nextBillingDate;
+
+            if (null !== $contract->endDate && $paidThroughDate > $contract->endDate) {
+                $paidThroughDate = $contract->endDate;
+            }
+
+            if (null !== $contract->endDate && $nextBillingDate >= $contract->endDate) {
+                $nextBillingDate = null;
+            }
+
+            $contract->recordBillingCharge($now, $nextBillingDate, $paidThroughDate);
         }
 
         // Generate contract document and sign

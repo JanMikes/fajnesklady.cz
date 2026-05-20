@@ -4,14 +4,23 @@
      priceCzk      float    (the monthly rate for recurring, or the one-time total)
      labelClass    string  optional (default 'text-sm font-medium text-gray-500')
      valueClass    string  optional (default 'text-sm text-gray-900 font-semibold')
+     yearlyAmountCzk float  optional — when set, the recurring rate is yearly.
+                              We still lead with the monthly equivalent (spec 045
+                              user brief) and append a small "(účtováno jednou
+                              ročně, X Kč)" annotation.
    Never renders a lifetime total. For recurring it always appends "/ měsíc".
    Whole-CZK output: PriceCalculator rounds up to whole CZK so the value
    shown here matches step 1 of the order flow and the GoPay charge.
 #}
-{% set formattedPrice = priceCzk|number_format(0, ',', ' ') ~ ' Kč' %}
+{% set isYearly = yearlyAmountCzk is defined and yearlyAmountCzk is not null and yearlyAmountCzk > 0 %}
+{% set displayMonthlyCzk = isYearly ? yearlyAmountCzk / 12 : priceCzk %}
+{% set formattedMonthly = displayMonthlyCzk|number_format(0, ',', ' ') ~ ' Kč' %}
 <span class="{{ labelClass|default('text-sm font-medium text-gray-500') }}">
     {{ isRecurring ? 'Měsíční platba' : 'Celková cena' }}
 </span>
 <span class="{{ valueClass|default('text-sm text-gray-900 font-semibold') }}">
-    {{ formattedPrice }}{% if isRecurring %} / měsíc{% endif %}
+    {{ formattedMonthly }}{% if isRecurring %} / měsíc{% endif %}
+    {% if isYearly %}
+        <span class="block text-xs text-gray-500 font-normal">účtováno jednou ročně, {{ yearlyAmountCzk|number_format(0, ',', ' ') }} Kč</span>
+    {% endif %}
 </span>

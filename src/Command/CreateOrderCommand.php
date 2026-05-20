@@ -24,7 +24,7 @@ final readonly class CreateOrderCommand
         public RentalType $rentalType,
         public \DateTimeImmutable $startDate,
         public ?\DateTimeImmutable $endDate,
-        public ?PaymentFrequency $paymentFrequency = null,
+        public PaymentFrequency $paymentFrequency = PaymentFrequency::MONTHLY,
         public ?Storage $preSelectedStorage = null,
         public ?ExpectedDuration $expectedDuration = null,
     ) {

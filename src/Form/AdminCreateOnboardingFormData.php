@@ -6,8 +6,10 @@ namespace App\Form;
 
 use App\Enum\BillingMode;
 use App\Enum\ExpectedDuration;
+use App\Enum\PaymentFrequency;
 use App\Enum\PaymentMethod;
 use App\Enum\RentalType;
+use App\Service\PriceCalculator;
 use App\Form\Address\HasBillingAddress;
 use App\Validator\AddressExists;
 use Symfony\Component\Validator\Constraints as Assert;
@@ -81,6 +83,14 @@ final class AdminCreateOnboardingFormData implements HasBillingAddress
      * which decides the FIRST one. UNLIMITED rentals are forced AUTO_RECURRING below.
      */
     public BillingMode $billingMode = BillingMode::AUTO_RECURRING;
+
+    /**
+     * Cadence of subsequent charges. YEARLY surfaces only when (a) the chosen
+     * storage type has an explicit yearly rate AND (b) the rental is UNLIMITED
+     * or LIMITED ≥ {@see PriceCalculator::YEARLY_THRESHOLD_DAYS} days. YEARLY
+     * forces MANUAL_RECURRING (no GoPay token).
+     */
+    public PaymentFrequency $paymentFrequency = PaymentFrequency::MONTHLY;
 
     /**
      * Cenový model: 'standard' (sazba skladu), 'custom' (individuální měsíční cena),
@@ -190,10 +200,38 @@ final class AdminCreateOnboardingFormData implements HasBillingAddress
     #[Assert\Callback]
     public function validateBillingMode(ExecutionContextInterface $context): void
     {
+        if (PaymentFrequency::YEARLY === $this->paymentFrequency) {
+            return;
+        }
+
         if (RentalType::UNLIMITED === $this->rentalType && BillingMode::AUTO_RECURRING !== $this->billingMode) {
             $context->buildViolation('Pro pronájem na dobu neurčitou je dostupná pouze automatická platba kartou.')
                 ->atPath('billingMode')
                 ->addViolation();
+        }
+    }
+
+    #[Assert\Callback]
+    public function validatePaymentFrequency(ExecutionContextInterface $context): void
+    {
+        if (PaymentFrequency::YEARLY !== $this->paymentFrequency) {
+            return;
+        }
+
+        if (RentalType::LIMITED === $this->rentalType
+            && null !== $this->startDate && null !== $this->endDate
+            && (int) $this->startDate->diff($this->endDate)->days < PriceCalculator::YEARLY_THRESHOLD_DAYS
+        ) {
+            $context->buildViolation('Roční platba je dostupná pouze pro pronájem na 12 měsíců a déle.')
+                ->atPath('paymentFrequency')
+                ->addViolation();
+
+            return;
+        }
+
+        // Yearly is always MANUAL_RECURRING.
+        if (BillingMode::MANUAL_RECURRING !== $this->billingMode) {
+            $this->billingMode = BillingMode::MANUAL_RECURRING;
         }
     }
 

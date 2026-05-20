@@ -10,8 +10,10 @@ use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
+use App\Enum\BillingMode;
 use App\Enum\ExpectedDuration;
 use App\Enum\OrderStatus;
+use App\Enum\PaymentFrequency;
 use App\Enum\RentalType;
 use App\Enum\StorageStatus;
 use App\Service\OrderService;
@@ -487,6 +489,60 @@ class OrderWorkflowTest extends KernelTestCase
             ->setParameter('paidStatus', OrderStatus::PAID)
             ->getQuery()
             ->getSingleScalarResult();
+    }
+
+    public function testYearlyUnlimitedOrderPropagatesFrequencyToContract(): void
+    {
+        // Spec 045 — UNLIMITED yearly order. firstPaymentPrice is the yearly
+        // amount; the contract inherits paymentFrequency = YEARLY and is forced
+        // MANUAL_RECURRING. No GoPay token is stored, but CompleteOrderHandler
+        // still has to seed nextBillingDate (or the manual cron stays blind).
+        [$tenant, $storageType, $place] = $this->getFixtures();
+        // Seed an explicit yearly rate so we exercise the discount path rather
+        // than the monthly×12 fallback.
+        $storageType->updateDetails(
+            name: $storageType->name,
+            innerWidth: $storageType->innerWidth,
+            innerHeight: $storageType->innerHeight,
+            innerLength: $storageType->innerLength,
+            outerWidth: $storageType->outerWidth,
+            outerHeight: $storageType->outerHeight,
+            outerLength: $storageType->outerLength,
+            defaultPricePerWeek: $storageType->defaultPricePerWeek,
+            defaultPricePerMonth: $storageType->defaultPricePerMonth,
+            defaultPricePerYear: $storageType->defaultPricePerMonth * 10, // 10×, discounted
+            description: $storageType->description,
+            uniformStorages: $storageType->uniformStorages,
+            now: $this->clock->now(),
+        );
+
+        $now = $this->clock->now();
+
+        $order = $this->orderService->createOrder(
+            user: $tenant,
+            storageType: $storageType,
+            place: $place,
+            rentalType: RentalType::UNLIMITED,
+            startDate: $now->modify('+1 day'),
+            endDate: null,
+            now: $now,
+            paymentFrequency: PaymentFrequency::YEARLY,
+            expectedDuration: ExpectedDuration::LONG,
+        );
+        $order->setBillingMode(BillingMode::MANUAL_RECURRING);
+
+        $this->assertSame(PaymentFrequency::YEARLY, $order->paymentFrequency);
+        $this->assertSame($storageType->defaultPricePerMonth * 10, $order->firstPaymentPrice);
+
+        $order->reserve($now);
+        $this->orderService->processPayment($order);
+        $this->orderService->confirmPayment($order);
+        $contract = $this->orderService->completeOrder($order);
+
+        $this->assertSame(PaymentFrequency::YEARLY, $contract->paymentFrequency);
+        $this->assertSame(BillingMode::MANUAL_RECURRING, $contract->billingMode);
+        $this->assertNull($contract->goPayParentPaymentId, 'yearly contracts store no GoPay token');
+        $this->assertSame('+1 year', $contract->getBillingCadenceStep());
     }
 
     /**

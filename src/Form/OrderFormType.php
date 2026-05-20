@@ -6,6 +6,7 @@ namespace App\Form;
 
 use App\Enum\BillingMode;
 use App\Enum\ExpectedDuration;
+use App\Enum\PaymentFrequency;
 use App\Enum\RentalType;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
@@ -196,6 +197,18 @@ final class OrderFormType extends AbstractType
                     'Ručně schvalovaná platba (výzva e-mailem)' => BillingMode::MANUAL_RECURRING,
                 ],
                 'help' => 'Při ručně schvalované platbě Vám 7 dní před každou platbou pošleme e-mail s odkazem k zaplacení. Údaje o platební kartě se neukládají.',
+            ])
+            ->add('paymentFrequency', EnumType::class, [
+                'class' => PaymentFrequency::class,
+                'label' => 'Frekvence platby',
+                'expanded' => true,
+                'required' => false,
+                'placeholder' => false,
+                'choices' => [
+                    PaymentFrequency::MONTHLY->label() => PaymentFrequency::MONTHLY,
+                    PaymentFrequency::YEARLY->label() => PaymentFrequency::YEARLY,
+                ],
+                'help' => 'Roční platba znamená jednu platbu předem na celý rok. Karta se neukládá — další platbu obdržíte e-mailem před vypršením roku.',
             ]);
 
         // Live-component re-instantiates the form on every interaction, so PRE_SET_DATA

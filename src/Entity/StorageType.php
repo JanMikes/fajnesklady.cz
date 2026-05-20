@@ -38,6 +38,15 @@ class StorageType
     #[ORM\Column(nullable: true)]
     public private(set) ?int $outerLength = null;
 
+    /**
+     * Optional yearly price in halere. Customers with eligible rental durations
+     * see a "Frekvence platby: Roční" radio when this is set (spec 045). NULL
+     * means the storage type has no special yearly tier — yearly cadence falls
+     * back to monthly × 12 (no discount).
+     */
+    #[ORM\Column(nullable: true)]
+    public private(set) ?int $defaultPricePerYear = null;
+
     /** @var Collection<int, StorageTypePhoto> */
     #[ORM\OneToMany(targetEntity: StorageTypePhoto::class, mappedBy: 'storageType', cascade: ['persist', 'remove'], orphanRemoval: true)]
     #[ORM\OrderBy(['position' => 'ASC'])]
@@ -68,6 +77,7 @@ class StorageType
         ?int $outerWidth = null,
         ?int $outerHeight = null,
         ?int $outerLength = null,
+        ?int $defaultPricePerYear = null,
     ) {
         $this->updatedAt = $createdAt;
         $this->photos = new ArrayCollection();
@@ -75,6 +85,7 @@ class StorageType
         $this->outerWidth = $outerWidth;
         $this->outerHeight = $outerHeight;
         $this->outerLength = $outerLength;
+        $this->defaultPricePerYear = $defaultPricePerYear;
     }
 
     public function getDefaultPricePerWeekInCzk(): float
@@ -85,6 +96,11 @@ class StorageType
     public function getDefaultPricePerMonthInCzk(): float
     {
         return $this->defaultPricePerMonth / 100;
+    }
+
+    public function getDefaultPricePerYearInCzk(): ?float
+    {
+        return null === $this->defaultPricePerYear ? null : $this->defaultPricePerYear / 100;
     }
 
     public function getFloorAreaInSquareMeters(): float
@@ -156,6 +172,7 @@ class StorageType
         ?int $outerLength,
         int $defaultPricePerWeek,
         int $defaultPricePerMonth,
+        ?int $defaultPricePerYear,
         ?string $description,
         bool $uniformStorages,
         \DateTimeImmutable $now,
@@ -169,6 +186,7 @@ class StorageType
         $this->outerLength = $outerLength;
         $this->defaultPricePerWeek = $defaultPricePerWeek;
         $this->defaultPricePerMonth = $defaultPricePerMonth;
+        $this->defaultPricePerYear = $defaultPricePerYear;
         $this->description = $description;
         $this->uniformStorages = $uniformStorages;
         $this->updatedAt = $now;

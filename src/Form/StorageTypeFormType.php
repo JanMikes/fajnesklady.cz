@@ -95,6 +95,17 @@ class StorageTypeFormType extends AbstractType
             ],
         ]);
 
+        $builder->add('defaultPricePerYear', NumberType::class, [
+            'label' => 'Výchozí cena za rok (CZK)',
+            'required' => false,
+            'scale' => 2,
+            'attr' => [
+                'placeholder' => 'Nepovinné – pokud nevyplníte, roční sazba = měsíční × 12',
+                'step' => '0.01',
+            ],
+            'help' => 'Pokud nastavíte, zákazníci s pronájmem na 12 a více měsíců dostanou volbu „Roční platba". Účtuje se jednou ročně, bez ukládání karty.',
+        ]);
+
         $builder->add('description', TextareaType::class, [
             'label' => 'Popis',
             'required' => false,

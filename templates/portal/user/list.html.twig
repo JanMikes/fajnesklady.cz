@@ -37,6 +37,7 @@
                         <th>Stav</th>
                         <th>Smlouvy</th>
                         <th>MRR</th>
+                        <th>YRR</th>
                         <th>Vytvořeno</th>
                         <th>Akce</th>
                     </tr>
@@ -91,7 +92,7 @@
                                     {% endif %}
                                 </div>
                             </td>
-                            {% set stats = customerStats[user.id.toRfc4122()]|default({activeCount: 0, totalCount: 0, mrrInHaler: 0}) %}
+                            {% set stats = customerStats[user.id.toRfc4122()]|default({activeCount: 0, totalCount: 0, mrrInHaler: 0, yrrInHaler: 0}) %}
                             <td class="text-sm">
                                 {% if stats.totalCount == 0 %}
                                     <span class="text-gray-400">—</span>
@@ -107,6 +108,14 @@
                                 {% else %}
                                     <span class="font-medium text-gray-900">{{ (stats.mrrInHaler / 100)|number_format(0, ',', ' ') }}</span>
                                     <span class="text-gray-500">Kč/měs</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-sm">
+                                {% if stats.yrrInHaler == 0 %}
+                                    <span class="text-gray-400">—</span>
+                                {% else %}
+                                    <span class="font-medium text-gray-900">{{ (stats.yrrInHaler / 100)|number_format(0, ',', ' ') }}</span>
+                                    <span class="text-gray-500">Kč/rok</span>
                                 {% endif %}
                             </td>
                             <td class="text-gray-500 text-sm">{{ user.createdAt|date('d.m.Y H:i') }}</td>

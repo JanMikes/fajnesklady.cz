@@ -19,6 +19,7 @@ final readonly class UpdateStorageTypeCommand
         public ?int $outerLength,
         public int $defaultPricePerWeek,
         public int $defaultPricePerMonth,
+        public ?int $defaultPricePerYear,
         public ?string $description,
         public bool $uniformStorages = true,
     ) {

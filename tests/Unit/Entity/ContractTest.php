@@ -752,4 +752,38 @@ class ContractTest extends TestCase
         // Late in the same calendar day must still resolve to 0, not -1.
         $this->assertSame(0, $contract->daysUntilExternalPrepaymentEnds(new \DateTimeImmutable('2025-06-15 23:59:59')));
     }
+
+    // -- Spec 045: yearly cadence --------------------------------------------
+
+    public function testCadenceStepDefaultsToOneMonth(): void
+    {
+        $contract = $this->createContract();
+
+        $this->assertSame('+1 month', $contract->getBillingCadenceStep());
+        $this->assertSame(30, $contract->getBillingPeriodDays());
+        $this->assertFalse($contract->isYearly());
+    }
+
+    public function testCadenceStepSwitchesToOneYearForYearlyContracts(): void
+    {
+        $contract = $this->createContract();
+        $contract->applyPaymentFrequency(\App\Enum\PaymentFrequency::YEARLY);
+
+        $this->assertSame('+1 year', $contract->getBillingCadenceStep());
+        $this->assertSame(365, $contract->getBillingPeriodDays());
+        $this->assertTrue($contract->isYearly());
+    }
+
+    public function testYearlyContractSuppressesExternalPrepaymentBanner(): void
+    {
+        $contract = $this->createContract();
+        $contract->applyPaymentFrequency(\App\Enum\PaymentFrequency::YEARLY);
+        // paidThroughDate gets populated after each yearly charge but yearly
+        // contracts must not be treated as "externally prepaid".
+        $contract->markExternallyPrepaid(new \DateTimeImmutable('2027-06-15'));
+
+        $this->assertNull(
+            $contract->daysUntilExternalPrepaymentEnds(new \DateTimeImmutable('2026-06-15')),
+        );
+    }
 }

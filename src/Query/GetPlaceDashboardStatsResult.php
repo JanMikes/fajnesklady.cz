@@ -19,6 +19,7 @@ final readonly class GetPlaceDashboardStatsResult
         public float $occupancyRate,
         public int $lastMonthRevenue,
         public int $expectedThisMonthRevenue,
+        public int $expectedYearlyRevenue,
         public int $activeContractsCount,
         public int $activeRecurringContracts,
         public int $overdueCount,

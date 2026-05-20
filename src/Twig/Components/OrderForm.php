@@ -8,6 +8,7 @@ use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
+use App\Enum\PaymentFrequency;
 use App\Enum\RentalType;
 use App\Form\OrderFormData;
 use App\Form\OrderFormType;
@@ -122,9 +123,34 @@ final class OrderForm extends AbstractController
     }
 
     /**
+     * Whether the customer is currently eligible for the YEARLY frequency
+     * choice — UNLIMITED is always eligible; LIMITED needs at least
+     * {@see PriceCalculator::YEARLY_THRESHOLD_DAYS} days (spec 045).
+     */
+    public function isEligibleForFrequencyChoice(): bool
+    {
+        $data = $this->getForm()->getData();
+        if (!$data instanceof OrderFormData) {
+            return false;
+        }
+
+        if (RentalType::UNLIMITED === $data->rentalType) {
+            return true;
+        }
+
+        if (null === $data->startDate || null === $data->endDate) {
+            return false;
+        }
+
+        return (int) $data->startDate->diff($data->endDate)->days >= PriceCalculator::YEARLY_THRESHOLD_DAYS;
+    }
+
+    /**
      * Which storage rate will actually be charged given the customer's current
-     * selections. Mirrors {@see PriceCalculator::buildPaymentSchedule()} cutover:
+     * selections. Mirrors {@see PriceCalculator::buildPaymentSchedule()} cutover
+     * with the yearly extension (spec 045):
      *
+     *   - YEARLY (eligible)                  → 'yearly'
      *   - UNLIMITED                          → 'monthly'
      *   - LIMITED, days < 28                 → 'weekly'
      *   - LIMITED, days >= 28                → 'monthly'
@@ -133,13 +159,17 @@ final class OrderForm extends AbstractController
      * The Ceník sidebar collapses to the single applicable row when this
      * returns a string, and falls back to "both rates + explainer" on null.
      *
-     * @return 'weekly'|'monthly'|null
+     * @return 'weekly'|'monthly'|'yearly'|null
      */
     public function getApplicableRate(): ?string
     {
         $data = $this->getForm()->getData();
         if (!$data instanceof OrderFormData) {
             return null;
+        }
+
+        if (PaymentFrequency::YEARLY === $data->paymentFrequency && $this->isEligibleForFrequencyChoice()) {
+            return 'yearly';
         }
 
         if (RentalType::UNLIMITED === $data->rentalType) {
@@ -159,6 +189,16 @@ final class OrderForm extends AbstractController
     }
 
     /**
+     * Customer-facing "X Kč / měsíc" equivalent for the currently selected
+     * storage's yearly rate. The spec 045 user brief is literal: "I want to
+     * see how much it will cost me per month, not per year".
+     */
+    public function getYearlyMonthlyEquivalentInCzk(Storage $storage): float
+    {
+        return $storage->getEffectivePricePerYear() / 12 / 100;
+    }
+
+    /**
      * Authoritative payment schedule for the live preview. Same
      * {@see PriceCalculator::buildPaymentSchedule()} call the order_accept
      * page and the recurring-billing cron use — what's shown here is what
@@ -174,17 +214,21 @@ final class OrderForm extends AbstractController
             return null;
         }
 
+        $frequency = (PaymentFrequency::YEARLY === $data->paymentFrequency && $this->isEligibleForFrequencyChoice())
+            ? PaymentFrequency::YEARLY
+            : PaymentFrequency::MONTHLY;
+
         if (RentalType::UNLIMITED === $data->rentalType) {
             $startDate = $data->startDate ?? new \DateTimeImmutable('today');
 
-            return $this->priceCalculator->buildPaymentSchedule($storage, $startDate, null);
+            return $this->priceCalculator->buildPaymentSchedule($storage, $startDate, null, $frequency);
         }
 
         if (null === $data->startDate || null === $data->endDate) {
             return null;
         }
 
-        $schedule = $this->priceCalculator->buildPaymentSchedule($storage, $data->startDate, $data->endDate);
+        $schedule = $this->priceCalculator->buildPaymentSchedule($storage, $data->startDate, $data->endDate, $frequency);
 
         return $schedule->isEmpty() ? null : $schedule;
     }

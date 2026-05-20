@@ -150,13 +150,14 @@ final readonly class DispatchManualBillingNotificationHandler
 
     /**
      * Period end mirrors the date arithmetic used by AUTO recurring billing
-     * ({@see ChargeRecurringPaymentHandler}): +1 month from the
-     * period start, clamped to the contract's effective end date when the
-     * fixed term runs out earlier.
+     * ({@see ChargeRecurringPaymentHandler}): one cadence step from the
+     * period start (+1 month or +1 year depending on `paymentFrequency`),
+     * clamped to the contract's effective end date when the fixed term runs
+     * out earlier.
      */
     private function computePeriodEnd(Contract $contract, \DateTimeImmutable $periodStart): \DateTimeImmutable
     {
-        $nextFullPeriodEnd = $periodStart->modify('+1 month');
+        $nextFullPeriodEnd = $periodStart->modify($contract->getBillingCadenceStep());
         $effectiveEndDate = $contract->getEffectiveEndDate();
 
         if (null !== $effectiveEndDate && $nextFullPeriodEnd > $effectiveEndDate) {

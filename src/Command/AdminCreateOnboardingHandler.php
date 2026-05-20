@@ -59,7 +59,7 @@ final readonly class AdminCreateOnboardingHandler
             startDate: $command->startDate,
             endDate: $command->endDate,
             now: $now,
-            paymentFrequency: PaymentFrequency::MONTHLY,
+            paymentFrequency: $command->paymentFrequency,
             preSelectedStorage: $command->storage,
             monthlyPriceOverride: $command->individualMonthlyAmount,
             expectedDuration: $command->expectedDuration,

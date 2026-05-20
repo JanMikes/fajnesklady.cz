@@ -104,6 +104,8 @@ final class StorageTypeFixtures extends Fixture implements DependentFixtureInter
             outerWidth: 320,
             outerHeight: 270,
             outerLength: 420,
+            // Yearly = 280 000 × 12 × 0.85 = 2 856 000 halere (15% discount; spec 045)
+            defaultPricePerYear: 2_856_000,
         );
         $manager->persist($largeCentrum);
         $this->addReference(self::REF_LARGE_CENTRUM, $largeCentrum);
@@ -173,6 +175,8 @@ final class StorageTypeFixtures extends Fixture implements DependentFixtureInter
             outerWidth: 520,
             outerHeight: 320,
             outerLength: 620,
+            // Yearly = 500 000 × 12 × 0.85 = 5 100 000 halere (15% discount; spec 045)
+            defaultPricePerYear: 5_100_000,
         );
         $manager->persist($premiumBrno);
         $this->addReference(self::REF_PREMIUM_BRNO, $premiumBrno);

@@ -50,7 +50,7 @@ final readonly class OrderService
         \DateTimeImmutable $startDate,
         ?\DateTimeImmutable $endDate,
         \DateTimeImmutable $now,
-        ?PaymentFrequency $paymentFrequency = null,
+        PaymentFrequency $paymentFrequency = PaymentFrequency::MONTHLY,
         ?Storage $preSelectedStorage = null,
         ?int $monthlyPriceOverride = null,
         ?ExpectedDuration $expectedDuration = null,
@@ -81,10 +81,12 @@ final readonly class OrderService
             );
         }
 
-        // Calculate first payment price (monthly recurring or full for short rentals)
-        // Admin onboarding may pin a custom monthly that survives storage-price changes.
+        // Calculate first payment price. For YEARLY this is the yearly amount;
+        // for MONTHLY it's the monthly figure (or a one-shot for short rentals).
+        // Admin onboarding may pin a custom monthly that survives storage-price
+        // changes — yearly contracts don't support per-customer overrides today.
         $firstPaymentPrice = $monthlyPriceOverride
-            ?? $this->priceCalculator->calculateFirstPaymentPrice($storage, $startDate, $endDate);
+            ?? $this->priceCalculator->calculateFirstPaymentPrice($storage, $startDate, $endDate, $paymentFrequency);
 
         // Create order
         $order = new Order(
@@ -177,6 +179,7 @@ final readonly class OrderService
         );
 
         $contract->applyBillingMode($order->billingMode);
+        $contract->applyPaymentFrequency($order->paymentFrequency ?? PaymentFrequency::MONTHLY);
 
         // Carry admin-onboarding billing terms onto the contract so the
         // recurring cron honours individual prices and external prepayment.

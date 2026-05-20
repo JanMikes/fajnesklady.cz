@@ -43,6 +43,10 @@ final class StorageFormData
     #[Assert\PositiveOrZero(message: 'Cena za měsíc musí být nula nebo kladná')]
     public ?float $pricePerMonth = null;
 
+    /** Custom yearly price in CZK (optional, null means use storage type default → monthly × 12) */
+    #[Assert\PositiveOrZero(message: 'Cena za rok musí být nula nebo kladná')]
+    public ?float $pricePerYear = null;
+
     /** Commission rate as percentage (0-100), e.g., 90 for 90% */
     #[Assert\Range(min: 0, max: 100, notInRangeMessage: 'Provize musí být mezi 0 a 100%')]
     public ?float $commissionRate = null;
@@ -72,6 +76,7 @@ final class StorageFormData
         $formData->coordinateRotation = (int) $storage->coordinates['rotation'];
         $formData->pricePerWeek = null !== $storage->pricePerWeek ? $storage->pricePerWeek / 100 : null;
         $formData->pricePerMonth = null !== $storage->pricePerMonth ? $storage->pricePerMonth / 100 : null;
+        $formData->pricePerYear = null !== $storage->pricePerYear ? $storage->pricePerYear / 100 : null;
         // Cast through float to ensure numeric-string for bcmul
         $formData->commissionRate = null !== $storage->commissionRate
             ? (float) bcmul((string) (float) $storage->commissionRate, '100', 0)

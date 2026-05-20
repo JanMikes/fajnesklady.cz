@@ -219,9 +219,32 @@
                 </div>
             </div>
             <div class="bg-gray-50 px-5 py-3">
-                <span class="text-sm text-gray-500">Z opakovaných plateb</span>
+                <span class="text-sm text-gray-500">Z měsíčních smluv</span>
             </div>
         </div>
+
+        {% if stats.expectedYearlyRevenue > 0 %}
+            <div class="bg-white overflow-hidden shadow rounded-lg">
+                <div class="p-5">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <svg class="h-6 w-6 text-teal-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                        </div>
+                        <div class="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt class="text-sm font-medium text-gray-500 truncate">Očekávané YRR</dt>
+                                <dd class="text-lg font-semibold text-gray-900">{{ (stats.expectedYearlyRevenue / 100)|number_format(0, ',', ' ') }} Kč / rok</dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-50 px-5 py-3">
+                    <span class="text-sm text-gray-500">Z ročních smluv</span>
+                </div>
+            </div>
+        {% endif %}
 
         <div class="bg-white overflow-hidden shadow rounded-lg">
             <div class="p-5">

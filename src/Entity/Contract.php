@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Enum\BillingMode;
+use App\Enum\PaymentFrequency;
 use App\Enum\RentalType;
 use App\Enum\TerminationReason;
 use App\Event\ContractPriceChanged;
@@ -98,6 +99,17 @@ class Contract implements EntityWithEvents
      */
     #[ORM\Column(length: 20, enumType: BillingMode::class, options: ['default' => 'auto_recurring'])]
     public private(set) BillingMode $billingMode = BillingMode::AUTO_RECURRING;
+
+    /**
+     * Mirrors {@see Order::$paymentFrequency}. Locked at order completion;
+     * never mutated thereafter. Drives the billing cadence anchor in both
+     * recurring crons via {@see self::getBillingCadenceStep()} — MONTHLY ->
+     * `+1 month`, YEARLY -> `+1 year`. Yearly contracts are always
+     * {@see BillingMode::MANUAL_RECURRING} by design (sidesteps the GoPay
+     * 15 000 Kč ON_DEMAND cap; see spec 045).
+     */
+    #[ORM\Column(length: 20, enumType: PaymentFrequency::class, options: ['default' => 'monthly'])]
+    public private(set) PaymentFrequency $paymentFrequency = PaymentFrequency::MONTHLY;
 
     public function __construct(
         #[ORM\Id]
@@ -342,6 +354,51 @@ class Contract implements EntityWithEvents
         $this->billingMode = $mode;
     }
 
+    public function applyPaymentFrequency(PaymentFrequency $frequency): void
+    {
+        $this->paymentFrequency = $frequency;
+    }
+
+    /**
+     * Modifier string the recurring crons feed to `\DateTimeImmutable::modify()`
+     * to advance `nextBillingDate` and `paidThroughDate` after a successful
+     * charge. Shared by both AUTO and MANUAL paths so the rule lives in one
+     * place — see spec 045 §10.
+     */
+    public function getBillingCadenceStep(): string
+    {
+        return PaymentFrequency::YEARLY === $this->paymentFrequency ? '+1 year' : '+1 month';
+    }
+
+    /**
+     * Number of days in one billing period. Used by amount-proration paths
+     * (last-cycle prorate) so yearly contracts measure against 365 days
+     * instead of 30. Mirrors {@see PriceCalculator}'s 30-day-month convention
+     * for MONTHLY.
+     */
+    public function getBillingPeriodDays(): int
+    {
+        return PaymentFrequency::YEARLY === $this->paymentFrequency ? 365 : 30;
+    }
+
+    /**
+     * Recurring amount in halere. For MONTHLY this is {@see self::getEffectiveMonthlyAmount()};
+     * for YEARLY it reads the storage's effective yearly rate (no per-customer
+     * yearly override is supported today — admin onboarding's "individual price"
+     * remains a monthly figure).
+     */
+    public function getEffectiveRecurringAmount(): int
+    {
+        return PaymentFrequency::YEARLY === $this->paymentFrequency
+            ? $this->storage->getEffectivePricePerYear()
+            : $this->getEffectiveMonthlyAmount();
+    }
+
+    public function isYearly(): bool
+    {
+        return PaymentFrequency::YEARLY === $this->paymentFrequency;
+    }
+
     public function hasIndividualPrice(): bool
     {
         return null !== $this->individualMonthlyAmount;
@@ -385,6 +442,12 @@ class Contract implements EntityWithEvents
             return null;
         }
         if ($this->isTerminated()) {
+            return null;
+        }
+        // YEARLY contracts also have paidThroughDate populated (set after each
+        // yearly charge) but they're not "externally prepaid" — they're billed
+        // annually via the manual cron. Don't surface the prepayment banner.
+        if (PaymentFrequency::YEARLY === $this->paymentFrequency) {
             return null;
         }
 

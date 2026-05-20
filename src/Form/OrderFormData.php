@@ -7,6 +7,7 @@ namespace App\Form;
 use App\Entity\User;
 use App\Enum\BillingMode;
 use App\Enum\ExpectedDuration;
+use App\Enum\PaymentFrequency;
 use App\Enum\RentalType;
 use App\Form\Address\HasBillingAddress;
 use App\Service\PriceCalculator;
@@ -98,9 +99,27 @@ final class OrderFormData implements HasBillingAddress
      */
     public ?BillingMode $billingMode = BillingMode::AUTO_RECURRING;
 
+    /**
+     * Customer-chosen payment frequency (spec 045). MONTHLY for everyone by
+     * default; YEARLY surfaces only when the rental is UNLIMITED or LIMITED ≥
+     * {@see PriceCalculator::YEARLY_THRESHOLD_DAYS} days. YEARLY is always
+     * MANUAL_RECURRING by construction — picking it auto-corrects
+     * {@see self::$billingMode} below as a defence-in-depth guard.
+     *
+     * Nullable to survive partial-form submissions during Live UX validation
+     * (mirrors {@see self::$billingMode}). Consumers read it via
+     * {@see self::resolvedPaymentFrequency()} which falls back to MONTHLY.
+     */
+    public ?PaymentFrequency $paymentFrequency = PaymentFrequency::MONTHLY;
+
     public function resolvedBillingMode(): BillingMode
     {
         return $this->billingMode ?? BillingMode::AUTO_RECURRING;
+    }
+
+    public function resolvedPaymentFrequency(): PaymentFrequency
+    {
+        return $this->paymentFrequency ?? PaymentFrequency::MONTHLY;
     }
 
     #[Assert\Callback]
@@ -250,6 +269,12 @@ final class OrderFormData implements HasBillingAddress
     #[Assert\Callback]
     public function validateBillingMode(ExecutionContextInterface $context): void
     {
+        // YEARLY is always MANUAL_RECURRING — short-circuit so the UNLIMITED-
+        // forces-AUTO rule below does not fire for yearly UNLIMITED orders.
+        if (PaymentFrequency::YEARLY === $this->paymentFrequency) {
+            return;
+        }
+
         if (RentalType::UNLIMITED === $this->rentalType && BillingMode::AUTO_RECURRING !== $this->billingMode) {
             $context->buildViolation('Pro pronájem na dobu neurčitou je dostupná pouze automatická platba kartou.')
                 ->atPath('billingMode')
@@ -263,6 +288,37 @@ final class OrderFormData implements HasBillingAddress
             $context->buildViolation('Pro krátkodobé pronájmy se platí jednorázově.')
                 ->atPath('billingMode')
                 ->addViolation();
+        }
+    }
+
+    #[Assert\Callback]
+    public function validatePaymentFrequency(ExecutionContextInterface $context): void
+    {
+        if (PaymentFrequency::YEARLY !== $this->paymentFrequency) {
+            return;
+        }
+
+        // Eligibility: UNLIMITED is always eligible; LIMITED needs the year cutoff.
+        if (RentalType::LIMITED === $this->rentalType) {
+            if (null === $this->startDate || null === $this->endDate) {
+                return;
+            }
+
+            if ((int) $this->startDate->diff($this->endDate)->days < PriceCalculator::YEARLY_THRESHOLD_DAYS) {
+                $context->buildViolation('Roční platba je dostupná pouze pro pronájem na 12 měsíců a déle.')
+                    ->atPath('paymentFrequency')
+                    ->addViolation();
+
+                return;
+            }
+        }
+
+        // Yearly is always MANUAL_RECURRING — auto-correct silently. The form
+        // layer hides the AUTO option for yearly, so the only way to reach
+        // this branch is a tampered payload. Don't surface a violation, just
+        // pin the mode so downstream code receives a consistent value.
+        if (BillingMode::MANUAL_RECURRING !== $this->billingMode) {
+            $this->billingMode = BillingMode::MANUAL_RECURRING;
         }
     }
 
@@ -311,6 +367,7 @@ final class OrderFormData implements HasBillingAddress
             'endDate' => $this->endDate?->format('Y-m-d'),
             'selectionMode' => $this->selectionMode,
             'billingMode' => $this->resolvedBillingMode()->value,
+            'paymentFrequency' => $this->resolvedPaymentFrequency()->value,
         ];
     }
 
@@ -344,6 +401,9 @@ final class OrderFormData implements HasBillingAddress
         $formData->selectionMode = 'manual' === $mode ? 'manual' : 'auto';
         if (isset($data['billingMode'])) {
             $formData->billingMode = BillingMode::tryFrom($data['billingMode']) ?? BillingMode::AUTO_RECURRING;
+        }
+        if (isset($data['paymentFrequency'])) {
+            $formData->paymentFrequency = PaymentFrequency::tryFrom($data['paymentFrequency']) ?? PaymentFrequency::MONTHLY;
         }
 
         return $formData;

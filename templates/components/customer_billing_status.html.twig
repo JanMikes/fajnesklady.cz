@@ -15,7 +15,27 @@
    immediate action (pay-now CTA) is more urgent than the future banner.
 #}
 {% if contract is not null %}
-    {% if contract.billingMode.value == 'manual_recurring' and not contract.isFree() %}
+    {% if contract.isYearly() and not contract.isFree() %}
+        {# YEARLY cadence — billed once a year via manual cron. paidThroughDate
+           doubles as the next-billing anchor; daysUntilExternalPrepaymentEnds
+           explicitly returns null for yearly contracts so the prepayment banner
+           never fires here. #}
+        <div class="mb-4 rounded-lg border border-teal-200 bg-teal-50 p-4">
+            <div class="flex items-start gap-3">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-teal-600 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <div class="flex-1 text-sm text-teal-900">
+                    <strong>Platíte ročně.</strong>
+                    {% if contract.paidThroughDate %}
+                        Předplaceno do {{ contract.paidThroughDate|date('d.m.Y') }}. Před vypršením Vám pošleme e-mail s odkazem k zaplacení další ročnice.
+                    {% else %}
+                        Před každou roční platbou Vám pošleme e-mail s odkazem k zaplacení.
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    {% elseif contract.billingMode.value == 'manual_recurring' and not contract.isFree() %}
         {% if manualNowUrl is defined and manualNowUrl is not null %}
             <div class="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-4">
                 <div class="flex items-start gap-3">

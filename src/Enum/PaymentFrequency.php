@@ -16,4 +16,12 @@ enum PaymentFrequency: string
     {
         return array_map(fn (self $frequency) => $frequency->value, self::cases());
     }
+
+    public function label(): string
+    {
+        return match ($this) {
+            self::MONTHLY => 'Měsíční platba',
+            self::YEARLY => 'Roční platba (jednou ročně)',
+        };
+    }
 }
