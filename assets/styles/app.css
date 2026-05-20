@@ -388,16 +388,20 @@ label:has(~ input[required], ~ select[required], ~ textarea[required])::after {
     color: var(--color-accent);
 }
 
-.popup-types__cta {
-    @apply inline-block mt-1 px-3 py-1 text-xs font-semibold rounded text-white;
+/* Leaflet ships `.leaflet-container a { color: #0078A8 }` (0,1,1).
+   Scope under `.storage-popup` so we beat that on specificity and also cover the
+   mobile fullscreen modal (same markup, mounted outside .leaflet-container). */
+.storage-popup a.popup-types__cta {
+    @apply inline-block mt-1 px-3 py-1 text-xs font-semibold rounded;
     background-color: var(--color-accent);
+    color: #fff;
 }
 
 .popup-soldout {
     @apply text-sm text-gray-600 mb-3;
 }
 
-.storage-popup__detail {
+.storage-popup a.storage-popup__detail {
     @apply block text-center text-sm font-medium py-2 rounded border;
     color: var(--color-accent);
     border-color: var(--color-accent);
