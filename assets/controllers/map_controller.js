@@ -334,6 +334,10 @@ export default class extends Controller {
         const fragment = document.createDocumentFragment();
         this.placeCardTargets.forEach((card) => {
             const clone = card.cloneNode(true);
+            // Strip the Stimulus target attribute — otherwise the clone is auto-registered
+            // as another `placeCard` target, sortByDistance() then moves it into the desktop
+            // list, and the visible cards double on first geolocation.
+            clone.removeAttribute('data-map-target');
             clone.dataset.clone = 'true';
             this.wireCardEvents(clone);
             fragment.appendChild(clone);
