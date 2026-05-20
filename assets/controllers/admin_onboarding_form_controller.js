@@ -1,16 +1,35 @@
 import { Controller } from '@hotwired/stimulus';
 
-// Mirrors PriceCalculator::WEEKLY_THRESHOLD_DAYS / YEARLY_THRESHOLD_DAYS and the
-// eligibility rules in OrderForm::isEligibleForBillingModeChoice / isEligibleForFrequencyChoice.
-// Customer order form runs these via LiveComponent re-renders; admin onboarding
-// forms are plain Symfony forms, so this controller does the same show/hide
-// client-side. Server-side validators (validateBillingMode / validatePaymentFrequency
-// on the FormData) remain authoritative — this is UX only.
+// Mirrors the customer-facing OrderForm LiveComponent (templates/components/OrderForm.html.twig +
+// src/Twig/Components/OrderForm.php) for the admin onboarding forms, which are
+// plain Symfony forms — no live re-renders. Show/hide rules:
+//
+//   invoiceToCompany unchecked → companyId/Name/VatId hidden, birthDate shown,
+//                                 address heading = "Adresa bydliště"
+//   invoiceToCompany checked   → companyId/Name/VatId shown, birthDate hidden,
+//                                 address heading = "Sídlo společnosti"
+//   rentalType=limited         → expectedDuration hidden, endDate shown
+//   rentalType=unlimited       → expectedDuration shown, endDate hidden
+//   isExternallyPrepaid (digital only) → paidThroughDate shown when checked
+//   paymentFrequency / billingMode      → see WEEKLY/YEARLY thresholds below
+//
+// Mirrors PriceCalculator::WEEKLY_THRESHOLD_DAYS / YEARLY_THRESHOLD_DAYS and
+// OrderForm::isEligibleForBillingModeChoice / isEligibleForFrequencyChoice:
+//
+//   paymentFrequency visible only for UNLIMITED or LIMITED ≥ YEARLY_THRESHOLD_DAYS
+//   billingMode      visible only for LIMITED ≥ WEEKLY_THRESHOLD_DAYS && non-YEARLY
+//   UNLIMITED non-YEARLY pins AUTO_RECURRING
+//   YEARLY pins MANUAL_RECURRING and surfaces the explanatory blue notice
+//
+// FormData validators on AdminMigrateCustomerFormData / AdminCreateOnboardingFormData
+// remain authoritative — this controller is UX only. A tampered form payload
+// still gets caught server-side.
 const WEEKLY_THRESHOLD_DAYS = 28;
 const YEARLY_THRESHOLD_DAYS = 360;
 
 export default class extends Controller {
     static targets = [
+        // paymentFrequency / billingMode block
         'billingModeContainer',
         'paymentFrequencyContainer',
         'yearlyNotice',
@@ -18,6 +37,16 @@ export default class extends Controller {
         'billingModeManual',
         'paymentFrequencyMonthly',
         'paymentFrequencyYearly',
+        // invoiceToCompany block
+        'companyFieldsContainer',
+        'birthDateContainer',
+        'addressHeadingPerson',
+        'addressHeadingCompany',
+        // rentalType block
+        'expectedDurationContainer',
+        'endDateContainer',
+        // isExternallyPrepaid block (digital only)
+        'paidThroughDateContainer',
     ];
 
     connect() {
@@ -33,6 +62,47 @@ export default class extends Controller {
     }
 
     update() {
+        this.applyCompanyRules();
+        this.applyRentalTypeRules();
+        this.applyExternalPrepaymentRules();
+        this.applyPaymentRules();
+    }
+
+    applyCompanyRules() {
+        const isCompany = this.isCompany();
+
+        if (this.hasCompanyFieldsContainerTarget) {
+            this.toggle(this.companyFieldsContainerTarget, isCompany);
+        }
+        if (this.hasBirthDateContainerTarget) {
+            this.toggle(this.birthDateContainerTarget, !isCompany);
+        }
+        if (this.hasAddressHeadingPersonTarget) {
+            this.toggle(this.addressHeadingPersonTarget, !isCompany);
+        }
+        if (this.hasAddressHeadingCompanyTarget) {
+            this.toggle(this.addressHeadingCompanyTarget, isCompany);
+        }
+    }
+
+    applyRentalTypeRules() {
+        const rentalType = this.rentalType();
+
+        if (this.hasExpectedDurationContainerTarget) {
+            this.toggle(this.expectedDurationContainerTarget, rentalType === 'unlimited');
+        }
+        if (this.hasEndDateContainerTarget) {
+            this.toggle(this.endDateContainerTarget, rentalType === 'limited');
+        }
+    }
+
+    applyExternalPrepaymentRules() {
+        if (!this.hasPaidThroughDateContainerTarget) return;
+        const checkbox = this.element.querySelector('input[type="checkbox"][name$="[isExternallyPrepaid]"]');
+        this.toggle(this.paidThroughDateContainerTarget, !!(checkbox && checkbox.checked));
+    }
+
+    applyPaymentRules() {
         const rentalType = this.rentalType();
         const days = this.durationDays();
 
@@ -40,35 +110,41 @@ export default class extends Controller {
             rentalType === 'unlimited' ||
             (rentalType === 'limited' && days !== null && days >= YEARLY_THRESHOLD_DAYS);
 
-        this.toggle(this.paymentFrequencyContainerTarget, frequencyEligible);
+        if (this.hasPaymentFrequencyContainerTarget) {
+            this.toggle(this.paymentFrequencyContainerTarget, frequencyEligible);
+        }
 
         // If the field is hidden and YEARLY was previously selected, snap back to
         // MONTHLY so the submitted value matches what the admin can see.
-        if (!frequencyEligible && this.hasPaymentFrequencyMonthlyTarget && this.paymentFrequencyYearlyTarget.checked) {
+        if (
+            !frequencyEligible &&
+            this.hasPaymentFrequencyMonthlyTarget &&
+            this.hasPaymentFrequencyYearlyTarget &&
+            this.paymentFrequencyYearlyTarget.checked
+        ) {
             this.paymentFrequencyMonthlyTarget.checked = true;
         }
 
-        const isYearly = frequencyEligible && this.paymentFrequencyYearlyTarget.checked;
+        const isYearly =
+            frequencyEligible &&
+            this.hasPaymentFrequencyYearlyTarget &&
+            this.paymentFrequencyYearlyTarget.checked;
 
         if (isYearly) {
             // YEARLY → MANUAL_RECURRING always. Hide the billingMode radios and
             // surface the same explanatory notice the customer form shows.
-            this.toggle(this.billingModeContainerTarget, false);
-            this.toggle(this.yearlyNoticeTarget, true);
-            if (this.hasBillingModeManualTarget) {
-                this.billingModeManualTarget.checked = true;
-            }
+            if (this.hasBillingModeContainerTarget) this.toggle(this.billingModeContainerTarget, false);
+            if (this.hasYearlyNoticeTarget) this.toggle(this.yearlyNoticeTarget, true);
+            if (this.hasBillingModeManualTarget) this.billingModeManualTarget.checked = true;
             return;
         }
 
-        this.toggle(this.yearlyNoticeTarget, false);
+        if (this.hasYearlyNoticeTarget) this.toggle(this.yearlyNoticeTarget, false);
 
         if (rentalType === 'unlimited') {
             // UNLIMITED (non-yearly) → AUTO_RECURRING is the only legal value.
-            this.toggle(this.billingModeContainerTarget, false);
-            if (this.hasBillingModeAutoTarget) {
-                this.billingModeAutoTarget.checked = true;
-            }
+            if (this.hasBillingModeContainerTarget) this.toggle(this.billingModeContainerTarget, false);
+            if (this.hasBillingModeAutoTarget) this.billingModeAutoTarget.checked = true;
             return;
         }
 
@@ -78,12 +154,19 @@ export default class extends Controller {
         // the external payment via paidAt/totalPriceInCzk and the recurring
         // amount kicks in after paidThroughDate.
         const billingModeEligible = days !== null && days >= WEEKLY_THRESHOLD_DAYS;
-        this.toggle(this.billingModeContainerTarget, billingModeEligible);
+        if (this.hasBillingModeContainerTarget) {
+            this.toggle(this.billingModeContainerTarget, billingModeEligible);
+        }
     }
 
     toggle(element, visible) {
         if (!element) return;
         element.hidden = !visible;
+    }
+
+    isCompany() {
+        const checkbox = this.element.querySelector('input[type="checkbox"][name$="[invoiceToCompany]"]');
+        return !!(checkbox && checkbox.checked);
     }
 
     rentalType() {

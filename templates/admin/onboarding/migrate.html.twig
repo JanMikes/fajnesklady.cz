@@ -42,7 +42,7 @@
                             {{ form_widget(form.phone) }}
                             {{ form_errors(form.phone) }}
                         </div>
-                        <div>
+                        <div data-admin-onboarding-form-target="birthDateContainer"{% if form.vars.data.invoiceToCompany %} hidden{% endif %}>
                             {{ form_label(form.birthDate) }}
                             {{ form_widget(form.birthDate) }}
                             {{ form_errors(form.birthDate) }}
@@ -51,14 +51,14 @@
 
                     <hr class="my-6 border-t border-gray-200">
 
-                    <h3 class="text-lg font-semibold mb-4">Fakturační údaje</h3>
+                    <h3 class="text-lg font-semibold mb-4">Firemní údaje</h3>
                     <div class="mb-4">
                         <label class="flex items-center cursor-pointer gap-3">
                             {{ form_widget(form.invoiceToCompany, {'attr': {'class': 'h-4 w-4 text-accent focus:ring-accent border-gray-300'}}) }}
-                            <span class="text-sm text-gray-700">Fakturovat na firmu</span>
+                            <span class="text-sm text-gray-700">Nájemce je společnost / OSVČ</span>
                         </label>
                     </div>
-                    <div class="grid md:grid-cols-2 gap-4 mb-6" data-controller="ares-lookup">
+                    <div data-admin-onboarding-form-target="companyFieldsContainer" class="grid md:grid-cols-2 gap-4 mb-6" data-controller="ares-lookup"{% if not form.vars.data.invoiceToCompany %} hidden{% endif %}>
                         <div>
                             {{ form_label(form.companyId) }}
                             <div class="flex">
@@ -78,9 +78,17 @@
                             {{ form_widget(form.companyVatId) }}
                             {{ form_errors(form.companyVatId) }}
                         </div>
-                        <div class="md:col-span-2">
-                            {{ addr.render(form) }}
-                        </div>
+                    </div>
+
+                    <hr class="my-6 border-t border-gray-200">
+
+                    <h3 class="text-lg font-semibold mb-4">
+                        <span data-admin-onboarding-form-target="addressHeadingPerson"{% if form.vars.data.invoiceToCompany %} hidden{% endif %}>Adresa bydliště</span>
+                        <span data-admin-onboarding-form-target="addressHeadingCompany"{% if not form.vars.data.invoiceToCompany %} hidden{% endif %}>Sídlo společnosti</span>
+                    </h3>
+                    <p class="text-xs text-gray-500 mb-4">Vyžadováno pro účely nájemní smlouvy.</p>
+                    <div class="mb-6">
+                        {{ addr.render(form) }}
                     </div>
 
                     <hr class="my-6 border-t border-gray-200">
@@ -104,7 +112,7 @@
                             </div>
                             {{ form_errors(form.rentalType) }}
                         </div>
-                        <div class="md:col-span-2">
+                        <div class="md:col-span-2" data-admin-onboarding-form-target="expectedDurationContainer"{% if form.vars.data.rentalType is not null and form.vars.data.rentalType.value != 'unlimited' %} hidden{% endif %}>
                             {{ form_label(form.expectedDuration) }}
                             <div class="flex flex-wrap gap-4 mt-1">
                                 {% for choice in form.expectedDuration %}
@@ -122,7 +130,7 @@
                             {{ form_widget(form.startDate) }}
                             {{ form_errors(form.startDate) }}
                         </div>
-                        <div>
+                        <div data-admin-onboarding-form-target="endDateContainer"{% if form.vars.data.rentalType is null or form.vars.data.rentalType.value != 'limited' %} hidden{% endif %}>
                             {{ form_label(form.endDate) }}
                             {{ form_widget(form.endDate) }}
                             {{ form_errors(form.endDate) }}
