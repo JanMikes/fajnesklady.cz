@@ -6,7 +6,6 @@ namespace App\Command;
 
 use App\Entity\Contract;
 use App\Entity\User;
-use App\Enum\PaymentFrequency;
 use App\Enum\PaymentMethod;
 use App\Repository\UserRepository;
 use App\Service\Identity\ProvideIdentity;

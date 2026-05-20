@@ -16,6 +16,7 @@
                 <thead>
                     <tr>
                         <th>Název</th>
+                        <th>Typ</th>
                         <th>Adresa</th>
                         <th>Stav</th>
                         <th>Vytvořeno</th>
@@ -26,7 +27,7 @@
                     {% for place in places %}
                         <tr>
                             <td class="font-medium text-gray-900">
-                                {{ place.name }}
+                                <a href="{{ path('portal_places_detail', {id: place.id}) }}" class="link">{{ place.name }}</a>
                                 {% if not place.hasOperatingRules %}
                                     <span class="inline-flex items-center ml-2 text-amber-600" title="Chybí nahrát provozní řád">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -41,6 +42,12 @@
                                         </svg>
                                     </span>
                                 {% endif %}
+                            </td>
+                            <td>
+                                <span class="inline-flex items-center gap-1.5 text-xs font-medium">
+                                    <span class="w-2.5 h-2.5 rounded-full" style="background-color: {{ place.type.color }}"></span>
+                                    {{ place.type.label }}
+                                </span>
                             </td>
                             <td class="text-gray-500">{% include 'components/place_address.html.twig' with {place: place, inline: true} only %}</td>
                             <td>
@@ -77,7 +84,7 @@
                         </tr>
                     {% else %}
                         <tr>
-                            <td colspan="5" class="text-center text-gray-500 py-8">Žádná místa nenalezena</td>
+                            <td colspan="6" class="text-center text-gray-500 py-8">Žádná místa nenalezena</td>
                         </tr>
                     {% endfor %}
                 </tbody>

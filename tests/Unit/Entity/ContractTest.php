@@ -767,7 +767,7 @@ class ContractTest extends TestCase
     public function testCadenceStepSwitchesToOneYearForYearlyContracts(): void
     {
         $contract = $this->createContract();
-        $contract->applyPaymentFrequency(\App\Enum\PaymentFrequency::YEARLY);
+        $contract->applyPaymentFrequency(PaymentFrequency::YEARLY);
 
         $this->assertSame('+1 year', $contract->getBillingCadenceStep());
         $this->assertSame(365, $contract->getBillingPeriodDays());
@@ -777,7 +777,7 @@ class ContractTest extends TestCase
     public function testYearlyContractSuppressesExternalPrepaymentBanner(): void
     {
         $contract = $this->createContract();
-        $contract->applyPaymentFrequency(\App\Enum\PaymentFrequency::YEARLY);
+        $contract->applyPaymentFrequency(PaymentFrequency::YEARLY);
         // paidThroughDate gets populated after each yearly charge but yearly
         // contracts must not be treated as "externally prepaid".
         $contract->markExternallyPrepaid(new \DateTimeImmutable('2027-06-15'));

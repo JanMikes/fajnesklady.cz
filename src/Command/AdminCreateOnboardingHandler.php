@@ -6,7 +6,6 @@ namespace App\Command;
 
 use App\Entity\Order;
 use App\Entity\User;
-use App\Enum\PaymentFrequency;
 use App\Enum\PaymentMethod;
 use App\Event\AdminOnboardingInitiated;
 use App\Repository\UserRepository;

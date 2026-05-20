@@ -1,0 +1,80 @@
+{% extends 'portal/layout.html.twig' %}
+
+{% block title %}Finance — {{ place.name }}{% endblock %}
+
+{% block breadcrumb %}
+    {% include 'components/breadcrumb.html.twig' with {breadcrumb_items: [
+        {label: 'Místa', url: path('portal_places_list')},
+        {label: place.name, url: path('portal_places_detail', {id: place.id})},
+        {label: 'Finance'},
+    ]} %}
+{% endblock %}
+
+{% block content %}
+    {% set czMonthNames = {
+        1: 'leden', 2: 'únor', 3: 'březen', 4: 'duben', 5: 'květen', 6: 'červen',
+        7: 'červenec', 8: 'srpen', 9: 'září', 10: 'říjen', 11: 'listopad', 12: 'prosinec',
+    } %}
+
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-gray-900">Finance — {{ place.name }}</h1>
+    </div>
+
+    {# KPI tiles #}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div class="bg-white overflow-hidden shadow rounded-lg p-5">
+            <dt class="text-sm font-medium text-gray-500 uppercase">Tržby tento měsíc</dt>
+            <dd class="mt-2 text-3xl font-bold text-gray-900">{{ (thisMonthRevenue / 100)|number_format(0, ',', ' ') }} Kč</dd>
+        </div>
+        <div class="bg-white overflow-hidden shadow rounded-lg p-5">
+            <dt class="text-sm font-medium text-gray-500 uppercase">Tržby minulý měsíc</dt>
+            <dd class="mt-2 text-3xl font-bold text-gray-900">{{ (lastMonthRevenue / 100)|number_format(0, ',', ' ') }} Kč</dd>
+        </div>
+        <div class="bg-white overflow-hidden shadow rounded-lg p-5">
+            <dt class="text-sm font-medium text-gray-500 uppercase">Tržby YTD</dt>
+            <dd class="mt-2 text-3xl font-bold text-gray-900">{{ (ytdRevenue / 100)|number_format(0, ',', ' ') }} Kč</dd>
+        </div>
+        <div class="bg-white overflow-hidden shadow rounded-lg p-5">
+            <dt class="text-sm font-medium text-gray-500 uppercase">Očekávané MRR</dt>
+            <dd class="mt-2 text-3xl font-bold text-gray-900">{{ (expectedMonthly / 100)|number_format(0, ',', ' ') }} Kč / měsíc</dd>
+        </div>
+    </div>
+
+    {# Revenue chart (12 months) #}
+    <div class="mb-8">
+        {% if isAdmin %}
+            {{ component('RevenueChart', {placeId: place.id.toRfc4122}) }}
+        {% else %}
+            {{ component('RevenueChart', {placeId: place.id.toRfc4122, landlordId: app.user.id.toRfc4122}) }}
+        {% endif %}
+    </div>
+
+    {# Monthly revenue table #}
+    <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+        <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+            <h3 class="text-lg font-medium text-gray-900">Měsíční tržby (posledních 12 měsíců)</h3>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="table table-zebra">
+                <thead>
+                    <tr>
+                        <th>Měsíc</th>
+                        <th class="text-right">Tržby (Kč)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in monthlyRevenue %}
+                        <tr>
+                            <td>{{ czMonthNames[row.month] }} {{ row.year }}</td>
+                            <td class="text-right font-medium">{{ (row.total / 100)|number_format(0, ',', ' ') }} Kč</td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="2" class="text-center text-gray-500 py-6">Žádné tržby v posledních 12 měsících.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}

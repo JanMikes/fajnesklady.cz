@@ -126,6 +126,44 @@ class PaymentRepositoryTest extends KernelTestCase
         $this->assertSame(50_000, $this->repository->sumAtPlaceAndPeriod($placeB, 2025, 5, null));
     }
 
+    public function testSumAtPlaceForRangeIsHalfOpenAndOwnerScoped(): void
+    {
+        $tenant = $this->createUser('tenant-range@test.com');
+        $landlordA = $this->createUser('landlord-range-a@test.com');
+        $landlordB = $this->createUser('landlord-range-b@test.com');
+        $place = $this->createPlace();
+        $st = $this->createStorageType($place);
+        $storageA = $this->createStorage($st, $place, 'RNG1', $landlordA);
+        $storageB = $this->createStorage($st, $place, 'RNG2', $landlordB);
+
+        $orderA = $this->createOrder($tenant, $storageA, new \DateTimeImmutable('2025-05-01'), new \DateTimeImmutable('2025-12-01'));
+        $contractA = $this->createContract($orderA, $tenant, $storageA, $orderA->startDate, $orderA->endDate);
+        $orderB = $this->createOrder($tenant, $storageB, new \DateTimeImmutable('2025-05-01'), new \DateTimeImmutable('2025-12-01'));
+        $contractB = $this->createContract($orderB, $tenant, $storageB, $orderB->startDate, $orderB->endDate);
+
+        $this->createPayment($orderA, $contractA, $storageA, 100_000, new \DateTimeImmutable('2025-06-01'));
+        $this->createPayment(null, $contractA, $storageA, 200_000, new \DateTimeImmutable('2025-06-15'));
+        $this->createPayment(null, $contractB, $storageB, 50_000, new \DateTimeImmutable('2025-06-30'));
+        // Excluded — falls on the exclusive upper bound.
+        $this->createPayment(null, $contractA, $storageA, 999_000, new \DateTimeImmutable('2025-07-01'));
+        $this->entityManager->flush();
+
+        $from = new \DateTimeImmutable('2025-06-01 00:00:00');
+        $to = new \DateTimeImmutable('2025-07-01 00:00:00');
+
+        // Admin: both owners.
+        $this->assertSame(350_000, $this->repository->sumAtPlaceForRange($place, $from, $to, null));
+        // Owner scope: only landlordA's payments.
+        $this->assertSame(300_000, $this->repository->sumAtPlaceForRange($place, $from, $to, $landlordA));
+        // Empty range.
+        $this->assertSame(0, $this->repository->sumAtPlaceForRange(
+            $place,
+            new \DateTimeImmutable('2024-01-01'),
+            new \DateTimeImmutable('2024-02-01'),
+            null,
+        ));
+    }
+
     public function testGetMonthlyRevenueAtPlaceGroupsByMonth(): void
     {
         $tenant = $this->createUser('tenant-monthly-place@test.com');

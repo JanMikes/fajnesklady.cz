@@ -1,0 +1,168 @@
+{% extends 'portal/layout.html.twig' %}
+
+{% block title %}Obsazenost — {{ place.name }}{% endblock %}
+
+{% block breadcrumb %}
+    {% include 'components/breadcrumb.html.twig' with {breadcrumb_items: [
+        {label: 'Místa', url: path('portal_places_list')},
+        {label: place.name, url: path('portal_places_detail', {id: place.id})},
+        {label: 'Obsazenost'},
+    ]} %}
+{% endblock %}
+
+{% block content %}
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-gray-900">Obsazenost — {{ place.name }}</h1>
+    </div>
+
+    {# Mapa obsazenosti — Live Component with date picker #}
+    <div class="mb-8">
+        {{ component('PlaceOccupancyMap', {
+            placeId: place.id.toRfc4122,
+            landlordId: isAdmin ? null : app.user.id.toRfc4122,
+        }) }}
+    </div>
+
+    {# Obsazenost typů — ported from the old detail page #}
+    {% if placeOverview.rows|length > 0 %}
+        <div class="bg-white shadow overflow-hidden sm:rounded-lg mb-8">
+            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">Obsazenost typů</h3>
+            </div>
+            <div class="divide-y divide-gray-200">
+                {% for row in placeOverview.rows %}
+                    <div class="px-4 py-3 flex justify-between items-center gap-4">
+                        <div class="min-w-0">
+                            <a href="{{ path('portal_storage_type_occupancy', {placeId: place.id, id: row.storageType.id}) }}" class="text-sm font-medium text-gray-900 link">
+                                {{ row.storageType.name }}
+                            </a>
+                            <p class="text-xs text-gray-500 mt-0.5">
+                                {{ row.totalCount }} skladů · {{ row.occupiedCount }} obsazeno · {{ row.availableCount }} volných{% if row.blockedCount > 0 %} · {{ row.blockedCount }} blokovaných{% endif %}
+                            </p>
+                        </div>
+                        <div class="text-right">
+                            {% if row.availableCount > 0 %}
+                                <span class="badge badge-success">{{ row.availableCount }} volných</span>
+                            {% else %}
+                                <span class="badge badge-error">Vše obsazeno</span>
+                            {% endif %}
+                            {% if row.nextFreeingDate %}
+                                <p class="text-xs text-gray-500 mt-1">Nejbližší uvolnění do {{ row.nextFreeingDate|date('d.m.Y') }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
+    {# Sklady — aktuální stav (today) #}
+    {% if storages|length > 0 %}
+        {% set buckets = {available: [], occupied: [], blocked: []} %}
+        {% for storage in storages %}
+            {% set view = views[storage.id.toRfc4122] ?? null %}
+            {% set bucket = 'available' %}
+            {% if view and (view.currentContract or view.currentOrder) %}
+                {% set bucket = 'occupied' %}
+            {% elseif view and view.blockedBy %}
+                {% set bucket = 'blocked' %}
+            {% endif %}
+            {% set buckets = buckets|merge({(bucket): buckets[bucket]|merge([{storage: storage, view: view}])}) %}
+        {% endfor %}
+
+        {% set counts = {
+            all: storages|length,
+            available: buckets.available|length,
+            occupied: buckets.occupied|length,
+            blocked: buckets.blocked|length,
+        } %}
+
+        {% set rows = filter == 'all'
+            ? buckets.available|merge(buckets.occupied)|merge(buckets.blocked)
+            : buckets[filter] %}
+
+        <div class="bg-white shadow overflow-hidden sm:rounded-lg mb-8">
+            <div class="px-4 py-5 sm:px-6 border-b border-gray-200 flex flex-wrap items-center justify-between gap-3">
+                <h3 class="text-lg font-medium text-gray-900">Sklady — aktuální stav</h3>
+                <div class="flex flex-wrap gap-2">
+                    {% for key, label in {all: 'Vše', available: 'Volné', occupied: 'Obsazené', blocked: 'Blokované'} %}
+                        <a href="{{ path('portal_places_occupancy', {placeId: place.id}) }}{% if key != 'all' %}?show={{ key }}{% endif %}"
+                           class="badge {{ filter == key ? 'badge-primary' : 'badge-ghost' }}">
+                            {{ label }} ({{ counts[key] }})
+                        </a>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="table table-zebra">
+                    <thead>
+                        <tr>
+                            <th>Číslo</th>
+                            <th>Typ</th>
+                            <th>Stav</th>
+                            <th>Nájemce</th>
+                            <th>Pronajato do</th>
+                            <th>Akce</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in rows %}
+                            {% set storage = row.storage %}
+                            {% set view = row.view %}
+                            {% set statusClass = {
+                                (statusValues.available): 'badge-success',
+                                (statusValues.reserved): 'badge-warning',
+                                (statusValues.occupied): 'badge-error',
+                                (statusValues.blocked): 'badge-ghost',
+                            } %}
+                            {% set statusLabel = {
+                                (statusValues.available): 'Volný',
+                                (statusValues.reserved): 'Rezervovaný',
+                                (statusValues.occupied): 'Obsazený',
+                                (statusValues.blocked): 'Blokovaný',
+                            } %}
+                            <tr>
+                                <td class="font-medium text-gray-900">{{ storage.number }}</td>
+                                <td class="text-gray-600">{{ storage.storageType.name }}</td>
+                                <td>
+                                    <span class="badge {{ statusClass[storage.status.value] ?? 'badge-ghost' }}">
+                                        {{ statusLabel[storage.status.value] ?? storage.status.value }}
+                                    </span>
+                                </td>
+                                <td class="text-gray-700">
+                                    {% if view and view.currentContract %}
+                                        {{ view.currentContract.user.fullName }}
+                                    {% elseif view and view.currentOrder %}
+                                        {{ view.currentOrder.user.fullName }}
+                                    {% else %}
+                                        <span class="text-gray-400">—</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-gray-700">
+                                    {% if view and view.rentedUntil %}
+                                        {{ view.rentedUntil|date('d.m.Y') }}{% if view.currentContract and view.currentContract.terminatesAt %} <span class="text-xs text-amber-600">(výpověď)</span>{% endif %}
+                                    {% elseif view and view.currentContract and view.currentContract.endDate is null and view.currentContract.terminatesAt is null %}
+                                        <span class="text-gray-500 italic">neomezeně</span>
+                                    {% else %}
+                                        <span class="text-gray-400">—</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{{ path('portal_storages_edit', {id: storage.id}) }}" class="link text-sm">Upravit sklad</a>
+                                </td>
+                            </tr>
+                        {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center text-gray-500 py-6">Žádné sklady v této kategorii.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% else %}
+        <div class="bg-white shadow rounded-lg p-8 text-center text-gray-500">
+            Žádné sklady na tomto místě.
+        </div>
+    {% endif %}
+{% endblock %}

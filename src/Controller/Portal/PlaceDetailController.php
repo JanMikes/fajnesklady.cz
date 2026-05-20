@@ -6,16 +6,12 @@ namespace App\Controller\Portal;
 
 use App\Entity\User;
 use App\Query\GetPlaceDashboardStats;
-use App\Query\GetPlaceTypeOccupancyOverview;
 use App\Query\QueryBus;
-use App\Repository\ContractRepository;
-use App\Repository\OrderRepository;
 use App\Repository\PlaceAccessRepository;
 use App\Repository\PlaceRepository;
 use App\Repository\StorageRepository;
 use App\Repository\StorageTypeRepository;
 use App\Service\Security\PlaceVoter;
-use Psr\Clock\ClockInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -31,10 +27,7 @@ final class PlaceDetailController extends AbstractController
         private readonly StorageRepository $storageRepository,
         private readonly StorageTypeRepository $storageTypeRepository,
         private readonly PlaceAccessRepository $placeAccessRepository,
-        private readonly ContractRepository $contractRepository,
-        private readonly OrderRepository $orderRepository,
         private readonly QueryBus $queryBus,
-        private readonly ClockInterface $clock,
     ) {
     }
 
@@ -46,22 +39,8 @@ final class PlaceDetailController extends AbstractController
         /** @var User $user */
         $user = $this->getUser();
         $isAdmin = $this->isGranted('ROLE_ADMIN');
-        $now = $this->clock->now();
-
-        $ownerScope = $isAdmin ? null : $user;
 
         $stats = $this->queryBus->handle(new GetPlaceDashboardStats(
-            placeId: $place->id,
-            landlordId: $isAdmin ? null : $user->id,
-        ));
-
-        $expiringContracts = $this->contractRepository
-            ->findExpiringWithinDaysAtPlace(30, $now, $place, $ownerScope);
-        $upcomingOrders = $this->orderRepository
-            ->findUpcomingAtPlace($place, 30, $now, $ownerScope);
-        $recentOrders = $this->orderRepository
-            ->findRecentAtPlace($place, 5, $ownerScope);
-        $placeOverview = $this->queryBus->handle(new GetPlaceTypeOccupancyOverview(
             placeId: $place->id,
             landlordId: $isAdmin ? null : $user->id,
         ));
@@ -76,10 +55,6 @@ final class PlaceDetailController extends AbstractController
         return $this->render('portal/place/detail.html.twig', [
             'place' => $place,
             'stats' => $stats,
-            'expiringContracts' => $expiringContracts,
-            'upcomingOrders' => $upcomingOrders,
-            'recentOrders' => $recentOrders,
-            'placeOverview' => $placeOverview,
             'storageTypeCount' => $storageTypeCount,
             'storageCount' => $storageCount,
             'hasAccess' => $hasAccess,

@@ -1,0 +1,198 @@
+{% extends 'portal/layout.html.twig' %}
+
+{% block title %}Smlouvy — {{ place.name }}{% endblock %}
+
+{% block breadcrumb %}
+    {% include 'components/breadcrumb.html.twig' with {breadcrumb_items: [
+        {label: 'Místa', url: path('portal_places_list')},
+        {label: place.name, url: path('portal_places_detail', {id: place.id})},
+        {label: 'Smlouvy'},
+    ]} %}
+{% endblock %}
+
+{% block content %}
+    {% set statusClass = {
+        'created': 'bg-gray-100 text-gray-800',
+        'reserved': 'bg-yellow-100 text-yellow-800',
+        'awaiting_payment': 'bg-amber-100 text-amber-800',
+        'paid': 'bg-green-100 text-green-800',
+        'completed': 'bg-green-100 text-green-800',
+        'cancelled': 'bg-red-100 text-red-800',
+        'expired': 'bg-gray-100 text-gray-800',
+    } %}
+    {% set statusLabel = {
+        'created': 'Vytvořeno',
+        'reserved': 'Rezervováno',
+        'awaiting_payment': 'Čeká na platbu',
+        'paid': 'Zaplaceno',
+        'completed': 'Dokončeno',
+        'cancelled': 'Zrušeno',
+        'expired': 'Expirováno',
+    } %}
+    {% set orderRoute = isAdmin ? 'admin_order_detail' : 'portal_landlord_order_detail' %}
+
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-gray-900">Smlouvy — {{ place.name }}</h1>
+    </div>
+
+    {# Chip filter strip #}
+    <div class="flex flex-wrap gap-2 mb-6">
+        {% set chips = [
+            {key: 'all',      label: 'Vše'},
+            {key: 'active',   label: 'Aktivní (' ~ activeContracts|length ~ ')'},
+            {key: 'expiring', label: 'Brzy končící (' ~ expiringContracts|length ~ ')'},
+            {key: 'upcoming', label: 'Co se chystá (' ~ upcomingOrders|length ~ ')'},
+            {key: 'recent',   label: 'Nedávné (' ~ recentOrders|length ~ ')'},
+        ] %}
+        {% for chip in chips %}
+            <a href="{{ path('portal_places_contracts', {placeId: place.id}) }}{% if chip.key != 'all' %}?show={{ chip.key }}{% endif %}"
+               class="badge {{ show == chip.key ? 'badge-primary' : 'badge-ghost' }}">
+                {{ chip.label }}
+            </a>
+        {% endfor %}
+    </div>
+
+    {# Active contracts #}
+    {% if (show == 'all' or show == 'active') and activeContracts|length > 0 %}
+        <div class="bg-white shadow overflow-hidden sm:rounded-lg mb-8">
+            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">Aktivní smlouvy</h3>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="table table-zebra">
+                    <thead>
+                        <tr>
+                            <th>Nájemce</th>
+                            <th>Sklad</th>
+                            <th>Pronajato od</th>
+                            <th>Pronajato do</th>
+                            <th class="text-right">Cena / měsíc</th>
+                            <th>Akce</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for contract in activeContracts %}
+                            <tr>
+                                <td class="font-medium text-gray-900">{{ contract.user.fullName }}</td>
+                                <td class="text-gray-600">{{ contract.storage.storageType.name }} – {{ contract.storage.number }}</td>
+                                <td class="text-gray-700">{{ contract.startDate|date('d.m.Y') }}</td>
+                                <td class="text-gray-700">
+                                    {% if contract.terminatesAt %}
+                                        {{ contract.terminatesAt|date('d.m.Y') }} <span class="text-xs text-amber-600">(výpověď)</span>
+                                    {% elseif contract.endDate %}
+                                        {{ contract.endDate|date('d.m.Y') }}
+                                    {% else %}
+                                        <span class="text-gray-500 italic">neomezeně</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-right font-medium">
+                                    {{ (contract.effectiveMonthlyAmount / 100)|number_format(0, ',', ' ') }} Kč
+                                </td>
+                                <td>
+                                    <a href="{{ path(orderRoute, {id: contract.order.id}) }}" class="link text-sm">Detail</a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% endif %}
+
+    {# Brzy končící (≤ 60 dní) #}
+    {% if (show == 'all' or show == 'expiring') and expiringContracts|length > 0 %}
+        <div class="bg-white shadow overflow-hidden sm:rounded-lg mb-8">
+            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">Brzy končící smlouvy (≤ 60 dní)</h3>
+            </div>
+            <div class="divide-y divide-gray-200">
+                {% for contract in expiringContracts %}
+                    <div class="px-4 py-3 flex justify-between items-center">
+                        <div>
+                            <p class="text-sm font-medium text-gray-900">
+                                <a href="{{ path(orderRoute, {id: contract.order.id}) }}" class="link">
+                                    {{ contract.user.fullName }}
+                                </a>
+                            </p>
+                            <p class="text-sm text-gray-500">
+                                {{ contract.storage.storageType.name }} – {{ contract.storage.number }}
+                            </p>
+                        </div>
+                        <div class="text-sm text-gray-700">
+                            do {{ contract.endDate|date('d.m.Y') }}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
+    {# Co se chystá (≤ 30 dní) #}
+    {% if (show == 'all' or show == 'upcoming') and upcomingOrders|length > 0 %}
+        <div class="bg-white shadow overflow-hidden sm:rounded-lg mb-8">
+            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">Co se chystá (≤ 30 dní)</h3>
+            </div>
+            <div class="divide-y divide-gray-200">
+                {% for order in upcomingOrders %}
+                    <div class="px-4 py-3 flex justify-between items-center">
+                        <div>
+                            <p class="text-sm font-medium text-gray-900">
+                                <a href="{{ path(orderRoute, {id: order.id}) }}" class="link">
+                                    {{ order.user.fullName }}
+                                </a>
+                            </p>
+                            <p class="text-sm text-gray-500">
+                                {{ order.storage.storageType.name }} – {{ order.storage.number }} · začátek {{ order.startDate|date('d.m.Y') }}
+                            </p>
+                        </div>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {{ statusClass[order.status.value] ?? 'bg-gray-100 text-gray-800' }}">
+                            {{ statusLabel[order.status.value] ?? order.status.value }}
+                        </span>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
+    {# Posledních 20 objednávek #}
+    {% if (show == 'all' or show == 'recent') and recentOrders|length > 0 %}
+        <div class="bg-white shadow overflow-hidden sm:rounded-lg mb-8">
+            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">Posledních 20 objednávek</h3>
+            </div>
+            <div class="divide-y divide-gray-200">
+                {% for order in recentOrders %}
+                    <div class="px-4 py-4">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-sm font-medium text-gray-900">
+                                    <a href="{{ path(orderRoute, {id: order.id}) }}" class="link">
+                                        {{ order.storage.storageType.name }} – {{ order.storage.number }}
+                                    </a>
+                                </p>
+                                <p class="text-sm text-gray-500">
+                                    {{ order.user.fullName }} · {{ order.createdAt|date('d.m.Y H:i') }}
+                                </p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-sm font-medium text-gray-900">
+                                    {{ (order.firstPaymentPrice / 100)|number_format(0, ',', ' ') }} Kč{% if order.isRecurring %} / měsíc{% endif %}
+                                </p>
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {{ statusClass[order.status.value] ?? 'bg-gray-100 text-gray-800' }}">
+                                    {{ statusLabel[order.status.value] ?? order.status.value }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
+    {% if activeContracts|length == 0 and expiringContracts|length == 0 and upcomingOrders|length == 0 and recentOrders|length == 0 %}
+        <div class="bg-white shadow rounded-lg p-8 text-center text-gray-500">
+            Žádné smlouvy ani objednávky na tomto místě.
+        </div>
+    {% endif %}
+{% endblock %}

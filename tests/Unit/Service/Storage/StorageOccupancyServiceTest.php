@@ -236,6 +236,34 @@ final class StorageOccupancyServiceTest extends TestCase
         $this->assertEquals(new \DateTimeImmutable('2025-08-15'), $view->nextBookedFrom);
     }
 
+    public function testCurrentViewsPropagatesArbitraryDateForFutureLookups(): void
+    {
+        // Regression anchor for spec 047: the service treats $now as a date
+        // threshold (not "today"), so calling it with a future date returns
+        // the rental state AT that date. The underlying repository queries
+        // are verified to honor the same semantics via their integration tests.
+        $storage = $this->makeStorage('FUT1');
+        $futureDate = new \DateTimeImmutable('2025-08-01');
+
+        $futureContract = $this->makeContract(
+            $storage,
+            RentalType::LIMITED,
+            new \DateTimeImmutable('2025-07-15'),
+            new \DateTimeImmutable('2025-08-15'),
+        );
+
+        // The stubs above return the same payload regardless of $now. The
+        // service forwards $now unchanged, so $rentedFrom / $rentedUntil
+        // reflect the (future) contract's window — not "today".
+        $service = $this->buildService(contracts: [$futureContract]);
+        $views = $service->currentViews([$storage], $futureDate);
+
+        $view = $views[$storage->id->toRfc4122()];
+        $this->assertSame($futureContract, $view->currentContract);
+        $this->assertEquals(new \DateTimeImmutable('2025-07-15'), $view->rentedFrom);
+        $this->assertEquals(new \DateTimeImmutable('2025-08-15'), $view->rentedUntil);
+    }
+
     public function testSpansInRangeReturnsAllOverlappingWindowsKeyedByStorageId(): void
     {
         $storage = $this->makeStorage('A9');

@@ -288,6 +288,58 @@ class ContractRepositoryTest extends KernelTestCase
         $this->assertNotContains($unlimitedContract->id->toRfc4122(), $contractIds);
     }
 
+    public function testFindActiveAtPlaceMirrorsCountPredicate(): void
+    {
+        $owner = $this->createUser('place-owner-active@test.com');
+        $otherOwner = $this->createUser('place-owner-other@test.com');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storageOwned = $this->createStorage($storageType, $place, 'PAA1', $owner);
+        $storageOtherOwner = $this->createStorage($storageType, $place, 'PAA2', $otherOwner);
+
+        $tenant = $this->createUser('place-tenant-active@test.com');
+        $now = new \DateTimeImmutable('2025-06-15');
+
+        // Active limited contract on owner's storage.
+        $orderActive = $this->createOrder($tenant, $storageOwned, new \DateTimeImmutable('2025-06-01'), new \DateTimeImmutable('2025-08-01'));
+        $contractActive = $this->createContract($orderActive, $tenant, $storageOwned, new \DateTimeImmutable('2025-06-01'), new \DateTimeImmutable('2025-08-01'));
+
+        // Contract whose endDate equals $now — predicate is strict (`> :now`) so this is EXCLUDED.
+        $orderEndsToday = $this->createOrder($tenant, $storageOwned, new \DateTimeImmutable('2025-05-15'), $now);
+        $contractEndsToday = $this->createContract($orderEndsToday, $tenant, $storageOwned, new \DateTimeImmutable('2025-05-15'), $now);
+
+        // Terminated contract — excluded.
+        $orderTerminated = $this->createOrder($tenant, $storageOwned, new \DateTimeImmutable('2025-05-01'), new \DateTimeImmutable('2025-07-01'));
+        $contractTerminated = $this->createContract($orderTerminated, $tenant, $storageOwned, new \DateTimeImmutable('2025-05-01'), new \DateTimeImmutable('2025-07-01'));
+        $contractTerminated->terminate(new \DateTimeImmutable('2025-06-01'));
+
+        // Active contract on the OTHER owner's storage — must be excluded under owner scope.
+        $orderOther = $this->createOrder($tenant, $storageOtherOwner, new \DateTimeImmutable('2025-06-01'), new \DateTimeImmutable('2025-08-01'));
+        $contractOther = $this->createContract($orderOther, $tenant, $storageOtherOwner, new \DateTimeImmutable('2025-06-01'), new \DateTimeImmutable('2025-08-01'));
+
+        $this->entityManager->flush();
+
+        // Admin scope (owner = null): includes both owners' active contracts.
+        $adminRows = $this->repository->findActiveAtPlace($place, null, $now);
+        $adminIds = array_map(fn (Contract $c) => $c->id->toRfc4122(), $adminRows);
+        $this->assertContains($contractActive->id->toRfc4122(), $adminIds);
+        $this->assertContains($contractOther->id->toRfc4122(), $adminIds);
+        $this->assertNotContains($contractTerminated->id->toRfc4122(), $adminIds);
+        $this->assertNotContains($contractEndsToday->id->toRfc4122(), $adminIds);
+
+        // Owner scope: only contracts on owner's storages.
+        $ownerRows = $this->repository->findActiveAtPlace($place, $owner, $now);
+        $ownerIds = array_map(fn (Contract $c) => $c->id->toRfc4122(), $ownerRows);
+        $this->assertContains($contractActive->id->toRfc4122(), $ownerIds);
+        $this->assertNotContains($contractOther->id->toRfc4122(), $ownerIds);
+
+        // Count and list must agree.
+        $this->assertCount(
+            $this->repository->countActiveContractsAtPlace($place, $owner, $now),
+            $ownerRows,
+        );
+    }
+
     public function testFindActiveByUserExcludesTerminated(): void
     {
         $tenant = $this->createUser('tenant-c-active@test.com');

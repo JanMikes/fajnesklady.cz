@@ -283,6 +283,34 @@ class PaymentRepository
         return $grouped;
     }
 
+    /**
+     * Sum of payments at $place whose paidAt falls in [from, to). Half-open
+     * range so callers can compose week / month / YTD windows without overlap.
+     */
+    public function sumAtPlaceForRange(
+        Place $place,
+        \DateTimeImmutable $from,
+        \DateTimeImmutable $to,
+        ?User $owner,
+    ): int {
+        $qb = $this->entityManager->createQueryBuilder()
+            ->select('SUM(p.amount)')
+            ->from(Payment::class, 'p')
+            ->join('p.storage', 's')
+            ->where('s.place = :place')
+            ->andWhere('p.paidAt >= :from')
+            ->andWhere('p.paidAt < :to')
+            ->setParameter('place', $place)
+            ->setParameter('from', $from)
+            ->setParameter('to', $to);
+
+        if (null !== $owner) {
+            $qb->andWhere('s.owner = :owner')->setParameter('owner', $owner);
+        }
+
+        return (int) ($qb->getQuery()->getSingleScalarResult() ?? 0);
+    }
+
     public function sumAtPlaceAndPeriod(Place $place, int $year, int $month, ?User $owner): int
     {
         $startDate = new \DateTimeImmutable(sprintf('%d-%02d-01 00:00:00', $year, $month));

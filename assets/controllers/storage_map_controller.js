@@ -15,6 +15,8 @@ export default class extends Controller {
         highlightStorage: String,
         currentStorageTypeId: String,
         selectMode: { type: Boolean, default: false },
+        viewMode: { type: String, default: 'order' },
+        viewDate: String,
     }
 
     connect() {
@@ -64,6 +66,15 @@ export default class extends Controller {
     // (e.g., the order_map_bridge controller pushes the new storageId after a Live action).
     // Re-render so the new selection visually replaces the old one.
     highlightStorageValueChanged() {
+        if (!this.initialized) return;
+        this.renderStorages();
+        this.renderMinimap();
+    }
+
+    // Stimulus fires this when data-storage-map-storages-value changes —
+    // PlaceOccupancyMap Live Component swaps the payload on date change.
+    // The container is data-live-ignore, so the Konva stage survives; we just repaint.
+    storagesValueChanged() {
         if (!this.initialized) return;
         this.renderStorages();
         this.renderMinimap();
@@ -570,6 +581,46 @@ export default class extends Controller {
 
         this.modalTitleTarget.textContent = `Sklad ${storage.number}`;
 
+        if (this.viewModeValue === 'occupancy') {
+            this.modalPhotosTarget.innerHTML = '';
+            this.modalPhotosTarget.classList.add('hidden');
+
+            const statusText = this.getStatusText(storage.status, storage);
+            const statusClass = this.getStatusClass(storage.status, storage);
+            const untilLine = storage.rentedUntil
+                ? `<div class="flex justify-between"><span class="text-gray-500">Pronajato do:</span><span class="font-medium">${this.formatCzDate(storage.rentedUntil)}${storage.isTerminating ? ' (výpověď)' : ''}</span></div>`
+                : (storage.isUnlimited ? `<div class="flex justify-between"><span class="text-gray-500">Pronajato:</span><span class="font-medium">neomezeně</span></div>` : '');
+            const fromLine = storage.rentedFrom
+                ? `<div class="flex justify-between"><span class="text-gray-500">Pronajato od:</span><span class="font-medium">${this.formatCzDate(storage.rentedFrom)}</span></div>`
+                : '';
+            const tenantLine = storage.tenantName
+                ? `<div class="flex justify-between"><span class="text-gray-500">Nájemce:</span><span class="font-medium">${this.escapeHtml(storage.tenantName)}</span></div>`
+                : '';
+            this.modalDetailsTarget.innerHTML = `
+                <div class="flex justify-between">
+                    <span class="text-gray-500">Typ:</span>
+                    <span class="font-medium">${this.escapeHtml(storage.storageTypeName)} · ${this.escapeHtml(storage.dimensions)}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-500">Stav:</span>
+                    <span class="badge ${statusClass} text-xs">${statusText}</span>
+                </div>
+                ${tenantLine}
+                ${fromLine}
+                ${untilLine}
+            `;
+
+            if (storage.orderUrl) {
+                this.modalOrderBtnTarget.href = storage.orderUrl;
+                this.modalOrderBtnTarget.classList.remove('hidden');
+            } else {
+                this.modalOrderBtnTarget.classList.add('hidden');
+            }
+
+            this.modalTarget.showModal();
+            return;
+        }
+
         if (storage.photoUrls && storage.photoUrls.length > 0) {
             this.modalPhotosTarget.innerHTML = storage.photoUrls.map((url, index) =>
                 `<a href="${url}" class="glightbox" data-gallery="storage-${storage.id}">
@@ -617,17 +668,41 @@ export default class extends Controller {
         const statusText = this.getStatusText(storage.status, storage);
         const statusClass = this.getStatusClass(storage.status, storage);
 
-        this.tooltipTarget.innerHTML = `
-            <div class="space-y-1">
-                <div class="flex items-center gap-2">
-                    <span class="font-bold text-gray-900">${storage.number}</span>
-                    <span class="badge ${statusClass} text-xs">${statusText}</span>
+        if (this.viewModeValue === 'occupancy') {
+            const tenantLine = storage.tenantName
+                ? `<div class="text-gray-600">Nájemce: <span class="font-medium">${this.escapeHtml(storage.tenantName)}</span></div>`
+                : '';
+            const untilLine = storage.rentedUntil
+                ? `<div class="text-gray-600">Pronajato do: ${this.formatCzDate(storage.rentedUntil)}${storage.isTerminating ? ' (výpověď)' : ''}</div>`
+                : (storage.isUnlimited ? `<div class="text-gray-600">Pronajato: neomezeně</div>` : '');
+            const badge = storage.endsOnViewDate
+                ? `<span class="badge badge-warning text-xs ml-1">Končí dnes</span>`
+                : (storage.startsOnViewDate ? `<span class="badge badge-info text-xs ml-1">Začíná dnes</span>` : '');
+            this.tooltipTarget.innerHTML = `
+                <div class="space-y-1">
+                    <div class="flex items-center gap-2">
+                        <span class="font-bold text-gray-900">${storage.number}</span>
+                        <span class="badge ${statusClass} text-xs">${statusText}</span>
+                        ${badge}
+                    </div>
+                    <div class="text-gray-600">${this.escapeHtml(storage.storageTypeName)} · ${this.escapeHtml(storage.dimensions)}</div>
+                    ${tenantLine}
+                    ${untilLine}
                 </div>
-                <div class="text-gray-600">${storage.storageTypeName}</div>
-                <div class="text-gray-500 text-xs">${storage.dimensions}</div>
-                <div class="font-semibold text-blue-600 pt-1">${storage.pricePerMonth.toLocaleString('cs-CZ')} Kč/měsíc</div>
-            </div>
-        `;
+            `;
+        } else {
+            this.tooltipTarget.innerHTML = `
+                <div class="space-y-1">
+                    <div class="flex items-center gap-2">
+                        <span class="font-bold text-gray-900">${storage.number}</span>
+                        <span class="badge ${statusClass} text-xs">${statusText}</span>
+                    </div>
+                    <div class="text-gray-600">${storage.storageTypeName}</div>
+                    <div class="text-gray-500 text-xs">${storage.dimensions}</div>
+                    <div class="font-semibold text-blue-600 pt-1">${storage.pricePerMonth.toLocaleString('cs-CZ')} Kč/měsíc</div>
+                </div>
+            `;
+        }
 
         // Position tooltip near pointer, accounting for zoom/pan
         const pointerPos = this.stage.getPointerPosition();
@@ -720,5 +795,22 @@ export default class extends Controller {
             case 'manually_unavailable': return '#6b7280';
             default: return '#22c55e';
         }
+    }
+
+    escapeHtml(value) {
+        if (value === null || value === undefined) return '';
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    formatCzDate(ymd) {
+        if (typeof ymd !== 'string') return '';
+        const parts = ymd.split('-');
+        if (parts.length !== 3) return ymd;
+        return `${Number(parts[2])}.${Number(parts[1])}.${parts[0]}`;
     }
 }

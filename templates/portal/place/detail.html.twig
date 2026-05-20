@@ -9,25 +9,6 @@
     ]} %}
 {% endblock %}
 
-{% set statusClass = {
-    'created': 'bg-gray-100 text-gray-800',
-    'reserved': 'bg-yellow-100 text-yellow-800',
-    'awaiting_payment': 'bg-amber-100 text-amber-800',
-    'paid': 'bg-green-100 text-green-800',
-    'completed': 'bg-green-100 text-green-800',
-    'cancelled': 'bg-red-100 text-red-800',
-    'expired': 'bg-gray-100 text-gray-800'
-} %}
-{% set statusLabel = {
-    'created': 'Vytvořeno',
-    'reserved': 'Rezervováno',
-    'awaiting_payment': 'Čeká na platbu',
-    'paid': 'Zaplaceno',
-    'completed': 'Dokončeno',
-    'cancelled': 'Zrušeno',
-    'expired': 'Expirováno'
-} %}
-
 {% block content %}
     {# Header card #}
     <div class="card mb-8">
@@ -155,274 +136,67 @@
         </a>
     {% endif %}
 
-    {# KPI tiles #}
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-        <div class="bg-white overflow-hidden shadow rounded-lg">
+    {# Grouped KPI cards — each links to its dedicated sub-page #}
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <a href="{{ path('portal_places_occupancy', {placeId: place.id}) }}"
+           class="block bg-white overflow-hidden shadow rounded-lg hover:shadow-md transition-shadow">
             <div class="p-5">
-                <div class="flex items-center">
-                    <div class="flex-shrink-0">
-                        <svg class="h-6 w-6 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                        </svg>
-                    </div>
-                    <div class="ml-5 w-0 flex-1">
-                        <dl>
-                            <dt class="text-sm font-medium text-gray-500 truncate">Obsazenost</dt>
-                            <dd class="text-lg font-semibold text-gray-900">{{ stats.occupancyRate|number_format(1, ',', ' ') }}%</dd>
-                        </dl>
-                    </div>
+                <div class="flex items-center justify-between">
+                    <dt class="text-sm font-medium text-gray-500 uppercase">Obsazenost</dt>
+                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
                 </div>
+                <dd class="mt-2 text-3xl font-bold text-gray-900">{{ stats.occupancyRate|number_format(1, ',', ' ') }}%</dd>
+                <p class="mt-1 text-sm text-gray-500">
+                    {{ stats.occupiedStorages }}/{{ stats.totalStorages }} obsazených{% if stats.blockedStorages > 0 %} · {{ stats.blockedStorages }} blokovaných{% endif %}
+                </p>
             </div>
             <div class="bg-gray-50 px-5 py-3">
-                <div class="w-full bg-gray-200 rounded-full h-2 mb-1">
+                <div class="w-full bg-gray-200 rounded-full h-2">
                     <div class="bg-green-600 h-2 rounded-full" style="width: {{ min(stats.occupancyRate, 100) }}%"></div>
                 </div>
-                <span class="text-xs text-gray-500">{{ stats.occupiedStorages }}/{{ stats.totalStorages }} obsazených{% if stats.blockedStorages > 0 %} · {{ stats.blockedStorages }} blokovaných{% endif %}</span>
             </div>
-        </div>
+        </a>
 
-        <div class="bg-white overflow-hidden shadow rounded-lg">
+        <a href="{{ path('portal_places_finance', {placeId: place.id}) }}"
+           class="block bg-white overflow-hidden shadow rounded-lg hover:shadow-md transition-shadow">
             <div class="p-5">
-                <div class="flex items-center">
-                    <div class="flex-shrink-0">
-                        <svg class="h-6 w-6 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                    </div>
-                    <div class="ml-5 w-0 flex-1">
-                        <dl>
-                            <dt class="text-sm font-medium text-gray-500 truncate">Tržby minulý měsíc</dt>
-                            <dd class="text-lg font-semibold text-gray-900">{{ (stats.lastMonthRevenue / 100)|number_format(0, ',', ' ') }} Kč</dd>
-                        </dl>
-                    </div>
+                <div class="flex items-center justify-between">
+                    <dt class="text-sm font-medium text-gray-500 uppercase">Tržby</dt>
+                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
                 </div>
+                <dd class="mt-2 text-3xl font-bold text-gray-900">{{ (stats.lastMonthRevenue / 100)|number_format(0, ',', ' ') }} Kč</dd>
+                <p class="mt-1 text-sm text-gray-500">minulý měsíc</p>
+                <p class="mt-1 text-sm text-gray-700">
+                    Očekávané MRR: <strong>{{ (stats.expectedThisMonthRevenue / 100)|number_format(0, ',', ' ') }} Kč / měsíc</strong>
+                </p>
+                {% if stats.expectedYearlyRevenue > 0 %}
+                    <p class="mt-1 text-sm text-gray-700">
+                        Očekávané YRR: <strong>{{ (stats.expectedYearlyRevenue / 100)|number_format(0, ',', ' ') }} Kč / rok</strong>
+                    </p>
+                {% endif %}
             </div>
-            <div class="bg-gray-50 px-5 py-3">
-                <span class="text-sm text-gray-500">Hrubé tržby</span>
-            </div>
-        </div>
+        </a>
 
-        <div class="bg-white overflow-hidden shadow rounded-lg">
+        <a href="{{ path('portal_places_contracts', {placeId: place.id}) }}"
+           class="block bg-white overflow-hidden shadow rounded-lg hover:shadow-md transition-shadow">
             <div class="p-5">
-                <div class="flex items-center">
-                    <div class="flex-shrink-0">
-                        <svg class="h-6 w-6 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                        </svg>
-                    </div>
-                    <div class="ml-5 w-0 flex-1">
-                        <dl>
-                            <dt class="text-sm font-medium text-gray-500 truncate">Očekávané MRR</dt>
-                            <dd class="text-lg font-semibold text-gray-900">{{ (stats.expectedThisMonthRevenue / 100)|number_format(0, ',', ' ') }} Kč / měsíc</dd>
-                        </dl>
-                    </div>
+                <div class="flex items-center justify-between">
+                    <dt class="text-sm font-medium text-gray-500 uppercase">Smlouvy</dt>
+                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
                 </div>
+                <dd class="mt-2 text-3xl font-bold text-gray-900">{{ stats.activeContractsCount }}</dd>
+                <p class="mt-1 text-sm text-gray-500">aktivních smluv</p>
+                <p class="mt-1 text-sm text-gray-700">
+                    Z toho s opakovanou platbou: <strong>{{ stats.activeRecurringContracts }}</strong>
+                </p>
             </div>
-            <div class="bg-gray-50 px-5 py-3">
-                <span class="text-sm text-gray-500">Z měsíčních smluv</span>
-            </div>
-        </div>
-
-        {% if stats.expectedYearlyRevenue > 0 %}
-            <div class="bg-white overflow-hidden shadow rounded-lg">
-                <div class="p-5">
-                    <div class="flex items-center">
-                        <div class="flex-shrink-0">
-                            <svg class="h-6 w-6 text-teal-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                        </div>
-                        <div class="ml-5 w-0 flex-1">
-                            <dl>
-                                <dt class="text-sm font-medium text-gray-500 truncate">Očekávané YRR</dt>
-                                <dd class="text-lg font-semibold text-gray-900">{{ (stats.expectedYearlyRevenue / 100)|number_format(0, ',', ' ') }} Kč / rok</dd>
-                            </dl>
-                        </div>
-                    </div>
-                </div>
-                <div class="bg-gray-50 px-5 py-3">
-                    <span class="text-sm text-gray-500">Z ročních smluv</span>
-                </div>
-            </div>
-        {% endif %}
-
-        <div class="bg-white overflow-hidden shadow rounded-lg">
-            <div class="p-5">
-                <div class="flex items-center">
-                    <div class="flex-shrink-0">
-                        <svg class="h-6 w-6 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                    </div>
-                    <div class="ml-5 w-0 flex-1">
-                        <dl>
-                            <dt class="text-sm font-medium text-gray-500 truncate">Aktivní smlouvy</dt>
-                            <dd class="text-lg font-semibold text-gray-900">{{ stats.activeContractsCount }}</dd>
-                        </dl>
-                    </div>
-                </div>
-            </div>
-            <div class="bg-gray-50 px-5 py-3">
-                <span class="text-sm text-gray-500">Celkem na tomto místě</span>
-            </div>
-        </div>
-
-        <div class="bg-white overflow-hidden shadow rounded-lg">
-            <div class="p-5">
-                <div class="flex items-center">
-                    <div class="flex-shrink-0">
-                        <svg class="h-6 w-6 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
-                    </div>
-                    <div class="ml-5 w-0 flex-1">
-                        <dl>
-                            <dt class="text-sm font-medium text-gray-500 truncate">S opakovanou platbou</dt>
-                            <dd class="text-lg font-semibold text-gray-900">{{ stats.activeRecurringContracts }}</dd>
-                        </dl>
-                    </div>
-                </div>
-            </div>
-            <div class="bg-gray-50 px-5 py-3">
-                <span class="text-sm text-gray-500">Z aktivních smluv</span>
-            </div>
-        </div>
-    </div>
-
-    {# Brzy končící smlouvy (≤ 30 dní) #}
-    {% if expiringContracts|length > 0 %}
-        <div class="bg-white shadow overflow-hidden sm:rounded-lg mb-8">
-            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
-                <h3 class="text-lg font-medium text-gray-900">Brzy končící smlouvy (≤ 30 dní)</h3>
-            </div>
-            <div class="divide-y divide-gray-200">
-                {% for contract in expiringContracts %}
-                    {% set orderRoute = isAdmin ? 'admin_order_detail' : 'portal_landlord_order_detail' %}
-                    <div class="px-4 py-3 flex justify-between items-center">
-                        <div>
-                            <p class="text-sm font-medium text-gray-900">
-                                <a href="{{ path(orderRoute, {id: contract.order.id}) }}" class="link">
-                                    {{ contract.user.fullName }}
-                                </a>
-                            </p>
-                            <p class="text-sm text-gray-500">
-                                {{ contract.storage.storageType.name }} – {{ contract.storage.number }}
-                            </p>
-                        </div>
-                        <div class="text-sm text-gray-700">
-                            do {{ contract.endDate|date('d.m.Y') }}
-                        </div>
-                    </div>
-                {% endfor %}
-            </div>
-        </div>
-    {% endif %}
-
-    {# Co se chystá (≤ 30 dní) #}
-    {% if upcomingOrders|length > 0 %}
-        <div class="bg-white shadow overflow-hidden sm:rounded-lg mb-8">
-            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
-                <h3 class="text-lg font-medium text-gray-900">Co se chystá (≤ 30 dní)</h3>
-            </div>
-            <div class="divide-y divide-gray-200">
-                {% for order in upcomingOrders %}
-                    {% set orderRoute = isAdmin ? 'admin_order_detail' : 'portal_landlord_order_detail' %}
-                    <div class="px-4 py-3 flex justify-between items-center">
-                        <div>
-                            <p class="text-sm font-medium text-gray-900">
-                                <a href="{{ path(orderRoute, {id: order.id}) }}" class="link">
-                                    {{ order.user.fullName }}
-                                </a>
-                            </p>
-                            <p class="text-sm text-gray-500">
-                                {{ order.storage.storageType.name }} – {{ order.storage.number }} · začátek {{ order.startDate|date('d.m.Y') }}
-                            </p>
-                        </div>
-                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {{ statusClass[order.status.value] ?? 'bg-gray-100 text-gray-800' }}">
-                            {{ statusLabel[order.status.value] ?? order.status.value }}
-                        </span>
-                    </div>
-                {% endfor %}
-            </div>
-        </div>
-    {% endif %}
-
-    {# Posledních 5 objednávek #}
-    {% if recentOrders|length > 0 %}
-        <div class="bg-white shadow overflow-hidden sm:rounded-lg mb-8">
-            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
-                <h3 class="text-lg font-medium text-gray-900">Posledních 5 objednávek</h3>
-            </div>
-            <div class="divide-y divide-gray-200">
-                {% for order in recentOrders %}
-                    {% set orderRoute = isAdmin ? 'admin_order_detail' : 'portal_landlord_order_detail' %}
-                    <div class="px-4 py-4">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <p class="text-sm font-medium text-gray-900">
-                                    <a href="{{ path(orderRoute, {id: order.id}) }}" class="link">
-                                        {{ order.storage.storageType.name }} – {{ order.storage.number }}
-                                    </a>
-                                </p>
-                                <p class="text-sm text-gray-500">
-                                    {{ order.user.fullName }} · {{ order.createdAt|date('d.m.Y H:i') }}
-                                </p>
-                            </div>
-                            <div class="text-right">
-                                <p class="text-sm font-medium text-gray-900">
-                                    {{ (order.firstPaymentPrice / 100)|number_format(0, ',', ' ') }} Kč{% if order.isRecurring %} / měsíc{% endif %}
-                                </p>
-                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {{ statusClass[order.status.value] ?? 'bg-gray-100 text-gray-800' }}">
-                                    {{ statusLabel[order.status.value] ?? order.status.value }}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                {% endfor %}
-            </div>
-        </div>
-    {% endif %}
-
-    {# Obsazenost typů #}
-    {% if placeOverview.rows|length > 0 %}
-        <div class="bg-white shadow overflow-hidden sm:rounded-lg mb-8">
-            <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
-                <h3 class="text-lg font-medium text-gray-900">Obsazenost typů</h3>
-            </div>
-            <div class="divide-y divide-gray-200">
-                {% for row in placeOverview.rows %}
-                    <div class="px-4 py-3 flex justify-between items-center gap-4">
-                        <div class="min-w-0">
-                            <a href="{{ path('portal_storage_type_occupancy', {placeId: place.id, id: row.storageType.id}) }}" class="text-sm font-medium text-gray-900 link">
-                                {{ row.storageType.name }}
-                            </a>
-                            <p class="text-xs text-gray-500 mt-0.5">
-                                {{ row.totalCount }} skladů · {{ row.occupiedCount }} obsazeno · {{ row.availableCount }} volných{% if row.blockedCount > 0 %} · {{ row.blockedCount }} blokovaných{% endif %}
-                            </p>
-                        </div>
-                        <div class="text-right">
-                            {% if row.availableCount > 0 %}
-                                <span class="badge badge-success">{{ row.availableCount }} volných</span>
-                            {% else %}
-                                <span class="badge badge-error">Vše obsazeno</span>
-                            {% endif %}
-                            {% if row.nextFreeingDate %}
-                                <p class="text-xs text-gray-500 mt-1">Nejbližší uvolnění do {{ row.nextFreeingDate|date('d.m.Y') }}</p>
-                            {% endif %}
-                        </div>
-                    </div>
-                {% endfor %}
-            </div>
-        </div>
-    {% endif %}
-
-    {# Tržby — chart (12 měsíců) #}
-    <div class="mb-8">
-        {% if isAdmin %}
-            {{ component('RevenueChart', { placeId: place.id.toRfc4122 }) }}
-        {% else %}
-            {{ component('RevenueChart', { placeId: place.id.toRfc4122, landlordId: app.user.id.toRfc4122 }) }}
-        {% endif %}
+        </a>
     </div>
 
     {# Správa místa — the existing hub #}

@@ -1,0 +1,83 @@
+{% set data = this.mapData %}
+<div {{ attributes.defaults({class: 'bg-white shadow rounded-lg overflow-hidden'}) }}>
+    {# Date picker toolbar #}
+    <div class="flex flex-wrap items-center gap-3 p-4 border-b border-gray-200">
+        <label for="place-occupancy-view-date" class="text-sm font-medium text-gray-700">Datum:</label>
+        <input id="place-occupancy-view-date"
+               type="date"
+               data-model="viewDate"
+               data-controller="flatpickr"
+               value="{{ data.viewDate|date('Y-m-d') }}"
+               class="form-input text-sm">
+        <div class="flex items-center gap-1 ml-2">
+            <button type="button"
+                    data-action="live#action"
+                    data-live-action-param="setToday"
+                    class="btn btn-ghost btn-xs">Dnes</button>
+            <button type="button"
+                    data-action="live#action"
+                    data-live-action-param="shiftDays"
+                    data-live-days-param="7"
+                    class="btn btn-ghost btn-xs">+7 dní</button>
+            <button type="button"
+                    data-action="live#action"
+                    data-live-action-param="shiftDays"
+                    data-live-days-param="30"
+                    class="btn btn-ghost btn-xs">+30 dní</button>
+        </div>
+        <span class="ml-auto text-sm text-gray-500">Stav k {{ data.viewDate|date('d.m.Y') }}</span>
+    </div>
+
+    {% if not data.hasMapImage %}
+        <div class="p-8 text-center text-gray-500">
+            Mapa není nahrána. Pro zobrazení mapy obsazenosti nahrajte obrázek půdorysu v
+            <a href="{{ path('portal_storage_canvas', {placeId: data.place.id}) }}" class="link">editoru rozmístění</a>.
+        </div>
+    {% else %}
+        <div class="p-4"
+             data-controller="storage-map"
+             data-storage-map-map-image-value="{{ asset('uploads/' ~ data.place.mapImagePath) }}"
+             data-storage-map-storages-value="{{ data.storagesJson|e('html_attr') }}"
+             data-storage-map-place-id-value="{{ data.place.id }}"
+             data-storage-map-view-mode-value="occupancy"
+             data-storage-map-view-date-value="{{ data.viewDate|date('Y-m-d') }}">
+            <div class="relative">
+                <div data-storage-map-target="container"
+                     data-live-ignore
+                     class="border border-gray-300 rounded-lg w-full"
+                     style="min-height: 500px;"></div>
+                <div data-storage-map-target="minimap"
+                     class="absolute bottom-2 right-2 border-2 border-gray-400 rounded shadow-lg bg-white overflow-hidden"
+                     style="width: 180px; height: 120px; display: none; z-index: 10;"
+                     data-live-ignore></div>
+                <div data-storage-map-target="tooltip"
+                     class="hidden absolute z-10 bg-white border border-gray-200 shadow-lg rounded-lg p-3 text-sm pointer-events-none max-w-xs"></div>
+            </div>
+
+            <div class="flex flex-wrap gap-4 mt-4 text-sm text-gray-600">
+                <div class="flex items-center gap-2"><span class="w-4 h-4 rounded bg-green-500"></span> Volný</div>
+                <div class="flex items-center gap-2"><span class="w-4 h-4 rounded bg-yellow-500"></span> Rezervovaný</div>
+                <div class="flex items-center gap-2"><span class="w-4 h-4 rounded bg-red-500"></span> Obsazený</div>
+                <div class="flex items-center gap-2"><span class="w-4 h-4 rounded bg-gray-500"></span> Blokovaný</div>
+            </div>
+
+            <dialog data-storage-map-target="modal" class="fixed inset-0 z-50 m-0 p-0 w-full h-full bg-transparent backdrop:bg-black/50">
+                <div class="fixed inset-0 flex items-center justify-center p-4"
+                     onclick="if(event.target===this){this.parentElement.close();}">
+                    <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 data-storage-map-target="modalTitle" class="font-bold text-lg"></h3>
+                            <button type="button" onclick="this.closest('dialog').close()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+                        </div>
+                        <div data-storage-map-target="modalPhotos" class="hidden"></div>
+                        <div data-storage-map-target="modalDetails" class="space-y-2 text-sm"></div>
+                        <div class="mt-5 flex justify-end gap-2">
+                            <a data-storage-map-target="modalOrderBtn" href="#" class="btn btn-primary btn-sm">Otevřít objednávku</a>
+                            <button type="button" onclick="this.closest('dialog').close()" class="btn btn-ghost btn-sm">Zavřít</button>
+                        </div>
+                    </div>
+                </div>
+            </dialog>
+        </div>
+    {% endif %}
+</div>

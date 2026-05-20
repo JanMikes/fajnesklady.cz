@@ -1063,6 +1063,39 @@ class ContractRepository
      *
      * @return Contract[]
      */
+    /**
+     * Active (non-terminated) contracts at $place at $now. Mirrors the predicate
+     * of {@see self::countActiveContractsAtPlace()} so list rows match the count
+     * shown alongside.
+     *
+     * @return Contract[]
+     */
+    public function findActiveAtPlace(Place $place, ?User $owner, \DateTimeImmutable $now): array
+    {
+        $qb = $this->entityManager->createQueryBuilder()
+            ->select('c')
+            ->from(Contract::class, 'c')
+            ->join('c.storage', 's')
+            ->where('s.place = :place')
+            ->andWhere('c.terminatedAt IS NULL')
+            ->andWhere('c.endDate IS NULL OR c.endDate > :now')
+            ->setParameter('place', $place)
+            ->setParameter('now', $now)
+            ->orderBy('c.startDate', 'DESC');
+
+        if (null !== $owner) {
+            $qb->andWhere('s.owner = :owner')->setParameter('owner', $owner);
+        }
+
+        return $qb->getQuery()->getResult();
+    }
+
+    /**
+     * Active contracts at $place whose endDate falls within $days from $now.
+     * Same semantics as findExpiringWithinDays but place-scoped.
+     *
+     * @return Contract[]
+     */
     public function findExpiringWithinDaysAtPlace(
         int $days,
         \DateTimeImmutable $now,

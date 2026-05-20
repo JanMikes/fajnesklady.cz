@@ -37,11 +37,20 @@ class PlaceDetailControllerTest extends WebTestCase
 
         $this->assertResponseIsSuccessful();
         $body = (string) $this->client->getResponse()->getContent();
+        // KPI cards link to the new sub-routes.
         $this->assertStringContainsString('Obsazenost', $body);
-        $this->assertStringContainsString('Tržby minulý měsíc', $body);
+        $this->assertStringContainsString('Tržby', $body);
+        $this->assertStringContainsString('Smlouvy', $body);
+        $this->assertStringContainsString('/portal/places/'.$place->id->toRfc4122().'/obsazenost', $body);
+        $this->assertStringContainsString('/portal/places/'.$place->id->toRfc4122().'/finance', $body);
+        $this->assertStringContainsString('/portal/places/'.$place->id->toRfc4122().'/smlouvy', $body);
         $this->assertStringContainsString('Správa místa', $body);
-        $this->assertStringContainsString('Sklady', $body);
         $this->assertStringContainsString('Editor mapy', $body);
+        // Tables and the chart moved to sub-pages.
+        $this->assertStringNotContainsString('Brzy končící smlouvy', $body);
+        $this->assertStringNotContainsString('Co se chystá', $body);
+        $this->assertStringNotContainsString('Posledních 5 objednávek', $body);
+        $this->assertStringNotContainsString('Obsazenost typů', $body);
     }
 
     public function testAdminSeesPoSplatnostiBannerWhenDebtorAtPlace(): void

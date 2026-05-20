@@ -10,7 +10,6 @@ use App\Command\GetOrCreateUserByEmailCommand;
 use App\Command\SignOrderCommand;
 use App\Entity\Order;
 use App\Entity\User;
-use App\Enum\PaymentFrequency;
 use App\Enum\SigningMethod;
 use App\Form\OrderFormData;
 use App\Repository\PlaceRepository;

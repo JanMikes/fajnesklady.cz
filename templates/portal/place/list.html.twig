@@ -30,7 +30,7 @@
                         <th>Název</th>
                         <th>Typ</th>
                         <th>Adresa</th>
-                        <th>Popis</th>
+                        <th>Stav</th>
                         <th>Vytvořeno</th>
                         <th>Akce</th>
                     </tr>
@@ -62,7 +62,13 @@
                                 </span>
                             </td>
                             <td class="text-gray-500">{{ place.address ?: place.city }}</td>
-                            <td class="text-gray-500 max-w-xs truncate">{{ place.description|default('-') }}</td>
+                            <td>
+                                {% if place.isActive %}
+                                    <span class="badge badge-success">Aktivní</span>
+                                {% else %}
+                                    <span class="badge badge-ghost">Neaktivní</span>
+                                {% endif %}
+                            </td>
                             <td class="text-gray-500 text-sm">{{ place.createdAt|date('d.m.Y H:i') }}</td>
                             <td>
                                 <div class="flex items-center gap-2">
