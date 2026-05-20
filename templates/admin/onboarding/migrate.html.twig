@@ -18,7 +18,7 @@
     <div class="max-w-2xl">
         <div class="card">
             <div class="card-body">
-                {{ form_start(form, {'attr': {'novalidate': 'novalidate'}}) }}
+                {{ form_start(form, {'attr': {'novalidate': 'novalidate', 'data-controller': 'admin-onboarding-form'}}) }}
 
                     <h3 class="text-lg font-semibold mb-4">Údaje zákazníka</h3>
                     <div class="grid md:grid-cols-2 gap-4 mb-6">
@@ -181,6 +181,51 @@
                         </div>
 
                         <p class="text-xs text-gray-500">Po vypršení externího předplatného bude zákazníkovi 7 dní předem zaslán e-mail s žádostí o nastavení automatické platby.</p>
+                    </div>
+
+                    <hr class="my-6 border-t border-gray-200">
+
+                    <h3 class="text-lg font-semibold mb-4">Frekvence a způsob následných plateb</h3>
+
+                    <div class="mb-6" data-admin-onboarding-form-target="paymentFrequencyContainer" hidden>
+                        {{ form_label(form.paymentFrequency) }}
+                        <div class="flex flex-wrap gap-4 mt-1">
+                            {% for choice in form.paymentFrequency %}
+                                <label class="flex items-center cursor-pointer gap-2">
+                                    {{ form_widget(choice, {'attr': {
+                                        'class': 'h-4 w-4 text-accent focus:ring-accent border-gray-300',
+                                        'data-admin-onboarding-form-target': choice.vars.value == 'yearly' ? 'paymentFrequencyYearly' : 'paymentFrequencyMonthly',
+                                    }}) }}
+                                    <span class="text-sm text-gray-700">{{ choice.vars.label }}</span>
+                                </label>
+                            {% endfor %}
+                        </div>
+                        {{ form_errors(form.paymentFrequency) }}
+                        <p class="mt-1 text-xs text-gray-500">{{ form.paymentFrequency.vars.help }}</p>
+                    </div>
+
+                    <div class="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4" data-admin-onboarding-form-target="yearlyNotice" hidden>
+                        <p class="text-sm text-blue-900">
+                            <strong>Roční platba se vždy odbavuje ručně.</strong>
+                            Kartu si neukládáme — další platbu odešleme e-mailem před vypršením roku.
+                        </p>
+                    </div>
+
+                    <div class="mb-6" data-admin-onboarding-form-target="billingModeContainer" hidden>
+                        {{ form_label(form.billingMode) }}
+                        <div class="space-y-2 mt-1">
+                            {% for choice in form.billingMode %}
+                                <label class="flex items-start cursor-pointer gap-3">
+                                    {{ form_widget(choice, {'attr': {
+                                        'class': 'h-4 w-4 mt-0.5 text-accent focus:ring-accent border-gray-300',
+                                        'data-admin-onboarding-form-target': choice.vars.value == 'auto_recurring' ? 'billingModeAuto' : (choice.vars.value == 'manual_recurring' ? 'billingModeManual' : ''),
+                                    }}) }}
+                                    <span class="text-sm text-gray-700">{{ choice.vars.label }}</span>
+                                </label>
+                            {% endfor %}
+                        </div>
+                        {{ form_errors(form.billingMode) }}
+                        <p class="mt-1 text-xs text-gray-500">{{ form.billingMode.vars.help }}</p>
                     </div>
 
                     <div class="flex justify-end gap-2">
