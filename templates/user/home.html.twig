@@ -72,49 +72,57 @@
     <section id="pobocky" class="pt-20 pb-20 relative section-gradient-light"
              data-controller="map"
              data-map-places-value="{{ placesData|json_encode|e('html_attr') }}">
-        {# Light gradient fade at top #}
+        {# Light gradient fade at top — full-bleed so the fade reads against the previous section #}
         <div class="absolute top-0 left-0 right-0 h-40 pointer-events-none z-10" style="background: linear-gradient(180deg, #f1f5f9 0%, #f8fafc 40%, transparent 100%)"></div>
 
-        <div class="text-center mb-10 px-4 relative z-20">
-            <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Přehled poboček a cen</h2>
-            <p class="text-gray-600 max-w-2xl mx-auto text-lg">Najděte nejbližší pobočku a porovnejte ceny skladovacích jednotek</p>
-        </div>
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-20">
+            <div class="text-center mb-10">
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Přehled poboček a cen</h2>
+                <p class="text-gray-600 max-w-2xl mx-auto text-lg">Najděte nejbližší pobočku a porovnejte ceny skladovacích jednotek</p>
+            </div>
 
-        <div class="relative z-20">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3 mb-5">
+                <button type="button"
+                        data-action="map#requestGeolocation"
+                        data-map-target="geoButton"
+                        class="btn btn-ghost btn-sm">
+                    <svg class="h-4 w-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                    Najít nejbližší pobočku
+                </button>
+            </div>
+
             <div class="places-layout">
-                {# Place cards list #}
+                {# Place cards list — visible ≥1024px; hidden on mobile (replaced by bottom-sheet pill) #}
                 {% if placesWithStorageTypes|length > 0 %}
                 <div class="places-list-col" data-map-target="placeList">
                     {% for item in placesWithStorageTypes %}
                     <div class="place-card"
                          data-map-target="placeCard"
                          data-place-id="{{ item.place.id }}">
-                        <div class="flex items-start justify-between mb-2">
-                            <h3 class="font-bold text-gray-900 text-base leading-tight">{{ item.place.name }}</h3>
-                            {% if item.lowestPrice %}
-                                <span class="text-accent font-bold text-base whitespace-nowrap ml-3">{{ item.lowestPrice|number_format(0, ',', ' ') }} Kč<span class="text-gray-400 font-normal text-xs">/měs</span></span>
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="min-w-0 flex-1">
+                                <h3 class="font-bold text-gray-900 text-base leading-tight truncate">{{ item.place.name }}</h3>
+                                <p class="text-gray-500 text-xs mt-0.5">{{ item.place.city }}</p>
+                            </div>
+                            {% if item.isAvailable %}
+                                <span class="badge-available">K dispozici</span>
+                            {% else %}
+                                <span class="badge-sold-out">Obsazeno</span>
                             {% endif %}
                         </div>
-                        <p class="text-gray-500 text-sm mb-3">
-                            {% if item.place.address %}
-                                {{ item.place.address }}, {{ item.place.city }}
-                            {% else %}
-                                {{ item.place.city }}
-                            {% endif %}
-                        </p>
-                        {% if item.storageTypes|length > 0 %}
-                            <div class="flex flex-wrap gap-1 mb-3">
-                                {% for type in item.storageTypes %}
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">{{ type.name }}</span>
-                                {% endfor %}
-                            </div>
+                        {% if item.lowestPrice and item.lowestAreaM2 %}
+                            <p class="text-gray-700 text-sm mt-2">
+                                Od <strong>{{ item.lowestPrice|number_format(0, ',', ' ') }} Kč</strong>/měs
+                                · od <strong>{{ item.lowestAreaM2|number_format(1, ',', ' ') }} m²</strong>
+                            </p>
                         {% endif %}
-                        <a href="{{ path('public_place_detail', {id: item.place.id}) }}" class="btn btn-primary btn-sm w-full">
-                            Zobrazit detail
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                            </svg>
-                        </a>
+                        <a href="{{ path('public_place_detail', {id: item.place.id}) }}"
+                           class="absolute inset-0" aria-label="Zobrazit detail pobočky {{ item.place.name }}"></a>
                     </div>
                     {% endfor %}
                 </div>
@@ -123,7 +131,41 @@
                 {# Map #}
                 <div class="places-map-col">
                     <div data-map-target="mapContainer" class="map-container overflow-hidden" style="height: 100%; min-height: 500px;"></div>
+
+                    {# Mobile-only floating pill — opens the bottom sheet #}
+                    {% if placesWithStorageTypes|length > 0 %}
+                    <button type="button"
+                            data-map-target="bottomSheetPill"
+                            data-action="map#openBottomSheet"
+                            class="bottom-sheet-pill"
+                            hidden>
+                        Seznam poboček ({{ placesWithStorageTypes|length }})
+                    </button>
+                    {% endif %}
+
+                    {# Closest-place chip — shown when user location is known and no marker is in viewport #}
+                    <button type="button"
+                            data-map-target="closestChip"
+                            data-action="map#flyToClosest"
+                            class="closest-chip"
+                            hidden></button>
                 </div>
+            </div>
+        </div>
+
+        {# Mobile fullscreen modal (<768 px) #}
+        <div data-map-target="modal" class="map-modal" hidden>
+            <div class="map-modal__backdrop" data-action="click->map#closeMobileModal"></div>
+            <div class="map-modal__panel" data-map-target="modalBody" role="dialog" aria-modal="true"></div>
+        </div>
+
+        {# Mobile bottom sheet (<1024 px) — JS clones the desktop cards into the list #}
+        <div data-map-target="bottomSheet" class="bottom-sheet" hidden>
+            <div class="bottom-sheet__backdrop" data-action="click->map#closeBottomSheet"></div>
+            <div class="bottom-sheet__panel">
+                <div class="bottom-sheet__handle"></div>
+                <h2 class="bottom-sheet__title">Pobočky</h2>
+                <div class="bottom-sheet__list" data-map-target="bottomSheetList"></div>
             </div>
         </div>
     </section>

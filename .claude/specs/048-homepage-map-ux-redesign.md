@@ -1,6 +1,6 @@
 # 048 — Homepage map UX redesign: compact list, side popovers, smart-sort by availability, geolocation, mobile bottom sheet
 
-**Status:** ready
+**Status:** done
 **Type:** UX (homepage marketing surface)
 **Scope:** medium (~6 files: `HomeController.php`, `home.html.twig`, `map_controller.js`, `app.css`, 1 new `geolocation_consent_controller.js` helper, fixtures/manual walk-through). No new entities, no new commands, no new routes.
 **Depends on:** none. Touches public homepage only; portal map (`storage_map_controller.js`) untouched.

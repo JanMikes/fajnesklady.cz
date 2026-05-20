@@ -245,32 +245,39 @@ label:has(~ input[required], ~ select[required], ~ textarea[required])::after {
     }
 
     .places-map-col {
-        @apply flex-1 min-w-0;
+        @apply flex-1 min-w-0 relative;
     }
 
     .places-list-col {
         width: 380px;
         flex-shrink: 0;
-        @apply overflow-y-auto py-4 pl-6 pr-4;
+        @apply overflow-y-auto py-4 pl-0 pr-4;
         scrollbar-width: thin;
         scrollbar-color: rgba(0,0,0,0.15) transparent;
     }
 }
 
 @media (max-width: 1023px) {
-    .places-map-col {
-        height: 400px;
+    .places-list-col {
+        display: none;
     }
 
-    .places-list-col {
-        @apply flex flex-col gap-3 px-4 py-4;
+    .places-map-col {
+        @apply relative;
+        height: 70vh;
+        min-height: 480px;
     }
 }
 
-/* Place card */
+/* Compact place card */
 .place-card {
-    @apply bg-white rounded-xl p-4 shadow-sm border border-gray-100 cursor-pointer;
+    @apply relative bg-white rounded-xl px-4 py-3 shadow-sm border border-gray-100 cursor-pointer overflow-hidden;
     transition: all 0.2s ease;
+}
+
+.place-card::after {
+    content: "›";
+    @apply absolute top-3 right-3 text-gray-300 text-xl leading-none pointer-events-none;
 }
 
 .place-card + .place-card {
@@ -288,6 +295,14 @@ label:has(~ input[required], ~ select[required], ~ textarea[required])::after {
     border-color: var(--color-accent) !important;
 }
 
+.badge-available {
+    @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700 whitespace-nowrap;
+}
+
+.badge-sold-out {
+    @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-500 whitespace-nowrap;
+}
+
 /* Map component styles */
 .map-container {
     @apply relative z-0;
@@ -300,23 +315,143 @@ label:has(~ input[required], ~ select[required], ~ textarea[required])::after {
 
 .leaflet-popup-content {
     @apply m-0;
-    min-width: 250px;
+    min-width: 280px;
 }
 
 .storage-popup {
-    @apply p-2;
+    @apply p-3;
 }
 
-.storage-popup h3 {
-    @apply text-lg font-bold text-gray-900 mb-2;
+/* Side popover (Leaflet override) */
+.side-popup .leaflet-popup-content-wrapper {
+    @apply rounded-lg shadow-xl;
 }
 
-.storage-popup h4 {
-    @apply text-sm font-semibold text-gray-700 mb-1;
+.side-popup .leaflet-popup-tip {
+    /* Tip looks wrong at horizontal offset; popover style stands on its own */
+    display: none;
 }
 
-.storage-popup p {
+.storage-popup__header {
+    @apply flex items-start justify-between gap-2 mb-1;
+}
+
+.storage-popup__header h3 {
+    @apply text-base font-bold text-gray-900;
+}
+
+.storage-popup__close {
+    @apply text-gray-400 hover:text-gray-700 text-xl leading-none cursor-pointer;
+    background: none;
+    border: none;
+    padding: 0;
+}
+
+.storage-popup__address {
+    @apply text-xs text-gray-500 mb-2;
+}
+
+.popup-badge {
+    @apply inline-block mb-3;
+}
+
+.popup-badge--available {
+    @apply px-2 py-0.5 rounded text-xs font-semibold bg-green-100 text-green-700;
+}
+
+.popup-badge--sold-out {
+    @apply px-2 py-0.5 rounded text-xs font-semibold bg-gray-100 text-gray-500;
+}
+
+.popup-types {
+    @apply space-y-2 mb-3 list-none p-0;
+}
+
+.popup-types li + li {
+    @apply pt-2 border-t border-gray-100;
+}
+
+.popup-types__row {
+    @apply flex items-center justify-between gap-2;
+}
+
+.popup-types__name {
+    @apply font-medium text-sm;
+}
+
+.popup-types__dim {
+    @apply block text-xs text-gray-500;
+}
+
+.popup-types__price {
+    @apply text-sm font-semibold whitespace-nowrap;
+    color: var(--color-accent);
+}
+
+.popup-types__cta {
+    @apply inline-block mt-1 px-3 py-1 text-xs font-semibold rounded text-white;
+    background-color: var(--color-accent);
+}
+
+.popup-soldout {
     @apply text-sm text-gray-600 mb-3;
+}
+
+.storage-popup__detail {
+    @apply block text-center text-sm font-medium py-2 rounded border;
+    color: var(--color-accent);
+    border-color: var(--color-accent);
+}
+
+/* Mobile fullscreen modal (<768 px) */
+.map-modal {
+    @apply fixed inset-0 z-50 flex items-end sm:hidden;
+}
+
+.map-modal__backdrop {
+    @apply absolute inset-0 bg-black/50;
+}
+
+.map-modal__panel {
+    @apply relative w-full bg-white rounded-t-2xl shadow-2xl p-5 overflow-y-auto;
+    max-height: 85vh;
+}
+
+/* Bottom-sheet pill + sheet (<1024 px) */
+.bottom-sheet-pill {
+    @apply absolute bottom-4 left-1/2 -translate-x-1/2 px-5 py-2 bg-white text-gray-800 text-sm font-semibold rounded-full shadow-lg border border-gray-200 cursor-pointer;
+    z-index: 400;
+}
+
+.bottom-sheet {
+    @apply fixed inset-0 z-50 flex items-end;
+}
+
+.bottom-sheet__backdrop {
+    @apply absolute inset-0 bg-black/50;
+}
+
+.bottom-sheet__panel {
+    @apply relative w-full bg-white rounded-t-2xl shadow-2xl p-5 overflow-y-auto;
+    max-height: 75vh;
+}
+
+.bottom-sheet__handle {
+    @apply w-12 h-1 rounded-full bg-gray-300 mx-auto mb-4;
+}
+
+.bottom-sheet__title {
+    @apply text-lg font-bold mb-3;
+}
+
+.bottom-sheet__list {
+    @apply space-y-2;
+}
+
+/* Closest-place chip */
+.closest-chip {
+    @apply absolute top-3 right-3 bg-white rounded-lg shadow-lg border border-gray-200 px-3 py-2 text-sm cursor-pointer hover:shadow-xl transition;
+    z-index: 450;
 }
 
 /* Flatpickr customizations to match design system */
