@@ -13,6 +13,7 @@ use App\Enum\RentalType;
 use App\Form\OrderFormData;
 use App\Form\OrderFormType;
 use App\Repository\StorageRepository;
+use App\Repository\UserRepository;
 use App\Service\PriceCalculator;
 use App\Value\PaymentSchedule;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -56,8 +57,12 @@ final class OrderForm extends AbstractController
     #[LiveProp(writable: true)]
     public string $selectionMode = 'auto';
 
+    #[LiveProp]
+    public bool $emailExistsInSystem = false;
+
     public function __construct(
         private readonly StorageRepository $storageRepository,
+        private readonly UserRepository $userRepository,
         private readonly RequestStack $requestStack,
         private readonly UrlGeneratorInterface $urlGenerator,
         private readonly PriceCalculator $priceCalculator,
@@ -260,6 +265,12 @@ final class OrderForm extends AbstractController
         if (!in_array($fieldPath, $this->validatedFields, true)) {
             $this->validatedFields[] = $fieldPath;
         }
+
+        if ('email' === $field) {
+            $data = $this->getForm()->getData();
+            $email = $data instanceof OrderFormData ? $data->email : '';
+            $this->emailExistsInSystem = '' !== $email && null !== $this->userRepository->findByEmail($email);
+        }
     }
 
     #[LiveAction]
@@ -272,6 +283,10 @@ final class OrderForm extends AbstractController
 
         if (RentalType::UNLIMITED === $data->rentalType) {
             $data->endDate = null;
+        }
+
+        if ($this->emailExistsInSystem) {
+            $data->plainPassword = null;
         }
 
         // Carry the auto/manual toggle into session so OrderAcceptController can decide
