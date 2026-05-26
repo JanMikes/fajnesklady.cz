@@ -47,6 +47,7 @@ final readonly class OrderStatusViewModel
         public ?\DateTimeImmutable $manualNowPeriodStart = null,
         public ?HandoverProtocol $handoverProtocol = null,
         public ?string $handoverViewUrl = null,
+        public ?string $debtPaymentUrl = null,
     ) {
     }
 }

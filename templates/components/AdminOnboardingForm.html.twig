@@ -253,7 +253,19 @@
             </div>
         </div>
 
-        {# 15. Submit #}
+        {# 15. Dluh z předchozí smlouvy #}
+        <div class="card">
+            <div class="card-body">
+                <h2 class="text-lg font-bold text-gray-900 mb-4">Dluh z předchozí smlouvy</h2>
+                <p class="text-sm text-gray-600 mb-3">
+                    Pokud má zákazník nevyplacený dluh z předchozí smlouvy, zadejte částku.
+                    Zákazník musí dluh uhradit před zahájením nového pronájmu.
+                </p>
+                {{ form_row(form.debtAmountInCzk) }}
+            </div>
+        </div>
+
+        {# 16. Submit #}
         <div class="flex justify-end">
             <button type="submit"
                     data-action="live#action"

@@ -17,6 +17,7 @@ use App\Repository\PaymentRepository;
 use App\Service\AuditLogger;
 use App\Service\Billing\RecurringAmountCalculator;
 use App\Service\GoPay\GoPayClient;
+use App\Service\Onboarding\DebtPaymentService;
 use App\Service\OrderService;
 use App\Value\GoPayPaymentStatus;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
@@ -36,6 +37,7 @@ final readonly class ProcessPaymentNotificationHandler
         private ContractRepository $contractRepository,
         private ManualPaymentRequestRepository $manualPaymentRequestRepository,
         private OrderService $orderService,
+        private DebtPaymentService $debtPaymentService,
         private RecurringAmountCalculator $amountCalculator,
         private AuditLogger $auditLogger,
         private MessageBusInterface $commandBus,
@@ -103,6 +105,16 @@ final readonly class ProcessPaymentNotificationHandler
                 }
             } elseif ($status->isCanceled() && !$order->status->isTerminal()) {
                 $order->cancel($now);
+            }
+
+            return;
+        }
+
+        // Debt payment: the GoPay payment ID was stored on Order.debtGoPayPaymentId
+        $debtOrder = $this->orderRepository->findByDebtGoPayPaymentIdForUpdate($command->goPayPaymentId);
+        if (null !== $debtOrder) {
+            if ($status->isPaid() && $debtOrder->hasUnpaidDebt()) {
+                $this->debtPaymentService->confirmDebtPaid($debtOrder, $now, $command->goPayPaymentId);
             }
 
             return;

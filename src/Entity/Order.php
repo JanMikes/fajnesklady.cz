@@ -160,6 +160,15 @@ class Order implements EntityWithEvents
     #[ORM\Column(length: 500, nullable: true)]
     public private(set) ?string $uploadedContractDocumentPath = null;
 
+    #[ORM\Column(nullable: true)]
+    public private(set) ?int $onboardingDebtInHaler = null;
+
+    #[ORM\Column(nullable: true)]
+    public private(set) ?\DateTimeImmutable $debtPaidAt = null;
+
+    #[ORM\Column(nullable: true)]
+    public private(set) ?string $debtGoPayPaymentId = null;
+
     public function __construct(
         #[ORM\Id]
         #[ORM\Column(type: UuidType::NAME, unique: true)]
@@ -463,6 +472,38 @@ class Order implements EntityWithEvents
     public function hasUploadedContract(): bool
     {
         return null !== $this->uploadedContractDocumentPath;
+    }
+
+    public function setOnboardingDebt(int $amountInHaler): void
+    {
+        $this->onboardingDebtInHaler = $amountInHaler;
+    }
+
+    public function hasUnpaidDebt(): bool
+    {
+        return null !== $this->onboardingDebtInHaler
+            && $this->onboardingDebtInHaler > 0
+            && null === $this->debtPaidAt;
+    }
+
+    public function hasDebt(): bool
+    {
+        return null !== $this->onboardingDebtInHaler && $this->onboardingDebtInHaler > 0;
+    }
+
+    public function markDebtPaid(\DateTimeImmutable $now): void
+    {
+        $this->debtPaidAt = $now;
+    }
+
+    public function setDebtGoPayPaymentId(string $paymentId): void
+    {
+        $this->debtGoPayPaymentId = $paymentId;
+    }
+
+    public function getDebtAmountInCzk(): ?float
+    {
+        return null !== $this->onboardingDebtInHaler ? $this->onboardingDebtInHaler / 100 : null;
     }
 
     /**

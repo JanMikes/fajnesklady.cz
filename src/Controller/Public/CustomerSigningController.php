@@ -129,7 +129,10 @@ final class CustomerSigningController extends AbstractController
                 return $this->redirectToRoute('public_customer_signing_complete', ['id' => $order->id]);
             }
 
-            // GOPAY and BANK_TRANSFER both proceed to the payment page
+            if ($order->hasUnpaidDebt()) {
+                return $this->redirectToRoute('public_order_debt_payment', ['id' => $order->id]);
+            }
+
             return $this->redirectToRoute('public_order_payment', ['id' => $order->id]);
         } catch (\Exception $e) {
             $this->logger->error('Customer signing failed', ['exception' => $e]);

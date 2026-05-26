@@ -72,6 +72,25 @@
 
     {% include 'admin/order/_onboarding_banner.html.twig' %}
 
+    {% if order.onboardingDebtInHaler is not null %}
+        <div class="mb-6 bg-{{ order.debtPaidAt ? 'green' : 'red' }}-50 border border-{{ order.debtPaidAt ? 'green' : 'red' }}-200 rounded-lg p-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-sm font-medium text-{{ order.debtPaidAt ? 'green' : 'red' }}-800">
+                        Dluh z předchozí smlouvy: {{ (order.onboardingDebtInHaler / 100)|number_format(0, ',', ' ') }} Kč
+                    </h3>
+                </div>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ order.debtPaidAt ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
+                    {% if order.debtPaidAt %}
+                        Uhrazen {{ order.debtPaidAt|date('d.m.Y') }}
+                    {% else %}
+                        Neuhrazen
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+    {% endif %}
+
     {% include 'admin/order/_price_change_history.html.twig' with {priceChanges: priceChanges} %}
 
     {# Expiration Warning for contracts ending soon #}

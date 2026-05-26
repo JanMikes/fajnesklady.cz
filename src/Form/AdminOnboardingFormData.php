@@ -101,6 +101,9 @@ final class AdminOnboardingFormData implements HasBillingAddress
     #[Assert\Regex(pattern: '/^\d*$/', message: 'Variabilní symbol musí obsahovat pouze číslice.')]
     public ?string $variableSymbol = null;
 
+    #[Assert\PositiveOrZero(message: 'Dluh nemůže být záporný.')]
+    public ?float $debtAmountInCzk = null;
+
     public function hasCompleteAddress(): bool
     {
         return null !== $this->billingStreet && '' !== $this->billingStreet
@@ -300,6 +303,20 @@ final class AdminOnboardingFormData implements HasBillingAddress
         ) {
             $context->buildViolation('Datum předplatby nemůže být po datu konce smlouvy.')
                 ->atPath('paidThroughDate')
+                ->addViolation();
+        }
+    }
+
+    #[Assert\Callback]
+    public function validateDebtPaymentMethod(ExecutionContextInterface $context): void
+    {
+        if (null === $this->debtAmountInCzk || $this->debtAmountInCzk <= 0) {
+            return;
+        }
+
+        if (PaymentMethod::EXTERNAL === $this->paymentMethod) {
+            $context->buildViolation('Při dluhu nelze použít externě — zákazník musí mít možnost zaplatit. Zvolte GoPay nebo bankovní převod.')
+                ->atPath('paymentMethod')
                 ->addViolation();
         }
     }

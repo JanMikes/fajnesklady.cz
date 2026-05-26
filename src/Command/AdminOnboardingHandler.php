@@ -67,7 +67,9 @@ final readonly class AdminOnboardingHandler
         $order->setBillingMode($command->billingMode);
         $order->markAsAdminCreated();
 
-        $forceExternal = 0 === $command->individualMonthlyAmount || null !== $command->paidThroughDate;
+        $isFreeOrPrepaid = 0 === $command->individualMonthlyAmount || null !== $command->paidThroughDate;
+        $hasDebt = null !== $command->debtInHaler && $command->debtInHaler > 0;
+        $forceExternal = $isFreeOrPrepaid && !$hasDebt;
         $effectivePaymentMethod = $forceExternal ? PaymentMethod::EXTERNAL : $command->paymentMethod;
         $order->setPaymentMethod($effectivePaymentMethod);
 
@@ -84,6 +86,10 @@ final readonly class AdminOnboardingHandler
             paidThroughDate: $command->paidThroughDate,
             createdByAdmin: $createdByAdmin,
         );
+
+        if (null !== $command->debtInHaler && $command->debtInHaler > 0) {
+            $order->setOnboardingDebt($command->debtInHaler);
+        }
 
         if (null !== $command->uploadedContractPath) {
             $contractPath = $this->moveContractDocument($command->uploadedContractPath, $order);

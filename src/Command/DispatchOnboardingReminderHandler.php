@@ -55,7 +55,7 @@ final readonly class DispatchOnboardingReminderHandler
 
         // Re-verify state hasn't drifted since the cron query.
         if (true !== $order->isAdminCreated
-            || PaymentMethod::GOPAY !== $order->paymentMethod
+            || !in_array($order->paymentMethod, [PaymentMethod::GOPAY, PaymentMethod::BANK_TRANSFER], true)
             || !in_array($order->status, [OrderStatus::RESERVED, OrderStatus::AWAITING_PAYMENT], true)
             || null === $order->signedAt
         ) {

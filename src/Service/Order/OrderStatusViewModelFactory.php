@@ -141,6 +141,15 @@ final readonly class OrderStatusViewModelFactory
             }
         }
 
+        $debtPaymentUrl = null;
+        if ($order->hasUnpaidDebt()) {
+            $debtPaymentUrl = $this->urlGenerator->generate(
+                'public_order_debt_payment',
+                ['id' => $order->id->toRfc4122()],
+                UrlGeneratorInterface::ABSOLUTE_URL,
+            );
+        }
+
         $timeline = $this->buildTimeline($order, $contract);
 
         $handoverProtocol = null;
@@ -183,6 +192,7 @@ final readonly class OrderStatusViewModelFactory
             manualNowPeriodStart: $manualNowPeriodStart,
             handoverProtocol: $handoverProtocol,
             handoverViewUrl: $handoverViewUrl,
+            debtPaymentUrl: $debtPaymentUrl,
         );
     }
 

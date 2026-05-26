@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Command;
 
 use App\Enum\PaymentMethod;
+use App\Event\OnboardingDebtPaymentRequested;
 use App\Service\OrderService;
 use App\Service\SignatureStorage;
 use Psr\Clock\ClockInterface;
@@ -61,6 +62,14 @@ final readonly class CustomerSignOnboardingHandler
 
         // 5. Clear signing token (prevents reuse)
         $order->clearSigningToken();
+
+        // 5b. Record debt payment request event (fires email after commit)
+        if ($order->hasUnpaidDebt()) {
+            $order->recordThat(new OnboardingDebtPaymentRequested(
+                orderId: $order->id,
+                occurredOn: $now,
+            ));
+        }
 
         // 6. Handle based on payment method
         if (PaymentMethod::EXTERNAL === $order->paymentMethod) {

@@ -299,6 +299,10 @@ final class AdminOnboardingForm extends AbstractController
         $admin = $this->getUser();
         \assert($admin instanceof User);
 
+        $debtInHaler = null !== $formData->debtAmountInCzk && $formData->debtAmountInCzk > 0
+            ? (int) round($formData->debtAmountInCzk * 100)
+            : null;
+
         try {
             $envelope = $this->commandBus->dispatch(new AdminOnboardingCommand(
                 email: $formData->email,
@@ -327,6 +331,7 @@ final class AdminOnboardingForm extends AbstractController
                 paymentFrequency: $formData->paymentFrequency,
                 variableSymbolOverride: $formData->variableSymbol,
                 uploadedContractPath: $uploadedContractPath,
+                debtInHaler: $debtInHaler,
             ));
 
             $handledStamp = $envelope->last(HandledStamp::class);

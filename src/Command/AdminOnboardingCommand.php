@@ -48,6 +48,7 @@ final readonly class AdminOnboardingCommand
         public PaymentFrequency $paymentFrequency,
         public ?string $variableSymbolOverride = null,
         public ?string $uploadedContractPath = null,
+        public ?int $debtInHaler = null,
     ) {
     }
 }

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ stage == 'd_plus_5' ? 'Druhá připomínka platby' : 'Připomínáme dokončení platby' }}</title>
+    <title>Úhrada dluhu z předchozí smlouvy</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -14,7 +14,7 @@
             padding: 20px;
         }
         .header {
-            background-color: #f59e0b;
+            background-color: #dc2626;
             color: white;
             padding: 20px;
             text-align: center;
@@ -48,7 +48,7 @@
         }
         .button {
             display: inline-block;
-            background-color: #570df8;
+            background-color: #dc2626;
             color: white !important;
             padding: 12px 30px;
             text-decoration: none;
@@ -66,23 +66,13 @@
 </head>
 <body>
     <div class="header">
-        <h1>{{ stage == 'd_plus_5' ? 'Druhá připomínka platby' : 'Připomínáme dokončení platby' }}</h1>
+        <h1>Úhrada dluhu z předchozí smlouvy</h1>
     </div>
 
     <div class="content">
         <h2>Dobrý den, {{ name }}!</h2>
 
-        {% if hasUnpaidDebt|default(false) %}
-            {% if stage == 'd_plus_5' %}
-                <p>Vaše objednávka pronájmu skladu čeká na úhradu dluhu z předchozí smlouvy. Pokud dluh neuhradíte, objednávka bude brzy zrušena a sklad bude opět k dispozici dalším zájemcům.</p>
-            {% else %}
-                <p>Před pár dny jste podepsali smlouvu na pronájem skladu. Před zahájením pronájmu je třeba uhradit dluh z předchozí smlouvy ve výši <strong>{{ debtAmountCzk }} Kč</strong>.</p>
-            {% endif %}
-        {% elseif stage == 'd_plus_5' %}
-            <p>Vaše objednávka pronájmu skladu stále čeká na platbu. Pokud platbu neprovedete, objednávka bude brzy zrušena a sklad bude opět k dispozici dalším zájemcům.</p>
-        {% else %}
-            <p>Před pár dny jste podepsali smlouvu na pronájem skladu. Pro dokončení objednávky je ještě potřeba provést platbu. Můžete tak učinit jednoduše pomocí níže uvedeného odkazu.</p>
-        {% endif %}
+        <p>K vaší nové objednávce pronájmu skladu evidujeme dluh z předchozí smlouvy. Před zahájením nového pronájmu je třeba tento dluh uhradit.</p>
 
         <div class="summary">
             <table>
@@ -97,35 +87,48 @@
                 </tr>
                 {% endif %}
                 <tr>
-                    <td class="label">Skladová jednotka:</td>
-                    <td>{{ storageType }} ({{ storageNumber }})</td>
+                    <td class="label">Dluh k úhradě:</td>
+                    <td><strong style="color: #dc2626;">{{ debtAmountCzk }} Kč</strong></td>
                 </tr>
+                {% if isBankTransfer and bankAccount %}
                 <tr>
-                    <td class="label">Začátek:</td>
-                    <td>{{ startDate }}</td>
+                    <td class="label">Číslo účtu:</td>
+                    <td><strong>{{ bankAccount }}</strong></td>
                 </tr>
+                {% endif %}
+                {% if isBankTransfer and variableSymbol %}
                 <tr>
-                    <td class="label">Konec:</td>
-                    <td>{{ endDate }}</td>
+                    <td class="label">Variabilní symbol:</td>
+                    <td><strong>{{ variableSymbol }}</strong></td>
                 </tr>
-                <tr>
-                    <td class="label">{{ isRecurring ? 'Měsíční platba:' : 'Celková cena:' }}</td>
-                    <td><strong>{{ amountInCzk }} Kč{% if isRecurring %} / měsíc{% endif %}</strong></td>
-                </tr>
+                {% endif %}
             </table>
         </div>
 
+        {% if isBankTransfer and qrCodeDataUri %}
+            <div style="text-align: center; margin: 20px 0;">
+                <p style="font-size: 14px; color: #666;">QR kód pro platbu:</p>
+                <img src="{{ qrCodeDataUri }}" alt="QR platba" style="width: 200px; height: 200px;">
+            </div>
+        {% endif %}
+
         <div style="text-align: center;">
-            <a href="{{ statusUrl }}" class="button">Zaplatit nyní</a>
+            <a href="{{ debtPaymentUrl }}" class="button">
+                {% if isBankTransfer %}
+                    Zobrazit platební údaje
+                {% else %}
+                    Zaplatit dluh kartou
+                {% endif %}
+            </a>
         </div>
 
         <p style="font-size: 13px; color: #666;">
             Pokud tlačítko nefunguje, zkopírujte tento odkaz do prohlížeče:<br>
-            <a href="{{ statusUrl }}" style="color: #570df8; word-break: break-all;">{{ statusUrl }}</a>
+            <a href="{{ debtPaymentUrl }}" style="color: #570df8; word-break: break-all;">{{ debtPaymentUrl }}</a>
         </p>
 
         <p style="font-size: 13px; color: #666;">
-            Pokud jste platbu již provedl/a, prosím ignorujte tuto zprávu. Pokud potřebujete pomoc, kontaktujte nás na
+            Pokud potřebujete pomoc, kontaktujte nás na
             <a href="mailto:simek@fajnesklady.cz" style="color: #570df8;">simek@fajnesklady.cz</a>.
         </p>
 

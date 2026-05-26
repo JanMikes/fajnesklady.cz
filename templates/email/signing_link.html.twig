@@ -101,6 +101,14 @@
             </div>
         {% endif %}
 
+        {% if order.hasDebt() %}
+            <div style="background-color: #fffbeb; border: 2px solid #fbbf24; border-radius: 6px; padding: 14px 18px; margin: 16px 0 24px;">
+                <strong style="color: #92400e;">Upozornění:</strong>
+                <span style="color: #92400e;">K této objednávce evidujeme dluh z předchozí smlouvy ve výši {{ (order.onboardingDebtInHaler / 100)|number_format(0, ',', ' ') }} Kč.
+                Po podpisu smlouvy budete nejprve vyzváni k úhradě tohoto dluhu.</span>
+            </div>
+        {% endif %}
+
         <p>{{ content.nextStepLine }}</p>
 
         <div class="summary">

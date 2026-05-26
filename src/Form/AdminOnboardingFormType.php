@@ -183,6 +183,13 @@ final class AdminOnboardingFormType extends AbstractType
                 'required' => false,
                 'attr' => ['placeholder' => 'Ponechte prázdné pro automatické vygenerování'],
                 'help' => 'Pouze pro bankovní převod. Číselný, max 10 číslic.',
+            ])
+            ->add('debtAmountInCzk', NumberType::class, [
+                'label' => 'Dluh z předchozí smlouvy (Kč)',
+                'required' => false,
+                'html5' => true,
+                'attr' => ['placeholder' => '0', 'min' => 0, 'step' => 1],
+                'help' => 'Pokud má zákazník nevyplacený dluh, zadejte částku v Kč. Zákazník musí dluh uhradit před zahájením nového pronájmu.',
             ]);
     }
 

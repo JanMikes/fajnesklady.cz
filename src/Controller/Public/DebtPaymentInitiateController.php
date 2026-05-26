@@ -1,0 +1,92 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Controller\Public;
+
+use App\Command\InitiateDebtPaymentCommand;
+use App\Repository\OrderRepository;
+use App\Service\GoPay\GoPayException;
+use App\Service\Messenger\HandlerFailureUnwrap;
+use App\Value\GoPayPayment;
+use Psr\Log\LoggerInterface;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Component\Messenger\Stamp\HandledStamp;
+use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
+use Symfony\Component\Uid\Uuid;
+
+#[Route('/objednavka/{id}/platba/dluh/iniciovat', name: 'public_debt_payment_initiate', methods: ['POST'])]
+final class DebtPaymentInitiateController extends AbstractController
+{
+    public function __construct(
+        private readonly OrderRepository $orderRepository,
+        private readonly MessageBusInterface $commandBus,
+        private readonly UrlGeneratorInterface $urlGenerator,
+        private readonly LoggerInterface $logger,
+    ) {
+    }
+
+    public function __invoke(string $id): Response
+    {
+        if (!Uuid::isValid($id)) {
+            throw new NotFoundHttpException('Objednávka nenalezena.');
+        }
+
+        $order = $this->orderRepository->find(Uuid::fromString($id));
+
+        if (null === $order || !$order->hasUnpaidDebt()) {
+            return new JsonResponse(['error' => 'Objednávka nenalezena nebo dluh již uhrazen.'], Response::HTTP_BAD_REQUEST);
+        }
+
+        $returnUrl = $this->urlGenerator->generate(
+            'public_debt_payment_return',
+            ['id' => $id],
+            UrlGeneratorInterface::ABSOLUTE_URL,
+        );
+
+        $notificationUrl = $this->urlGenerator->generate(
+            'public_payment_notification',
+            [],
+            UrlGeneratorInterface::ABSOLUTE_URL,
+        );
+
+        try {
+            $envelope = $this->commandBus->dispatch(new InitiateDebtPaymentCommand(
+                order: $order,
+                returnUrl: $returnUrl,
+                notificationUrl: $notificationUrl,
+            ));
+
+            /** @var HandledStamp $handledStamp */
+            $handledStamp = $envelope->last(HandledStamp::class);
+
+            /** @var GoPayPayment $payment */
+            $payment = $handledStamp->getResult();
+
+            return new JsonResponse([
+                'paymentId' => $payment->id,
+                'gwUrl' => $payment->gwUrl,
+            ]);
+        } catch (\Throwable $rawException) {
+            $exception = HandlerFailureUnwrap::unwrap($rawException);
+            if (!$exception instanceof GoPayException) {
+                throw $rawException;
+            }
+
+            $this->logger->error('GoPay debt payment initiation failed', [
+                'order_id' => $id,
+                'exception' => $exception,
+            ]);
+
+            return new JsonResponse(
+                ['error' => 'Chyba při vytváření platby. Zkuste to prosím znovu.'],
+                Response::HTTP_INTERNAL_SERVER_ERROR,
+            );
+        }
+    }
+}

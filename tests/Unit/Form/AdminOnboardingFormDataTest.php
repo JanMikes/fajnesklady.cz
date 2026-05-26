@@ -178,6 +178,70 @@ final class AdminOnboardingFormDataTest extends TestCase
         self::assertEmpty($violations);
     }
 
+    public function testDebtWithExternalPaymentMethodFails(): void
+    {
+        $data = $this->validData();
+        $data->debtAmountInCzk = 500.0;
+        $data->paymentMethod = PaymentMethod::EXTERNAL;
+        $data->isExternallyPrepaid = true;
+        $data->paidThroughDate = new \DateTimeImmutable('2026-01-01');
+
+        $violations = $this->violationsAt('paymentMethod', $data);
+        self::assertNotEmpty($violations);
+    }
+
+    public function testDebtWithGoPayPaymentMethodPasses(): void
+    {
+        $data = $this->validData();
+        $data->debtAmountInCzk = 500.0;
+        $data->paymentMethod = PaymentMethod::GOPAY;
+
+        $violations = $this->violationsAt('paymentMethod', $data);
+        self::assertEmpty($violations);
+    }
+
+    public function testDebtWithBankTransferPaymentMethodPasses(): void
+    {
+        $data = $this->validData();
+        $data->debtAmountInCzk = 500.0;
+        $data->paymentMethod = PaymentMethod::BANK_TRANSFER;
+        $data->billingMode = BillingMode::MANUAL_RECURRING;
+
+        $violations = $this->violationsAt('paymentMethod', $data);
+        self::assertEmpty($violations);
+    }
+
+    public function testNoDebtWithExternalPaymentMethodPasses(): void
+    {
+        $data = $this->validData();
+        $data->debtAmountInCzk = null;
+        $data->paymentMethod = PaymentMethod::EXTERNAL;
+        $data->monthlyPriceMode = 'free';
+
+        $violations = $this->violationsAt('paymentMethod', $data);
+        self::assertEmpty($violations);
+    }
+
+    public function testZeroDebtWithExternalPaymentMethodPasses(): void
+    {
+        $data = $this->validData();
+        $data->debtAmountInCzk = 0.0;
+        $data->paymentMethod = PaymentMethod::EXTERNAL;
+        $data->monthlyPriceMode = 'free';
+
+        $violations = $this->violationsAt('paymentMethod', $data);
+        self::assertEmpty($violations);
+    }
+
+    public function testNegativeDebtFails(): void
+    {
+        $data = $this->validData();
+        $data->debtAmountInCzk = -100.0;
+
+        $violations = $this->violationsAt('debtAmountInCzk', $data);
+        self::assertNotEmpty($violations);
+    }
+
     /**
      * @return array<int, \Symfony\Component\Validator\ConstraintViolationInterface>
      */

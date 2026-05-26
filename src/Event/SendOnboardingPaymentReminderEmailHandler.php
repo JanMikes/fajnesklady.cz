@@ -74,6 +74,10 @@ final readonly class SendOnboardingPaymentReminderEmailHandler
                 'amountInCzk' => number_format($order->getFirstPaymentPriceInCzk(), 0, ',', ' '),
                 'isRecurring' => $order->isRecurring(),
                 'statusUrl' => $statusUrl,
+                'hasUnpaidDebt' => $order->hasUnpaidDebt(),
+                'debtAmountCzk' => null !== $order->getDebtAmountInCzk()
+                    ? number_format($order->getDebtAmountInCzk(), 0, ',', ' ')
+                    : null,
             ]);
 
         try {

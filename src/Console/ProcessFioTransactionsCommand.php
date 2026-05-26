@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console;
 
+use App\Command\ProcessBankTransferDebtPaymentCommand;
 use App\Command\ProcessBankTransferPaymentCommand;
 use App\Entity\BankTransaction;
 use App\Entity\Contract;
@@ -358,6 +359,57 @@ final class ProcessFioTransactionsCommand extends Command
                 $this->logger->error('Failed to process recurring bank transfer payment', [
                     'bank_transaction_id' => $bankTx->id->toRfc4122(),
                     'contract_id' => $contract->id->toRfc4122(),
+                    'exception' => $e,
+                ]);
+            }
+
+            return true;
+        }
+
+        // Debt payment match — must come before first-payment match
+        if ($order->hasUnpaidDebt()) {
+            if ($bankTx->amount !== $order->onboardingDebtInHaler) {
+                $bankTx->markAmountMismatch($order, $matchMethod, $now);
+                ++$stats['amount_mismatches'];
+
+                $this->auditLogger->log(
+                    entityType: 'bank_transaction',
+                    entityId: $bankTx->id->toRfc4122(),
+                    eventType: 'amount_mismatch',
+                    payload: [
+                        'order_id' => $order->id->toRfc4122(),
+                        'expected_amount' => $order->onboardingDebtInHaler,
+                        'received_amount' => $bankTx->amount,
+                        'difference' => $bankTx->amount - $order->onboardingDebtInHaler,
+                        'variable_symbol' => $bankTx->variableSymbol,
+                        'type' => 'debt_payment',
+                    ],
+                );
+
+                return true;
+            }
+
+            $bankTx->pairToOrder($order, $matchMethod, null, $now);
+
+            $this->auditLogger->log(
+                entityType: 'bank_transaction',
+                entityId: $bankTx->id->toRfc4122(),
+                eventType: 'auto_matched_to_order_debt',
+                payload: [
+                    'order_id' => $order->id->toRfc4122(),
+                    'variable_symbol' => $bankTx->variableSymbol,
+                    'expected_amount' => $order->onboardingDebtInHaler,
+                    'received_amount' => $bankTx->amount,
+                    'match_method' => $matchMethod,
+                ],
+            );
+
+            try {
+                $this->commandBus->dispatch(new ProcessBankTransferDebtPaymentCommand($bankTx, $order));
+            } catch (\Throwable $e) {
+                $this->logger->error('Failed to process bank transfer debt payment', [
+                    'bank_transaction_id' => $bankTx->id->toRfc4122(),
+                    'order_id' => $order->id->toRfc4122(),
                     'exception' => $e,
                 ]);
             }

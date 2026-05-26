@@ -60,6 +60,11 @@ final class OrderPaymentController extends AbstractController
             ]);
         }
 
+        // Debt must be paid before first rental payment
+        if ($order->hasUnpaidDebt()) {
+            return $this->redirectToRoute('public_order_debt_payment', ['id' => $order->id]);
+        }
+
         // Check if order can be paid
         if (!$order->canBePaid()) {
             if (OrderStatus::COMPLETED === $order->status || OrderStatus::PAID === $order->status) {
