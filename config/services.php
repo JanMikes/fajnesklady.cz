@@ -101,7 +101,7 @@ return App::config([
                 '$signaturesDirectory' => '%kernel.project_dir%/var/signatures',
             ],
         ],
-        'App\\Command\\AdminMigrateCustomerHandler' => [
+        'App\\Command\\AdminOnboardingHandler' => [
             'arguments' => [
                 '$contractsDirectory' => '%kernel.project_dir%/var/contracts',
             ],

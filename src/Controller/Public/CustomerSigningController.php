@@ -70,7 +70,7 @@ final class CustomerSigningController extends AbstractController
         $signingPlace = trim($request->request->getString('signing_place'));
 
         $errors = [];
-        if (!$accepted) {
+        if (!$order->hasUploadedContract() && !$accepted) {
             $errors[] = 'Pro pokračování je nutné souhlasit se smluvními podmínkami.';
         }
         if (!$acceptVop) {
@@ -125,11 +125,12 @@ final class CustomerSigningController extends AbstractController
                 signerUserAgent: substr((string) $request->headers->get('User-Agent', ''), 0, 500) ?: null,
             ));
 
-            if (PaymentMethod::GOPAY === $order->paymentMethod) {
-                return $this->redirectToRoute('public_order_payment', ['id' => $order->id]);
+            if (PaymentMethod::EXTERNAL === $order->paymentMethod) {
+                return $this->redirectToRoute('public_customer_signing_complete', ['id' => $order->id]);
             }
 
-            return $this->redirectToRoute('public_customer_signing_complete', ['id' => $order->id]);
+            // GOPAY and BANK_TRANSFER both proceed to the payment page
+            return $this->redirectToRoute('public_order_payment', ['id' => $order->id]);
         } catch (\Exception $e) {
             $this->logger->error('Customer signing failed', ['exception' => $e]);
             $this->addFlash('error', 'Při podpisu smlouvy došlo k chybě. Zkuste to prosím znovu.');

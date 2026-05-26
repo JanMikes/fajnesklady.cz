@@ -1,0 +1,269 @@
+<div {{ attributes.defaults({
+    'data-controller': 'admin-onboarding-bridge',
+    'data-action': 'storage-map:select->admin-onboarding-bridge#handleStorageSelect',
+}) }}>
+    {{ form_start(form, {attr: {novalidate: 'novalidate', 'data-turbo': 'false'}}) }}
+
+    <div class="space-y-8 max-w-4xl">
+        {# 1. Typ pronájmu #}
+        <div class="card">
+            <div class="card-body">
+                <h2 class="text-lg font-bold text-gray-900 mb-4">Typ pronájmu</h2>
+                <div class="space-y-4">
+                    {{ form_row(form.rentalType) }}
+                    {% set formData = form.vars.data %}
+                    {% if formData.rentalType.value == 'unlimited' %}
+                        {{ form_row(form.expectedDuration) }}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        {# 2. Pobočka #}
+        <div class="card">
+            <div class="card-body">
+                <h2 class="text-lg font-bold text-gray-900 mb-4">Pobočka</h2>
+                <div>
+                    <label for="admin-onboarding-place" class="form-label">Pobočka</label>
+                    <select id="admin-onboarding-place"
+                            data-model="norender|placeId"
+                            data-action="change->live#action"
+                            data-live-action-param="onPlaceChange"
+                            class="form-select w-full"
+                            data-controller="tom-select">
+                        <option value="">-- Vyberte pobočku --</option>
+                        {% for place in this.places %}
+                            <option value="{{ place.id }}" {{ this.placeId == place.id|string ? 'selected' }}>
+                                {{ place.name }}{% if place.city %} ({{ place.city }}){% endif %}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        {# 3. Typ skladovací jednotky #}
+        {% if this.placeId %}
+            <div class="card">
+                <div class="card-body">
+                    <h2 class="text-lg font-bold text-gray-900 mb-4">Typ skladovací jednotky</h2>
+                    <div>
+                        <label for="admin-onboarding-storage-type" class="form-label">Typ</label>
+                        <select id="admin-onboarding-storage-type"
+                                data-model="norender|storageTypeId"
+                                data-action="change->live#action"
+                                data-live-action-param="onStorageTypeChange"
+                                class="form-select w-full"
+                                data-controller="tom-select">
+                            <option value="">-- Vyberte typ --</option>
+                            {% for type in this.storageTypes %}
+                                <option value="{{ type.id }}" {{ this.storageTypeId == type.id|string ? 'selected' }}>
+                                    {{ type.name }} ({{ type.dimensionsInMeters }})
+                                    — {{ type.defaultPricePerMonth is not null ? (type.defaultPricePerMonth / 100)|number_format(0, ',', ' ') ~ ' Kč/měs' : 'cena nenastavena' }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+
+        {# 4. Datum #}
+        <div class="card">
+            <div class="card-body">
+                <h2 class="text-lg font-bold text-gray-900 mb-4">Datum</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {{ form_row(form.startDate) }}
+                    {% if formData.rentalType.value == 'limited' %}
+                        {{ form_row(form.endDate) }}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        {# 5. Mapa skladu #}
+        {% set selectedPlace = this.selectedPlace %}
+        {% set selectedStorageType = this.selectedStorageType %}
+        {% if selectedPlace and selectedStorageType and selectedPlace.mapImagePath %}
+            <div class="card">
+                <div class="card-body">
+                    <h2 class="text-lg font-bold text-gray-900 mb-4">Výběr skladové jednotky</h2>
+                    <p class="text-sm text-gray-600 mb-4">Klikněte na dostupnou (zelenou) skladovou jednotku na mapě.</p>
+                    <div data-controller="storage-map"
+                         data-storage-map-map-image-value="{{ asset('uploads/' ~ selectedPlace.mapImagePath) }}"
+                         data-storage-map-storages-value="{{ this.storagesJson|e('html_attr') }}"
+                         data-storage-map-place-id-value="{{ this.placeId }}"
+                         data-storage-map-current-storage-type-id-value="{{ this.storageTypeId }}"
+                         data-storage-map-select-mode-value="true"
+                         data-storage-map-highlight-storage-value="{{ this.storageId ?? '' }}">
+                        <div data-storage-map-target="container" data-live-ignore
+                             class="border border-gray-300 rounded-lg w-full" style="min-height: 400px;"></div>
+                        <div data-storage-map-target="minimap"
+                             class="hidden absolute bottom-2 right-2 border border-gray-400 rounded-md bg-white shadow-md"
+                             data-live-ignore></div>
+                        <div data-storage-map-target="tooltip"
+                             class="hidden fixed z-50 pointer-events-none bg-white border border-gray-200 rounded-md shadow-lg p-3 text-xs max-w-xs"></div>
+                    </div>
+                </div>
+            </div>
+        {% elseif selectedPlace and selectedStorageType and not selectedPlace.mapImagePath %}
+            <div class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                Tato pobočka nemá nahrán mapový podklad. Skladovou jednotku nelze vybrat z mapy.
+            </div>
+        {% endif %}
+
+        {# 6. Vybraná skladová jednotka #}
+        {% set selectedStorage = this.selectedStorage %}
+        {% if selectedStorage %}
+            <div class="card border-green-200 bg-green-50">
+                <div class="card-body">
+                    <h2 class="text-lg font-bold text-green-900 mb-2">Vybraná skladová jednotka</h2>
+                    <dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                        <div>
+                            <dt class="text-green-700">Číslo</dt>
+                            <dd class="font-semibold text-green-900">{{ selectedStorage.number }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-green-700">Rozměry</dt>
+                            <dd class="font-semibold text-green-900">{{ selectedStorage.storageType.dimensionsInMeters }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-green-700">Cena / měsíc</dt>
+                            <dd class="font-semibold text-green-900">{{ selectedStorage.effectivePricePerMonthInCzk|number_format(0, ',', ' ') }} Kč</dd>
+                        </div>
+                        <div>
+                            <dt class="text-green-700">Cena / týden</dt>
+                            <dd class="font-semibold text-green-900">{{ selectedStorage.effectivePricePerWeekInCzk|number_format(0, ',', ' ') }} Kč</dd>
+                        </div>
+                    </dl>
+                </div>
+            </div>
+        {% endif %}
+
+        {# Payment schedule preview #}
+        {% set schedule = this.paymentSchedule %}
+        {% if schedule %}
+            <div class="card">
+                <div class="card-body">
+                    <h2 class="text-lg font-bold text-gray-900 mb-2">Kalkulace plateb</h2>
+                    <p class="text-sm font-semibold text-green-700 mb-3">
+                        {% if schedule.isYearly and schedule.yearlyAmount %}
+                            Roční platba: {{ (schedule.yearlyAmount / 100)|number_format(0, ',', ' ') }} Kč / rok
+                        {% elseif schedule.monthlyAmount %}
+                            Měsíční platba: {{ (schedule.monthlyAmount / 100)|number_format(0, ',', ' ') }} Kč / měsíc
+                        {% endif %}
+                    </p>
+                    {% if schedule.entries is not empty %}
+                        <ul class="text-xs text-gray-600 space-y-1 max-h-40 overflow-y-auto">
+                            {% for entry in schedule.entries %}
+                                <li class="flex justify-between">
+                                    <span>{{ entry.chargeDate|date('d.m.Y') }}</span>
+                                    <span class="font-medium">{{ (entry.amount / 100)|number_format(0, ',', ' ') }} Kč</span>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+
+        {# 7. Kontaktní údaje #}
+        <div class="card">
+            <div class="card-body">
+                <h2 class="text-lg font-bold text-gray-900 mb-4">Kontaktní údaje zákazníka</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {{ form_row(form.email) }}
+                    {{ form_row(form.firstName) }}
+                    {{ form_row(form.lastName) }}
+                    {{ form_row(form.phone) }}
+                    {{ form_row(form.birthDate) }}
+                </div>
+            </div>
+        </div>
+
+        {# 8. Fakturační údaje #}
+        <div class="card">
+            <div class="card-body">
+                <h2 class="text-lg font-bold text-gray-900 mb-4">Fakturační údaje</h2>
+                {{ form_row(form.invoiceToCompany) }}
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                    {{ form_row(form.companyName) }}
+                    {{ form_row(form.companyId) }}
+                    {{ form_row(form.companyVatId) }}
+                </div>
+
+                <h3 class="font-semibold text-gray-800 mt-6 mb-3">Fakturační adresa</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {{ form_row(form.billingStreet) }}
+                    {{ form_row(form.billingCity) }}
+                    {{ form_row(form.billingPostalCode) }}
+                </div>
+                {{ form_row(form.addressOverride) }}
+            </div>
+        </div>
+
+        {# 9. Cenový model #}
+        <div class="card">
+            <div class="card-body">
+                <h2 class="text-lg font-bold text-gray-900 mb-4">Cenový model</h2>
+                {{ form_row(form.monthlyPriceMode) }}
+                {{ form_row(form.customMonthlyPriceInCzk) }}
+            </div>
+        </div>
+
+        {# 10. Platební metoda #}
+        <div class="card">
+            <div class="card-body">
+                <h2 class="text-lg font-bold text-gray-900 mb-4">Platební metoda</h2>
+                {{ form_row(form.paymentMethod) }}
+
+                {# 11. Variabilní symbol (only for BANK_TRANSFER) #}
+                {{ form_row(form.variableSymbol) }}
+            </div>
+        </div>
+
+        {# 12. Frekvence a způsob plateb #}
+        <div class="card">
+            <div class="card-body">
+                <h2 class="text-lg font-bold text-gray-900 mb-4">Frekvence a způsob plateb</h2>
+                {{ form_row(form.paymentFrequency) }}
+                {{ form_row(form.billingMode) }}
+            </div>
+        </div>
+
+        {# 13. Externí předplatné #}
+        <div class="card">
+            <div class="card-body">
+                <h2 class="text-lg font-bold text-gray-900 mb-4">Externí předplatné</h2>
+                {{ form_row(form.isExternallyPrepaid) }}
+                {{ form_row(form.paidThroughDate) }}
+            </div>
+        </div>
+
+        {# 14. Existující smlouva #}
+        <div class="card">
+            <div class="card-body">
+                <h2 class="text-lg font-bold text-gray-900 mb-4">Existující smlouva</h2>
+                <p class="text-sm text-gray-600 mb-3">
+                    Pokud má zákazník již podepsanou papírovou smlouvu, nahrajte ji sem.
+                    Zákazník pak podepisuje pouze VOP.
+                </p>
+                {{ form_row(form.contractDocument) }}
+            </div>
+        </div>
+
+        {# 15. Submit #}
+        <div class="flex justify-end">
+            <button type="submit"
+                    data-action="live#action"
+                    data-live-action-param="submit"
+                    class="btn btn-primary btn-lg"
+                    {% if not this.storageId %}disabled{% endif %}>
+                Vytvořit onboarding
+            </button>
+        </div>
+    </div>
+
+    {{ form_end(form) }}
+</div>

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Entity;
 
 use App\Entity\BankTransaction;
-use App\Entity\Contract;
 use App\Entity\Order;
 use App\Entity\User;
 use PHPUnit\Framework\TestCase;

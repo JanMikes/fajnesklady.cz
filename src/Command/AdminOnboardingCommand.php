@@ -14,12 +14,12 @@ use App\Enum\PaymentMethod;
 use App\Enum\RentalType;
 use Symfony\Component\Uid\Uuid;
 
-final readonly class AdminCreateOnboardingCommand
+final readonly class AdminOnboardingCommand
 {
     /**
-     * @param ?int                $individualMonthlyAmount halere; null = standard storage rate; 0 = free
-     * @param ?\DateTimeImmutable $paidThroughDate         null = no external prepayment
-     * @param ?Uuid               $createdByAdminId        admin user id from the security token; null in fixtures
+     * @param ?int    $individualMonthlyAmount halere; null = standard storage rate; 0 = free
+     * @param ?string $uploadedContractPath    absolute path to the uploaded contract document; null = no paper contract
+     * @param ?string $variableSymbolOverride  null = auto-generate for BANK_TRANSFER
      */
     public function __construct(
         public string $email,
@@ -40,13 +40,14 @@ final readonly class AdminCreateOnboardingCommand
         public \DateTimeImmutable $startDate,
         public ?\DateTimeImmutable $endDate,
         public PaymentMethod $paymentMethod,
-        public ?int $individualMonthlyAmount = null,
-        public ?\DateTimeImmutable $paidThroughDate = null,
-        public ?Uuid $createdByAdminId = null,
-        public BillingMode $billingMode = BillingMode::AUTO_RECURRING,
-        public ?ExpectedDuration $expectedDuration = null,
-        public PaymentFrequency $paymentFrequency = PaymentFrequency::MONTHLY,
+        public ?int $individualMonthlyAmount,
+        public ?\DateTimeImmutable $paidThroughDate,
+        public Uuid $createdByAdminId,
+        public BillingMode $billingMode,
+        public ?ExpectedDuration $expectedDuration,
+        public PaymentFrequency $paymentFrequency,
         public ?string $variableSymbolOverride = null,
+        public ?string $uploadedContractPath = null,
     ) {
     }
 }

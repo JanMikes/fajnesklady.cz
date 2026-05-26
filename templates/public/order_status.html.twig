@@ -50,8 +50,28 @@
             </div>
         </div>
 
-        {# State-specific CTA row #}
-        {% if vm.payNowUrl or vm.newOrderUrl %}
+        {# Signed-but-unpaid onboarding: prominent payment CTA #}
+        {% if order.canBePaid() and order.hasSignature() and order.hasAcceptedTerms() and order.paymentMethod and order.paymentMethod.value != 'external' %}
+            <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+                <h3 class="font-semibold text-amber-800 mb-2">Čeká na platbu</h3>
+                <p class="text-amber-700 text-sm mb-3">
+                    {% if order.paymentMethod.value == 'bank_transfer' %}
+                        Vaše objednávka čeká na přijetí bankovního převodu.
+                    {% else %}
+                        Pro dokončení objednávky je třeba provést platbu.
+                    {% endif %}
+                </p>
+                <a href="{{ path('public_order_payment', {id: order.id}) }}"
+                   class="btn btn-primary">
+                    {% if order.paymentMethod.value == 'bank_transfer' %}
+                        Zobrazit platební údaje
+                    {% else %}
+                        Zaplatit
+                    {% endif %}
+                </a>
+            </div>
+        {% elseif vm.payNowUrl or vm.newOrderUrl %}
+            {# Generic CTA row for other states #}
             <div class="mb-6 flex flex-wrap gap-3">
                 {% if vm.payNowUrl %}
                     <a href="{{ vm.payNowUrl }}" class="btn btn-primary">Pokračovat v platbě</a>

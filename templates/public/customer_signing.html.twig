@@ -41,6 +41,13 @@
 
                 <h1 class="text-2xl font-bold text-gray-900 mb-6">Podpis smlouvy</h1>
 
+                {% if order.hasUploadedContract() %}
+                    <div class="rounded-lg bg-green-50 border-2 border-green-300 p-4 mb-6">
+                        <strong class="text-green-900">Vaše smlouva byla nahrána administrátorem.</strong>
+                        <p class="mt-1 text-green-800 text-sm">Níže prosím odsouhlaste obchodní podmínky a potvrďte podpisem.</p>
+                    </div>
+                {% endif %}
+
                 <p class="text-sm text-gray-600 mb-6">
                     Zkontrolujte prosím údaje smlouvy a podepište ji elektronicky.
                 </p>
@@ -228,13 +235,19 @@
                         {# Mirror the lead-in's flex layout (w-5 + gap-3) so the
                            bullet text lines up with the lead-in column exactly. #}
                         <ul class="mt-3 list-none text-xs text-gray-600 space-y-1">
-                            <li class="flex items-start gap-3"><span class="w-5 shrink-0 text-center text-gray-400" aria-hidden="true">•</span><span>smluvními podmínkami pronájmu skladové jednotky;</span></li>
+                            {% if not order.hasUploadedContract() %}
+                                <li class="flex items-start gap-3"><span class="w-5 shrink-0 text-center text-gray-400" aria-hidden="true">•</span><span>smluvními podmínkami pronájmu skladové jednotky;</span></li>
+                            {% endif %}
                             <li class="flex items-start gap-3"><span class="w-5 shrink-0 text-center text-gray-400" aria-hidden="true">•</span><span><button type="button" @click.prevent="$store.modal.show('vop')" class="text-accent hover:underline">všeobecnými obchodními podmínkami</button>;</span></li>
                             <li class="flex items-start gap-3"><span class="w-5 shrink-0 text-center text-gray-400" aria-hidden="true">•</span><span><button type="button" @click.prevent="$store.modal.show('gdpr')" class="text-accent hover:underline">zpracováním osobních údajů</button> pro obchodní účely;</span></li>
                             <li class="flex items-start gap-3"><span class="w-5 shrink-0 text-center text-gray-400" aria-hidden="true">•</span><span>použitím elektronického podpisu jako platného a závazného právního úkonu.</span></li>
                         </ul>
 
-                        <input type="hidden" name="accept_contract" value="1" :disabled="!acceptAll">
+                        {% if order.hasUploadedContract() %}
+                            <input type="hidden" name="accept_contract" value="1">
+                        {% else %}
+                            <input type="hidden" name="accept_contract" value="1" :disabled="!acceptAll">
+                        {% endif %}
                         <input type="hidden" name="accept_vop" value="1" :disabled="!acceptAll">
                         <input type="hidden" name="accept_gdpr" value="1" :disabled="!acceptAll">
                         <input type="hidden" name="signature_consent" value="1" :disabled="!acceptAll">

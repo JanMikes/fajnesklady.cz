@@ -12,11 +12,12 @@ use App\Enum\RentalType;
 use App\Form\Address\HasBillingAddress;
 use App\Service\PriceCalculator;
 use App\Validator\AddressExists;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Component\Validator\Context\ExecutionContextInterface;
 
 #[AddressExists]
-final class AdminCreateOnboardingFormData implements HasBillingAddress
+final class AdminOnboardingFormData implements HasBillingAddress
 {
     #[Assert\NotBlank(message: 'Zadejte e-mailovou adresu.')]
     #[Assert\Email(message: 'Zadejte platnou e-mailovou adresu.')]
@@ -62,9 +63,6 @@ final class AdminCreateOnboardingFormData implements HasBillingAddress
 
     public bool $addressOverride = false;
 
-    #[Assert\NotNull(message: 'Vyberte skladovou jednotku.')]
-    public ?string $storageId = null;
-
     #[Assert\NotNull(message: 'Vyberte typ pronájmu.')]
     public RentalType $rentalType = RentalType::UNLIMITED;
 
@@ -76,26 +74,12 @@ final class AdminCreateOnboardingFormData implements HasBillingAddress
     public ?\DateTimeImmutable $endDate = null;
 
     #[Assert\NotNull(message: 'Vyberte způsob platby.')]
-    public PaymentMethod $paymentMethod = PaymentMethod::EXTERNAL;
+    public PaymentMethod $paymentMethod = PaymentMethod::GOPAY;
 
-    /**
-     * Decides the cadence of SUBSEQUENT payments — orthogonal to {@see self::$paymentMethod}
-     * which decides the FIRST one. UNLIMITED rentals are forced AUTO_RECURRING below.
-     */
     public BillingMode $billingMode = BillingMode::AUTO_RECURRING;
 
-    /**
-     * Cadence of subsequent charges. YEARLY surfaces only when (a) the chosen
-     * storage type has an explicit yearly rate AND (b) the rental is UNLIMITED
-     * or LIMITED ≥ {@see PriceCalculator::YEARLY_THRESHOLD_DAYS} days. YEARLY
-     * forces MANUAL_RECURRING (no GoPay token).
-     */
     public PaymentFrequency $paymentFrequency = PaymentFrequency::MONTHLY;
 
-    /**
-     * Cenový model: 'standard' (sazba skladu), 'custom' (individuální měsíční cena),
-     * 'free' (zdarma — bez účtování).
-     */
     public string $monthlyPriceMode = 'standard';
 
     #[Assert\PositiveOrZero(message: 'Cena nemůže být záporná.')]
@@ -105,6 +89,17 @@ final class AdminCreateOnboardingFormData implements HasBillingAddress
     public bool $isExternallyPrepaid = false;
 
     public ?\DateTimeImmutable $paidThroughDate = null;
+
+    #[Assert\File(
+        maxSize: '10M',
+        mimeTypes: ['application/pdf', 'image/jpeg', 'image/png'],
+        mimeTypesMessage: 'Povolené formáty: PDF, JPEG, PNG.',
+    )]
+    public ?UploadedFile $contractDocument = null;
+
+    #[Assert\Length(max: 10, maxMessage: 'Variabilní symbol může mít maximálně {{ limit }} znaků.')]
+    #[Assert\Regex(pattern: '/^\d*$/', message: 'Variabilní symbol musí obsahovat pouze číslice.')]
+    public ?string $variableSymbol = null;
 
     public function hasCompleteAddress(): bool
     {
@@ -237,7 +232,6 @@ final class AdminCreateOnboardingFormData implements HasBillingAddress
             return;
         }
 
-        // Yearly is always MANUAL_RECURRING.
         if (BillingMode::MANUAL_RECURRING !== $this->billingMode) {
             $this->billingMode = BillingMode::MANUAL_RECURRING;
         }
@@ -268,11 +262,6 @@ final class AdminCreateOnboardingFormData implements HasBillingAddress
             return;
         }
 
-        // Catch the limbo state: EXTERNAL + standard price + the prepayment
-        // checkbox left unticked. When the checkbox IS ticked but the date is
-        // missing, the existing validatePaidThroughDate already produces a
-        // violation — bail here to avoid stacking two messages on the same
-        // field.
         if ($this->isExternallyPrepaid) {
             return;
         }

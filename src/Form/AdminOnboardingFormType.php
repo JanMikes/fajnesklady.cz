@@ -9,13 +9,13 @@ use App\Enum\ExpectedDuration;
 use App\Enum\PaymentFrequency;
 use App\Enum\PaymentMethod;
 use App\Enum\RentalType;
-use App\Service\Form\StorageChoiceBuilder;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\DateType;
 use Symfony\Component\Form\Extension\Core\Type\EmailType;
 use Symfony\Component\Form\Extension\Core\Type\EnumType;
+use Symfony\Component\Form\Extension\Core\Type\FileType;
 use Symfony\Component\Form\Extension\Core\Type\NumberType;
 use Symfony\Component\Form\Extension\Core\Type\TelType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
@@ -23,15 +23,10 @@ use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
 /**
- * @extends AbstractType<AdminCreateOnboardingFormData>
+ * @extends AbstractType<AdminOnboardingFormData>
  */
-final class AdminCreateOnboardingFormType extends AbstractType
+final class AdminOnboardingFormType extends AbstractType
 {
-    public function __construct(
-        private readonly StorageChoiceBuilder $storageChoiceBuilder,
-    ) {
-    }
-
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $builder
@@ -94,12 +89,6 @@ final class AdminCreateOnboardingFormType extends AbstractType
             ->add('addressOverride', CheckboxType::class, [
                 'label' => 'Adresa je správná, pokračovat',
                 'required' => false,
-            ])
-            ->add('storageId', ChoiceType::class, [
-                'label' => 'Skladová jednotka',
-                'choices' => $this->storageChoiceBuilder->buildAvailableGroupedChoices(),
-                'placeholder' => '-- Vyberte skladovou jednotku --',
-                'attr' => ['data-controller' => 'tom-select'],
             ])
             ->add('rentalType', EnumType::class, [
                 'class' => RentalType::class,
@@ -183,13 +172,24 @@ final class AdminCreateOnboardingFormType extends AbstractType
                 'required' => false,
                 'widget' => 'single_text',
                 'help' => 'Po vypršení předplatného bude zákazníkovi 7 dní předem zaslán e-mail s žádostí o nastavení automatické platby.',
+            ])
+            ->add('contractDocument', FileType::class, [
+                'label' => 'Existující smlouva (volitelné)',
+                'required' => false,
+                'help' => 'Nahrajte podepsanou smlouvu (PDF, JPEG, PNG, max 10 MB). Zákazník pak podepisuje pouze VOP.',
+            ])
+            ->add('variableSymbol', TextType::class, [
+                'label' => 'Variabilní symbol',
+                'required' => false,
+                'attr' => ['placeholder' => 'Ponechte prázdné pro automatické vygenerování'],
+                'help' => 'Pouze pro bankovní převod. Číselný, max 10 číslic.',
             ]);
     }
 
     public function configureOptions(OptionsResolver $resolver): void
     {
         $resolver->setDefaults([
-            'data_class' => AdminCreateOnboardingFormData::class,
+            'data_class' => AdminOnboardingFormData::class,
         ]);
     }
 }

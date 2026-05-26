@@ -157,6 +157,9 @@ class Order implements EntityWithEvents
     #[ORM\Column(length: 10, nullable: true, enumType: ExpectedDuration::class)]
     public private(set) ?ExpectedDuration $expectedDuration = null;
 
+    #[ORM\Column(length: 500, nullable: true)]
+    public private(set) ?string $uploadedContractDocumentPath = null;
+
     public function __construct(
         #[ORM\Id]
         #[ORM\Column(type: UuidType::NAME, unique: true)]
@@ -450,6 +453,16 @@ class Order implements EntityWithEvents
     public function setExpectedDuration(?ExpectedDuration $duration): void
     {
         $this->expectedDuration = $duration;
+    }
+
+    public function setUploadedContractDocumentPath(string $path): void
+    {
+        $this->uploadedContractDocumentPath = $path;
+    }
+
+    public function hasUploadedContract(): bool
+    {
+        return null !== $this->uploadedContractDocumentPath;
     }
 
     /**

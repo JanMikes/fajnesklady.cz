@@ -195,6 +195,10 @@ final readonly class OrderService
             $contract->markExternallyPrepaid($order->paidThroughDate);
         }
 
+        if (null !== $order->uploadedContractDocumentPath) {
+            $contract->attachDocument($order->uploadedContractDocumentPath, $now);
+        }
+
         // Complete the order with contract reference
         $order->complete($contract->id, $now);
 

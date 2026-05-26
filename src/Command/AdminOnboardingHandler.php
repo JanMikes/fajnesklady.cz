@@ -4,35 +4,38 @@ declare(strict_types=1);
 
 namespace App\Command;
 
-use App\Entity\Contract;
+use App\Entity\Order;
 use App\Entity\User;
 use App\Enum\PaymentMethod;
+use App\Event\AdminOnboardingInitiated;
 use App\Repository\UserRepository;
 use App\Service\Identity\ProvideIdentity;
 use App\Service\OrderService;
+use App\Service\Payment\VariableSymbolGenerator;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]
-final readonly class AdminMigrateCustomerHandler
+final readonly class AdminOnboardingHandler
 {
+    private const int ONBOARDING_EXPIRATION_DAYS = 30;
+
     public function __construct(
         private UserRepository $userRepository,
         private OrderService $orderService,
         private ClockInterface $clock,
         private ProvideIdentity $identityProvider,
+        private VariableSymbolGenerator $variableSymbolGenerator,
         private string $contractsDirectory,
     ) {
     }
 
-    public function __invoke(AdminMigrateCustomerCommand $command): Contract
+    public function __invoke(AdminOnboardingCommand $command): Order
     {
         $now = $this->clock->now();
 
-        // 1. Get or create user
         $user = $this->getOrCreateUser($command, $now);
 
-        // 2. Update billing info
         $user->updateBillingInfo(
             companyName: $command->companyName,
             companyId: $command->companyId,
@@ -47,8 +50,6 @@ final readonly class AdminMigrateCustomerHandler
             $user->updateBirthDate($command->birthDate, $now);
         }
 
-        // 3. Create order — locked-in monthly is individualMonthlyAmount (when set)
-        // or the storage default; the lump sum is recorded separately as a Payment.
         $order = $this->orderService->createOrder(
             user: $user,
             storageType: $command->storageType,
@@ -63,44 +64,62 @@ final readonly class AdminMigrateCustomerHandler
             expectedDuration: $command->expectedDuration,
         );
 
-        // 4. Mark as admin-created with external payment
-        $order->markAsAdminCreated();
-        $order->setPaymentMethod(PaymentMethod::EXTERNAL);
         $order->setBillingMode($command->billingMode);
+        $order->markAsAdminCreated();
 
-        // Default paidThroughDate to endDate for LIMITED rentals when omitted
-        $paidThroughDate = $command->paidThroughDate ?? $command->endDate;
-        $createdByAdmin = null !== $command->createdByAdminId
-            ? $this->userRepository->get($command->createdByAdminId)
-            : null;
+        $forceExternal = 0 === $command->individualMonthlyAmount || null !== $command->paidThroughDate;
+        $effectivePaymentMethod = $forceExternal ? PaymentMethod::EXTERNAL : $command->paymentMethod;
+        $order->setPaymentMethod($effectivePaymentMethod);
+
+        if (PaymentMethod::BANK_TRANSFER === $effectivePaymentMethod) {
+            $vs = null !== $command->variableSymbolOverride && '' !== $command->variableSymbolOverride
+                ? $command->variableSymbolOverride
+                : $this->variableSymbolGenerator->generate($order->id);
+            $order->assignVariableSymbol($vs);
+        }
+
+        $createdByAdmin = $this->userRepository->get($command->createdByAdminId);
         $order->setOnboardingBillingTerms(
             individualMonthlyAmount: $command->individualMonthlyAmount,
-            paidThroughDate: $paidThroughDate,
+            paidThroughDate: $command->paidThroughDate,
             createdByAdmin: $createdByAdmin,
         );
 
-        // 5. Accept terms + reserve storage
-        $order->acceptTerms($now);
-        $order->reserve($now);
+        if (null !== $command->uploadedContractPath) {
+            $contractPath = $this->moveContractDocument($command->uploadedContractPath, $order);
+            $order->setUploadedContractDocumentPath($contractPath);
+        }
 
-        // 6. Confirm payment with the lump-sum override → records Payment for the
-        // amount actually paid externally, while Order.firstPaymentPrice keeps
-        // the locked-in monthly the cron will replay later.
-        $this->orderService->confirmPayment($order, $command->paidAt, $command->totalPrice);
+        $order->setSigningToken(bin2hex(random_bytes(32)));
+        $order->extendExpiration($now->modify('+'.self::ONBOARDING_EXPIRATION_DAYS.' days'));
 
-        // 7. Complete order → create Contract, storage → OCCUPIED. The contract
-        // inherits individualMonthlyAmount + paidThroughDate via OrderService.
-        $contract = $this->orderService->completeOrder($order, $now);
+        $order->recordThat(new AdminOnboardingInitiated(
+            orderId: $order->id,
+            userId: $user->id,
+            customerEmail: $user->email,
+            signingToken: $order->signingToken,
+            occurredOn: $now,
+        ));
 
-        // 8. Move uploaded contract document and attach to contract
-        $contractPath = $this->moveContractDocument($command->contractDocumentPath, $contract);
-        $contract->attachDocument($contractPath, $now);
-        $contract->sign($now);
-
-        return $contract;
+        return $order;
     }
 
-    private function getOrCreateUser(AdminMigrateCustomerCommand $command, \DateTimeImmutable $now): User
+    private function moveContractDocument(string $sourcePath, Order $order): string
+    {
+        if (!is_dir($this->contractsDirectory)) {
+            mkdir($this->contractsDirectory, 0755, true);
+        }
+
+        $extension = pathinfo($sourcePath, PATHINFO_EXTENSION) ?: 'pdf';
+        $filename = sprintf('contract_%s.%s', $order->id->toRfc4122(), $extension);
+        $targetPath = $this->contractsDirectory.'/'.$filename;
+
+        rename($sourcePath, $targetPath);
+
+        return $targetPath;
+    }
+
+    private function getOrCreateUser(AdminOnboardingCommand $command, \DateTimeImmutable $now): User
     {
         $existingUser = $this->userRepository->findByEmail($command->email);
 
@@ -124,20 +143,5 @@ final readonly class AdminMigrateCustomerHandler
         $this->userRepository->save($user);
 
         return $user;
-    }
-
-    private function moveContractDocument(string $sourcePath, Contract $contract): string
-    {
-        if (!is_dir($this->contractsDirectory)) {
-            mkdir($this->contractsDirectory, 0755, true);
-        }
-
-        $extension = pathinfo($sourcePath, PATHINFO_EXTENSION) ?: 'pdf';
-        $filename = sprintf('contract_%s.%s', $contract->id->toRfc4122(), $extension);
-        $targetPath = $this->contractsDirectory.'/'.$filename;
-
-        rename($sourcePath, $targetPath);
-
-        return $targetPath;
     }
 }
