@@ -38,6 +38,8 @@ class StorageTypeTest extends TestCase
             innerLength: 250,
             defaultPricePerWeek: 15000,
             defaultPricePerMonth: 50000,
+            defaultPricePerMonthLongTerm: 50000,
+            defaultPricePerYear: 50000 * 12,
             createdAt: $now,
         );
 
@@ -64,6 +66,8 @@ class StorageTypeTest extends TestCase
             innerLength: 100,
             defaultPricePerWeek: 15000,
             defaultPricePerMonth: 50000,
+            defaultPricePerMonthLongTerm: 50000,
+            defaultPricePerYear: 50000 * 12,
             createdAt: new \DateTimeImmutable(),
         );
 
@@ -81,6 +85,8 @@ class StorageTypeTest extends TestCase
             innerLength: 100,
             defaultPricePerWeek: 15000,
             defaultPricePerMonth: 50000,
+            defaultPricePerMonthLongTerm: 50000,
+            defaultPricePerYear: 50000 * 12,
             createdAt: new \DateTimeImmutable(),
         );
 
@@ -99,6 +105,8 @@ class StorageTypeTest extends TestCase
             innerLength: 400,
             defaultPricePerWeek: 15000,
             defaultPricePerMonth: 50000,
+            defaultPricePerMonthLongTerm: 50000,
+            defaultPricePerYear: 50000 * 12,
             createdAt: new \DateTimeImmutable(),
         );
 
@@ -117,6 +125,8 @@ class StorageTypeTest extends TestCase
             innerLength: 400,
             defaultPricePerWeek: 15000,
             defaultPricePerMonth: 50000,
+            defaultPricePerMonthLongTerm: 50000,
+            defaultPricePerYear: 50000 * 12,
             createdAt: new \DateTimeImmutable(),
         );
 
@@ -134,6 +144,8 @@ class StorageTypeTest extends TestCase
             innerLength: 400,
             defaultPricePerWeek: 15000,
             defaultPricePerMonth: 50000,
+            defaultPricePerMonthLongTerm: 50000,
+            defaultPricePerYear: 50000 * 12,
             createdAt: new \DateTimeImmutable(),
         );
 
@@ -154,6 +166,8 @@ class StorageTypeTest extends TestCase
             innerLength: 400,
             defaultPricePerWeek: 15000,
             defaultPricePerMonth: 50000,
+            defaultPricePerMonthLongTerm: 50000,
+            defaultPricePerYear: 50000 * 12,
             createdAt: new \DateTimeImmutable(),
         );
 
@@ -170,6 +184,8 @@ class StorageTypeTest extends TestCase
             innerLength: 400,
             defaultPricePerWeek: 15000,
             defaultPricePerMonth: 50000,
+            defaultPricePerMonthLongTerm: 50000,
+            defaultPricePerYear: 50000 * 12,
             createdAt: new \DateTimeImmutable(),
             outerWidth: 220,
             outerHeight: 320,
@@ -194,6 +210,8 @@ class StorageTypeTest extends TestCase
             innerLength: 100,
             defaultPricePerWeek: 10000,
             defaultPricePerMonth: 30000,
+            defaultPricePerMonthLongTerm: 30000,
+            defaultPricePerYear: 30000 * 12,
             createdAt: $createdAt,
         );
 
@@ -207,7 +225,8 @@ class StorageTypeTest extends TestCase
             outerLength: 220,
             defaultPricePerWeek: 20000,
             defaultPricePerMonth: 60000,
-            defaultPricePerYear: null,
+            defaultPricePerMonthLongTerm: 60000,
+            defaultPricePerYear: 60000 * 12,
             description: 'Test description',
             uniformStorages: true,
             now: $updatedAt,
@@ -242,6 +261,8 @@ class StorageTypeTest extends TestCase
             innerLength: 100,
             defaultPricePerWeek: 10000,
             defaultPricePerMonth: 30000,
+            defaultPricePerMonthLongTerm: 30000,
+            defaultPricePerYear: 30000 * 12,
             createdAt: $createdAt,
         );
 
@@ -255,7 +276,8 @@ class StorageTypeTest extends TestCase
             outerLength: null,
             defaultPricePerWeek: 10000,
             defaultPricePerMonth: 30000,
-            defaultPricePerYear: null,
+            defaultPricePerMonthLongTerm: 30000,
+            defaultPricePerYear: 30000 * 12,
             description: null,
             uniformStorages: true,
             now: $updatedAt,
@@ -277,6 +299,8 @@ class StorageTypeTest extends TestCase
             innerLength: 100,
             defaultPricePerWeek: 10000,
             defaultPricePerMonth: 30000,
+            defaultPricePerMonthLongTerm: 30000,
+            defaultPricePerYear: 30000 * 12,
             createdAt: $createdAt,
         );
 
@@ -300,6 +324,8 @@ class StorageTypeTest extends TestCase
             innerLength: 100,
             defaultPricePerWeek: 10000,
             defaultPricePerMonth: 30000,
+            defaultPricePerMonthLongTerm: 30000,
+            defaultPricePerYear: 30000 * 12,
             createdAt: new \DateTimeImmutable(),
         );
 
@@ -317,6 +343,8 @@ class StorageTypeTest extends TestCase
             innerLength: 100,
             defaultPricePerWeek: 10000,
             defaultPricePerMonth: 30000,
+            defaultPricePerMonthLongTerm: 30000,
+            defaultPricePerYear: 30000 * 12,
             createdAt: new \DateTimeImmutable(),
             uniformStorages: false,
         );
@@ -338,6 +366,8 @@ class StorageTypeTest extends TestCase
             innerLength: 100,
             defaultPricePerWeek: 10000,
             defaultPricePerMonth: 30000,
+            defaultPricePerMonthLongTerm: 30000,
+            defaultPricePerYear: 30000 * 12,
             createdAt: $createdAt,
             uniformStorages: true,
         );
@@ -354,7 +384,8 @@ class StorageTypeTest extends TestCase
             outerLength: null,
             defaultPricePerWeek: 10000,
             defaultPricePerMonth: 30000,
-            defaultPricePerYear: null,
+            defaultPricePerMonthLongTerm: 30000,
+            defaultPricePerYear: 30000 * 12,
             description: null,
             uniformStorages: false,
             now: $updatedAt,
@@ -375,6 +406,8 @@ class StorageTypeTest extends TestCase
             innerLength: 100,
             defaultPricePerWeek: 10000,
             defaultPricePerMonth: 30000,
+            defaultPricePerMonthLongTerm: 30000,
+            defaultPricePerYear: 30000 * 12,
             createdAt: new \DateTimeImmutable(),
         );
 
@@ -393,6 +426,8 @@ class StorageTypeTest extends TestCase
             innerLength: 100,
             defaultPricePerWeek: 10000,
             defaultPricePerMonth: 30000,
+            defaultPricePerMonthLongTerm: 30000,
+            defaultPricePerYear: 30000 * 12,
             createdAt: new \DateTimeImmutable('2024-01-01 10:00:00'),
         );
         $now = new \DateTimeImmutable('2025-06-15 12:00:00');

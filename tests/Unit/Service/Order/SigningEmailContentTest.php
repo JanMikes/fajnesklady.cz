@@ -77,6 +77,8 @@ class SigningEmailContentTest extends TestCase
             innerLength: 100,
             defaultPricePerWeek: 10000,
             defaultPricePerMonth: 150_000,
+            defaultPricePerMonthLongTerm: 150_000,
+            defaultPricePerYear: 150_000 * 12,
             createdAt: new \DateTimeImmutable(),
         );
 

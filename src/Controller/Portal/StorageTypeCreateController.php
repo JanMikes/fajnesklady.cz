@@ -40,12 +40,10 @@ final class StorageTypeCreateController extends AbstractController
             /** @var StorageTypeFormData $formData */
             $formData = $form->getData();
 
-            // Convert CZK to halire (cents)
             $defaultPricePerWeek = (int) round(($formData->defaultPricePerWeek ?? 0.0) * 100);
             $defaultPricePerMonth = (int) round(($formData->defaultPricePerMonth ?? 0.0) * 100);
-            $defaultPricePerYear = null !== $formData->defaultPricePerYear
-                ? (int) round($formData->defaultPricePerYear * 100)
-                : null;
+            $defaultPricePerMonthLongTerm = (int) round(($formData->defaultPricePerMonthLongTerm ?? 0.0) * 100);
+            $defaultPricePerYear = (int) round(($formData->defaultPricePerYear ?? 0.0) * 100);
 
             $command = new CreateStorageTypeCommand(
                 placeId: $place->id,
@@ -58,6 +56,7 @@ final class StorageTypeCreateController extends AbstractController
                 outerLength: $formData->outerLength,
                 defaultPricePerWeek: $defaultPricePerWeek,
                 defaultPricePerMonth: $defaultPricePerMonth,
+                defaultPricePerMonthLongTerm: $defaultPricePerMonthLongTerm,
                 defaultPricePerYear: $defaultPricePerYear,
                 description: $formData->description,
                 uniformStorages: $formData->uniformStorages,

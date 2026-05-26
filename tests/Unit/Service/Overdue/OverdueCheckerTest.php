@@ -200,7 +200,7 @@ class OverdueCheckerTest extends TestCase
     {
         $createdAt = new \DateTimeImmutable('2025-01-01');
         $user = new User(Uuid::v7(), 'overdue-place-test-'.bin2hex(random_bytes(2)).'@example.com', 'password', 'Test', 'User', $createdAt);
-        $storageType = new StorageType(Uuid::v7(), $place, 'Box', 100, 100, 100, 10000, self::MONTHLY_RATE, $createdAt);
+        $storageType = new StorageType(Uuid::v7(), $place, 'Box', 100, 100, 100, 10000, self::MONTHLY_RATE, self::MONTHLY_RATE, self::MONTHLY_RATE * 12, $createdAt);
         $storage = new Storage(
             Uuid::v7(),
             '1',
@@ -253,7 +253,7 @@ class OverdueCheckerTest extends TestCase
         $createdAt = new \DateTimeImmutable('2025-01-01');
         $user = new User(Uuid::v7(), 'overdue-test@example.com', 'password', 'Test', 'User', $createdAt);
         $place = new Place(Uuid::v7(), 'Place', 'Address', 'City', '00000', null, $createdAt);
-        $storageType = new StorageType(Uuid::v7(), $place, 'Box', 100, 100, 100, 10000, self::MONTHLY_RATE, $createdAt);
+        $storageType = new StorageType(Uuid::v7(), $place, 'Box', 100, 100, 100, 10000, self::MONTHLY_RATE, self::MONTHLY_RATE, self::MONTHLY_RATE * 12, $createdAt);
         $storage = new Storage(
             Uuid::v7(),
             '1',

@@ -59,7 +59,7 @@
                             {% for type in this.storageTypes %}
                                 <option value="{{ type.id }}" {{ this.storageTypeId == type.id|string ? 'selected' }}>
                                     {{ type.name }} ({{ type.dimensionsInMeters }})
-                                    — {{ type.defaultPricePerMonth is not null ? (type.defaultPricePerMonth / 100)|number_format(0, ',', ' ') ~ ' Kč/měs' : 'cena nenastavena' }}
+                                    — {{ (type.defaultPricePerMonthLongTerm / 100)|number_format(0, ',', ' ') }} Kč/měs
                                 </option>
                             {% endfor %}
                         </select>
@@ -128,12 +128,20 @@
                             <dd class="font-semibold text-green-900">{{ selectedStorage.storageType.dimensionsInMeters }}</dd>
                         </div>
                         <div>
-                            <dt class="text-green-700">Cena / měsíc</dt>
+                            <dt class="text-green-700">Týdenní sazba</dt>
+                            <dd class="font-semibold text-green-900">{{ selectedStorage.effectivePricePerWeekInCzk|number_format(0, ',', ' ') }} Kč</dd>
+                        </div>
+                        <div>
+                            <dt class="text-green-700">Krátkodobá měs. (1–6)</dt>
                             <dd class="font-semibold text-green-900">{{ selectedStorage.effectivePricePerMonthInCzk|number_format(0, ',', ' ') }} Kč</dd>
                         </div>
                         <div>
-                            <dt class="text-green-700">Cena / týden</dt>
-                            <dd class="font-semibold text-green-900">{{ selectedStorage.effectivePricePerWeekInCzk|number_format(0, ',', ' ') }} Kč</dd>
+                            <dt class="text-green-700">Dlouhodobá měs. (6+)</dt>
+                            <dd class="font-semibold text-green-900">{{ selectedStorage.effectivePricePerMonthLongTermInCzk|number_format(0, ',', ' ') }} Kč</dd>
+                        </div>
+                        <div>
+                            <dt class="text-green-700">Roční sazba</dt>
+                            <dd class="font-semibold text-green-900">{{ selectedStorage.effectivePricePerYearInCzk|number_format(0, ',', ' ') }} Kč</dd>
                         </div>
                     </dl>
                 </div>

@@ -30,10 +30,9 @@ class Storage
     #[ORM\Column(nullable: true)]
     public private(set) ?int $pricePerMonth = null;
 
-    /**
-     * Optional yearly price override in halere (spec 045). Falls through to
-     * {@see StorageType::$defaultPricePerYear} and ultimately to monthly × 12.
-     */
+    #[ORM\Column(nullable: true)]
+    public private(set) ?int $pricePerMonthLongTerm = null;
+
     #[ORM\Column(nullable: true)]
     public private(set) ?int $pricePerYear = null;
 
@@ -149,10 +148,11 @@ class Storage
         $this->updatedAt = $now;
     }
 
-    public function updatePrices(?int $pricePerWeek, ?int $pricePerMonth, ?int $pricePerYear, \DateTimeImmutable $now): void
+    public function updatePrices(?int $pricePerWeek, ?int $pricePerMonth, ?int $pricePerMonthLongTerm, ?int $pricePerYear, \DateTimeImmutable $now): void
     {
         $this->pricePerWeek = $pricePerWeek;
         $this->pricePerMonth = $pricePerMonth;
+        $this->pricePerMonthLongTerm = $pricePerMonthLongTerm;
         $this->pricePerYear = $pricePerYear;
         $this->updatedAt = $now;
     }
@@ -189,6 +189,16 @@ class Storage
         return $this->getEffectivePricePerMonth() / 100;
     }
 
+    public function getEffectivePricePerMonthLongTerm(): int
+    {
+        return $this->pricePerMonthLongTerm ?? $this->storageType->defaultPricePerMonthLongTerm;
+    }
+
+    public function getEffectivePricePerMonthLongTermInCzk(): float
+    {
+        return $this->getEffectivePricePerMonthLongTerm() / 100;
+    }
+
     /**
      * Effective yearly rate. Storage override wins, then StorageType default,
      * then monthly × 12 as a "no-discount" fallback. Always returns an int —
@@ -196,9 +206,7 @@ class Storage
      */
     public function getEffectivePricePerYear(): int
     {
-        return $this->pricePerYear
-            ?? $this->storageType->defaultPricePerYear
-            ?? $this->storageType->defaultPricePerMonth * 12;
+        return $this->pricePerYear ?? $this->storageType->defaultPricePerYear;
     }
 
     public function getEffectivePricePerYearInCzk(): float
@@ -206,20 +214,14 @@ class Storage
         return $this->getEffectivePricePerYear() / 100;
     }
 
-    /**
-     * Whether this storage type carries an explicit yearly rate (own or
-     * inherited from its type). False when only the monthly × 12 fallback
-     * would apply — used to gate admin-side yearly UI where "yearly = monthly
-     * × 12, no discount" is meaningless.
-     */
     public function hasExplicitYearlyRate(): bool
     {
-        return null !== $this->pricePerYear || null !== $this->storageType->defaultPricePerYear;
+        return true;
     }
 
     public function hasCustomPrices(): bool
     {
-        return null !== $this->pricePerWeek || null !== $this->pricePerMonth || null !== $this->pricePerYear;
+        return null !== $this->pricePerWeek || null !== $this->pricePerMonth || null !== $this->pricePerMonthLongTerm || null !== $this->pricePerYear;
     }
 
     /**

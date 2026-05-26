@@ -54,7 +54,7 @@ final class HomeController extends AbstractController
                 $placeTotal += $totalOfType;
                 $placeAvailable += $availableOfType;
 
-                $priceCzk = $type->getDefaultPricePerMonthInCzk();
+                $priceCzk = $type->getDefaultPricePerMonthLongTermInCzk();
                 $areaM2 = $type->getFloorAreaInSquareMeters();
                 $lowestPrice = null === $lowestPrice ? $priceCzk : min($lowestPrice, $priceCzk);
                 $lowestAreaM2 = null === $lowestAreaM2 ? $areaM2 : min($lowestAreaM2, $areaM2);

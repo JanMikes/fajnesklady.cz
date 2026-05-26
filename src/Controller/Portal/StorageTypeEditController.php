@@ -48,12 +48,10 @@ final class StorageTypeEditController extends AbstractController
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            // Convert CZK to halire (cents)
             $defaultPricePerWeek = (int) round(($formData->defaultPricePerWeek ?? 0.0) * 100);
             $defaultPricePerMonth = (int) round(($formData->defaultPricePerMonth ?? 0.0) * 100);
-            $defaultPricePerYear = null !== $formData->defaultPricePerYear
-                ? (int) round($formData->defaultPricePerYear * 100)
-                : null;
+            $defaultPricePerMonthLongTerm = (int) round(($formData->defaultPricePerMonthLongTerm ?? 0.0) * 100);
+            $defaultPricePerYear = (int) round(($formData->defaultPricePerYear ?? 0.0) * 100);
 
             $command = new UpdateStorageTypeCommand(
                 storageTypeId: $storageType->id,
@@ -66,6 +64,7 @@ final class StorageTypeEditController extends AbstractController
                 outerLength: $formData->outerLength,
                 defaultPricePerWeek: $defaultPricePerWeek,
                 defaultPricePerMonth: $defaultPricePerMonth,
+                defaultPricePerMonthLongTerm: $defaultPricePerMonthLongTerm,
                 defaultPricePerYear: $defaultPricePerYear,
                 description: $formData->description,
                 uniformStorages: $formData->uniformStorages,

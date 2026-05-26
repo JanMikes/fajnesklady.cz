@@ -43,6 +43,8 @@ class StorageTest extends TestCase
             innerLength: 100,
             defaultPricePerWeek: 10000,
             defaultPricePerMonth: 35000,
+            defaultPricePerMonthLongTerm: 35000,
+            defaultPricePerYear: 35000 * 12,
             createdAt: new \DateTimeImmutable(),
         );
     }
@@ -271,7 +273,7 @@ class StorageTest extends TestCase
         $storageType = $this->createStorageType(); // 10000 halíře per week
         $storage = $this->createStorage($storageType, $place);
 
-        $storage->updatePrices(15000, 50000, null, new \DateTimeImmutable());
+        $storage->updatePrices(15000, 50000, null, null, new \DateTimeImmutable());
 
         $this->assertSame(15000, $storage->getEffectivePricePerWeek());
     }
@@ -291,7 +293,7 @@ class StorageTest extends TestCase
         $storageType = $this->createStorageType(); // 35000 halíře per month
         $storage = $this->createStorage($storageType, $place);
 
-        $storage->updatePrices(15000, 50000, null, new \DateTimeImmutable());
+        $storage->updatePrices(15000, 50000, null, null, new \DateTimeImmutable());
 
         $this->assertSame(50000, $storage->getEffectivePricePerMonth());
     }
@@ -306,7 +308,7 @@ class StorageTest extends TestCase
         $this->assertNull($storage->pricePerWeek);
         $this->assertNull($storage->pricePerMonth);
 
-        $storage->updatePrices(12000, 40000, null, $now);
+        $storage->updatePrices(12000, 40000, null, null, $now);
 
         $this->assertSame(12000, $storage->pricePerWeek);
         $this->assertSame(40000, $storage->pricePerMonth);
@@ -320,11 +322,11 @@ class StorageTest extends TestCase
         $storage = $this->createStorage($storageType, $place);
         $now = new \DateTimeImmutable();
 
-        $storage->updatePrices(12000, 40000, null, $now);
+        $storage->updatePrices(12000, 40000, null, null, $now);
         $this->assertSame(12000, $storage->pricePerWeek);
         $this->assertSame(40000, $storage->pricePerMonth);
 
-        $storage->updatePrices(null, null, null, $now);
+        $storage->updatePrices(null, null, null, null, $now);
 
         $this->assertNull($storage->pricePerWeek);
         $this->assertNull($storage->pricePerMonth);
@@ -345,7 +347,7 @@ class StorageTest extends TestCase
         $storageType = $this->createStorageType();
         $storage = $this->createStorage($storageType, $place);
 
-        $storage->updatePrices(12000, 40000, null, new \DateTimeImmutable());
+        $storage->updatePrices(12000, 40000, null, null, new \DateTimeImmutable());
 
         $this->assertTrue($storage->hasCustomPrices());
     }
@@ -356,7 +358,7 @@ class StorageTest extends TestCase
         $storageType = $this->createStorageType();
         $storage = $this->createStorage($storageType, $place);
 
-        $storage->updatePrices(12000, null, null, new \DateTimeImmutable());
+        $storage->updatePrices(12000, null, null, null, new \DateTimeImmutable());
 
         $this->assertTrue($storage->hasCustomPrices());
     }

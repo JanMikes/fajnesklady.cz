@@ -3,6 +3,7 @@
 {% set place = this.place %}
 {% set weeklyPrice = selectedStorage.getEffectivePricePerWeekInCzk() %}
 {% set monthlyPrice = selectedStorage.getEffectivePricePerMonthInCzk() %}
+{% set longTermMonthlyPrice = selectedStorage.getEffectivePricePerMonthLongTermInCzk() %}
 {% set yearlyPrice = selectedStorage.getEffectivePricePerYearInCzk() %}
 {% set isAutoSelection = this.selectionMode == 'auto' %}
 {% import 'components/_address_override.html.twig' as addr %}
@@ -507,10 +508,11 @@
 
                     {% set applicableRate = this.applicableRate %}
                     {% set yearlyEligible = this.isEligibleForFrequencyChoice() %}
+                    {% set isUnlimited = form.vars.data.rentalType is not null and form.vars.data.rentalType.value == 'unlimited' %}
                     <div class="space-y-2">
                         <h3 class="font-semibold text-gray-900">Ceník</h3>
 
-                        {% if applicableRate is null or applicableRate == 'weekly' %}
+                        {% if not isUnlimited and (applicableRate is null or applicableRate == 'weekly') %}
                             <div class="flex justify-between text-sm">
                                 <span class="text-gray-600">
                                     Týdenní sazba
@@ -522,15 +524,27 @@
                             </div>
                         {% endif %}
 
-                        {% if applicableRate is null or applicableRate == 'monthly' %}
+                        {% if not isUnlimited and (applicableRate is null or applicableRate == 'monthly_short') %}
                             <div class="flex justify-between text-sm">
                                 <span class="text-gray-600">
-                                    Měsíční sazba
-                                    {% if applicableRate == 'monthly' %}
+                                    Krátkodobá měsíční sazba (1–6 měs.)
+                                    {% if applicableRate == 'monthly_short' %}
                                         <span class="ml-1 text-xs font-medium text-accent">(platí pro vás)</span>
                                     {% endif %}
                                 </span>
-                                <span class="font-semibold {{ applicableRate == 'monthly' ? 'text-accent' : 'text-gray-900' }}">{{ monthlyPrice|number_format(0, ',', ' ') }} Kč <span class="text-xs text-gray-500 font-normal">vč. DPH</span></span>
+                                <span class="font-semibold {{ applicableRate == 'monthly_short' ? 'text-accent' : 'text-gray-900' }}">{{ monthlyPrice|number_format(0, ',', ' ') }} Kč <span class="text-xs text-gray-500 font-normal">vč. DPH</span></span>
+                            </div>
+                        {% endif %}
+
+                        {% if applicableRate is null or applicableRate == 'monthly_long' %}
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-600">
+                                    Dlouhodobá měsíční sazba (6+ měs.)
+                                    {% if applicableRate == 'monthly_long' %}
+                                        <span class="ml-1 text-xs font-medium text-accent">(platí pro vás)</span>
+                                    {% endif %}
+                                </span>
+                                <span class="font-semibold {{ applicableRate == 'monthly_long' ? 'text-accent' : 'text-gray-900' }}">{{ longTermMonthlyPrice|number_format(0, ',', ' ') }} Kč <span class="text-xs text-gray-500 font-normal">vč. DPH</span></span>
                             </div>
                         {% endif %}
 
@@ -538,6 +552,7 @@
                             <div class="flex justify-between text-sm">
                                 <span class="text-gray-600">
                                     Roční sazba
+                                    <span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">Zvýhodněná cena</span>
                                     {% if applicableRate == 'yearly' %}
                                         <span class="ml-1 text-xs font-medium text-accent">(platí pro vás)</span>
                                     {% endif %}
@@ -551,9 +566,7 @@
 
                         {% if applicableRate is null %}
                             <p class="text-xs text-gray-500 mt-2 bg-gray-50 p-2 rounded">
-                                Pronájem kratší než 4 týdny se účtuje týdenní sazbou,
-                                delší pronájem měsíční sazbou (výhodnější).
-                                {% if yearlyEligible %}Pronájem na 12 měsíců a déle můžete platit ročně předem.{% endif %}
+                                Pronájem do 30 dnů se účtuje týdenní sazbou. 1–6 měsíců krátkodobou měsíční sazbou, 6 měsíců a déle dlouhodobou měsíční sazbou (výhodnější). Pronájem lze platit i ročně předem za zvýhodněnou cenu.
                             </p>
                         {% endif %}
                     </div>

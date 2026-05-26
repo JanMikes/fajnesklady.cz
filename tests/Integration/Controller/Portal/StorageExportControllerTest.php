@@ -62,7 +62,7 @@ class StorageExportControllerTest extends WebTestCase
         self::assertSame('Číslo', $rows[0][0]);
         // Export header should NOT carry "Vlastník" for landlord scope.
         $headerCount = count($rows[0]);
-        self::assertSame(8, $headerCount, 'Landlord export must omit the admin-only Vlastník column.');
+        self::assertSame(9, $headerCount, 'Landlord export must omit the admin-only Vlastník column.');
     }
 
     public function testLandlordExportingOtherLandlordsPlaceGetsEmptyRows(): void
@@ -94,7 +94,7 @@ class StorageExportControllerTest extends WebTestCase
         $body = $this->assertXlsxResponse($this->client);
         $rows = $this->readXlsxRows($body);
 
-        self::assertSame('Vlastník', $rows[0][8]);
+        self::assertSame('Vlastník', $rows[0][9]);
     }
 
     private function findPlaceByName(string $name): Place

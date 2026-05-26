@@ -146,20 +146,7 @@ final class OrderForm extends AbstractController
     }
 
     /**
-     * Which storage rate will actually be charged given the customer's current
-     * selections. Mirrors {@see PriceCalculator::buildPaymentSchedule()} cutover
-     * with the yearly extension (spec 045):
-     *
-     *   - YEARLY (eligible)                  → 'yearly'
-     *   - UNLIMITED                          → 'monthly'
-     *   - LIMITED, days < 28                 → 'weekly'
-     *   - LIMITED, days >= 28                → 'monthly'
-     *   - LIMITED, dates missing or invalid  → null (undecided — show both)
-     *
-     * The Ceník sidebar collapses to the single applicable row when this
-     * returns a string, and falls back to "both rates + explainer" on null.
-     *
-     * @return 'weekly'|'monthly'|'yearly'|null
+     * @return 'weekly'|'monthly_short'|'monthly_long'|'yearly'|null
      */
     public function getApplicableRate(): ?string
     {
@@ -173,7 +160,7 @@ final class OrderForm extends AbstractController
         }
 
         if (RentalType::UNLIMITED === $data->rentalType) {
-            return 'monthly';
+            return 'monthly_long';
         }
 
         if (null === $data->startDate || null === $data->endDate) {
@@ -185,7 +172,11 @@ final class OrderForm extends AbstractController
             return null;
         }
 
-        return $days < PriceCalculator::WEEKLY_THRESHOLD_DAYS ? 'weekly' : 'monthly';
+        if ($days < PriceCalculator::WEEKLY_THRESHOLD_DAYS) {
+            return 'weekly';
+        }
+
+        return $days < PriceCalculator::SHORT_TERM_THRESHOLD_DAYS ? 'monthly_short' : 'monthly_long';
     }
 
     /**

@@ -48,6 +48,8 @@ class StorageTypeVoterTest extends TestCase
             innerLength: 100,
             defaultPricePerWeek: 10000,
             defaultPricePerMonth: 30000,
+            defaultPricePerMonthLongTerm: 30000,
+            defaultPricePerYear: 30000 * 12,
             createdAt: new \DateTimeImmutable(),
         );
     }

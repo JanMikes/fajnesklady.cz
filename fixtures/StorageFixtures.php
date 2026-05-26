@@ -244,7 +244,7 @@ final class StorageFixtures extends Fixture implements DependentFixtureInterface
             createdAt: $now,
             owner: $landlord,
         );
-        $storageX1->updatePrices(35000, 120000, null, $now); // 350 CZK/week, 1200 CZK/month
+        $storageX1->updatePrices(35000, 120000, 102000, null, $now);
         $manager->persist($storageX1);
         $this->addReference(self::REF_CUSTOM_X1, $storageX1);
 
@@ -258,7 +258,7 @@ final class StorageFixtures extends Fixture implements DependentFixtureInterface
             createdAt: $now,
             owner: $landlord,
         );
-        $storageX2->updatePrices(50000, 180000, null, $now); // 500 CZK/week, 1800 CZK/month
+        $storageX2->updatePrices(50000, 180000, 153000, null, $now);
         $manager->persist($storageX2);
         $this->addReference(self::REF_CUSTOM_X2, $storageX2);
 

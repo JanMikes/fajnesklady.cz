@@ -31,6 +31,7 @@ final readonly class UpdateStorageTypeHandler
             outerLength: $command->outerLength,
             defaultPricePerWeek: $command->defaultPricePerWeek,
             defaultPricePerMonth: $command->defaultPricePerMonth,
+            defaultPricePerMonthLongTerm: $command->defaultPricePerMonthLongTerm,
             defaultPricePerYear: $command->defaultPricePerYear,
             description: $command->description,
             uniformStorages: $command->uniformStorages,

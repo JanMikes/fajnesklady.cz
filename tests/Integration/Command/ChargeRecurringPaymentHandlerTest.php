@@ -144,13 +144,13 @@ class ChargeRecurringPaymentHandlerTest extends KernelTestCase
     public function testChargeFallsBackToStorageRateWhenNoOverride(): void
     {
         $contract = $this->createContractWithRecurringPayment();
-        $storageMonthly = $contract->storage->getEffectivePricePerMonth();
+        $expectedAmount = $contract->getEffectiveMonthlyAmount();
 
         $this->commandBus->dispatch(new ChargeRecurringPaymentCommand($contract));
 
         $amounts = $this->goPayClient->getRecurrenceAmounts();
         $this->assertCount(1, $amounts);
-        $this->assertSame($storageMonthly, array_values($amounts)[0]);
+        $this->assertSame($expectedAmount, array_values($amounts)[0]);
     }
 
     public function testShortCircuitsWhenContractWasJustBilled(): void

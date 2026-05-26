@@ -205,6 +205,8 @@ class FakturoidApiClientTest extends TestCase
             innerLength: 150,
             defaultPricePerWeek: 10_000,
             defaultPricePerMonth: 60_000,
+            defaultPricePerMonthLongTerm: 60_000,
+            defaultPricePerYear: 60_000 * 12,
             createdAt: new \DateTimeImmutable('2025-06-15 12:00:00'),
         );
 

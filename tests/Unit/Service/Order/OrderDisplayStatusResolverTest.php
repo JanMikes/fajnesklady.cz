@@ -158,7 +158,7 @@ class OrderDisplayStatusResolverTest extends TestCase
     {
         $user = new User(Uuid::v7(), 'test@example.com', 'pw', 'Jan', 'Novák', new \DateTimeImmutable());
         $place = new Place(Uuid::v7(), 'Pobočka', 'Adresa 1', 'Praha', '110 00', null, new \DateTimeImmutable());
-        $storageType = new StorageType(Uuid::v7(), $place, 'Box', 100, 100, 100, 10000, 35000, new \DateTimeImmutable());
+        $storageType = new StorageType(Uuid::v7(), $place, 'Box', 100, 100, 100, 10000, 35000, 35000, 35000 * 12, new \DateTimeImmutable());
         $storage = new Storage(Uuid::v7(), 'A1', ['x' => 0, 'y' => 0, 'width' => 100, 'height' => 100, 'rotation' => 0, 'normalized' => true], $storageType, $place, new \DateTimeImmutable());
 
         return new Order(

@@ -105,7 +105,7 @@ class ContractServiceDebtTest extends TestCase
     {
         $user = new User(Uuid::v7(), 'test@example.com', 'password', 'Test', 'User', new \DateTimeImmutable());
         $place = new Place(Uuid::v7(), 'Place', 'Address', 'City', '00000', null, new \DateTimeImmutable());
-        $storageType = new StorageType(Uuid::v7(), $place, 'Box', 100, 100, 100, 10000, 35000, new \DateTimeImmutable());
+        $storageType = new StorageType(Uuid::v7(), $place, 'Box', 100, 100, 100, 10000, 35000, 35000, 35000 * 12, new \DateTimeImmutable());
         $storage = new Storage(Uuid::v7(), '1', ['x' => 0, 'y' => 0, 'width' => 100, 'height' => 100, 'rotation' => 0], $storageType, $place, new \DateTimeImmutable());
         $rentalType = null === $endDate ? RentalType::UNLIMITED : RentalType::LIMITED;
         $order = new Order(Uuid::v7(), $user, $storage, $rentalType, PaymentFrequency::MONTHLY, new \DateTimeImmutable(), $endDate, 35000, new \DateTimeImmutable('+7 days'), new \DateTimeImmutable());
@@ -117,7 +117,7 @@ class ContractServiceDebtTest extends TestCase
     {
         $user = new User(Uuid::v7(), 'test@example.com', 'password', 'Test', 'User', new \DateTimeImmutable());
         $place = new Place(Uuid::v7(), 'Place', 'Address', 'City', '00000', null, new \DateTimeImmutable());
-        $storageType = new StorageType(Uuid::v7(), $place, 'Box', 100, 100, 100, 10000, $monthlyPrice, new \DateTimeImmutable());
+        $storageType = new StorageType(Uuid::v7(), $place, 'Box', 100, 100, 100, 10000, $monthlyPrice, $monthlyPrice, $monthlyPrice * 12, new \DateTimeImmutable());
         $storage = new Storage(Uuid::v7(), '1', ['x' => 0, 'y' => 0, 'width' => 100, 'height' => 100, 'rotation' => 0], $storageType, $place, new \DateTimeImmutable());
         $order = new Order(Uuid::v7(), $user, $storage, RentalType::UNLIMITED, PaymentFrequency::MONTHLY, new \DateTimeImmutable(), null, $monthlyPrice, new \DateTimeImmutable('+7 days'), new \DateTimeImmutable());
 

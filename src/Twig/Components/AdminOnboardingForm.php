@@ -169,6 +169,7 @@ final class AdminOnboardingForm extends AbstractController
                 'orderUrl' => null,
                 'photoUrls' => [],
                 'pricePerMonth' => $storage->getEffectivePricePerMonthInCzk(),
+                'pricePerMonthLongTerm' => $storage->getEffectivePricePerMonthLongTermInCzk(),
                 'pricePerWeek' => $storage->getEffectivePricePerWeekInCzk(),
             ];
         }

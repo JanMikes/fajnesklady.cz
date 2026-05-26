@@ -24,7 +24,7 @@ class PriceCalculatorTest extends TestCase
         $this->calculator = new PriceCalculator();
     }
 
-    private function createStorageType(int $pricePerWeek, int $pricePerMonth, ?int $pricePerYear = null): StorageType
+    private function createStorageType(int $pricePerWeek, int $pricePerMonth, ?int $pricePerYear = null, ?int $pricePerMonthLongTerm = null): StorageType
     {
         return new StorageType(
             id: Uuid::v7(),
@@ -35,8 +35,9 @@ class PriceCalculatorTest extends TestCase
             innerLength: 100,
             defaultPricePerWeek: $pricePerWeek,
             defaultPricePerMonth: $pricePerMonth,
+            defaultPricePerMonthLongTerm: $pricePerMonthLongTerm ?? $pricePerMonth,
+            defaultPricePerYear: $pricePerYear ?? $pricePerMonth * 12,
             createdAt: new \DateTimeImmutable(),
-            defaultPricePerYear: $pricePerYear,
         );
     }
 
@@ -116,30 +117,40 @@ class PriceCalculatorTest extends TestCase
         $this->assertSame(27000, $price);
     }
 
-    public function testTwentyEightDaysUsesMonthlyRate(): void
+    public function testTwentyEightDaysUsesWeeklyRate(): void
     {
-        // 28 days = 1 × monthly rate (threshold)
-        $storageType = $this->createStorageType(10000, 30000); // 100 Kč/week, 300 Kč/month
+        $storageType = $this->createStorageType(10000, 30000);
         $startDate = new \DateTimeImmutable('2024-01-01');
         $endDate = new \DateTimeImmutable('2024-01-29'); // 28 days
 
         $price = $this->calculator->calculatePrice($storageType, $startDate, $endDate);
 
-        // 28 days / 30 = 0 full months + 28 remaining days
-        // 0 * 30000 + 28 * (30000/30) = 0 + 28000 = 28000
-        $this->assertSame(28000, $price);
+        // 28 days < 31 threshold → weekly: 4 weeks × 10000 = 40000
+        $this->assertSame(40000, $price);
     }
 
-    public function testThirtyDaysEqualsOneMonth(): void
+    public function testThirtyDaysUsesWeeklyRate(): void
     {
-        // 30 days = 1 × monthly rate
         $storageType = $this->createStorageType(10000, 30000);
         $startDate = new \DateTimeImmutable('2024-01-01');
         $endDate = new \DateTimeImmutable('2024-01-31'); // 30 days
 
         $price = $this->calculator->calculatePrice($storageType, $startDate, $endDate);
 
-        $this->assertSame(30000, $price);
+        // 30 days < 31 threshold → weekly: 4 weeks + 2 days = 40000 + ceil(2*10000/7/100)*100 = 42900
+        $this->assertSame(42900, $price);
+    }
+
+    public function testThirtyOneDaysUsesShortTermMonthlyRate(): void
+    {
+        $storageType = $this->createStorageType(10000, 30000);
+        $startDate = new \DateTimeImmutable('2024-01-01');
+        $endDate = new \DateTimeImmutable('2024-02-01'); // 31 days
+
+        $price = $this->calculator->calculatePrice($storageType, $startDate, $endDate);
+
+        // 31 days ≥ 31 threshold → short-term monthly: 1 month + 1 day = 30000 + ceil(1*30000/30/100)*100 = 31000
+        $this->assertSame(31000, $price);
     }
 
     public function testFortyFiveDaysEqualsOneMonthPlusFifteenDays(): void
@@ -228,7 +239,7 @@ class PriceCalculatorTest extends TestCase
         $breakdown = $this->calculator->getPriceBreakdown($storageType, $startDate, $endDate);
 
         $this->assertSame(45, $breakdown['days']);
-        $this->assertSame('monthly', $breakdown['rate_type']);
+        $this->assertSame('monthly_short', $breakdown['rate_type']);
         $this->assertSame(1, $breakdown['full_periods']);
         $this->assertSame(15, $breakdown['remaining_days']);
         $this->assertSame(30000, $breakdown['period_price']);
@@ -244,7 +255,7 @@ class PriceCalculatorTest extends TestCase
         $breakdown = $this->calculator->getPriceBreakdown($storageType, $startDate, null);
 
         $this->assertSame(0, $breakdown['days']);
-        $this->assertSame('monthly', $breakdown['rate_type']);
+        $this->assertSame('monthly_long', $breakdown['rate_type']);
         $this->assertSame(1, $breakdown['full_periods']);
         $this->assertSame(0, $breakdown['remaining_days']);
         $this->assertSame(35000, $breakdown['period_price']);
@@ -308,7 +319,7 @@ class PriceCalculatorTest extends TestCase
         $storage = $this->createStorage($storageType, $place);
 
         // Set custom prices (150 Kč/week, 500 Kč/month)
-        $storage->updatePrices(15000, 50000, null, new \DateTimeImmutable());
+        $storage->updatePrices(15000, 50000, null, null, new \DateTimeImmutable());
 
         $startDate = new \DateTimeImmutable('2024-01-01');
         $endDate = new \DateTimeImmutable('2024-01-08'); // 7 days
@@ -321,39 +332,35 @@ class PriceCalculatorTest extends TestCase
 
     public function testCalculatePriceForStorageWithCustomPricesMonthly(): void
     {
-        // Test monthly calculation with custom prices (>= 28 days)
-        $storageType = $this->createStorageType(10000, 30000); // defaults
+        $storageType = $this->createStorageType(10000, 30000);
         $place = $this->createPlace();
         $storage = $this->createStorage($storageType, $place);
 
-        // Set custom prices (200 Kč/week, 600 Kč/month)
-        $storage->updatePrices(20000, 60000, null, new \DateTimeImmutable());
+        $storage->updatePrices(20000, 60000, null, null, new \DateTimeImmutable());
 
         $startDate = new \DateTimeImmutable('2024-01-01');
-        $endDate = new \DateTimeImmutable('2024-01-31'); // 30 days
+        $endDate = new \DateTimeImmutable('2024-02-01'); // 31 days ≥ threshold
 
         $price = $this->calculator->calculatePriceForStorage($storage, $startDate, $endDate);
 
-        // Should use custom monthly price (60000), not default (30000)
-        $this->assertSame(60000, $price);
+        // 31 days → short-term monthly: 1 month + 1 day = 60000 + ceil(1*60000/30/100)*100 = 62000
+        $this->assertSame(62000, $price);
     }
 
     public function testCalculatePriceForStorageUnlimitedRental(): void
     {
-        // Unlimited rental should return monthly price
-        $storageType = $this->createStorageType(10000, 35000);
+        $storageType = $this->createStorageType(10000, 35000, null, 30000);
         $place = $this->createPlace();
         $storage = $this->createStorage($storageType, $place);
 
-        // Set custom prices
-        $storage->updatePrices(15000, 50000, null, new \DateTimeImmutable());
+        $storage->updatePrices(15000, 50000, 45000, null, new \DateTimeImmutable());
 
         $startDate = new \DateTimeImmutable('2024-01-01');
 
         $price = $this->calculator->calculatePriceForStorage($storage, $startDate, null);
 
-        // Should use custom monthly price for unlimited
-        $this->assertSame(50000, $price);
+        // Unlimited → long-term monthly = custom 45000
+        $this->assertSame(45000, $price);
     }
 
     public function testCalculatePriceForStorageZeroDays(): void
@@ -549,7 +556,7 @@ class PriceCalculatorTest extends TestCase
         );
 
         // Storage price hike *after* the order is placed.
-        $storage->updatePrices(70000, 700000, null, new \DateTimeImmutable('2025-07-01'));
+        $storage->updatePrices(70000, 700000, null, null, new \DateTimeImmutable('2025-07-01'));
 
         $schedule = $this->calculator->buildScheduleFromOrder($order);
 
@@ -636,14 +643,22 @@ class PriceCalculatorTest extends TestCase
 
         $this->assertSame(
             'weekly',
-            $this->calculator->resolveRateType(PaymentFrequency::MONTHLY, $start, $start->modify('+27 days')),
+            $this->calculator->resolveRateType(PaymentFrequency::MONTHLY, $start, $start->modify('+30 days')),
         );
         $this->assertSame(
-            'monthly',
-            $this->calculator->resolveRateType(PaymentFrequency::MONTHLY, $start, $start->modify('+28 days')),
+            'monthly_short',
+            $this->calculator->resolveRateType(PaymentFrequency::MONTHLY, $start, $start->modify('+31 days')),
         );
         $this->assertSame(
-            'monthly',
+            'monthly_short',
+            $this->calculator->resolveRateType(PaymentFrequency::MONTHLY, $start, $start->modify('+179 days')),
+        );
+        $this->assertSame(
+            'monthly_long',
+            $this->calculator->resolveRateType(PaymentFrequency::MONTHLY, $start, $start->modify('+180 days')),
+        );
+        $this->assertSame(
+            'monthly_long',
             $this->calculator->resolveRateType(PaymentFrequency::MONTHLY, $start, null),
         );
     }

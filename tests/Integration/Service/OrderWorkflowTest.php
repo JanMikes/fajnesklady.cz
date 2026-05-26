@@ -339,8 +339,8 @@ class OrderWorkflowTest extends KernelTestCase
 
         $this->assertTrue($order->isUnlimited());
         $this->assertNull($order->endDate);
-        // Maly box has pricePerMonth = 500 CZK = 50000 halere
-        $this->assertSame(50000, $order->firstPaymentPrice);
+        // Maly box has defaultPricePerMonthLongTerm = 430 CZK = 43000 halere
+        $this->assertSame(43000, $order->firstPaymentPrice);
     }
 
     public function testPreSelectedStorageWithOccupiedStatusButFreeWindowIsAccepted(): void
@@ -510,7 +510,8 @@ class OrderWorkflowTest extends KernelTestCase
             outerLength: $storageType->outerLength,
             defaultPricePerWeek: $storageType->defaultPricePerWeek,
             defaultPricePerMonth: $storageType->defaultPricePerMonth,
-            defaultPricePerYear: $storageType->defaultPricePerMonth * 10, // 10×, discounted
+            defaultPricePerMonthLongTerm: $storageType->defaultPricePerMonthLongTerm,
+            defaultPricePerYear: $storageType->defaultPricePerMonth * 10,
             description: $storageType->description,
             uniformStorages: $storageType->uniformStorages,
             now: $this->clock->now(),

@@ -12,6 +12,7 @@ use App\Enum\PaymentMethod;
 use App\Enum\RentalType;
 use App\Enum\SigningMethod;
 use App\Event\OrderCancelled;
+use App\Service\PriceCalculator;
 use App\Event\OrderCompleted;
 use App\Event\OrderCreated;
 use App\Event\OrderExpired;
@@ -348,7 +349,7 @@ class Order implements EntityWithEvents
             return true;
         }
 
-        return (int) $this->startDate->diff($this->endDate)->days >= 28;
+        return (int) $this->startDate->diff($this->endDate)->days >= PriceCalculator::WEEKLY_THRESHOLD_DAYS;
     }
 
     public function isFixedTermRecurring(): bool

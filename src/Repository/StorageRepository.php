@@ -96,6 +96,32 @@ class StorageRepository
     }
 
     /**
+     * @return array{min: int, max: int}|null halire (CZK × 100)
+     */
+    public function getEffectiveLongTermMonthlyPriceRangeForType(StorageType $storageType, Place $place): ?array
+    {
+        $rows = $this->entityManager->createQueryBuilder()
+            ->select('COALESCE(s.pricePerMonthLongTerm, st.defaultPricePerMonthLongTerm) AS effective_price')
+            ->from(Storage::class, 's')
+            ->join('s.storageType', 'st')
+            ->where('s.storageType = :storageType')
+            ->andWhere('s.place = :place')
+            ->andWhere('s.deletedAt IS NULL')
+            ->setParameter('storageType', $storageType)
+            ->setParameter('place', $place)
+            ->getQuery()
+            ->getArrayResult();
+
+        if ([] === $rows) {
+            return null;
+        }
+
+        $prices = array_map(static fn (array $r): int => (int) $r['effective_price'], $rows);
+
+        return ['min' => min($prices), 'max' => max($prices)];
+    }
+
+    /**
      * @return Storage[]
      */
     public function findByStorageTypeAndPlace(StorageType $storageType, Place $place): array

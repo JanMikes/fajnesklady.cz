@@ -114,7 +114,18 @@ class StorageFormType extends AbstractType
             ]);
 
             $builder->add('pricePerMonth', NumberType::class, [
-                'label' => 'Vlastní cena za měsíc (CZK)',
+                'label' => 'Vlastní krátkodobá měsíční cena (Kč)',
+                'required' => false,
+                'scale' => 2,
+                'attr' => [
+                    'placeholder' => 'Použije se výchozí cena typu',
+                    'step' => '0.01',
+                ],
+                'help' => 'Nechte prázdné pro použití výchozí ceny typu skladu',
+            ]);
+
+            $builder->add('pricePerMonthLongTerm', NumberType::class, [
+                'label' => 'Vlastní dlouhodobá měsíční cena (Kč)',
                 'required' => false,
                 'scale' => 2,
                 'attr' => [
@@ -125,7 +136,7 @@ class StorageFormType extends AbstractType
             ]);
 
             $builder->add('pricePerYear', NumberType::class, [
-                'label' => 'Vlastní cena za rok (CZK)',
+                'label' => 'Vlastní roční cena (Kč)',
                 'required' => false,
                 'scale' => 2,
                 'attr' => [

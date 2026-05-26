@@ -38,14 +38,8 @@ class StorageType
     #[ORM\Column(nullable: true)]
     public private(set) ?int $outerLength = null;
 
-    /**
-     * Optional yearly price in halere. Customers with eligible rental durations
-     * see a "Frekvence platby: Roční" radio when this is set (spec 045). NULL
-     * means the storage type has no special yearly tier — yearly cadence falls
-     * back to monthly × 12 (no discount).
-     */
-    #[ORM\Column(nullable: true)]
-    public private(set) ?int $defaultPricePerYear = null;
+    #[ORM\Column]
+    public private(set) int $defaultPricePerYear;
 
     /** @var Collection<int, StorageTypePhoto> */
     #[ORM\OneToMany(targetEntity: StorageTypePhoto::class, mappedBy: 'storageType', cascade: ['persist', 'remove'], orphanRemoval: true)]
@@ -72,12 +66,14 @@ class StorageType
         #[ORM\Column]
         private(set) int $defaultPricePerMonth,
         #[ORM\Column]
+        private(set) int $defaultPricePerMonthLongTerm,
+        int $defaultPricePerYear,
+        #[ORM\Column]
         private(set) \DateTimeImmutable $createdAt,
         bool $uniformStorages = true,
         ?int $outerWidth = null,
         ?int $outerHeight = null,
         ?int $outerLength = null,
-        ?int $defaultPricePerYear = null,
     ) {
         $this->updatedAt = $createdAt;
         $this->photos = new ArrayCollection();
@@ -98,9 +94,14 @@ class StorageType
         return $this->defaultPricePerMonth / 100;
     }
 
-    public function getDefaultPricePerYearInCzk(): ?float
+    public function getDefaultPricePerMonthLongTermInCzk(): float
     {
-        return null === $this->defaultPricePerYear ? null : $this->defaultPricePerYear / 100;
+        return $this->defaultPricePerMonthLongTerm / 100;
+    }
+
+    public function getDefaultPricePerYearInCzk(): float
+    {
+        return $this->defaultPricePerYear / 100;
     }
 
     public function getFloorAreaInSquareMeters(): float
@@ -172,7 +173,8 @@ class StorageType
         ?int $outerLength,
         int $defaultPricePerWeek,
         int $defaultPricePerMonth,
-        ?int $defaultPricePerYear,
+        int $defaultPricePerMonthLongTerm,
+        int $defaultPricePerYear,
         ?string $description,
         bool $uniformStorages,
         \DateTimeImmutable $now,
@@ -186,6 +188,7 @@ class StorageType
         $this->outerLength = $outerLength;
         $this->defaultPricePerWeek = $defaultPricePerWeek;
         $this->defaultPricePerMonth = $defaultPricePerMonth;
+        $this->defaultPricePerMonthLongTerm = $defaultPricePerMonthLongTerm;
         $this->defaultPricePerYear = $defaultPricePerYear;
         $this->description = $description;
         $this->uniformStorages = $uniformStorages;

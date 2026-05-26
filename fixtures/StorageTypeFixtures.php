@@ -69,6 +69,8 @@ final class StorageTypeFixtures extends Fixture implements DependentFixtureInter
             innerLength: 100,
             defaultPricePerWeek: 15000,
             defaultPricePerMonth: 50000,
+            defaultPricePerMonthLongTerm: 43000,
+            defaultPricePerYear: 430_000,
             createdAt: $now,
         );
         $manager->persist($smallCentrum);
@@ -83,6 +85,8 @@ final class StorageTypeFixtures extends Fixture implements DependentFixtureInter
             innerLength: 200,
             defaultPricePerWeek: 35000,
             defaultPricePerMonth: 120000,
+            defaultPricePerMonthLongTerm: 102000,
+            defaultPricePerYear: 1_020_000,
             createdAt: $now,
             outerWidth: 210,
             outerHeight: 210,
@@ -100,12 +104,12 @@ final class StorageTypeFixtures extends Fixture implements DependentFixtureInter
             innerLength: 400,
             defaultPricePerWeek: 80000,
             defaultPricePerMonth: 280000,
+            defaultPricePerMonthLongTerm: 238000,
+            defaultPricePerYear: 2_380_000,
             createdAt: $now,
             outerWidth: 320,
             outerHeight: 270,
             outerLength: 420,
-            // Yearly = 280 000 × 12 × 0.85 = 2 856 000 halere (15% discount; spec 045)
-            defaultPricePerYear: 2_856_000,
         );
         $manager->persist($largeCentrum);
         $this->addReference(self::REF_LARGE_CENTRUM, $largeCentrum);
@@ -120,6 +124,8 @@ final class StorageTypeFixtures extends Fixture implements DependentFixtureInter
             innerLength: 300,
             defaultPricePerWeek: 40000,
             defaultPricePerMonth: 140000,
+            defaultPricePerMonthLongTerm: 119000,
+            defaultPricePerYear: 1_190_000,
             createdAt: $now,
             uniformStorages: false,
             outerWidth: 260,
@@ -139,6 +145,8 @@ final class StorageTypeFixtures extends Fixture implements DependentFixtureInter
             innerLength: 100,
             defaultPricePerWeek: 12000,
             defaultPricePerMonth: 40000,
+            defaultPricePerMonthLongTerm: 34000,
+            defaultPricePerYear: 340_000,
             createdAt: $now,
         );
         $manager->persist($smallJih);
@@ -153,6 +161,8 @@ final class StorageTypeFixtures extends Fixture implements DependentFixtureInter
             innerLength: 200,
             defaultPricePerWeek: 30000,
             defaultPricePerMonth: 100000,
+            defaultPricePerMonthLongTerm: 85000,
+            defaultPricePerYear: 850_000,
             createdAt: $now,
             outerWidth: 210,
             outerHeight: 210,
@@ -171,12 +181,12 @@ final class StorageTypeFixtures extends Fixture implements DependentFixtureInter
             innerLength: 600,
             defaultPricePerWeek: 150000,
             defaultPricePerMonth: 500000,
+            defaultPricePerMonthLongTerm: 425000,
+            defaultPricePerYear: 4_250_000,
             createdAt: $now,
             outerWidth: 520,
             outerHeight: 320,
             outerLength: 620,
-            // Yearly = 500 000 × 12 × 0.85 = 5 100 000 halere (15% discount; spec 045)
-            defaultPricePerYear: 5_100_000,
         );
         $manager->persist($premiumBrno);
         $this->addReference(self::REF_PREMIUM_BRNO, $premiumBrno);
@@ -191,6 +201,8 @@ final class StorageTypeFixtures extends Fixture implements DependentFixtureInter
             innerLength: 150,
             defaultPricePerWeek: 20000,
             defaultPricePerMonth: 70000,
+            defaultPricePerMonthLongTerm: 60000,
+            defaultPricePerYear: 600_000,
             createdAt: $now,
         );
         $manager->persist($standardOstrava);

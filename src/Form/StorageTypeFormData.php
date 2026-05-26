@@ -46,17 +46,15 @@ final class StorageTypeFormData
     #[Assert\PositiveOrZero(message: 'Cena za týden musí být nula nebo kladná')]
     public ?float $defaultPricePerWeek = null;
 
-    /** Default price in CZK (will be converted to halire in controller) */
-    #[Assert\NotNull(message: 'Zadejte cenu za měsíc')]
-    #[Assert\PositiveOrZero(message: 'Cena za měsíc musí být nula nebo kladná')]
+    #[Assert\NotNull(message: 'Zadejte krátkodobou měsíční cenu')]
+    #[Assert\PositiveOrZero(message: 'Krátkodobá měsíční cena musí být nula nebo kladná')]
     public ?float $defaultPricePerMonth = null;
 
-    /**
-     * Optional yearly price in CZK (spec 045). When set, customers with
-     * eligible durations (UNLIMITED or LIMITED ≥ 360d) see a "Frekvence
-     * platby: Roční" radio. Leaving it blank means yearly cadence falls back
-     * to monthly × 12 (no discount).
-     */
+    #[Assert\NotNull(message: 'Zadejte dlouhodobou měsíční cenu')]
+    #[Assert\PositiveOrZero(message: 'Dlouhodobá měsíční cena musí být nula nebo kladná')]
+    public ?float $defaultPricePerMonthLongTerm = null;
+
+    #[Assert\NotNull(message: 'Zadejte roční cenu')]
     #[Assert\PositiveOrZero(message: 'Cena za rok musí být nula nebo kladná')]
     public ?float $defaultPricePerYear = null;
 
@@ -88,6 +86,7 @@ final class StorageTypeFormData
         $formData->outerLength = $storageType->outerLength;
         $formData->defaultPricePerWeek = $storageType->getDefaultPricePerWeekInCzk();
         $formData->defaultPricePerMonth = $storageType->getDefaultPricePerMonthInCzk();
+        $formData->defaultPricePerMonthLongTerm = $storageType->getDefaultPricePerMonthLongTermInCzk();
         $formData->defaultPricePerYear = $storageType->getDefaultPricePerYearInCzk();
         $formData->description = $storageType->description;
         $formData->uniformStorages = $storageType->uniformStorages;

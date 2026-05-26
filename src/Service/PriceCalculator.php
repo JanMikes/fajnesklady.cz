@@ -14,15 +14,8 @@ use App\Value\PaymentScheduleEntry;
 
 final readonly class PriceCalculator
 {
-    public const int WEEKLY_THRESHOLD_DAYS = 28;
-
-    /**
-     * Customer eligibility cutoff for the "Frekvence platby: Roční" radio on
-     * LIMITED rentals (spec 045). 360 days — chosen for clarity over the exact
-     * "≥ 12 calendar months" rule. A 360-day LIMITED rental either tail-prorates
-     * the final 5 days at the yearly daily rate, or runs 5 days short of a full
-     * year — either is acceptable. UNLIMITED rentals are always eligible.
-     */
+    public const int WEEKLY_THRESHOLD_DAYS = 31;
+    public const int SHORT_TERM_THRESHOLD_DAYS = 180;
     public const int YEARLY_THRESHOLD_DAYS = 360;
 
     private const int DAYS_PER_WEEK = 7;
@@ -52,11 +45,6 @@ final readonly class PriceCalculator
     public const int MAX_RECURRING_PAYMENT_AMOUNT_IN_HALER = 1_500_000;
 
     /**
-     * Calculate total rental price based on duration.
-     *
-     * Rule: Duration < 28 days uses weekly rate, >= 28 days uses monthly rate.
-     * Prices are in halire (cents).
-     *
      * @return int Total price in halire
      */
     public function calculatePrice(
@@ -64,9 +52,8 @@ final readonly class PriceCalculator
         \DateTimeImmutable $startDate,
         ?\DateTimeImmutable $endDate,
     ): int {
-        // For unlimited rentals, return first period price (monthly or yearly based on frequency)
         if (null === $endDate) {
-            return $storageType->defaultPricePerMonth;
+            return $storageType->defaultPricePerMonthLongTerm;
         }
 
         $days = $this->calculateDays($startDate, $endDate);
@@ -79,12 +66,14 @@ final readonly class PriceCalculator
             return $this->calculateWeeklyPrice($storageType->defaultPricePerWeek, $days);
         }
 
-        return $this->calculateMonthlyPrice($storageType->defaultPricePerMonth, $days);
+        $monthlyRate = $days < self::SHORT_TERM_THRESHOLD_DAYS
+            ? $storageType->defaultPricePerMonth
+            : $storageType->defaultPricePerMonthLongTerm;
+
+        return $this->calculateMonthlyPrice($monthlyRate, $days);
     }
 
     /**
-     * Calculate total rental price for a specific storage (uses effective prices).
-     *
      * @return int Total price in halire
      */
     public function calculatePriceForStorage(
@@ -92,12 +81,8 @@ final readonly class PriceCalculator
         \DateTimeImmutable $startDate,
         ?\DateTimeImmutable $endDate,
     ): int {
-        $pricePerWeek = $storage->getEffectivePricePerWeek();
-        $pricePerMonth = $storage->getEffectivePricePerMonth();
-
-        // For unlimited rentals, return first period price (monthly)
         if (null === $endDate) {
-            return $pricePerMonth;
+            return $storage->getEffectivePricePerMonthLongTerm();
         }
 
         $days = $this->calculateDays($startDate, $endDate);
@@ -107,14 +92,18 @@ final readonly class PriceCalculator
         }
 
         if ($days < self::WEEKLY_THRESHOLD_DAYS) {
-            return $this->calculateWeeklyPrice($pricePerWeek, $days);
+            return $this->calculateWeeklyPrice($storage->getEffectivePricePerWeek(), $days);
         }
 
-        return $this->calculateMonthlyPrice($pricePerMonth, $days);
+        $monthlyRate = $days < self::SHORT_TERM_THRESHOLD_DAYS
+            ? $storage->getEffectivePricePerMonth()
+            : $storage->getEffectivePricePerMonthLongTerm();
+
+        return $this->calculateMonthlyPrice($monthlyRate, $days);
     }
 
     /**
-     * Calculate price using weekly rate (for rentals < 28 days).
+     * Calculate price using weekly rate (for rentals < 31 days).
      */
     private function calculateWeeklyPrice(int $weeklyRate, int $days): int
     {
@@ -128,7 +117,7 @@ final readonly class PriceCalculator
     }
 
     /**
-     * Calculate price using monthly rate (for rentals >= 28 days).
+     * Calculate price using monthly rate (for rentals >= 31 days).
      */
     private function calculateMonthlyPrice(int $monthlyRate, int $days): int
     {
@@ -168,12 +157,6 @@ final readonly class PriceCalculator
     }
 
     /**
-     * Calculate the first payment price for an order.
-     *
-     * For rentals < 28 days: full price (no recurring).
-     * For rentals >= 28 days or unlimited: first month's price.
-     * For YEARLY frequency: yearly amount (one-shot annual charge).
-     *
      * @return int Price in halire
      */
     public function calculateFirstPaymentPrice(
@@ -188,16 +171,7 @@ final readonly class PriceCalculator
     }
 
     /**
-     * Which rate type applies to a rental given duration + customer-chosen
-     * frequency. Returns 'weekly' | 'monthly' | 'yearly' — the OrderForm Ceník
-     * panel collapses to the corresponding single row.
-     *
-     * - YEARLY  → 'yearly' (eligibility validated at form layer)
-     * - MONTHLY + UNLIMITED → 'monthly'
-     * - MONTHLY + LIMITED, days <  28 → 'weekly'
-     * - MONTHLY + LIMITED, days >= 28 → 'monthly'
-     *
-     * @return 'weekly'|'monthly'|'yearly'
+     * @return 'weekly'|'monthly_short'|'monthly_long'|'yearly'
      */
     public function resolveRateType(
         PaymentFrequency $frequency,
@@ -209,10 +183,16 @@ final readonly class PriceCalculator
         }
 
         if (null === $endDate) {
-            return 'monthly';
+            return 'monthly_long';
         }
 
-        return $this->calculateDays($startDate, $endDate) < self::WEEKLY_THRESHOLD_DAYS ? 'weekly' : 'monthly';
+        $days = $this->calculateDays($startDate, $endDate);
+
+        if ($days < self::WEEKLY_THRESHOLD_DAYS) {
+            return 'weekly';
+        }
+
+        return $days < self::SHORT_TERM_THRESHOLD_DAYS ? 'monthly_short' : 'monthly_long';
     }
 
     /**
@@ -260,7 +240,6 @@ final readonly class PriceCalculator
         ?\DateTimeImmutable $endDate,
         PaymentFrequency $frequency = PaymentFrequency::MONTHLY,
     ): PaymentSchedule {
-        $monthlyRate = $storage->getEffectivePricePerMonth();
         $weeklyRate = $storage->getEffectivePricePerWeek();
 
         if (PaymentFrequency::YEARLY === $frequency) {
@@ -288,10 +267,9 @@ final readonly class PriceCalculator
             );
         }
 
-        // UNLIMITED: open-ended monthly recurrence — only the first charge
-        // is on the schedule, the rest are added by the cron after each
-        // successful billing cycle.
         if (null === $endDate) {
+            $monthlyRate = $storage->getEffectivePricePerMonthLongTerm();
+
             return new PaymentSchedule(
                 entries: [new PaymentScheduleEntry($startDate, $monthlyRate)],
                 isRecurring: true,
@@ -311,7 +289,6 @@ final readonly class PriceCalculator
             );
         }
 
-        // SHORT (< 28 days): single one-shot charge, no recurring setup.
         if ($days < self::WEEKLY_THRESHOLD_DAYS) {
             return new PaymentSchedule(
                 entries: [new PaymentScheduleEntry($startDate, $this->calculateWeeklyPrice($weeklyRate, $days))],
@@ -320,6 +297,10 @@ final readonly class PriceCalculator
                 monthlyAmount: null,
             );
         }
+
+        $monthlyRate = $days < self::SHORT_TERM_THRESHOLD_DAYS
+            ? $storage->getEffectivePricePerMonth()
+            : $storage->getEffectivePricePerMonthLongTerm();
 
         return new PaymentSchedule(
             entries: $this->walkMonthsFromAnchor($monthlyRate, $startDate, $endDate),
@@ -464,11 +445,9 @@ final readonly class PriceCalculator
     }
 
     /**
-     * Get price breakdown for display purposes.
-     *
      * @return array{
      *     days: int,
-     *     rate_type: 'weekly'|'monthly',
+     *     rate_type: 'weekly'|'monthly_short'|'monthly_long',
      *     full_periods: int,
      *     remaining_days: int,
      *     period_price: int,
@@ -484,12 +463,12 @@ final readonly class PriceCalculator
         if (null === $endDate) {
             return [
                 'days' => 0,
-                'rate_type' => 'monthly',
+                'rate_type' => 'monthly_long',
                 'full_periods' => 1,
                 'remaining_days' => 0,
-                'period_price' => $storageType->defaultPricePerMonth,
+                'period_price' => $storageType->defaultPricePerMonthLongTerm,
                 'remaining_price' => 0,
-                'total_price' => $storageType->defaultPricePerMonth,
+                'total_price' => $storageType->defaultPricePerMonthLongTerm,
             ];
         }
 
@@ -513,15 +492,19 @@ final readonly class PriceCalculator
             ];
         }
 
+        $monthlyRate = $days < self::SHORT_TERM_THRESHOLD_DAYS
+            ? $storageType->defaultPricePerMonth
+            : $storageType->defaultPricePerMonthLongTerm;
+        $rateType = $days < self::SHORT_TERM_THRESHOLD_DAYS ? 'monthly_short' : 'monthly_long';
+
         $fullMonths = intdiv($days, self::DAYS_PER_MONTH);
         $remainingDays = $days % self::DAYS_PER_MONTH;
-        $monthlyRate = $storageType->defaultPricePerMonth;
         $periodPrice = $fullMonths * $monthlyRate;
         $remainingPrice = self::roundUpToWholeCzk($remainingDays * $monthlyRate / self::DAYS_PER_MONTH);
 
         return [
             'days' => $days,
-            'rate_type' => 'monthly',
+            'rate_type' => $rateType,
             'full_periods' => $fullMonths,
             'remaining_days' => $remainingDays,
             'period_price' => $periodPrice,

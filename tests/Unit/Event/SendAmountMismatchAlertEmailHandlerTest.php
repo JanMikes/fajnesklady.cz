@@ -143,6 +143,8 @@ final class SendAmountMismatchAlertEmailHandlerTest extends TestCase
             innerLength: 100,
             defaultPricePerWeek: 10_000,
             defaultPricePerMonth: 150_000,
+            defaultPricePerMonthLongTerm: 150_000,
+            defaultPricePerYear: 150_000 * 12,
             createdAt: $now,
         );
 

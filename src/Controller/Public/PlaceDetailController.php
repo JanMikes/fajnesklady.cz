@@ -49,6 +49,7 @@ final class PlaceDetailController extends AbstractController
 
         $availability = [];
         $priceRanges = [];
+        $priceRangesLongTerm = [];
         foreach ($storageTypes as $storageType) {
             $key = $storageType->id->toRfc4122();
             $availability[$key] = $this->storageAssignment->countAvailableStorages(
@@ -58,6 +59,7 @@ final class PlaceDetailController extends AbstractController
                 $endDate
             );
             $priceRanges[$key] = $this->storageRepository->getEffectiveMonthlyPriceRangeForType($storageType, $place);
+            $priceRangesLongTerm[$key] = $this->storageRepository->getEffectiveLongTermMonthlyPriceRangeForType($storageType, $place);
         }
 
         return $this->render('public/place_detail.html.twig', [
@@ -65,6 +67,7 @@ final class PlaceDetailController extends AbstractController
             'storageTypes' => $storageTypes,
             'availability' => $availability,
             'priceRanges' => $priceRanges,
+            'priceRangesLongTerm' => $priceRangesLongTerm,
             'placeId' => $place->id->toRfc4122(),
         ]);
     }

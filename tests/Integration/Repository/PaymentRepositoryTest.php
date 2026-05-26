@@ -229,6 +229,8 @@ class PaymentRepositoryTest extends KernelTestCase
             innerLength: 100,
             defaultPricePerWeek: 50_000,
             defaultPricePerMonth: 180_000,
+            defaultPricePerMonthLongTerm: 180_000,
+            defaultPricePerYear: 180_000 * 12,
             createdAt: new \DateTimeImmutable(),
         );
         $this->entityManager->persist($storageType);

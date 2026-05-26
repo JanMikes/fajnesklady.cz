@@ -57,7 +57,8 @@
                             <th scope="col">Sklad</th>
                             <th scope="col">Rozměry</th>
                             <th scope="col" class="text-right">Týdně</th>
-                            <th scope="col" class="text-right">Měsíčně</th>
+                            <th scope="col" class="text-right">Krátkodobá měs.</th>
+                            <th scope="col" class="text-right">Dlouhodobá měs.</th>
                             <th scope="col" class="text-center">Dostupnost</th>
                             <th scope="col" class="text-right">Akce</th>
                         </tr>
@@ -67,6 +68,7 @@
                             {% set key = storageType.id.toRfc4122() %}
                             {% set isAvailable = availability[key] ?? false %}
                             {% set priceRange = priceRanges[key] ?? null %}
+                            {% set priceRangeLongTerm = priceRangesLongTerm[key] ?? null %}
                             <tr class="{% if not isAvailable %}opacity-70{% endif %}">
                                 <td class="!py-3">
                                     {% if storageType.hasPhotos %}
@@ -104,6 +106,15 @@
                                         <span class="font-semibold text-primary-600">{{ (priceRange.min / 100)|number_format(0, ',', ' ') }} Kč</span>
                                     {% else %}
                                         <span class="font-semibold text-primary-600">{{ storageType.defaultPricePerMonthInCzk|number_format(0, ',', ' ') }} Kč</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-right">
+                                    {% if priceRangeLongTerm and priceRangeLongTerm.min != priceRangeLongTerm.max %}
+                                        <span class="font-semibold text-primary-600">{{ (priceRangeLongTerm.min / 100)|number_format(0, ',', ' ') }} – {{ (priceRangeLongTerm.max / 100)|number_format(0, ',', ' ') }} Kč</span>
+                                    {% elseif priceRangeLongTerm %}
+                                        <span class="font-semibold text-primary-600">{{ (priceRangeLongTerm.min / 100)|number_format(0, ',', ' ') }} Kč</span>
+                                    {% else %}
+                                        <span class="font-semibold text-primary-600">{{ storageType.defaultPricePerMonthLongTermInCzk|number_format(0, ',', ' ') }} Kč</span>
                                     {% endif %}
                                 </td>
                                 <td class="text-center">
@@ -146,6 +157,7 @@
                 {% set key = storageType.id.toRfc4122() %}
                 {% set isAvailable = availability[key] ?? false %}
                 {% set priceRange = priceRanges[key] ?? null %}
+                {% set priceRangeLongTerm = priceRangesLongTerm[key] ?? null %}
                 <div class="card {% if not isAvailable %}opacity-75{% endif %}">
                     <div class="card-body">
                         <div class="flex gap-3 mb-3">
@@ -180,7 +192,7 @@
                                 <div class="font-medium">{{ storageType.defaultPricePerWeekInCzk|number_format(0, ',', ' ') }} Kč</div>
                             </div>
                             <div>
-                                <div class="text-xs text-gray-500 uppercase tracking-wide">Měsíčně</div>
+                                <div class="text-xs text-gray-500 uppercase tracking-wide">Krátkodobá měs.</div>
                                 <div class="font-semibold text-primary-600">
                                     {% if priceRange and priceRange.min != priceRange.max %}
                                         {{ (priceRange.min / 100)|number_format(0, ',', ' ') }} – {{ (priceRange.max / 100)|number_format(0, ',', ' ') }} Kč
@@ -188,6 +200,18 @@
                                         {{ (priceRange.min / 100)|number_format(0, ',', ' ') }} Kč
                                     {% else %}
                                         {{ storageType.defaultPricePerMonthInCzk|number_format(0, ',', ' ') }} Kč
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-span-2">
+                                <div class="text-xs text-gray-500 uppercase tracking-wide">Dlouhodobá měs.</div>
+                                <div class="font-semibold text-primary-600">
+                                    {% if priceRangeLongTerm and priceRangeLongTerm.min != priceRangeLongTerm.max %}
+                                        {{ (priceRangeLongTerm.min / 100)|number_format(0, ',', ' ') }} – {{ (priceRangeLongTerm.max / 100)|number_format(0, ',', ' ') }} Kč
+                                    {% elseif priceRangeLongTerm %}
+                                        {{ (priceRangeLongTerm.min / 100)|number_format(0, ',', ' ') }} Kč
+                                    {% else %}
+                                        {{ storageType.defaultPricePerMonthLongTermInCzk|number_format(0, ',', ' ') }} Kč
                                     {% endif %}
                                 </div>
                             </div>

@@ -346,7 +346,22 @@ class Contract implements EntityWithEvents
 
     public function getEffectiveMonthlyAmount(): int
     {
-        return $this->individualMonthlyAmount ?? $this->storage->getEffectivePricePerMonth();
+        if (null !== $this->individualMonthlyAmount) {
+            return $this->individualMonthlyAmount;
+        }
+
+        return $this->isLongTermMonthly()
+            ? $this->storage->getEffectivePricePerMonthLongTerm()
+            : $this->storage->getEffectivePricePerMonth();
+    }
+
+    private function isLongTermMonthly(): bool
+    {
+        if (RentalType::UNLIMITED === $this->rentalType || null === $this->endDate) {
+            return true;
+        }
+
+        return (int) $this->startDate->diff($this->endDate)->days >= PriceCalculator::SHORT_TERM_THRESHOLD_DAYS;
     }
 
     public function applyBillingMode(BillingMode $mode): void

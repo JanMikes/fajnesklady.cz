@@ -204,7 +204,7 @@ class UserRepositoryTest extends KernelTestCase
     {
         $debtor = new User(Uuid::v7(), $email, 'password', 'Debt', 'Or', $now);
         $place = new Place(Uuid::v7(), 'Place', 'Address', 'City', '00000', null, $now);
-        $storageType = new StorageType(Uuid::v7(), $place, 'Box', 100, 100, 100, 10000, 35000, $now);
+        $storageType = new StorageType(Uuid::v7(), $place, 'Box', 100, 100, 100, 10000, 35000, 35000, 35000 * 12, $now);
         $storage = new Storage(
             Uuid::v7(),
             'OD-'.bin2hex(random_bytes(2)),
@@ -256,7 +256,7 @@ class UserRepositoryTest extends KernelTestCase
         $tenant = new User(Uuid::v7(), 'active-tenant@example.com', 'password', 'Active', 'Tenant', $now);
         $bystander = new User(Uuid::v7(), 'no-contract@example.com', 'password', 'No', 'Contract', $now);
         $place = new Place(Uuid::v7(), 'Place A', 'Address', 'City', '00000', null, $now);
-        $storageType = new StorageType(Uuid::v7(), $place, 'Box', 100, 100, 100, 10000, 35000, $now);
+        $storageType = new StorageType(Uuid::v7(), $place, 'Box', 100, 100, 100, 10000, 35000, 35000, 35000 * 12, $now);
         $storage = new Storage(
             Uuid::v7(),
             'AC-'.bin2hex(random_bytes(2)),
@@ -328,7 +328,7 @@ class UserRepositoryTest extends KernelTestCase
         $neverRented = new User(Uuid::v7(), 'paginated-never@example.com', 'password', 'Never', 'Rented', $now);
 
         $place = new Place(Uuid::v7(), 'Paginated Place', 'Address', 'City', '00000', null, $now);
-        $storageType = new StorageType(Uuid::v7(), $place, 'Box', 100, 100, 100, 10000, 35000, $now);
+        $storageType = new StorageType(Uuid::v7(), $place, 'Box', 100, 100, 100, 10000, 35000, 35000, 35000 * 12, $now);
         $storageActive = new Storage(
             Uuid::v7(),
             'PA-'.bin2hex(random_bytes(2)),
@@ -426,7 +426,7 @@ class UserRepositoryTest extends KernelTestCase
         $inactiveUser = new User(Uuid::v7(), 'invariant-inactive@example.com', 'password', 'Inv', 'Inactive', $now);
 
         $place = new Place(Uuid::v7(), 'Invariant Place', 'Address', 'City', '00000', null, $now);
-        $storageType = new StorageType(Uuid::v7(), $place, 'Box', 100, 100, 100, 10000, 35000, $now);
+        $storageType = new StorageType(Uuid::v7(), $place, 'Box', 100, 100, 100, 10000, 35000, 35000, 35000 * 12, $now);
         $storage = new Storage(
             Uuid::v7(),
             'IN-'.bin2hex(random_bytes(2)),

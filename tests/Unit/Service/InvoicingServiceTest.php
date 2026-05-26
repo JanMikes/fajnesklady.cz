@@ -318,6 +318,8 @@ class InvoicingServiceTest extends TestCase
             innerLength: 150,
             defaultPricePerWeek: 10000,
             defaultPricePerMonth: 35000,
+            defaultPricePerMonthLongTerm: 35000,
+            defaultPricePerYear: 35000 * 12,
             createdAt: new \DateTimeImmutable(),
         );
     }

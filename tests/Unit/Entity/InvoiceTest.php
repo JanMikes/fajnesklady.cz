@@ -71,6 +71,8 @@ class InvoiceTest extends TestCase
             innerLength: 100,
             defaultPricePerWeek: 1000,
             defaultPricePerMonth: 3500,
+            defaultPricePerMonthLongTerm: 3500,
+            defaultPricePerYear: 3500 * 12,
             createdAt: new \DateTimeImmutable(),
         );
 

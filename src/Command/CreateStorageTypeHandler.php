@@ -36,12 +36,13 @@ final readonly class CreateStorageTypeHandler
             innerLength: $command->innerLength,
             defaultPricePerWeek: $command->defaultPricePerWeek,
             defaultPricePerMonth: $command->defaultPricePerMonth,
+            defaultPricePerMonthLongTerm: $command->defaultPricePerMonthLongTerm,
+            defaultPricePerYear: $command->defaultPricePerYear,
             createdAt: $now,
             uniformStorages: $command->uniformStorages,
             outerWidth: $command->outerWidth,
             outerHeight: $command->outerHeight,
             outerLength: $command->outerLength,
-            defaultPricePerYear: $command->defaultPricePerYear,
         );
 
         if (null !== $command->description) {
@@ -55,6 +56,7 @@ final readonly class CreateStorageTypeHandler
                 outerLength: $command->outerLength,
                 defaultPricePerWeek: $command->defaultPricePerWeek,
                 defaultPricePerMonth: $command->defaultPricePerMonth,
+                defaultPricePerMonthLongTerm: $command->defaultPricePerMonthLongTerm,
                 defaultPricePerYear: $command->defaultPricePerYear,
                 description: $command->description,
                 uniformStorages: $command->uniformStorages,

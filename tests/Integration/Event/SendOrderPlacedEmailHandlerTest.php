@@ -48,18 +48,17 @@ class SendOrderPlacedEmailHandlerTest extends KernelTestCase
         }, priority: 1024);
     }
 
-    public function testEmailShowsMonthlyLabelForFixedTermRecurring(): void
+    public function testEmailShowsOneShotLabelForShortFixedTerm(): void
     {
-        // 30-day rental → fixed-term recurring.
+        // 30-day rental → one-time payment (< 31 days threshold).
         $order = $this->findOrderByStorageNumber('B1');
 
         ($this->handler)(new OrderPlaced($order->id, $this->clock->now()));
 
         $body = $this->renderHtmlBody($this->lastTemplatedEmail());
 
-        $this->assertStringContainsString('Měsíční platba', $body);
-        $this->assertStringContainsString('/ měsíc', $body);
-        $this->assertStringNotContainsString('Celková cena', $body);
+        $this->assertStringContainsString('Celková cena', $body);
+        $this->assertStringNotContainsString('Měsíční platba', $body);
     }
 
     public function testEmailShowsMonthlyLabelForUnlimited(): void

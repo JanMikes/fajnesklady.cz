@@ -89,7 +89,7 @@ final class PlaceBrowseListController extends AbstractController
         }
 
         $prices = array_map(
-            fn (StorageType $type) => $type->getDefaultPricePerMonthInCzk(),
+            fn (StorageType $type) => $type->getDefaultPricePerMonthLongTermInCzk(),
             $storageTypes
         );
 

@@ -144,6 +144,8 @@ class SendRecurringPaymentAdvanceNoticeEmailHandlerTest extends TestCase
             innerLength: 150,
             defaultPricePerWeek: 10000,
             defaultPricePerMonth: 350000,
+            defaultPricePerMonthLongTerm: 350000,
+            defaultPricePerYear: 350000 * 12,
             createdAt: new \DateTimeImmutable(),
         );
 

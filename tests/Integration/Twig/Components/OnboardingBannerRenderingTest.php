@@ -97,6 +97,8 @@ final class OnboardingBannerRenderingTest extends KernelTestCase
             innerLength: 100,
             defaultPricePerWeek: 10_000,
             defaultPricePerMonth: 35_000,
+            defaultPricePerMonthLongTerm: 35_000,
+            defaultPricePerYear: 35_000 * 12,
             createdAt: $now,
         );
 

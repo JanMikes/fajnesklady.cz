@@ -44,12 +44,14 @@ final class StorageEditController extends AbstractController
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            // Convert CZK to halire for prices (only for non-uniform storage types)
             $pricePerWeek = null !== $formData->pricePerWeek
                 ? (int) round($formData->pricePerWeek * 100)
                 : null;
             $pricePerMonth = null !== $formData->pricePerMonth
                 ? (int) round($formData->pricePerMonth * 100)
+                : null;
+            $pricePerMonthLongTerm = null !== $formData->pricePerMonthLongTerm
+                ? (int) round($formData->pricePerMonthLongTerm * 100)
                 : null;
             $pricePerYear = null !== $formData->pricePerYear
                 ? (int) round($formData->pricePerYear * 100)
@@ -72,6 +74,7 @@ final class StorageEditController extends AbstractController
                 storageTypeId: null !== $formData->storageTypeId ? Uuid::fromString($formData->storageTypeId) : null,
                 pricePerWeek: $pricePerWeek,
                 pricePerMonth: $pricePerMonth,
+                pricePerMonthLongTerm: $pricePerMonthLongTerm,
                 pricePerYear: $pricePerYear,
                 updatePrices: !$storage->storageType->uniformStorages,
                 commissionRate: $commissionRate,

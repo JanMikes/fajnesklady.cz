@@ -86,24 +86,33 @@ class StorageTypeFormType extends AbstractType
         ]);
 
         $builder->add('defaultPricePerMonth', NumberType::class, [
-            'label' => 'Výchozí cena za měsíc (CZK)',
+            'label' => 'Krátkodobá měsíční sazba (Kč)',
             'scale' => 2,
             'attr' => [
                 'placeholder' => '1500.00',
-
                 'step' => '0.01',
             ],
+            'help' => 'Pro pronájem 1–6 měsíců',
+        ]);
+
+        $builder->add('defaultPricePerMonthLongTerm', NumberType::class, [
+            'label' => 'Dlouhodobá měsíční sazba (Kč)',
+            'scale' => 2,
+            'attr' => [
+                'placeholder' => '1200.00',
+                'step' => '0.01',
+            ],
+            'help' => 'Pro pronájem 6+ měsíců a na dobu neurčitou',
         ]);
 
         $builder->add('defaultPricePerYear', NumberType::class, [
-            'label' => 'Výchozí cena za rok (CZK)',
-            'required' => false,
+            'label' => 'Roční sazba (Kč)',
             'scale' => 2,
             'attr' => [
-                'placeholder' => 'Nepovinné – pokud nevyplníte, roční sazba = měsíční × 12',
+                'placeholder' => '12000.00',
                 'step' => '0.01',
             ],
-            'help' => 'Pokud nastavíte, zákazníci s pronájmem na 12 a více měsíců dostanou volbu „Roční platba". Účtuje se jednou ročně, bez ukládání karty.',
+            'help' => 'Platba na celý rok dopředu — zvýhodněná cena',
         ]);
 
         $builder->add('description', TextareaType::class, [

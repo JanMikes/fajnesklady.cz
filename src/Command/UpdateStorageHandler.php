@@ -42,6 +42,7 @@ final readonly class UpdateStorageHandler
             $storage->updatePrices(
                 pricePerWeek: $command->pricePerWeek,
                 pricePerMonth: $command->pricePerMonth,
+                pricePerMonthLongTerm: $command->pricePerMonthLongTerm,
                 pricePerYear: $command->pricePerYear,
                 now: $now,
             );

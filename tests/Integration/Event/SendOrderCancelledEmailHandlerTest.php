@@ -49,16 +49,15 @@ class SendOrderCancelledEmailHandlerTest extends KernelTestCase
 
     public function testEmailShowsMonthlyLabelForFixedTermRecurring(): void
     {
-        // 30-day rental → fixed-term recurring.
+        // 30-day rental → one-time (< 31 days threshold).
         $order = $this->findOrderByStorageNumber('B1');
 
         ($this->handler)(new OrderCancelled($order->id, $this->clock->now()));
 
         $body = $this->renderHtmlBody($this->lastTemplatedEmail());
 
-        $this->assertStringContainsString('Měsíční platba', $body);
-        $this->assertStringContainsString('/ měsíc', $body);
-        $this->assertStringNotContainsString('Celková cena', $body);
+        $this->assertStringContainsString('Celková cena', $body);
+        $this->assertStringNotContainsString('Měsíční platba', $body);
     }
 
     public function testEmailShowsMonthlyLabelForUnlimited(): void

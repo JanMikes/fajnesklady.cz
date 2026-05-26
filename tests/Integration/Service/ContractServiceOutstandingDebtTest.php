@@ -76,6 +76,8 @@ class ContractServiceOutstandingDebtTest extends KernelTestCase
             innerLength: 100,
             defaultPricePerWeek: 10000,
             defaultPricePerMonth: $storageRate,
+            defaultPricePerMonthLongTerm: $storageRate,
+            defaultPricePerYear: $storageRate * 12,
             createdAt: new \DateTimeImmutable(),
         );
         $this->entityManager->persist($storageType);
