@@ -287,6 +287,17 @@
     </div>
     {% endif %}
 
+    {# Pending termination banner #}
+    {% if contract and contract.hasPendingTermination() %}
+    <div class="mt-6 bg-amber-50 border border-amber-200 rounded-lg p-4">
+        <p class="text-sm text-amber-800">
+            <strong>Výpověď podána {{ contract.terminationNoticedAt|date('d.m.Y') }}.</strong>
+            Smlouva bude ukončena k {{ contract.terminatesAt|date('d.m.Y') }}.
+            Pravidelné platby budou pokračovat do konce výpovědní lhůty.
+        </p>
+    </div>
+    {% endif %}
+
     {# Termination Section for Unlimited Contracts #}
     {% if canTerminate %}
     <div class="mt-6 bg-white shadow overflow-hidden sm:rounded-lg border border-red-200">

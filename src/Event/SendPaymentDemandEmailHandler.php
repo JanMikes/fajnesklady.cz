@@ -12,7 +12,7 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Mime\Address;
 
 #[AsMessageHandler]
-final readonly class SendTerminationNoticeEmailHandler
+final readonly class SendPaymentDemandEmailHandler
 {
     public function __construct(
         private ContractRepository $contractRepository,
@@ -21,7 +21,7 @@ final readonly class SendTerminationNoticeEmailHandler
     ) {
     }
 
-    public function __invoke(TerminationNoticeRequested $event): void
+    public function __invoke(PaymentDemandSent $event): void
     {
         $contract = $this->contractRepository->get($event->contractId);
         $user = $contract->user;
@@ -29,17 +29,20 @@ final readonly class SendTerminationNoticeEmailHandler
         $storageType = $storage->storageType;
         $place = $storage->getPlace();
 
+        $monthlyAmount = $contract->getEffectiveMonthlyAmount() / 100;
+
         $email = (new TemplatedEmail())
             ->from(new Address('noreply@fajnesklady.cz', 'Fajnesklady.cz'))
             ->to(new Address($user->email, $user->fullName))
-            ->subject('Potvrzení výpovědi smlouvy - Fajnesklady.cz')
-            ->htmlTemplate('email/termination_notice.html.twig')
+            ->subject('Výzva k úhradě nájemného – Fajnesklady.cz')
+            ->htmlTemplate('email/payment_demand_tenant.html.twig')
             ->context([
                 'name' => $user->fullName,
                 'placeName' => $place->name,
                 'storageType' => $storageType->name,
                 'storageNumber' => $storage->number,
-                'terminatesAt' => $event->terminatesAt,
+                'amount' => $monthlyAmount,
+                'deadline' => $event->deadline,
                 'statusUrl' => $this->statusUrlGenerator->generate($contract->order),
             ]);
 

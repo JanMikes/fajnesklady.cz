@@ -15,6 +15,9 @@
         .storage-details td { padding: 10px 0; border-bottom: 1px solid #eee; }
         .storage-details td:first-child { font-weight: bold; color: #666; width: 40%; }
         .storage-details tr:last-child td { border-bottom: none; }
+        .obligations-box { background-color: #f0f9ff; border: 1px solid #3b82f6; padding: 15px; border-radius: 5px; margin: 20px 0; }
+        .debt-box { background-color: #fff7ed; border: 2px solid #ea580c; padding: 20px; border-radius: 5px; margin: 20px 0; text-align: center; }
+        .debt-amount { font-size: 24px; font-weight: bold; color: #ea580c; }
     </style>
 </head>
 <body>
@@ -26,8 +29,32 @@
         <h2>{{ name }},</h2>
 
         <div class="info-box">
-            <p>Informujeme Vás, že Vaše smlouva na pronájem skladovací jednotky byla ukončena.</p>
+            <p>Informujeme Vás, že Vaše smlouva na pronájem skladovací jednotky byla ukončena
+            {% if terminationReason is not null %}
+                {% if terminationReason.value == 'tenant_notice' %}
+                    na základě Vaší výpovědi.
+                {% elseif terminationReason.value == 'admin' %}
+                    rozhodnutím Pronajímatele.
+                {% elseif terminationReason.value == 'payment_failure' %}
+                    z důvodu neuhrazení platby.
+                {% elseif terminationReason.value == 'expired' %}
+                    uplynutím doby nájmu.
+                {% else %}
+                    .
+                {% endif %}
+            {% else %}
+                .
+            {% endif %}
+            </p>
         </div>
+
+        {% if hasOutstandingDebt is defined and hasOutstandingDebt %}
+        <div class="debt-box">
+            <p>Neuhrazená částka:</p>
+            <p class="debt-amount">{{ outstandingDebt|number_format(0, ',', ' ') }} Kč</p>
+            <p>Prosíme o úhradu této částky. Budeme Vás kontaktovat s pokyny k platbě.</p>
+        </div>
+        {% endif %}
 
         <div class="storage-details">
             <table>
@@ -36,7 +63,7 @@
                     <td>{{ placeName }}</td>
                 </tr>
                 <tr>
-                    <td>Typ skladu:</td>
+                    <td>Typ skladovací jednotky:</td>
                     <td>{{ storageType }}</td>
                 </tr>
                 <tr>
@@ -46,13 +73,20 @@
             </table>
         </div>
 
-        <p>Pokud si přejete obnovit pronájem, vytvořte novou objednávku na našich webových stránkách.</p>
+        <div class="obligations-box">
+            <p><strong>Povinnosti po ukončení smlouvy (VOP čl. X):</strong></p>
+            <p>Dle VOP čl. X jste povinni vyklidit skladovací jednotku do <strong>15 kalendářních dnů</strong> od ukončení smlouvy. Po uplynutí této lhůty je Pronajímatel oprávněn skladovací jednotku otevřít a věci uskladnit na náklady Nájemce po dobu nejvýše 30 dnů.</p>
+        </div>
 
         <div style="text-align: center; margin: 20px 0;">
             <a href="{{ statusUrl }}" style="display: inline-block; background-color: #6b7280; color: white; padding: 10px 24px; text-decoration: none; border-radius: 5px; font-size: 14px;">Zobrazit stav objednávky</a>
         </div>
 
-        <p>Děkujeme, že jste využívali naše služby!</p>
+        <p>V případě dotazů nás kontaktujte:</p>
+        <ul>
+            <li>E-mail: <a href="mailto:skladmistr@fajnesklady.cz">skladmistr@fajnesklady.cz</a></li>
+            <li>Telefon: +420 605 522 566</li>
+        </ul>
 
         <p>S pozdravem,<br>
         <strong>Tým Fajnesklady.cz</strong></p>
@@ -60,7 +94,7 @@
 
     <div class="footer">
         <p>Toto je automaticky generovaný email. Prosím neodpovídejte na tuto zprávu.</p>
-        <p>&copy; {{ 'now'|date('Y') }} Fajnesklady.cz. Všechna práva vyhrazena.</p>
+        <p>&copy; {{ 'now'|date('Y') }} Fajnesklady.cz — Mekmann s.r.o., IČO 11678631</p>
     </div>
 </body>
 </html>

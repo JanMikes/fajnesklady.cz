@@ -66,6 +66,9 @@ class Contract implements EntityWithEvents
     #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
     public private(set) ?\DateTimeImmutable $terminatesAt = null;
 
+    #[ORM\Column(nullable: true)]
+    public private(set) ?\DateTimeImmutable $paymentDemandSentAt = null;
+
     #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
     public private(set) ?\DateTimeImmutable $paidThroughDate = null;
 
@@ -218,6 +221,7 @@ class Contract implements EntityWithEvents
         $this->failedBillingAttempts = 0;
         $this->lastBillingFailedAt = null;
         $this->pendingRecurringPaymentId = null;
+        $this->paymentDemandSentAt = null; // Reset demand state on successful charge
     }
 
     public function recordFailedBillingAttempt(\DateTimeImmutable $failedAt): void
@@ -276,9 +280,10 @@ class Contract implements EntityWithEvents
             return false;
         }
 
+        // VOP XI compliance: day 0 initial fail, day 3 first retry, day 7 second retry + terminate
         return match ($this->failedBillingAttempts) {
             1 => $now >= $this->lastBillingFailedAt->modify('+3 days'),
-            2 => $now >= $this->lastBillingFailedAt->modify('+7 days'),
+            2 => $now >= $this->lastBillingFailedAt->modify('+4 days'),
             default => false,
         };
     }
@@ -315,6 +320,11 @@ class Contract implements EntityWithEvents
     public function recordAdvanceNoticeSent(\DateTimeImmutable $now): void
     {
         $this->lastAdvanceNoticeSentAt = $now;
+    }
+
+    public function recordPaymentDemandSent(\DateTimeImmutable $now): void
+    {
+        $this->paymentDemandSentAt = $now;
     }
 
     public function applyIndividualMonthlyAmount(

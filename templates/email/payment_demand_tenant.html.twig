@@ -3,32 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Potvrzení výpovědi smlouvy</title>
+    <title>Výzva k úhradě nájemného</title>
     <style>
         body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background-color: #f59e0b; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
+        .header { background-color: #ea580c; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
         .content { background-color: #f9f9f9; padding: 30px; border: 1px solid #ddd; border-top: none; }
         .footer { text-align: center; padding: 20px; font-size: 12px; color: #666; }
-        .info-box { background-color: #fffbeb; border: 1px solid #f59e0b; padding: 20px; border-radius: 5px; margin: 20px 0; }
+        .alert-box { background-color: #fff7ed; border: 2px solid #ea580c; padding: 20px; border-radius: 5px; margin: 20px 0; }
         .storage-details { background-color: white; border: 1px solid #ddd; padding: 20px; margin: 20px 0; border-radius: 5px; }
         .storage-details table { width: 100%; border-collapse: collapse; }
         .storage-details td { padding: 10px 0; border-bottom: 1px solid #eee; }
         .storage-details td:first-child { font-weight: bold; color: #666; width: 40%; }
         .storage-details tr:last-child td { border-bottom: none; }
-        .obligations-box { background-color: #f0f9ff; border: 1px solid #3b82f6; padding: 15px; border-radius: 5px; margin: 20px 0; }
+        .warning-box { background-color: #fef2f2; border: 1px solid #dc2626; padding: 15px; border-radius: 5px; margin: 20px 0; }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>Potvrzení výpovědi smlouvy</h1>
+        <h1>Výzva k úhradě nájemného</h1>
     </div>
 
     <div class="content">
         <h2>{{ name }},</h2>
 
-        <div class="info-box">
-            <p>Potvrzujeme přijetí Vaší výpovědi smlouvy. Smlouva bude ukončena k datu <strong>{{ terminatesAt|date('d.m.Y') }}</strong>.</p>
-            <p>Do tohoto data můžete sklad nadále používat. Pravidelné platby budou pokračovat do konce výpovědní lhůty.</p>
+        <div class="alert-box">
+            <p><strong>evidujeme neuhrazenou platbu</strong> za pronájem Vaší skladovací jednotky. I přes opakované pokusy o automatické stržení platby se úhrada nepodařila.</p>
+            <p>Dlužná částka: <strong>{{ amount|number_format(0, ',', ' ') }} Kč vč. DPH</strong></p>
+            <p>Uhraďte prosím dlužnou částku <strong>nejpozději do {{ deadline|date('d.m.Y') }}</strong>.</p>
         </div>
 
         <div class="storage-details">
@@ -45,20 +46,15 @@
                     <td>Číslo skladovací jednotky:</td>
                     <td>{{ storageNumber }}</td>
                 </tr>
-                <tr>
-                    <td>Datum ukončení:</td>
-                    <td><strong>{{ terminatesAt|date('d.m.Y') }}</strong></td>
-                </tr>
             </table>
         </div>
 
-        <div class="obligations-box">
-            <p><strong>Povinnosti po ukončení smlouvy (VOP čl. X):</strong></p>
-            <p>Jste povinni vyklidit skladovací jednotku do <strong>15 kalendářních dnů</strong> od ukončení smlouvy. Po uplynutí této lhůty je Pronajímatel oprávněn skladovací jednotku otevřít a věci uskladnit na náklady Nájemce po dobu nejvýše 30 dnů.</p>
+        <div class="warning-box">
+            <p><strong>Upozornění dle VOP čl. XI:</strong> Pokud nebude platba uhrazena do výše uvedeného termínu, bude Vaše smlouva ukončena bez výpovědní doby z důvodu prodlení s úhradou nájemného delšího než 7 dní.</p>
         </div>
 
         <div style="text-align: center; margin: 20px 0;">
-            <a href="{{ statusUrl }}" style="display: inline-block; background-color: #f59e0b; color: white; padding: 10px 24px; text-decoration: none; border-radius: 5px; font-size: 14px;">Zobrazit stav objednávky</a>
+            <a href="{{ statusUrl }}" style="display: inline-block; background-color: #ea580c; color: white; padding: 10px 24px; text-decoration: none; border-radius: 5px; font-size: 14px;">Zobrazit stav objednávky</a>
         </div>
 
         <p>V případě dotazů nás kontaktujte:</p>

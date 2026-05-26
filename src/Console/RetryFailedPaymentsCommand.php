@@ -9,6 +9,7 @@ use App\Command\ChargeRecurringPaymentCommand;
 use App\Entity\Contract;
 use App\Enum\TerminationReason;
 use App\Event\ContractTerminatedDueToPaymentFailure;
+use App\Event\PaymentDemandSent;
 use App\Event\RecurringPaymentFailed;
 use App\Repository\ContractRepository;
 use App\Service\ContractService;
@@ -119,6 +120,20 @@ final class RetryFailedPaymentsCommand extends Command
                     reason: $exception->getMessage(),
                     occurredOn: $now,
                 ));
+
+                // VOP XI: send formal "Výzva k úhradě" after 2nd failure (day 3)
+                if (2 === $contract->failedBillingAttempts && null === $contract->paymentDemandSentAt) {
+                    $contract->recordPaymentDemandSent($now);
+                    // Console commands are outside the doctrine_transaction middleware
+                    $this->getEntityManager()->flush();
+
+                    $deadline = $now->modify('+4 days'); // day 3 + 4 = day 7 from original failure
+                    $this->eventBus->dispatch(new PaymentDemandSent(
+                        contractId: $contract->id,
+                        deadline: $deadline,
+                        occurredOn: $now,
+                    ));
+                }
 
                 $this->logger->error('Recurring payment retry failed', [
                     'contract_id' => $contract->id->toRfc4122(),

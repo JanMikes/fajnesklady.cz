@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Výzva k úhradě odeslána</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #ea580c; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
+        .content { background-color: #f9f9f9; padding: 30px; border: 1px solid #ddd; border-top: none; }
+        .footer { text-align: center; padding: 20px; font-size: 12px; color: #666; }
+        .info-box { background-color: #fff7ed; border: 1px solid #ea580c; padding: 20px; border-radius: 5px; margin: 20px 0; }
+        .details { background-color: white; border: 1px solid #ddd; padding: 20px; margin: 20px 0; border-radius: 5px; }
+        .details table { width: 100%; border-collapse: collapse; }
+        .details td { padding: 10px 0; border-bottom: 1px solid #eee; }
+        .details td:first-child { font-weight: bold; color: #666; width: 40%; }
+        .details tr:last-child td { border-bottom: none; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Výzva k úhradě odeslána</h1>
+    </div>
+
+    <div class="content">
+        <h2>{{ adminName }},</h2>
+
+        <div class="info-box">
+            <p>Zákazníkovi <strong>{{ tenantName }}</strong> byla odeslána formální výzva k úhradě nájemného (VOP čl. XI).</p>
+            <p>Termín úhrady: <strong>{{ deadline|date('d.m.Y') }}</strong></p>
+            <p>Pokud zákazník neuhradí do tohoto termínu, smlouva bude automaticky ukončena.</p>
+        </div>
+
+        <div class="details">
+            <h3>Zákazník</h3>
+            <table>
+                <tr>
+                    <td>Jméno:</td>
+                    <td>{{ tenantName }}</td>
+                </tr>
+                <tr>
+                    <td>E-mail:</td>
+                    <td>{{ tenantEmail }}</td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="details">
+            <h3>Sklad</h3>
+            <table>
+                <tr>
+                    <td>Místo:</td>
+                    <td>{{ placeName }}</td>
+                </tr>
+                <tr>
+                    <td>Typ skladovací jednotky:</td>
+                    <td>{{ storageType }}</td>
+                </tr>
+                <tr>
+                    <td>Číslo skladovací jednotky:</td>
+                    <td>{{ storageNumber }}</td>
+                </tr>
+                <tr>
+                    <td>Dlužná částka:</td>
+                    <td><strong>{{ amount|number_format(0, ',', ' ') }} Kč</strong></td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>Automatické upozornění systému Fajnesklady.cz</p>
+    </div>
+</body>
+</html>

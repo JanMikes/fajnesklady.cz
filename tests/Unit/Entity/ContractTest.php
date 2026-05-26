@@ -473,11 +473,11 @@ class ContractTest extends TestCase
         $contract->recordFailedBillingAttempt($failedAt);
         $contract->recordFailedBillingAttempt($failedAt);
 
-        // Within 7 days - no retry yet
-        $this->assertFalse($contract->needsRetry($failedAt->modify('+5 days')));
+        // Within 4 days - no retry yet (VOP XI: day 3 + 4 = day 7)
+        $this->assertFalse($contract->needsRetry($failedAt->modify('+3 days')));
 
-        // After 7 days - retry (2nd attempt)
-        $this->assertTrue($contract->needsRetry($failedAt->modify('+8 days')));
+        // After 4 days - retry (2nd attempt → terminates at day 7)
+        $this->assertTrue($contract->needsRetry($failedAt->modify('+5 days')));
     }
 
     public function testNeedsRetryReturnsFalseAfterThirdFailure(): void
@@ -753,6 +753,63 @@ class ContractTest extends TestCase
 
         // Late in the same calendar day must still resolve to 0, not -1.
         $this->assertSame(0, $contract->daysUntilExternalPrepaymentEnds(new \DateTimeImmutable('2025-06-15 23:59:59')));
+    }
+
+    // -- Spec 055: payment demand + billing charge reset ----------------------
+
+    public function testRecordPaymentDemandSent(): void
+    {
+        $contract = $this->createContract(rentalType: RentalType::UNLIMITED, endDate: null);
+        $now = new \DateTimeImmutable();
+
+        $this->assertNull($contract->paymentDemandSentAt);
+
+        $contract->recordPaymentDemandSent($now);
+
+        $this->assertSame($now, $contract->paymentDemandSentAt);
+    }
+
+    public function testRecordBillingChargeClearsPaymentDemand(): void
+    {
+        $contract = $this->createContract(rentalType: RentalType::UNLIMITED, endDate: null);
+        $contract->setRecurringPayment('12345', new \DateTimeImmutable('2024-02-01'), new \DateTimeImmutable('2024-02-01'));
+        $contract->recordPaymentDemandSent(new \DateTimeImmutable());
+
+        $this->assertNotNull($contract->paymentDemandSentAt);
+
+        $contract->recordBillingCharge(
+            new \DateTimeImmutable('2024-02-01'),
+            new \DateTimeImmutable('2024-03-01'),
+            new \DateTimeImmutable('2024-03-01'),
+        );
+
+        $this->assertNull($contract->paymentDemandSentAt);
+    }
+
+    public function testNeedsRetryVopCompliantTimingDay3ThenDay7(): void
+    {
+        $contract = $this->createContract(rentalType: RentalType::UNLIMITED, endDate: null);
+        $contract->setRecurringPayment('12345', new \DateTimeImmutable('2024-02-01'), new \DateTimeImmutable('2024-02-01'));
+
+        // Day 0: initial failure
+        $day0 = new \DateTimeImmutable('2024-02-01');
+        $contract->recordFailedBillingAttempt($day0);
+        $this->assertSame(1, $contract->failedBillingAttempts);
+
+        // Day 2: no retry yet
+        $this->assertFalse($contract->needsRetry($day0->modify('+2 days')));
+        // Day 3: first retry
+        $this->assertTrue($contract->needsRetry($day0->modify('+3 days')));
+
+        // Simulate first retry also fails at day 3
+        $day3 = $day0->modify('+3 days');
+        $contract->recordFailedBillingAttempt($day3);
+        $this->assertSame(2, $contract->failedBillingAttempts);
+
+        // Day 3+3 = day 6: no retry yet
+        $this->assertFalse($contract->needsRetry($day3->modify('+3 days')));
+        // Day 3+4 = day 7: second retry (terminates if fails)
+        $this->assertTrue($contract->needsRetry($day3->modify('+4 days')));
     }
 
     // -- Spec 045: yearly cadence --------------------------------------------

@@ -438,7 +438,8 @@ class ContractRepository
     public function findNeedingRetry(\DateTimeImmutable $now): array
     {
         $retryAfter3Days = $now->modify('-3 days');
-        $retryAfter7Days = $now->modify('-7 days');
+        // VOP XI: terminate at day 7 (not day 10). Day 3 + 4 more = day 7.
+        $retryAfter4Days = $now->modify('-4 days');
 
         return $this->entityManager->createQueryBuilder()
             ->select('c')
@@ -448,10 +449,10 @@ class ContractRepository
             ->andWhere('c.lastBillingFailedAt IS NOT NULL')
             ->andWhere(
                 '(c.failedBillingAttempts = 1 AND c.lastBillingFailedAt <= :retryAfter3Days) OR '
-                .'(c.failedBillingAttempts = 2 AND c.lastBillingFailedAt <= :retryAfter7Days)'
+                .'(c.failedBillingAttempts = 2 AND c.lastBillingFailedAt <= :retryAfter4Days)'
             )
             ->setParameter('retryAfter3Days', $retryAfter3Days)
-            ->setParameter('retryAfter7Days', $retryAfter7Days)
+            ->setParameter('retryAfter4Days', $retryAfter4Days)
             ->getQuery()
             ->getResult();
     }

@@ -39,6 +39,9 @@ final readonly class SendContractTerminatedEmailHandler
                 'placeName' => $place->name,
                 'storageType' => $storageType->name,
                 'storageNumber' => $storage->number,
+                'terminationReason' => $contract->terminationReason,
+                'hasOutstandingDebt' => $contract->hasOutstandingDebt(),
+                'outstandingDebt' => $contract->outstandingDebtAmount ? $contract->outstandingDebtAmount / 100 : 0,
                 'statusUrl' => $this->statusUrlGenerator->generate($contract->order),
             ]);
 
