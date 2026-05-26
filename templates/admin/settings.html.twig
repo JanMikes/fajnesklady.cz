@@ -1,0 +1,37 @@
+{% extends 'portal/layout.html.twig' %}
+
+{% block title %}Nastavení platformy - Admin{% endblock %}
+
+{% block breadcrumb %}
+    {% include 'components/breadcrumb.html.twig' with {breadcrumb_items: [
+        {label: 'Nastavení'},
+    ]} %}
+{% endblock %}
+
+{% block content %}
+    <h1 class="text-3xl font-bold mb-6">Nastavení platformy</h1>
+
+    {% for flash in app.flashes('success') %}
+        <div class="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded mb-6">
+            {{ flash }}
+        </div>
+    {% endfor %}
+
+    <div class="max-w-xl">
+        <div class="card">
+            <div class="card-body">
+                <h2 class="text-lg font-semibold mb-4">Bankovní převody</h2>
+
+                {{ form_start(form) }}
+                    <div class="mb-4">
+                        {{ form_row(form.bankTransferSurchargeInCzk) }}
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        Uložit nastavení
+                    </button>
+                {{ form_end(form) }}
+            </div>
+        </div>
+    </div>
+{% endblock %}

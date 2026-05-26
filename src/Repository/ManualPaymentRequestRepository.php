@@ -75,6 +75,21 @@ final class ManualPaymentRequestRepository
             ->getOneOrNullResult();
     }
 
+    public function findUnpaidByContractAndPeriod(Contract $contract, \DateTimeImmutable $periodStart): ?ManualPaymentRequest
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('r')
+            ->from(ManualPaymentRequest::class, 'r')
+            ->where('r.contract = :contract')
+            ->andWhere('r.periodStart = :periodStart')
+            ->andWhere('r.status = :pending')
+            ->setParameter('contract', $contract)
+            ->setParameter('periodStart', $periodStart->setTime(0, 0, 0))
+            ->setParameter('pending', ManualPaymentRequest::STATUS_PENDING)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
     /**
      * Pending (not paid, not cancelled, not expired) request whose period
      * spans $now. Used by the view-model to surface a "Zaplatit nyní" link

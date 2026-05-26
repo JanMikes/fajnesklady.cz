@@ -204,6 +204,14 @@ final class AdminCreateOnboardingFormData implements HasBillingAddress
             return;
         }
 
+        if (PaymentMethod::BANK_TRANSFER === $this->paymentMethod) {
+            if (BillingMode::AUTO_RECURRING === $this->billingMode) {
+                $this->billingMode = BillingMode::MANUAL_RECURRING;
+            }
+
+            return;
+        }
+
         if (RentalType::UNLIMITED === $this->rentalType && BillingMode::AUTO_RECURRING !== $this->billingMode) {
             $context->buildViolation('Pro pronájem na dobu neurčitou je dostupná pouze automatická platba kartou.')
                 ->atPath('billingMode')

@@ -555,6 +555,17 @@ class OrderRepository
             ->getOneOrNullResult();
     }
 
+    public function findByVariableSymbol(string $variableSymbol): ?Order
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('o')
+            ->from(Order::class, 'o')
+            ->where('o.variableSymbol = :vs')
+            ->setParameter('vs', $variableSymbol)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
     public function findByGoPayPaymentId(string $paymentId): ?Order
     {
         return $this->entityManager->createQueryBuilder()

@@ -6,9 +6,11 @@ namespace App\Controller\Public;
 
 use App\Command\CancelOrderCommand;
 use App\Enum\OrderStatus;
+use App\Enum\PaymentMethod;
 use App\Repository\OrderRepository;
 use App\Service\GoPay\GoPayClient;
 use App\Service\OrderStatusUrlGenerator;
+use App\Service\Payment\QrPaymentGenerator;
 use App\Service\PriceCalculator;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -29,6 +31,7 @@ final class OrderPaymentController extends AbstractController
         private readonly GoPayClient $goPayClient,
         private readonly PriceCalculator $priceCalculator,
         private readonly OrderStatusUrlGenerator $orderStatusUrlGenerator,
+        private readonly QrPaymentGenerator $qrPaymentGenerator,
         private readonly LoggerInterface $logger,
     ) {
     }
@@ -100,13 +103,21 @@ final class OrderPaymentController extends AbstractController
 
         $paymentSchedule = $this->priceCalculator->buildPaymentSchedule($storage, $order->startDate, $order->endDate);
 
+        $isBankTransfer = PaymentMethod::BANK_TRANSFER === $order->paymentMethod;
+
         return $this->render('public/order_payment.html.twig', [
             'order' => $order,
             'storage' => $storage,
             'storageType' => $storageType,
             'place' => $place,
             'paymentSchedule' => $paymentSchedule,
-            'goPayEmbedJs' => $this->goPayClient->getEmbedJsUrl(),
+            'goPayEmbedJs' => $isBankTransfer ? null : $this->goPayClient->getEmbedJsUrl(),
+            'isBankTransfer' => $isBankTransfer,
+            'bankAccount' => $isBankTransfer ? $this->qrPaymentGenerator->getBankAccountFormatted() : null,
+            'qrCodeDataUri' => $isBankTransfer && null !== $order->variableSymbol
+                ? $this->qrPaymentGenerator->generateDataUri($order->variableSymbol, $order->firstPaymentPrice)
+                : null,
+            'statusUrl' => $this->orderStatusUrlGenerator->generate($order),
         ]);
     }
 }

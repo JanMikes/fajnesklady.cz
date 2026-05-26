@@ -42,7 +42,7 @@ final readonly class OperationsAlertsBuilder
         $waitingTenant = 0;
         $waitingLandlord = 0;
         $handoverOverdue = 0;
-        $overdueThreshold = $now->modify('-' . self::HANDOVER_OVERDUE_DAYS . ' days');
+        $overdueThreshold = $now->modify('-'.self::HANDOVER_OVERDUE_DAYS.' days');
 
         foreach ($handoverViews as $protocol) {
             if ($protocol->status->isWaitingOn('tenant')) {

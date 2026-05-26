@@ -6,6 +6,7 @@ namespace App\Command;
 
 use App\Entity\Contract;
 use App\Entity\ManualPaymentRequest;
+use App\Enum\PaymentMethod;
 use App\Event\ManualBillingPaymentOverdue;
 use App\Event\ManualBillingPaymentRequested;
 use App\Repository\ContractRepository;
@@ -83,6 +84,52 @@ final readonly class DispatchManualBillingNotificationHandler
         }
 
         if ($request->isPaid()) {
+            return;
+        }
+
+        $isBankTransfer = PaymentMethod::BANK_TRANSFER === $contract->order->paymentMethod;
+
+        if ($isBankTransfer) {
+            $request->recordStageSent($command->stage, $now);
+
+            $this->auditLogger->log(
+                entityType: 'manual_payment_request',
+                entityId: $request->id->toRfc4122(),
+                eventType: 'bank_transfer_reminder_sent',
+                payload: [
+                    'contract_id' => $contract->id->toRfc4122(),
+                    'period_start' => $request->periodStart->format('Y-m-d'),
+                    'stage' => $command->stage,
+                    'amount' => $request->amount,
+                    'variable_symbol' => $contract->order->variableSymbol,
+                ],
+            );
+
+            $isOverdueStage = in_array($command->stage, [
+                ManualBillingReminderSchedule::STAGE_OVERDUE_FIRST,
+                ManualBillingReminderSchedule::STAGE_OVERDUE_FINAL,
+            ], true);
+
+            if ($isOverdueStage) {
+                $contract->recordFailedBillingAttempt($now);
+            }
+
+            $event = $isOverdueStage
+                ? new ManualBillingPaymentOverdue(
+                    contractId: $contract->id,
+                    manualPaymentRequestId: $request->id,
+                    stage: $command->stage,
+                    occurredOn: $now,
+                )
+                : new ManualBillingPaymentRequested(
+                    contractId: $contract->id,
+                    manualPaymentRequestId: $request->id,
+                    stage: $command->stage,
+                    occurredOn: $now,
+                );
+
+            $this->eventBus->dispatch($event);
+
             return;
         }
 

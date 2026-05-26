@@ -88,6 +88,9 @@ class Order implements EntityWithEvents
     #[ORM\Column(length: 10, nullable: true, enumType: PaymentMethod::class)]
     public private(set) ?PaymentMethod $paymentMethod = null;
 
+    #[ORM\Column(length: 10, nullable: true, unique: true)]
+    public private(set) ?string $variableSymbol = null;
+
     /**
      * Decides the SUBSEQUENT billing cadence (orthogonal to paymentMethod which
      * decides the first payment). AUTO_RECURRING = GoPay ON_DEMAND token + cron
@@ -409,6 +412,11 @@ class Order implements EntityWithEvents
     public function setPaymentMethod(PaymentMethod $method): void
     {
         $this->paymentMethod = $method;
+    }
+
+    public function assignVariableSymbol(string $variableSymbol): void
+    {
+        $this->variableSymbol = $variableSymbol;
     }
 
     public function setBillingMode(BillingMode $mode): void

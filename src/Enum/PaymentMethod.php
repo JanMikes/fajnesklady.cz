@@ -8,4 +8,5 @@ enum PaymentMethod: string
 {
     case GOPAY = 'gopay';
     case EXTERNAL = 'external';
+    case BANK_TRANSFER = 'bank_transfer';
 }

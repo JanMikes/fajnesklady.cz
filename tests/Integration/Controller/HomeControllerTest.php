@@ -99,6 +99,7 @@ final class HomeControllerTest extends WebTestCase
             $isAvailable = str_contains($html, 'badge-available');
             if ($isSoldOut) {
                 $seenSoldOut = true;
+
                 continue;
             }
             $this->assertFalse(

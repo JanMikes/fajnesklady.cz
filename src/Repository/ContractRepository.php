@@ -762,7 +762,7 @@ class ContractRepository
             ->andWhere('c.billingMode != :manual')
             ->setParameter('rangeStart', $rangeStart)
             ->setParameter('rangeEnd', $rangeEnd)
-            ->setParameter('manual', \App\Enum\BillingMode::MANUAL_RECURRING->value)
+            ->setParameter('manual', BillingMode::MANUAL_RECURRING->value)
             ->getQuery()
             ->getResult();
     }
@@ -836,7 +836,7 @@ class ContractRepository
             ->andWhere('c.endDate IS NULL OR c.endDate >= :now')
             ->andWhere('c.terminatesAt IS NULL OR c.terminatesAt >= :now')
             ->andWhere('c.nextBillingDate BETWEEN :windowStart AND :windowEnd')
-            ->setParameter('manual', \App\Enum\BillingMode::MANUAL_RECURRING->value)
+            ->setParameter('manual', BillingMode::MANUAL_RECURRING->value)
             ->setParameter('now', $now)
             ->setParameter('windowStart', $windowStart)
             ->setParameter('windowEnd', $windowEnd)

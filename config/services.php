@@ -176,6 +176,11 @@ return App::config([
         'App\\Twig\\Components\\' => [
             'resource' => '../src/Twig/Components/',
         ],
+        'App\\Service\\Payment\\FioClient' => [
+            'arguments' => [
+                '$fioApiToken' => '%env(FIO_API_TOKEN)%',
+            ],
+        ],
         // GoPay payment gateway
         'GoPay\\Payments' => [
             'factory' => ['GoPay\\Api', 'payments'],

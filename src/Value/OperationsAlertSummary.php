@@ -18,10 +18,10 @@ use App\Entity\Order;
 final readonly class OperationsAlertSummary
 {
     /**
-     * @param HandoverProtocol[] $handoverViews     non-completed protocols, sorted createdAt ASC
-     * @param Contract[]         $contractsEndingWithoutProtocol  end-date in ≤7 d, no protocol row
-     * @param Order[]            $onboardingSignedUnpaid          admin-created, signed, unpaid
-     * @param Contract[]         $externalPrepaymentEnding        paid-through-date in ≤7 d
+     * @param HandoverProtocol[] $handoverViews                  non-completed protocols, sorted createdAt ASC
+     * @param Contract[]         $contractsEndingWithoutProtocol end-date in ≤7 d, no protocol row
+     * @param Order[]            $onboardingSignedUnpaid         admin-created, signed, unpaid
+     * @param Contract[]         $externalPrepaymentEnding       paid-through-date in ≤7 d
      */
     public function __construct(
         public int $handoverWaitingTenantCount,

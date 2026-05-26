@@ -16,6 +16,7 @@ use App\Repository\PlaceRepository;
 use App\Repository\StorageRepository;
 use App\Repository\StorageTypeRepository;
 use App\Service\Messenger\HandlerFailureUnwrap;
+use App\Service\Payment\VariableSymbolGenerator;
 use App\Service\PriceCalculator;
 use App\Service\StorageAssignment;
 use App\Service\StorageAvailabilityChecker;
@@ -43,6 +44,7 @@ final class OrderAcceptController extends AbstractController
         private readonly StorageAssignment $storageAssignment,
         private readonly LoggerInterface $logger,
         private readonly ClockInterface $clock,
+        private readonly VariableSymbolGenerator $variableSymbolGenerator,
     ) {
     }
 
@@ -316,6 +318,16 @@ final class OrderAcceptController extends AbstractController
             $billingMode = $formData->resolvedBillingMode();
             if (\App\Enum\BillingMode::AUTO_RECURRING !== $billingMode) {
                 $order->setBillingMode($billingMode);
+            }
+
+            if (null !== $formData->paymentMethod) {
+                $order->setPaymentMethod($formData->paymentMethod);
+            }
+
+            if (\App\Enum\PaymentMethod::BANK_TRANSFER === $formData->paymentMethod) {
+                $order->assignVariableSymbol(
+                    $this->variableSymbolGenerator->generate($order->id),
+                );
             }
 
             // 3. Sign order

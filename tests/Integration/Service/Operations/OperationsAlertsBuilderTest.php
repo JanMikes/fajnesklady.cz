@@ -99,6 +99,7 @@ class OperationsAlertsBuilderTest extends KernelTestCase
         foreach ($summary->contractsEndingWithoutProtocol as $contract) {
             if ('D3' === $contract->storage->number) {
                 $found = true;
+
                 break;
             }
         }

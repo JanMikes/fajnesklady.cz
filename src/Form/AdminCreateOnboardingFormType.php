@@ -133,8 +133,9 @@ final class AdminCreateOnboardingFormType extends AbstractType
                 'label' => 'Způsob platby',
                 'expanded' => true,
                 'choice_label' => static fn (PaymentMethod $method): string => match ($method) {
-                    PaymentMethod::EXTERNAL => 'Externí platba (bankovní převod, hotovost)',
+                    PaymentMethod::EXTERNAL => 'Externí platba (hotovost, jiné)',
                     PaymentMethod::GOPAY => 'GoPay (zákazník nastaví při podpisu)',
+                    PaymentMethod::BANK_TRANSFER => 'Bankovní převod (zákazník platí převodem)',
                 },
             ])
             ->add('billingMode', EnumType::class, [

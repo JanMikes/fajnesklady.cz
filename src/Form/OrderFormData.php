@@ -8,6 +8,7 @@ use App\Entity\User;
 use App\Enum\BillingMode;
 use App\Enum\ExpectedDuration;
 use App\Enum\PaymentFrequency;
+use App\Enum\PaymentMethod;
 use App\Enum\RentalType;
 use App\Form\Address\HasBillingAddress;
 use App\Service\PriceCalculator;
@@ -111,6 +112,8 @@ final class OrderFormData implements HasBillingAddress
      * {@see self::resolvedPaymentFrequency()} which falls back to MONTHLY.
      */
     public ?PaymentFrequency $paymentFrequency = PaymentFrequency::MONTHLY;
+
+    public ?PaymentMethod $paymentMethod = PaymentMethod::GOPAY;
 
     public function resolvedBillingMode(): BillingMode
     {
@@ -275,6 +278,20 @@ final class OrderFormData implements HasBillingAddress
             return;
         }
 
+        // BANK_TRANSFER: no automated charge possible — force MANUAL_RECURRING
+        // for recurring orders, ONE_TIME for short ones.
+        if (PaymentMethod::BANK_TRANSFER === $this->paymentMethod) {
+            if (RentalType::LIMITED === $this->rentalType
+                && null !== $this->startDate && null !== $this->endDate
+                && (int) $this->startDate->diff($this->endDate)->days < PriceCalculator::WEEKLY_THRESHOLD_DAYS) {
+                $this->billingMode = BillingMode::ONE_TIME;
+            } elseif (BillingMode::AUTO_RECURRING === $this->billingMode) {
+                $this->billingMode = BillingMode::MANUAL_RECURRING;
+            }
+
+            return;
+        }
+
         if (RentalType::UNLIMITED === $this->rentalType && BillingMode::AUTO_RECURRING !== $this->billingMode) {
             $context->buildViolation('Pro pronájem na dobu neurčitou je dostupná pouze automatická platba kartou.')
                 ->atPath('billingMode')
@@ -372,6 +389,7 @@ final class OrderFormData implements HasBillingAddress
             'selectionMode' => $this->selectionMode,
             'billingMode' => $this->resolvedBillingMode()->value,
             'paymentFrequency' => $this->resolvedPaymentFrequency()->value,
+            'paymentMethod' => $this->paymentMethod?->value,
         ];
     }
 
@@ -408,6 +426,9 @@ final class OrderFormData implements HasBillingAddress
         }
         if (isset($data['paymentFrequency'])) {
             $formData->paymentFrequency = PaymentFrequency::tryFrom($data['paymentFrequency']) ?? PaymentFrequency::MONTHLY;
+        }
+        if (isset($data['paymentMethod'])) {
+            $formData->paymentMethod = PaymentMethod::tryFrom($data['paymentMethod']) ?? PaymentMethod::GOPAY;
         }
 
         return $formData;

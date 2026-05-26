@@ -11,6 +11,7 @@ use App\Event\AdminOnboardingInitiated;
 use App\Repository\UserRepository;
 use App\Service\Identity\ProvideIdentity;
 use App\Service\OrderService;
+use App\Service\Payment\VariableSymbolGenerator;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
@@ -24,6 +25,7 @@ final readonly class AdminCreateOnboardingHandler
         private OrderService $orderService,
         private ClockInterface $clock,
         private ProvideIdentity $identityProvider,
+        private VariableSymbolGenerator $variableSymbolGenerator,
     ) {
     }
 
@@ -72,7 +74,15 @@ final readonly class AdminCreateOnboardingHandler
         // Free contracts and external prepayment must be EXTERNAL — neither
         // can be charged via GoPay during signing.
         $forceExternal = 0 === $command->individualMonthlyAmount || null !== $command->paidThroughDate;
-        $order->setPaymentMethod($forceExternal ? PaymentMethod::EXTERNAL : $command->paymentMethod);
+        $effectivePaymentMethod = $forceExternal ? PaymentMethod::EXTERNAL : $command->paymentMethod;
+        $order->setPaymentMethod($effectivePaymentMethod);
+
+        if (PaymentMethod::BANK_TRANSFER === $effectivePaymentMethod) {
+            $vs = null !== $command->variableSymbolOverride && '' !== $command->variableSymbolOverride
+                ? $command->variableSymbolOverride
+                : $this->variableSymbolGenerator->generate($order->id);
+            $order->assignVariableSymbol($vs);
+        }
 
         $createdByAdmin = null !== $command->createdByAdminId
             ? $this->userRepository->get($command->createdByAdminId)

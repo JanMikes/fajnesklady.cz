@@ -46,6 +46,7 @@ final readonly class AdminCreateOnboardingCommand
         public BillingMode $billingMode = BillingMode::AUTO_RECURRING,
         public ?ExpectedDuration $expectedDuration = null,
         public PaymentFrequency $paymentFrequency = PaymentFrequency::MONTHLY,
+        public ?string $variableSymbolOverride = null,
     ) {
     }
 }
