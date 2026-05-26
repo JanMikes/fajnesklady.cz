@@ -327,7 +327,8 @@ final readonly class CancelFineCommand
 - Route: `GET /portal/admin/pokuty`
 - Security: `ROLE_ADMIN`
 - Paginated list with filters: status (all / unpaid / paid / cancelled), text search (user name/email)
-- Columns: Datum, Zákazník (linked), Smlouva, Typ, Částka, Stav (badge), Vystavil, Akce (detail link)
+- Columns: Datum, Zákazník (linked), Smlouva, Typ, Částka, Stav (badge), Způsob platby (see below), Vystavil, Akce (detail link)
+- **Způsob platby column** (only for paid fines): "GoPay ({goPayPaymentId})" or "Bankovní převod (VS {variableSymbol})" — lets admin trace exactly which payment settled the fine
 
 **`AdminFineExportController`** (`src/Controller/Portal/Admin/AdminFineExportController.php`):
 - Route: `GET /portal/admin/pokuty/export`
@@ -335,7 +336,8 @@ final readonly class CancelFineCommand
 
 **Admin order detail modification** (`templates/portal/admin/order/detail.html.twig`):
 - New "Smluvní pokuty" panel after the existing "Dluh" panel (if contract exists)
-- Shows table of fines: Datum | Typ | Částka | Stav (badge) | Poznámka (truncated) | Akce (cancel button for unpaid)
+- Shows table of fines: Datum | Typ | Částka | Stav (badge) | Způsob platby | Poznámka (truncated) | Akce (cancel button for unpaid)
+- **Způsob platby** (paid fines only): "Kartou (GoPay)" when `goPayPaymentId` is set, "Převodem (VS {variableSymbol})" when paid via bank transfer (goPayPaymentId is null but paidAt is set). Unpaid/cancelled → empty.
 - "Vystavit pokutu" button linking to `AdminFineCreateController`
 - Panel hidden when no contract on the order
 
@@ -406,7 +408,7 @@ Template: `templates/public/fine_payment.html.twig` — structured like `order_d
 
 ### 11. Webhook integration (`ProcessPaymentNotificationHandler`)
 
-Add a new branch after the existing debt-payment branch:
+Add a new branch after the existing debt-payment branch. The association chain is: GoPay sends webhook with `paymentId` → handler queries `FineRepository::findByGoPayPaymentId()` → finds the exact fine that initiated this charge → marks it paid. The `Fine.goPayPaymentId` was stored at initiation (§9), so the link is 1:1 and unambiguous.
 
 ```php
 // Try fine payment
@@ -421,7 +423,7 @@ if ($fine !== null) {
 
 ### 12. FIO bank transfer matching (`ProcessFioTransactionsCommand`)
 
-After attempting Order match by variable symbol, add:
+After attempting Order match by variable symbol, add a Fine match branch. The association chain is: each Fine gets a unique variable symbol at creation (§5+§10) → customer includes that VS in their bank transfer → FIO cron polls the bank account → matches incoming transaction's VS against `FineRepository::findByVariableSymbol()` → links `BankTransaction.pairedFine` to the fine → marks fine paid. The VS is unique across both Order and Fine tables (§10 enforces cross-table uniqueness), so there is no ambiguity.
 
 ```php
 $fine = $this->fineRepository->findByVariableSymbol($transaction->variableSymbol);
@@ -436,7 +438,7 @@ if ($fine !== null && $fine->isPayable()) {
 }
 ```
 
-Note: `BankTransaction` entity needs a new nullable `pairedFine` ManyToOne relation.
+`BankTransaction` entity gains a new nullable `pairedFine` ManyToOne relation (alongside existing `pairedOrder` / `pairedContract`). Admin "Bankovní platby" page already shows paired entity — extend to display "Pokuta: {type label} ({amount} Kč)" when `pairedFine` is set.
 
 ### 13. Email notifications
 
