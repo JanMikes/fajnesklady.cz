@@ -30,9 +30,6 @@ final class Version20260526232950 extends AbstractMigration
         $this->addSql('ALTER TABLE fine ADD CONSTRAINT FK_BEA954922576E0FD FOREIGN KEY (contract_id) REFERENCES contract (id) NOT DEFERRABLE');
         $this->addSql('ALTER TABLE fine ADD CONSTRAINT FK_BEA95492A76ED395 FOREIGN KEY (user_id) REFERENCES users (id) NOT DEFERRABLE');
         $this->addSql('ALTER TABLE fine ADD CONSTRAINT FK_BEA95492784BB717 FOREIGN KEY (issued_by_id) REFERENCES users (id) NOT DEFERRABLE');
-        $this->addSql('ALTER TABLE storage ADD price_per_month_long_term INT DEFAULT NULL');
-        $this->addSql('ALTER TABLE storage_type ADD default_price_per_month_long_term INT NOT NULL');
-        $this->addSql('ALTER TABLE storage_type ALTER default_price_per_year SET NOT NULL');
     }
 
     public function down(Schema $schema): void
@@ -43,8 +40,5 @@ final class Version20260526232950 extends AbstractMigration
         $this->addSql('ALTER TABLE fine DROP CONSTRAINT FK_BEA95492A76ED395');
         $this->addSql('ALTER TABLE fine DROP CONSTRAINT FK_BEA95492784BB717');
         $this->addSql('DROP TABLE fine');
-        $this->addSql('ALTER TABLE storage DROP price_per_month_long_term');
-        $this->addSql('ALTER TABLE storage_type DROP default_price_per_month_long_term');
-        $this->addSql('ALTER TABLE storage_type ALTER default_price_per_year DROP NOT NULL');
     }
 }
