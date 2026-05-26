@@ -6,6 +6,7 @@ namespace App\Service\Operations;
 
 use App\Enum\HandoverStatus;
 use App\Repository\ContractRepository;
+use App\Repository\FineRepository;
 use App\Repository\HandoverProtocolRepository;
 use App\Repository\OrderRepository;
 use App\Service\Overdue\OverdueChecker;
@@ -32,6 +33,7 @@ final readonly class OperationsAlertsBuilder
         private HandoverProtocolRepository $handoverProtocolRepository,
         private ContractRepository $contractRepository,
         private OrderRepository $orderRepository,
+        private FineRepository $fineRepository,
         private OverdueChecker $overdueChecker,
     ) {
     }
@@ -67,6 +69,7 @@ final readonly class OperationsAlertsBuilder
         );
 
         $overdueSummary = $this->overdueChecker->summarise($now);
+        $unpaidFinesCount = $this->fineRepository->countUnpaid();
 
         $totalPending = count($handoverViews)
             + count($contractsEnding)
@@ -87,6 +90,7 @@ final readonly class OperationsAlertsBuilder
             overdueCount: $overdueSummary->count,
             overdueAmount: $overdueSummary->totalAmount,
             totalPending: $totalPending,
+            unpaidFinesCount: $unpaidFinesCount,
         );
     }
 

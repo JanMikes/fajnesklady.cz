@@ -1,0 +1,82 @@
+{% extends 'portal/layout.html.twig' %}
+
+{% block title %}Vystavit pokutu - Admin{% endblock %}
+
+{% block breadcrumb %}
+    {% include 'components/breadcrumb.html.twig' with {breadcrumb_items: [
+        {label: 'Objednávky', url: path('admin_orders_list')},
+        {label: 'Detail', url: path('admin_order_detail', {id: order.id})},
+        {label: 'Vystavit pokutu'},
+    ]} %}
+{% endblock %}
+
+{% block content %}
+    <div class="max-w-2xl mx-auto">
+        <h1 class="text-3xl font-bold text-gray-900 mb-6">Vystavit smluvní pokutu</h1>
+
+        <div class="bg-gray-50 rounded-lg p-4 mb-6">
+            <h2 class="font-semibold text-gray-900 mb-2">Smlouva</h2>
+            <div class="text-sm text-gray-600 space-y-1">
+                <p>Zákazník: <strong>{{ contract.user.fullName }}</strong> ({{ contract.user.email }})</p>
+                <p>Skladová jednotka: <strong>{{ contract.storage.storageType.name }} ({{ contract.storage.number }})</strong></p>
+                <p>Pobočka: <strong>{{ contract.storage.place.name }}</strong></p>
+            </div>
+        </div>
+
+        {{ form_start(form, {attr: {class: 'space-y-6', 'data-controller': 'fine-form'}}) }}
+            <div>
+                {{ form_label(form.type) }}
+                {{ form_widget(form.type, {attr: {class: 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring-accent text-sm', 'data-fine-form-target': 'type', 'data-action': 'change->fine-form#typeChanged'}}) }}
+                {{ form_errors(form.type) }}
+            </div>
+
+            <div data-fine-form-target="nonReturnDaysWrapper" class="hidden">
+                {{ form_label(form.nonReturnDays) }}
+                {{ form_widget(form.nonReturnDays, {attr: {class: 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring-accent text-sm', 'data-action': 'input->fine-form#calculateAmount'}}) }}
+                <p class="mt-1 text-xs text-gray-500">2 000 Kč za každý den nevrácení</p>
+                {{ form_errors(form.nonReturnDays) }}
+            </div>
+
+            <div data-fine-form-target="latePaymentWrapper" class="hidden">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        {{ form_label(form.latePaymentBaseInHaler) }}
+                        {{ form_widget(form.latePaymentBaseInHaler, {attr: {class: 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring-accent text-sm', 'data-action': 'input->fine-form#calculateAmount'}}) }}
+                        <p class="mt-1 text-xs text-gray-500">Dlužná částka v haléřích</p>
+                        {{ form_errors(form.latePaymentBaseInHaler) }}
+                    </div>
+                    <div>
+                        {{ form_label(form.latePaymentDays) }}
+                        {{ form_widget(form.latePaymentDays, {attr: {class: 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring-accent text-sm', 'data-action': 'input->fine-form#calculateAmount'}}) }}
+                        <p class="mt-1 text-xs text-gray-500">Počet dní prodlení</p>
+                        {{ form_errors(form.latePaymentDays) }}
+                    </div>
+                </div>
+                <p class="mt-2 text-xs text-gray-500">Výpočet: max(základ × 0,25 % × dny, 250 Kč × dny)</p>
+            </div>
+
+            <div>
+                {{ form_label(form.amountInHaler) }}
+                {{ form_widget(form.amountInHaler, {attr: {class: 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring-accent text-sm'}}) }}
+                <p class="mt-1 text-xs text-gray-500">
+                    Částka v haléřích (100 = 1 Kč).
+                    <span data-fine-form-target="amountDisplay" class="font-medium"></span>
+                </p>
+                {{ form_errors(form.amountInHaler) }}
+            </div>
+
+            <div>
+                {{ form_label(form.description) }}
+                {{ form_widget(form.description, {attr: {class: 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring-accent text-sm'}}) }}
+                {{ form_errors(form.description) }}
+            </div>
+
+            <div class="flex justify-end space-x-3">
+                <a href="{{ path('admin_order_detail', {id: order.id}) }}" class="btn btn-secondary">Zrušit</a>
+                <button type="submit" class="btn btn-primary bg-red-600 hover:bg-red-700" onclick="return confirm('Opravdu chcete vystavit tuto pokutu?');">
+                    Vystavit pokutu
+                </button>
+            </div>
+        {{ form_end(form) }}
+    </div>
+{% endblock %}

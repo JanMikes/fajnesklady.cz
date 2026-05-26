@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smluvní pokuta — {{ fineType }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #dc2626;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 5px 5px 0 0;
+        }
+        .content {
+            background-color: #f9f9f9;
+            padding: 30px;
+            border: 1px solid #ddd;
+            border-top: none;
+        }
+        .summary {
+            background-color: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 16px 20px;
+            margin: 16px 0 24px;
+        }
+        .summary table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        .summary td {
+            padding: 4px 0;
+            vertical-align: top;
+        }
+        .summary td.label {
+            color: #6b7280;
+            width: 45%;
+        }
+        .button {
+            display: inline-block;
+            background-color: #dc2626;
+            color: white !important;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        .footer {
+            text-align: center;
+            padding: 20px;
+            font-size: 12px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Smluvní pokuta</h1>
+    </div>
+
+    <div class="content">
+        <h2>Dobrý den, {{ name }}!</h2>
+
+        <p>Byla vám vystavena smluvní pokuta dle podmínek nájemní smlouvy.</p>
+
+        <div class="summary">
+            <table>
+                <tr>
+                    <td class="label">Typ pokuty:</td>
+                    <td><strong>{{ fineType }}</strong></td>
+                </tr>
+                <tr>
+                    <td class="label">Částka:</td>
+                    <td><strong style="color: #dc2626;">{{ amountCzk }} Kč</strong></td>
+                </tr>
+                {% if placeName %}
+                <tr>
+                    <td class="label">Pobočka:</td>
+                    <td>{{ placeName }}</td>
+                </tr>
+                {% endif %}
+                {% if placeAddress %}
+                <tr>
+                    <td class="label">Adresa:</td>
+                    <td>{{ placeAddress }}</td>
+                </tr>
+                {% endif %}
+                {% if bankAccount %}
+                <tr>
+                    <td class="label">Číslo účtu:</td>
+                    <td><strong>{{ bankAccount }}</strong></td>
+                </tr>
+                {% endif %}
+                {% if variableSymbol %}
+                <tr>
+                    <td class="label">Variabilní symbol:</td>
+                    <td><strong>{{ variableSymbol }}</strong></td>
+                </tr>
+                {% endif %}
+            </table>
+        </div>
+
+        {% if description %}
+            <div style="background-color: #fff; border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px 16px; margin-bottom: 20px;">
+                <p style="font-size: 13px; color: #6b7280; margin: 0 0 4px;">Poznámka:</p>
+                <p style="margin: 0;">{{ description }}</p>
+            </div>
+        {% endif %}
+
+        <div style="text-align: center;">
+            <a href="{{ paymentUrl }}" class="button">Zaplatit pokutu</a>
+        </div>
+
+        <p style="font-size: 13px; color: #666;">
+            Na stránce platby si můžete vybrat, zda zaplatíte kartou přes platební bránu GoPay, nebo bankovním převodem.
+        </p>
+
+        <p style="font-size: 13px; color: #666;">
+            Pokud tlačítko nefunguje, zkopírujte tento odkaz do prohlížeče:<br>
+            <a href="{{ paymentUrl }}" style="color: #570df8; word-break: break-all;">{{ paymentUrl }}</a>
+        </p>
+
+        <p style="font-size: 13px; color: #666;">
+            Pokud potřebujete pomoc, kontaktujte nás na
+            <a href="mailto:simek@fajnesklady.cz" style="color: #570df8;">simek@fajnesklady.cz</a>.
+        </p>
+
+        <p>S pozdravem,<br>
+        <strong>Tým Fajnesklady.cz</strong></p>
+    </div>
+
+    <div class="footer">
+        <p>Toto je automaticky generovaný e-mail. Prosím neodpovídejte na tuto zprávu.</p>
+        <p>&copy; {{ 'now'|date('Y') }} Fajnesklady.cz. Všechna práva vyhrazena.</p>
+    </div>
+</body>
+</html>

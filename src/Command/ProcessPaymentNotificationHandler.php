@@ -11,6 +11,7 @@ use App\Event\PaymentAmountMismatch;
 use App\Event\RecurringPaymentCharged;
 use App\Event\RecurringPaymentEstablished;
 use App\Repository\ContractRepository;
+use App\Repository\FineRepository;
 use App\Repository\ManualPaymentRequestRepository;
 use App\Repository\OrderRepository;
 use App\Repository\PaymentRepository;
@@ -36,6 +37,7 @@ final readonly class ProcessPaymentNotificationHandler
         private PaymentRepository $paymentRepository,
         private ContractRepository $contractRepository,
         private ManualPaymentRequestRepository $manualPaymentRequestRepository,
+        private FineRepository $fineRepository,
         private OrderService $orderService,
         private DebtPaymentService $debtPaymentService,
         private RecurringAmountCalculator $amountCalculator,
@@ -131,6 +133,16 @@ final readonly class ProcessPaymentNotificationHandler
         $manualRequest = $this->manualPaymentRequestRepository->findByGoPayPaymentId($command->goPayPaymentId);
         if (null !== $manualRequest && $status->isPaid()) {
             $this->reconcileManualPayment($manualRequest, $status, $now);
+
+            return;
+        }
+
+        // Fine payment: GoPay payment ID was stored on Fine.goPayPaymentId
+        $fine = $this->fineRepository->findByGoPayPaymentId($command->goPayPaymentId);
+        if (null !== $fine) {
+            if ($status->isPaid() && $fine->isPayable()) {
+                $fine->markPaid($now);
+            }
 
             return;
         }

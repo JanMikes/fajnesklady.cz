@@ -11,10 +11,12 @@ use App\Enum\BillingMode;
 use App\Enum\OrderStatus;
 use App\Repository\AuditLogRepository;
 use App\Repository\ContractRepository;
+use App\Repository\FineRepository;
 use App\Repository\HandoverProtocolRepository;
 use App\Repository\InvoiceRepository;
 use App\Repository\ManualPaymentRequestRepository;
 use App\Service\Billing\ManualBillingReminderSchedule;
+use App\Service\Fine\FinePaymentUrlGenerator;
 use App\Service\Handover\HandoverUrlGenerator;
 use App\Service\OrderStatusUrlGenerator;
 use App\Service\RecurringPaymentCancelUrlGenerator;
@@ -27,9 +29,11 @@ final readonly class OrderStatusViewModelFactory
         private ContractRepository $contractRepository,
         private InvoiceRepository $invoiceRepository,
         private AuditLogRepository $auditLogRepository,
+        private FineRepository $fineRepository,
         private OrderDisplayStatusResolver $statusResolver,
         private OrderStatusUrlGenerator $statusUrlGenerator,
         private RecurringPaymentCancelUrlGenerator $cancelUrlGenerator,
+        private FinePaymentUrlGenerator $finePaymentUrlGenerator,
         private UrlGeneratorInterface $urlGenerator,
         private ClockInterface $clock,
         private ManualPaymentRequestRepository $manualPaymentRequestRepository,
@@ -150,7 +154,47 @@ final readonly class OrderStatusViewModelFactory
             );
         }
 
+        $unpaidFines = [];
+        $paidFines = [];
+        if (null !== $contract) {
+            $allFines = $this->fineRepository->findByContract($contract);
+            foreach ($allFines as $fine) {
+                if ($fine->isCancelled()) {
+                    continue;
+                }
+                if ($fine->isPaid()) {
+                    $paidFines[] = $fine;
+                } else {
+                    $unpaidFines[] = $fine;
+                }
+            }
+        }
+
+        $finePaymentUrls = [];
+        foreach ($unpaidFines as $fine) {
+            $finePaymentUrls[$fine->id->toRfc4122()] = $this->finePaymentUrlGenerator->generatePaymentUrl($fine);
+        }
+
         $timeline = $this->buildTimeline($order, $contract);
+
+        // Add fine timeline entries
+        foreach (array_merge($unpaidFines, $paidFines) as $fine) {
+            $timeline[] = [
+                'occurredAt' => $fine->issuedAt,
+                'label' => sprintf('Vystavena smluvní pokuta: %s (%s Kč)', $fine->type->label(), number_format($fine->getAmountInCzk(), 0, ',', ' ')),
+                'icon' => '⚠️',
+            ];
+            if ($fine->isPaid() && null !== $fine->paidAt) {
+                $timeline[] = [
+                    'occurredAt' => $fine->paidAt,
+                    'label' => sprintf('Smluvní pokuta zaplacena: %s (%s Kč)', $fine->type->label(), number_format($fine->getAmountInCzk(), 0, ',', ' ')),
+                    'icon' => '✅',
+                ];
+            }
+        }
+
+        // Re-sort timeline by date
+        usort($timeline, static fn (array $a, array $b) => $a['occurredAt'] <=> $b['occurredAt']);
 
         $handoverProtocol = null;
         $handoverViewUrl = null;
@@ -193,6 +237,9 @@ final readonly class OrderStatusViewModelFactory
             handoverProtocol: $handoverProtocol,
             handoverViewUrl: $handoverViewUrl,
             debtPaymentUrl: $debtPaymentUrl,
+            unpaidFines: $unpaidFines,
+            paidFines: $paidFines,
+            finePaymentUrls: $finePaymentUrls,
         );
     }
 

@@ -1,0 +1,136 @@
+{% extends 'portal/layout.html.twig' %}
+
+{% block title %}Smluvní pokuty - Admin{% endblock %}
+
+{% block breadcrumb %}
+    {% include 'components/breadcrumb.html.twig' with {breadcrumb_items: [
+        {label: 'Pokuty'},
+    ]} %}
+{% endblock %}
+
+{% block content %}
+    <div class="flex items-center justify-between mb-6">
+        <h1 class="text-3xl font-bold text-gray-900">Smluvní pokuty</h1>
+        <a href="{{ path('admin_fine_export', {status: status}) }}" class="btn btn-secondary btn-sm">
+            <svg class="h-4 w-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Export XLSX
+        </a>
+    </div>
+
+    {# Status filter tabs #}
+    <div class="border-b border-gray-200 mb-6">
+        <nav class="-mb-px flex space-x-6">
+            <a href="{{ path('admin_fine_list') }}"
+               class="pb-3 px-1 text-sm font-medium {{ status is null ? 'border-b-2 border-accent text-accent' : 'text-gray-500 hover:text-gray-700' }}">
+                Vše
+            </a>
+            <a href="{{ path('admin_fine_list', {status: 'unpaid'}) }}"
+               class="pb-3 px-1 text-sm font-medium {{ status == 'unpaid' ? 'border-b-2 border-accent text-accent' : 'text-gray-500 hover:text-gray-700' }}">
+                Nezaplacené
+            </a>
+            <a href="{{ path('admin_fine_list', {status: 'paid'}) }}"
+               class="pb-3 px-1 text-sm font-medium {{ status == 'paid' ? 'border-b-2 border-accent text-accent' : 'text-gray-500 hover:text-gray-700' }}">
+                Zaplacené
+            </a>
+            <a href="{{ path('admin_fine_list', {status: 'cancelled'}) }}"
+               class="pb-3 px-1 text-sm font-medium {{ status == 'cancelled' ? 'border-b-2 border-accent text-accent' : 'text-gray-500 hover:text-gray-700' }}">
+                Zrušené
+            </a>
+        </nav>
+    </div>
+
+    {# Search #}
+    <form method="get" action="{{ path('admin_fine_list') }}" class="mb-6">
+        {% if status %}
+            <input type="hidden" name="status" value="{{ status }}">
+        {% endif %}
+        <div class="flex gap-2">
+            <input type="text" name="search" value="{{ search }}" placeholder="Hledat zákazníka (jméno, email)..."
+                   class="block w-full max-w-md rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring-accent text-sm">
+            <button type="submit" class="btn btn-primary btn-sm">Hledat</button>
+            {% if search %}
+                <a href="{{ path('admin_fine_list', {status: status}) }}" class="btn btn-secondary btn-sm">Zrušit</a>
+            {% endif %}
+        </div>
+    </form>
+
+    <p class="text-sm text-gray-500 mb-4">Celkem: {{ totalFines }} {{ totalFines == 1 ? 'pokuta' : (totalFines < 5 and totalFines > 1 ? 'pokuty' : 'pokut') }}</p>
+
+    <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Datum</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Zákazník</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Typ</th>
+                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Částka</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Stav</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Způsob platby</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vystavil</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Akce</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for fine in fines %}
+                        <tr>
+                            <td class="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{{ fine.issuedAt|date('d.m.Y') }}</td>
+                            <td class="px-4 py-3 text-sm">
+                                <a href="{{ path('portal_users_view', {id: fine.user.id}) }}" class="link">
+                                    {{ fine.user.fullName }}
+                                </a>
+                                <br><span class="text-xs text-gray-500">{{ fine.user.email }}</span>
+                            </td>
+                            <td class="px-4 py-3 text-sm text-gray-900">{{ fine.type.label() }}</td>
+                            <td class="px-4 py-3 text-sm text-gray-900 text-right font-medium whitespace-nowrap">
+                                {{ (fine.amountInHaler / 100)|number_format(0, ',', ' ') }} Kč
+                            </td>
+                            <td class="px-4 py-3 text-sm whitespace-nowrap">
+                                {% if fine.isPaid() %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Zaplaceno</span>
+                                {% elseif fine.isCancelled() %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">Zrušeno</span>
+                                {% else %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Nezaplaceno</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
+                                {% if fine.isPaid() %}
+                                    {% if fine.goPayPaymentId %}
+                                        GoPay ({{ fine.goPayPaymentId }})
+                                    {% else %}
+                                        Převodem (VS {{ fine.variableSymbol }})
+                                    {% endif %}
+                                {% endif %}
+                            </td>
+                            <td class="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">{{ fine.issuedBy.fullName }}</td>
+                            <td class="px-4 py-3 text-sm whitespace-nowrap">
+                                <a href="{{ path('admin_order_detail', {id: fine.contract.order.id}) }}" class="link text-sm">Detail</a>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="8" class="px-4 py-8 text-center text-sm text-gray-500">Žádné pokuty k zobrazení.</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {# Pagination #}
+    {% if totalPages > 1 %}
+        <div class="mt-6 flex justify-center">
+            <nav class="inline-flex rounded-md shadow-sm -space-x-px">
+                {% for p in 1..totalPages %}
+                    <a href="{{ path('admin_fine_list', {page: p, status: status, search: search}) }}"
+                       class="relative inline-flex items-center px-4 py-2 border text-sm font-medium {{ p == currentPage ? 'z-10 bg-accent border-accent text-white' : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50' }}">
+                        {{ p }}
+                    </a>
+                {% endfor %}
+            </nav>
+        </div>
+    {% endif %}
+{% endblock %}

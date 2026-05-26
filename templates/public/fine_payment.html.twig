@@ -1,0 +1,191 @@
+{% extends app.user ? 'portal/layout.html.twig' : 'user/layout.html.twig' %}
+
+{% block title %}Úhrada pokuty - Fajnesklady.cz{% endblock %}
+
+{% block content %}
+    <div class="max-w-2xl mx-auto">
+        <div class="card">
+            <div class="card-body">
+                <h1 class="text-2xl font-bold text-gray-900 mb-2">Úhrada smluvní pokuty</h1>
+                <p class="text-gray-600 mb-6">
+                    Byla vám vystavena smluvní pokuta. Vyberte způsob platby.
+                </p>
+
+                {# Fine amount #}
+                <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+                    <div class="flex justify-between items-center">
+                        <span class="font-semibold text-red-800">Pokuta k úhradě</span>
+                        <span class="text-2xl font-bold text-red-700">{{ amountCzk|number_format(0, ',', ' ') }} Kč</span>
+                    </div>
+                </div>
+
+                {# Fine details #}
+                <div class="bg-gray-50 rounded-lg p-4 mb-6">
+                    <h2 class="font-semibold text-gray-900 mb-3">Detail pokuty</h2>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Typ</span>
+                            <span class="font-medium">{{ fine.type.label() }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Datum vystavení</span>
+                            <span class="font-medium">{{ fine.issuedAt|date('d.m.Y') }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Pobočka</span>
+                            <span class="font-medium">{{ place.name }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Skladová jednotka</span>
+                            <span class="font-medium">{{ storageType.name }} ({{ storage.number }})</span>
+                        </div>
+                    </div>
+                    {% if fine.description %}
+                        <div class="mt-3 pt-3 border-t border-gray-200">
+                            <p class="text-xs text-gray-500 mb-1">Poznámka:</p>
+                            <p class="text-sm text-gray-700">{{ fine.description }}</p>
+                        </div>
+                    {% endif %}
+                </div>
+
+                {# Payment option 1: Card (GoPay) #}
+                <div class="bg-accent/5 border border-accent/20 rounded-lg p-4 mb-6">
+                    <h3 class="font-semibold text-gray-900 mb-2">Platba kartou</h3>
+                    <div class="flex items-start">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-accent mt-0.5 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                        </svg>
+                        <p class="text-sm text-gray-700">
+                            Bezpečná platba přes platební bránu GoPay. 256-bit SSL/TLS šifrování a 3D Secure 2.0.
+                        </p>
+                    </div>
+                    <div class="mt-3">
+                        {% include 'components/payment_logos.html.twig' %}
+                    </div>
+
+                    {# Error Message Container #}
+                    <div id="payment-error" class="hidden bg-red-50 border border-red-200 rounded-lg p-4 mt-4">
+                        <p class="text-sm text-red-800" id="payment-error-text"></p>
+                    </div>
+
+                    {# Loading State #}
+                    <div id="payment-loading" class="hidden text-center py-4 mt-4">
+                        <div class="inline-flex items-center">
+                            <svg class="animate-spin h-5 w-5 text-accent mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span class="text-gray-600">Připravuji platební bránu...</span>
+                        </div>
+                    </div>
+
+                    <div id="payment-actions" class="mt-4">
+                        <button type="button" id="pay-card-button" class="btn btn-primary w-full">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                            </svg>
+                            Zaplatit kartou {{ amountCzk|number_format(0, ',', ' ') }} Kč
+                        </button>
+                    </div>
+                </div>
+
+                {# Payment option 2: Bank transfer #}
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                    <h3 class="font-semibold text-blue-800 mb-3">Bankovní převod</h3>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Číslo účtu</span>
+                            <span class="font-mono font-bold text-gray-900">{{ bankAccount }}</span>
+                        </div>
+                        {% if fine.variableSymbol %}
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Variabilní symbol</span>
+                            <span class="font-mono font-bold text-gray-900">{{ fine.variableSymbol }}</span>
+                        </div>
+                        {% endif %}
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">Částka</span>
+                            <span class="font-bold text-gray-900">{{ amountCzk|number_format(0, ',', ' ') }} Kč</span>
+                        </div>
+                    </div>
+
+                    {% if qrCodeDataUri %}
+                        <div class="text-center mt-4">
+                            <p class="text-sm text-gray-600 mb-2">QR kód pro platbu</p>
+                            <img src="{{ qrCodeDataUri }}" alt="QR platba" class="mx-auto" style="width: 200px; height: 200px;">
+                        </div>
+                    {% endif %}
+
+                    <p class="mt-3 text-xs text-blue-700">
+                        Po přijetí platby na náš účet bude pokuta automaticky označena jako uhrazená.
+                    </p>
+                </div>
+
+                {# Pronajímatel identification #}
+                <div class="bg-white border border-gray-200 rounded-lg p-4 text-xs text-gray-600">
+                    <p class="font-semibold text-gray-800 mb-1">Pronajímatel</p>
+                    <p>
+                        Mekmann s.r.o., IČO 11678631, DIČ CZ11678631<br>
+                        Sídlo: Dvořákova 780, 739 11 Frýdlant nad Ostravicí<br>
+                        Zápis: Krajský soud v Ostravě, oddíl C, vložka 86521<br>
+                        Kontakt: <a href="tel:+420605522566" class="text-accent hover:underline">+420 605 522 566</a> · <a href="mailto:skladmistr@fajnesklady.cz" class="text-accent hover:underline">skladmistr@fajnesklady.cz</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const payButton = document.getElementById('pay-card-button');
+            const loadingEl = document.getElementById('payment-loading');
+            const errorEl = document.getElementById('payment-error');
+            const errorTextEl = document.getElementById('payment-error-text');
+            const actionsEl = document.getElementById('payment-actions');
+
+            function showError(message) {
+                errorTextEl.textContent = message;
+                errorEl.classList.remove('hidden');
+                loadingEl.classList.add('hidden');
+                actionsEl.classList.remove('hidden');
+            }
+
+            function hideError() {
+                errorEl.classList.add('hidden');
+            }
+
+            payButton.addEventListener('click', async function() {
+                hideError();
+                loadingEl.classList.remove('hidden');
+                actionsEl.classList.add('hidden');
+
+                try {
+                    const response = await fetch('{{ path('public_fine_payment_initiate', {id: fine.id}) }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        showError(data.error || 'Došlo k chybě při vytváření platby.');
+                        return;
+                    }
+
+                    // Redirect to GoPay gateway
+                    window.location.href = data.gwUrl;
+
+                } catch (error) {
+                    console.error('Payment error:', error);
+                    showError('Došlo k chybě při komunikaci se serverem. Zkuste to prosím znovu.');
+                }
+            });
+        });
+    </script>
+{% endblock %}

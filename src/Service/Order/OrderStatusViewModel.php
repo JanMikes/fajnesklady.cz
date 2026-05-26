@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service\Order;
 
 use App\Entity\Contract;
+use App\Entity\Fine;
 use App\Entity\HandoverProtocol;
 use App\Entity\Invoice;
 use App\Entity\Order;
@@ -48,6 +49,12 @@ final readonly class OrderStatusViewModel
         public ?HandoverProtocol $handoverProtocol = null,
         public ?string $handoverViewUrl = null,
         public ?string $debtPaymentUrl = null,
+        /** @var Fine[] */
+        public array $unpaidFines = [],
+        /** @var Fine[] */
+        public array $paidFines = [],
+        /** @var array<string, string> Fine ID → payment URL */
+        public array $finePaymentUrls = [],
     ) {
     }
 }

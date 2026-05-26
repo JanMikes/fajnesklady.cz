@@ -254,6 +254,39 @@
     </div>
     {% endif %}
 
+    {# Smluvní pokuty #}
+    {% if fines is defined and fines|length > 0 %}
+    <div class="mt-6 bg-white shadow overflow-hidden sm:rounded-lg">
+        <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+            <h3 class="text-lg font-medium text-gray-900">Smluvní pokuty</h3>
+        </div>
+        <div class="px-4 py-5 sm:p-6 space-y-3">
+            {% for fine in fines %}
+                {% if not fine.isCancelled() %}
+                <div class="flex items-center justify-between py-2 {{ not loop.last ? 'border-b border-gray-100' : '' }}">
+                    <div>
+                        <p class="text-sm font-medium text-gray-900">{{ fine.type.label() }}</p>
+                        <p class="text-xs text-gray-500">{{ fine.issuedAt|date('d.m.Y') }} — {{ (fine.amountInHaler / 100)|number_format(0, ',', ' ') }} Kč</p>
+                        {% if fine.description %}
+                            <p class="text-xs text-gray-500 mt-0.5">{{ fine.description|length > 80 ? fine.description|slice(0, 80) ~ '...' : fine.description }}</p>
+                        {% endif %}
+                    </div>
+                    {% if fine.isPaid() %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            Zaplaceno {{ fine.paidAt|date('d.m.Y') }}
+                        </span>
+                    {% elseif fine.isPayable() and finePaymentUrls[fine.id|raw] is defined %}
+                        <a href="{{ finePaymentUrls[fine.id|raw] }}" class="btn btn-primary btn-sm bg-red-600 hover:bg-red-700">
+                            Zaplatit
+                        </a>
+                    {% endif %}
+                </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
     {# Termination Section for Unlimited Contracts #}
     {% if canTerminate %}
     <div class="mt-6 bg-white shadow overflow-hidden sm:rounded-lg border border-red-200">

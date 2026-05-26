@@ -37,6 +37,7 @@ final readonly class OperationsAlertSummary
         public int $overdueCount,
         public int $overdueAmount,
         public int $totalPending,
+        public int $unpaidFinesCount = 0,
     ) {
     }
 }

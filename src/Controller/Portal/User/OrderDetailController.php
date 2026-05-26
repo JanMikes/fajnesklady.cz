@@ -7,12 +7,14 @@ namespace App\Controller\Portal\User;
 use App\Entity\User;
 use App\Enum\BillingMode;
 use App\Repository\ContractRepository;
+use App\Repository\FineRepository;
 use App\Repository\HandoverProtocolRepository;
 use App\Repository\InvoiceRepository;
 use App\Repository\ManualPaymentRequestRepository;
 use App\Repository\OrderRepository;
 use App\Service\Billing\ManualBillingReminderSchedule;
 use App\Service\ContractService;
+use App\Service\Fine\FinePaymentUrlGenerator;
 use App\Service\PriceCalculator;
 use App\Service\Security\ContractVoter;
 use Psr\Clock\ClockInterface;
@@ -31,10 +33,12 @@ final class OrderDetailController extends AbstractController
     public function __construct(
         private readonly OrderRepository $orderRepository,
         private readonly ContractRepository $contractRepository,
+        private readonly FineRepository $fineRepository,
         private readonly HandoverProtocolRepository $handoverProtocolRepository,
         private readonly InvoiceRepository $invoiceRepository,
         private readonly ManualPaymentRequestRepository $manualPaymentRequestRepository,
         private readonly ContractService $contractService,
+        private readonly FinePaymentUrlGenerator $finePaymentUrlGenerator,
         private readonly PriceCalculator $priceCalculator,
         private readonly ClockInterface $clock,
     ) {
@@ -95,6 +99,17 @@ final class OrderDetailController extends AbstractController
             }
         }
 
+        $fines = null !== $contract
+            ? $this->fineRepository->findByContract($contract)
+            : [];
+
+        $finePaymentUrls = [];
+        foreach ($fines as $fine) {
+            if ($fine->isPayable()) {
+                $finePaymentUrls[$fine->id->toRfc4122()] = $this->finePaymentUrlGenerator->generatePaymentUrl($fine);
+            }
+        }
+
         return $this->render('portal/user/order/detail.html.twig', [
             'order' => $order,
             'contract' => $contract,
@@ -111,6 +126,8 @@ final class OrderDetailController extends AbstractController
             'manualNowPeriodStart' => $manualNowPeriodStart,
             'nextManualDate' => $nextManualDate,
             'handoverProtocol' => $handoverProtocol,
+            'fines' => $fines,
+            'finePaymentUrls' => $finePaymentUrls,
         ]);
     }
 }

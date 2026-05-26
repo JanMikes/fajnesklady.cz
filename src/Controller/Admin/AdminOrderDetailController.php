@@ -6,6 +6,7 @@ namespace App\Controller\Admin;
 
 use App\Repository\ContractPriceChangeRepository;
 use App\Repository\ContractRepository;
+use App\Repository\FineRepository;
 use App\Repository\HandoverProtocolRepository;
 use App\Repository\InvoiceRepository;
 use App\Repository\OrderRepository;
@@ -29,6 +30,7 @@ final class AdminOrderDetailController extends AbstractController
         private readonly OrderRepository $orderRepository,
         private readonly ContractRepository $contractRepository,
         private readonly ContractPriceChangeRepository $priceChangeRepository,
+        private readonly FineRepository $fineRepository,
         private readonly HandoverProtocolRepository $handoverProtocolRepository,
         private readonly InvoiceRepository $invoiceRepository,
         private readonly PaymentRepository $paymentRepository,
@@ -76,6 +78,10 @@ final class AdminOrderDetailController extends AbstractController
             ? $this->priceChangeRepository->findByContractOrderedByDate($contract)
             : [];
 
+        $fines = null !== $contract
+            ? $this->fineRepository->findByContract($contract)
+            : [];
+
         return $this->render('admin/order/detail.html.twig', [
             'order' => $order,
             'storage' => $storage,
@@ -91,6 +97,7 @@ final class AdminOrderDetailController extends AbstractController
             'priceChanges' => $priceChanges,
             'now' => $now,
             'handoverProtocol' => $handoverProtocol,
+            'fines' => $fines,
         ]);
     }
 }

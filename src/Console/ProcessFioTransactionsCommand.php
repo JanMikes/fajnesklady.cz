@@ -13,6 +13,7 @@ use App\Enum\PaymentMethod;
 use App\Repository\BankAccountMappingRepository;
 use App\Repository\BankTransactionRepository;
 use App\Repository\ContractRepository;
+use App\Repository\FineRepository;
 use App\Repository\OrderRepository;
 use App\Service\AuditLogger;
 use App\Service\Billing\RecurringAmountCalculator;
@@ -41,6 +42,7 @@ final class ProcessFioTransactionsCommand extends Command
         private readonly OrderRepository $orderRepository,
         private readonly ContractRepository $contractRepository,
         private readonly BankAccountMappingRepository $bankAccountMappingRepository,
+        private readonly FineRepository $fineRepository,
         private readonly RecurringAmountCalculator $amountCalculator,
         private readonly AuditLogger $auditLogger,
         private readonly ProvideIdentity $identityProvider,
@@ -230,6 +232,46 @@ final class ProcessFioTransactionsCommand extends Command
                 }
 
                 return $this->matchToOrder($bankTx, $order, 'variable_symbol', $now, $stats);
+            }
+
+            // Fine match by variable symbol
+            $fine = $this->fineRepository->findByVariableSymbol($bankTx->variableSymbol);
+            if (null !== $fine && $fine->isPayable()) {
+                if ($bankTx->amount === $fine->amountInHaler) {
+                    $fine->markPaid($now);
+                    $bankTx->pairToContract($fine->contract, 'variable_symbol_fine', null, $now);
+
+                    $this->auditLogger->log(
+                        entityType: 'bank_transaction',
+                        entityId: $bankTx->id->toRfc4122(),
+                        eventType: 'auto_matched_to_fine',
+                        payload: [
+                            'fine_id' => $fine->id->toRfc4122(),
+                            'variable_symbol' => $bankTx->variableSymbol,
+                            'expected_amount' => $fine->amountInHaler,
+                            'received_amount' => $bankTx->amount,
+                        ],
+                    );
+                } else {
+                    $bankTx->markAmountMismatchContract($fine->contract, 'variable_symbol_fine', $now);
+                    ++$stats['amount_mismatches'];
+
+                    $this->auditLogger->log(
+                        entityType: 'bank_transaction',
+                        entityId: $bankTx->id->toRfc4122(),
+                        eventType: 'amount_mismatch',
+                        payload: [
+                            'fine_id' => $fine->id->toRfc4122(),
+                            'expected_amount' => $fine->amountInHaler,
+                            'received_amount' => $bankTx->amount,
+                            'difference' => $bankTx->amount - $fine->amountInHaler,
+                            'variable_symbol' => $bankTx->variableSymbol,
+                            'type' => 'fine_payment',
+                        ],
+                    );
+                }
+
+                return true;
             }
         }
 
