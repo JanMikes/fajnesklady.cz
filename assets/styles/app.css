@@ -7,8 +7,9 @@
     display: none !important;
 }
 
-/* Brand Colors */
-:root {
+/* Brand Colors — registered as Tailwind theme tokens so utilities
+   like bg-primary, text-accent, border-primary/40 etc. work in @apply. */
+@theme {
     --color-primary: #091c2a;
     --color-accent: #d23233;
     --color-accent-hover: #b82829;
@@ -251,7 +252,7 @@ label:has(~ input[required], ~ select[required], ~ textarea[required])::after {
     .places-list-col {
         width: 380px;
         flex-shrink: 0;
-        @apply overflow-y-auto py-4 pl-0 pr-4;
+        @apply overflow-y-auto py-4 px-4;
         scrollbar-width: thin;
         scrollbar-color: rgba(0,0,0,0.15) transparent;
     }
