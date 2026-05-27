@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Command;
 
 use App\Entity\BankTransaction;
+use App\Entity\Contract;
 use App\Entity\Order;
 use App\Enum\BillingMode;
 use App\Enum\PaymentMethod;
@@ -167,6 +168,12 @@ final readonly class ProcessIncomingBankTransactionHandler
                     $expectedAmount = $this->amountCalculator->calculate($contract, $now);
 
                     if ($bankTx->amount !== $expectedAmount) {
+                        if ($this->tryAccumulatePartialPayments($bankTx, $order, $contract, 'account_mapping', $expectedAmount, $now)) {
+                            $this->dispatchPaymentCommand(new ProcessBankTransferPaymentCommand($bankTx, $order, $expectedAmount));
+
+                            return;
+                        }
+
                         $bankTx->markAmountMismatchContract($contract, 'account_mapping', $expectedAmount, $now);
 
                         $this->auditLogger->log(
@@ -238,6 +245,12 @@ final readonly class ProcessIncomingBankTransactionHandler
             $expectedAmount = $this->amountCalculator->calculate($contract, $now);
 
             if ($bankTx->amount !== $expectedAmount) {
+                if ($this->tryAccumulatePartialPayments($bankTx, $order, $contract, $matchMethod, $expectedAmount, $now)) {
+                    $this->dispatchPaymentCommand(new ProcessBankTransferPaymentCommand($bankTx, $order, $expectedAmount));
+
+                    return;
+                }
+
                 $bankTx->markAmountMismatchContract($contract, $matchMethod, $expectedAmount, $now);
 
                 $this->auditLogger->log(
@@ -295,6 +308,12 @@ final readonly class ProcessIncomingBankTransactionHandler
             $debtAmount = (int) $order->onboardingDebtInHaler;
 
             if ($bankTx->amount !== $debtAmount) {
+                if ($this->tryAccumulatePartialPayments($bankTx, $order, null, $matchMethod, $debtAmount, $now)) {
+                    $this->dispatchPaymentCommand(new ProcessBankTransferDebtPaymentCommand($bankTx, $order));
+
+                    return;
+                }
+
                 $bankTx->markAmountMismatch($order, $matchMethod, $debtAmount, $now);
 
                 $this->auditLogger->log(
@@ -349,6 +368,12 @@ final readonly class ProcessIncomingBankTransactionHandler
 
         if ($order->canBePaid()) {
             if ($bankTx->amount !== $order->firstPaymentPrice) {
+                if ($this->tryAccumulatePartialPayments($bankTx, $order, null, $matchMethod, $order->firstPaymentPrice, $now)) {
+                    $this->dispatchPaymentCommand(new ProcessBankTransferPaymentCommand($bankTx, $order, $order->firstPaymentPrice));
+
+                    return;
+                }
+
                 $bankTx->markAmountMismatch($order, $matchMethod, $order->firstPaymentPrice, $now);
 
                 $this->auditLogger->log(
@@ -397,6 +422,51 @@ final readonly class ProcessIncomingBankTransactionHandler
 
             $this->dispatchPaymentCommand(new ProcessBankTransferPaymentCommand($bankTx, $order));
         }
+    }
+
+    private function tryAccumulatePartialPayments(
+        BankTransaction $bankTx,
+        Order $order,
+        ?Contract $contract,
+        string $matchMethod,
+        int $expectedAmount,
+        \DateTimeImmutable $now,
+    ): bool {
+        $existingMismatchSum = $this->bankTransactionRepository->sumAmountMismatchByOrder($order);
+        $accumulatedTotal = $existingMismatchSum + $bankTx->amount;
+
+        if ($accumulatedTotal !== $expectedAmount) {
+            return false;
+        }
+
+        $mismatchTransactions = $this->bankTransactionRepository->findAmountMismatchByOrder($order);
+        foreach ($mismatchTransactions as $mismatchTx) {
+            $mismatchTx->promoteToMatched($now);
+        }
+
+        if (null !== $contract) {
+            $bankTx->pairToContract($contract, $matchMethod, null, $now);
+        } else {
+            $bankTx->pairToOrder($order, $matchMethod, null, $now);
+        }
+
+        $this->auditLogger->log(
+            entityType: 'bank_transaction',
+            entityId: $bankTx->id->toRfc4122(),
+            eventType: 'accumulated_partial_payments_matched',
+            payload: [
+                'order_id' => $order->id->toRfc4122(),
+                'contract_id' => $contract?->id->toRfc4122(),
+                'expected_amount' => $expectedAmount,
+                'accumulated_amount' => $accumulatedTotal,
+                'transaction_count' => count($mismatchTransactions) + 1,
+                'match_method' => $matchMethod,
+            ],
+            orderId: $order->id,
+            userIdContext: $order->user->id,
+        );
+
+        return true;
     }
 
     private function dispatchPaymentCommand(object $command): void

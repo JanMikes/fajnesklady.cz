@@ -12,6 +12,7 @@ final readonly class ProcessBankTransferPaymentCommand
     public function __construct(
         public BankTransaction $transaction,
         public Order $order,
+        public ?int $totalAmount = null,
     ) {
     }
 }

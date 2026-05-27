@@ -102,6 +102,20 @@ class BankTransaction
         $this->status = 'amount_mismatch';
     }
 
+    public function promoteToMatched(\DateTimeImmutable $now): void
+    {
+        if ('amount_mismatch' !== $this->status) {
+            throw new \DomainException(sprintf(
+                'Cannot promote transaction %s: status is "%s", expected "amount_mismatch".',
+                $this->id->toRfc4122(),
+                $this->status,
+            ));
+        }
+
+        $this->status = 'matched';
+        $this->pairedAt = $now;
+    }
+
     public function markIgnored(User $admin, string $reason, \DateTimeImmutable $now): void
     {
         $this->pairedBy = $admin;

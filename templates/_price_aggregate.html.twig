@@ -13,6 +13,14 @@
         {{ (totalPaid / 100)|number_format(2, ',', ' ') }} Kč
     </dd>
 </div>
+{% if bankTransferReceivedTotal is defined and bankTransferReceivedTotal > 0 and bankTransferReceivedTotal != totalPaid %}
+<div>
+    <dt class="text-sm font-medium text-gray-500">Přijato bankovním převodem</dt>
+    <dd class="mt-1 text-sm text-amber-600 font-semibold">
+        {{ (bankTransferReceivedTotal / 100)|number_format(2, ',', ' ') }} Kč
+    </dd>
+</div>
+{% endif %}
 {% if not paymentSchedule.isOpenEnded and paymentSchedule.isRecurring %}
     <div>
         <dt class="text-sm font-medium text-gray-500">K zaplacení celkem</dt>

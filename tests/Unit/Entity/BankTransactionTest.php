@@ -87,4 +87,27 @@ class BankTransactionTest extends TestCase
         self::assertSame($order, $this->bankTransaction->pairedOrder);
         self::assertSame(60000, $this->bankTransaction->expectedAmountInHaler);
     }
+
+    public function testPromoteToMatched(): void
+    {
+        $order = $this->createStub(Order::class);
+        $mismatchAt = new \DateTimeImmutable('2025-06-15 12:00:00');
+        $promoteAt = new \DateTimeImmutable('2025-06-15 13:00:00');
+
+        $this->bankTransaction->markAmountMismatch($order, 'variable_symbol', 60000, $mismatchAt);
+        self::assertTrue($this->bankTransaction->isAmountMismatch());
+
+        $this->bankTransaction->promoteToMatched($promoteAt);
+
+        self::assertTrue($this->bankTransaction->isMatched());
+        self::assertSame($promoteAt, $this->bankTransaction->pairedAt);
+        self::assertSame($order, $this->bankTransaction->pairedOrder);
+    }
+
+    public function testPromoteToMatchedThrowsWhenNotMismatch(): void
+    {
+        $this->expectException(\DomainException::class);
+
+        $this->bankTransaction->promoteToMatched(new \DateTimeImmutable('2025-06-15 12:00:00'));
+    }
 }

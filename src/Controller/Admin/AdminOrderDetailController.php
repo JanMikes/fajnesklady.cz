@@ -99,6 +99,7 @@ final class AdminOrderDetailController extends AbstractController
         }
 
         $mismatchTransactions = $this->bankTransactionRepository->findAmountMismatchByOrder($order);
+        $bankTransferReceivedTotal = $this->bankTransactionRepository->sumReceivedByOrder($order);
 
         return $this->render('admin/order/detail.html.twig', [
             'order' => $order,
@@ -120,6 +121,7 @@ final class AdminOrderDetailController extends AbstractController
             'auditLogs' => $auditLogs,
             'hasPendingManualPayment' => $hasPendingManualPayment,
             'mismatchTransactions' => $mismatchTransactions,
+            'bankTransferReceivedTotal' => $bankTransferReceivedTotal,
         ]);
     }
 }

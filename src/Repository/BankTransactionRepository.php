@@ -84,6 +84,36 @@ class BankTransactionRepository
             ->getResult();
     }
 
+    public function sumAmountMismatchByOrder(Order $order): int
+    {
+        $result = $this->entityManager->createQueryBuilder()
+            ->select('SUM(bt.amount)')
+            ->from(BankTransaction::class, 'bt')
+            ->where('bt.pairedOrder = :order')
+            ->andWhere('bt.status = :status')
+            ->setParameter('order', $order)
+            ->setParameter('status', 'amount_mismatch')
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return (int) ($result ?? 0);
+    }
+
+    public function sumReceivedByOrder(Order $order): int
+    {
+        $result = $this->entityManager->createQueryBuilder()
+            ->select('SUM(bt.amount)')
+            ->from(BankTransaction::class, 'bt')
+            ->where('bt.pairedOrder = :order')
+            ->andWhere('bt.status IN (:statuses)')
+            ->setParameter('order', $order)
+            ->setParameter('statuses', ['matched', 'amount_mismatch'])
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return (int) ($result ?? 0);
+    }
+
     /**
      * @return BankTransaction[]
      */

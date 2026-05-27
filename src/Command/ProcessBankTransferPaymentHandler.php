@@ -36,18 +36,19 @@ final readonly class ProcessBankTransferPaymentHandler
     {
         $transaction = $command->transaction;
         $order = $command->order;
+        $effectiveAmount = $command->totalAmount ?? $transaction->amount;
         $now = $this->clock->now();
 
         $contract = $this->contractRepository->findByOrder($order);
 
         if (null !== $contract && BillingMode::MANUAL_RECURRING === $contract->billingMode) {
-            $this->reconcileBankTransferRecurring($transaction, $contract, $now);
+            $this->reconcileBankTransferRecurring($transaction, $contract, $effectiveAmount, $now);
 
             return;
         }
 
         if ($order->canBePaid()) {
-            $this->orderService->confirmPayment($order, $now, $transaction->amount);
+            $this->orderService->confirmPayment($order, $now, $effectiveAmount);
 
             if ($order->hasAcceptedTerms()) {
                 $this->commandBus->dispatch(new CompleteOrderCommand($order));
@@ -60,7 +61,9 @@ final readonly class ProcessBankTransferPaymentHandler
                 payload: [
                     'bank_transaction_id' => $transaction->id->toRfc4122(),
                     'fio_transaction_id' => $transaction->fioTransactionId,
-                    'amount' => $transaction->amount,
+                    'amount' => $effectiveAmount,
+                    'transaction_amount' => $transaction->amount,
+                    'accumulated' => null !== $command->totalAmount,
                     'variable_symbol' => $transaction->variableSymbol,
                     'sender_account' => $transaction->senderAccountNumber,
                 ],
@@ -81,6 +84,7 @@ final readonly class ProcessBankTransferPaymentHandler
     private function reconcileBankTransferRecurring(
         \App\Entity\BankTransaction $transaction,
         \App\Entity\Contract $contract,
+        int $effectiveAmount,
         \DateTimeImmutable $now,
     ): void {
         $billingPeriodStart = $contract->nextBillingDate ?? $now;
@@ -106,7 +110,7 @@ final readonly class ProcessBankTransferPaymentHandler
         $this->eventBus->dispatch(new RecurringPaymentCharged(
             contractId: $contract->id,
             paymentId: $transaction->id->toRfc4122(),
-            amount: $transaction->amount,
+            amount: $effectiveAmount,
             occurredOn: $now,
         ));
 
