@@ -458,6 +458,91 @@ label:has(~ input[required], ~ select[required], ~ textarea[required])::after {
     z-index: 450;
 }
 
+/* Place wizard modal */
+.wizard-modal {
+    @apply fixed inset-0 z-50 flex items-center justify-center p-4;
+}
+
+.wizard-modal__backdrop {
+    @apply absolute inset-0 bg-black/50;
+}
+
+.wizard-modal__panel {
+    @apply relative w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.wizard-modal__header {
+    @apply flex items-center justify-between px-6 pt-5 pb-2;
+}
+
+.wizard-modal__back {
+    @apply text-sm text-gray-500 hover:text-gray-800 transition-colors font-medium;
+}
+
+.wizard-modal__close {
+    @apply ml-auto text-2xl leading-none text-gray-400 hover:text-gray-700 transition-colors;
+}
+
+.wizard-modal__steps {
+    @apply flex items-center justify-center gap-0 px-6 py-3;
+}
+
+.wizard-modal__content {
+    @apply px-6 pb-6 overflow-y-auto;
+    flex: 1;
+}
+
+.wizard-step {
+    @apply flex items-center;
+}
+
+.wizard-step__circle {
+    @apply w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-colors;
+}
+
+.wizard-step__circle--completed {
+    @apply bg-primary border-primary text-white;
+}
+
+.wizard-step__circle--current {
+    @apply bg-primary border-primary text-white;
+}
+
+.wizard-step__circle--future {
+    @apply bg-white border-gray-300 text-gray-400;
+}
+
+.wizard-step__label {
+    @apply text-xs mt-1 text-center;
+}
+
+.wizard-step__line {
+    @apply w-12 h-0.5 mx-1;
+}
+
+.wizard-step__line--active {
+    @apply bg-primary;
+}
+
+.wizard-step__line--inactive {
+    @apply bg-gray-300;
+}
+
+.wizard-card {
+    @apply w-full text-left p-4 rounded-xl border border-gray-200 hover:border-primary/40 hover:shadow-md transition-all cursor-pointer bg-white;
+}
+
+.wizard-card:disabled {
+    @apply opacity-50 cursor-not-allowed hover:border-gray-200 hover:shadow-none;
+}
+
+.wizard-card + .wizard-card {
+    @apply mt-3;
+}
+
 /* Flatpickr customizations to match design system */
 .flatpickr-calendar {
     @apply shadow-lg rounded-lg border border-gray-200;

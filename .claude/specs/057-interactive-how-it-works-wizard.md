@@ -1,6 +1,6 @@
 # 057 — Interactive "Jak to funguje?" wizard modal
 
-**Status:** ready
+**Status:** done
 **Type:** UX / feature
 **Scope:** medium (~4 files, ~350 lines new/changed)
 **Depends on:** none

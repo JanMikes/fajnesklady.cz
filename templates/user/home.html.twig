@@ -171,7 +171,9 @@
     </section>
 
     {# How it works section #}
-    <section id="jak-to-funguje" class="section-gradient-light">
+    <section id="jak-to-funguje" class="section-gradient-light"
+             data-controller="place-wizard"
+             data-place-wizard-places-value="{{ placesData|json_encode|e('html_attr') }}">
         <div class="py-20 max-w-6xl mx-auto px-4">
             <div class="text-center mb-16">
                 <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Jak to funguje?</h2>
@@ -180,8 +182,8 @@
 
             <div class="grid md:grid-cols-3 gap-8 lg:gap-12">
                 {# Step 1 #}
-                <div class="relative">
-                    <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-shadow h-full border border-gray-100">
+                <button type="button" class="relative text-left w-full group" data-action="place-wizard#open">
+                    <div class="bg-white rounded-2xl p-8 shadow-lg group-hover:shadow-xl group-hover:border-primary/30 transition-all h-full border border-gray-100 cursor-pointer">
                         <div class="w-16 h-16 rounded-2xl text-white flex items-center justify-center mb-6" style="background: linear-gradient(to bottom right, #e54545, #b82829)">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -191,12 +193,16 @@
                         <div class="absolute -top-3 -right-3 w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold text-lg shadow-lg">1</div>
                         <h3 class="text-xl font-bold text-gray-900 mb-3">Vyberte pobočku</h3>
                         <p class="text-gray-600 leading-relaxed">Prohlédněte si naše pobočky na interaktivní mapě a vyberte tu, která je vám nejblíže.</p>
+                        <p class="text-primary font-semibold text-sm mt-4 flex items-center group-hover:translate-x-1 transition-transform">
+                            Začít zde
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                        </p>
                     </div>
-                </div>
+                </button>
 
                 {# Step 2 #}
-                <div class="relative">
-                    <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-shadow h-full border border-gray-100">
+                <button type="button" class="relative text-left w-full group" data-action="place-wizard#open">
+                    <div class="bg-white rounded-2xl p-8 shadow-lg group-hover:shadow-xl group-hover:border-primary/30 transition-all h-full border border-gray-100 cursor-pointer">
                         <div class="w-16 h-16 rounded-2xl text-white flex items-center justify-center mb-6" style="background: linear-gradient(to bottom right, #e54545, #b82829)">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
@@ -205,12 +211,16 @@
                         <div class="absolute -top-3 -right-3 w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold text-lg shadow-lg">2</div>
                         <h3 class="text-xl font-bold text-gray-900 mb-3">Zvolte velikost</h3>
                         <p class="text-gray-600 leading-relaxed">Vyberte skladovací jednotku podle vašich potřeb - nabízíme různé velikosti od malých po velké.</p>
+                        <p class="text-primary font-semibold text-sm mt-4 flex items-center group-hover:translate-x-1 transition-transform">
+                            Začít zde
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                        </p>
                     </div>
-                </div>
+                </button>
 
                 {# Step 3 #}
-                <div class="relative">
-                    <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-shadow h-full border border-gray-100">
+                <button type="button" class="relative text-left w-full group" data-action="place-wizard#open">
+                    <div class="bg-white rounded-2xl p-8 shadow-lg group-hover:shadow-xl group-hover:border-primary/30 transition-all h-full border border-gray-100 cursor-pointer">
                         <div class="w-16 h-16 rounded-2xl text-white flex items-center justify-center mb-6" style="background: linear-gradient(to bottom right, #e54545, #b82829)">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -219,8 +229,33 @@
                         <div class="absolute -top-3 -right-3 w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold text-lg shadow-lg">3</div>
                         <h3 class="text-xl font-bold text-gray-900 mb-3">Objednejte online</h3>
                         <p class="text-gray-600 leading-relaxed">Dokončete objednávku online a ihned získáte přístupové údaje ke své skladovací jednotce.</p>
+                        <p class="text-primary font-semibold text-sm mt-4 flex items-center group-hover:translate-x-1 transition-transform">
+                            Začít zde
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                        </p>
                     </div>
+                </button>
+            </div>
+        </div>
+
+        {# Wizard modal #}
+        <div data-place-wizard-target="modal" class="wizard-modal hidden" role="dialog" aria-modal="true">
+            <div data-action="click->place-wizard#close" class="wizard-modal__backdrop"></div>
+            <div class="wizard-modal__panel">
+                <div class="wizard-modal__header">
+                    <button type="button"
+                            data-place-wizard-target="backButton"
+                            data-action="place-wizard#back"
+                            class="wizard-modal__back hidden">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                        Zpět
+                    </button>
+                    <button type="button"
+                            data-action="place-wizard#close"
+                            class="wizard-modal__close" aria-label="Zavřít">&times;</button>
                 </div>
+                <div data-place-wizard-target="stepIndicator" class="wizard-modal__steps"></div>
+                <div data-place-wizard-target="stepContent" class="wizard-modal__content"></div>
             </div>
         </div>
     </section>
