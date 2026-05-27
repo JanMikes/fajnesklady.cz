@@ -701,6 +701,10 @@ select[data-controller~="tom-select"] {
     pointer-events: none;
 }
 
+.ts-wrapper.form-input {
+    @apply border-0 p-0 shadow-none bg-transparent;
+}
+
 .ts-wrapper.single .ts-control {
     @apply min-h-[42px] border border-gray-300 rounded-md px-3 py-2 text-sm shadow-sm bg-white;
 }
