@@ -86,7 +86,7 @@
                                 {% if formData.endDate %}
                                     {{ formData.startDate|date('d.m.Y') }} - {{ formData.endDate|date('d.m.Y') }}
                                 {% else %}
-                                    Na dobu neurčitou, od {{ formData.startDate|date('d.m.Y') }}
+                                    od {{ formData.startDate|date('d.m.Y') }} (s automatickým prodlužováním)
                                 {% endif %}
                             </span>
                         </div>
@@ -217,7 +217,7 @@
                             {% if formData.endDate %}
                                 Nájem se sjednává na dobu určitou, a to od {{ formData.startDate|date('d.m.Y') }} do {{ formData.endDate|date('d.m.Y') }}
                             {% else %}
-                                Nájem se sjednává na dobu neurčitou, a to od {{ formData.startDate|date('d.m.Y') }}
+                                Nájem se sjednává na dobu určitou, a to od {{ formData.startDate|date('d.m.Y') }}
                             {% endif %}
                         </p>
                         <p>Pokud nájem má začít okamžitě, respektive v době před uplynutím 14 dní, ve kterých může Nájemce, který je spotřebitelem od Smlouvy odstoupit, pak tímto Nájemce výslovně žádá, aby bylo započato s plněním. Současně prohlašuje, že rozumí a chápe, že ztrácí právo na odstoupení od Smlouvy.</p>

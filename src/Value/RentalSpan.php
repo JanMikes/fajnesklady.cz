@@ -8,6 +8,7 @@ use App\Entity\Contract;
 use App\Entity\Order;
 use App\Entity\Storage;
 use App\Entity\StorageUnavailability;
+use App\Enum\RentalType;
 
 final readonly class RentalSpan
 {
@@ -19,5 +20,14 @@ final readonly class RentalSpan
         public ?string $tenantName,
         public Contract|Order|StorageUnavailability $source,
     ) {
+    }
+
+    public function isUnlimited(): bool
+    {
+        return match (true) {
+            $this->source instanceof Contract => $this->source->isUnlimited(),
+            $this->source instanceof Order => RentalType::UNLIMITED === $this->source->rentalType,
+            default => false,
+        };
     }
 }

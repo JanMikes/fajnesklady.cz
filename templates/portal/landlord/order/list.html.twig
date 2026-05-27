@@ -76,7 +76,7 @@
                                     {% if order.endDate %}
                                         - {{ order.endDate|date('d.m.Y') }}
                                     {% else %}
-                                        Na dobu neurčitou
+                                        <span class="text-gray-500">(automat. prodlužování)</span>
                                     {% endif %}
                                 </div>
                             </td>

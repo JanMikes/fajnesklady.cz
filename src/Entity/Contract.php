@@ -180,7 +180,9 @@ class Contract implements EntityWithEvents
         }
 
         if (null !== $this->endDate && $now > $this->endDate) {
-            return false;
+            // VOP §IV grace: recurring contracts stay active past endDate
+            // while the billing/retry cycle is in progress
+            return $this->isInBillingGrace();
         }
 
         return true;
@@ -221,7 +223,13 @@ class Contract implements EntityWithEvents
         $this->failedBillingAttempts = 0;
         $this->lastBillingFailedAt = null;
         $this->pendingRecurringPaymentId = null;
-        $this->paymentDemandSentAt = null; // Reset demand state on successful charge
+        $this->paymentDemandSentAt = null;
+
+        // VOP §IV: successful charge extends the contract period (UNLIMITED only;
+        // LIMITED recurring auto-extension is a separate spec)
+        if ($this->billingMode->isRecurring() && RentalType::UNLIMITED === $this->rentalType) {
+            $this->endDate = $paidThroughDate;
+        }
     }
 
     public function recordFailedBillingAttempt(\DateTimeImmutable $failedAt): void
@@ -365,9 +373,26 @@ class Contract implements EntityWithEvents
             : $this->storage->getEffectivePricePerMonth();
     }
 
+    public function isInBillingGrace(): bool
+    {
+        if (!$this->billingMode->isRecurring()) {
+            return false;
+        }
+
+        return match ($this->billingMode) {
+            BillingMode::AUTO_RECURRING => null !== $this->goPayParentPaymentId,
+            BillingMode::MANUAL_RECURRING => null !== $this->nextBillingDate || $this->failedBillingAttempts > 0,
+            default => false,
+        };
+    }
+
     private function isLongTermMonthly(): bool
     {
-        if (RentalType::UNLIMITED === $this->rentalType || null === $this->endDate) {
+        if (RentalType::UNLIMITED === $this->rentalType) {
+            return true;
+        }
+
+        if (null === $this->endDate) {
             return true;
         }
 

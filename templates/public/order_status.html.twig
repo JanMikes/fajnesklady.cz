@@ -218,10 +218,14 @@
                             <div>
                                 <dt class="text-gray-500">Datum konce</dt>
                                 <dd class="font-medium text-gray-900">
-                                    {% if order.endDate %}
-                                        {{ order.endDate|date('d.m.Y') }}
+                                    {% set displayEndDate = contract is defined and contract ? contract.endDate : order.endDate %}
+                                    {% if displayEndDate %}
+                                        {{ displayEndDate|date('d.m.Y') }}
+                                        {% if order.rentalType.value == 'unlimited' %}
+                                            <span class="text-xs text-gray-500">(prodlužuje se automaticky)</span>
+                                        {% endif %}
                                     {% else %}
-                                        Na dobu neurčitou
+                                        od {{ order.startDate|date('d.m.Y') }}
                                     {% endif %}
                                 </dd>
                             </div>

@@ -43,7 +43,8 @@ final class StorageRentalView
     }
 
     public bool $isUnlimited {
-        get => $this->isOccupied && null === $this->rentedUntil;
+        get => (null !== $this->currentContract && $this->currentContract->isUnlimited())
+            || (null !== $this->currentOrder && \App\Enum\RentalType::UNLIMITED === $this->currentOrder->rentalType);
     }
 
     public bool $isTerminating {

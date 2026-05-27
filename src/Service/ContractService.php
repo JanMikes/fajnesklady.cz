@@ -6,6 +6,7 @@ namespace App\Service;
 
 use App\Entity\Contract;
 use App\Entity\Order;
+use App\Enum\BillingMode;
 use App\Enum\TerminationReason;
 use App\Repository\ContractRepository;
 use App\Repository\HandoverProtocolRepository;
@@ -139,14 +140,26 @@ final readonly class ContractService
 
         $contracts = $this->contractRepository->findExpiringWithinDays($daysFromNow, $now);
 
-        // Filter to only contracts expiring on the exact target date
         return array_filter($contracts, function (Contract $contract) use ($targetDate, $nextDay) {
             if (null === $contract->endDate) {
                 return false;
             }
             $endDate = $contract->endDate->setTime(0, 0, 0);
+            if ($endDate < $targetDate || $endDate >= $nextDay) {
+                return false;
+            }
 
-            return $endDate >= $targetDate && $endDate < $nextDay;
+            // Skip contracts that will auto-extend (recurring with active billing)
+            if ($contract->billingMode->isRecurring() && !$contract->hasPendingTermination()) {
+                if (BillingMode::AUTO_RECURRING === $contract->billingMode && null !== $contract->goPayParentPaymentId) {
+                    return false;
+                }
+                if (BillingMode::MANUAL_RECURRING === $contract->billingMode && null !== $contract->nextBillingDate) {
+                    return false;
+                }
+            }
+
+            return true;
         });
     }
 

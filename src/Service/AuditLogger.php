@@ -278,6 +278,19 @@ final readonly class AuditLogger
         );
     }
 
+    public function logContractRecurringCancelled(Contract $contract): void
+    {
+        $this->log(
+            entityType: 'contract',
+            entityId: $contract->id->toRfc4122(),
+            eventType: 'recurring_cancelled',
+            payload: [
+                'billing_mode' => $contract->billingMode->value,
+                'end_date' => $contract->endDate?->format('Y-m-d'),
+            ],
+        );
+    }
+
     public function logBillingModeSetOnOrder(Order $order): void
     {
         $this->log(

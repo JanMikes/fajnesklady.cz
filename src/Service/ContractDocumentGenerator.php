@@ -222,8 +222,8 @@ readonly class ContractDocumentGenerator
     {
         $start = $startDate->format('d.m.Y');
 
-        if (RentalType::UNLIMITED === $rentalType || null === $endDate) {
-            return sprintf('Nájem se sjednává na dobu neurčitou, a to od %s', $start);
+        if (null === $endDate) {
+            return sprintf('Nájem se sjednává na dobu určitou, a to od %s', $start);
         }
 
         return sprintf(

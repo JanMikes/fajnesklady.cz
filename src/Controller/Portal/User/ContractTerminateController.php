@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Controller\Portal\User;
 
-use App\Command\RequestTerminationNoticeCommand;
+use App\Command\CancelRecurringPaymentCommand;
 use App\Entity\User;
 use App\Repository\ContractRepository;
-use App\Service\ContractService;
+use App\Service\AuditLogger;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -24,8 +24,8 @@ final class ContractTerminateController extends AbstractController
 {
     public function __construct(
         private readonly ContractRepository $contractRepository,
-        private readonly ContractService $contractService,
         private readonly MessageBusInterface $commandBus,
+        private readonly AuditLogger $auditLogger,
     ) {
     }
 
@@ -48,14 +48,14 @@ final class ContractTerminateController extends AbstractController
             throw new AccessDeniedHttpException('Nemáte přístup k této smlouvě.');
         }
 
-        if (!$contract->isUnlimited()) {
-            $this->addFlash('error', 'Smlouvu na dobu určitou nelze předčasně ukončit.');
+        if (!$contract->billingMode->isRecurring()) {
+            $this->addFlash('error', 'Smlouvu s jednorázovou platbou nelze předčasně ukončit.');
 
             return $this->redirectToRoute('portal_user_order_detail', ['id' => $contract->order->id]);
         }
 
-        if (!$this->contractService->canTerminate($contract)) {
-            $this->addFlash('error', 'Tuto smlouvu nelze ukončit.');
+        if ($contract->isTerminated()) {
+            $this->addFlash('error', 'Tato smlouva je již ukončena.');
 
             return $this->redirectToRoute('portal_user_order_detail', ['id' => $contract->order->id]);
         }
@@ -66,12 +66,12 @@ final class ContractTerminateController extends AbstractController
             return $this->redirectToRoute('portal_user_order_detail', ['id' => $contract->order->id]);
         }
 
-        // Submit termination notice with 1-month notice period
-        $this->commandBus->dispatch(new RequestTerminationNoticeCommand($contract));
+        $this->commandBus->dispatch(new CancelRecurringPaymentCommand($contract));
+        $this->auditLogger->logContractRecurringCancelled($contract);
 
         $this->addFlash('success', sprintf(
-            'Výpověď smlouvy byla přijata. Smlouva bude ukončena k %s.',
-            $contract->terminatesAt?->format('d.m.Y') ?? '',
+            'Opakované platby byly zrušeny. Smlouva skončí %s.',
+            $contract->endDate?->format('d.m.Y') ?? '',
         ));
 
         return $this->redirectToRoute('portal_user_order_detail', ['id' => $contract->order->id]);

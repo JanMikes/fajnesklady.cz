@@ -97,7 +97,7 @@ final class AdminOnboardingFormType extends AbstractType
                 'placeholder' => false,
                 'choice_label' => static fn (RentalType $type): string => match ($type) {
                     RentalType::LIMITED => 'Doba určitá',
-                    RentalType::UNLIMITED => 'Doba neurčitá',
+                    RentalType::UNLIMITED => 'Automatické prodlužování',
                 },
             ])
             ->add('expectedDuration', EnumType::class, [

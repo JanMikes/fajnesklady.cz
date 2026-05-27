@@ -184,7 +184,7 @@ final readonly class ProcessPaymentNotificationHandler
         $nextBillingDate = $billingPeriodStart->modify($contract->getBillingCadenceStep());
         $paidThroughDate = $nextBillingDate;
 
-        if (null !== $effectiveEndDate && $nextBillingDate >= $effectiveEndDate) {
+        if (null !== $effectiveEndDate && $nextBillingDate >= $effectiveEndDate && !$contract->isUnlimited()) {
             $nextBillingDate = null;
             $paidThroughDate = $effectiveEndDate;
         }
@@ -265,7 +265,7 @@ final readonly class ProcessPaymentNotificationHandler
         $nextBillingDate = $billingPeriodStart->modify($contract->getBillingCadenceStep());
         $paidThroughDate = $nextBillingDate;
 
-        if (null !== $effectiveEndDate && $nextBillingDate >= $effectiveEndDate) {
+        if (null !== $effectiveEndDate && $nextBillingDate >= $effectiveEndDate && !$contract->isUnlimited()) {
             $nextBillingDate = null;
             $paidThroughDate = $effectiveEndDate;
         }

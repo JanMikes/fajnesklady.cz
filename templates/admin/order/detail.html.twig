@@ -237,10 +237,9 @@
                     <div>
                         <dt class="text-sm font-medium text-gray-500">Typ pronájmu</dt>
                         <dd class="mt-1 text-sm text-gray-900">
-                            {% if order.rentalType.value == 'limited' %}
-                                Na dobu určitou
-                            {% else %}
-                                Na dobu neurčitou
+                            Na dobu určitou
+                            {% if order.rentalType.value == 'unlimited' %}
+                                <span class="text-sm text-gray-500">(s automatickým prodlužováním)</span>
                             {% endif %}
                         </dd>
                     </div>
@@ -257,13 +256,16 @@
                     <div>
                         <dt class="text-sm font-medium text-gray-500">Datum konce</dt>
                         <dd class="mt-1 text-sm text-gray-900">
-                            {% if order.endDate %}
-                                {{ order.endDate|date('d.m.Y') }}
-                                {% if contract and daysRemaining is not null and contract.terminatedAt is null %}
+                            {% set displayEndDate = contract ? contract.endDate : order.endDate %}
+                            {% if displayEndDate %}
+                                {{ displayEndDate|date('d.m.Y') }}
+                                {% if order.rentalType.value == 'unlimited' %}
+                                    <span class="text-xs text-gray-500">(prodlužuje se automaticky)</span>
+                                {% elseif contract and daysRemaining is not null and contract.terminatedAt is null %}
                                     <span class="text-gray-500">({{ daysRemaining }} {{ daysRemaining == 1 ? 'den' : (daysRemaining < 5 ? 'dny' : 'dni') }})</span>
                                 {% endif %}
                             {% else %}
-                                Na dobu neurčitou
+                                od {{ order.startDate|date('d.m.Y') }}
                             {% endif %}
                         </dd>
                     </div>

@@ -150,7 +150,7 @@ final class OrderFormType extends AbstractType
                 'expanded' => true,
                 'choice_label' => fn (RentalType $type) => match ($type) {
                     RentalType::LIMITED => 'Na dobu určitou',
-                    RentalType::UNLIMITED => 'Na dobu neurčitou',
+                    RentalType::UNLIMITED => 'Na dobu neurčitou (automaticky prodlužováno)',
                 },
             ])
             ->add('expectedDuration', EnumType::class, [

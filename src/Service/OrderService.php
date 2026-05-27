@@ -166,7 +166,13 @@ final readonly class OrderService
             throw new \DomainException('Order must be paid before it can be completed.');
         }
 
-        // Create contract
+        // VOP §IV: every contract is "doba určitá". UNLIMITED orders have null
+        // endDate (customer intent = indefinite), but the contract gets a concrete
+        // period that advances on each successful recurring charge.
+        $paymentFrequency = $order->paymentFrequency ?? PaymentFrequency::MONTHLY;
+        $cadenceStep = PaymentFrequency::YEARLY === $paymentFrequency ? '+1 year' : '+1 month';
+        $endDate = $order->endDate ?? $order->startDate->modify($cadenceStep);
+
         $contract = new Contract(
             id: $this->identityProvider->next(),
             order: $order,
@@ -174,7 +180,7 @@ final readonly class OrderService
             storage: $order->storage,
             rentalType: $order->rentalType,
             startDate: $order->startDate,
-            endDate: $order->endDate,
+            endDate: $endDate,
             createdAt: $now,
         );
 

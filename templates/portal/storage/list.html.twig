@@ -194,7 +194,7 @@
                                                     <span aria-hidden="true">⚠</span>
                                                 </span>
                                             {% elseif view.isUnlimited %}
-                                                <span class="text-gray-700" title="Pronájem na dobu neurčitou">neomezeně <span aria-hidden="true">∞</span></span>
+                                                do {{ view.rentedUntil|date('d.m.Y') }} <span class="text-xs text-gray-500" title="Automatické prodlužování">↻</span>
                                             {% else %}
                                                 do {{ view.rentedUntil|date('d.m.Y') }}
                                             {% endif %}

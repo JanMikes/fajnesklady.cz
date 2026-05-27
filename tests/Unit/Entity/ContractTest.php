@@ -10,6 +10,7 @@ use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
+use App\Enum\BillingMode;
 use App\Enum\PaymentFrequency;
 use App\Enum\RentalType;
 use App\Enum\TerminationReason;
@@ -844,5 +845,163 @@ class ContractTest extends TestCase
         $this->assertNull(
             $contract->daysUntilExternalPrepaymentEnds(new \DateTimeImmutable('2026-06-15')),
         );
+    }
+
+    // -- Spec 058: always "doba určitá" + auto-extension ----------------------
+
+    public function testRecordBillingChargeExtendsEndDateForRecurring(): void
+    {
+        $contract = $this->createContract(
+            rentalType: RentalType::UNLIMITED,
+            startDate: new \DateTimeImmutable('2025-01-01'),
+            endDate: new \DateTimeImmutable('2025-02-01'),
+        );
+        $contract->applyBillingMode(BillingMode::AUTO_RECURRING);
+        $contract->setRecurringPayment('12345', new \DateTimeImmutable('2025-02-01'), new \DateTimeImmutable('2025-02-01'));
+
+        $contract->recordBillingCharge(
+            new \DateTimeImmutable('2025-02-01'),
+            new \DateTimeImmutable('2025-03-01'),
+            new \DateTimeImmutable('2025-03-01'),
+        );
+
+        $this->assertEquals(new \DateTimeImmutable('2025-03-01'), $contract->endDate);
+    }
+
+    public function testRecordBillingChargeDoesNotExtendEndDateForOneTime(): void
+    {
+        $endDate = new \DateTimeImmutable('2025-02-01');
+        $contract = $this->createContract(
+            startDate: new \DateTimeImmutable('2025-01-01'),
+            endDate: $endDate,
+        );
+        $contract->applyBillingMode(BillingMode::ONE_TIME);
+
+        $contract->recordBillingCharge(
+            new \DateTimeImmutable('2025-02-01'),
+            null,
+            new \DateTimeImmutable('2025-03-01'),
+        );
+
+        $this->assertEquals($endDate, $contract->endDate);
+    }
+
+    public function testRecordBillingChargeDoesNotExtendEndDateForLimitedRecurring(): void
+    {
+        $endDate = new \DateTimeImmutable('2025-07-01');
+        $contract = $this->createContract(
+            rentalType: RentalType::LIMITED,
+            startDate: new \DateTimeImmutable('2025-01-01'),
+            endDate: $endDate,
+        );
+        $contract->applyBillingMode(BillingMode::AUTO_RECURRING);
+
+        $contract->recordBillingCharge(
+            new \DateTimeImmutable('2025-02-01'),
+            new \DateTimeImmutable('2025-03-01'),
+            new \DateTimeImmutable('2025-03-01'),
+        );
+
+        $this->assertEquals($endDate, $contract->endDate);
+    }
+
+    public function testIsActiveReturnsTrueForAutoRecurringInGrace(): void
+    {
+        $contract = $this->createContract(
+            rentalType: RentalType::UNLIMITED,
+            startDate: new \DateTimeImmutable('2025-01-01'),
+            endDate: new \DateTimeImmutable('2025-02-01'),
+        );
+        $contract->applyBillingMode(BillingMode::AUTO_RECURRING);
+        $contract->setRecurringPayment('12345', new \DateTimeImmutable('2025-02-01'), new \DateTimeImmutable('2025-02-01'));
+
+        // Past endDate but GoPay token still active
+        $this->assertTrue($contract->isActive(new \DateTimeImmutable('2025-02-15')));
+    }
+
+    public function testIsActiveReturnsFalseForAutoRecurringAfterTokenRevoked(): void
+    {
+        $contract = $this->createContract(
+            rentalType: RentalType::UNLIMITED,
+            startDate: new \DateTimeImmutable('2025-01-01'),
+            endDate: new \DateTimeImmutable('2025-02-01'),
+        );
+        $contract->applyBillingMode(BillingMode::AUTO_RECURRING);
+        $contract->setRecurringPayment('12345', new \DateTimeImmutable('2025-02-01'), new \DateTimeImmutable('2025-02-01'));
+        $contract->cancelRecurringPayment();
+
+        // Past endDate, GoPay token revoked → no grace
+        $this->assertFalse($contract->isActive(new \DateTimeImmutable('2025-02-15')));
+    }
+
+    public function testIsActiveReturnsTrueForManualRecurringInGrace(): void
+    {
+        $contract = $this->createContract(
+            rentalType: RentalType::UNLIMITED,
+            startDate: new \DateTimeImmutable('2025-01-01'),
+            endDate: new \DateTimeImmutable('2025-02-01'),
+        );
+        $contract->applyBillingMode(BillingMode::MANUAL_RECURRING);
+        $contract->recordBillingCharge(
+            new \DateTimeImmutable('2025-01-01'),
+            new \DateTimeImmutable('2025-02-01'),
+            new \DateTimeImmutable('2025-02-01'),
+        );
+
+        // Past endDate but nextBillingDate is set
+        $this->assertTrue($contract->isActive(new \DateTimeImmutable('2025-02-15')));
+    }
+
+    public function testIsActiveReturnsFalseForManualRecurringNoGrace(): void
+    {
+        $contract = $this->createContract(
+            rentalType: RentalType::UNLIMITED,
+            startDate: new \DateTimeImmutable('2025-01-01'),
+            endDate: new \DateTimeImmutable('2025-02-01'),
+        );
+        $contract->applyBillingMode(BillingMode::MANUAL_RECURRING);
+        $contract->cancelRecurringPayment();
+
+        // Past endDate, no nextBillingDate, no retries → no grace
+        $this->assertFalse($contract->isActive(new \DateTimeImmutable('2025-02-15')));
+    }
+
+    public function testIsActiveReturnsFalseForOneTimePastEndDate(): void
+    {
+        $contract = $this->createContract(
+            startDate: new \DateTimeImmutable('2025-01-01'),
+            endDate: new \DateTimeImmutable('2025-02-01'),
+        );
+        $contract->applyBillingMode(BillingMode::ONE_TIME);
+
+        $this->assertFalse($contract->isActive(new \DateTimeImmutable('2025-02-15')));
+    }
+
+    public function testIsInBillingGraceForManualRecurringWithFailedAttempts(): void
+    {
+        $contract = $this->createContract(
+            rentalType: RentalType::UNLIMITED,
+            startDate: new \DateTimeImmutable('2025-01-01'),
+            endDate: new \DateTimeImmutable('2025-02-01'),
+        );
+        $contract->applyBillingMode(BillingMode::MANUAL_RECURRING);
+        $contract->cancelRecurringPayment();
+        $contract->recordFailedBillingAttempt(new \DateTimeImmutable('2025-02-01'));
+
+        // Past endDate, failedBillingAttempts > 0 → still in grace
+        $this->assertTrue($contract->isInBillingGrace());
+        $this->assertTrue($contract->isActive(new \DateTimeImmutable('2025-02-15')));
+    }
+
+    public function testIsLongTermMonthlyTrueForUnlimitedWithShortEndDate(): void
+    {
+        $contract = $this->createContract(
+            rentalType: RentalType::UNLIMITED,
+            startDate: new \DateTimeImmutable('2025-01-01'),
+            endDate: new \DateTimeImmutable('2025-02-01'),
+        );
+
+        // UNLIMITED with 31-day endDate should still get long-term pricing
+        $this->assertSame(35000, $contract->getEffectiveMonthlyAmount());
     }
 }

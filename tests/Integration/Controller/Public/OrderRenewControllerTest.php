@@ -65,23 +65,26 @@ class OrderRenewControllerTest extends WebTestCase
         $this->assertSame($expectedEnd->format('Y-m-d'), $sessionData['endDate']);
     }
 
-    public function testRenewUnlimitedOrderRedirectsToPlaceDetailWithFlash(): void
+    public function testRenewUnlimitedOrderSeedsSessionAndRedirectsToOrderCreate(): void
     {
         $previous = $this->findOrderByReference(OrderFixtures::REF_ORDER_COMPLETED_UNLIMITED);
 
         $this->client->request('GET', $this->buildUrl($previous));
 
-        $this->assertResponseRedirects(
-            '/pobocka/'.$previous->storage->place->id->toRfc4122(),
+        $this->assertResponseRedirects();
+        $location = (string) $this->client->getResponse()->headers->get('Location');
+        $expectedPrefix = sprintf(
+            '/objednavka/%s/%s/%s',
+            $previous->storage->place->id->toRfc4122(),
+            $previous->storage->storageType->id->toRfc4122(),
+            $previous->storage->id->toRfc4122(),
         );
+        $this->assertStringContainsString($expectedPrefix, $location);
 
-        // The renewal controller does NOT pre-fill PII when the previous rental was unlimited.
-        $sessionData = $this->client->getRequest()->getSession()->get('order_form_data');
-        $this->assertNull($sessionData);
-
-        $flashes = $this->client->getRequest()->getSession()->getFlashBag()->all();
-        $this->assertArrayHasKey('info', $flashes);
-        $this->assertStringContainsString('neurčitou', $flashes['info'][0]);
+        $session = $this->client->getRequest()->getSession();
+        $sessionData = $session->get('order_form_data');
+        $this->assertIsArray($sessionData);
+        $this->assertSame('unlimited', $sessionData['rentalType']);
     }
 
     public function testRenewCancelledOrderRedirectsToFreshOrderCreateWithoutPrefill(): void

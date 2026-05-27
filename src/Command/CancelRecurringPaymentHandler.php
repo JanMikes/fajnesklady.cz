@@ -25,17 +25,12 @@ final readonly class CancelRecurringPaymentHandler
         $contract = $command->contract;
         $now = $this->clock->now();
 
-        if (!$contract->hasActiveRecurringPayment()) {
-            return; // Nothing to cancel
+        if ($contract->hasActiveRecurringPayment()) {
+            /** @var string $parentPaymentId */
+            $parentPaymentId = $contract->goPayParentPaymentId;
+            $this->goPayClient->voidRecurrence($parentPaymentId);
         }
 
-        /** @var string $parentPaymentId */
-        $parentPaymentId = $contract->goPayParentPaymentId;
-
-        // Cancel in GoPay
-        $this->goPayClient->voidRecurrence($parentPaymentId);
-
-        // Update contract
         $contract->cancelRecurringPayment();
 
         $this->eventBus->dispatch(new RecurringPaymentCancelled(

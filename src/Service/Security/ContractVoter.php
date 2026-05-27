@@ -42,9 +42,8 @@ final class ContractVoter extends Voter
 
         // Users can view/download their own contracts
         if ($contract->user->id->equals($user->id)) {
-            // Users can only terminate their own unlimited contracts
             if (self::TERMINATE === $attribute) {
-                return $contract->isUnlimited() && !$contract->isTerminated();
+                return $contract->billingMode->isRecurring() && !$contract->isTerminated() && !$contract->hasPendingTermination();
             }
 
             return true;

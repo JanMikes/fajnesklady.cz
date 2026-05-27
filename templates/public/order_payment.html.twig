@@ -52,10 +52,7 @@
                                 {% if order.endDate %}
                                     {{ order.endDate|date('d.m.Y') }}
                                 {% else %}
-                                    Na dobu neurčitou
-                                    {% if order.paymentFrequency %}
-                                        ({{ order.paymentFrequency.value == 'monthly' ? 'měsíční' : 'roční' }} platba)
-                                    {% endif %}
+                                    od {{ order.startDate|date('d.m.Y') }} (s automatickým prodlužováním)
                                 {% endif %}
                             </span>
                         </div>

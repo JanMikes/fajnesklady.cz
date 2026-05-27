@@ -10,6 +10,7 @@ use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
+use App\Enum\BillingMode;
 use App\Enum\RentalType;
 use App\Enum\UserRole;
 use App\Service\Security\ContractVoter;
@@ -152,11 +153,12 @@ class ContractVoterTest extends TestCase
         $this->assertSame(-1, $result);
     }
 
-    public function testUserCanTerminateOwnUnlimitedContract(): void
+    public function testUserCanTerminateOwnRecurringContract(): void
     {
         $user = $this->createUser();
         $landlord = $this->createUser(['ROLE_LANDLORD']);
         $contract = $this->createContract($user, $landlord, RentalType::UNLIMITED);
+        $contract->applyBillingMode(BillingMode::AUTO_RECURRING);
         $token = $this->createToken($user);
 
         $result = $this->voter->vote($token, $contract, [ContractVoter::TERMINATE]);
@@ -164,11 +166,12 @@ class ContractVoterTest extends TestCase
         $this->assertSame(1, $result);
     }
 
-    public function testUserCannotTerminateLimitedContract(): void
+    public function testUserCannotTerminateOneTimeContract(): void
     {
         $user = $this->createUser();
         $landlord = $this->createUser(['ROLE_LANDLORD']);
         $contract = $this->createContract($user, $landlord, RentalType::LIMITED);
+        $contract->applyBillingMode(BillingMode::ONE_TIME);
         $token = $this->createToken($user);
 
         $result = $this->voter->vote($token, $contract, [ContractVoter::TERMINATE]);
@@ -181,7 +184,22 @@ class ContractVoterTest extends TestCase
         $user = $this->createUser();
         $landlord = $this->createUser(['ROLE_LANDLORD']);
         $contract = $this->createContract($user, $landlord, RentalType::UNLIMITED);
+        $contract->applyBillingMode(BillingMode::AUTO_RECURRING);
         $contract->terminate(new \DateTimeImmutable());
+        $token = $this->createToken($user);
+
+        $result = $this->voter->vote($token, $contract, [ContractVoter::TERMINATE]);
+
+        $this->assertSame(-1, $result);
+    }
+
+    public function testUserCannotTerminateContractWithPendingTermination(): void
+    {
+        $user = $this->createUser();
+        $landlord = $this->createUser(['ROLE_LANDLORD']);
+        $contract = $this->createContract($user, $landlord, RentalType::UNLIMITED);
+        $contract->applyBillingMode(BillingMode::AUTO_RECURRING);
+        $contract->requestTermination(new \DateTimeImmutable(), new \DateTimeImmutable('+1 month'));
         $token = $this->createToken($user);
 
         $result = $this->voter->vote($token, $contract, [ContractVoter::TERMINATE]);

@@ -169,7 +169,7 @@
                                                     <span aria-hidden="true">⚠</span>
                                                 </span>
                                             {% elseif view.isUnlimited %}
-                                                <span class="text-gray-700" title="Pronájem na dobu neurčitou">neomezeně <span aria-hidden="true">∞</span></span>
+                                                do {{ view.rentedUntil|date('d.m.Y') }} <span class="text-xs text-gray-500" title="Automatické prodlužování">↻</span>
                                             {% else %}
                                                 do {{ view.rentedUntil|date('d.m.Y') }}
                                             {% endif %}
@@ -253,7 +253,7 @@
                                     {% set color = span.kind.value == 'block' ? 'bg-gray-400' : (span.kind.value == 'order' ? 'bg-amber-400' : 'bg-red-400') %}
                                     <div class="absolute top-0 bottom-0 {{ color }} rounded"
                                          style="left: {{ leftPct }}%; width: {{ widthPct }}%;"
-                                         title="{{ span.tenantName is null ? 'Blokováno' : span.tenantName }}{% if span.endDate %} (do {{ span.endDate|date('d.m.Y') }}){% else %} (neomezeně){% endif %}">
+                                         title="{{ span.tenantName is null ? 'Blokováno' : span.tenantName }}{% if span.endDate %} (do {{ span.endDate|date('d.m.Y') }}{% if span.isUnlimited %}, automat.{% endif %}){% endif %}">
                                     </div>
                                 {% endfor %}
                             </div>

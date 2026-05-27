@@ -62,35 +62,28 @@ final class OrderRenewController extends AbstractController
             ]);
         }
 
-        // Unlimited rentals don't expire on their own — there is nothing to "prolong".
-        if (RentalType::UNLIMITED === $previous->rentalType) {
-            $this->addFlash('info', 'Vaše smlouva je na dobu neurčitou — pokračuje automaticky. Pokud si přejete změnit pronájem, vyberte si z aktuální nabídky.');
-
-            return $this->redirectToRoute('public_place_detail', ['id' => $place->id->toRfc4122()]);
-        }
-
-        // Limited renewal: continuous if the previous period still has time on it,
-        // otherwise tomorrow. Same duration as the previous order.
         $today = $this->clock->now()->setTime(0, 0);
         $tomorrow = $today->modify('+1 day');
         $previousEnd = $previous->endDate ?? $tomorrow;
         $newStart = $previousEnd > $tomorrow ? $previousEnd : $tomorrow;
 
-        // We've already redirected unlimited (endDate-null) rentals above, so endDate is set.
-        \assert($previous->endDate instanceof \DateTimeImmutable);
-        $previousDays = (int) $previous->startDate->diff($previous->endDate)->days;
-        if ($previousDays < 1) {
-            $previousDays = 30;
-        }
-        $newEnd = $newStart->modify(sprintf('+%d days', $previousDays));
-
         $formData = OrderFormData::fromUser($previous->user);
-        $formData->rentalType = RentalType::LIMITED;
-        $formData->startDate = $newStart;
-        $formData->endDate = $newEnd;
-        // Carry forward the previous order's billing mode — customer can still
-        // change it on the order form before signing.
         $formData->billingMode = $previous->billingMode;
+
+        if (RentalType::UNLIMITED === $previous->rentalType) {
+            $formData->rentalType = RentalType::UNLIMITED;
+            $formData->startDate = $newStart;
+        } else {
+            $previousDays = (int) $previous->startDate->diff($previous->endDate ?? $tomorrow)->days;
+            if ($previousDays < 1) {
+                $previousDays = 30;
+            }
+            $newEnd = $newStart->modify(sprintf('+%d days', $previousDays));
+
+            $formData->rentalType = RentalType::LIMITED;
+            $formData->startDate = $newStart;
+            $formData->endDate = $newEnd;
+        }
 
         $this->requestStack->getSession()->set('order_form_data', $formData->toSessionArray());
 

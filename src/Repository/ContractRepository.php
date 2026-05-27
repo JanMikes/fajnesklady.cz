@@ -459,8 +459,10 @@ class ContractRepository
 
     /**
      * Find contracts due for termination:
-     * - UNLIMITED with terminatesAt <= now and not yet terminated
-     * - LIMITED with endDate <= now and not yet terminated
+     * - Pending termination notice due (terminatesAt <= now)
+     * - ONE_TIME contracts past endDate
+     * - AUTO_RECURRING past endDate with no active GoPay token (recurring revoked)
+     * - MANUAL_RECURRING past endDate with no pending billing and no retries
      *
      * @return Contract[]
      */
@@ -472,9 +474,14 @@ class ContractRepository
             ->where('c.terminatedAt IS NULL')
             ->andWhere(
                 '(c.terminatesAt IS NOT NULL AND c.terminatesAt <= :now) OR '
-                .'(c.endDate IS NOT NULL AND c.endDate <= :now)'
+                .'(c.endDate IS NOT NULL AND c.endDate <= :now AND c.billingMode = :oneTime) OR '
+                .'(c.endDate IS NOT NULL AND c.endDate <= :now AND c.billingMode = :autoRecurring AND c.goPayParentPaymentId IS NULL) OR '
+                .'(c.endDate IS NOT NULL AND c.endDate <= :now AND c.billingMode = :manualRecurring AND c.nextBillingDate IS NULL AND c.failedBillingAttempts = 0)'
             )
             ->setParameter('now', $now)
+            ->setParameter('oneTime', BillingMode::ONE_TIME->value)
+            ->setParameter('autoRecurring', BillingMode::AUTO_RECURRING->value)
+            ->setParameter('manualRecurring', BillingMode::MANUAL_RECURRING->value)
             ->getQuery()
             ->getResult();
     }

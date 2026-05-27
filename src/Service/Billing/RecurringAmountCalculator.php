@@ -40,7 +40,9 @@ final readonly class RecurringAmountCalculator
         $periodDays = $contract->getBillingPeriodDays();
         $effectiveEndDate = $contract->getEffectiveEndDate();
 
-        if (null === $effectiveEndDate) {
+        // UNLIMITED contracts auto-extend on each charge (endDate advances),
+        // so they always pay the full cadence-period rate.
+        if (null === $effectiveEndDate || $contract->isUnlimited()) {
             return $periodAmount;
         }
 

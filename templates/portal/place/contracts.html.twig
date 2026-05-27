@@ -81,8 +81,11 @@
                                         {{ contract.terminatesAt|date('d.m.Y') }} <span class="text-xs text-amber-600">(výpověď)</span>
                                     {% elseif contract.endDate %}
                                         {{ contract.endDate|date('d.m.Y') }}
+                                        {% if contract.isUnlimited %}
+                                            <span class="text-xs text-gray-500">↻</span>
+                                        {% endif %}
                                     {% else %}
-                                        <span class="text-gray-500 italic">neomezeně</span>
+                                        od {{ contract.startDate|date('d.m.Y') }}
                                     {% endif %}
                                 </td>
                                 <td class="text-right font-medium">

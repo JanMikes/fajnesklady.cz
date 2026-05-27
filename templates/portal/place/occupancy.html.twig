@@ -140,9 +140,12 @@
                                 </td>
                                 <td class="text-gray-700">
                                     {% if view and view.rentedUntil %}
-                                        {{ view.rentedUntil|date('d.m.Y') }}{% if view.currentContract and view.currentContract.terminatesAt %} <span class="text-xs text-amber-600">(výpověď)</span>{% endif %}
-                                    {% elseif view and view.currentContract and view.currentContract.endDate is null and view.currentContract.terminatesAt is null %}
-                                        <span class="text-gray-500 italic">neomezeně</span>
+                                        {{ view.rentedUntil|date('d.m.Y') }}
+                                        {% if view.currentContract and view.currentContract.terminatesAt %}
+                                            <span class="text-xs text-amber-600">(výpověď)</span>
+                                        {% elseif view.isUnlimited %}
+                                            <span class="text-xs text-gray-500">↻</span>
+                                        {% endif %}
                                     {% else %}
                                         <span class="text-gray-400">—</span>
                                     {% endif %}

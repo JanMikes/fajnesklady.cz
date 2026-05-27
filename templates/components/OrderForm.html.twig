@@ -217,7 +217,7 @@
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                         </svg>
-                                        Pronájem na dobu neurčitou s možností ukončení kdykoliv. Skladovací jednotka zůstává vaše, dokud smlouvu sami neukončíte.
+                                        Pronájem na dobu určitou s automatickým prodlužováním. Opakované platby můžete kdykoliv zrušit — smlouva skončí na konci aktuálně zaplaceného období.
                                     </p>
                                 </div>
 
@@ -344,7 +344,7 @@
                                 {% elseif schedule.isOpenEnded %}
                                     {# UNLIMITED — open-ended monthly recurrence #}
                                     <div class="flex items-center justify-between">
-                                        <span class="text-sm text-gray-600">Měsíční platba (na dobu neurčitou)</span>
+                                        <span class="text-sm text-gray-600">Měsíční platba (s automatickým prodlužováním)</span>
                                         <span class="text-lg font-bold text-accent">{{ schedule.monthlyAmountInCzk|number_format(0, ',', ' ') }} Kč / měsíc <span class="text-xs text-gray-500 font-normal">vč. DPH</span></span>
                                     </div>
                                 {% elseif not schedule.isRecurring %}

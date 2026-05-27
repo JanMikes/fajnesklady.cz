@@ -98,10 +98,11 @@
                                             <p class="text-sm text-gray-900">
                                                 {% if contract.endDate %}
                                                     do {{ contract.endDate|date('d.m.Y') }}
+                                                    {% if contract.isUnlimited %}
+                                                        <span class="text-xs text-gray-500">(automat.)</span>
+                                                    {% endif %}
                                                 {% else %}
-                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                                        Na dobu neurčitou
-                                                    </span>
+                                                    od {{ contract.startDate|date('d.m.Y') }}
                                                 {% endif %}
                                             </p>
                                             <p class="text-xs text-gray-500">

@@ -54,7 +54,7 @@
                                 {% if order.endDate %}
                                     - {{ order.endDate|date('d.m.Y') }}
                                 {% else %}
-                                    <span class="text-gray-500">(na dobu neurčitou)</span>
+                                    <span class="text-gray-500">(automat. prodlužování)</span>
                                 {% endif %}
                             </td>
                             <td class="font-medium">{{ (order.firstPaymentPrice / 100)|number_format(0, ',', ' ') }} Kč{% if order.isRecurring %} / měsíc{% endif %}</td>

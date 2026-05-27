@@ -1,6 +1,6 @@
 # 058 — Contract always fixed-term ("doba určitá") with automatic extension per VOP §IV
 
-**Status:** in-progress
+**Status:** done
 **Type:** feature / compliance
 **Scope:** large (~2 new files, ~25 modified, 1 migration)
 **Depends on:** none
