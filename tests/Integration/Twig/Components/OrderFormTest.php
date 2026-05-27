@@ -7,6 +7,7 @@ namespace App\Tests\Integration\Twig\Components;
 use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
+use App\Repository\PlatformSettingsRepository;
 use App\Repository\StorageRepository;
 use App\Repository\UserRepository;
 use App\Service\PriceCalculator;
@@ -26,6 +27,7 @@ final class OrderFormTest extends KernelTestCase
     private UserRepository $userRepository;
     private UrlGeneratorInterface $urlGenerator;
     private PriceCalculator $priceCalculator;
+    private PlatformSettingsRepository $platformSettingsRepository;
     private Environment $twig;
 
     protected function setUp(): void
@@ -39,6 +41,7 @@ final class OrderFormTest extends KernelTestCase
         // is private and inlined out of the test container, so we fetch the concrete service id.
         $this->urlGenerator = $container->get('router');
         $this->priceCalculator = $container->get(PriceCalculator::class);
+        $this->platformSettingsRepository = $container->get(PlatformSettingsRepository::class);
         $this->twig = $container->get('test.twig');
     }
 
@@ -170,7 +173,7 @@ final class OrderFormTest extends KernelTestCase
     private function makeComponent(Place $place, StorageType $storageType, Storage $storage): OrderForm
     {
         // selectStorage / getSelectedStorage do not need session state, so a fresh RequestStack is fine here.
-        $component = new OrderForm($this->storageRepository, $this->userRepository, new RequestStack(), $this->urlGenerator, $this->priceCalculator);
+        $component = new OrderForm($this->storageRepository, $this->userRepository, new RequestStack(), $this->urlGenerator, $this->priceCalculator, $this->platformSettingsRepository);
         $component->place = $place;
         $component->storageType = $storageType;
         $component->storageId = $storage->id->toRfc4122();

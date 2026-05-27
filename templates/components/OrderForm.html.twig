@@ -298,14 +298,37 @@
                             {% do form.paymentFrequency.setRendered %}
                         {% endif %}
 
-                        {% if isYearly %}
-                            {# YEARLY is always MANUAL_RECURRING — hide the AUTO/MANUAL radio and pin the value via OrderFormData::validatePaymentFrequency. #}
-                            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                                <p class="text-sm text-blue-900">
-                                    <strong>Roční platba se vždy odbavuje ručně.</strong>
-                                    Kartu si neukládáme — další platbu obdržíte e-mailem před vypršením roku.
-                                </p>
-                            </div>
+                        {% set isBankTransfer = form.vars.data.paymentMethod is not null and form.vars.data.paymentMethod.value == 'bank_transfer' %}
+                        <div class="bg-gray-50 rounded-lg p-6">
+                            <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                                </svg>
+                                Způsob platby
+                            </h2>
+                            {{ form_widget(form.paymentMethod) }}
+                            {% if isBankTransfer %}
+                                <div class="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                                    <p class="text-sm text-amber-800">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        Při platbě bankovním převodem je účtován příplatek {{ this.getBankTransferSurchargeInCzk()|number_format(0, ',', ' ') }} Kč za každé fakturační období.
+                                    </p>
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        {% if isYearly or isBankTransfer %}
+                            {# YEARLY is always MANUAL_RECURRING; BANK_TRANSFER forces MANUAL_RECURRING too — hide the AUTO/MANUAL radio. #}
+                            {% if isYearly %}
+                                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                    <p class="text-sm text-blue-900">
+                                        <strong>Roční platba se vždy odbavuje ručně.</strong>
+                                        Kartu si neukládáme — další platbu obdržíte e-mailem před vypršením roku.
+                                    </p>
+                                </div>
+                            {% endif %}
                             {% do form.billingMode.setRendered %}
                         {% elseif this.isEligibleForBillingModeChoice() %}
                             <div class="space-y-2">

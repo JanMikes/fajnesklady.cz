@@ -7,6 +7,7 @@ namespace App\Form;
 use App\Enum\BillingMode;
 use App\Enum\ExpectedDuration;
 use App\Enum\PaymentFrequency;
+use App\Enum\PaymentMethod;
 use App\Enum\RentalType;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
@@ -209,6 +210,16 @@ final class OrderFormType extends AbstractType
                     PaymentFrequency::YEARLY->label() => PaymentFrequency::YEARLY,
                 ],
                 'help' => 'Roční platba znamená jednu platbu předem na celý rok. Karta se neukládá — další platbu obdržíte e-mailem před vypršením roku.',
+            ])
+            ->add('paymentMethod', EnumType::class, [
+                'class' => PaymentMethod::class,
+                'label' => 'Způsob platby',
+                'expanded' => true,
+                'placeholder' => false,
+                'choices' => [
+                    'Platba kartou (GoPay)' => PaymentMethod::GOPAY,
+                    'Bankovní převod' => PaymentMethod::BANK_TRANSFER,
+                ],
             ]);
 
         // Live-component re-instantiates the form on every interaction, so PRE_SET_DATA

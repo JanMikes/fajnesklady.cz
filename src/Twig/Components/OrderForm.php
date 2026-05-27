@@ -12,6 +12,7 @@ use App\Enum\PaymentFrequency;
 use App\Enum\RentalType;
 use App\Form\OrderFormData;
 use App\Form\OrderFormType;
+use App\Repository\PlatformSettingsRepository;
 use App\Repository\StorageRepository;
 use App\Repository\UserRepository;
 use App\Service\PriceCalculator;
@@ -66,7 +67,13 @@ final class OrderForm extends AbstractController
         private readonly RequestStack $requestStack,
         private readonly UrlGeneratorInterface $urlGenerator,
         private readonly PriceCalculator $priceCalculator,
+        private readonly PlatformSettingsRepository $platformSettingsRepository,
     ) {
+    }
+
+    public function getBankTransferSurchargeInCzk(): float
+    {
+        return $this->platformSettingsRepository->getSettings()->getBankTransferSurchargeInCzk();
     }
 
     /**
