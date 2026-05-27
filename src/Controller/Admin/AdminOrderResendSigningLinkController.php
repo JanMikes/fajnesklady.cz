@@ -6,6 +6,7 @@ namespace App\Controller\Admin;
 
 use App\Event\AdminOnboardingInitiated;
 use App\Repository\OrderRepository;
+use App\Service\AuditLogger;
 use Psr\Clock\ClockInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -22,6 +23,7 @@ final class AdminOrderResendSigningLinkController extends AbstractController
 {
     public function __construct(
         private readonly OrderRepository $orderRepository,
+        private readonly AuditLogger $auditLogger,
         #[Autowire(service: 'event.bus')]
         private readonly MessageBusInterface $eventBus,
         private readonly ClockInterface $clock,
@@ -49,6 +51,15 @@ final class AdminOrderResendSigningLinkController extends AbstractController
             signingToken: $order->signingToken,
             occurredOn: $this->clock->now(),
         ));
+
+        $this->auditLogger->log(
+            entityType: 'order',
+            entityId: $order->id->toRfc4122(),
+            eventType: 'admin_manual_email_sent',
+            payload: ['email_type' => 'signing_link'],
+            orderId: $order->id,
+            userIdContext: $order->user->id,
+        );
 
         $this->addFlash('success', 'Odkaz k podpisu byl znovu odeslán.');
 

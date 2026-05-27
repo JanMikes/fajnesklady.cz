@@ -1,6 +1,6 @@
 # 059 — Complete order/contract audit trail with unified timeline UI
 
-**Status:** ready
+**Status:** done
 **Type:** feature / observability
 **Scope:** medium (~15 modified files, 1 new template partial, 1 migration)
 **Depends on:** none

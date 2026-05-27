@@ -32,10 +32,12 @@ final readonly class RequestTerminationNoticeHandler
         $contract->requestTermination($now, $terminatesAt);
 
         $this->auditLogger->log(
-            'Contract',
+            'contract',
             $contract->id->toRfc4122(),
             'termination_notice_requested',
             ['terminates_at' => $terminatesAt->format('Y-m-d')],
+            orderId: $contract->order->id,
+            userIdContext: $contract->user->id,
         );
 
         $this->eventBus->dispatch(new TerminationNoticeRequested(

@@ -248,10 +248,7 @@ final readonly class OrderStatusViewModelFactory
      */
     private function buildTimeline(Order $order, ?Contract $contract): array
     {
-        $logs = $this->auditLogRepository->findForOrderTimeline(
-            $order->id->toRfc4122(),
-            $contract?->id->toRfc4122(),
-        );
+        $logs = $this->auditLogRepository->findForOrderTimeline($order->id);
 
         $entries = [];
         foreach ($logs as $log) {

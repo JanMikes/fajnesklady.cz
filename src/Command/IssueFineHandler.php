@@ -8,6 +8,7 @@ use App\Entity\Contract;
 use App\Entity\Fine;
 use App\Entity\User;
 use App\Repository\FineRepository;
+use App\Service\AuditLogger;
 use App\Service\Identity\ProvideIdentity;
 use App\Service\Payment\VariableSymbolGenerator;
 use Doctrine\ORM\EntityManagerInterface;
@@ -20,6 +21,7 @@ final readonly class IssueFineHandler
     public function __construct(
         private EntityManagerInterface $entityManager,
         private FineRepository $fineRepository,
+        private AuditLogger $auditLogger,
         private ProvideIdentity $identityProvider,
         private VariableSymbolGenerator $variableSymbolGenerator,
         private ClockInterface $clock,
@@ -58,6 +60,20 @@ final readonly class IssueFineHandler
         $fine->assignVariableSymbol($vs);
 
         $this->fineRepository->save($fine);
+
+        $this->auditLogger->log(
+            entityType: 'fine',
+            entityId: $fineId->toRfc4122(),
+            eventType: 'issued',
+            payload: [
+                'contract_id' => $contract->id->toRfc4122(),
+                'type' => $command->type->value,
+                'amount' => $command->amountInHaler,
+                'issued_by' => $admin->id->toRfc4122(),
+            ],
+            orderId: $contract->order->id,
+            userIdContext: $user->id,
+        );
 
         return $fine;
     }

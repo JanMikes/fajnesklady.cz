@@ -8,6 +8,7 @@ use App\Event\FinePaymentReminderRequested;
 use App\Repository\ContractRepository;
 use App\Repository\FineRepository;
 use App\Repository\OrderRepository;
+use App\Service\AuditLogger;
 use Psr\Clock\ClockInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -26,6 +27,7 @@ final class AdminOrderSendFineReminderController extends AbstractController
         private readonly OrderRepository $orderRepository,
         private readonly ContractRepository $contractRepository,
         private readonly FineRepository $fineRepository,
+        private readonly AuditLogger $auditLogger,
         #[Autowire(service: 'event.bus')]
         private readonly MessageBusInterface $eventBus,
         private readonly ClockInterface $clock,
@@ -65,6 +67,15 @@ final class AdminOrderSendFineReminderController extends AbstractController
             stage: 0,
             occurredOn: $this->clock->now(),
         ));
+
+        $this->auditLogger->log(
+            entityType: 'order',
+            entityId: $order->id->toRfc4122(),
+            eventType: 'admin_manual_email_sent',
+            payload: ['email_type' => 'fine_reminder', 'fine_id' => $fineId],
+            orderId: $order->id,
+            userIdContext: $order->user->id,
+        );
 
         $this->addFlash('success', 'Připomínka pokuty byla odeslána.');
 

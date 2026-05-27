@@ -100,6 +100,8 @@ final readonly class ProcessIncomingBankTransactionHandler
                             'variable_symbol' => $bankTx->variableSymbol,
                             'sender_account' => $bankTx->senderAccountNumber,
                         ],
+                        orderId: $order->id,
+                        userIdContext: $order->user->id,
                     );
                 }
 
@@ -124,6 +126,8 @@ final readonly class ProcessIncomingBankTransactionHandler
                             'expected_amount' => $fine->amountInHaler,
                             'received_amount' => $bankTx->amount,
                         ],
+                        orderId: $fine->contract->order->id,
+                        userIdContext: $fine->user->id,
                     );
                 } else {
                     $bankTx->markAmountMismatchContract($fine->contract, 'variable_symbol_fine', $now);
@@ -140,6 +144,8 @@ final readonly class ProcessIncomingBankTransactionHandler
                             'variable_symbol' => $bankTx->variableSymbol,
                             'type' => 'fine_payment',
                         ],
+                        orderId: $fine->contract->order->id,
+                        userIdContext: $fine->user->id,
                     );
                 }
 
@@ -171,6 +177,8 @@ final readonly class ProcessIncomingBankTransactionHandler
                                 'difference' => $bankTx->amount - $expectedAmount,
                                 'variable_symbol' => $bankTx->variableSymbol,
                             ],
+                            orderId: $order->id,
+                            userIdContext: $order->user->id,
                         );
 
                         return;
@@ -190,6 +198,8 @@ final readonly class ProcessIncomingBankTransactionHandler
                             'expected_amount' => $expectedAmount,
                             'received_amount' => $bankTx->amount,
                         ],
+                        orderId: $order->id,
+                        userIdContext: $order->user->id,
                     );
 
                     $this->dispatchPaymentCommand(new ProcessBankTransferPaymentCommand($bankTx, $order));
@@ -228,6 +238,8 @@ final readonly class ProcessIncomingBankTransactionHandler
                         'difference' => $bankTx->amount - $expectedAmount,
                         'variable_symbol' => $bankTx->variableSymbol,
                     ],
+                    orderId: $order->id,
+                    userIdContext: $order->user->id,
                 );
 
                 return;
@@ -247,6 +259,8 @@ final readonly class ProcessIncomingBankTransactionHandler
                     'received_amount' => $bankTx->amount,
                     'billing_period_start' => ($contract->nextBillingDate ?? $now)->format('Y-m-d'),
                 ],
+                orderId: $order->id,
+                userIdContext: $order->user->id,
             );
 
             $this->dispatchPaymentCommand(new ProcessBankTransferPaymentCommand($bankTx, $order));
@@ -270,6 +284,8 @@ final readonly class ProcessIncomingBankTransactionHandler
                         'variable_symbol' => $bankTx->variableSymbol,
                         'type' => 'debt_payment',
                     ],
+                    orderId: $order->id,
+                    userIdContext: $order->user->id,
                 );
 
                 return;
@@ -288,6 +304,8 @@ final readonly class ProcessIncomingBankTransactionHandler
                     'received_amount' => $bankTx->amount,
                     'match_method' => $matchMethod,
                 ],
+                orderId: $order->id,
+                userIdContext: $order->user->id,
             );
 
             $this->dispatchPaymentCommand(new ProcessBankTransferDebtPaymentCommand($bankTx, $order));
@@ -310,6 +328,8 @@ final readonly class ProcessIncomingBankTransactionHandler
                         'difference' => $bankTx->amount - $order->firstPaymentPrice,
                         'variable_symbol' => $bankTx->variableSymbol,
                     ],
+                    orderId: $order->id,
+                    userIdContext: $order->user->id,
                 );
 
                 return;
@@ -328,6 +348,8 @@ final readonly class ProcessIncomingBankTransactionHandler
                     'received_amount' => $bankTx->amount,
                     'match_method' => $matchMethod,
                 ],
+                orderId: $order->id,
+                userIdContext: $order->user->id,
             );
 
             $this->dispatchPaymentCommand(new ProcessBankTransferPaymentCommand($bankTx, $order));

@@ -6,6 +6,7 @@ namespace App\Repository;
 
 use App\Entity\AuditLog;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\Uid\Uuid;
 
 class AuditLogRepository
 {
@@ -95,12 +96,16 @@ class AuditLogRepository
     /**
      * @return AuditLog[]
      */
+    /**
+     * @return AuditLog[]
+     */
     public function findPaginatedWithFilters(
         int $page,
         int $limit,
         ?string $entityType = null,
         ?string $eventType = null,
         ?string $search = null,
+        ?Uuid $orderId = null,
     ): array {
         $offset = ($page - 1) * $limit;
 
@@ -126,6 +131,11 @@ class AuditLogRepository
                 ->setParameter('search', '%'.$search.'%');
         }
 
+        if (null !== $orderId) {
+            $qb->andWhere('al.orderId = :orderId')
+                ->setParameter('orderId', $orderId);
+        }
+
         return $qb->getQuery()->getResult();
     }
 
@@ -133,6 +143,7 @@ class AuditLogRepository
         ?string $entityType = null,
         ?string $eventType = null,
         ?string $search = null,
+        ?Uuid $orderId = null,
     ): int {
         $qb = $this->entityManager->createQueryBuilder()
             ->select('COUNT(al.id)')
@@ -153,32 +164,43 @@ class AuditLogRepository
                 ->setParameter('search', '%'.$search.'%');
         }
 
+        if (null !== $orderId) {
+            $qb->andWhere('al.orderId = :orderId')
+                ->setParameter('orderId', $orderId);
+        }
+
         return (int) $qb->getQuery()->getSingleScalarResult();
     }
 
     /**
      * @return AuditLog[]
      */
-    public function findForOrderTimeline(string $orderId, ?string $contractId): array
+    public function findForOrderTimeline(Uuid $orderId): array
     {
-        $qb = $this->entityManager->createQueryBuilder()
+        return $this->entityManager->createQueryBuilder()
             ->select('al')
             ->from(AuditLog::class, 'al')
-            ->orderBy('al.createdAt', 'ASC');
+            ->where('al.orderId = :orderId')
+            ->setParameter('orderId', $orderId)
+            ->orderBy('al.createdAt', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
 
-        if (null !== $contractId) {
-            $qb->where('(al.entityType = :orderType AND al.entityId = :orderId) OR (al.entityType = :contractType AND al.entityId = :contractId)')
-                ->setParameter('orderType', 'order')
-                ->setParameter('orderId', $orderId)
-                ->setParameter('contractType', 'contract')
-                ->setParameter('contractId', $contractId);
-        } else {
-            $qb->where('al.entityType = :orderType AND al.entityId = :orderId')
-                ->setParameter('orderType', 'order')
-                ->setParameter('orderId', $orderId);
-        }
-
-        return $qb->getQuery()->getResult();
+    /**
+     * @return AuditLog[]
+     */
+    public function findByUserIdContext(Uuid $userId, int $limit = 100): array
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('al')
+            ->from(AuditLog::class, 'al')
+            ->where('al.userIdContext = :userId')
+            ->setParameter('userId', $userId)
+            ->orderBy('al.createdAt', 'DESC')
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
     }
 
     /**
@@ -191,6 +213,7 @@ class AuditLogRepository
         ?string $entityType,
         ?string $eventType,
         ?string $search,
+        ?Uuid $orderId = null,
     ): iterable {
         $qb = $this->entityManager->createQueryBuilder()
             ->select('al')
@@ -210,6 +233,11 @@ class AuditLogRepository
         if (null !== $search && '' !== $search) {
             $qb->andWhere('al.entityId LIKE :search OR al.eventType LIKE :search')
                 ->setParameter('search', '%'.$search.'%');
+        }
+
+        if (null !== $orderId) {
+            $qb->andWhere('al.orderId = :orderId')
+                ->setParameter('orderId', $orderId);
         }
 
         $batch = 0;

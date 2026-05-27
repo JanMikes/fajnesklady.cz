@@ -10,6 +10,7 @@ use App\Event\RecurringPaymentFailed;
 use App\Repository\ContractRepository;
 use App\Service\GoPay\GoPayException;
 use App\Service\GoPay\PaymentNotConfirmedException;
+use App\Service\AuditLogger;
 use App\Service\Messenger\HandlerFailureUnwrap;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ManagerRegistry;
@@ -37,6 +38,7 @@ final class ProcessRecurringPaymentsCommand extends Command
         private readonly MessageBusInterface $eventBus,
         private readonly ClockInterface $clock,
         private readonly LoggerInterface $logger,
+        private readonly AuditLogger $auditLogger,
     ) {
         parent::__construct();
     }
@@ -94,6 +96,18 @@ final class ProcessRecurringPaymentsCommand extends Command
             if ($isExpectedFailure) {
                 $contract->recordFailedBillingAttempt($now);
                 $this->getEntityManager()->flush();
+
+                $this->auditLogger->log(
+                    entityType: 'contract',
+                    entityId: $contract->id->toRfc4122(),
+                    eventType: 'recurring_payment_failed',
+                    payload: [
+                        'attempt' => $contract->failedBillingAttempts,
+                        'reason' => $exception->getMessage(),
+                    ],
+                    orderId: $contract->order->id,
+                    userIdContext: $contract->user->id,
+                );
 
                 $this->eventBus->dispatch(new RecurringPaymentFailed(
                     contractId: $contract->id,

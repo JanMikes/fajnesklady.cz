@@ -23,10 +23,17 @@ final readonly class DebtPaymentService
     {
         $order->markDebtPaid($now);
 
-        $this->auditLogger->log('order', $order->id->toRfc4122(), 'debt_payment_confirmed', [
-            'debt_amount' => $order->onboardingDebtInHaler,
-            'gopay_payment_id' => $goPayPaymentId,
-        ]);
+        $this->auditLogger->log(
+            entityType: 'order',
+            entityId: $order->id->toRfc4122(),
+            eventType: 'debt_payment_confirmed',
+            payload: [
+                'debt_amount' => $order->onboardingDebtInHaler,
+                'gopay_payment_id' => $goPayPaymentId,
+            ],
+            orderId: $order->id,
+            userIdContext: $order->user->id,
+        );
 
         $isFreeOrPrepaid = 0 === $order->individualMonthlyAmount
             || null !== $order->paidThroughDate;

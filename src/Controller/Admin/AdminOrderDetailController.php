@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller\Admin;
 
+use App\Repository\AuditLogRepository;
 use App\Repository\ContractPriceChangeRepository;
 use App\Repository\ContractRepository;
 use App\Repository\EmailLogRepository;
@@ -32,6 +33,7 @@ final class AdminOrderDetailController extends AbstractController
         private readonly OrderRepository $orderRepository,
         private readonly ContractRepository $contractRepository,
         private readonly ContractPriceChangeRepository $priceChangeRepository,
+        private readonly AuditLogRepository $auditLogRepository,
         private readonly EmailLogRepository $emailLogRepository,
         private readonly FineRepository $fineRepository,
         private readonly HandoverProtocolRepository $handoverProtocolRepository,
@@ -87,6 +89,7 @@ final class AdminOrderDetailController extends AbstractController
             : [];
 
         $emailLogs = $this->emailLogRepository->findByOrderId($order->id);
+        $auditLogs = $this->auditLogRepository->findForOrderTimeline($order->id);
 
         $hasPendingManualPayment = false;
         if (null !== $contract && \App\Enum\BillingMode::MANUAL_RECURRING === $contract->billingMode) {
@@ -110,6 +113,7 @@ final class AdminOrderDetailController extends AbstractController
             'handoverProtocol' => $handoverProtocol,
             'fines' => $fines,
             'emailLogs' => $emailLogs,
+            'auditLogs' => $auditLogs,
             'hasPendingManualPayment' => $hasPendingManualPayment,
         ]);
     }

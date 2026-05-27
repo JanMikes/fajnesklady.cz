@@ -103,6 +103,8 @@ final readonly class DispatchManualBillingNotificationHandler
                     'amount' => $request->amount,
                     'variable_symbol' => $contract->order->variableSymbol,
                 ],
+                orderId: $contract->order->id,
+                userIdContext: $contract->user->id,
             );
 
             $isOverdueStage = in_array($command->stage, [

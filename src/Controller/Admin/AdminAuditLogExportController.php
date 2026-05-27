@@ -17,6 +17,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
+use Symfony\Component\Uid\Uuid;
 
 #[Route('/portal/admin/audit-log/export', name: 'admin_audit_log_export')]
 #[IsGranted('ROLE_ADMIN')]
@@ -37,6 +38,8 @@ final class AdminAuditLogExportController extends AbstractController
         $entityType = self::trimToNull($request->query->get('entity_type'));
         $eventType = self::trimToNull($request->query->get('event_type'));
         $search = self::trimToNull($request->query->get('search'));
+        $orderIdRaw = self::trimToNull($request->query->get('orderId'));
+        $orderId = null !== $orderIdRaw && Uuid::isValid($orderIdRaw) ? Uuid::fromString($orderIdRaw) : null;
 
         $columns = [
             new ExcelColumn('Čas', ExcelColumnType::DATETIME),
@@ -45,9 +48,11 @@ final class AdminAuditLogExportController extends AbstractController
             new ExcelColumn('ID entity'),
             new ExcelColumn('Událost'),
             new ExcelColumn('Popis'),
+            new ExcelColumn('ID objednávky'),
+            new ExcelColumn('ID zákazníka'),
         ];
 
-        $logs = $this->auditLogRepository->streamWithFilters($entityType, $eventType, $search);
+        $logs = $this->auditLogRepository->streamWithFilters($entityType, $eventType, $search, $orderId);
         $renderer = $this->descriptionRenderer;
         $rows = (static function () use ($logs, $renderer): \Generator {
             foreach ($logs as $log) {
@@ -59,6 +64,8 @@ final class AdminAuditLogExportController extends AbstractController
                     $log->entityId,
                     $log->eventType,
                     $renderer->describe($log),
+                    $log->orderId?->toRfc4122() ?? '',
+                    $log->userIdContext?->toRfc4122() ?? '',
                 ];
             }
         })();

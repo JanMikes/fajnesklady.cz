@@ -12,6 +12,7 @@ use App\Event\ContractTerminatedDueToPaymentFailure;
 use App\Event\PaymentDemandSent;
 use App\Event\RecurringPaymentFailed;
 use App\Repository\ContractRepository;
+use App\Service\AuditLogger;
 use App\Service\ContractService;
 use App\Service\GoPay\GoPayException;
 use App\Service\GoPay\PaymentNotConfirmedException;
@@ -43,6 +44,7 @@ final class RetryFailedPaymentsCommand extends Command
         private readonly MessageBusInterface $eventBus,
         private readonly ClockInterface $clock,
         private readonly LoggerInterface $logger,
+        private readonly AuditLogger $auditLogger,
     ) {
         parent::__construct();
     }
@@ -114,6 +116,19 @@ final class RetryFailedPaymentsCommand extends Command
                 $contract->recordFailedBillingAttempt($now);
                 $this->getEntityManager()->flush();
 
+                $this->auditLogger->log(
+                    entityType: 'contract',
+                    entityId: $contract->id->toRfc4122(),
+                    eventType: 'recurring_payment_failed',
+                    payload: [
+                        'attempt' => $contract->failedBillingAttempts,
+                        'reason' => $exception->getMessage(),
+                        'is_last_attempt' => $isLastAttempt,
+                    ],
+                    orderId: $contract->order->id,
+                    userIdContext: $contract->user->id,
+                );
+
                 $this->eventBus->dispatch(new RecurringPaymentFailed(
                     contractId: $contract->id,
                     attempt: $contract->failedBillingAttempts,
@@ -133,6 +148,18 @@ final class RetryFailedPaymentsCommand extends Command
                         deadline: $deadline,
                         occurredOn: $now,
                     ));
+
+                    $this->auditLogger->log(
+                        entityType: 'contract',
+                        entityId: $contract->id->toRfc4122(),
+                        eventType: 'payment_demand_sent',
+                        payload: [
+                            'attempt' => $contract->failedBillingAttempts,
+                            'deadline' => $deadline->format('Y-m-d'),
+                        ],
+                        orderId: $contract->order->id,
+                        userIdContext: $contract->user->id,
+                    );
                 }
 
                 $this->logger->error('Recurring payment retry failed', [

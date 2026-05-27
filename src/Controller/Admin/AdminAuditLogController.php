@@ -10,6 +10,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
+use Symfony\Component\Uid\Uuid;
 
 #[Route('/portal/admin/audit-log', name: 'admin_audit_log')]
 #[IsGranted('ROLE_ADMIN')]
@@ -28,6 +29,11 @@ final class AdminAuditLogController extends AbstractController
         $entityType = $request->query->get('entity_type');
         $eventType = $request->query->get('event_type');
         $search = $request->query->get('search');
+        $orderIdRaw = $request->query->get('orderId');
+        $orderId = null;
+        if (is_string($orderIdRaw) && '' !== $orderIdRaw && Uuid::isValid($orderIdRaw)) {
+            $orderId = Uuid::fromString($orderIdRaw);
+        }
 
         $logs = $this->auditLogRepository->findPaginatedWithFilters(
             $page,
@@ -35,12 +41,14 @@ final class AdminAuditLogController extends AbstractController
             '' !== $entityType && null !== $entityType ? $entityType : null,
             '' !== $eventType && null !== $eventType ? $eventType : null,
             '' !== $search && null !== $search ? $search : null,
+            $orderId,
         );
 
         $totalLogs = $this->auditLogRepository->countWithFilters(
             '' !== $entityType && null !== $entityType ? $entityType : null,
             '' !== $eventType && null !== $eventType ? $eventType : null,
             '' !== $search && null !== $search ? $search : null,
+            $orderId,
         );
 
         $totalPages = (int) ceil($totalLogs / $limit);
@@ -55,6 +63,7 @@ final class AdminAuditLogController extends AbstractController
             'currentEntityType' => $entityType,
             'currentEventType' => $eventType,
             'currentSearch' => $search,
+            'currentOrderId' => $orderIdRaw,
         ]);
     }
 }

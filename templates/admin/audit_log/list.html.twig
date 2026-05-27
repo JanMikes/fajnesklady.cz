@@ -33,6 +33,10 @@
                     </select>
                 </div>
                 <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Objednávka</label>
+                    <input type="text" name="orderId" value="{{ currentOrderId }}" placeholder="UUID objednávky" class="form-input text-sm py-1.5 w-64">
+                </div>
+                <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Vyhledávání</label>
                     <input type="text" name="search" value="{{ currentSearch }}" placeholder="ID entity nebo typ události" class="form-input text-sm py-1.5 w-64">
                 </div>
@@ -126,7 +130,8 @@
                 routeParams: {
                     entity_type: currentEntityType,
                     event_type: currentEventType,
-                    search: currentSearch
+                    search: currentSearch,
+                    orderId: currentOrderId
                 }
             } %}
         {% endif %}

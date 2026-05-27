@@ -1,0 +1,250 @@
+{#
+    Activity timeline panel — merges audit log + email log chronologically.
+    Expects: auditLogs (AuditLog[]), emailLogs (EmailLog[]), order (Order)
+#}
+{% set eventLabels = {
+    'created': 'Objednávka vytvořena',
+    'reserved': 'Sklad rezervován',
+    'signed': 'Podepsáno',
+    'paid': 'Platba přijata',
+    'completed': 'Objednávka dokončena',
+    'cancelled': 'Zrušeno',
+    'expired': 'Vypršelo',
+    'billing_mode_set': 'Způsob platby nastaven',
+    'recurring_charged': 'Opakovaná platba stržena',
+    'recurring_payment_failed': 'Platba selhala',
+    'recurring_cancelled': 'Opakované platby zrušeny',
+    'payment_demand_sent': 'Výzva k úhradě odeslána',
+    'expiring_soon': 'Upozornění na blížící se konec',
+    'terminated': 'Smlouva ukončena',
+    'admin_terminated_immediately': 'Smlouva okamžitě ukončena (admin)',
+    'admin_termination_notice': 'Výpověď s výpovědní dobou (admin)',
+    'termination_notice_requested': 'Výpověď podána',
+    'issued': 'Pokuta vystavena',
+    'tenant_submitted': 'Protokol — nájemce vyplnil',
+    'landlord_submitted': 'Protokol — pronajímatel vyplnil',
+    'admin_manual_email_sent': 'Manuální e-mail odeslán',
+    'bank_transfer_payment_confirmed': 'Bankovní převod potvrzen',
+    'bank_transfer_recurring_confirmed': 'Bankovní převod (opakovaná platba)',
+    'debt_payment_confirmed': 'Dluh uhrazen',
+    'occupied': 'Sklad obsazen',
+    'released': 'Sklad uvolněn',
+    'requested': 'Výzva k platbě odeslána',
+    'received': 'Platba přijata',
+    'bank_transfer_reminder_sent': 'Připomínka bankovního převodu',
+    'auto_matched_to_order': 'Bankovní transakce spárována',
+    'auto_matched_to_contract': 'Bankovní transakce spárována (smlouva)',
+    'auto_matched_to_fine': 'Bankovní transakce spárována (pokuta)',
+    'auto_matched_to_order_debt': 'Bankovní transakce spárována (dluh)',
+    'auto_matched_via_account': 'Bankovní transakce spárována (účet)',
+    'amount_mismatch': 'Nesouhlasí částka',
+    'vs_override_account_mapping': 'VS přepsal mapování účtu',
+} %}
+
+{% set eventIcons = {
+    'created': 'blue',
+    'reserved': 'blue',
+    'signed': 'green',
+    'paid': 'green',
+    'completed': 'green',
+    'cancelled': 'red',
+    'expired': 'red',
+    'billing_mode_set': 'blue',
+    'recurring_charged': 'green',
+    'recurring_payment_failed': 'red',
+    'recurring_cancelled': 'red',
+    'payment_demand_sent': 'amber',
+    'expiring_soon': 'amber',
+    'terminated': 'red',
+    'admin_terminated_immediately': 'red',
+    'admin_termination_notice': 'amber',
+    'termination_notice_requested': 'amber',
+    'issued': 'amber',
+    'tenant_submitted': 'blue',
+    'landlord_submitted': 'blue',
+    'admin_manual_email_sent': 'blue',
+    'bank_transfer_payment_confirmed': 'green',
+    'bank_transfer_recurring_confirmed': 'green',
+    'debt_payment_confirmed': 'green',
+    'occupied': 'green',
+    'released': 'blue',
+    'requested': 'blue',
+    'received': 'green',
+    'bank_transfer_reminder_sent': 'blue',
+    'auto_matched_to_order': 'green',
+    'auto_matched_to_contract': 'green',
+    'auto_matched_to_fine': 'green',
+    'auto_matched_to_order_debt': 'green',
+    'auto_matched_via_account': 'green',
+    'amount_mismatch': 'red',
+    'vs_override_account_mapping': 'amber',
+} %}
+
+{% set colorClasses = {
+    'green': 'bg-green-100 text-green-600',
+    'red': 'bg-red-100 text-red-600',
+    'blue': 'bg-blue-100 text-blue-600',
+    'amber': 'bg-amber-100 text-amber-600',
+} %}
+
+{% set manualEmailLabels = {
+    'signing_link': 'Odkaz k podpisu',
+    'onboarding_reminder': 'Připomínka platby (onboarding)',
+    'billing_reminder': 'Výzva k platbě',
+    'fine_reminder': 'Připomínka pokuty',
+} %}
+
+{# Build unified timeline #}
+{% set timeline = [] %}
+
+{% for log in auditLogs %}
+    {% set timeline = timeline|merge([{
+        'type': 'audit',
+        'date': log.createdAt,
+        'eventType': log.eventType,
+        'entityType': log.entityType,
+        'user': log.user,
+        'payload': log.payload,
+        'id': log.id,
+    }]) %}
+{% endfor %}
+
+{% for log in emailLogs %}
+    {% set timeline = timeline|merge([{
+        'type': 'email',
+        'date': log.attemptedAt,
+        'templateName': log.templateName,
+        'status': log.status,
+        'toEmail': log.toAddresses[0].email ?? null,
+        'id': log.id,
+    }]) %}
+{% endfor %}
+
+{# Sort by date ascending #}
+{% set timeline = timeline|sort((a, b) => a.date <=> b.date) %}
+
+<div class="mt-6 bg-white shadow overflow-hidden sm:rounded-lg">
+    <div class="px-4 py-5 sm:px-6 border-b border-gray-200 flex items-center justify-between">
+        <h3 class="text-lg font-medium text-gray-900">Historie aktivity</h3>
+        <a href="{{ path('admin_audit_log', {orderId: order.id}) }}" class="text-sm text-accent hover:text-accent/80">Zobrazit vše →</a>
+    </div>
+    <div class="px-4 py-5 sm:p-6">
+        {% if timeline|length > 0 %}
+            <div class="flow-root">
+                <ul class="-mb-8">
+                    {% for item in timeline %}
+                        <li>
+                            <div class="relative pb-8">
+                                {% if not loop.last %}
+                                    <span class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true"></span>
+                                {% endif %}
+                                <div class="relative flex space-x-3">
+                                    {% if item.type == 'audit' %}
+                                        {% set color = eventIcons[item.eventType] ?? 'blue' %}
+                                        <div>
+                                            <span class="h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-white {{ colorClasses[color] ?? 'bg-gray-100 text-gray-600' }}">
+                                                {% if color == 'green' %}
+                                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                                {% elseif color == 'red' %}
+                                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                                {% elseif color == 'amber' %}
+                                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                                {% else %}
+                                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                                {% endif %}
+                                            </span>
+                                        </div>
+                                        <div class="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
+                                            <div>
+                                                <p class="text-sm text-gray-900">
+                                                    {{ eventLabels[item.eventType] ?? (item.entityType ~ '.' ~ item.eventType) }}
+                                                    {% if item.eventType == 'admin_manual_email_sent' and item.payload.email_type is defined %}
+                                                        <span class="text-gray-500">({{ manualEmailLabels[item.payload.email_type] ?? item.payload.email_type }})</span>
+                                                    {% endif %}
+                                                    {% if item.eventType == 'recurring_charged' and item.payload.amount is defined %}
+                                                        <span class="text-gray-500">— {{ (item.payload.amount / 100)|number_format(0, ',', ' ') }} Kč</span>
+                                                    {% endif %}
+                                                    {% if item.eventType == 'recurring_payment_failed' and item.payload.attempt is defined %}
+                                                        <span class="text-gray-500">(pokus {{ item.payload.attempt }})</span>
+                                                    {% endif %}
+                                                    {% if item.eventType == 'issued' and item.payload.amount is defined %}
+                                                        <span class="text-gray-500">— {{ (item.payload.amount / 100)|number_format(0, ',', ' ') }} Kč</span>
+                                                    {% endif %}
+                                                </p>
+                                                <p class="text-xs text-gray-500 mt-0.5">
+                                                    {% if item.user %}
+                                                        {{ item.user.email }}
+                                                    {% else %}
+                                                        Systém
+                                                    {% endif %}
+                                                    · {{ item.entityType }}
+                                                </p>
+                                            </div>
+                                            <div class="text-right text-sm whitespace-nowrap text-gray-500">
+                                                {{ item.date|date('d.m.Y H:i') }}
+                                            </div>
+                                        </div>
+                                    {% else %}
+                                        {# Email log entry #}
+                                        <div>
+                                            <span class="h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-white {{ item.status.value == 'sent' ? 'bg-indigo-100 text-indigo-600' : 'bg-red-100 text-red-600' }}">
+                                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                                            </span>
+                                        </div>
+                                        <div class="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
+                                            <div>
+                                                {% set templateLabels = {
+                                                    'email/signing_link': 'Odkaz k podpisu',
+                                                    'email/order_placed': 'Potvrzení objednávky',
+                                                    'email/order_cancelled': 'Zrušení objednávky',
+                                                    'email/rental_activated': 'Aktivace pronájmu',
+                                                    'email/invoice': 'Faktura',
+                                                    'email/onboarding_payment_reminder': 'Připomínka platby (onboarding)',
+                                                    'email/manual_billing_payment_initial': 'Výzva k platbě',
+                                                    'email/manual_billing_payment_reminder': 'Připomínka platby',
+                                                    'email/manual_billing_payment_due_today': 'Platba splatná dnes',
+                                                    'email/manual_billing_payment_overdue_first': 'Upomínka',
+                                                    'email/manual_billing_payment_overdue_final': 'Poslední upomínka',
+                                                    'email/recurring_payment_established': 'Nastavení opak. platby',
+                                                    'email/recurring_payment_failed': 'Selhání platby',
+                                                    'email/recurring_payment_advance_notice': 'Předběžné oznámení',
+                                                    'email/recurring_payment_cancelled': 'Zrušení opak. platby',
+                                                    'email/contract_expiring': 'Blížící se konec smlouvy',
+                                                    'email/contract_terminated': 'Ukončení smlouvy',
+                                                    'email/termination_notice': 'Výpověď',
+                                                    'email/payment_default_tenant': 'Oznámení o prodlení',
+                                                    'email/payment_demand_tenant': 'Výzva k úhradě',
+                                                    'email/debt_payment_request': 'Výzva k úhradě dluhu',
+                                                    'email/fine_issued': 'Vystavení pokuty',
+                                                    'email/fine_payment_reminder': 'Připomínka pokuty',
+                                                    'email/fine_paid': 'Potvrzení úhrady pokuty',
+                                                } %}
+                                                <p class="text-sm text-gray-900">
+                                                    E-mail: {{ templateLabels[item.templateName] ?? item.templateName ?? '—' }}
+                                                    {% if item.status.value != 'sent' %}
+                                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">Selhalo</span>
+                                                    {% endif %}
+                                                </p>
+                                                <p class="text-xs text-gray-500 mt-0.5">
+                                                    → {{ item.toEmail ?? '—' }}
+                                                </p>
+                                            </div>
+                                            <div class="text-right text-sm whitespace-nowrap text-gray-500 flex items-center gap-2">
+                                                {{ item.date|date('d.m.Y H:i') }}
+                                                <a href="{{ path('admin_email_log_detail', {id: item.id}) }}" class="text-accent hover:text-accent/80">
+                                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                                </a>
+                                            </div>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% else %}
+            <p class="text-sm text-gray-500">Zatím žádná zaznamenaná aktivita.</p>
+        {% endif %}
+    </div>
+</div>

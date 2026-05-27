@@ -672,6 +672,13 @@
         </div>
     </div>
 
+    {# Activity timeline #}
+    {% include 'admin/order/_activity_timeline.html.twig' with {
+        auditLogs: auditLogs,
+        emailLogs: emailLogs,
+        order: order
+    } %}
+
     {# Cancel Order Section #}
     {% if order.canBeCancelled() %}
     <div class="mt-6 bg-white shadow overflow-hidden sm:rounded-lg border border-red-200">

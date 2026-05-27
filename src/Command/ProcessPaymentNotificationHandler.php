@@ -142,6 +142,18 @@ final readonly class ProcessPaymentNotificationHandler
         if (null !== $fine) {
             if ($status->isPaid() && $fine->isPayable()) {
                 $fine->markPaid($now);
+
+                $this->auditLogger->log(
+                    entityType: 'fine',
+                    entityId: $fine->id->toRfc4122(),
+                    eventType: 'paid',
+                    payload: [
+                        'payment_method' => 'gopay',
+                        'gopay_payment_id' => $command->goPayPaymentId,
+                    ],
+                    orderId: $fine->contract->order->id,
+                    userIdContext: $fine->user->id,
+                );
             }
 
             return;

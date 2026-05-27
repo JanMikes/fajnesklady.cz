@@ -6,6 +6,7 @@ namespace App\Controller\Admin;
 
 use App\Event\OnboardingPaymentReminderRequested;
 use App\Repository\OrderRepository;
+use App\Service\AuditLogger;
 use Psr\Clock\ClockInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -22,6 +23,7 @@ final class AdminOrderSendOnboardingReminderController extends AbstractControlle
 {
     public function __construct(
         private readonly OrderRepository $orderRepository,
+        private readonly AuditLogger $auditLogger,
         #[Autowire(service: 'event.bus')]
         private readonly MessageBusInterface $eventBus,
         private readonly ClockInterface $clock,
@@ -47,6 +49,15 @@ final class AdminOrderSendOnboardingReminderController extends AbstractControlle
             stage: 'manual',
             occurredOn: $this->clock->now(),
         ));
+
+        $this->auditLogger->log(
+            entityType: 'order',
+            entityId: $order->id->toRfc4122(),
+            eventType: 'admin_manual_email_sent',
+            payload: ['email_type' => 'onboarding_reminder'],
+            orderId: $order->id,
+            userIdContext: $order->user->id,
+        );
 
         $this->addFlash('success', 'Připomínka platby byla odeslána.');
 

@@ -9,6 +9,7 @@ use App\Event\ManualBillingPaymentRequested;
 use App\Repository\ContractRepository;
 use App\Repository\ManualPaymentRequestRepository;
 use App\Repository\OrderRepository;
+use App\Service\AuditLogger;
 use Psr\Clock\ClockInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -27,6 +28,7 @@ final class AdminOrderSendBillingReminderController extends AbstractController
         private readonly OrderRepository $orderRepository,
         private readonly ContractRepository $contractRepository,
         private readonly ManualPaymentRequestRepository $manualPaymentRequestRepository,
+        private readonly AuditLogger $auditLogger,
         #[Autowire(service: 'event.bus')]
         private readonly MessageBusInterface $eventBus,
         private readonly ClockInterface $clock,
@@ -62,6 +64,15 @@ final class AdminOrderSendBillingReminderController extends AbstractController
             stage: 'manual',
             occurredOn: $now,
         ));
+
+        $this->auditLogger->log(
+            entityType: 'order',
+            entityId: $order->id->toRfc4122(),
+            eventType: 'admin_manual_email_sent',
+            payload: ['email_type' => 'billing_reminder'],
+            orderId: $order->id,
+            userIdContext: $order->user->id,
+        );
 
         $this->addFlash('success', 'Výzva k platbě byla odeslána.');
 

@@ -11,6 +11,8 @@ use Symfony\Component\Uid\Uuid;
 
 #[ORM\Entity]
 #[ORM\Index(columns: ['entity_type', 'entity_id'], name: 'audit_entity_idx')]
+#[ORM\Index(columns: ['order_id'], name: 'audit_order_idx')]
+#[ORM\Index(columns: ['user_id_context'], name: 'audit_user_context_idx')]
 class AuditLog
 {
     /**
@@ -35,6 +37,10 @@ class AuditLog
         private(set) ?string $ipAddress,
         #[ORM\Column]
         private(set) \DateTimeImmutable $createdAt,
+        #[ORM\Column(type: UuidType::NAME, nullable: true)]
+        private(set) ?Uuid $orderId = null,
+        #[ORM\Column(type: UuidType::NAME, nullable: true)]
+        private(set) ?Uuid $userIdContext = null,
     ) {
     }
 }

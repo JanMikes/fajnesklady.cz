@@ -64,6 +64,8 @@ final readonly class ProcessBankTransferPaymentHandler
                     'variable_symbol' => $transaction->variableSymbol,
                     'sender_account' => $transaction->senderAccountNumber,
                 ],
+                orderId: $order->id,
+                userIdContext: $order->user->id,
             );
 
             return;
@@ -120,6 +122,8 @@ final readonly class ProcessBankTransferPaymentHandler
                 'billing_period_start' => $billingPeriodStart->format('Y-m-d'),
                 'sender_account' => $transaction->senderAccountNumber,
             ],
+            orderId: $contract->order->id,
+            userIdContext: $contract->user->id,
         );
     }
 }

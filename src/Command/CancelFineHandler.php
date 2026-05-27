@@ -6,6 +6,7 @@ namespace App\Command;
 
 use App\Entity\Fine;
 use App\Entity\User;
+use App\Service\AuditLogger;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -15,6 +16,7 @@ final readonly class CancelFineHandler
 {
     public function __construct(
         private EntityManagerInterface $entityManager,
+        private AuditLogger $auditLogger,
         private ClockInterface $clock,
     ) {
     }
@@ -36,5 +38,16 @@ final readonly class CancelFineHandler
         }
 
         $fine->cancel($admin, $this->clock->now());
+
+        $this->auditLogger->log(
+            entityType: 'fine',
+            entityId: $command->fineId->toRfc4122(),
+            eventType: 'cancelled',
+            payload: [
+                'cancelled_by' => $admin->id->toRfc4122(),
+            ],
+            orderId: $fine->contract->order->id,
+            userIdContext: $fine->user->id,
+        );
     }
 }

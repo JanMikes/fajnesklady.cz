@@ -14,6 +14,7 @@ use App\Service\Identity\ProvideIdentity;
 use Psr\Clock\ClockInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * Service for logging audit events.
@@ -49,6 +50,8 @@ final readonly class AuditLogger
                 'start_date' => $order->startDate->format('Y-m-d'),
                 'end_date' => $order->endDate?->format('Y-m-d'),
             ],
+            orderId: $order->id,
+            userIdContext: $order->user->id,
         );
     }
 
@@ -62,6 +65,8 @@ final readonly class AuditLogger
                 'storage_id' => $order->storage->id->toRfc4122(),
                 'storage_number' => $order->storage->number,
             ],
+            orderId: $order->id,
+            userIdContext: $order->user->id,
         );
     }
 
@@ -75,6 +80,8 @@ final readonly class AuditLogger
                 'paid_at' => $order->paidAt?->format('Y-m-d H:i:s'),
                 'total_price' => $order->firstPaymentPrice,
             ],
+            orderId: $order->id,
+            userIdContext: $order->user->id,
         );
     }
 
@@ -87,6 +94,8 @@ final readonly class AuditLogger
             payload: [
                 'storage_id' => $order->storage->id->toRfc4122(),
             ],
+            orderId: $order->id,
+            userIdContext: $order->user->id,
         );
     }
 
@@ -99,6 +108,8 @@ final readonly class AuditLogger
             payload: [
                 'cancelled_at' => $order->cancelledAt?->format('Y-m-d H:i:s'),
             ],
+            orderId: $order->id,
+            userIdContext: $order->user->id,
         );
     }
 
@@ -112,6 +123,8 @@ final readonly class AuditLogger
                 'signed_at' => $order->signedAt?->format('Y-m-d H:i:s'),
                 'signing_method' => $order->signingMethod?->value,
             ],
+            orderId: $order->id,
+            userIdContext: $order->user->id,
         );
     }
 
@@ -124,6 +137,8 @@ final readonly class AuditLogger
             payload: [
                 'expires_at' => $order->expiresAt->format('Y-m-d H:i:s'),
             ],
+            orderId: $order->id,
+            userIdContext: $order->user->id,
         );
     }
 
@@ -142,6 +157,8 @@ final readonly class AuditLogger
                 'start_date' => $contract->startDate->format('Y-m-d'),
                 'end_date' => $contract->endDate?->format('Y-m-d'),
             ],
+            orderId: $contract->order->id,
+            userIdContext: $contract->user->id,
         );
     }
 
@@ -154,6 +171,8 @@ final readonly class AuditLogger
             payload: [
                 'signed_at' => $contract->signedAt?->format('Y-m-d H:i:s'),
             ],
+            orderId: $contract->order->id,
+            userIdContext: $contract->user->id,
         );
     }
 
@@ -166,6 +185,8 @@ final readonly class AuditLogger
             payload: [
                 'terminated_at' => $contract->terminatedAt?->format('Y-m-d H:i:s'),
             ],
+            orderId: $contract->order->id,
+            userIdContext: $contract->user->id,
         );
     }
 
@@ -179,6 +200,8 @@ final readonly class AuditLogger
                 'end_date' => $contract->endDate?->format('Y-m-d'),
                 'days_remaining' => $daysRemaining,
             ],
+            orderId: $contract->order->id,
+            userIdContext: $contract->user->id,
         );
     }
 
@@ -193,6 +216,8 @@ final readonly class AuditLogger
                 'order_id' => $order->id->toRfc4122(),
                 'status' => $storage->status->value,
             ],
+            orderId: $order->id,
+            userIdContext: $order->user->id,
         );
     }
 
@@ -206,6 +231,8 @@ final readonly class AuditLogger
                 'contract_id' => $contract->id->toRfc4122(),
                 'status' => $storage->status->value,
             ],
+            orderId: $contract->order->id,
+            userIdContext: $contract->user->id,
         );
     }
 
@@ -260,6 +287,8 @@ final readonly class AuditLogger
                 'amount' => $request->amount,
                 'gopay_payment_id' => $request->goPayPaymentId,
             ],
+            orderId: $request->contract->order->id,
+            userIdContext: $request->contract->user->id,
         );
     }
 
@@ -275,6 +304,8 @@ final readonly class AuditLogger
                 'amount' => $request->amount,
                 'gopay_payment_id' => $request->goPayPaymentId,
             ],
+            orderId: $request->contract->order->id,
+            userIdContext: $request->contract->user->id,
         );
     }
 
@@ -288,6 +319,8 @@ final readonly class AuditLogger
                 'billing_mode' => $contract->billingMode->value,
                 'end_date' => $contract->endDate?->format('Y-m-d'),
             ],
+            orderId: $contract->order->id,
+            userIdContext: $contract->user->id,
         );
     }
 
@@ -298,6 +331,8 @@ final readonly class AuditLogger
             entityId: $order->id->toRfc4122(),
             eventType: 'billing_mode_set',
             payload: ['billing_mode' => $order->billingMode->value],
+            orderId: $order->id,
+            userIdContext: $order->user->id,
         );
     }
 
@@ -322,6 +357,8 @@ final readonly class AuditLogger
         string $entityId,
         string $eventType,
         array $payload = [],
+        ?Uuid $orderId = null,
+        ?Uuid $userIdContext = null,
     ): void {
         $auditLog = new AuditLog(
             id: $this->identityProvider->next(),
@@ -332,6 +369,8 @@ final readonly class AuditLogger
             user: $this->getCurrentUser(),
             ipAddress: $this->getClientIp(),
             createdAt: $this->clock->now(),
+            orderId: $orderId,
+            userIdContext: $userIdContext,
         );
 
         $this->auditLogRepository->save($auditLog);

@@ -8,6 +8,7 @@ use App\Entity\HandoverProtocol;
 use App\Event\HandoverProtocolCreated;
 use App\Repository\ContractRepository;
 use App\Repository\HandoverProtocolRepository;
+use App\Service\AuditLogger;
 use App\Service\Identity\ProvideIdentity;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -20,6 +21,7 @@ final readonly class CreateHandoverProtocolHandler
     public function __construct(
         private ContractRepository $contractRepository,
         private HandoverProtocolRepository $handoverProtocolRepository,
+        private AuditLogger $auditLogger,
         private ProvideIdentity $identityProvider,
         private ClockInterface $clock,
         #[Autowire(service: 'event.bus')]
@@ -45,6 +47,15 @@ final readonly class CreateHandoverProtocolHandler
         );
 
         $this->handoverProtocolRepository->save($handoverProtocol);
+
+        $this->auditLogger->log(
+            entityType: 'handover',
+            entityId: $handoverProtocol->id->toRfc4122(),
+            eventType: 'created',
+            payload: ['contract_id' => $contract->id->toRfc4122()],
+            orderId: $contract->order->id,
+            userIdContext: $contract->user->id,
+        );
 
         $this->eventBus->dispatch(new HandoverProtocolCreated(
             handoverProtocolId: $handoverProtocol->id,

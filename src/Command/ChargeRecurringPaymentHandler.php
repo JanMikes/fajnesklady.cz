@@ -6,6 +6,7 @@ namespace App\Command;
 
 use App\Entity\Contract;
 use App\Event\RecurringPaymentCharged;
+use App\Service\AuditLogger;
 use App\Service\Billing\RecurringAmountCalculator;
 use App\Service\GoPay\GoPayClient;
 use App\Service\GoPay\PaymentNotConfirmedException;
@@ -35,6 +36,7 @@ final readonly class ChargeRecurringPaymentHandler
         private MessageBusInterface $eventBus,
         private LoggerInterface $logger,
         private RecurringAmountCalculator $amountCalculator,
+        private AuditLogger $auditLogger,
         private int $pollIntervalMicroseconds = self::POLL_INTERVAL_MICROSECONDS,
     ) {
     }
@@ -186,6 +188,21 @@ final readonly class ChargeRecurringPaymentHandler
         }
 
         $contract->recordBillingCharge($now, $nextBillingDate, $paidThroughDate);
+
+        $this->auditLogger->log(
+            entityType: 'contract',
+            entityId: $contract->id->toRfc4122(),
+            eventType: 'recurring_charged',
+            payload: [
+                'gopay_payment_id' => $paymentId,
+                'amount' => $amount,
+                'billing_mode' => 'auto_recurring',
+                'next_billing_date' => $nextBillingDate?->format('Y-m-d'),
+                'paid_through_date' => $paidThroughDate->format('Y-m-d'),
+            ],
+            orderId: $contract->order->id,
+            userIdContext: $contract->user->id,
+        );
 
         $this->eventBus->dispatch(new RecurringPaymentCharged(
             contractId: $contract->id,

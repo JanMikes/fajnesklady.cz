@@ -35,10 +35,12 @@ final readonly class AdminTerminateContractHandler
             $this->contractService->terminateContract($contract, $now, TerminationReason::ADMIN);
 
             $this->auditLogger->log(
-                'Contract',
+                'contract',
                 $contract->id->toRfc4122(),
                 'admin_terminated_immediately',
                 ['reason' => $command->reason],
+                orderId: $contract->order->id,
+                userIdContext: $contract->user->id,
             );
 
             $this->eventBus->dispatch(new ContractTerminated(
@@ -50,10 +52,12 @@ final readonly class AdminTerminateContractHandler
             $contract->requestTermination($now, $terminatesAt);
 
             $this->auditLogger->log(
-                'Contract',
+                'contract',
                 $contract->id->toRfc4122(),
                 'admin_termination_notice',
                 ['terminates_at' => $terminatesAt->format('Y-m-d'), 'reason' => $command->reason],
+                orderId: $contract->order->id,
+                userIdContext: $contract->user->id,
             );
 
             $this->eventBus->dispatch(new TerminationNoticeRequested(
