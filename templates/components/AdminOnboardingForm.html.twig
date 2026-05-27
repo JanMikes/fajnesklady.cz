@@ -33,7 +33,7 @@
                             data-controller="tom-select">
                         <option value="">-- Vyberte pobočku --</option>
                         {% for place in this.places %}
-                            <option value="{{ place.id }}" {{ this.placeId == place.id|string ? 'selected' }}>
+                            <option value="{{ place.id }}" {{ this.placeId == place.id.toRfc4122() ? 'selected' }}>
                                 {{ place.name }}{% if place.city %} ({{ place.city }}){% endif %}
                             </option>
                         {% endfor %}
@@ -57,7 +57,7 @@
                                 data-controller="tom-select">
                             <option value="">-- Vyberte typ --</option>
                             {% for type in this.storageTypes %}
-                                <option value="{{ type.id }}" {{ this.storageTypeId == type.id|string ? 'selected' }}>
+                                <option value="{{ type.id }}" {{ this.storageTypeId == type.id.toRfc4122() ? 'selected' }}>
                                     {{ type.name }} ({{ type.dimensionsInMeters }})
                                     — {{ (type.defaultPricePerMonthLongTerm / 100)|number_format(0, ',', ' ') }} Kč/měs
                                 </option>
