@@ -174,7 +174,7 @@
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div class="lg:col-span-2 space-y-6">
-                {% include 'components/order_access_code.html.twig' with {storage: storage, contract: contract} only %}
+                {% include 'components/order_access_code.html.twig' with {order: order, storage: storage, contract: contract} only %}
 
                 {# Order summary #}
                 <div class="card">

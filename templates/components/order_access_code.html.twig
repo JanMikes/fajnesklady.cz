@@ -1,7 +1,11 @@
+{# @var order \App\Entity\Order|null #}
 {# @var storage \App\Entity\Storage|null #}
 {# @var contract \App\Entity\Contract|null #}
 {% set _today = 'now'|date('Y-m-d') %}
-{% set _showAccessCode = storage is defined and storage is not null
+{% set _showAccessCode = order is defined and order is not null
+    and order.status.value == 'completed'
+    and not order.hasUnpaidDebt()
+    and storage is defined and storage is not null
     and storage.lockCode is not null
     and contract is defined and contract is not null
     and contract.terminatedAt is null

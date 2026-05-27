@@ -84,7 +84,7 @@
         </div>
     {% endif %}
 
-    {% include 'components/order_access_code.html.twig' with {storage: storage, contract: contract} only %}
+    {% include 'components/order_access_code.html.twig' with {order: order, storage: storage, contract: contract} only %}
 
     {# Own-padlock reminder — insurance is conditional on it, so keep it
        visible alongside the access code customers come here to look up. #}

@@ -152,6 +152,7 @@ final readonly class SendRentalActivatedEmailHandler
             'hasMapAttachment' => null !== $mapImageData,
             'hasOperatingRulesAttachment' => null !== $operatingRulesPath,
             'hasInstructionsAttachment' => null !== $instructionsPath,
+            'lockCode' => $storage->lockCode,
             'hasInvoiceAttachment' => $hasInvoiceAttachment,
             'invoiceNumber' => $invoiceNumber,
         ]);

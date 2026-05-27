@@ -66,7 +66,6 @@ final readonly class SendOrderPlacedEmailHandler
                 'priceCzk' => $order->getFirstPaymentPriceInCzk(),
                 'isRecurring' => $order->isRecurring(),
                 'expiresAt' => $order->expiresAt->format('d.m.Y H:i'),
-                'lockCode' => $storage->lockCode,
                 'statusUrl' => $statusUrl,
             ]);
 

@@ -128,6 +128,12 @@
             </table>
         </div>
 
+        {% if lockCode is not null %}
+        <div style="background-color: #d1fae5; border: 1px solid #34d399; padding: 15px; border-radius: 5px; margin: 20px 0;">
+            <strong style="color: #065f46;">Váš přístupový kód: {{ lockCode }}</strong>
+        </div>
+        {% endif %}
+
         {% if hasMapAttachment %}
         <p style="font-size: 14px; color: #4b5563; margin-top: 16px;">
             Mapu pobočky s vyznačenou Vaší skladovou jednotkou (číslo <strong>{{ storageNumber }}</strong>) najdete v příloze tohoto e-mailu.
