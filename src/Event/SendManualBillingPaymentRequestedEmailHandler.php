@@ -50,8 +50,8 @@ final readonly class SendManualBillingPaymentRequestedEmailHandler
                 'Připomenutí: platba splatná za 2 dny — Fajnesklady.cz',
                 'email/manual_billing_payment_reminder.html.twig',
             ],
-            ManualBillingReminderSchedule::STAGE_FINAL_DUE => [
-                'Platba je splatná dnes — Fajnesklady.cz',
+            ManualBillingReminderSchedule::STAGE_FINAL_DUE, 'manual' => [
+                'Platba je nyní splatná — Fajnesklady.cz',
                 'email/manual_billing_payment_due_today.html.twig',
             ],
             default => [null, null],
@@ -84,6 +84,8 @@ final readonly class SendManualBillingPaymentRequestedEmailHandler
                 'gatewayUrl' => $request->goPayGatewayUrl,
                 'statusUrl' => $statusUrl,
             ]);
+
+        $email->getHeaders()->addTextHeader('X-Order-Id', $contract->order->id->toRfc4122());
 
         try {
             $this->mailer->send($email);

@@ -14,6 +14,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Table(name: 'email_log')]
 #[ORM\Index(columns: ['attempted_at'], name: 'email_log_attempted_at_idx')]
 #[ORM\Index(columns: ['status'], name: 'email_log_status_idx')]
+#[ORM\Index(columns: ['order_id'], name: 'email_log_order_id_idx')]
 class EmailLog
 {
     /**
@@ -57,6 +58,8 @@ class EmailLog
         private(set) ?array $attachments,
         #[ORM\Column(length: 255, nullable: true)]
         private(set) ?string $messageId,
+        #[ORM\Column(type: UuidType::NAME, nullable: true)]
+        private(set) ?Uuid $orderId = null,
     ) {
     }
 }

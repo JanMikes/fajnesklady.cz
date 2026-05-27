@@ -40,7 +40,7 @@ final readonly class SendOnboardingPaymentReminderEmailHandler
         $place = $storage->getPlace();
 
         $subject = match ($event->stage) {
-            OnboardingReminderSchedule::STAGE_D_PLUS_2 => 'Připomínáme: dokončete platbu objednávky — Fajnesklady.cz',
+            OnboardingReminderSchedule::STAGE_D_PLUS_2, 'manual' => 'Připomínáme: dokončete platbu objednávky — Fajnesklady.cz',
             OnboardingReminderSchedule::STAGE_D_PLUS_5 => 'Druhá připomínka: vaše objednávka stále čeká na platbu',
             default => null,
         };
@@ -79,6 +79,8 @@ final readonly class SendOnboardingPaymentReminderEmailHandler
                     ? number_format($order->getDebtAmountInCzk(), 0, ',', ' ')
                     : null,
             ]);
+
+        $email->getHeaders()->addTextHeader('X-Order-Id', $order->id->toRfc4122());
 
         try {
             $this->mailer->send($email);

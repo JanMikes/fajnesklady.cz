@@ -62,6 +62,8 @@ final readonly class SendSigningLinkEmailHandler
                 'placeNavigationUrl' => $this->addressFormatter->navigationUrl($place),
             ]);
 
+        $email->getHeaders()->addTextHeader('X-Order-Id', $order->id->toRfc4122());
+
         $this->mailer->send($email);
     }
 }

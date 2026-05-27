@@ -42,6 +42,8 @@ final readonly class SendFinePaidEmailHandler
                 'paidAt' => $fine->paidAt,
             ]);
 
+        $email->getHeaders()->addTextHeader('X-Order-Id', $fine->contract->order->id->toRfc4122());
+
         try {
             $this->mailer->send($email);
         } catch (\Throwable $e) {

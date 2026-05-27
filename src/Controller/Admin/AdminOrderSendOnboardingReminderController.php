@@ -1,0 +1,55 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Controller\Admin;
+
+use App\Event\OnboardingPaymentReminderRequested;
+use App\Repository\OrderRepository;
+use Psr\Clock\ClockInterface;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
+use Symfony\Component\Uid\Uuid;
+
+#[Route('/portal/admin/orders/{id}/send-onboarding-reminder', name: 'admin_order_send_onboarding_reminder', methods: ['POST'])]
+#[IsGranted('ROLE_ADMIN')]
+final class AdminOrderSendOnboardingReminderController extends AbstractController
+{
+    public function __construct(
+        private readonly OrderRepository $orderRepository,
+        #[Autowire(service: 'event.bus')]
+        private readonly MessageBusInterface $eventBus,
+        private readonly ClockInterface $clock,
+    ) {
+    }
+
+    public function __invoke(string $id, Request $request): Response
+    {
+        $order = $this->orderRepository->get(Uuid::fromString($id));
+
+        if (!$this->isCsrfTokenValid('send_onboarding_reminder', $request->request->getString('_token'))) {
+            return $this->redirectToRoute('admin_order_detail', ['id' => $id]);
+        }
+
+        if (null === $order->createdByAdmin || null === $order->signedAt || null !== $order->paidAt) {
+            $this->addFlash('error', 'Připomínku nelze odeslat — objednávka nesplňuje podmínky.');
+
+            return $this->redirectToRoute('admin_order_detail', ['id' => $id]);
+        }
+
+        $this->eventBus->dispatch(new OnboardingPaymentReminderRequested(
+            orderId: $order->id,
+            stage: 'manual',
+            occurredOn: $this->clock->now(),
+        ));
+
+        $this->addFlash('success', 'Připomínka platby byla odeslána.');
+
+        return $this->redirectToRoute('admin_order_detail', ['id' => $id]);
+    }
+}

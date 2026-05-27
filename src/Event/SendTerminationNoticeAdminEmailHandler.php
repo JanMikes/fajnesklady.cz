@@ -50,6 +50,8 @@ final readonly class SendTerminationNoticeAdminEmailHandler
                     'terminatesAt' => $event->terminatesAt,
                 ]);
 
+            $email->getHeaders()->addTextHeader('X-Order-Id', $contract->order->id->toRfc4122());
+
             try {
                 $this->mailer->send($email);
             } catch (\Throwable $e) {

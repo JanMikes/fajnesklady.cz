@@ -45,6 +45,8 @@ final readonly class SendContractTerminatedEmailHandler
                 'statusUrl' => $this->statusUrlGenerator->generate($contract->order),
             ]);
 
+        $email->getHeaders()->addTextHeader('X-Order-Id', $contract->order->id->toRfc4122());
+
         $this->mailer->send($email);
     }
 }

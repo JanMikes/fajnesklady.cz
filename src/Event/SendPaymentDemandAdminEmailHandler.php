@@ -52,6 +52,8 @@ final readonly class SendPaymentDemandAdminEmailHandler
                     'deadline' => $event->deadline,
                 ]);
 
+            $email->getHeaders()->addTextHeader('X-Order-Id', $contract->order->id->toRfc4122());
+
             try {
                 $this->mailer->send($email);
             } catch (\Throwable $e) {

@@ -78,6 +78,8 @@ final readonly class SendInvoiceEmailHandler
 
         $invoice->markEmailed($this->clock->now());
 
+        $email->getHeaders()->addTextHeader('X-Order-Id', $order->id->toRfc4122());
+
         $this->mailer->send($email);
     }
 }

@@ -51,6 +51,22 @@ class EmailLogRepository
     /**
      * @return EmailLog[]
      */
+    public function findByOrderId(Uuid $orderId, int $limit = 50): array
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('e')
+            ->from(EmailLog::class, 'e')
+            ->where('e.orderId = :orderId')
+            ->setParameter('orderId', $orderId)
+            ->orderBy('e.attemptedAt', 'DESC')
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * @return EmailLog[]
+     */
     public function findPaginated(int $page, int $limit, EmailLogFilter $filter): array
     {
         $offset = ($page - 1) * $limit;
@@ -183,6 +199,11 @@ class EmailLogRepository
         if (null !== $filter->status) {
             $conditions[] = 'el.status = :status';
             $params['status'] = $filter->status->value;
+        }
+
+        if (null !== $filter->orderId) {
+            $conditions[] = 'el.order_id = :orderId';
+            $params['orderId'] = $filter->orderId->toRfc4122();
         }
 
         return [implode(' AND ', $conditions), $params];

@@ -62,6 +62,8 @@ final readonly class SendRecurringPaymentEstablishedEmailHandler
                 'statusUrl' => $statusUrl,
             ]);
 
+        $email->getHeaders()->addTextHeader('X-Order-Id', $order->id->toRfc4122());
+
         try {
             $this->mailer->send($email);
         } catch (\Throwable $e) {

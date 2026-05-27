@@ -6,10 +6,12 @@ namespace App\Controller\Admin;
 
 use App\Repository\ContractPriceChangeRepository;
 use App\Repository\ContractRepository;
+use App\Repository\EmailLogRepository;
 use App\Repository\FineRepository;
 use App\Repository\HandoverProtocolRepository;
 use App\Repository\InvoiceRepository;
 use App\Repository\OrderRepository;
+use App\Repository\ManualPaymentRequestRepository;
 use App\Repository\PaymentRepository;
 use App\Service\ContractService;
 use App\Service\Overdue\OverdueChecker;
@@ -30,9 +32,11 @@ final class AdminOrderDetailController extends AbstractController
         private readonly OrderRepository $orderRepository,
         private readonly ContractRepository $contractRepository,
         private readonly ContractPriceChangeRepository $priceChangeRepository,
+        private readonly EmailLogRepository $emailLogRepository,
         private readonly FineRepository $fineRepository,
         private readonly HandoverProtocolRepository $handoverProtocolRepository,
         private readonly InvoiceRepository $invoiceRepository,
+        private readonly ManualPaymentRequestRepository $manualPaymentRequestRepository,
         private readonly PaymentRepository $paymentRepository,
         private readonly ContractService $contractService,
         private readonly PriceCalculator $priceCalculator,
@@ -82,6 +86,13 @@ final class AdminOrderDetailController extends AbstractController
             ? $this->fineRepository->findByContract($contract)
             : [];
 
+        $emailLogs = $this->emailLogRepository->findByOrderId($order->id);
+
+        $hasPendingManualPayment = false;
+        if (null !== $contract && \App\Enum\BillingMode::MANUAL_RECURRING === $contract->billingMode) {
+            $hasPendingManualPayment = null !== $this->manualPaymentRequestRepository->findPendingForCurrentCycle($contract, $now);
+        }
+
         return $this->render('admin/order/detail.html.twig', [
             'order' => $order,
             'storage' => $storage,
@@ -98,6 +109,8 @@ final class AdminOrderDetailController extends AbstractController
             'now' => $now,
             'handoverProtocol' => $handoverProtocol,
             'fines' => $fines,
+            'emailLogs' => $emailLogs,
+            'hasPendingManualPayment' => $hasPendingManualPayment,
         ]);
     }
 }

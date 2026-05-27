@@ -18,6 +18,7 @@ use Symfony\Component\Mailer\Event\SentMessageEvent;
 use Symfony\Component\Mime\Address;
 use Symfony\Component\Mime\Email;
 use Symfony\Component\Mime\RawMessage;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * Persists every outgoing email (and every attempt) into the email_log table.
@@ -126,6 +127,15 @@ final class EmailLogger
             $templateName = preg_replace('/\.(html|txt)\.twig$/', '', $rawTemplate);
         }
 
+        $orderId = null;
+        $orderIdHeader = $message->getHeaders()->get('X-Order-Id');
+        if (null !== $orderIdHeader) {
+            try {
+                $orderId = Uuid::fromString($orderIdHeader->getBodyAsString());
+            } catch (\InvalidArgumentException) {
+            }
+        }
+
         $attachments = $this->extractAttachments($message);
 
         return new EmailLog(
@@ -145,6 +155,7 @@ final class EmailLogger
             templateName: $templateName,
             attachments: $attachments,
             messageId: $messageId,
+            orderId: $orderId,
         );
     }
 

@@ -45,6 +45,7 @@ final readonly class SendAmountMismatchAlertEmailHandler
         }
 
         $context = $this->buildContext($event);
+        $orderId = $event->orderId ?? (null !== $event->contractId ? $this->contractRepository->get($event->contractId)->order->id : null);
 
         foreach ($admins as $admin) {
             $email = (new TemplatedEmail())
@@ -53,6 +54,10 @@ final readonly class SendAmountMismatchAlertEmailHandler
                 ->subject(sprintf('⚠ Neshoda částky platby — %s', $event->goPayPaymentId))
                 ->htmlTemplate('email/payment_amount_mismatch.html.twig')
                 ->context($context + ['adminName' => $admin->fullName]);
+
+            if (null !== $orderId) {
+                $email->getHeaders()->addTextHeader('X-Order-Id', $orderId->toRfc4122());
+            }
 
             try {
                 $this->mailer->send($email);

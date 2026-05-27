@@ -156,6 +156,8 @@ final readonly class SendRentalActivatedEmailHandler
             'invoiceNumber' => $invoiceNumber,
         ]);
 
+        $email->getHeaders()->addTextHeader('X-Order-Id', $order->id->toRfc4122());
+
         $this->mailer->send($email);
     }
 

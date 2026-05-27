@@ -60,6 +60,8 @@ final readonly class SendFinePaymentReminderEmailHandler
                 'stage' => $event->stage,
             ]);
 
+        $email->getHeaders()->addTextHeader('X-Order-Id', $fine->contract->order->id->toRfc4122());
+
         try {
             $this->mailer->send($email);
         } catch (\Throwable $e) {

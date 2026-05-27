@@ -51,6 +51,8 @@ final readonly class SendPaymentDefaultEmailHandler
                 'statusUrl' => $this->statusUrlGenerator->generate($contract->order),
             ]);
 
+        $tenantEmail->getHeaders()->addTextHeader('X-Order-Id', $contract->order->id->toRfc4122());
+
         try {
             $this->mailer->send($tenantEmail);
         } catch (\Throwable $e) {
@@ -82,6 +84,8 @@ final readonly class SendPaymentDefaultEmailHandler
                     'paidThroughDate' => $contract->paidThroughDate,
                     'terminatedAt' => $contract->terminatedAt,
                 ]);
+
+            $adminEmail->getHeaders()->addTextHeader('X-Order-Id', $contract->order->id->toRfc4122());
 
             try {
                 $this->mailer->send($adminEmail);

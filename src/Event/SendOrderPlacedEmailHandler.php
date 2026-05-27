@@ -72,6 +72,8 @@ final readonly class SendOrderPlacedEmailHandler
 
         $this->attachments->attachLegalDocuments($email, $order);
 
+        $email->getHeaders()->addTextHeader('X-Order-Id', $order->id->toRfc4122());
+
         $this->mailer->send($email);
     }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\Enum\EmailLogStatus;
+use Symfony\Component\Uid\Uuid;
 
 final readonly class EmailLogFilter
 {
@@ -15,6 +16,7 @@ final readonly class EmailLogFilter
         public ?string $subject = null,
         public ?string $templateName = null,
         public ?EmailLogStatus $status = null,
+        public ?Uuid $orderId = null,
     ) {
     }
 }

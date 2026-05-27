@@ -7,6 +7,7 @@ namespace App\Service\Form;
 use App\Enum\EmailLogStatus;
 use App\Repository\EmailLogFilter;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * Builds an {@see EmailLogFilter} from a Request's query string.
@@ -24,6 +25,15 @@ final readonly class EmailLogFilterFactory
         $statusValue = $this->trimToNull($request->query->get('status'));
         $status = null !== $statusValue ? EmailLogStatus::tryFrom($statusValue) : null;
 
+        $orderIdValue = $this->trimToNull($request->query->get('orderId'));
+        $orderId = null;
+        if (null !== $orderIdValue) {
+            try {
+                $orderId = Uuid::fromString($orderIdValue);
+            } catch (\InvalidArgumentException) {
+            }
+        }
+
         return new EmailLogFilter(
             dateFrom: $this->parseDate($request->query->get('date_from'), endOfDay: false),
             dateTo: $this->parseDate($request->query->get('date_to'), endOfDay: true),
@@ -31,6 +41,7 @@ final readonly class EmailLogFilterFactory
             subject: $this->trimToNull($request->query->get('subject')),
             templateName: $this->trimToNull($request->query->get('template')),
             status: $status,
+            orderId: $orderId,
         );
     }
 

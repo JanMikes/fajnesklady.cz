@@ -514,6 +514,165 @@
     </div>
     {% endif %}
 
+    {# Manual actions #}
+    {% set hasSigningAction = order.signingToken is not null and order.signedAt is null %}
+    {% set hasOnboardingAction = order.createdByAdmin is not null and order.signedAt is not null and order.paidAt is null %}
+    {% set hasBillingAction = contract is not null and contract.billingMode.value == 'manual_recurring' and hasPendingManualPayment %}
+    {% set payableFines = [] %}
+    {% for fine in fines if fine.payable %}
+        {% set payableFines = payableFines|merge([fine]) %}
+    {% endfor %}
+    {% if hasSigningAction or hasOnboardingAction or hasBillingAction or payableFines|length > 0 %}
+    <div class="mt-6 bg-white shadow overflow-hidden sm:rounded-lg border-l-4 border-blue-400">
+        <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+            <h3 class="text-lg font-medium text-gray-900">Manuální akce</h3>
+        </div>
+        <div class="px-4 py-5 sm:p-6">
+            <div class="flex flex-wrap gap-3">
+                {% if hasSigningAction %}
+                    <form method="post" action="{{ path('admin_order_resend_signing_link', {id: order.id}) }}">
+                        <input type="hidden" name="_token" value="{{ csrf_token('resend_signing_link') }}">
+                        <button type="submit" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                                onclick="return confirm('Opravdu chcete znovu odeslat odkaz k podpisu?');">
+                            <svg class="h-4 w-4 mr-2 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                            Znovu odeslat odkaz k podpisu
+                        </button>
+                    </form>
+                {% endif %}
+                {% if hasOnboardingAction %}
+                    <form method="post" action="{{ path('admin_order_send_onboarding_reminder', {id: order.id}) }}">
+                        <input type="hidden" name="_token" value="{{ csrf_token('send_onboarding_reminder') }}">
+                        <button type="submit" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                                onclick="return confirm('Opravdu chcete odeslat připomínku platby?');">
+                            <svg class="h-4 w-4 mr-2 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                            Odeslat připomínku platby (onboarding)
+                        </button>
+                    </form>
+                {% endif %}
+                {% if hasBillingAction %}
+                    <form method="post" action="{{ path('admin_order_send_billing_reminder', {id: order.id}) }}">
+                        <input type="hidden" name="_token" value="{{ csrf_token('send_billing_reminder') }}">
+                        <button type="submit" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                                onclick="return confirm('Opravdu chcete odeslat výzvu k platbě?');">
+                            <svg class="h-4 w-4 mr-2 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                            Odeslat výzvu k platbě
+                        </button>
+                    </form>
+                {% endif %}
+                {% for fine in payableFines %}
+                    <form method="post" action="{{ path('admin_order_send_fine_reminder', {id: order.id, fineId: fine.id}) }}">
+                        <input type="hidden" name="_token" value="{{ csrf_token('send_fine_reminder_' ~ fine.id) }}">
+                        <button type="submit" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                                onclick="return confirm('Opravdu chcete odeslat připomínku pokuty?');">
+                            <svg class="h-4 w-4 mr-2 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                            Odeslat připomínku pokuty: {{ fine.type.label() }}
+                        </button>
+                    </form>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {# Email history #}
+    <div class="mt-6 bg-white shadow overflow-hidden sm:rounded-lg">
+        <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
+            <h3 class="text-lg font-medium text-gray-900">E-mailová komunikace</h3>
+        </div>
+        <div class="px-4 py-5 sm:p-6">
+            {% if emailLogs|length > 0 %}
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead>
+                            <tr>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Datum</th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Typ</th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Příjemce</th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Stav</th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Akce</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200">
+                            {% set templateLabels = {
+                                'email/signing_link': 'Odkaz k podpisu',
+                                'email/order_placed': 'Potvrzení objednávky',
+                                'email/order_cancelled': 'Zrušení objednávky',
+                                'email/rental_activated': 'Aktivace pronájmu',
+                                'email/invoice': 'Faktura',
+                                'email/onboarding_payment_reminder': 'Připomínka platby (onboarding)',
+                                'email/manual_billing_payment_initial': 'Výzva k platbě (7 dní)',
+                                'email/manual_billing_payment_reminder': 'Připomínka platby (2 dny)',
+                                'email/manual_billing_payment_due_today': 'Platba splatná dnes',
+                                'email/manual_billing_payment_overdue_first': 'Upomínka — platba po splatnosti',
+                                'email/manual_billing_payment_overdue_final': 'Poslední upomínka',
+                                'email/manual_billing_overdue_admin': 'Upomínka (admin)',
+                                'email/recurring_payment_established': 'Nastavení opakované platby',
+                                'email/recurring_payment_failed': 'Selhání opakované platby',
+                                'email/recurring_payment_failed_admin': 'Selhání platby (admin)',
+                                'email/recurring_payment_advance_notice': 'Předběžné oznámení platby',
+                                'email/recurring_payment_cancelled': 'Zrušení opakované platby',
+                                'email/recurring_payment_cancelled_admin': 'Zrušení platby (admin)',
+                                'email/contract_expiring': 'Blížící se konec smlouvy',
+                                'email/contract_terminated': 'Ukončení smlouvy',
+                                'email/termination_notice': 'Výpověď',
+                                'email/termination_notice_admin': 'Výpověď (admin)',
+                                'email/payment_default_tenant': 'Oznámení o prodlení',
+                                'email/payment_default_admin': 'Prodlení (admin)',
+                                'email/payment_demand_tenant': 'Výzva k úhradě',
+                                'email/payment_demand_admin': 'Výzva k úhradě (admin)',
+                                'email/external_prepayment_ending_soon': 'Končící externí předplatné',
+                                'email/external_prepayment_ending_soon_admin': 'Končící předplatné (admin)',
+                                'email/debt_payment_request': 'Výzva k úhradě dluhu',
+                                'email/fine_issued': 'Vystavení pokuty',
+                                'email/fine_payment_reminder': 'Připomínka pokuty',
+                                'email/fine_paid': 'Potvrzení úhrady pokuty',
+                                'email/payment_amount_mismatch': 'Nesouhlasí částka platby',
+                            } %}
+                            {% for log in emailLogs %}
+                                <tr>
+                                    <td class="px-3 py-2 text-sm text-gray-900 whitespace-nowrap">{{ log.attemptedAt|date('d.m.Y H:i') }}</td>
+                                    <td class="px-3 py-2 text-sm text-gray-900">{{ templateLabels[log.templateName] ?? log.templateName ?? '—' }}</td>
+                                    <td class="px-3 py-2 text-sm text-gray-500">{{ log.toAddresses[0].email ?? '—' }}</td>
+                                    <td class="px-3 py-2 text-sm whitespace-nowrap">
+                                        {% if log.status.value == 'sent' %}
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Odesláno</span>
+                                        {% else %}
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Selhalo</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="px-3 py-2 text-sm whitespace-nowrap">
+                                        <a href="{{ path('admin_email_log_detail', {id: log.id}) }}" class="text-accent hover:text-accent/80">
+                                            <svg class="h-4 w-4 inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            </svg>
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% if emailLogs|length >= 50 %}
+                    <div class="mt-3 text-sm">
+                        <a href="{{ path('admin_email_log', {orderId: order.id}) }}" class="link">Zobrazit vše →</a>
+                    </div>
+                {% endif %}
+            {% else %}
+                <p class="text-sm text-gray-500">Zatím nebyla odeslána žádná e-mailová komunikace k této objednávce.</p>
+                <p class="text-xs text-gray-400 mt-1">Sledování e-mailů je aktivní od nasazení této funkce. Starší e-maily zde nejsou zobrazeny.</p>
+            {% endif %}
+        </div>
+    </div>
+
     {# Cancel Order Section #}
     {% if order.canBeCancelled() %}
     <div class="mt-6 bg-white shadow overflow-hidden sm:rounded-lg border border-red-200">

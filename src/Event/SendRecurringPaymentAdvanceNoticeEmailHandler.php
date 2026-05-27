@@ -75,6 +75,8 @@ final readonly class SendRecurringPaymentAdvanceNoticeEmailHandler
                 'statusUrl' => $this->statusUrlGenerator->generate($contract->order),
             ]);
 
+        $email->getHeaders()->addTextHeader('X-Order-Id', $contract->order->id->toRfc4122());
+
         try {
             $this->mailer->send($email);
             $contract->recordAdvanceNoticeSent($this->clock->now());

@@ -51,6 +51,8 @@ final readonly class SendOrderCancelledEmailHandler
                 'statusUrl' => $this->statusUrlGenerator->generate($order),
             ]);
 
+        $email->getHeaders()->addTextHeader('X-Order-Id', $order->id->toRfc4122());
+
         $this->mailer->send($email);
     }
 }

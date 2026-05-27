@@ -76,6 +76,8 @@ final readonly class SendExternalPrepaymentEndingSoonEmailHandler
         // SMTP/queue layer is responsible for retrying that single message; the
         // cron must not re-fire for this contract on every subsequent daily run
         // and re-spam the customer once the mailer recovers.
+        $customerEmail->getHeaders()->addTextHeader('X-Order-Id', $contract->order->id->toRfc4122());
+
         $contract->recordAdvanceNoticeSent($this->clock->now());
 
         try {
@@ -114,6 +116,8 @@ final readonly class SendExternalPrepaymentEndingSoonEmailHandler
                 ->subject(sprintf('Externí předplatné brzy končí — %s', $user->fullName))
                 ->htmlTemplate('email/external_prepayment_ending_soon_admin.html.twig')
                 ->context($adminContext + ['adminName' => $admin->fullName]);
+
+            $email->getHeaders()->addTextHeader('X-Order-Id', $contract->order->id->toRfc4122());
 
             try {
                 $this->mailer->send($email);
