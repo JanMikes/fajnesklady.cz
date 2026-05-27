@@ -509,6 +509,7 @@
                     </div>
                     {% endif %}
 
+                    {% if formData.paymentMethod.value != 'bank_transfer' %}
                     {# Payment card logos + SSL/3DS notice (GoPay compliance). #}
                     <div class="flex flex-col items-center gap-2 py-2">
                         {% include 'components/payment_logos.html.twig' %}
@@ -519,6 +520,7 @@
                             Vaše platba je zabezpečena 256-bit SSL/TLS šifrováním a 3D Secure 2.0.
                         </p>
                     </div>
+                    {% endif %}
 
                     {# Pre-contract binding-payment disclosure (§ 1826a odst. 2 OZ). #}
                     <p class="text-xs text-gray-600 mt-3 mb-2">
