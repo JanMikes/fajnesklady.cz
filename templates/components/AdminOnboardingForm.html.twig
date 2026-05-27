@@ -5,7 +5,43 @@
     {{ form_start(form, {attr: {novalidate: 'novalidate', 'data-turbo': 'false'}}) }}
 
     <div class="space-y-8 max-w-4xl">
-        {# 1. Typ pronájmu #}
+        {# 1. Kontaktní údaje zákazníka #}
+        <div class="card">
+            <div class="card-body">
+                <h2 class="text-lg font-bold text-gray-900 mb-4">Kontaktní údaje zákazníka</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {{ form_row(form.email) }}
+                    {{ form_row(form.firstName) }}
+                    {{ form_row(form.lastName) }}
+                    {{ form_row(form.phone) }}
+                    {{ form_row(form.birthDate) }}
+                </div>
+            </div>
+        </div>
+
+        {# 2. Fakturační údaje #}
+        <div class="card">
+            <div class="card-body">
+                <h2 class="text-lg font-bold text-gray-900 mb-4">Fakturační údaje</h2>
+                {{ form_row(form.invoiceToCompany) }}
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                    {{ form_row(form.companyName) }}
+                    {{ form_row(form.companyId) }}
+                    {{ form_row(form.companyVatId) }}
+                </div>
+
+                <h3 class="font-semibold text-gray-800 mt-6 mb-3">Fakturační adresa</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {{ form_row(form.billingStreet) }}
+                    {{ form_row(form.billingCity) }}
+                    {{ form_row(form.billingPostalCode) }}
+                </div>
+                {{ form_row(form.addressOverride) }}
+            </div>
+        </div>
+
+        {# 3. Typ pronájmu #}
         <div class="card">
             <div class="card-body">
                 <h2 class="text-lg font-bold text-gray-900 mb-4">Typ pronájmu</h2>
@@ -21,8 +57,23 @@
             </div>
         </div>
 
-        {# 2. Pobočka #}
+        {# 4. Datum #}
         <div class="card">
+            <div class="card-body">
+                <h2 class="text-lg font-bold text-gray-900 mb-4">Datum</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {{ form_row(form.startDate) }}
+                    {% if formData.rentalType is not null and formData.rentalType.value == 'limited' %}
+                        {{ form_row(form.endDate) }}
+                    {% else %}
+                        {% do form.endDate.setRendered %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        {# 5. Pobočka #}
+        <div class="card overflow-visible">
             <div class="card-body">
                 <h2 class="text-lg font-bold text-gray-900 mb-4">Pobočka</h2>
                 <div>
@@ -44,9 +95,9 @@
             </div>
         </div>
 
-        {# 3. Typ skladovací jednotky #}
+        {# 6. Typ skladovací jednotky #}
         {% if this.placeId %}
-            <div class="card">
+            <div class="card overflow-visible">
                 <div class="card-body">
                     <h2 class="text-lg font-bold text-gray-900 mb-4">Typ skladovací jednotky</h2>
                     <div>
@@ -70,22 +121,7 @@
             </div>
         {% endif %}
 
-        {# 4. Datum #}
-        <div class="card">
-            <div class="card-body">
-                <h2 class="text-lg font-bold text-gray-900 mb-4">Datum</h2>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {{ form_row(form.startDate) }}
-                    {% if formData.rentalType is not null and formData.rentalType.value == 'limited' %}
-                        {{ form_row(form.endDate) }}
-                    {% else %}
-                        {% do form.endDate.setRendered %}
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-
-        {# 5. Mapa skladu #}
+        {# 7. Mapa skladu #}
         {% set selectedPlace = this.selectedPlace %}
         {% set selectedStorageType = this.selectedStorageType %}
         {% if selectedPlace and selectedStorageType and selectedPlace.mapImagePath %}
@@ -116,7 +152,7 @@
             </div>
         {% endif %}
 
-        {# 6. Vybraná skladová jednotka #}
+        {# 8. Vybraná skladová jednotka #}
         {% set selectedStorage = this.selectedStorage %}
         {% if selectedStorage %}
             <div class="card border-green-200 bg-green-50">
@@ -178,42 +214,6 @@
                 </div>
             </div>
         {% endif %}
-
-        {# 7. Kontaktní údaje #}
-        <div class="card">
-            <div class="card-body">
-                <h2 class="text-lg font-bold text-gray-900 mb-4">Kontaktní údaje zákazníka</h2>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {{ form_row(form.email) }}
-                    {{ form_row(form.firstName) }}
-                    {{ form_row(form.lastName) }}
-                    {{ form_row(form.phone) }}
-                    {{ form_row(form.birthDate) }}
-                </div>
-            </div>
-        </div>
-
-        {# 8. Fakturační údaje #}
-        <div class="card">
-            <div class="card-body">
-                <h2 class="text-lg font-bold text-gray-900 mb-4">Fakturační údaje</h2>
-                {{ form_row(form.invoiceToCompany) }}
-
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-                    {{ form_row(form.companyName) }}
-                    {{ form_row(form.companyId) }}
-                    {{ form_row(form.companyVatId) }}
-                </div>
-
-                <h3 class="font-semibold text-gray-800 mt-6 mb-3">Fakturační adresa</h3>
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    {{ form_row(form.billingStreet) }}
-                    {{ form_row(form.billingCity) }}
-                    {{ form_row(form.billingPostalCode) }}
-                </div>
-                {{ form_row(form.addressOverride) }}
-            </div>
-        </div>
 
         {# 9. Cenový model #}
         <div class="card">
