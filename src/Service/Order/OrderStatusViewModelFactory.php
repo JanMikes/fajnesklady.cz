@@ -14,11 +14,13 @@ use App\Repository\ContractRepository;
 use App\Repository\FineRepository;
 use App\Repository\HandoverProtocolRepository;
 use App\Repository\InvoiceRepository;
+use App\Enum\PaymentMethod;
 use App\Repository\ManualPaymentRequestRepository;
 use App\Service\Billing\ManualBillingReminderSchedule;
 use App\Service\Fine\FinePaymentUrlGenerator;
 use App\Service\Handover\HandoverUrlGenerator;
 use App\Service\OrderStatusUrlGenerator;
+use App\Service\Payment\QrPaymentGenerator;
 use App\Service\RecurringPaymentCancelUrlGenerator;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
@@ -39,6 +41,7 @@ final readonly class OrderStatusViewModelFactory
         private ManualPaymentRequestRepository $manualPaymentRequestRepository,
         private HandoverProtocolRepository $handoverProtocolRepository,
         private HandoverUrlGenerator $handoverUrlGenerator,
+        private QrPaymentGenerator $qrPaymentGenerator,
     ) {
     }
 
@@ -208,6 +211,12 @@ final readonly class OrderStatusViewModelFactory
             }
         }
 
+        $isBankTransfer = PaymentMethod::BANK_TRANSFER === $order->paymentMethod;
+        $bankAccount = $isBankTransfer ? $this->qrPaymentGenerator->getBankAccountFormatted() : null;
+        $qrCodeDataUri = $isBankTransfer && null !== $order->variableSymbol
+            ? $this->qrPaymentGenerator->generateDataUri($order->variableSymbol, $order->firstPaymentPrice)
+            : null;
+
         return new OrderStatusViewModel(
             order: $order,
             contract: $contract,
@@ -240,6 +249,8 @@ final readonly class OrderStatusViewModelFactory
             unpaidFines: $unpaidFines,
             paidFines: $paidFines,
             finePaymentUrls: $finePaymentUrls,
+            bankAccount: $bankAccount,
+            qrCodeDataUri: $qrCodeDataUri,
         );
     }
 

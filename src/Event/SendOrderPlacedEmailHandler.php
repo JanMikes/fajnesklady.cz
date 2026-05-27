@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Event;
 
 use App\Enum\OrderStatus;
+use App\Enum\PaymentMethod;
 use App\Repository\OrderRepository;
 use App\Service\OrderEmailAttachments;
 use App\Service\OrderStatusUrlGenerator;
+use App\Service\Payment\QrPaymentGenerator;
 use App\Service\Place\PlaceAddressFormatter;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\Mailer\MailerInterface;
@@ -23,6 +25,7 @@ final readonly class SendOrderPlacedEmailHandler
         private OrderStatusUrlGenerator $statusUrlGenerator,
         private OrderEmailAttachments $attachments,
         private PlaceAddressFormatter $addressFormatter,
+        private QrPaymentGenerator $qrPaymentGenerator,
     ) {
     }
 
@@ -48,6 +51,8 @@ final readonly class SendOrderPlacedEmailHandler
 
         $statusUrl = $this->statusUrlGenerator->generate($order);
 
+        $isBankTransfer = PaymentMethod::BANK_TRANSFER === $order->paymentMethod;
+
         $email = (new TemplatedEmail())
             ->from(new Address('noreply@fajnesklady.cz', 'Fajnesklady.cz'))
             ->to(new Address($user->email, $user->fullName))
@@ -67,6 +72,12 @@ final readonly class SendOrderPlacedEmailHandler
                 'isRecurring' => $order->isRecurring(),
                 'expiresAt' => $order->expiresAt->format('d.m.Y H:i'),
                 'statusUrl' => $statusUrl,
+                'isBankTransfer' => $isBankTransfer,
+                'bankAccount' => $isBankTransfer ? $this->qrPaymentGenerator->getBankAccountFormatted() : null,
+                'variableSymbol' => $isBankTransfer ? $order->variableSymbol : null,
+                'qrCodeDataUri' => $isBankTransfer && null !== $order->variableSymbol
+                    ? $this->qrPaymentGenerator->generateDataUri($order->variableSymbol, $order->firstPaymentPrice)
+                    : null,
             ]);
 
         $this->attachments->attachLegalDocuments($email, $order);

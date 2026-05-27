@@ -126,9 +126,41 @@
             </table>
         </div>
 
+        {% if isBankTransfer|default(false) and bankAccount %}
+        <div style="background-color: #dbeafe; border: 1px solid #93c5fd; padding: 20px; border-radius: 5px; margin: 20px 0;">
+            <strong style="color: #1e3a5f;">Platební údaje pro bankovní převod:</strong>
+            <table style="width: 100%; margin-top: 10px; border-collapse: collapse;">
+                <tr>
+                    <td style="padding: 8px 0; color: #4a5568;">Číslo účtu:</td>
+                    <td style="padding: 8px 0; font-weight: bold; font-family: monospace; font-size: 16px;">{{ bankAccount }}</td>
+                </tr>
+                {% if variableSymbol %}
+                <tr>
+                    <td style="padding: 8px 0; color: #4a5568;">Variabilní symbol:</td>
+                    <td style="padding: 8px 0; font-weight: bold; font-family: monospace; font-size: 16px;">{{ variableSymbol }}</td>
+                </tr>
+                {% endif %}
+                <tr>
+                    <td style="padding: 8px 0; color: #4a5568;">Částka:</td>
+                    <td style="padding: 8px 0; font-weight: bold; font-size: 16px;">{{ priceCzk|number_format(0, ',', ' ') }} Kč</td>
+                </tr>
+            </table>
+            {% if qrCodeDataUri %}
+            <div style="text-align: center; margin-top: 15px; padding-top: 15px; border-top: 1px solid #93c5fd;">
+                <p style="color: #4a5568; margin-bottom: 8px; font-size: 14px;">QR kód pro platbu:</p>
+                <img src="{{ qrCodeDataUri }}" alt="QR platba" width="200" height="200" style="display: inline-block;">
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
         <div class="warning">
             <strong>Důležité:</strong> Vaše rezervace je platná do <strong>{{ expiresAt }}</strong>.
-            Pokud do tohoto data neprovedete platbu, rezervace bude automaticky zrušena.
+            {% if isBankTransfer|default(false) %}
+                Pokud do tohoto data neobdržíme platbu na výše uvedený účet, rezervace bude automaticky zrušena.
+            {% else %}
+                Pokud do tohoto data neprovedete platbu, rezervace bude automaticky zrušena.
+            {% endif %}
         </div>
 
         <div style="background-color: #fef3c7; border: 1px solid #f59e0b; padding: 15px; border-radius: 5px; margin: 20px 0;">
@@ -136,7 +168,7 @@
             Prosím opatřete si svou skladovací jednotku <strong>vlastním visacím zámkem</strong> (pro účely pojištění).
         </div>
 
-        <p>Pro dokončení objednávky a zobrazení platebních údajů se prosím přihlaste do svého účtu:</p>
+        <p>Pro zobrazení stavu objednávky{% if not isBankTransfer|default(false) %} a platebních údajů{% endif %}:</p>
 
         <div style="text-align: center;">
             <a href="{{ statusUrl }}" class="button">Zobrazit stav objednávky</a>

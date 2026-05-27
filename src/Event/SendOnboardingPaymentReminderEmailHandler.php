@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Event;
 
+use App\Enum\PaymentMethod;
 use App\Repository\OrderRepository;
 use App\Service\Onboarding\OnboardingReminderSchedule;
 use App\Service\OrderStatusUrlGenerator;
+use App\Service\Payment\QrPaymentGenerator;
 use App\Service\Place\PlaceAddressFormatter;
 use Psr\Log\LoggerInterface;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
@@ -28,6 +30,7 @@ final readonly class SendOnboardingPaymentReminderEmailHandler
         private PlaceAddressFormatter $addressFormatter,
         private MailerInterface $mailer,
         private LoggerInterface $logger,
+        private QrPaymentGenerator $qrPaymentGenerator,
     ) {
     }
 
@@ -77,6 +80,16 @@ final readonly class SendOnboardingPaymentReminderEmailHandler
                 'hasUnpaidDebt' => $order->hasUnpaidDebt(),
                 'debtAmountCzk' => null !== $order->getDebtAmountInCzk()
                     ? number_format($order->getDebtAmountInCzk(), 0, ',', ' ')
+                    : null,
+                'isBankTransfer' => PaymentMethod::BANK_TRANSFER === $order->paymentMethod,
+                'bankAccount' => PaymentMethod::BANK_TRANSFER === $order->paymentMethod
+                    ? $this->qrPaymentGenerator->getBankAccountFormatted()
+                    : null,
+                'variableSymbol' => PaymentMethod::BANK_TRANSFER === $order->paymentMethod
+                    ? $order->variableSymbol
+                    : null,
+                'qrCodeDataUri' => PaymentMethod::BANK_TRANSFER === $order->paymentMethod && null !== $order->variableSymbol
+                    ? $this->qrPaymentGenerator->generateDataUri($order->variableSymbol, $order->firstPaymentPrice)
                     : null,
             ]);
 

@@ -117,74 +117,133 @@
                     </div>
                 </div>
 
-                {% if not isBankTransfer %}
-                {# Payment Info #}
-                <div class="bg-accent/5 border border-accent/20 rounded-lg p-4 mb-6">
-                    <div class="flex items-start">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-accent mt-0.5 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                        </svg>
-                        <div>
-                            <p class="text-sm text-gray-700">
-                                <strong>Bezpečná platba</strong><br>
-                                Platba je zpracována platební bránou GoPay. Vaše údaje jsou zabezpečeny 256-bit SSL/TLS šifrováním a 3D Secure 2.0.
-                            </p>
-                            <div class="mt-3">
-                                {% include 'components/payment_logos.html.twig' %}
+                {% if isBankTransfer %}
+                    {# Bank Transfer Payment Details #}
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-5 mb-6">
+                        <h2 class="font-semibold text-blue-900 mb-4 flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                            </svg>
+                            Platební údaje pro bankovní převod
+                        </h2>
+
+                        <dl class="space-y-3 text-sm">
+                            <div class="flex justify-between items-center">
+                                <dt class="text-blue-700">Číslo účtu</dt>
+                                <dd class="font-mono font-bold text-blue-900 text-base">{{ bankAccount }}</dd>
+                            </div>
+                            {% if order.variableSymbol %}
+                            <div class="flex justify-between items-center">
+                                <dt class="text-blue-700">Variabilní symbol</dt>
+                                <dd class="font-mono font-bold text-blue-900 text-base">{{ order.variableSymbol }}</dd>
+                            </div>
+                            {% endif %}
+                            <div class="flex justify-between items-center">
+                                <dt class="text-blue-700">Částka</dt>
+                                <dd class="font-bold text-blue-900 text-base">{{ order.firstPaymentPriceInCzk|number_format(0, ',', ' ') }} Kč</dd>
+                            </div>
+                        </dl>
+
+                        {% if qrCodeDataUri %}
+                        <div class="mt-4 pt-4 border-t border-blue-200 text-center">
+                            <p class="text-sm text-blue-700 mb-2">QR kód pro platbu</p>
+                            <img src="{{ qrCodeDataUri }}" alt="QR platba" class="inline-block w-48 h-48">
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+                        <p class="text-sm text-amber-800">
+                            Po připsání platby na náš účet bude objednávka automaticky dokončena.
+                            Tato stránka se nezmění — o přijetí platby Vás budeme informovat e-mailem.
+                        </p>
+                    </div>
+
+                    {# Action Buttons — bank transfer #}
+                    <div class="flex flex-col sm:flex-row gap-4" id="payment-actions">
+                        <a href="{{ statusUrl }}" class="btn btn-primary btn-lg flex-1 text-center">
+                            Zobrazit stav objednávky
+                        </a>
+
+                        {% if order.canBeCancelled %}
+                        <form method="post" class="flex-1 sm:flex-initial">
+                            <input type="hidden" name="action" value="cancel">
+                            <button type="submit"
+                                    class="btn btn-secondary w-full"
+                                    onclick="return confirm('Opravdu chcete zrušit tuto objednávku?')">
+                                Zrušit objednávku
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+                {% else %}
+                    {# Payment Info #}
+                    <div class="bg-accent/5 border border-accent/20 rounded-lg p-4 mb-6">
+                        <div class="flex items-start">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-accent mt-0.5 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                            </svg>
+                            <div>
+                                <p class="text-sm text-gray-700">
+                                    <strong>Bezpečná platba</strong><br>
+                                    Platba je zpracována platební bránou GoPay. Vaše údaje jsou zabezpečeny 256-bit SSL/TLS šifrováním a 3D Secure 2.0.
+                                </p>
+                                <div class="mt-3">
+                                    {% include 'components/payment_logos.html.twig' %}
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-                {% endif %}
 
-                {# GoPay Inline Gateway Container #}
-                <div id="gopay-gateway-container" class="hidden mb-6">
-                    <div class="border border-gray-200 rounded-lg overflow-hidden">
-                        <div id="gopay-inline-form"></div>
+                    {# GoPay Inline Gateway Container #}
+                    <div id="gopay-gateway-container" class="hidden mb-6">
+                        <div class="border border-gray-200 rounded-lg overflow-hidden">
+                            <div id="gopay-inline-form"></div>
+                        </div>
                     </div>
-                </div>
 
-                {# Error Message Container #}
-                <div id="payment-error" class="hidden bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-                    <div class="flex items-start">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-600 mt-0.5 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <p class="text-sm text-red-800" id="payment-error-text"></p>
+                    {# Error Message Container #}
+                    <div id="payment-error" class="hidden bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+                        <div class="flex items-start">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-600 mt-0.5 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <p class="text-sm text-red-800" id="payment-error-text"></p>
+                        </div>
                     </div>
-                </div>
 
-                {# Loading State #}
-                <div id="payment-loading" class="hidden text-center py-6 mb-6">
-                    <div class="inline-flex items-center">
-                        <svg class="animate-spin h-5 w-5 text-accent mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        <span class="text-gray-600">Připravuji platební bránu...</span>
+                    {# Loading State #}
+                    <div id="payment-loading" class="hidden text-center py-6 mb-6">
+                        <div class="inline-flex items-center">
+                            <svg class="animate-spin h-5 w-5 text-accent mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span class="text-gray-600">Připravuji platební bránu...</span>
+                        </div>
                     </div>
-                </div>
 
-                {# Action Buttons #}
-                <div class="flex flex-col sm:flex-row gap-4" id="payment-actions">
-                    <button type="button" id="pay-button" class="btn btn-primary btn-lg flex-1">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                        </svg>
-                        Zaplatit {{ order.firstPaymentPriceInCzk|number_format(0, ',', ' ') }} Kč vč. DPH{% if paymentSchedule.isRecurring %} (první platba){% endif %}
-                    </button>
-
-                    {% if order.canBeCancelled %}
-                    <form method="post" class="flex-1 sm:flex-initial">
-                        <input type="hidden" name="action" value="cancel">
-                        <button type="submit"
-                                class="btn btn-secondary w-full"
-                                onclick="return confirm('Opravdu chcete zrušit tuto objednávku?')">
-                            Zrušit objednávku
+                    {# Action Buttons — GoPay #}
+                    <div class="flex flex-col sm:flex-row gap-4" id="payment-actions">
+                        <button type="button" id="pay-button" class="btn btn-primary btn-lg flex-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                            </svg>
+                            Zaplatit {{ order.firstPaymentPriceInCzk|number_format(0, ',', ' ') }} Kč vč. DPH{% if paymentSchedule.isRecurring %} (první platba){% endif %}
                         </button>
-                    </form>
-                    {% endif %}
-                </div>
+
+                        {% if order.canBeCancelled %}
+                        <form method="post" class="flex-1 sm:flex-initial">
+                            <input type="hidden" name="action" value="cancel">
+                            <button type="submit"
+                                    class="btn btn-secondary w-full"
+                                    onclick="return confirm('Opravdu chcete zrušit tuto objednávku?')">
+                                Zrušit objednávku
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -192,6 +251,7 @@
 
 {% block javascripts %}
     {{ parent() }}
+    {% if not isBankTransfer %}
     <script src="{{ goPayEmbedJs }}" async></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -256,4 +316,5 @@
             });
         });
     </script>
+    {% endif %}
 {% endblock %}
