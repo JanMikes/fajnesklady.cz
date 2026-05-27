@@ -4,9 +4,9 @@
     <div class="flex flex-wrap items-center gap-3 p-4 border-b border-gray-200">
         <label for="place-occupancy-view-date" class="text-sm font-medium text-gray-700">Datum:</label>
         <input id="place-occupancy-view-date"
-               type="date"
-               data-model="viewDate"
-               data-controller="flatpickr"
+               type="text"
+               data-model="on(change)|viewDate"
+               data-controller="datepicker"
                value="{{ data.viewDate|date('Y-m-d') }}"
                class="form-input text-sm">
         <div class="flex items-center gap-1 ml-2">
