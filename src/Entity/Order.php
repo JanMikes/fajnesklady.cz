@@ -86,7 +86,7 @@ class Order implements EntityWithEvents
     #[ORM\Column(length: 128, nullable: true, unique: true)]
     public private(set) ?string $signingToken = null;
 
-    #[ORM\Column(length: 10, nullable: true, enumType: PaymentMethod::class)]
+    #[ORM\Column(length: 20, nullable: true, enumType: PaymentMethod::class)]
     public private(set) ?PaymentMethod $paymentMethod = null;
 
     #[ORM\Column(length: 10, nullable: true, unique: true)]
