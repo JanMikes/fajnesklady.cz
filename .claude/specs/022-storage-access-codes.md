@@ -533,7 +533,7 @@ After the order-summary card (around `:123`, before the "Recurring info card") a
     <div class="rounded-lg border border-emerald-300 bg-emerald-50 p-5 text-emerald-900">
         <div class="text-sm font-semibold uppercase tracking-wide text-emerald-700 mb-1">Váš přístupový kód</div>
         <div class="text-3xl font-mono font-bold tracking-widest">{{ storage.lockCode }}</div>
-        <p class="mt-2 text-sm">Tento kód použijete k přístupu na pobočku. Změní se při novém pronájmu, takže si jej uložte.</p>
+        <p class="mt-2 text-sm">Tento kód použijete k přístupu na pobočku.</p>
     </div>
 {% endif %}
 ```
