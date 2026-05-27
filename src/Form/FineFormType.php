@@ -71,6 +71,7 @@ final class FineFormType extends AbstractType
     {
         $resolver->setDefaults([
             'data_class' => FineFormData::class,
+            'csrf_protection' => false,
         ]);
     }
 }

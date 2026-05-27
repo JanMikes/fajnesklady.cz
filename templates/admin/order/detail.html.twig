@@ -530,7 +530,6 @@
             <div class="flex flex-wrap gap-3">
                 {% if hasSigningAction %}
                     <form method="post" action="{{ path('admin_order_resend_signing_link', {id: order.id}) }}">
-                        <input type="hidden" name="_token" value="{{ csrf_token('resend_signing_link') }}">
                         <button type="submit" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
                                 onclick="return confirm('Opravdu chcete znovu odeslat odkaz k podpisu?');">
                             <svg class="h-4 w-4 mr-2 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -542,7 +541,6 @@
                 {% endif %}
                 {% if hasOnboardingAction %}
                     <form method="post" action="{{ path('admin_order_send_onboarding_reminder', {id: order.id}) }}">
-                        <input type="hidden" name="_token" value="{{ csrf_token('send_onboarding_reminder') }}">
                         <button type="submit" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
                                 onclick="return confirm('Opravdu chcete odeslat připomínku platby?');">
                             <svg class="h-4 w-4 mr-2 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -554,7 +552,6 @@
                 {% endif %}
                 {% if hasBillingAction %}
                     <form method="post" action="{{ path('admin_order_send_billing_reminder', {id: order.id}) }}">
-                        <input type="hidden" name="_token" value="{{ csrf_token('send_billing_reminder') }}">
                         <button type="submit" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
                                 onclick="return confirm('Opravdu chcete odeslat výzvu k platbě?');">
                             <svg class="h-4 w-4 mr-2 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -566,7 +563,6 @@
                 {% endif %}
                 {% for fine in payableFines %}
                     <form method="post" action="{{ path('admin_order_send_fine_reminder', {id: order.id, fineId: fine.id}) }}">
-                        <input type="hidden" name="_token" value="{{ csrf_token('send_fine_reminder_' ~ fine.id) }}">
                         <button type="submit" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
                                 onclick="return confirm('Opravdu chcete odeslat připomínku pokuty?');">
                             <svg class="h-4 w-4 mr-2 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">

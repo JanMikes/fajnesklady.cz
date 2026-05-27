@@ -10,7 +10,6 @@ use App\Service\AuditLogger;
 use Psr\Clock\ClockInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
-use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Routing\Attribute\Route;
@@ -30,13 +29,9 @@ final class AdminOrderSendOnboardingReminderController extends AbstractControlle
     ) {
     }
 
-    public function __invoke(string $id, Request $request): Response
+    public function __invoke(string $id): Response
     {
         $order = $this->orderRepository->get(Uuid::fromString($id));
-
-        if (!$this->isCsrfTokenValid('send_onboarding_reminder', $request->request->getString('_token'))) {
-            return $this->redirectToRoute('admin_order_detail', ['id' => $id]);
-        }
 
         if (null === $order->createdByAdmin || null === $order->signedAt || null !== $order->paidAt) {
             $this->addFlash('error', 'Připomínku nelze odeslat — objednávka nesplňuje podmínky.');

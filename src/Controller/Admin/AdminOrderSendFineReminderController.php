@@ -12,7 +12,6 @@ use App\Service\AuditLogger;
 use Psr\Clock\ClockInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
-use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Routing\Attribute\Route;
@@ -34,13 +33,9 @@ final class AdminOrderSendFineReminderController extends AbstractController
     ) {
     }
 
-    public function __invoke(string $id, string $fineId, Request $request): Response
+    public function __invoke(string $id, string $fineId): Response
     {
         $order = $this->orderRepository->get(Uuid::fromString($id));
-
-        if (!$this->isCsrfTokenValid('send_fine_reminder_'.$fineId, $request->request->getString('_token'))) {
-            return $this->redirectToRoute('admin_order_detail', ['id' => $id]);
-        }
 
         $fine = $this->fineRepository->findById(Uuid::fromString($fineId));
         if (null === $fine) {
