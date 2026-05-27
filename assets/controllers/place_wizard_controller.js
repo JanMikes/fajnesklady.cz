@@ -106,7 +106,10 @@ export default class extends Controller {
     }
 
     renderStepIndicator() {
-        const steps = STEP_LABELS.map((label, i) => {
+        const circleRow = [];
+        const labelRow = [];
+
+        STEP_LABELS.forEach((label, i) => {
             const num = i + 1;
             let circleClass = 'wizard-step__circle wizard-step__circle--future';
             let content = num;
@@ -118,24 +121,17 @@ export default class extends Controller {
                 circleClass = 'wizard-step__circle wizard-step__circle--current';
             }
 
-            return `<div class="wizard-step">
-                <div class="flex flex-col items-center">
-                    <div class="${circleClass}">${content}</div>
-                    <span class="wizard-step__label ${num === this.currentStep ? 'text-gray-900 font-semibold' : 'text-gray-400'}">${label}</span>
-                </div>
-            </div>`;
+            circleRow.push(`<div class="${circleClass}" style="justify-self:center">${content}</div>`);
+            labelRow.push(`<span class="wizard-step__label ${num <= this.currentStep ? 'text-gray-900 font-semibold' : 'text-gray-400'}">${label}</span>`);
+
+            if (i < STEP_LABELS.length - 1) {
+                const lineClass = num < this.currentStep ? 'wizard-step__line--active' : 'wizard-step__line--inactive';
+                circleRow.push(`<div class="wizard-step__line ${lineClass}"></div>`);
+                labelRow.push('<div></div>');
+            }
         });
 
-        let html = '';
-        for (let i = 0; i < steps.length; i++) {
-            html += steps[i];
-            if (i < steps.length - 1) {
-                const lineClass = i + 1 < this.currentStep ? 'wizard-step__line--active' : 'wizard-step__line--inactive';
-                html += `<div class="wizard-step__line ${lineClass}"></div>`;
-            }
-        }
-
-        this.stepIndicatorTarget.innerHTML = html;
+        this.stepIndicatorTarget.innerHTML = circleRow.join('') + labelRow.join('');
     }
 
     renderBackButton() {

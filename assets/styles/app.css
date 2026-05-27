@@ -489,7 +489,11 @@ label:has(~ input[required], ~ select[required], ~ textarea[required])::after {
 }
 
 .wizard-modal__steps {
-    @apply flex items-center justify-center gap-0 px-6 py-3;
+    @apply px-8 pt-4 pb-2;
+    display: grid;
+    grid-template-columns: auto 1fr auto 1fr auto;
+    align-items: center;
+    row-gap: 0.375rem;
 }
 
 .wizard-modal__content {
@@ -497,44 +501,47 @@ label:has(~ input[required], ~ select[required], ~ textarea[required])::after {
     flex: 1;
 }
 
-.wizard-step {
-    @apply flex items-center;
-}
-
 .wizard-step__circle {
-    @apply w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-colors;
+    @apply w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-200;
 }
 
 .wizard-step__circle--completed {
-    @apply bg-primary border-primary text-white;
+    @apply text-white;
+    background-color: var(--color-accent);
 }
 
 .wizard-step__circle--current {
-    @apply bg-primary border-primary text-white;
+    @apply text-white;
+    background-color: var(--color-accent);
+    box-shadow: 0 0 0 4px rgba(210, 50, 51, 0.15);
 }
 
 .wizard-step__circle--future {
-    @apply bg-white border-gray-300 text-gray-400;
+    @apply bg-gray-100 text-gray-400 font-semibold;
 }
 
 .wizard-step__label {
-    @apply text-xs mt-1 text-center;
+    @apply text-xs text-center;
 }
 
 .wizard-step__line {
-    @apply w-12 h-0.5 mx-1;
+    @apply h-0.5 mx-2 rounded-full;
 }
 
 .wizard-step__line--active {
-    @apply bg-primary;
+    background-color: var(--color-accent);
 }
 
 .wizard-step__line--inactive {
-    @apply bg-gray-300;
+    @apply bg-gray-200;
 }
 
 .wizard-card {
-    @apply w-full text-left p-4 rounded-xl border border-gray-200 hover:border-primary/40 hover:shadow-md transition-all cursor-pointer bg-white;
+    @apply w-full text-left p-4 rounded-xl border border-gray-200 hover:shadow-md transition-all cursor-pointer bg-white;
+}
+
+.wizard-card:hover {
+    border-color: rgba(210, 50, 51, 0.35);
 }
 
 .wizard-card:disabled {
