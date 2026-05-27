@@ -1,3 +1,13 @@
+{% set formData = form.vars.data %}
+{% set invoiceToCompany = formData.invoiceToCompany ?? false %}
+{% set rentalType = formData.rentalType %}
+{% set rentalIsLimited = rentalType is null or rentalType.value == 'limited' %}
+{% set paymentMethod = formData.paymentMethod %}
+{% set paymentFrequency = formData.paymentFrequency %}
+{% set isYearly = paymentFrequency is not null and paymentFrequency.value == 'yearly' %}
+{% set monthlyPriceMode = formData.monthlyPriceMode %}
+{% set isExternallyPrepaid = formData.isExternallyPrepaid ?? false %}
+
 <div {{ attributes.defaults({
     'data-controller': 'admin-onboarding-bridge',
     'data-action': 'storage-map:select->admin-onboarding-bridge#handleStorageSelect',
@@ -14,24 +24,48 @@
                     {{ form_row(form.firstName) }}
                     {{ form_row(form.lastName) }}
                     {{ form_row(form.phone) }}
-                    {{ form_row(form.birthDate) }}
+                    {% if not invoiceToCompany %}
+                        {{ form_row(form.birthDate) }}
+                    {% else %}
+                        {% do form.birthDate.setRendered %}
+                    {% endif %}
                 </div>
             </div>
         </div>
 
         {# 2. Fakturační údaje #}
-        <div class="card">
+        <div class="card overflow-visible" data-controller="ares-lookup">
             <div class="card-body">
                 <h2 class="text-lg font-bold text-gray-900 mb-4">Fakturační údaje</h2>
                 {{ form_row(form.invoiceToCompany) }}
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-                    {{ form_row(form.companyName) }}
-                    {{ form_row(form.companyId) }}
-                    {{ form_row(form.companyVatId) }}
-                </div>
+                {% if invoiceToCompany %}
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                        <div>
+                            {{ form_label(form.companyId, null, {label_attr: {class: 'form-label-required'}}) }}
+                            <div class="flex">
+                                {{ form_widget(form.companyId, {attr: {
+                                    'class': 'flex-1 min-w-0 rounded-r-none!',
+                                }}) }}
+                                {% include 'components/ares_lookup_button.html.twig' %}
+                            </div>
+                            <p data-ares-lookup-target="status" class="text-sm mt-2" aria-live="polite" data-live-ignore></p>
+                            {{ form_errors(form.companyId) }}
+                        </div>
+                        <div>
+                            {{ form_row(form.companyName, {label_attr: {class: 'form-label-required'}}) }}
+                        </div>
+                        <div>
+                            {{ form_row(form.companyVatId) }}
+                        </div>
+                    </div>
+                {% else %}
+                    {% do form.companyId.setRendered %}
+                    {% do form.companyName.setRendered %}
+                    {% do form.companyVatId.setRendered %}
+                {% endif %}
 
-                <h3 class="font-semibold text-gray-800 mt-6 mb-3">Fakturační adresa</h3>
+                <h3 class="font-semibold text-gray-800 mt-6 mb-3">{{ invoiceToCompany ? 'Sídlo společnosti' : 'Fakturační adresa' }}</h3>
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     {{ form_row(form.billingStreet) }}
                     {{ form_row(form.billingCity) }}
@@ -47,8 +81,7 @@
                 <h2 class="text-lg font-bold text-gray-900 mb-4">Typ pronájmu</h2>
                 <div class="space-y-4">
                     {{ form_row(form.rentalType) }}
-                    {% set formData = form.vars.data %}
-                    {% if formData.rentalType is not null and formData.rentalType.value == 'unlimited' %}
+                    {% if rentalType is not null and rentalType.value == 'unlimited' %}
                         {{ form_row(form.expectedDuration) }}
                     {% else %}
                         {% do form.expectedDuration.setRendered %}
@@ -63,7 +96,7 @@
                 <h2 class="text-lg font-bold text-gray-900 mb-4">Datum</h2>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {{ form_row(form.startDate) }}
-                    {% if formData.rentalType is not null and formData.rentalType.value == 'limited' %}
+                    {% if rentalIsLimited %}
                         {{ form_row(form.endDate) }}
                     {% else %}
                         {% do form.endDate.setRendered %}
@@ -73,7 +106,7 @@
         </div>
 
         {# 5. Pobočka #}
-        <div class="card overflow-visible">
+        <div class="card">
             <div class="card-body">
                 <h2 class="text-lg font-bold text-gray-900 mb-4">Pobočka</h2>
                 <div>
@@ -82,8 +115,7 @@
                             data-model="norender|placeId"
                             data-action="change->live#action"
                             data-live-action-param="onPlaceChange"
-                            class="form-select w-full"
-                            data-controller="tom-select">
+                            class="form-select w-full">
                         <option value="">-- Vyberte pobočku --</option>
                         {% for place in this.places %}
                             <option value="{{ place.id }}" {{ this.placeId == place.id.toRfc4122() ? 'selected' }}>
@@ -97,7 +129,7 @@
 
         {# 6. Typ skladovací jednotky #}
         {% if this.placeId %}
-            <div class="card overflow-visible">
+            <div class="card">
                 <div class="card-body">
                     <h2 class="text-lg font-bold text-gray-900 mb-4">Typ skladovací jednotky</h2>
                     <div>
@@ -106,8 +138,7 @@
                                 data-model="norender|storageTypeId"
                                 data-action="change->live#action"
                                 data-live-action-param="onStorageTypeChange"
-                                class="form-select w-full"
-                                data-controller="tom-select">
+                                class="form-select w-full">
                             <option value="">-- Vyberte typ --</option>
                             {% for type in this.storageTypes %}
                                 <option value="{{ type.id }}" {{ this.storageTypeId == type.id.toRfc4122() ? 'selected' }}>
@@ -220,7 +251,11 @@
             <div class="card-body">
                 <h2 class="text-lg font-bold text-gray-900 mb-4">Cenový model</h2>
                 {{ form_row(form.monthlyPriceMode) }}
-                {{ form_row(form.customMonthlyPriceInCzk) }}
+                {% if monthlyPriceMode == 'custom' %}
+                    {{ form_row(form.customMonthlyPriceInCzk) }}
+                {% else %}
+                    {% do form.customMonthlyPriceInCzk.setRendered %}
+                {% endif %}
             </div>
         </div>
 
@@ -230,30 +265,48 @@
                 <h2 class="text-lg font-bold text-gray-900 mb-4">Platební metoda</h2>
                 {{ form_row(form.paymentMethod) }}
 
-                {# 11. Variabilní symbol (only for BANK_TRANSFER) #}
-                {{ form_row(form.variableSymbol) }}
+                {% if paymentMethod is not null and paymentMethod.value == 'bank_transfer' %}
+                    {{ form_row(form.variableSymbol) }}
+                {% else %}
+                    {% do form.variableSymbol.setRendered %}
+                {% endif %}
             </div>
         </div>
 
-        {# 12. Frekvence a způsob plateb #}
+        {# 11. Frekvence a způsob plateb #}
         <div class="card">
             <div class="card-body">
                 <h2 class="text-lg font-bold text-gray-900 mb-4">Frekvence a způsob plateb</h2>
                 {{ form_row(form.paymentFrequency) }}
-                {{ form_row(form.billingMode) }}
+
+                {% if isYearly %}
+                    <div class="mt-3 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <p class="text-sm text-blue-900">
+                            <strong>Roční platba se vždy odbavuje ručně.</strong>
+                            Kartu si neukládáme — další platbu obdržíte e-mailem před vypršením roku.
+                        </p>
+                    </div>
+                    {% do form.billingMode.setRendered %}
+                {% else %}
+                    {{ form_row(form.billingMode) }}
+                {% endif %}
             </div>
         </div>
 
-        {# 13. Externí předplatné #}
+        {# 12. Externí předplatné #}
         <div class="card">
             <div class="card-body">
                 <h2 class="text-lg font-bold text-gray-900 mb-4">Externí předplatné</h2>
                 {{ form_row(form.isExternallyPrepaid) }}
-                {{ form_row(form.paidThroughDate) }}
+                {% if isExternallyPrepaid %}
+                    {{ form_row(form.paidThroughDate) }}
+                {% else %}
+                    {% do form.paidThroughDate.setRendered %}
+                {% endif %}
             </div>
         </div>
 
-        {# 14. Existující smlouva #}
+        {# 13. Existující smlouva #}
         <div class="card">
             <div class="card-body">
                 <h2 class="text-lg font-bold text-gray-900 mb-4">Existující smlouva</h2>
@@ -265,7 +318,7 @@
             </div>
         </div>
 
-        {# 15. Dluh z předchozí smlouvy #}
+        {# 14. Dluh z předchozí smlouvy #}
         <div class="card">
             <div class="card-body">
                 <h2 class="text-lg font-bold text-gray-900 mb-4">Dluh z předchozí smlouvy</h2>
@@ -277,7 +330,7 @@
             </div>
         </div>
 
-        {# 16. Submit #}
+        {# 15. Submit #}
         <div class="flex justify-end">
             <button type="submit"
                     data-action="live#action"
