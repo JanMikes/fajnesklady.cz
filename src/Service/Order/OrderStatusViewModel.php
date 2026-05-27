@@ -58,6 +58,7 @@ final readonly class OrderStatusViewModel
         public array $finePaymentUrls = [],
         public ?string $bankAccount = null,
         public ?string $qrCodeDataUri = null,
+        public ?int $remainingPaymentAmount = null,
         /** @var BankTransaction[] */
         public array $amountMismatchTransactions = [],
     ) {

@@ -169,8 +169,12 @@
                             </div>
                             {% endif %}
                             <div class="flex justify-between items-center">
-                                <dt class="text-gray-600">Částka</dt>
-                                <dd class="font-bold text-gray-900">{{ order.firstPaymentPriceInCzk|number_format(0, ',', ' ') }} Kč</dd>
+                                <dt class="text-gray-600">Částka k úhradě</dt>
+                                {% if vm.remainingPaymentAmount is not null %}
+                                    <dd class="font-bold text-amber-700">{{ (vm.remainingPaymentAmount / 100)|number_format(0, ',', ' ') }} Kč</dd>
+                                {% else %}
+                                    <dd class="font-bold text-gray-900">{{ order.firstPaymentPriceInCzk|number_format(0, ',', ' ') }} Kč</dd>
+                                {% endif %}
                             </div>
                         </dl>
                         {% if vm.qrCodeDataUri %}

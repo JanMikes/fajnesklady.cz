@@ -7,6 +7,7 @@ namespace App\Controller\Public;
 use App\Command\CancelOrderCommand;
 use App\Enum\OrderStatus;
 use App\Enum\PaymentMethod;
+use App\Repository\BankTransactionRepository;
 use App\Repository\OrderRepository;
 use App\Service\GoPay\GoPayClient;
 use App\Service\OrderStatusUrlGenerator;
@@ -27,6 +28,7 @@ final class OrderPaymentController extends AbstractController
 {
     public function __construct(
         private readonly OrderRepository $orderRepository,
+        private readonly BankTransactionRepository $bankTransactionRepository,
         private readonly MessageBusInterface $commandBus,
         private readonly GoPayClient $goPayClient,
         private readonly PriceCalculator $priceCalculator,
@@ -110,6 +112,12 @@ final class OrderPaymentController extends AbstractController
 
         $isBankTransfer = PaymentMethod::BANK_TRANSFER === $order->paymentMethod;
 
+        $partiallyPaid = $this->bankTransactionRepository->sumReceivedByOrder($order);
+        $remainingAmount = $partiallyPaid > 0
+            ? max(0, $order->firstPaymentPrice - $partiallyPaid)
+            : null;
+        $effectivePaymentAmount = $remainingAmount ?? $order->firstPaymentPrice;
+
         return $this->render('public/order_payment.html.twig', [
             'order' => $order,
             'storage' => $storage,
@@ -120,8 +128,9 @@ final class OrderPaymentController extends AbstractController
             'isBankTransfer' => $isBankTransfer,
             'bankAccount' => $isBankTransfer ? $this->qrPaymentGenerator->getBankAccountFormatted() : null,
             'qrCodeDataUri' => $isBankTransfer && null !== $order->variableSymbol
-                ? $this->qrPaymentGenerator->generateDataUri($order->variableSymbol, $order->firstPaymentPrice)
+                ? $this->qrPaymentGenerator->generateDataUri($order->variableSymbol, $effectivePaymentAmount)
                 : null,
+            'remainingPaymentAmount' => $remainingAmount,
             'statusUrl' => $this->orderStatusUrlGenerator->generate($order),
         ]);
     }

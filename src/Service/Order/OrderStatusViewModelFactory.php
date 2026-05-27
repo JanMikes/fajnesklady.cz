@@ -215,11 +215,15 @@ final readonly class OrderStatusViewModelFactory
 
         $isBankTransfer = PaymentMethod::BANK_TRANSFER === $order->paymentMethod;
         $bankAccount = $isBankTransfer ? $this->qrPaymentGenerator->getBankAccountFormatted() : null;
-        $qrCodeDataUri = $isBankTransfer && null !== $order->variableSymbol
-            ? $this->qrPaymentGenerator->generateDataUri($order->variableSymbol, $order->firstPaymentPrice)
-            : null;
-
         $amountMismatchTransactions = $this->bankTransactionRepository->findAmountMismatchByOrder($order);
+
+        $partiallyPaid = $this->bankTransactionRepository->sumReceivedByOrder($order);
+        $remainingAmount = max(0, $order->firstPaymentPrice - $partiallyPaid);
+        $effectivePaymentAmount = $remainingAmount > 0 ? $remainingAmount : $order->firstPaymentPrice;
+
+        $qrCodeDataUri = $isBankTransfer && null !== $order->variableSymbol
+            ? $this->qrPaymentGenerator->generateDataUri($order->variableSymbol, $effectivePaymentAmount)
+            : null;
 
         return new OrderStatusViewModel(
             order: $order,
@@ -255,6 +259,7 @@ final readonly class OrderStatusViewModelFactory
             finePaymentUrls: $finePaymentUrls,
             bankAccount: $bankAccount,
             qrCodeDataUri: $qrCodeDataUri,
+            remainingPaymentAmount: $partiallyPaid > 0 ? $effectivePaymentAmount : null,
             amountMismatchTransactions: $amountMismatchTransactions,
         );
     }
