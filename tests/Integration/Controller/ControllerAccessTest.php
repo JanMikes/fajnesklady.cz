@@ -8,6 +8,7 @@ use App\Entity\Contract;
 use App\Entity\Invoice;
 use App\Entity\Order;
 use App\Entity\Place;
+use App\Entity\PlaceAccessRequest;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\StorageUnavailability;
@@ -72,6 +73,11 @@ class ControllerAccessTest extends WebTestCase
         yield 'verify_email_confirmation' => ['/verify-email/confirmation'];
         yield 'password_reset_request' => ['/reset-password/request'];
         yield 'health_check' => ['/-/health-check/liveness'];
+        yield 'privacy_policy' => ['/ochrana-osobnich-udaju'];
+        yield 'terms_and_conditions' => ['/obchodni-podminky'];
+        yield 'recurring_payments_terms' => ['/podminky-opakovanych-plateb'];
+        yield 'consumer_notice' => ['/pouceni-spotrebitele'];
+        yield 'landlord_register' => ['/registrace-pronajimatele'];
     }
 
     public function testPublicPagesAreAlsoAccessibleWhenLoggedIn(): void
@@ -490,6 +496,10 @@ class ControllerAccessTest extends WebTestCase
         yield 'admin_orders' => ['/portal/admin/orders'];
         yield 'admin_audit_log' => ['/portal/admin/audit-log'];
         yield 'admin_place_access_requests' => ['/portal/admin/place-access-requests'];
+        yield 'admin_bank_payments' => ['/portal/admin/bankovni-platby'];
+        yield 'admin_fine_list' => ['/portal/admin/pokuty'];
+        yield 'admin_settings' => ['/portal/admin/nastaveni'];
+        yield 'admin_onboarding' => ['/portal/admin/onboarding'];
     }
 
     #[DataProvider('adminPagesProvider')]
@@ -1334,6 +1344,395 @@ class ControllerAccessTest extends WebTestCase
     }
 
     // ===========================================
+    // ADMIN FINE CREATE - requires contractId
+    // ===========================================
+
+    public function testAdminFineCreateRequiresAuthentication(): void
+    {
+        $contract = $this->getFixtureContract();
+
+        $this->client->request('GET', '/portal/admin/pokuty/vytvorit/'.$contract->id->toRfc4122());
+
+        $this->assertResponseRedirects('/login');
+    }
+
+    public function testAdminFineCreateDeniedForLandlord(): void
+    {
+        $contract = $this->getFixtureContract();
+        $landlord = $this->getFixtureLandlord();
+        $this->login($landlord);
+
+        $this->client->request('GET', '/portal/admin/pokuty/vytvorit/'.$contract->id->toRfc4122());
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    public function testAdminFineCreateDeniedForUser(): void
+    {
+        $contract = $this->getFixtureContract();
+        $user = $this->getFixtureUser();
+        $this->login($user);
+
+        $this->client->request('GET', '/portal/admin/pokuty/vytvorit/'.$contract->id->toRfc4122());
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    public function testAdminFineCreateAccessibleByAdmin(): void
+    {
+        $contract = $this->getFixtureContract();
+        $admin = $this->getFixtureAdmin();
+        $this->login($admin);
+
+        $this->client->request('GET', '/portal/admin/pokuty/vytvorit/'.$contract->id->toRfc4122());
+
+        $this->assertResponseIsSuccessful();
+    }
+
+    // ===========================================
+    // ADMIN FINE EXPORT
+    // ===========================================
+
+    public function testAdminFineExportRequiresAuthentication(): void
+    {
+        $this->client->request('GET', '/portal/admin/pokuty/export');
+
+        $this->assertResponseRedirects('/login');
+    }
+
+    public function testAdminFineExportDeniedForLandlord(): void
+    {
+        $landlord = $this->getFixtureLandlord();
+        $this->login($landlord);
+
+        $this->client->request('GET', '/portal/admin/pokuty/export');
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    public function testAdminFineExportDeniedForUser(): void
+    {
+        $user = $this->getFixtureUser();
+        $this->login($user);
+
+        $this->client->request('GET', '/portal/admin/pokuty/export');
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    public function testAdminFineExportAccessibleByAdmin(): void
+    {
+        $admin = $this->getFixtureAdmin();
+        $this->login($admin);
+
+        $this->client->request('GET', '/portal/admin/pokuty/export');
+
+        $this->assertResponseIsSuccessful();
+    }
+
+    // ===========================================
+    // ADMIN FINE CANCEL - POST, requires fine id
+    // ===========================================
+
+    public function testAdminFineCancelRequiresAuthentication(): void
+    {
+        $this->client->request('POST', '/portal/admin/pokuty/'.Uuid::v7()->toRfc4122().'/zrusit');
+
+        $this->assertResponseRedirects('/login');
+    }
+
+    public function testAdminFineCancelDeniedForLandlord(): void
+    {
+        $landlord = $this->getFixtureLandlord();
+        $this->login($landlord);
+
+        $this->client->request('POST', '/portal/admin/pokuty/'.Uuid::v7()->toRfc4122().'/zrusit');
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    public function testAdminFineCancelDeniedForUser(): void
+    {
+        $user = $this->getFixtureUser();
+        $this->login($user);
+
+        $this->client->request('POST', '/portal/admin/pokuty/'.Uuid::v7()->toRfc4122().'/zrusit');
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    // ===========================================
+    // ADMIN ORDER CANCEL - POST, requires order id
+    // ===========================================
+
+    public function testAdminOrderCancelRequiresAuthentication(): void
+    {
+        $order = $this->getFixtureOrder();
+
+        $this->client->request('POST', '/portal/admin/orders/'.$order->id->toRfc4122().'/cancel');
+
+        $this->assertResponseRedirects('/login');
+    }
+
+    public function testAdminOrderCancelDeniedForLandlord(): void
+    {
+        $order = $this->getFixtureOrder();
+        $landlord = $this->getFixtureLandlord();
+        $this->login($landlord);
+
+        $this->client->request('POST', '/portal/admin/orders/'.$order->id->toRfc4122().'/cancel');
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    public function testAdminOrderCancelDeniedForUser(): void
+    {
+        $order = $this->getFixtureOrder();
+        $user = $this->getFixtureUser();
+        $this->login($user);
+
+        $this->client->request('POST', '/portal/admin/orders/'.$order->id->toRfc4122().'/cancel');
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    // ===========================================
+    // PLACE ACCESS REQUEST APPROVE/DENY - POST, admin only
+    // ===========================================
+
+    public function testPlaceAccessRequestApproveRequiresAuthentication(): void
+    {
+        $request = $this->getFixturePendingPlaceAccessRequest();
+
+        $this->client->request('POST', '/portal/admin/place-access-requests/'.$request->id->toRfc4122().'/approve');
+
+        $this->assertResponseRedirects('/login');
+    }
+
+    public function testPlaceAccessRequestApproveDeniedForLandlord(): void
+    {
+        $request = $this->getFixturePendingPlaceAccessRequest();
+        $landlord = $this->getFixtureLandlord();
+        $this->login($landlord);
+
+        $this->client->request('POST', '/portal/admin/place-access-requests/'.$request->id->toRfc4122().'/approve');
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    public function testPlaceAccessRequestApproveDeniedForUser(): void
+    {
+        $request = $this->getFixturePendingPlaceAccessRequest();
+        $user = $this->getFixtureUser();
+        $this->login($user);
+
+        $this->client->request('POST', '/portal/admin/place-access-requests/'.$request->id->toRfc4122().'/approve');
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    public function testPlaceAccessRequestDenyRequiresAuthentication(): void
+    {
+        $request = $this->getFixturePendingPlaceAccessRequest();
+
+        $this->client->request('POST', '/portal/admin/place-access-requests/'.$request->id->toRfc4122().'/deny');
+
+        $this->assertResponseRedirects('/login');
+    }
+
+    public function testPlaceAccessRequestDenyDeniedForLandlord(): void
+    {
+        $request = $this->getFixturePendingPlaceAccessRequest();
+        $landlord = $this->getFixtureLandlord();
+        $this->login($landlord);
+
+        $this->client->request('POST', '/portal/admin/place-access-requests/'.$request->id->toRfc4122().'/deny');
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    public function testPlaceAccessRequestDenyDeniedForUser(): void
+    {
+        $request = $this->getFixturePendingPlaceAccessRequest();
+        $user = $this->getFixtureUser();
+        $this->login($user);
+
+        $this->client->request('POST', '/portal/admin/place-access-requests/'.$request->id->toRfc4122().'/deny');
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    // ===========================================
+    // USER ACTIVATE/DEACTIVATE - POST, admin only
+    // ===========================================
+
+    public function testUserActivateRequiresAuthentication(): void
+    {
+        $target = $this->getFixtureUser();
+
+        $this->client->request('POST', '/portal/users/'.$target->id->toRfc4122().'/activate');
+
+        $this->assertResponseRedirects('/login');
+    }
+
+    public function testUserActivateDeniedForLandlord(): void
+    {
+        $target = $this->getFixtureUser();
+        $landlord = $this->getFixtureLandlord();
+        $this->login($landlord);
+
+        $this->client->request('POST', '/portal/users/'.$target->id->toRfc4122().'/activate');
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    public function testUserActivateDeniedForUser(): void
+    {
+        $target = $this->createUser('activate-target@example.com', UserRole::USER);
+        $user = $this->createUser('activate-user@example.com', UserRole::USER);
+        $this->login($user);
+
+        $this->client->request('POST', '/portal/users/'.$target->id->toRfc4122().'/activate');
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    public function testUserDeactivateRequiresAuthentication(): void
+    {
+        $target = $this->getFixtureUser();
+
+        $this->client->request('POST', '/portal/users/'.$target->id->toRfc4122().'/deactivate');
+
+        $this->assertResponseRedirects('/login');
+    }
+
+    public function testUserDeactivateDeniedForLandlord(): void
+    {
+        $target = $this->getFixtureUser();
+        $landlord = $this->getFixtureLandlord();
+        $this->login($landlord);
+
+        $this->client->request('POST', '/portal/users/'.$target->id->toRfc4122().'/deactivate');
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    public function testUserDeactivateDeniedForUser(): void
+    {
+        $target = $this->createUser('deactivate-target@example.com', UserRole::USER);
+        $user = $this->createUser('deactivate-user@example.com', UserRole::USER);
+        $this->login($user);
+
+        $this->client->request('POST', '/portal/users/'.$target->id->toRfc4122().'/deactivate');
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    // ===========================================
+    // LANDLORD SELF-BILLING PDF
+    // ===========================================
+
+    public function testSelfBillingPdfRequiresAuthentication(): void
+    {
+        $this->client->request('GET', '/portal/landlord/self-billing/'.Uuid::v7()->toRfc4122().'/pdf');
+
+        $this->assertResponseRedirects('/login');
+    }
+
+    public function testSelfBillingPdfDeniedForUser(): void
+    {
+        $user = $this->getFixtureUser();
+        $this->login($user);
+
+        $this->client->request('GET', '/portal/landlord/self-billing/'.Uuid::v7()->toRfc4122().'/pdf');
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    // ===========================================
+    // USER PORTAL - Browse places
+    // ===========================================
+
+    public function testBrowsePlacesRequiresAuthentication(): void
+    {
+        $this->client->request('GET', '/portal/pobocky');
+
+        $this->assertResponseRedirects('/login');
+    }
+
+    public function testBrowsePlacesAccessibleByUser(): void
+    {
+        $user = $this->getFixtureUser();
+        $this->login($user);
+
+        $this->client->request('GET', '/portal/pobocky');
+
+        $this->assertResponseIsSuccessful();
+    }
+
+    public function testBrowsePlacesAccessibleByLandlord(): void
+    {
+        $landlord = $this->getFixtureLandlord();
+        $this->login($landlord);
+
+        $this->client->request('GET', '/portal/pobocky');
+
+        $this->assertResponseIsSuccessful();
+    }
+
+    public function testBrowsePlacesAccessibleByAdmin(): void
+    {
+        $admin = $this->getFixtureAdmin();
+        $this->login($admin);
+
+        $this->client->request('GET', '/portal/pobocky');
+
+        $this->assertResponseIsSuccessful();
+    }
+
+    public function testBrowsePlaceDetailRequiresAuthentication(): void
+    {
+        $place = $this->getFixturePlace();
+
+        $this->client->request('GET', '/portal/pobocka/'.$place->id->toRfc4122());
+
+        $this->assertResponseRedirects('/login');
+    }
+
+    public function testBrowsePlaceDetailAccessibleByUser(): void
+    {
+        $place = $this->getFixturePlace();
+        $user = $this->getFixtureUser();
+        $this->login($user);
+
+        $this->client->request('GET', '/portal/pobocka/'.$place->id->toRfc4122());
+
+        $this->assertResponseIsSuccessful();
+    }
+
+    public function testBrowsePlaceDetailAccessibleByLandlord(): void
+    {
+        $place = $this->getFixturePlace();
+        $landlord = $this->getFixtureLandlord();
+        $this->login($landlord);
+
+        $this->client->request('GET', '/portal/pobocka/'.$place->id->toRfc4122());
+
+        $this->assertResponseIsSuccessful();
+    }
+
+    public function testBrowsePlaceDetailAccessibleByAdmin(): void
+    {
+        $place = $this->getFixturePlace();
+        $admin = $this->getFixtureAdmin();
+        $this->login($admin);
+
+        $this->client->request('GET', '/portal/pobocka/'.$place->id->toRfc4122());
+
+        $this->assertResponseIsSuccessful();
+    }
+
+    // ===========================================
     // HELPER METHODS
     // ===========================================
 
@@ -1408,6 +1807,21 @@ class ControllerAccessTest extends WebTestCase
         \assert($unavailability instanceof StorageUnavailability, 'StorageUnavailability not found in fixtures');
 
         return $unavailability;
+    }
+
+    private function getFixturePendingPlaceAccessRequest(): PlaceAccessRequest
+    {
+        $request = $this->entityManager->createQueryBuilder()
+            ->select('r')
+            ->from(PlaceAccessRequest::class, 'r')
+            ->where('r.status = :status')
+            ->setParameter('status', 'pending')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+        \assert($request instanceof PlaceAccessRequest, 'Pending PlaceAccessRequest not found in fixtures');
+
+        return $request;
     }
 
     private function getFixtureContract(): Contract
