@@ -1,6 +1,6 @@
 # 056 — Order email history and manual send actions on admin order detail
 
-**Status:** in-progress
+**Status:** done
 **Type:** feature
 **Scope:** medium (~8 new files, ~6 modified)
 **Depends on:** none
