@@ -19,7 +19,6 @@ use App\Repository\StorageRepository;
 use App\Repository\StorageTypeRepository;
 use App\Service\Messenger\HandlerFailureUnwrap;
 use App\Service\PriceCalculator;
-use App\Service\StorageAvailabilityChecker;
 use App\Value\PaymentSchedule;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -55,7 +54,6 @@ final class AdminOnboardingForm extends AbstractController
         private readonly PlaceRepository $placeRepository,
         private readonly StorageTypeRepository $storageTypeRepository,
         private readonly StorageRepository $storageRepository,
-        private readonly StorageAvailabilityChecker $availabilityChecker,
         private readonly PriceCalculator $priceCalculator,
         private readonly MessageBusInterface $commandBus,
         private readonly UrlGeneratorInterface $urlGenerator,
@@ -146,18 +144,10 @@ final class AdminOnboardingForm extends AbstractController
             return '[]';
         }
 
-        $data = $this->getForm()->getData();
-        $startDate = $data instanceof AdminOnboardingFormData ? $data->startDate : null;
-        $endDate = $data instanceof AdminOnboardingFormData ? $data->endDate : null;
-
-        $storages = $this->storageRepository->findByStorageType($storageType);
+        $storages = $this->storageRepository->findByPlace($place);
         $payload = [];
 
         foreach ($storages as $storage) {
-            $available = null !== $startDate
-                ? $this->availabilityChecker->isAvailable($storage, $startDate, $endDate)
-                : $storage->isAvailable();
-
             $payload[] = [
                 'id' => $storage->id->toRfc4122(),
                 'number' => $storage->number,
@@ -165,7 +155,7 @@ final class AdminOnboardingForm extends AbstractController
                 'storageTypeName' => $storage->storageType->name,
                 'dimensions' => $storage->storageType->getDimensionsInMeters(),
                 'coordinates' => $storage->coordinates,
-                'status' => $available ? 'available' : 'occupied',
+                'status' => $storage->status->value,
                 'lockCode' => $storage->lockCode,
                 'tenantName' => null,
                 'rentedFrom' => null,
@@ -179,6 +169,7 @@ final class AdminOnboardingForm extends AbstractController
                 'pricePerMonth' => $storage->getEffectivePricePerMonthInCzk(),
                 'pricePerMonthLongTerm' => $storage->getEffectivePricePerMonthLongTermInCzk(),
                 'pricePerWeek' => $storage->getEffectivePricePerWeekInCzk(),
+                'isUniform' => $storage->storageType->uniformStorages,
             ];
         }
 
@@ -225,18 +216,6 @@ final class AdminOnboardingForm extends AbstractController
 
         $storageType = $this->getSelectedStorageType();
         if (null === $storageType || !$candidate->storageType->id->equals($storageType->id)) {
-            return;
-        }
-
-        $data = $this->getForm()->getData();
-        $startDate = $data instanceof AdminOnboardingFormData ? $data->startDate : null;
-        $endDate = $data instanceof AdminOnboardingFormData ? $data->endDate : null;
-
-        $available = null !== $startDate
-            ? $this->availabilityChecker->isAvailable($candidate, $startDate, $endDate)
-            : $candidate->isAvailable();
-
-        if (!$available) {
             return;
         }
 
