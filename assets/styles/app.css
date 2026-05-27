@@ -461,7 +461,8 @@ label:has(~ input[required], ~ select[required], ~ textarea[required])::after {
 
 /* Place wizard modal */
 .wizard-modal {
-    @apply fixed inset-0 z-50 flex items-center justify-center p-4;
+    @apply fixed inset-0 z-50 items-center justify-center p-4;
+    display: none;
 }
 
 .wizard-modal__backdrop {

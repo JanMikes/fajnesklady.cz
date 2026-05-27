@@ -32,13 +32,13 @@ export default class extends Controller {
         this.showAllPlaces = false;
 
         this.render();
-        this.modalTarget.classList.remove('hidden');
+        this.modalTarget.style.display = 'flex';
         document.body.style.overflow = 'hidden';
         this.addEscapeListener();
     }
 
     close() {
-        this.modalTarget.classList.add('hidden');
+        this.modalTarget.style.display = '';
         document.body.style.overflow = '';
         this.removeEscapeListener();
     }
