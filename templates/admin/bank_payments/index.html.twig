@@ -65,7 +65,7 @@
                     </td>
                     <td class="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
                         {% if tx.pairedOrder %}
-                            <a href="{{ path('admin_orders_detail', {id: tx.pairedOrder.id}) }}" class="text-indigo-600 hover:text-indigo-900">
+                            <a href="{{ path('admin_order_detail', {id: tx.pairedOrder.id}) }}" class="text-indigo-600 hover:text-indigo-900">
                                 {{ tx.pairedOrder.id|slice(0, 8)|upper }}
                             </a>
                         {% else %}
