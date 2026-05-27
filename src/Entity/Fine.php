@@ -18,7 +18,7 @@ class Fine implements EntityWithEvents
     use HasEvents;
 
     #[ORM\Column(length: 10, unique: true, nullable: true)]
-    private(set) ?string $variableSymbol = null;
+    public private(set) ?string $variableSymbol = null;
 
     #[ORM\Column(nullable: true)]
     public private(set) ?string $goPayPaymentId = null;

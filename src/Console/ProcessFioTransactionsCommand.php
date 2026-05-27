@@ -99,7 +99,7 @@ final class ProcessFioTransactionsCommand extends Command
             // Console command — no messenger middleware
             $this->entityManager->flush();
 
-            $io->error('FIO API call failed: ' . $e->getMessage());
+            $io->error('FIO API call failed: '.$e->getMessage());
 
             return Command::FAILURE;
         }

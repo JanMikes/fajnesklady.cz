@@ -12,12 +12,12 @@ use App\Enum\PaymentMethod;
 use App\Enum\RentalType;
 use App\Enum\SigningMethod;
 use App\Event\OrderCancelled;
-use App\Service\PriceCalculator;
 use App\Event\OrderCompleted;
 use App\Event\OrderCreated;
 use App\Event\OrderExpired;
 use App\Event\OrderPaid;
 use App\Event\OrderPlaced;
+use App\Service\PriceCalculator;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Types\UuidType;
@@ -336,7 +336,7 @@ class Order implements EntityWithEvents
     /**
      * Whether this order is billed on a monthly recurring cadence.
      *
-     * Mirrors {@see \App\Service\PriceCalculator::needsRecurringBilling()}.
+     * Mirrors {@see PriceCalculator::needsRecurringBilling()}.
      * Three pricing modes total: isOneTime() | isFixedTermRecurring() | isUnlimited().
      *
      * The 28-day threshold is duplicated rather than imported from
