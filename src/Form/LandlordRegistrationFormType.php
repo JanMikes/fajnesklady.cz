@@ -148,6 +148,7 @@ final class LandlordRegistrationFormType extends AbstractType
     {
         $resolver->setDefaults([
             'data_class' => LandlordRegistrationFormData::class,
+            'csrf_protection' => false,
         ]);
     }
 }

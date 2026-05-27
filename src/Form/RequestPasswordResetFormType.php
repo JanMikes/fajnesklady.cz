@@ -29,6 +29,7 @@ final class RequestPasswordResetFormType extends AbstractType
     {
         $resolver->setDefaults([
             'data_class' => RequestPasswordResetFormData::class,
+            'csrf_protection' => false,
         ]);
     }
 }

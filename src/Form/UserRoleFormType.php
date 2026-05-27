@@ -30,6 +30,7 @@ final class UserRoleFormType extends AbstractType
     {
         $resolver->setDefaults([
             'data_class' => UserRoleFormData::class,
+            'csrf_protection' => false,
         ]);
     }
 }

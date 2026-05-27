@@ -55,6 +55,7 @@ class PlaceProposeFormType extends AbstractType
     {
         $resolver->setDefaults([
             'data_class' => PlaceProposeFormData::class,
+            'csrf_protection' => false,
         ]);
     }
 }

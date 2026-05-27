@@ -29,6 +29,7 @@ final class PlatformSettingsFormType extends AbstractType
     {
         $resolver->setDefaults([
             'data_class' => PlatformSettingsFormData::class,
+            'csrf_protection' => false,
         ]);
     }
 }

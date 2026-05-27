@@ -79,6 +79,7 @@ final class BillingInfoFormType extends AbstractType
     {
         $resolver->setDefaults([
             'data_class' => BillingInfoFormData::class,
+            'csrf_protection' => false,
         ]);
     }
 }

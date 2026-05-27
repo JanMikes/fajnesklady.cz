@@ -205,6 +205,7 @@ final class AdminOnboardingFormType extends AbstractType
     {
         $resolver->setDefaults([
             'data_class' => AdminOnboardingFormData::class,
+            'csrf_protection' => false,
         ]);
     }
 }

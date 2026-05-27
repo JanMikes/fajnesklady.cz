@@ -178,6 +178,7 @@ class StorageFormType extends AbstractType
     {
         $resolver->setDefaults([
             'data_class' => StorageFormData::class,
+            'csrf_protection' => false,
             'storage_type' => null,
             'is_edit' => false,
             'place' => null,

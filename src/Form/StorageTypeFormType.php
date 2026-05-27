@@ -149,6 +149,7 @@ class StorageTypeFormType extends AbstractType
     {
         $resolver->setDefaults([
             'data_class' => StorageTypeFormData::class,
+            'csrf_protection' => false,
         ]);
     }
 }

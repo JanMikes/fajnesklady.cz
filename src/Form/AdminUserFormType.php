@@ -149,6 +149,7 @@ final class AdminUserFormType extends AbstractType
     {
         $resolver->setDefaults([
             'data_class' => AdminUserFormData::class,
+            'csrf_protection' => false,
         ]);
     }
 }

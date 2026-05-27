@@ -247,6 +247,7 @@ final class OrderFormType extends AbstractType
     {
         $resolver->setDefaults([
             'data_class' => OrderFormData::class,
+            'csrf_protection' => false,
         ]);
     }
 }

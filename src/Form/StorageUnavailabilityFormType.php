@@ -70,6 +70,7 @@ class StorageUnavailabilityFormType extends AbstractType
     {
         $resolver->setDefaults([
             'data_class' => StorageUnavailabilityFormData::class,
+            'csrf_protection' => false,
         ]);
     }
 

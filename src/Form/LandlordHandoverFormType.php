@@ -39,6 +39,7 @@ final class LandlordHandoverFormType extends AbstractType
     {
         $resolver->setDefaults([
             'data_class' => LandlordHandoverFormData::class,
+            'csrf_protection' => false,
         ]);
     }
 }

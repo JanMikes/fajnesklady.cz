@@ -50,6 +50,7 @@ final class PlaceStorageCodeConfigFormType extends AbstractType
     {
         $resolver->setDefaults([
             'data_class' => PlaceStorageCodeConfigFormData::class,
+            'csrf_protection' => false,
         ]);
     }
 }

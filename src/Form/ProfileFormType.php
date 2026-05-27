@@ -62,6 +62,7 @@ final class ProfileFormType extends AbstractType
     {
         $resolver->setDefaults([
             'data_class' => ProfileFormData::class,
+            'csrf_protection' => false,
         ]);
     }
 }

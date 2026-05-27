@@ -163,6 +163,7 @@ class PlaceFormType extends AbstractType
     {
         $resolver->setDefaults([
             'data_class' => PlaceFormData::class,
+            'csrf_protection' => false,
             'is_admin' => false,
         ]);
         $resolver->setAllowedTypes('is_admin', 'bool');

@@ -150,6 +150,7 @@ class RegistrationFormType extends AbstractType
     {
         $resolver->setDefaults([
             'data_class' => RegistrationFormData::class,
+            'csrf_protection' => false,
             'validation_groups' => static function (FormInterface $form): array {
                 /** @var RegistrationFormData $data */
                 $data = $form->getData();
