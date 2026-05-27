@@ -609,6 +609,20 @@ class OrderRepository
     }
 
     /**
+     * @return Order[]
+     */
+    public function findRecent(int $limit): array
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('o')
+            ->from(Order::class, 'o')
+            ->orderBy('o.createdAt', 'DESC')
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
      * Recent orders at a place, scoped to an optional owner.
      *
      * @return Order[]

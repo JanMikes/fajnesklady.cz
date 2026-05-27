@@ -33,7 +33,7 @@ final class UserListController extends AbstractController
         $limit = 20;
         $filterParam = $request->query->get('filter');
         $filter = match ($filterParam) {
-            'overdue', 'onboarded', 'active', 'inactive' => $filterParam,
+            'overdue', 'onboarded', 'active', 'inactive', 'unverified' => $filterParam,
             default => null,
         };
         $now = $this->clock->now();
@@ -64,6 +64,11 @@ final class UserListController extends AbstractController
                 $totalUsers = $this->userRepository->countWithoutActiveContracts($now, $activeUserIds);
 
                 break;
+            case 'unverified':
+                $users = $this->userRepository->findUnverifiedPaginated($page, $limit);
+                $totalUsers = $this->userRepository->countUnverified();
+
+                break;
             default:
                 $users = $this->userRepository->findAllPaginated($page, $limit);
                 $totalUsers = $this->userRepository->countTotal();
@@ -74,6 +79,7 @@ final class UserListController extends AbstractController
         $onboardedUserCount = $this->userRepository->countOnboarded();
         $activeUserCount = $this->userRepository->countWithActiveContracts($now, $activeUserIds);
         $inactiveUserCount = $this->userRepository->countWithoutActiveContracts($now, $activeUserIds);
+        $unverifiedUserCount = $this->userRepository->countUnverified();
 
         $pageUserIds = array_map(static fn (User $u) => $u->id, $users);
         $debtorIdSet = array_flip($this->overdueChecker->filterOverdueUserIds($now, $pageUserIds));
@@ -90,6 +96,7 @@ final class UserListController extends AbstractController
             'onboardedUserCount' => $onboardedUserCount,
             'activeUserCount' => $activeUserCount,
             'inactiveUserCount' => $inactiveUserCount,
+            'unverifiedUserCount' => $unverifiedUserCount,
             'debtorIdSet' => $debtorIdSet,
             'onboardedIdSet' => $onboardedIdSet,
             'customerStats' => $customerStats,

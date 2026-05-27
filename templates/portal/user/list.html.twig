@@ -24,6 +24,9 @@
         <a href="{{ path('portal_users_list', {filter: 'inactive'}) }}" class="btn btn-sm {{ filter == 'inactive' ? 'btn-warning' : 'btn-ghost' }}">
             Bez aktivních smluv ({{ inactiveUserCount }})
         </a>
+        <a href="{{ path('portal_users_list', {filter: 'unverified'}) }}" class="btn btn-sm {{ filter == 'unverified' ? 'btn-accent' : 'btn-ghost' }}">
+            Neověření ({{ unverifiedUserCount }})
+        </a>
     </div>
 
     <div class="card">

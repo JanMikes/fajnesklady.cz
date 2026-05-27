@@ -32,9 +32,11 @@ final class DashboardController extends AbstractController
     {
         if ($this->isGranted('ROLE_ADMIN')) {
             $stats = $this->queryBus->handle(new GetDashboardStats());
+            $recentOrders = $this->orderRepository->findRecent(5);
 
             return $this->render('portal/dashboard_admin.html.twig', [
                 'stats' => $stats,
+                'recentOrders' => $recentOrders,
             ]);
         }
 

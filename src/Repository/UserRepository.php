@@ -318,6 +318,33 @@ class UserRepository
             ->getSingleScalarResult();
     }
 
+    public function countUnverified(): int
+    {
+        return (int) $this->entityManager->createQueryBuilder()
+            ->select('COUNT(u.id)')
+            ->from(User::class, 'u')
+            ->where('u.isVerified = false')
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    /**
+     * @return User[]
+     */
+    public function findUnverifiedPaginated(int $page, int $limit): array
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('u')
+            ->from(User::class, 'u')
+            ->where('u.isVerified = false')
+            ->orderBy('u.createdAt', 'DESC')
+            ->addOrderBy('u.id', 'DESC')
+            ->setFirstResult(($page - 1) * $limit)
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+    }
+
     /**
      * Streamed iteration for export. Mirrors {@see self::findAllPaginated()},
      * {@see self::findOverduePaginated()}, {@see self::findOnboardedPaginated()},
@@ -385,6 +412,10 @@ class UserRepository
             case 'inactive':
                 $qb->where('u.id NOT IN (:ids)')
                     ->setParameter('ids', $this->contractRepository->findActiveContractUserIdsSubquery($now));
+
+                break;
+            case 'unverified':
+                $qb->where('u.isVerified = false');
 
                 break;
         }
