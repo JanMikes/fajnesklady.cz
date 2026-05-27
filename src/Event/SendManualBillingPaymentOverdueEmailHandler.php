@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Event;
 
+use App\Enum\PaymentMethod;
 use App\Repository\ContractRepository;
 use App\Repository\ManualPaymentRequestRepository;
 use App\Service\Billing\ManualBillingReminderSchedule;
 use App\Service\OrderStatusUrlGenerator;
+use App\Service\Payment\QrPaymentGenerator;
 use Psr\Log\LoggerInterface;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\Mailer\MailerInterface;
@@ -28,6 +30,7 @@ final readonly class SendManualBillingPaymentOverdueEmailHandler
         private OrderStatusUrlGenerator $statusUrlGenerator,
         private MailerInterface $mailer,
         private LoggerInterface $logger,
+        private QrPaymentGenerator $qrPaymentGenerator,
     ) {
     }
 
@@ -63,6 +66,8 @@ final readonly class SendManualBillingPaymentOverdueEmailHandler
         }
 
         $statusUrl = $this->statusUrlGenerator->generate($contract->order);
+        $order = $contract->order;
+        $isBankTransfer = PaymentMethod::BANK_TRANSFER === $order->paymentMethod;
 
         $email = (new TemplatedEmail())
             ->from(new Address('noreply@fajnesklady.cz', 'Fajnesklady.cz'))
@@ -77,8 +82,14 @@ final readonly class SendManualBillingPaymentOverdueEmailHandler
                 'amountInCzk' => number_format($request->amount / 100, 2, ',', ' '),
                 'periodStart' => $request->periodStart,
                 'periodEnd' => $request->periodEnd,
-                'gatewayUrl' => $request->goPayGatewayUrl,
+                'gatewayUrl' => $isBankTransfer ? null : $request->goPayGatewayUrl,
                 'statusUrl' => $statusUrl,
+                'isBankTransfer' => $isBankTransfer,
+                'bankAccount' => $isBankTransfer ? $this->qrPaymentGenerator->getBankAccountFormatted() : null,
+                'variableSymbol' => $isBankTransfer ? $order->variableSymbol : null,
+                'qrCodeDataUri' => $isBankTransfer && null !== $order->variableSymbol
+                    ? $this->qrPaymentGenerator->generateDataUri($order->variableSymbol, $request->amount)
+                    : null,
             ]);
 
         $email->getHeaders()->addTextHeader('X-Order-Id', $contract->order->id->toRfc4122());
