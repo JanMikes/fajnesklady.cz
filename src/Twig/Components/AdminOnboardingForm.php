@@ -13,6 +13,7 @@ use App\Entity\User;
 use App\Enum\PaymentFrequency;
 use App\Form\AdminOnboardingFormData;
 use App\Form\AdminOnboardingFormType;
+use App\Repository\PlatformSettingsRepository;
 use App\Repository\PlaceRepository;
 use App\Repository\StorageRepository;
 use App\Repository\StorageTypeRepository;
@@ -59,7 +60,13 @@ final class AdminOnboardingForm extends AbstractController
         private readonly MessageBusInterface $commandBus,
         private readonly UrlGeneratorInterface $urlGenerator,
         private readonly LoggerInterface $logger,
+        private readonly PlatformSettingsRepository $platformSettingsRepository,
     ) {
+    }
+
+    public function getBankTransferSurchargeInCzk(): float
+    {
+        return $this->platformSettingsRepository->getSettings()->getBankTransferSurchargeInCzk();
     }
 
     /**

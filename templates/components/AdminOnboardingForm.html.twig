@@ -7,6 +7,7 @@
 {% set isYearly = paymentFrequency is not null and paymentFrequency.value == 'yearly' %}
 {% set monthlyPriceMode = formData.monthlyPriceMode %}
 {% set isExternallyPrepaid = formData.isExternallyPrepaid ?? false %}
+{% set isBankTransfer = paymentMethod is not null and paymentMethod.value == 'bank_transfer' %}
 
 <div {{ attributes.defaults({
     'data-controller': 'admin-onboarding-bridge',
@@ -265,7 +266,12 @@
                 <h2 class="text-lg font-bold text-gray-900 mb-4">Platební metoda</h2>
                 {{ form_row(form.paymentMethod) }}
 
-                {% if paymentMethod is not null and paymentMethod.value == 'bank_transfer' %}
+                {% if isBankTransfer %}
+                    <div class="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                        <p class="text-sm text-amber-800">
+                            Při platbě bankovním převodem je účtován příplatek {{ this.getBankTransferSurchargeInCzk()|number_format(0, ',', ' ') }} Kč za každé fakturační období.
+                        </p>
+                    </div>
                     {{ form_row(form.variableSymbol) }}
                 {% else %}
                     {% do form.variableSymbol.setRendered %}
@@ -279,13 +285,22 @@
                 <h2 class="text-lg font-bold text-gray-900 mb-4">Frekvence a způsob plateb</h2>
                 {{ form_row(form.paymentFrequency) }}
 
-                {% if isYearly %}
-                    <div class="mt-3 bg-blue-50 border border-blue-200 rounded-lg p-4">
-                        <p class="text-sm text-blue-900">
-                            <strong>Roční platba se vždy odbavuje ručně.</strong>
-                            Kartu si neukládáme — další platbu obdržíte e-mailem před vypršením roku.
-                        </p>
-                    </div>
+                {% if isYearly or isBankTransfer %}
+                    {% if isYearly %}
+                        <div class="mt-3 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <p class="text-sm text-blue-900">
+                                <strong>Roční platba se vždy odbavuje ručně.</strong>
+                                Kartu si neukládáme — další platbu obdržíte e-mailem před vypršením roku.
+                            </p>
+                        </div>
+                    {% endif %}
+                    {% if isBankTransfer and not isYearly %}
+                        <div class="mt-3 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <p class="text-sm text-blue-900">
+                                Bankovní převod — zákazník obdrží fakturu e-mailem, platba je vždy ruční.
+                            </p>
+                        </div>
+                    {% endif %}
                     {% do form.billingMode.setRendered %}
                 {% else %}
                     {{ form_row(form.billingMode) }}
