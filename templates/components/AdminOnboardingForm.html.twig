@@ -16,6 +16,11 @@
     {{ form_start(form, {attr: {novalidate: 'novalidate', 'data-turbo': 'false'}}) }}
 
     <div class="space-y-8 max-w-4xl">
+        {% if this.submitError %}
+            <div class="rounded-lg border border-red-300 bg-red-50 p-4 text-sm text-red-800">
+                {{ this.submitError }}
+            </div>
+        {% endif %}
         {# 1. Kontaktní údaje zákazníka #}
         <div class="card">
             <div class="card-body">

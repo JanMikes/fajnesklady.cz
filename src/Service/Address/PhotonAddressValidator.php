@@ -135,7 +135,7 @@ final readonly class PhotonAddressValidator implements AddressValidator
             'query' => [
                 'q' => $query,
                 'limit' => $limit,
-                'lang' => 'cs',
+                'lang' => 'default',
             ],
             'timeout' => self::REQUEST_TIMEOUT_SECONDS,
             'headers' => [

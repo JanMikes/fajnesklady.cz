@@ -50,6 +50,9 @@ final class AdminOnboardingForm extends AbstractController
     #[LiveProp(writable: true)]
     public ?string $storageId = null;
 
+    #[LiveProp]
+    public ?string $submitError = null;
+
     public function __construct(
         private readonly PlaceRepository $placeRepository,
         private readonly StorageTypeRepository $storageTypeRepository,
@@ -246,8 +249,9 @@ final class AdminOnboardingForm extends AbstractController
     }
 
     #[LiveAction]
-    public function submit(): RedirectResponse
+    public function submit(): RedirectResponse|null
     {
+        $this->submitError = null;
         $this->submitForm();
 
         /** @var AdminOnboardingFormData $formData */
@@ -260,17 +264,17 @@ final class AdminOnboardingForm extends AbstractController
 
         $storage = $this->getSelectedStorage();
         if (null === $storage) {
-            $this->addFlash('error', 'Vyberte skladovou jednotku z mapy.');
+            $this->submitError = 'Vyberte skladovou jednotku z mapy.';
 
-            return new RedirectResponse($this->urlGenerator->generate('admin_onboarding'));
+            return null;
         }
 
         $storageType = $this->getSelectedStorageType();
         $place = $this->getSelectedPlace();
         if (null === $storageType || null === $place) {
-            $this->addFlash('error', 'Vyberte pobočku a typ skladové jednotky.');
+            $this->submitError = 'Vyberte pobočku a typ skladové jednotky.';
 
-            return new RedirectResponse($this->urlGenerator->generate('admin_onboarding'));
+            return null;
         }
 
         $individualMonthlyAmount = match ($formData->monthlyPriceMode) {
@@ -348,13 +352,13 @@ final class AdminOnboardingForm extends AbstractController
             $exception = HandlerFailureUnwrap::unwrap($rawException);
 
             if ($exception instanceof \DomainException) {
-                $this->addFlash('error', 'Při vytváření onboardingu došlo k chybě: '.$exception->getMessage());
+                $this->submitError = 'Při vytváření onboardingu došlo k chybě: '.$exception->getMessage();
             } else {
                 $this->logger->error('Admin onboarding creation failed', ['exception' => $exception]);
-                $this->addFlash('error', 'Při vytváření onboardingu došlo k chybě. Zkuste to prosím znovu.');
+                $this->submitError = 'Při vytváření onboardingu došlo k chybě. Zkuste to prosím znovu.';
             }
 
-            return new RedirectResponse($this->urlGenerator->generate('admin_onboarding'));
+            return null;
         }
 
         return new RedirectResponse($this->urlGenerator->generate('admin_orders_list'));
