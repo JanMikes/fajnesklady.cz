@@ -20,6 +20,7 @@ final class TenantHandoverFormType extends AbstractType
         $builder
             ->add('comment', TextareaType::class, [
                 'label' => 'Komentář',
+                'empty_data' => '',
                 'attr' => [
                     'rows' => 5,
                     'placeholder' => 'Popište stav skladu při předání...',

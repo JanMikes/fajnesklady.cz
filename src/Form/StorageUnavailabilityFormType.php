@@ -57,6 +57,7 @@ class StorageUnavailabilityFormType extends AbstractType
 
         $builder->add('reason', TextareaType::class, [
             'label' => 'Důvod blokování',
+            'empty_data' => '',
             'attr' => [
 
                 'rows' => 3,

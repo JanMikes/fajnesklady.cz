@@ -19,6 +19,7 @@ final class ChangePasswordFormType extends AbstractType
     {
         $builder->add('currentPassword', PasswordType::class, [
             'label' => 'Aktuální heslo',
+            'empty_data' => '',
             'attr' => [
                 'placeholder' => 'Zadejte aktuální heslo',
 

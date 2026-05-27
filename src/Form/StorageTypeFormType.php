@@ -23,6 +23,7 @@ class StorageTypeFormType extends AbstractType
     {
         $builder->add('name', TextType::class, [
             'label' => 'Název',
+            'empty_data' => '',
             'attr' => [
                 'placeholder' => 'Název typu skladu',
             ],

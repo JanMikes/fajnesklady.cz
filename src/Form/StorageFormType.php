@@ -36,6 +36,7 @@ class StorageFormType extends AbstractType
     {
         $builder->add('number', TextType::class, [
             'label' => 'Číslo skladu',
+            'empty_data' => '',
             'attr' => [
                 'placeholder' => 'např. A1, B12',
             ],

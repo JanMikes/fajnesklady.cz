@@ -18,6 +18,7 @@ final class RequestPasswordResetFormType extends AbstractType
     {
         $builder->add('email', EmailType::class, [
             'label' => 'E-mailová adresa',
+            'empty_data' => '',
             'attr' => [
                 'placeholder' => 'Zadejte vaši e-mailovou adresu',
             ],

@@ -32,14 +32,17 @@ final class AdminOnboardingFormType extends AbstractType
         $builder
             ->add('email', EmailType::class, [
                 'label' => 'E-mail',
+                'empty_data' => '',
                 'attr' => ['placeholder' => 'zakaznik@example.com'],
             ])
             ->add('firstName', TextType::class, [
                 'label' => 'Jméno',
+                'empty_data' => '',
                 'attr' => ['placeholder' => 'Jan'],
             ])
             ->add('lastName', TextType::class, [
                 'label' => 'Příjmení',
+                'empty_data' => '',
                 'attr' => ['placeholder' => 'Novák'],
             ])
             ->add('phone', TelType::class, [

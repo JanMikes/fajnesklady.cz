@@ -19,6 +19,7 @@ final class ProfileFormType extends AbstractType
     {
         $builder->add('firstName', TextType::class, [
             'label' => 'Jméno',
+            'empty_data' => '',
             'attr' => [
                 'placeholder' => 'Jan',
             ],
@@ -26,6 +27,7 @@ final class ProfileFormType extends AbstractType
 
         $builder->add('lastName', TextType::class, [
             'label' => 'Příjmení',
+            'empty_data' => '',
             'attr' => [
                 'placeholder' => 'Novák',
             ],

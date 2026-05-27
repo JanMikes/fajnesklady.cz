@@ -59,6 +59,7 @@ final class FineFormType extends AbstractType
             ])
             ->add('description', TextareaType::class, [
                 'label' => 'Popis / poznámka (vidí zákazník)',
+                'empty_data' => '',
                 'attr' => [
                     'rows' => 4,
                     'placeholder' => 'Důvod vystavení pokuty...',

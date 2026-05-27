@@ -30,6 +30,7 @@ final class LandlordRegistrationFormType extends AbstractType
         $builder
             ->add('email', EmailType::class, [
                 'label' => 'E-mail',
+                'empty_data' => '',
                 'attr' => [
                     'placeholder' => 'vas@email.cz',
                     'autocomplete' => 'email',
@@ -37,6 +38,7 @@ final class LandlordRegistrationFormType extends AbstractType
             ])
             ->add('firstName', TextType::class, [
                 'label' => 'Jméno',
+                'empty_data' => '',
                 'attr' => [
                     'placeholder' => 'Jan',
                     'autocomplete' => 'given-name',
@@ -44,6 +46,7 @@ final class LandlordRegistrationFormType extends AbstractType
             ])
             ->add('lastName', TextType::class, [
                 'label' => 'Příjmení',
+                'empty_data' => '',
                 'attr' => [
                     'placeholder' => 'Novák',
                     'autocomplete' => 'family-name',
@@ -77,6 +80,7 @@ final class LandlordRegistrationFormType extends AbstractType
             ])
             ->add('companyId', TextType::class, [
                 'label' => 'IČO',
+                'empty_data' => '',
                 'attr' => [
                     'placeholder' => '12345678',
                     'maxlength' => 8,
@@ -84,6 +88,7 @@ final class LandlordRegistrationFormType extends AbstractType
             ])
             ->add('companyName', TextType::class, [
                 'label' => 'Název firmy',
+                'empty_data' => '',
                 'attr' => [
                     'placeholder' => 'Firma s.r.o.',
                 ],
@@ -120,12 +125,14 @@ final class LandlordRegistrationFormType extends AbstractType
             ])
             ->add('bankAccountNumber', TextType::class, [
                 'label' => 'Číslo účtu',
+                'empty_data' => '',
                 'attr' => [
                     'placeholder' => '123456-1234567890',
                 ],
             ])
             ->add('bankCode', TextType::class, [
                 'label' => 'Kód banky',
+                'empty_data' => '',
                 'attr' => [
                     'placeholder' => '0100',
                     'maxlength' => 4,

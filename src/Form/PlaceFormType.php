@@ -30,6 +30,7 @@ class PlaceFormType extends AbstractType
 
         $builder->add('name', TextType::class, [
             'label' => 'Název',
+            'empty_data' => '',
             'attr' => [
                 'placeholder' => 'Název místa',
             ],
@@ -50,6 +51,7 @@ class PlaceFormType extends AbstractType
 
         $builder->add('city', TextType::class, [
             'label' => 'Město',
+            'empty_data' => '',
             'attr' => [
                 'placeholder' => 'Praha',
             ],
@@ -57,6 +59,7 @@ class PlaceFormType extends AbstractType
 
         $builder->add('postalCode', TextType::class, [
             'label' => 'PSČ',
+            'empty_data' => '',
             'attr' => [
                 'placeholder' => '110 00',
             ],

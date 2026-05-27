@@ -30,6 +30,7 @@ class RegistrationFormType extends AbstractType
     {
         $builder->add('email', EmailType::class, [
             'label' => 'E-mailová adresa',
+            'empty_data' => '',
             'attr' => [
                 'placeholder' => 'vas@email.cz',
             ],
@@ -37,6 +38,7 @@ class RegistrationFormType extends AbstractType
 
         $builder->add('firstName', TextType::class, [
             'label' => 'Jméno',
+            'empty_data' => '',
             'attr' => [
                 'placeholder' => 'Jan',
             ],
@@ -44,6 +46,7 @@ class RegistrationFormType extends AbstractType
 
         $builder->add('lastName', TextType::class, [
             'label' => 'Příjmení',
+            'empty_data' => '',
             'attr' => [
                 'placeholder' => 'Novák',
             ],
