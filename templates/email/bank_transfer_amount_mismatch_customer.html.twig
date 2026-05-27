@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neshoda částky platby — Fajnesklady.cz</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #d97706; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
+        .header h1 { margin: 0; font-size: 20px; }
+        .content { background-color: #f9f9f9; padding: 24px; border: 1px solid #ddd; border-top: none; }
+        .info { background-color: #fff; border: 1px solid #ddd; border-radius: 5px; padding: 14px 18px; margin: 16px 0; }
+        .info table { width: 100%; border-collapse: collapse; }
+        .info td { padding: 6px 0; border-bottom: 1px solid #eee; font-size: 14px; }
+        .info td:first-child { font-weight: 600; color: #555; width: 50%; }
+        .info tr:last-child td { border-bottom: none; }
+        .diff { color: #b91c1c; font-weight: 600; }
+        .cta { background-color: #fffbeb; border: 1px solid #d97706; border-radius: 5px; padding: 14px 18px; margin: 16px 0; }
+        .footer { text-align: center; padding: 16px; font-size: 12px; color: #666; }
+        a { color: #2563eb; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Neshoda částky platby</h1>
+    </div>
+    <div class="content">
+        <p>Dobrý den {{ customerName }},</p>
+        <p>obdrželi jsme Váš bankovní převod, ale jeho částka neodpovídá očekávané platbě za pronájem skladové jednotky.</p>
+
+        <div class="info">
+            <table>
+                <tr><td>Očekávaná částka</td><td>{{ expectedAmount }} Kč</td></tr>
+                <tr><td>Přijatá částka</td><td class="diff">{{ receivedAmount }} Kč</td></tr>
+                <tr><td>Rozdíl</td><td class="diff">{{ differenceAmount }} Kč ({{ isOverpaid ? 'přeplatek' : 'nedoplatek' }})</td></tr>
+                {% if variableSymbol %}
+                    <tr><td>Variabilní symbol</td><td>{{ variableSymbol }}</td></tr>
+                {% endif %}
+            </table>
+        </div>
+
+        <div class="cta">
+            {% if isOverpaid %}
+                <p style="margin: 0;"><strong>Zaplatili jste více, než bylo třeba.</strong> Kontaktujte nás prosím, abychom mohli přeplatek vyřešit.</p>
+            {% else %}
+                <p style="margin: 0;"><strong>Zaplatili jste méně, než bylo třeba.</strong> Prosíme o co nejrychlejší doplacení zbývající částky {{ differenceAmount }}&nbsp;Kč na stejný účet se stejným variabilním symbolem.</p>
+            {% endif %}
+        </div>
+
+        <p>V případě dotazů nás neváhejte kontaktovat na e-mailu <a href="mailto:simek@fajnesklady.cz">simek@fajnesklady.cz</a> nebo telefonicky na <a href="tel:+420605522566">+420 605 522 566</a>.</p>
+
+        <p>Děkujeme za pochopení.</p>
+        <p>Tým Fajnesklady.cz</p>
+    </div>
+    <div class="footer">
+        <p>Mekmann s.r.o., IČO 11678631, Dvořákova 780, 739 11 Frýdlant nad Ostravicí</p>
+    </div>
+</body>
+</html>

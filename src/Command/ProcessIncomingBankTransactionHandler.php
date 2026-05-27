@@ -16,10 +16,12 @@ use App\Repository\OrderRepository;
 use App\Service\AuditLogger;
 use App\Service\Billing\RecurringAmountCalculator;
 use App\Service\Identity\ProvideIdentity;
+use App\Event\BankTransferAmountMismatch;
 use App\Service\Messenger\HandlerFailureUnwrap;
 use App\Value\FioBankTransaction;
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Messenger\MessageBusInterface;
 
@@ -36,6 +38,8 @@ final readonly class ProcessIncomingBankTransactionHandler
         private AuditLogger $auditLogger,
         private ProvideIdentity $identityProvider,
         private MessageBusInterface $commandBus,
+        #[Autowire(service: 'event.bus')]
+        private MessageBusInterface $eventBus,
         private ClockInterface $clock,
         private LoggerInterface $logger,
     ) {
@@ -130,7 +134,7 @@ final readonly class ProcessIncomingBankTransactionHandler
                         userIdContext: $fine->user->id,
                     );
                 } else {
-                    $bankTx->markAmountMismatchContract($fine->contract, 'variable_symbol_fine', $now);
+                    $bankTx->markAmountMismatchContract($fine->contract, 'variable_symbol_fine', $fine->amountInHaler, $now);
 
                     $this->auditLogger->log(
                         entityType: 'bank_transaction',
@@ -164,7 +168,7 @@ final readonly class ProcessIncomingBankTransactionHandler
                     $expectedAmount = $this->amountCalculator->calculate($contract, $now);
 
                     if ($bankTx->amount !== $expectedAmount) {
-                        $bankTx->markAmountMismatchContract($contract, 'account_mapping', $now);
+                        $bankTx->markAmountMismatchContract($contract, 'account_mapping', $expectedAmount, $now);
 
                         $this->auditLogger->log(
                             entityType: 'bank_transaction',
@@ -180,6 +184,16 @@ final readonly class ProcessIncomingBankTransactionHandler
                             orderId: $order->id,
                             userIdContext: $order->user->id,
                         );
+
+                        $this->eventBus->dispatch(BankTransferAmountMismatch::forContract(
+                            bankTransactionId: $bankTx->id,
+                            contractId: $contract->id,
+                            orderId: $order->id,
+                            expectedAmount: $expectedAmount,
+                            receivedAmount: $bankTx->amount,
+                            variableSymbol: $bankTx->variableSymbol,
+                            occurredOn: $now,
+                        ));
 
                         return;
                     }
@@ -225,7 +239,7 @@ final readonly class ProcessIncomingBankTransactionHandler
             $expectedAmount = $this->amountCalculator->calculate($contract, $now);
 
             if ($bankTx->amount !== $expectedAmount) {
-                $bankTx->markAmountMismatchContract($contract, $matchMethod, $now);
+                $bankTx->markAmountMismatchContract($contract, $matchMethod, $expectedAmount, $now);
 
                 $this->auditLogger->log(
                     entityType: 'bank_transaction',
@@ -241,6 +255,16 @@ final readonly class ProcessIncomingBankTransactionHandler
                     orderId: $order->id,
                     userIdContext: $order->user->id,
                 );
+
+                $this->eventBus->dispatch(BankTransferAmountMismatch::forContract(
+                    bankTransactionId: $bankTx->id,
+                    contractId: $contract->id,
+                    orderId: $order->id,
+                    expectedAmount: $expectedAmount,
+                    receivedAmount: $bankTx->amount,
+                    variableSymbol: $bankTx->variableSymbol,
+                    occurredOn: $now,
+                ));
 
                 return;
             }
@@ -269,8 +293,10 @@ final readonly class ProcessIncomingBankTransactionHandler
         }
 
         if ($order->hasUnpaidDebt()) {
-            if ($bankTx->amount !== $order->onboardingDebtInHaler) {
-                $bankTx->markAmountMismatch($order, $matchMethod, $now);
+            $debtAmount = (int) $order->onboardingDebtInHaler;
+
+            if ($bankTx->amount !== $debtAmount) {
+                $bankTx->markAmountMismatch($order, $matchMethod, $debtAmount, $now);
 
                 $this->auditLogger->log(
                     entityType: 'bank_transaction',
@@ -278,15 +304,24 @@ final readonly class ProcessIncomingBankTransactionHandler
                     eventType: 'amount_mismatch',
                     payload: [
                         'order_id' => $order->id->toRfc4122(),
-                        'expected_amount' => $order->onboardingDebtInHaler,
+                        'expected_amount' => $debtAmount,
                         'received_amount' => $bankTx->amount,
-                        'difference' => $bankTx->amount - $order->onboardingDebtInHaler,
+                        'difference' => $bankTx->amount - $debtAmount,
                         'variable_symbol' => $bankTx->variableSymbol,
                         'type' => 'debt_payment',
                     ],
                     orderId: $order->id,
                     userIdContext: $order->user->id,
                 );
+
+                $this->eventBus->dispatch(BankTransferAmountMismatch::forOrder(
+                    bankTransactionId: $bankTx->id,
+                    orderId: $order->id,
+                    expectedAmount: $debtAmount,
+                    receivedAmount: $bankTx->amount,
+                    variableSymbol: $bankTx->variableSymbol,
+                    occurredOn: $now,
+                ));
 
                 return;
             }
@@ -315,7 +350,7 @@ final readonly class ProcessIncomingBankTransactionHandler
 
         if ($order->canBePaid()) {
             if ($bankTx->amount !== $order->firstPaymentPrice) {
-                $bankTx->markAmountMismatch($order, $matchMethod, $now);
+                $bankTx->markAmountMismatch($order, $matchMethod, $order->firstPaymentPrice, $now);
 
                 $this->auditLogger->log(
                     entityType: 'bank_transaction',
@@ -331,6 +366,15 @@ final readonly class ProcessIncomingBankTransactionHandler
                     orderId: $order->id,
                     userIdContext: $order->user->id,
                 );
+
+                $this->eventBus->dispatch(BankTransferAmountMismatch::forOrder(
+                    bankTransactionId: $bankTx->id,
+                    orderId: $order->id,
+                    expectedAmount: $order->firstPaymentPrice,
+                    receivedAmount: $bankTx->amount,
+                    variableSymbol: $bankTx->variableSymbol,
+                    occurredOn: $now,
+                ));
 
                 return;
             }

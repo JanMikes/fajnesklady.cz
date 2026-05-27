@@ -10,6 +10,7 @@ use App\Entity\Order;
 use App\Enum\BillingMode;
 use App\Enum\OrderStatus;
 use App\Repository\AuditLogRepository;
+use App\Repository\BankTransactionRepository;
 use App\Repository\ContractRepository;
 use App\Repository\FineRepository;
 use App\Repository\HandoverProtocolRepository;
@@ -31,6 +32,7 @@ final readonly class OrderStatusViewModelFactory
         private ContractRepository $contractRepository,
         private InvoiceRepository $invoiceRepository,
         private AuditLogRepository $auditLogRepository,
+        private BankTransactionRepository $bankTransactionRepository,
         private FineRepository $fineRepository,
         private OrderDisplayStatusResolver $statusResolver,
         private OrderStatusUrlGenerator $statusUrlGenerator,
@@ -217,6 +219,8 @@ final readonly class OrderStatusViewModelFactory
             ? $this->qrPaymentGenerator->generateDataUri($order->variableSymbol, $order->firstPaymentPrice)
             : null;
 
+        $amountMismatchTransactions = $this->bankTransactionRepository->findAmountMismatchByOrder($order);
+
         return new OrderStatusViewModel(
             order: $order,
             contract: $contract,
@@ -251,6 +255,7 @@ final readonly class OrderStatusViewModelFactory
             finePaymentUrls: $finePaymentUrls,
             bankAccount: $bankAccount,
             qrCodeDataUri: $qrCodeDataUri,
+            amountMismatchTransactions: $amountMismatchTransactions,
         );
     }
 

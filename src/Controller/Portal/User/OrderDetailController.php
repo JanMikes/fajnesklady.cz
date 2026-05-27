@@ -6,6 +6,7 @@ namespace App\Controller\Portal\User;
 
 use App\Entity\User;
 use App\Enum\BillingMode;
+use App\Repository\BankTransactionRepository;
 use App\Repository\ContractRepository;
 use App\Repository\FineRepository;
 use App\Repository\HandoverProtocolRepository;
@@ -32,6 +33,7 @@ final class OrderDetailController extends AbstractController
 {
     public function __construct(
         private readonly OrderRepository $orderRepository,
+        private readonly BankTransactionRepository $bankTransactionRepository,
         private readonly ContractRepository $contractRepository,
         private readonly FineRepository $fineRepository,
         private readonly HandoverProtocolRepository $handoverProtocolRepository,
@@ -110,6 +112,8 @@ final class OrderDetailController extends AbstractController
             }
         }
 
+        $mismatchTransactions = $this->bankTransactionRepository->findAmountMismatchByOrder($order);
+
         return $this->render('portal/user/order/detail.html.twig', [
             'order' => $order,
             'contract' => $contract,
@@ -128,6 +132,7 @@ final class OrderDetailController extends AbstractController
             'handoverProtocol' => $handoverProtocol,
             'fines' => $fines,
             'finePaymentUrls' => $finePaymentUrls,
+            'mismatchTransactions' => $mismatchTransactions,
         ]);
     }
 }

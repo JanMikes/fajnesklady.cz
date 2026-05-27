@@ -81,9 +81,10 @@ class BankTransactionTest extends TestCase
         $order = $this->createStub(Order::class);
         $now = new \DateTimeImmutable('2025-06-15 12:00:00');
 
-        $this->bankTransaction->markAmountMismatch($order, 'variable_symbol', $now);
+        $this->bankTransaction->markAmountMismatch($order, 'variable_symbol', 60000, $now);
 
         self::assertTrue($this->bankTransaction->isAmountMismatch());
         self::assertSame($order, $this->bankTransaction->pairedOrder);
+        self::assertSame(60000, $this->bankTransaction->expectedAmountInHaler);
     }
 }

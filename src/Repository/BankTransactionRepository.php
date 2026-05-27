@@ -70,6 +70,23 @@ class BankTransactionRepository
     /**
      * @return BankTransaction[]
      */
+    public function findAmountMismatchByOrder(Order $order): array
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('bt')
+            ->from(BankTransaction::class, 'bt')
+            ->where('bt.pairedOrder = :order')
+            ->andWhere('bt.status = :status')
+            ->setParameter('order', $order)
+            ->setParameter('status', 'amount_mismatch')
+            ->orderBy('bt.transactionDate', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * @return BankTransaction[]
+     */
     public function findByOrder(Order $order): array
     {
         return $this->entityManager->createQueryBuilder()

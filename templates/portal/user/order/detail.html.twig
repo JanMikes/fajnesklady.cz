@@ -84,6 +84,24 @@
         </div>
     {% endif %}
 
+    {% if mismatchTransactions|length > 0 %}
+        <div class="mb-6 bg-amber-50 border border-amber-200 rounded-lg p-4">
+            <h3 class="font-semibold text-amber-800 mb-1">Neshoda částky platby</h3>
+            <p class="text-amber-700 text-sm">
+                Přijatá platba neodpovídá očekávané částce. Prosím kontaktujte nás na
+                <a href="mailto:simek@fajnesklady.cz" class="underline">simek@fajnesklady.cz</a>.
+            </p>
+            {% for tx in mismatchTransactions %}
+                {% if tx.expectedAmountInHaler is not null %}
+                    <p class="text-amber-700 text-sm mt-1">
+                        Očekáváno: <strong>{{ (tx.expectedAmountInHaler / 100)|number_format(0, ',', ' ') }} Kč</strong>,
+                        přijato: <strong>{{ (tx.amount / 100)|number_format(0, ',', ' ') }} Kč</strong>
+                    </p>
+                {% endif %}
+            {% endfor %}
+        </div>
+    {% endif %}
+
     {% include 'components/order_access_code.html.twig' with {order: order, storage: storage, contract: contract} only %}
 
     {# Own-padlock reminder — insurance is conditional on it, so keep it

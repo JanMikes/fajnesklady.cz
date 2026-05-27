@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller\Admin;
 
 use App\Repository\AuditLogRepository;
+use App\Repository\BankTransactionRepository;
 use App\Repository\ContractPriceChangeRepository;
 use App\Repository\ContractRepository;
 use App\Repository\EmailLogRepository;
@@ -34,6 +35,7 @@ final class AdminOrderDetailController extends AbstractController
         private readonly ContractRepository $contractRepository,
         private readonly ContractPriceChangeRepository $priceChangeRepository,
         private readonly AuditLogRepository $auditLogRepository,
+        private readonly BankTransactionRepository $bankTransactionRepository,
         private readonly EmailLogRepository $emailLogRepository,
         private readonly FineRepository $fineRepository,
         private readonly HandoverProtocolRepository $handoverProtocolRepository,
@@ -96,6 +98,8 @@ final class AdminOrderDetailController extends AbstractController
             $hasPendingManualPayment = null !== $this->manualPaymentRequestRepository->findPendingForCurrentCycle($contract, $now);
         }
 
+        $mismatchTransactions = $this->bankTransactionRepository->findAmountMismatchByOrder($order);
+
         return $this->render('admin/order/detail.html.twig', [
             'order' => $order,
             'storage' => $storage,
@@ -115,6 +119,7 @@ final class AdminOrderDetailController extends AbstractController
             'emailLogs' => $emailLogs,
             'auditLogs' => $auditLogs,
             'hasPendingManualPayment' => $hasPendingManualPayment,
+            'mismatchTransactions' => $mismatchTransactions,
         ]);
     }
 }

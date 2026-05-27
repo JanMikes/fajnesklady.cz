@@ -33,6 +33,9 @@ class BankTransaction
     #[ORM\Column(length: 30, nullable: true)]
     public private(set) ?string $matchMethod = null;
 
+    #[ORM\Column(nullable: true)]
+    public private(set) ?int $expectedAmountInHaler = null;
+
     #[ORM\Column(length: 500, nullable: true)]
     public private(set) ?string $ignoreReason = null;
 
@@ -80,19 +83,21 @@ class BankTransaction
         $this->status = 'matched';
     }
 
-    public function markAmountMismatch(Order $order, string $matchMethod, \DateTimeImmutable $now): void
+    public function markAmountMismatch(Order $order, string $matchMethod, int $expectedAmount, \DateTimeImmutable $now): void
     {
         $this->pairedOrder = $order;
         $this->matchMethod = $matchMethod;
+        $this->expectedAmountInHaler = $expectedAmount;
         $this->pairedAt = $now;
         $this->status = 'amount_mismatch';
     }
 
-    public function markAmountMismatchContract(Contract $contract, string $matchMethod, \DateTimeImmutable $now): void
+    public function markAmountMismatchContract(Contract $contract, string $matchMethod, int $expectedAmount, \DateTimeImmutable $now): void
     {
         $this->pairedContract = $contract;
         $this->pairedOrder = $contract->order;
         $this->matchMethod = $matchMethod;
+        $this->expectedAmountInHaler = $expectedAmount;
         $this->pairedAt = $now;
         $this->status = 'amount_mismatch';
     }

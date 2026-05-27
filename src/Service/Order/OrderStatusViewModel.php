@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service\Order;
 
 use App\Entity\Contract;
+use App\Entity\BankTransaction;
 use App\Entity\Fine;
 use App\Entity\HandoverProtocol;
 use App\Entity\Invoice;
@@ -57,6 +58,8 @@ final readonly class OrderStatusViewModel
         public array $finePaymentUrls = [],
         public ?string $bankAccount = null,
         public ?string $qrCodeDataUri = null,
+        /** @var BankTransaction[] */
+        public array $amountMismatchTransactions = [],
     ) {
     }
 }
