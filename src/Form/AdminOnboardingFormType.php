@@ -94,6 +94,7 @@ final class AdminOnboardingFormType extends AbstractType
                 'class' => RentalType::class,
                 'label' => 'Typ pronájmu',
                 'expanded' => true,
+                'placeholder' => false,
                 'choice_label' => static fn (RentalType $type): string => match ($type) {
                     RentalType::LIMITED => 'Doba určitá',
                     RentalType::UNLIMITED => 'Doba neurčitá',
@@ -121,6 +122,7 @@ final class AdminOnboardingFormType extends AbstractType
                 'class' => PaymentMethod::class,
                 'label' => 'Způsob platby',
                 'expanded' => true,
+                'placeholder' => false,
                 'choice_label' => static fn (PaymentMethod $method): string => match ($method) {
                     PaymentMethod::EXTERNAL => 'Externí platba (hotovost, jiné)',
                     PaymentMethod::GOPAY => 'GoPay (zákazník nastaví při podpisu)',
@@ -131,6 +133,7 @@ final class AdminOnboardingFormType extends AbstractType
                 'class' => BillingMode::class,
                 'label' => 'Způsob následných plateb',
                 'expanded' => true,
+                'placeholder' => false,
                 'choices' => [
                     'Automatická (uloží se karta, strhává se sama)' => BillingMode::AUTO_RECURRING,
                     'Ručně (každý měsíc dostane e-mail s platebním odkazem)' => BillingMode::MANUAL_RECURRING,
@@ -141,6 +144,7 @@ final class AdminOnboardingFormType extends AbstractType
                 'class' => PaymentFrequency::class,
                 'label' => 'Frekvence platby',
                 'expanded' => true,
+                'placeholder' => false,
                 'choices' => [
                     PaymentFrequency::MONTHLY->label() => PaymentFrequency::MONTHLY,
                     PaymentFrequency::YEARLY->label() => PaymentFrequency::YEARLY,
@@ -150,6 +154,7 @@ final class AdminOnboardingFormType extends AbstractType
             ->add('monthlyPriceMode', ChoiceType::class, [
                 'label' => 'Cenový model',
                 'expanded' => true,
+                'placeholder' => false,
                 'choices' => [
                     'Standardní (sazba skladu)' => 'standard',
                     'Individuální měsíční cena' => 'custom',

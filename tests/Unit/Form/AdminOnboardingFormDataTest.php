@@ -283,6 +283,7 @@ final class AdminOnboardingFormDataTest extends TestCase
         $data->paymentMethod = PaymentMethod::GOPAY;
         $data->billingMode = BillingMode::AUTO_RECURRING;
         $data->paymentFrequency = PaymentFrequency::MONTHLY;
+        $data->monthlyPriceMode = 'standard';
         $data->invoiceToCompany = false;
         $data->birthDate = new \DateTimeImmutable('1990-01-01');
 

@@ -12,8 +12,10 @@
                 <div class="space-y-4">
                     {{ form_row(form.rentalType) }}
                     {% set formData = form.vars.data %}
-                    {% if formData.rentalType.value == 'unlimited' %}
+                    {% if formData.rentalType is not null and formData.rentalType.value == 'unlimited' %}
                         {{ form_row(form.expectedDuration) }}
+                    {% else %}
+                        {% do form.expectedDuration.setRendered %}
                     {% endif %}
                 </div>
             </div>
@@ -74,8 +76,10 @@
                 <h2 class="text-lg font-bold text-gray-900 mb-4">Datum</h2>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {{ form_row(form.startDate) }}
-                    {% if formData.rentalType.value == 'limited' %}
+                    {% if formData.rentalType is not null and formData.rentalType.value == 'limited' %}
                         {{ form_row(form.endDate) }}
+                    {% else %}
+                        {% do form.endDate.setRendered %}
                     {% endif %}
                 </div>
             </div>

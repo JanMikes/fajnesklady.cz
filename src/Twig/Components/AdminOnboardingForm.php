@@ -10,6 +10,7 @@ use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
+use App\Enum\PaymentFrequency;
 use App\Form\AdminOnboardingFormData;
 use App\Form\AdminOnboardingFormType;
 use App\Repository\PlaceRepository;
@@ -189,7 +190,7 @@ final class AdminOnboardingForm extends AbstractController
             return null;
         }
 
-        if (null === $data->startDate) {
+        if (null === $data->startDate || null === $data->rentalType) {
             return null;
         }
 
@@ -197,7 +198,7 @@ final class AdminOnboardingForm extends AbstractController
             $storage,
             $data->startDate,
             $data->endDate,
-            $data->paymentFrequency,
+            $data->paymentFrequency ?? PaymentFrequency::MONTHLY,
         );
 
         return $schedule->isEmpty() ? null : $schedule;
@@ -266,6 +267,10 @@ final class AdminOnboardingForm extends AbstractController
         /** @var AdminOnboardingFormData $formData */
         $formData = $this->getForm()->getData();
         \assert(null !== $formData->startDate);
+        \assert(null !== $formData->rentalType);
+        \assert(null !== $formData->paymentMethod);
+        \assert(null !== $formData->billingMode);
+        \assert(null !== $formData->paymentFrequency);
 
         $storage = $this->getSelectedStorage();
         if (null === $storage) {

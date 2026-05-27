@@ -64,7 +64,7 @@ final class AdminOnboardingFormData implements HasBillingAddress
     public bool $addressOverride = false;
 
     #[Assert\NotNull(message: 'Vyberte typ pronájmu.')]
-    public RentalType $rentalType = RentalType::UNLIMITED;
+    public ?RentalType $rentalType = null;
 
     public ?ExpectedDuration $expectedDuration = null;
 
@@ -74,13 +74,16 @@ final class AdminOnboardingFormData implements HasBillingAddress
     public ?\DateTimeImmutable $endDate = null;
 
     #[Assert\NotNull(message: 'Vyberte způsob platby.')]
-    public PaymentMethod $paymentMethod = PaymentMethod::GOPAY;
+    public ?PaymentMethod $paymentMethod = null;
 
-    public BillingMode $billingMode = BillingMode::AUTO_RECURRING;
+    #[Assert\NotNull(message: 'Vyberte způsob následných plateb.')]
+    public ?BillingMode $billingMode = null;
 
-    public PaymentFrequency $paymentFrequency = PaymentFrequency::MONTHLY;
+    #[Assert\NotNull(message: 'Vyberte frekvenci platby.')]
+    public ?PaymentFrequency $paymentFrequency = null;
 
-    public string $monthlyPriceMode = 'standard';
+    #[Assert\NotBlank(message: 'Vyberte cenový model.')]
+    public ?string $monthlyPriceMode = null;
 
     #[Assert\PositiveOrZero(message: 'Cena nemůže být záporná.')]
     #[Assert\LessThanOrEqual(value: 15000, message: 'Maximální měsíční cena je 15 000 Kč (zákonný strop pro opakované platby).')]
@@ -198,6 +201,10 @@ final class AdminOnboardingFormData implements HasBillingAddress
     #[Assert\Callback]
     public function validateBillingMode(ExecutionContextInterface $context): void
     {
+        if (null === $this->billingMode || null === $this->paymentMethod || null === $this->rentalType) {
+            return;
+        }
+
         if (PaymentFrequency::YEARLY === $this->paymentFrequency) {
             return;
         }
@@ -220,7 +227,7 @@ final class AdminOnboardingFormData implements HasBillingAddress
     #[Assert\Callback]
     public function validatePaymentFrequency(ExecutionContextInterface $context): void
     {
-        if (PaymentFrequency::YEARLY !== $this->paymentFrequency) {
+        if (null === $this->paymentFrequency || PaymentFrequency::YEARLY !== $this->paymentFrequency) {
             return;
         }
 
@@ -235,7 +242,7 @@ final class AdminOnboardingFormData implements HasBillingAddress
             return;
         }
 
-        if (BillingMode::MANUAL_RECURRING !== $this->billingMode) {
+        if (null === $this->billingMode || BillingMode::MANUAL_RECURRING !== $this->billingMode) {
             $this->billingMode = BillingMode::MANUAL_RECURRING;
         }
     }
