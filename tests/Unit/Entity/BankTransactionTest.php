@@ -40,7 +40,7 @@ class BankTransactionTest extends TestCase
 
     public function testPairToOrder(): void
     {
-        $order = $this->createMock(Order::class);
+        $order = $this->createStub(Order::class);
         $now = new \DateTimeImmutable('2025-06-15 12:00:00');
 
         $this->bankTransaction->pairToOrder($order, 'variable_symbol', null, $now);
@@ -53,7 +53,7 @@ class BankTransactionTest extends TestCase
 
     public function testMarkIgnored(): void
     {
-        $admin = $this->createMock(User::class);
+        $admin = $this->createStub(User::class);
         $now = new \DateTimeImmutable('2025-06-15 12:00:00');
 
         $this->bankTransaction->markIgnored($admin, 'Not relevant', $now);
@@ -65,7 +65,7 @@ class BankTransactionTest extends TestCase
 
     public function testUnignore(): void
     {
-        $admin = $this->createMock(User::class);
+        $admin = $this->createStub(User::class);
         $now = new \DateTimeImmutable('2025-06-15 12:00:00');
 
         $this->bankTransaction->markIgnored($admin, 'Not relevant', $now);
@@ -78,7 +78,7 @@ class BankTransactionTest extends TestCase
 
     public function testMarkAmountMismatch(): void
     {
-        $order = $this->createMock(Order::class);
+        $order = $this->createStub(Order::class);
         $now = new \DateTimeImmutable('2025-06-15 12:00:00');
 
         $this->bankTransaction->markAmountMismatch($order, 'variable_symbol', $now);

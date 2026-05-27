@@ -31,7 +31,7 @@ final class AddressValidatorTest extends TestCase
         ], JSON_THROW_ON_ERROR);
 
         $httpClient = new MockHttpClient(new MockResponse($responseBody, ['http_code' => 200]));
-        $validator = new PhotonAddressValidator($httpClient, new ArrayAdapter(), $this->createMock(LoggerInterface::class));
+        $validator = new PhotonAddressValidator($httpClient, new ArrayAdapter(), $this->createStub(LoggerInterface::class));
 
         $result = $validator->validate('Vinohradská 52', 'Praha', '120 00');
 
@@ -43,7 +43,7 @@ final class AddressValidatorTest extends TestCase
         $responseBody = json_encode(['features' => []], JSON_THROW_ON_ERROR);
         $httpClient = new MockHttpClient(new MockResponse($responseBody, ['http_code' => 200]));
 
-        $validator = new PhotonAddressValidator($httpClient, new ArrayAdapter(), $this->createMock(LoggerInterface::class));
+        $validator = new PhotonAddressValidator($httpClient, new ArrayAdapter(), $this->createStub(LoggerInterface::class));
 
         $result = $validator->validate('Asdfghj 999', 'Tatratata', '99999');
 
@@ -66,7 +66,7 @@ final class AddressValidatorTest extends TestCase
         ], JSON_THROW_ON_ERROR);
 
         $httpClient = new MockHttpClient(new MockResponse($responseBody, ['http_code' => 200]));
-        $validator = new PhotonAddressValidator($httpClient, new ArrayAdapter(), $this->createMock(LoggerInterface::class));
+        $validator = new PhotonAddressValidator($httpClient, new ArrayAdapter(), $this->createStub(LoggerInterface::class));
 
         $result = $validator->validate('Vinohradská 52', 'Berlin', '10115');
 
@@ -117,7 +117,7 @@ final class AddressValidatorTest extends TestCase
             return new MockResponse($responseBody, ['http_code' => 200]);
         });
 
-        $validator = new PhotonAddressValidator($httpClient, new ArrayAdapter(), $this->createMock(LoggerInterface::class));
+        $validator = new PhotonAddressValidator($httpClient, new ArrayAdapter(), $this->createStub(LoggerInterface::class));
 
         $first = $validator->validate('Vinohradská 52', 'Praha', '120 00');
         $second = $validator->validate('Vinohradská 52', 'Praha', '120 00');
@@ -149,7 +149,7 @@ final class AddressValidatorTest extends TestCase
             return new MockResponse($responseBody, ['http_code' => 200]);
         });
 
-        $validator = new PhotonAddressValidator($httpClient, new ArrayAdapter(), $this->createMock(LoggerInterface::class));
+        $validator = new PhotonAddressValidator($httpClient, new ArrayAdapter(), $this->createStub(LoggerInterface::class));
 
         $first = $validator->validate('Vinohradská 52', 'Praha', '120 00');
         $second = $validator->validate('Vinohradská 52', 'Praha', '12000');
@@ -165,7 +165,7 @@ final class AddressValidatorTest extends TestCase
             self::fail('Photon must not be called when input is incomplete.');
         });
 
-        $validator = new PhotonAddressValidator($httpClient, new ArrayAdapter(), $this->createMock(LoggerInterface::class));
+        $validator = new PhotonAddressValidator($httpClient, new ArrayAdapter(), $this->createStub(LoggerInterface::class));
 
         $result = $validator->validate('', 'Praha', '12000');
 

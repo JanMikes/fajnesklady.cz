@@ -38,17 +38,17 @@ class VariableSymbolGeneratorTest extends TestCase
 
     public function testThrowsAfterTenAttempts(): void
     {
-        $query = $this->createMock(Query::class);
+        $query = $this->createStub(Query::class);
         $query->method('getOneOrNullResult')->willReturn([1]);
 
-        $qb = $this->createMock(QueryBuilder::class);
+        $qb = $this->createStub(QueryBuilder::class);
         $qb->method('select')->willReturnSelf();
         $qb->method('from')->willReturnSelf();
         $qb->method('where')->willReturnSelf();
         $qb->method('setParameter')->willReturnSelf();
         $qb->method('getQuery')->willReturn($query);
 
-        $em = $this->createMock(EntityManagerInterface::class);
+        $em = $this->createStub(EntityManagerInterface::class);
         $em->method('createQueryBuilder')->willReturn($qb);
 
         $generator = new VariableSymbolGenerator($em);
@@ -61,17 +61,17 @@ class VariableSymbolGeneratorTest extends TestCase
 
     private function createMockEntityManager(mixed $queryResult): EntityManagerInterface
     {
-        $query = $this->createMock(Query::class);
+        $query = $this->createStub(Query::class);
         $query->method('getOneOrNullResult')->willReturn($queryResult);
 
-        $qb = $this->createMock(QueryBuilder::class);
+        $qb = $this->createStub(QueryBuilder::class);
         $qb->method('select')->willReturnSelf();
         $qb->method('from')->willReturnSelf();
         $qb->method('where')->willReturnSelf();
         $qb->method('setParameter')->willReturnSelf();
         $qb->method('getQuery')->willReturn($query);
 
-        $em = $this->createMock(EntityManagerInterface::class);
+        $em = $this->createStub(EntityManagerInterface::class);
         $em->method('createQueryBuilder')->willReturn($qb);
 
         return $em;

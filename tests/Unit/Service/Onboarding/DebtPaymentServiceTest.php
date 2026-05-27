@@ -105,7 +105,7 @@ class DebtPaymentServiceTest extends TestCase
 
     private function buildService(MessageBusInterface $commandBus): DebtPaymentService
     {
-        $identityProvider = $this->createMock(ProvideIdentity::class);
+        $identityProvider = $this->createStub(ProvideIdentity::class);
         $identityProvider->method('next')->willReturn(Uuid::v7());
 
         $orderRepository = $this->createStub(OrderRepository::class);

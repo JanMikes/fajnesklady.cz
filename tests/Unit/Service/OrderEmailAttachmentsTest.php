@@ -81,7 +81,7 @@ class OrderEmailAttachmentsTest extends TestCase
         $order = $this->createOrder(endDate: new \DateTimeImmutable('2025-07-15'), withSignature: true);
         $email = new TemplatedEmail();
 
-        $contractGenerator = $this->createMock(ContractDocumentGenerator::class);
+        $contractGenerator = $this->createStub(ContractDocumentGenerator::class);
         $contractGenerator->method('renderBytesForOrder')->willReturn('PK fake docx');
         $contractGenerator->method('formatDocumentNumberForOrder')->willReturn('2025-0615-DEADBEEF');
 

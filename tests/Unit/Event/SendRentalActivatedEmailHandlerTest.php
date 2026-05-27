@@ -177,7 +177,7 @@ class SendRentalActivatedEmailHandlerTest extends TestCase
         // fallback (or the IssueMissingInvoicesCommand cron) can retry.
         $contract = $this->createContract();
 
-        $invoicingService = $this->createMock(InvoicingService::class);
+        $invoicingService = $this->createStub(InvoicingService::class);
         $invoicingService->method('issueInvoiceForOrder')
             ->willThrowException(new \RuntimeException('Fakturoid 503'));
 

@@ -20,9 +20,9 @@ final class AdminOnboardingHandlerTest extends TestCase
 {
     public function testCommandConstructsWithAllFields(): void
     {
-        $storage = $this->createMock(Storage::class);
-        $storageType = $this->createMock(StorageType::class);
-        $place = $this->createMock(Place::class);
+        $storage = $this->createStub(Storage::class);
+        $storageType = $this->createStub(StorageType::class);
+        $place = $this->createStub(Place::class);
 
         $command = new AdminOnboardingCommand(
             email: 'customer@example.com',
@@ -61,9 +61,9 @@ final class AdminOnboardingHandlerTest extends TestCase
 
     public function testCommandWithOptionalFields(): void
     {
-        $storage = $this->createMock(Storage::class);
-        $storageType = $this->createMock(StorageType::class);
-        $place = $this->createMock(Place::class);
+        $storage = $this->createStub(Storage::class);
+        $storageType = $this->createStub(StorageType::class);
+        $place = $this->createStub(Place::class);
 
         $command = new AdminOnboardingCommand(
             email: 'customer@example.com',
@@ -102,9 +102,9 @@ final class AdminOnboardingHandlerTest extends TestCase
 
     public function testFreeAmountIsZero(): void
     {
-        $storage = $this->createMock(Storage::class);
-        $storageType = $this->createMock(StorageType::class);
-        $place = $this->createMock(Place::class);
+        $storage = $this->createStub(Storage::class);
+        $storageType = $this->createStub(StorageType::class);
+        $place = $this->createStub(Place::class);
 
         $command = new AdminOnboardingCommand(
             email: 'customer@example.com',
