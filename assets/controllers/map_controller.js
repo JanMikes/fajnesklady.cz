@@ -368,12 +368,22 @@ export default class extends Controller {
 
     /* ------------------------------------------------------------------ geolocation */
 
-    maybeAutoLocate() {
+    async maybeAutoLocate() {
         const consent = this.readGeoConsent();
         if (consent !== 'granted' || !navigator.geolocation) return;
+
+        if (navigator.permissions) {
+            try {
+                const status = await navigator.permissions.query({ name: 'geolocation' });
+                if (status.state !== 'granted') return;
+            } catch {
+                return;
+            }
+        }
+
         navigator.geolocation.getCurrentPosition(
             (pos) => this.applyUserLocation(pos.coords.latitude, pos.coords.longitude),
-            () => { /* silent — consent may be revoked browser-side; do not surface an error */ },
+            () => {},
             { timeout: 8000, maximumAge: 5 * 60 * 1000 },
         );
     }
