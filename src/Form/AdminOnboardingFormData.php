@@ -201,19 +201,23 @@ final class AdminOnboardingFormData implements HasBillingAddress
     #[Assert\Callback]
     public function validateBillingMode(ExecutionContextInterface $context): void
     {
-        if (null === $this->billingMode || null === $this->paymentMethod || null === $this->rentalType) {
+        if (null === $this->paymentMethod || null === $this->rentalType) {
             return;
         }
 
         if (PaymentFrequency::YEARLY === $this->paymentFrequency) {
+            $this->billingMode = BillingMode::MANUAL_RECURRING;
+
             return;
         }
 
         if (PaymentMethod::BANK_TRANSFER === $this->paymentMethod) {
-            if (BillingMode::AUTO_RECURRING === $this->billingMode) {
-                $this->billingMode = BillingMode::MANUAL_RECURRING;
-            }
+            $this->billingMode = BillingMode::MANUAL_RECURRING;
 
+            return;
+        }
+
+        if (null === $this->billingMode) {
             return;
         }
 
