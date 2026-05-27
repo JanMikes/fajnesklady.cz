@@ -254,8 +254,13 @@ final class AdminOnboardingForm extends AbstractController
         $this->submitError = null;
         $this->submitForm();
 
+        $form = $this->getForm();
+        if (!$form->isValid()) {
+            return null;
+        }
+
         /** @var AdminOnboardingFormData $formData */
-        $formData = $this->getForm()->getData();
+        $formData = $form->getData();
         \assert(null !== $formData->startDate);
         \assert(null !== $formData->rentalType);
         \assert(null !== $formData->paymentMethod);
