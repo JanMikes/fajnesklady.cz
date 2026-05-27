@@ -7,6 +7,8 @@ namespace App\Service\Payment;
 use App\Value\FioBankTransaction;
 use FioApi\Downloader;
 use FioApi\Exceptions\TooGreedyException;
+use GuzzleHttp\Client;
+use GuzzleHttp\RequestOptions;
 
 final readonly class FioClient
 {
@@ -26,7 +28,11 @@ final readonly class FioClient
             return [];
         }
 
-        $downloader = new Downloader($this->fioApiToken);
+        $httpClient = new Client([
+            RequestOptions::VERIFY => true,
+            'curl' => [\CURLOPT_HTTP_VERSION => \CURL_HTTP_VERSION_2TLS],
+        ]);
+        $downloader = new Downloader($this->fioApiToken, $httpClient);
         $transactionList = $downloader->downloadFromTo($from, $to);
 
         $result = [];

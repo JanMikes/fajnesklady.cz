@@ -4,22 +4,13 @@ declare(strict_types=1);
 
 namespace App\Console;
 
-use App\Command\ProcessBankTransferDebtPaymentCommand;
-use App\Command\ProcessBankTransferPaymentCommand;
-use App\Entity\BankTransaction;
-use App\Entity\Contract;
-use App\Enum\BillingMode;
-use App\Enum\PaymentMethod;
-use App\Repository\BankAccountMappingRepository;
+use App\Command\ProcessIncomingBankTransactionCommand;
 use App\Repository\BankTransactionRepository;
-use App\Repository\ContractRepository;
-use App\Repository\FineRepository;
-use App\Repository\OrderRepository;
 use App\Service\AuditLogger;
-use App\Service\Billing\RecurringAmountCalculator;
-use App\Service\Identity\ProvideIdentity;
+use App\Service\Messenger\HandlerFailureUnwrap;
 use App\Service\Payment\FioClient;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\Persistence\ManagerRegistry;
 use FioApi\Exceptions\TooGreedyException;
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
@@ -39,16 +30,11 @@ final class ProcessFioTransactionsCommand extends Command
     public function __construct(
         private readonly FioClient $fioClient,
         private readonly BankTransactionRepository $bankTransactionRepository,
-        private readonly OrderRepository $orderRepository,
-        private readonly ContractRepository $contractRepository,
-        private readonly BankAccountMappingRepository $bankAccountMappingRepository,
-        private readonly FineRepository $fineRepository,
-        private readonly RecurringAmountCalculator $amountCalculator,
         private readonly AuditLogger $auditLogger,
-        private readonly ProvideIdentity $identityProvider,
         private readonly MessageBusInterface $commandBus,
         private readonly ClockInterface $clock,
         private readonly EntityManagerInterface $entityManager,
+        private readonly ManagerRegistry $doctrine,
         private readonly LoggerInterface $logger,
     ) {
         parent::__construct();
@@ -64,11 +50,10 @@ final class ProcessFioTransactionsCommand extends Command
         $to = $now;
 
         $stats = [
-            'transactions_fetched' => 0,
-            'transactions_matched' => 0,
-            'transactions_unmatched' => 0,
-            'transactions_skipped_duplicate' => 0,
-            'amount_mismatches' => 0,
+            'fetched' => 0,
+            'processed' => 0,
+            'failed' => 0,
+            'skipped_duplicate' => 0,
         ];
 
         try {
@@ -89,6 +74,9 @@ final class ProcessFioTransactionsCommand extends Command
                 ],
             );
 
+            // Console command — no messenger middleware
+            $this->entityManager->flush();
+
             $io->warning('FIO API rate limited. Will retry next run.');
 
             return Command::SUCCESS;
@@ -108,7 +96,10 @@ final class ProcessFioTransactionsCommand extends Command
                 ],
             );
 
-            $io->error('FIO API call failed: '.$e->getMessage());
+            // Console command — no messenger middleware
+            $this->entityManager->flush();
+
+            $io->error('FIO API call failed: ' . $e->getMessage());
 
             return Command::FAILURE;
         }
@@ -122,55 +113,28 @@ final class ProcessFioTransactionsCommand extends Command
                 continue;
             }
 
-            ++$stats['transactions_fetched'];
+            ++$stats['fetched'];
 
             if ($this->bankTransactionRepository->existsByFioTransactionId($fioTx->id)) {
-                ++$stats['transactions_skipped_duplicate'];
+                ++$stats['skipped_duplicate'];
 
                 continue;
             }
 
-            $bankTx = new BankTransaction(
-                id: $this->identityProvider->next(),
-                fioTransactionId: $fioTx->id,
-                amount: $fioTx->amount,
-                currency: $fioTx->currency,
-                variableSymbol: $fioTx->variableSymbol,
-                senderAccountNumber: $fioTx->senderAccountNumber,
-                senderName: $fioTx->senderName,
-                transactionDate: $fioTx->date,
-                comment: $fioTx->comment,
-                createdAt: $now,
-            );
+            try {
+                $this->commandBus->dispatch(new ProcessIncomingBankTransactionCommand($fioTx));
+                ++$stats['processed'];
+            } catch (\Throwable $rawException) {
+                ++$stats['failed'];
+                $exception = HandlerFailureUnwrap::unwrap($rawException);
 
-            $this->bankTransactionRepository->save($bankTx);
-
-            $this->auditLogger->log(
-                entityType: 'bank_transaction',
-                entityId: $bankTx->id->toRfc4122(),
-                eventType: 'received',
-                payload: [
+                $this->logger->error('Failed to process incoming bank transaction', [
                     'fio_transaction_id' => $fioTx->id,
-                    'amount' => $fioTx->amount,
-                    'currency' => $fioTx->currency,
-                    'variable_symbol' => $fioTx->variableSymbol,
-                    'sender_account' => $fioTx->senderAccountNumber,
-                    'sender_name' => $fioTx->senderName,
-                    'transaction_date' => $fioTx->date->format('Y-m-d'),
-                ],
-            );
+                    'exception' => $exception,
+                ]);
 
-            $matched = $this->attemptAutoMatch($bankTx, $now, $stats);
-
-            if (!$matched) {
-                ++$stats['transactions_unmatched'];
-            } else {
-                ++$stats['transactions_matched'];
+                $this->resetEntityManagerIfNeeded();
             }
-
-            // Flush after each transaction to preserve work
-            // Console commands run outside messenger middleware
-            $this->entityManager->flush();
         }
 
         $durationMs = (int) ((microtime(true) - $startTime) * 1000);
@@ -187,328 +151,26 @@ final class ProcessFioTransactionsCommand extends Command
             ],
         );
 
-        // Flush the final audit log entry
+        // Console command — no messenger middleware
         $this->entityManager->flush();
 
         $io->success(sprintf(
-            'FIO cron: %d fetched, %d matched, %d unmatched, %d duplicates skipped, %d mismatches.',
-            $stats['transactions_fetched'],
-            $stats['transactions_matched'],
-            $stats['transactions_unmatched'],
-            $stats['transactions_skipped_duplicate'],
-            $stats['amount_mismatches'],
+            'FIO cron: %d fetched, %d processed, %d failed, %d duplicates skipped.',
+            $stats['fetched'],
+            $stats['processed'],
+            $stats['failed'],
+            $stats['skipped_duplicate'],
         ));
 
-        return Command::SUCCESS;
+        return $stats['failed'] > 0 ? Command::FAILURE : Command::SUCCESS;
     }
 
-    /**
-     * @param array<string, int> $stats
-     */
-    private function attemptAutoMatch(BankTransaction $bankTx, \DateTimeImmutable $now, array &$stats): bool
+    private function resetEntityManagerIfNeeded(): void
     {
-        // 1. Variable symbol match (strongest)
-        if (null !== $bankTx->variableSymbol && '' !== $bankTx->variableSymbol) {
-            $order = $this->orderRepository->findByVariableSymbol($bankTx->variableSymbol);
+        $manager = $this->doctrine->getManager();
 
-            if (null !== $order) {
-                // Check if an account mapping exists for a DIFFERENT order
-                $accountMapping = null !== $bankTx->senderAccountNumber
-                    ? $this->bankAccountMappingRepository->findByAccountNumber($bankTx->senderAccountNumber)
-                    : null;
-
-                if (null !== $accountMapping && !$accountMapping->order->id->equals($order->id)) {
-                    $this->auditLogger->log(
-                        entityType: 'bank_transaction',
-                        entityId: $bankTx->id->toRfc4122(),
-                        eventType: 'vs_override_account_mapping',
-                        payload: [
-                            'vs_matched_order_id' => $order->id->toRfc4122(),
-                            'account_mapping_order_id' => $accountMapping->order->id->toRfc4122(),
-                            'variable_symbol' => $bankTx->variableSymbol,
-                            'sender_account' => $bankTx->senderAccountNumber,
-                        ],
-                    );
-                }
-
-                return $this->matchToOrder($bankTx, $order, 'variable_symbol', $now, $stats);
-            }
-
-            // Fine match by variable symbol
-            $fine = $this->fineRepository->findByVariableSymbol($bankTx->variableSymbol);
-            if (null !== $fine && $fine->isPayable()) {
-                if ($bankTx->amount === $fine->amountInHaler) {
-                    $fine->markPaid($now);
-                    $bankTx->pairToContract($fine->contract, 'variable_symbol_fine', null, $now);
-
-                    $this->auditLogger->log(
-                        entityType: 'bank_transaction',
-                        entityId: $bankTx->id->toRfc4122(),
-                        eventType: 'auto_matched_to_fine',
-                        payload: [
-                            'fine_id' => $fine->id->toRfc4122(),
-                            'variable_symbol' => $bankTx->variableSymbol,
-                            'expected_amount' => $fine->amountInHaler,
-                            'received_amount' => $bankTx->amount,
-                        ],
-                    );
-                } else {
-                    $bankTx->markAmountMismatchContract($fine->contract, 'variable_symbol_fine', $now);
-                    ++$stats['amount_mismatches'];
-
-                    $this->auditLogger->log(
-                        entityType: 'bank_transaction',
-                        entityId: $bankTx->id->toRfc4122(),
-                        eventType: 'amount_mismatch',
-                        payload: [
-                            'fine_id' => $fine->id->toRfc4122(),
-                            'expected_amount' => $fine->amountInHaler,
-                            'received_amount' => $bankTx->amount,
-                            'difference' => $bankTx->amount - $fine->amountInHaler,
-                            'variable_symbol' => $bankTx->variableSymbol,
-                            'type' => 'fine_payment',
-                        ],
-                    );
-                }
-
-                return true;
-            }
+        if ($manager instanceof EntityManagerInterface && !$manager->isOpen()) {
+            $this->doctrine->resetManager();
         }
-
-        // 2. BankAccountMapping match (fallback)
-        if (null !== $bankTx->senderAccountNumber && '' !== $bankTx->senderAccountNumber) {
-            $mapping = $this->bankAccountMappingRepository->findByAccountNumber($bankTx->senderAccountNumber);
-
-            if (null !== $mapping) {
-                $order = $mapping->order;
-                $contract = $this->contractRepository->findByOrder($order);
-
-                if (null !== $contract && BillingMode::MANUAL_RECURRING === $contract->billingMode) {
-                    $expectedAmount = $this->amountCalculator->calculate($contract, $now);
-
-                    if ($bankTx->amount !== $expectedAmount) {
-                        $bankTx->markAmountMismatchContract($contract, 'account_mapping', $now);
-                        ++$stats['amount_mismatches'];
-
-                        $this->auditLogger->log(
-                            entityType: 'bank_transaction',
-                            entityId: $bankTx->id->toRfc4122(),
-                            eventType: 'amount_mismatch',
-                            payload: [
-                                'contract_id' => $contract->id->toRfc4122(),
-                                'expected_amount' => $expectedAmount,
-                                'received_amount' => $bankTx->amount,
-                                'difference' => $bankTx->amount - $expectedAmount,
-                                'variable_symbol' => $bankTx->variableSymbol,
-                            ],
-                        );
-
-                        return true;
-                    }
-
-                    $bankTx->pairToContract($contract, 'account_mapping', null, $now);
-
-                    $this->auditLogger->log(
-                        entityType: 'bank_transaction',
-                        entityId: $bankTx->id->toRfc4122(),
-                        eventType: 'auto_matched_via_account',
-                        payload: [
-                            'order_id' => $order->id->toRfc4122(),
-                            'contract_id' => $contract->id->toRfc4122(),
-                            'sender_account' => $bankTx->senderAccountNumber,
-                            'mapping_id' => $mapping->id->toRfc4122(),
-                            'expected_amount' => $expectedAmount,
-                            'received_amount' => $bankTx->amount,
-                        ],
-                    );
-
-                    try {
-                        $this->commandBus->dispatch(new ProcessBankTransferPaymentCommand($bankTx, $order));
-                    } catch (\Throwable $e) {
-                        $this->logger->error('Failed to process account-mapped bank transfer payment', [
-                            'bank_transaction_id' => $bankTx->id->toRfc4122(),
-                            'order_id' => $order->id->toRfc4122(),
-                            'exception' => $e,
-                        ]);
-                    }
-
-                    return true;
-                }
-
-                return $this->matchToOrder($bankTx, $order, 'account_mapping', $now, $stats);
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * @param array<string, int> $stats
-     */
-    private function matchToOrder(
-        BankTransaction $bankTx,
-        \App\Entity\Order $order,
-        string $matchMethod,
-        \DateTimeImmutable $now,
-        array &$stats,
-    ): bool {
-        $contract = $this->contractRepository->findByOrder($order);
-
-        // Recurring contract match
-        if (null !== $contract && BillingMode::MANUAL_RECURRING === $contract->billingMode
-            && PaymentMethod::BANK_TRANSFER === $order->paymentMethod) {
-            $expectedAmount = $this->amountCalculator->calculate($contract, $now);
-
-            if ($bankTx->amount !== $expectedAmount) {
-                $bankTx->markAmountMismatchContract($contract, $matchMethod, $now);
-                ++$stats['amount_mismatches'];
-
-                $this->auditLogger->log(
-                    entityType: 'bank_transaction',
-                    entityId: $bankTx->id->toRfc4122(),
-                    eventType: 'amount_mismatch',
-                    payload: [
-                        'contract_id' => $contract->id->toRfc4122(),
-                        'expected_amount' => $expectedAmount,
-                        'received_amount' => $bankTx->amount,
-                        'difference' => $bankTx->amount - $expectedAmount,
-                        'variable_symbol' => $bankTx->variableSymbol,
-                    ],
-                );
-
-                return true;
-            }
-
-            $bankTx->pairToContract($contract, $matchMethod, null, $now);
-
-            $this->auditLogger->log(
-                entityType: 'bank_transaction',
-                entityId: $bankTx->id->toRfc4122(),
-                eventType: 'auto_matched_to_contract',
-                payload: [
-                    'contract_id' => $contract->id->toRfc4122(),
-                    'order_id' => $order->id->toRfc4122(),
-                    'variable_symbol' => $bankTx->variableSymbol,
-                    'expected_amount' => $expectedAmount,
-                    'received_amount' => $bankTx->amount,
-                    'billing_period_start' => ($contract->nextBillingDate ?? $now)->format('Y-m-d'),
-                ],
-            );
-
-            try {
-                $this->commandBus->dispatch(new ProcessBankTransferPaymentCommand($bankTx, $order));
-            } catch (\Throwable $e) {
-                $this->logger->error('Failed to process recurring bank transfer payment', [
-                    'bank_transaction_id' => $bankTx->id->toRfc4122(),
-                    'contract_id' => $contract->id->toRfc4122(),
-                    'exception' => $e,
-                ]);
-            }
-
-            return true;
-        }
-
-        // Debt payment match — must come before first-payment match
-        if ($order->hasUnpaidDebt()) {
-            if ($bankTx->amount !== $order->onboardingDebtInHaler) {
-                $bankTx->markAmountMismatch($order, $matchMethod, $now);
-                ++$stats['amount_mismatches'];
-
-                $this->auditLogger->log(
-                    entityType: 'bank_transaction',
-                    entityId: $bankTx->id->toRfc4122(),
-                    eventType: 'amount_mismatch',
-                    payload: [
-                        'order_id' => $order->id->toRfc4122(),
-                        'expected_amount' => $order->onboardingDebtInHaler,
-                        'received_amount' => $bankTx->amount,
-                        'difference' => $bankTx->amount - $order->onboardingDebtInHaler,
-                        'variable_symbol' => $bankTx->variableSymbol,
-                        'type' => 'debt_payment',
-                    ],
-                );
-
-                return true;
-            }
-
-            $bankTx->pairToOrder($order, $matchMethod, null, $now);
-
-            $this->auditLogger->log(
-                entityType: 'bank_transaction',
-                entityId: $bankTx->id->toRfc4122(),
-                eventType: 'auto_matched_to_order_debt',
-                payload: [
-                    'order_id' => $order->id->toRfc4122(),
-                    'variable_symbol' => $bankTx->variableSymbol,
-                    'expected_amount' => $order->onboardingDebtInHaler,
-                    'received_amount' => $bankTx->amount,
-                    'match_method' => $matchMethod,
-                ],
-            );
-
-            try {
-                $this->commandBus->dispatch(new ProcessBankTransferDebtPaymentCommand($bankTx, $order));
-            } catch (\Throwable $e) {
-                $this->logger->error('Failed to process bank transfer debt payment', [
-                    'bank_transaction_id' => $bankTx->id->toRfc4122(),
-                    'order_id' => $order->id->toRfc4122(),
-                    'exception' => $e,
-                ]);
-            }
-
-            return true;
-        }
-
-        // First payment match
-        if ($order->canBePaid()) {
-            if ($bankTx->amount !== $order->firstPaymentPrice) {
-                $bankTx->markAmountMismatch($order, $matchMethod, $now);
-                ++$stats['amount_mismatches'];
-
-                $this->auditLogger->log(
-                    entityType: 'bank_transaction',
-                    entityId: $bankTx->id->toRfc4122(),
-                    eventType: 'amount_mismatch',
-                    payload: [
-                        'order_id' => $order->id->toRfc4122(),
-                        'expected_amount' => $order->firstPaymentPrice,
-                        'received_amount' => $bankTx->amount,
-                        'difference' => $bankTx->amount - $order->firstPaymentPrice,
-                        'variable_symbol' => $bankTx->variableSymbol,
-                    ],
-                );
-
-                return true;
-            }
-
-            $bankTx->pairToOrder($order, $matchMethod, null, $now);
-
-            $this->auditLogger->log(
-                entityType: 'bank_transaction',
-                entityId: $bankTx->id->toRfc4122(),
-                eventType: 'auto_matched_to_order',
-                payload: [
-                    'order_id' => $order->id->toRfc4122(),
-                    'variable_symbol' => $bankTx->variableSymbol,
-                    'expected_amount' => $order->firstPaymentPrice,
-                    'received_amount' => $bankTx->amount,
-                    'match_method' => $matchMethod,
-                ],
-            );
-
-            try {
-                $this->commandBus->dispatch(new ProcessBankTransferPaymentCommand($bankTx, $order));
-            } catch (\Throwable $e) {
-                $this->logger->error('Failed to process first bank transfer payment', [
-                    'bank_transaction_id' => $bankTx->id->toRfc4122(),
-                    'order_id' => $order->id->toRfc4122(),
-                    'exception' => $e,
-                ]);
-            }
-
-            return true;
-        }
-
-        return false;
     }
 }
