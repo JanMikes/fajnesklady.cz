@@ -267,8 +267,7 @@ final class OrderForm extends AbstractController
         }
 
         if ('email' === $field) {
-            $data = $this->getForm()->getData();
-            $email = $data instanceof OrderFormData ? $data->email : '';
+            $email = trim((string) ($this->formValues['email'] ?? ''));
             $this->emailExistsInSystem = '' !== $email && null !== $this->userRepository->findByEmail($email);
         }
     }
