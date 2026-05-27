@@ -62,7 +62,7 @@ final readonly class SendDebtPaymentRequestEmailHandler
                 'bankAccount' => $isBankTransfer ? $this->qrPaymentGenerator->getBankAccountFormatted() : null,
                 'variableSymbol' => $order->variableSymbol,
                 'qrCodeDataUri' => $isBankTransfer && null !== $order->variableSymbol && null !== $order->onboardingDebtInHaler
-                    ? $this->qrPaymentGenerator->generateDataUri($order->variableSymbol, $order->onboardingDebtInHaler)
+                    ? $this->qrPaymentGenerator->generateImageUrl($order->variableSymbol, $order->onboardingDebtInHaler)
                     : null,
             ]);
 

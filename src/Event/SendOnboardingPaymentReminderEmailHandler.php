@@ -89,7 +89,7 @@ final readonly class SendOnboardingPaymentReminderEmailHandler
                     ? $order->variableSymbol
                     : null,
                 'qrCodeDataUri' => PaymentMethod::BANK_TRANSFER === $order->paymentMethod && null !== $order->variableSymbol
-                    ? $this->qrPaymentGenerator->generateDataUri($order->variableSymbol, $order->firstPaymentPrice)
+                    ? $this->qrPaymentGenerator->generateImageUrl($order->variableSymbol, $order->firstPaymentPrice)
                     : null,
             ]);
 

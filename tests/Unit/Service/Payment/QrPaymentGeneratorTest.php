@@ -6,6 +6,8 @@ namespace App\Tests\Unit\Service\Payment;
 
 use App\Service\Payment\QrPaymentGenerator;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\HttpFoundation\UriSigner;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 class QrPaymentGeneratorTest extends TestCase
 {
@@ -13,7 +15,10 @@ class QrPaymentGeneratorTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->generator = new QrPaymentGenerator();
+        $this->generator = new QrPaymentGenerator(
+            $this->createMock(UrlGeneratorInterface::class),
+            $this->createMock(UriSigner::class),
+        );
     }
 
     public function testGeneratesValidDataUri(): void

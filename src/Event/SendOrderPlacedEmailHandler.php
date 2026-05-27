@@ -76,7 +76,7 @@ final readonly class SendOrderPlacedEmailHandler
                 'bankAccount' => $isBankTransfer ? $this->qrPaymentGenerator->getBankAccountFormatted() : null,
                 'variableSymbol' => $isBankTransfer ? $order->variableSymbol : null,
                 'qrCodeDataUri' => $isBankTransfer && null !== $order->variableSymbol
-                    ? $this->qrPaymentGenerator->generateDataUri($order->variableSymbol, $order->firstPaymentPrice)
+                    ? $this->qrPaymentGenerator->generateImageUrl($order->variableSymbol, $order->firstPaymentPrice)
                     : null,
             ]);
 

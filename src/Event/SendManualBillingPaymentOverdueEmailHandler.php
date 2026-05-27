@@ -88,7 +88,7 @@ final readonly class SendManualBillingPaymentOverdueEmailHandler
                 'bankAccount' => $isBankTransfer ? $this->qrPaymentGenerator->getBankAccountFormatted() : null,
                 'variableSymbol' => $isBankTransfer ? $order->variableSymbol : null,
                 'qrCodeDataUri' => $isBankTransfer && null !== $order->variableSymbol
-                    ? $this->qrPaymentGenerator->generateDataUri($order->variableSymbol, $request->amount)
+                    ? $this->qrPaymentGenerator->generateImageUrl($order->variableSymbol, $request->amount)
                     : null,
             ]);
 
