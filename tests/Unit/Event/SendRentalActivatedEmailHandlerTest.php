@@ -18,6 +18,7 @@ use App\Event\SendRentalActivatedEmailHandler;
 use App\Repository\ContractRepository;
 use App\Repository\InvoiceRepository;
 use App\Service\InvoicingService;
+use App\Service\Order\OrderReferenceFormatter;
 use App\Service\OrderEmailAttachments;
 use App\Service\OrderStatusUrlGenerator;
 use App\Service\Place\PlaceAddressFormatter;
@@ -306,6 +307,7 @@ class SendRentalActivatedEmailHandlerTest extends TestCase
             $cancelUrlGenerator,
             $mapGenerator,
             new PlaceAddressFormatter(),
+            new OrderReferenceFormatter(),
             new MockClock('2025-06-15 12:00:00'),
             new NullLogger(),
             $this->tempDir,

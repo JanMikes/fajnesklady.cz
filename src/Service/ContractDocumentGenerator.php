@@ -10,8 +10,8 @@ use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\RentalType;
+use App\Service\Order\OrderReferenceFormatter;
 use PhpOffice\PhpWord\TemplateProcessor;
-use Symfony\Component\Uid\Uuid;
 
 /**
  * Service for generating contract documents from DOCX templates.
@@ -28,6 +28,7 @@ readonly class ContractDocumentGenerator
 {
     public function __construct(
         private string $contractsDirectory,
+        private OrderReferenceFormatter $orderReferenceFormatter,
     ) {
     }
 
@@ -47,8 +48,7 @@ readonly class ContractDocumentGenerator
     {
         $bytes = $this->renderBytes(
             templatePath: $templatePath,
-            documentNumberId: $contract->order->id,
-            documentNumberDate: $contract->order->createdAt,
+            documentNumber: $this->orderReferenceFormatter->format($contract->order),
             user: $contract->user,
             storage: $contract->storage,
             rentalType: $contract->rentalType,
@@ -79,7 +79,7 @@ readonly class ContractDocumentGenerator
      */
     public function formatDocumentNumberForOrder(Order $order): string
     {
-        return $this->formatDocumentNumber($order->id, $order->createdAt);
+        return $this->orderReferenceFormatter->format($order);
     }
 
     /**
@@ -93,8 +93,7 @@ readonly class ContractDocumentGenerator
     {
         return $this->renderBytes(
             templatePath: $templatePath,
-            documentNumberId: $order->id,
-            documentNumberDate: $order->createdAt,
+            documentNumber: $this->orderReferenceFormatter->format($order),
             user: $order->user,
             storage: $order->storage,
             rentalType: $order->rentalType,
@@ -109,8 +108,7 @@ readonly class ContractDocumentGenerator
 
     private function renderBytes(
         string $templatePath,
-        Uuid $documentNumberId,
-        \DateTimeImmutable $documentNumberDate,
+        string $documentNumber,
         User $user,
         Storage $storage,
         RentalType $rentalType,
@@ -131,7 +129,7 @@ readonly class ContractDocumentGenerator
         $processor->setValue('TENANT_INFO', $this->formatTenantInfo($user));
         $processor->setValue('STORAGE_DESCRIPTION', $this->formatStorageDescription($storage, $storage->storageType));
         $processor->setValue('RENTAL_DURATION_TEXT', $this->formatRentalDuration($rentalType, $startDate, $endDate));
-        $processor->setValue('CONTRACT_NUMBER', $this->formatDocumentNumber($documentNumberId, $documentNumberDate));
+        $processor->setValue('CONTRACT_NUMBER', $documentNumber);
         $processor->setValue('CONTRACT_CITY', $place->city);
         $processor->setValue('CONTRACT_DATE', $documentDate->format('d.m.Y'));
         $processor->setValue('SIGNING_PLACE', $signingPlace ?? $place->city);
@@ -244,18 +242,6 @@ readonly class ContractDocumentGenerator
             $user->billingStreet,
             $user->billingPostalCode,
             $user->billingCity,
-        );
-    }
-
-    private function formatDocumentNumber(Uuid $id, \DateTimeImmutable $date): string
-    {
-        $uuidShort = substr($id->toRfc4122(), 0, 8);
-
-        return sprintf(
-            '%s-%s-%s',
-            $date->format('Y'),
-            $date->format('md'),
-            strtoupper($uuidShort),
         );
     }
 

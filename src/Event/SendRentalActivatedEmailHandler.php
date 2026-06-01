@@ -10,6 +10,7 @@ use App\Enum\PaymentMethod;
 use App\Repository\ContractRepository;
 use App\Repository\InvoiceRepository;
 use App\Service\InvoicingService;
+use App\Service\Order\OrderReferenceFormatter;
 use App\Service\Order\RentalActivatedEmailContent;
 use App\Service\OrderEmailAttachments;
 use App\Service\OrderStatusUrlGenerator;
@@ -52,6 +53,7 @@ final readonly class SendRentalActivatedEmailHandler
         private RecurringPaymentCancelUrlGenerator $cancelUrlGenerator,
         private StorageMapImageGenerator $mapImageGenerator,
         private PlaceAddressFormatter $addressFormatter,
+        private OrderReferenceFormatter $orderReferenceFormatter,
         private ClockInterface $clock,
         private LoggerInterface $logger,
         private string $uploadsDirectory,
@@ -136,7 +138,7 @@ final readonly class SendRentalActivatedEmailHandler
         $email->context([
             'name' => $user->fullName,
             'content' => $content,
-            'contractNumber' => $this->formatContractNumber($contract),
+            'contractNumber' => $this->orderReferenceFormatter->format($order),
             'placeName' => $place->name,
             'placeAddress' => $this->addressFormatter->format($place),
             'placeNavigationUrl' => $this->addressFormatter->navigationUrl($place),
@@ -195,18 +197,5 @@ final readonly class SendRentalActivatedEmailHandler
 
             return null;
         }
-    }
-
-    private function formatContractNumber(\App\Entity\Contract $contract): string
-    {
-        $date = $contract->createdAt;
-        $uuidShort = substr($contract->id->toRfc4122(), 0, 8);
-
-        return sprintf(
-            '%s-%s-%s',
-            $date->format('Y'),
-            $date->format('md'),
-            strtoupper($uuidShort),
-        );
     }
 }

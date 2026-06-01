@@ -240,7 +240,7 @@
                             {% if contract %}
                                 <div>
                                     <dt class="text-gray-500">Číslo smlouvy</dt>
-                                    <dd class="font-mono font-medium text-gray-900">{{ contract.id|slice(0, 8)|upper }}</dd>
+                                    <dd class="font-mono font-medium text-gray-900">{{ order_reference(order) }}</dd>
                                 </div>
                             {% endif %}
                             <div>

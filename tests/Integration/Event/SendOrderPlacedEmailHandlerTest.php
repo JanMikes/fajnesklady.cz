@@ -87,6 +87,24 @@ class SendOrderPlacedEmailHandlerTest extends KernelTestCase
         $this->assertStringNotContainsString('/ měsíc', $body);
     }
 
+    public function testEmailRendersCanonicalOrderReference(): void
+    {
+        $order = $this->findOrderByStorageNumber('B1');
+
+        ($this->handler)(new OrderPlaced($order->id, $this->clock->now()));
+
+        $body = $this->renderHtmlBody($this->lastTemplatedEmail());
+
+        $expectedReference = sprintf(
+            '%s-%s-%s',
+            $order->createdAt->format('Y'),
+            $order->createdAt->format('md'),
+            strtoupper(substr($order->id->toRfc4122(), 0, 8)),
+        );
+
+        $this->assertStringContainsString($expectedReference, $body);
+    }
+
     public function testSkipsEmailWhenAdminCreatedAndAlreadyCompleted(): void
     {
         // Mirrors the one-transaction onboarding (migrate / digital

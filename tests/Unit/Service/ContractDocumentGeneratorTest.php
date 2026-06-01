@@ -12,6 +12,7 @@ use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\RentalType;
 use App\Service\ContractDocumentGenerator;
+use App\Service\Order\OrderReferenceFormatter;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
@@ -24,7 +25,7 @@ class ContractDocumentGeneratorTest extends TestCase
     {
         $this->tempDir = sys_get_temp_dir().'/contract_test_'.uniqid();
         mkdir($this->tempDir, 0755, true);
-        $this->generator = new ContractDocumentGenerator($this->tempDir);
+        $this->generator = new ContractDocumentGenerator($this->tempDir, new OrderReferenceFormatter());
     }
 
     protected function tearDown(): void
@@ -187,7 +188,7 @@ class ContractDocumentGeneratorTest extends TestCase
 
         // Use a nested directory that doesn't exist
         $nestedDir = $this->tempDir.'/nested/contracts';
-        $generator = new ContractDocumentGenerator($nestedDir);
+        $generator = new ContractDocumentGenerator($nestedDir, new OrderReferenceFormatter());
 
         $templatePath = $this->createTestTemplate();
         $outputPath = $generator->generate($contract, $templatePath);
@@ -281,6 +282,29 @@ class ContractDocumentGeneratorTest extends TestCase
 
         $this->assertStringContainsString('01.01.2024', $xml, '${CONTRACT_DATE} must be $order->createdAt (01.01.2024).');
         $this->assertStringNotContainsString('10.02.2024', $xml, '${CONTRACT_DATE} must not leak $contract->createdAt (10.02.2024).');
+    }
+
+    public function testContractNumberMatchesOrderDerivedReference(): void
+    {
+        // The ${CONTRACT_NUMBER} printed in the DOCX must equal the canonical
+        // order reference (order.createdAt + order.id), so the customer reads
+        // the identical string on the contract and in every e-mail / status page.
+        $tenant = $this->createUser();
+        $storage = $this->createStorage();
+        $order = $this->createOrder($tenant, $storage);
+        $contract = $this->createContract($order);
+
+        $expectedReference = (new OrderReferenceFormatter())->format($order);
+
+        $templatePath = $this->createTestTemplate();
+        $outputPath = $this->generator->generate($contract, $templatePath);
+        $xml = $this->extractDocumentXml($outputPath);
+
+        $this->assertStringContainsString($expectedReference, $xml);
+        $this->assertSame(
+            sprintf('2024-0101-%s', strtoupper(substr($order->id->toRfc4122(), 0, 8))),
+            $expectedReference,
+        );
     }
 
     private function extractDocumentXml(string $docxPath): string

@@ -219,7 +219,7 @@
                             <tr>
                                 <td class="font-mono text-sm">
                                     <a href="{{ path('admin_order_detail', {id: order.id}) }}" class="link">
-                                        {{ order.createdAt|date('Y') }}-{{ order.createdAt|date('md') }}-{{ order.id.toRfc4122()|slice(0, 8)|upper }}
+                                        {{ order_reference(order) }}
                                     </a>
                                 </td>
                                 <td>

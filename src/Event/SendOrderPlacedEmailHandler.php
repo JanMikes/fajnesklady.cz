@@ -7,6 +7,7 @@ namespace App\Event;
 use App\Enum\OrderStatus;
 use App\Enum\PaymentMethod;
 use App\Repository\OrderRepository;
+use App\Service\Order\OrderReferenceFormatter;
 use App\Service\OrderEmailAttachments;
 use App\Service\OrderStatusUrlGenerator;
 use App\Service\Payment\QrPaymentGenerator;
@@ -26,6 +27,7 @@ final readonly class SendOrderPlacedEmailHandler
         private OrderEmailAttachments $attachments,
         private PlaceAddressFormatter $addressFormatter,
         private QrPaymentGenerator $qrPaymentGenerator,
+        private OrderReferenceFormatter $orderReferenceFormatter,
     ) {
     }
 
@@ -60,7 +62,7 @@ final readonly class SendOrderPlacedEmailHandler
             ->htmlTemplate('email/order_placed.html.twig')
             ->context([
                 'name' => $user->fullName,
-                'orderNumber' => substr($order->id->toRfc4122(), 0, 8),
+                'orderNumber' => $this->orderReferenceFormatter->format($order),
                 'placeName' => $place->name,
                 'placeAddress' => $this->addressFormatter->format($place),
                 'placeNavigationUrl' => $this->addressFormatter->navigationUrl($place),

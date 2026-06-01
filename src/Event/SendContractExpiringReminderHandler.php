@@ -6,6 +6,7 @@ namespace App\Event;
 
 use App\Enum\RentalType;
 use App\Repository\ContractRepository;
+use App\Service\Order\OrderReferenceFormatter;
 use App\Service\OrderStatusUrlGenerator;
 use App\Service\Place\PlaceAddressFormatter;
 use Psr\Log\LoggerInterface;
@@ -24,6 +25,7 @@ final readonly class SendContractExpiringReminderHandler
         private UrlGeneratorInterface $urlGenerator,
         private OrderStatusUrlGenerator $statusUrlGenerator,
         private PlaceAddressFormatter $addressFormatter,
+        private OrderReferenceFormatter $orderReferenceFormatter,
         private LoggerInterface $logger,
     ) {
     }
@@ -55,7 +57,7 @@ final readonly class SendContractExpiringReminderHandler
             ->htmlTemplate('email/contract_expiring.html.twig')
             ->context([
                 'name' => $user->fullName,
-                'contractNumber' => $this->formatContractNumber($contract),
+                'contractNumber' => $this->orderReferenceFormatter->format($contract->order),
                 'placeName' => $place->name,
                 'placeAddress' => $this->addressFormatter->format($place),
                 'placeNavigationUrl' => $this->addressFormatter->navigationUrl($place),
@@ -78,18 +80,5 @@ final readonly class SendContractExpiringReminderHandler
                 'exception' => $e,
             ]);
         }
-    }
-
-    private function formatContractNumber(\App\Entity\Contract $contract): string
-    {
-        $date = $contract->createdAt;
-        $uuidShort = substr($contract->id->toRfc4122(), 0, 8);
-
-        return sprintf(
-            '%s-%s-%s',
-            $date->format('Y'),
-            $date->format('md'),
-            strtoupper($uuidShort),
-        );
     }
 }
