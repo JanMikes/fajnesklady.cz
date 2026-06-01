@@ -475,6 +475,23 @@ class Order implements EntityWithEvents
         return null !== $this->uploadedContractDocumentPath;
     }
 
+    /**
+     * Whether the admin-uploaded contract is an image (vs. a PDF). Drives the
+     * signing page's preview embed: <img> for images, <object> for PDFs.
+     */
+    public function uploadedContractIsImage(): bool
+    {
+        if (null === $this->uploadedContractDocumentPath) {
+            return false;
+        }
+
+        return in_array(
+            strtolower(pathinfo($this->uploadedContractDocumentPath, PATHINFO_EXTENSION)),
+            ['jpg', 'jpeg', 'png'],
+            true,
+        );
+    }
+
     public function setOnboardingDebt(int $amountInHaler): void
     {
         $this->onboardingDebtInHaler = $amountInHaler;

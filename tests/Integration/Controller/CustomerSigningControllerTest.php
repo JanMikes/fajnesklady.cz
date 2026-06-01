@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Tests\Integration\Controller;
 
 use App\Entity\Order;
+use App\Enum\BillingMode;
 use App\Enum\OrderStatus;
 use App\Enum\PaymentMethod;
+use App\Enum\RentalType;
 use App\Enum\SigningMethod;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -50,7 +52,7 @@ class CustomerSigningControllerTest extends WebTestCase
         $this->assertStringNotContainsString('1 500 Kč', $content);
     }
 
-    public function testExternallyPrepaidBranchShowsGreenBannerNoPrice(): void
+    public function testExternallyPrepaidBranchShowsGreenBannerNoPriceNoLogos(): void
     {
         $order = $this->makeSigningOrder(
             paymentMethod: PaymentMethod::EXTERNAL,
@@ -67,6 +69,10 @@ class CustomerSigningControllerTest extends WebTestCase
         \assert(is_string($content));
         $this->assertStringContainsString('předplacen externě do 31.12.2026', $content);
         $this->assertStringNotContainsString('Měsíční platba', $content);
+        // No payment surface for prepaid: no in-page card logos, no recurring consent.
+        // (The footer always renders payment_logos, so key on the in-page SSL note instead.)
+        $this->assertStringNotContainsString('Vaše platba je zabezpečena 256-bit SSL/TLS', $content);
+        $this->assertStringNotContainsString('Parametry opakované platby', $content);
     }
 
     public function testFreeBranchShowsGreenBannerNoPrice(): void
@@ -86,6 +92,203 @@ class CustomerSigningControllerTest extends WebTestCase
         \assert(is_string($content));
         $this->assertStringContainsString('Bezplatný pronájem', $content);
         $this->assertStringNotContainsString('Měsíční platba', $content);
+    }
+
+    public function testScenarioBRendersContractText(): void
+    {
+        $order = $this->makeSigningOrder(
+            paymentMethod: PaymentMethod::GOPAY,
+            firstPaymentPrice: 80_000,
+            storageRate: 150_000,
+            individualMonthlyAmount: 80_000,
+            paidThroughDate: null,
+        );
+
+        $this->client->request('GET', '/podpis/'.$order->signingToken);
+
+        $this->assertResponseIsSuccessful();
+        $content = $this->client->getResponse()->getContent();
+        \assert(is_string($content));
+        $this->assertStringContainsString('Podpis smlouvy', $content);
+        $this->assertStringContainsString('I. Předmět smlouvy', $content);
+        $this->assertStringNotContainsString('Přijetí a podpis obchodních podmínek', $content);
+        $this->assertStringNotContainsString('Vaše smlouva', $content);
+    }
+
+    public function testScenarioARendersUploadedContractPreview(): void
+    {
+        $order = $this->makeSigningOrder(
+            paymentMethod: PaymentMethod::GOPAY,
+            firstPaymentPrice: 80_000,
+            storageRate: 150_000,
+            individualMonthlyAmount: 80_000,
+            paidThroughDate: null,
+            uploadedContractPath: '/var/contracts/contract_test.pdf',
+        );
+
+        $this->client->request('GET', '/podpis/'.$order->signingToken);
+
+        $this->assertResponseIsSuccessful();
+        $content = $this->client->getResponse()->getContent();
+        \assert(is_string($content));
+        $this->assertStringContainsString('Přijetí a podpis obchodních podmínek', $content);
+        $this->assertStringContainsString('Vaše smlouva', $content);
+        $this->assertStringContainsString('/podpis/'.$order->signingToken.'/smlouva', $content);
+        $this->assertStringNotContainsString('I. Předmět smlouvy', $content);
+    }
+
+    public function testGoPayAutoRecurringShowsRecurringConsentAndLogos(): void
+    {
+        $order = $this->makeSigningOrder(
+            paymentMethod: PaymentMethod::GOPAY,
+            firstPaymentPrice: 80_000,
+            storageRate: 150_000,
+            individualMonthlyAmount: 80_000,
+            paidThroughDate: null,
+            billingMode: BillingMode::AUTO_RECURRING,
+            rentalType: RentalType::UNLIMITED,
+            clearEndDate: true,
+            startDate: new \DateTimeImmutable('2025-08-01'),
+        );
+
+        $this->client->request('GET', '/podpis/'.$order->signingToken);
+
+        $this->assertResponseIsSuccessful();
+        $content = $this->client->getResponse()->getContent();
+        \assert(is_string($content));
+        $this->assertStringContainsString('Parametry opakované platby', $content);
+        $this->assertStringContainsString('accept_recurring_payments', $content);
+        $this->assertStringContainsString('PCI-DSS', $content);
+        // In-page card logos (distinct from the always-present footer logos).
+        $this->assertStringContainsString('Vaše platba je zabezpečena 256-bit SSL/TLS', $content);
+    }
+
+    public function testBankTransferShowsManualInfoNoLogos(): void
+    {
+        $order = $this->makeSigningOrder(
+            paymentMethod: PaymentMethod::BANK_TRANSFER,
+            firstPaymentPrice: 80_000,
+            storageRate: 150_000,
+            individualMonthlyAmount: 80_000,
+            paidThroughDate: null,
+            billingMode: BillingMode::MANUAL_RECURRING,
+            rentalType: RentalType::UNLIMITED,
+            clearEndDate: true,
+            startDate: new \DateTimeImmutable('2025-08-01'),
+        );
+
+        $this->client->request('GET', '/podpis/'.$order->signingToken);
+
+        $this->assertResponseIsSuccessful();
+        $content = $this->client->getResponse()->getContent();
+        \assert(is_string($content));
+        $this->assertStringContainsString('Ručně schvalovaná platba', $content);
+        // Bank transfer is not a card surface: no in-page card logos, no AUTO recurring consent.
+        $this->assertStringNotContainsString('Vaše platba je zabezpečena 256-bit SSL/TLS', $content);
+        $this->assertStringNotContainsString('Parametry opakované platby', $content);
+    }
+
+    public function testEarlyStartWaiverShownForScenarioBNearStart(): void
+    {
+        // MockClock is 2025-06-15; a start within 14 days requires the waiver (scenario B).
+        $order = $this->makeSigningOrder(
+            paymentMethod: PaymentMethod::GOPAY,
+            firstPaymentPrice: 80_000,
+            storageRate: 150_000,
+            individualMonthlyAmount: 80_000,
+            paidThroughDate: null,
+            startDate: new \DateTimeImmutable('2025-06-20'),
+            endDate: new \DateTimeImmutable('2025-06-27'),
+        );
+
+        $this->client->request('GET', '/podpis/'.$order->signingToken);
+
+        $this->assertResponseIsSuccessful();
+        $content = $this->client->getResponse()->getContent();
+        \assert(is_string($content));
+        $this->assertStringContainsString('ztrácím právo odstoupit', $content);
+    }
+
+    public function testEarlyStartWaiverAbsentForUploadedContract(): void
+    {
+        // Same near start, but uploaded-contract onboarding skips the waiver (handled on paper).
+        $order = $this->makeSigningOrder(
+            paymentMethod: PaymentMethod::GOPAY,
+            firstPaymentPrice: 80_000,
+            storageRate: 150_000,
+            individualMonthlyAmount: 80_000,
+            paidThroughDate: null,
+            startDate: new \DateTimeImmutable('2025-06-20'),
+            endDate: new \DateTimeImmutable('2025-06-27'),
+            uploadedContractPath: '/var/contracts/contract_test.pdf',
+        );
+
+        $this->client->request('GET', '/podpis/'.$order->signingToken);
+
+        $this->assertResponseIsSuccessful();
+        $content = $this->client->getResponse()->getContent();
+        \assert(is_string($content));
+        $this->assertStringNotContainsString('ztrácím právo odstoupit', $content);
+    }
+
+    public function testPostMissingConsumerNoticeIsRejected(): void
+    {
+        $order = $this->makeSigningOrder(
+            paymentMethod: PaymentMethod::GOPAY,
+            firstPaymentPrice: 80_000,
+            storageRate: 150_000,
+            individualMonthlyAmount: 80_000,
+            paidThroughDate: null,
+            startDate: new \DateTimeImmutable('2025-08-01'),
+            endDate: new \DateTimeImmutable('2025-08-15'),
+        );
+
+        $this->client->request('POST', '/podpis/'.$order->signingToken, [
+            'accept_contract' => '1',
+            'accept_vop' => '1',
+            'accept_operating_rules' => '1',
+            // accept_consumer_notice intentionally omitted
+            'accept_gdpr' => '1',
+            'signature_consent' => '1',
+            'signature_data' => 'data:image/png;base64,iVBORw0KGgo=',
+            'signing_method' => 'draw',
+            'signing_place' => 'Brno',
+        ]);
+
+        // Validation error re-renders (200); success would 302 to the payment page.
+        $this->assertResponseStatusCodeSame(200);
+        $this->assertFalse($this->reloadOrder($order->id)->hasSignature());
+    }
+
+    public function testPostMissingRecurringConsentRejectedForAutoGoPay(): void
+    {
+        $order = $this->makeSigningOrder(
+            paymentMethod: PaymentMethod::GOPAY,
+            firstPaymentPrice: 80_000,
+            storageRate: 150_000,
+            individualMonthlyAmount: 80_000,
+            paidThroughDate: null,
+            billingMode: BillingMode::AUTO_RECURRING,
+            rentalType: RentalType::UNLIMITED,
+            clearEndDate: true,
+            startDate: new \DateTimeImmutable('2025-08-01'),
+        );
+
+        $this->client->request('POST', '/podpis/'.$order->signingToken, [
+            'accept_contract' => '1',
+            'accept_vop' => '1',
+            'accept_operating_rules' => '1',
+            'accept_consumer_notice' => '1',
+            'accept_gdpr' => '1',
+            'signature_consent' => '1',
+            // accept_recurring_payments intentionally omitted
+            'signature_data' => 'data:image/png;base64,iVBORw0KGgo=',
+            'signing_method' => 'draw',
+            'signing_place' => 'Brno',
+        ]);
+
+        $this->assertResponseStatusCodeSame(200);
+        $this->assertFalse($this->reloadOrder($order->id)->hasSignature());
     }
 
     public function testAlreadySignedOrderRedirectsWithoutReprocessing(): void
@@ -125,14 +328,29 @@ class CustomerSigningControllerTest extends WebTestCase
         $this->assertStringContainsString('/objednavka/'.$order->id->toRfc4122().'/platba', $location);
     }
 
+    private function reloadOrder(\Symfony\Component\Uid\Uuid $id): Order
+    {
+        $this->entityManager->clear();
+        $order = $this->entityManager->find(Order::class, $id);
+        \assert($order instanceof Order);
+
+        return $order;
+    }
+
     private function makeSigningOrder(
         PaymentMethod $paymentMethod,
         int $firstPaymentPrice,
         int $storageRate,
         ?int $individualMonthlyAmount,
         ?\DateTimeImmutable $paidThroughDate,
+        BillingMode $billingMode = BillingMode::AUTO_RECURRING,
+        ?RentalType $rentalType = null,
+        ?\DateTimeImmutable $startDate = null,
+        ?\DateTimeImmutable $endDate = null,
+        bool $clearEndDate = false,
+        ?string $uploadedContractPath = null,
     ): Order {
-        // Find an available unowned storage we can mutate the rate on.
+        // Find the single available RESERVED order we can safely mutate (DAMA rolls back per test).
         $order = $this->entityManager->createQueryBuilder()
             ->select('o')
             ->from(Order::class, 'o')
@@ -145,15 +363,30 @@ class CustomerSigningControllerTest extends WebTestCase
         \assert($order instanceof Order);
 
         $storage = $order->storage;
-        $reflection = new \ReflectionClass($storage->storageType);
-        $reflection->getProperty('defaultPricePerMonth')->setValue($storage->storageType, $storageRate);
+        $typeReflection = new \ReflectionClass($storage->storageType);
+        $typeReflection->getProperty('defaultPricePerMonth')->setValue($storage->storageType, $storageRate);
 
         $orderReflection = new \ReflectionClass($order);
         $orderReflection->getProperty('firstPaymentPrice')->setValue($order, $firstPaymentPrice);
+        if (null !== $rentalType) {
+            $orderReflection->getProperty('rentalType')->setValue($order, $rentalType);
+        }
+        if (null !== $startDate) {
+            $orderReflection->getProperty('startDate')->setValue($order, $startDate);
+        }
+        if ($clearEndDate) {
+            $orderReflection->getProperty('endDate')->setValue($order, null);
+        } elseif (null !== $endDate) {
+            $orderReflection->getProperty('endDate')->setValue($order, $endDate);
+        }
 
         $order->markAsAdminCreated();
         $order->setPaymentMethod($paymentMethod);
+        $order->setBillingMode($billingMode);
         $order->setOnboardingBillingTerms($individualMonthlyAmount, $paidThroughDate);
+        if (null !== $uploadedContractPath) {
+            $order->setUploadedContractDocumentPath($uploadedContractPath);
+        }
         $order->setSigningToken(str_repeat('a', 64));
         $order->extendExpiration(new \DateTimeImmutable('+30 days'));
 

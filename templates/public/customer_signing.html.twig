@@ -1,6 +1,7 @@
 {% extends 'user/layout.html.twig' %}
 
 {% set customerFullName = (order.user.firstName ~ ' ' ~ order.user.lastName)|trim %}
+{% set hasUploadedContract = order.hasUploadedContract() %}
 {% set signatureStyles = [
     { id: 'dancing-script', family: 'Dancing Script' },
     { id: 'great-vibes', family: 'Great Vibes' },
@@ -8,7 +9,7 @@
     { id: 'pacifico', family: 'Pacifico' },
 ] %}
 
-{% block title %}Podpis smlouvy - Fajnesklady.cz{% endblock %}
+{% block title %}{{ hasUploadedContract ? 'Přijetí obchodních podmínek' : 'Podpis smlouvy' }} - Fajnesklady.cz{% endblock %}
 
 {% block stylesheets %}
     {{ parent() }}
@@ -18,8 +19,17 @@
 {% endblock %}
 
 {% block content %}
+    {# acceptRecurring defaults to true when there's no AUTO recurring consent so the
+       submit gating stays a single conjunction; the dedicated checkbox flips it to
+       false on render only when showRecurringConsent. Submitted values flow back via
+       `submitted` so a server-side validation re-render keeps the user's place + ticks. #}
     <div class="max-w-4xl mx-auto"
-         x-data="{ signed: false, signingPlace: '', acceptAll: false }"
+         x-data="{
+            signed: false,
+            signingPlace: {{ (submitted.signingPlace ?? '')|json_encode|e('html_attr') }},
+            acceptAll: {{ (submitted.acceptAll ?? false) ? 'true' : 'false' }},
+            acceptRecurring: {{ showRecurringConsent ? ((submitted.acceptRecurring ?? false) ? 'true' : 'false') : 'true' }}
+         }"
          @signature:signed.window="signed = true"
          @signature:cleared.window="signed = false">
       <div data-controller="signature form-guard"
@@ -39,17 +49,14 @@
                     </div>
                 {% endif %}
 
-                <h1 class="text-2xl font-bold text-gray-900 mb-6">Podpis smlouvy</h1>
-
-                {% if order.hasUploadedContract() %}
-                    <div class="rounded-lg bg-green-50 border-2 border-green-300 p-4 mb-6">
-                        <strong class="text-green-900">Vaše smlouva byla nahrána administrátorem.</strong>
-                        <p class="mt-1 text-green-800 text-sm">Níže prosím odsouhlaste obchodní podmínky a potvrďte podpisem.</p>
-                    </div>
-                {% endif %}
+                <h1 class="text-2xl font-bold text-gray-900 mb-6">{{ hasUploadedContract ? 'Přijetí a podpis obchodních podmínek' : 'Podpis smlouvy' }}</h1>
 
                 <p class="text-sm text-gray-600 mb-6">
-                    Zkontrolujte prosím údaje smlouvy a podepište ji elektronicky.
+                    {% if hasUploadedContract %}
+                        Vaši smlouvu jsme připravili a najdete ji níže. Zkontrolujte ji prosím, odsouhlaste obchodní podmínky a potvrďte podpisem.
+                    {% else %}
+                        Zkontrolujte prosím smlouvu a podmínky a podepište je elektronicky.
+                    {% endif %}
                 </p>
 
                 {# Order Summary #}
@@ -120,6 +127,12 @@
                     {% endif %}
                 </div>
 
+                {# Own-padlock reminder — insurance coverage depends on it, so
+                   surface it before the customer signs (mirrors the order flow). #}
+                <div class="mb-6">
+                    {% include 'components/lock_disclaimer.html.twig' %}
+                </div>
+
                 {# Customer Info #}
                 <div class="bg-gray-50 rounded-lg p-4 mb-6">
                     <h2 class="font-semibold text-gray-900 mb-3">Údaje nájemce</h2>
@@ -140,6 +153,41 @@
                         {% endif %}
                     </div>
                 </div>
+
+                {# Contract — uploaded file preview (scenario A) or the full contract
+                   text identical to the order flow (scenario B). See spec 072. #}
+                {% if hasUploadedContract %}
+                    <div class="border border-gray-200 rounded-lg p-4 mb-6 bg-white">
+                        <h3 class="font-semibold text-gray-900 mb-1">Vaše smlouva</h3>
+                        <p class="text-sm text-gray-600 mb-3">Smlouvu nahrál pronajímatel. Níže si ji prosím zkontrolujte.</p>
+                        {% set contractUrl = path('public_customer_signing_contract', { token: order.signingToken }) %}
+                        {% if order.uploadedContractIsImage() %}
+                            <img src="{{ contractUrl }}" alt="Nahraná smlouva" class="w-full rounded-lg border border-gray-200">
+                        {% else %}
+                            <object data="{{ contractUrl }}#toolbar=0" type="application/pdf" class="w-full rounded-lg border border-gray-200" style="height: 70vh; min-height: 480px;">
+                                <p class="text-sm text-gray-600">Náhled nelze zobrazit. <a href="{{ contractUrl }}" target="_blank" rel="noopener" class="text-accent hover:underline">Otevřít smlouvu v novém okně</a>.</p>
+                            </object>
+                        {% endif %}
+                        <p class="mt-2 text-xs text-gray-500"><a href="{{ contractUrl }}" target="_blank" rel="noopener" class="text-accent hover:underline">Otevřít smlouvu v novém okně</a></p>
+                    </div>
+                {% else %}
+                    {% include 'public/_contract_terms.html.twig' with {
+                        lesseeName: customerFullName,
+                        lesseeIsCompany: (order.user.companyName is not empty),
+                        lesseeCompanyName: order.user.companyName,
+                        lesseeCompanyId: order.user.companyId,
+                        lesseeCompanyVatId: order.user.companyVatId,
+                        lesseeStreet: order.user.billingStreet,
+                        lesseePostalCode: order.user.billingPostalCode,
+                        lesseeCity: order.user.billingCity,
+                        lesseeEmail: order.user.email,
+                        lesseeBirthDate: order.user.birthDate,
+                        storageType: storageType,
+                        storageNumber: storage.number,
+                        startDate: order.startDate,
+                        endDate: order.endDate,
+                    } only %}
+                {% endif %}
 
                 {# Signing Place #}
                 <div id="sign-place" class="border border-gray-200 rounded-lg p-4 mb-6">
@@ -226,7 +274,8 @@
                     <input type="hidden" name="style_id" data-signature-target="styleIdField" value="">
                     <input type="hidden" name="signing_place" :value="signingPlace">
 
-                    {# Single consolidated consent. #}
+                    {# Single consolidated consent. Mirrors the order flow; recurring-payment
+                       consent intentionally lives in its own dedicated checkbox (GoPay rule). #}
                     <div id="sign-consent" class="border border-gray-200 rounded-lg p-4 mb-6">
                         <label class="flex items-start gap-3 cursor-pointer">
                             <input type="checkbox" x-model="acceptAll"
@@ -242,23 +291,161 @@
                         {# Mirror the lead-in's flex layout (w-5 + gap-3) so the
                            bullet text lines up with the lead-in column exactly. #}
                         <ul class="mt-3 list-none text-xs text-gray-600 space-y-1">
-                            {% if not order.hasUploadedContract() %}
-                                <li class="flex items-start gap-3"><span class="w-5 shrink-0 text-center text-gray-400" aria-hidden="true">•</span><span>smluvními podmínkami pronájmu skladové jednotky;</span></li>
+                            {% if hasUploadedContract %}
+                                <li class="flex items-start gap-3"><span class="w-5 shrink-0 text-center text-gray-400" aria-hidden="true">•</span><span>smlouvou nahranou pronajímatelem (zobrazenou výše);</span></li>
+                            {% else %}
+                                <li class="flex items-start gap-3"><span class="w-5 shrink-0 text-center text-gray-400" aria-hidden="true">•</span><span>smluvními podmínkami uvedenými výše v této smlouvě;</span></li>
                             {% endif %}
                             <li class="flex items-start gap-3"><span class="w-5 shrink-0 text-center text-gray-400" aria-hidden="true">•</span><span><button type="button" @click.prevent="$store.modal.show('vop')" class="text-accent hover:underline">všeobecnými obchodními podmínkami</button>;</span></li>
+                            {% if requiresOperatingRules %}
+                                <li class="flex items-start gap-3"><span class="w-5 shrink-0 text-center text-gray-400" aria-hidden="true">•</span><span><a href="{{ upload_url(place.operatingRulesPath) }}" target="_blank" class="text-accent hover:underline">provozním řádem pobočky</a>;</span></li>
+                            {% endif %}
+                            <li class="flex items-start gap-3"><span class="w-5 shrink-0 text-center text-gray-400" aria-hidden="true">•</span><span><button type="button" @click.prevent="$store.modal.show('consumer')" class="text-accent hover:underline">poučením o právech spotřebitele</button>;</span></li>
                             <li class="flex items-start gap-3"><span class="w-5 shrink-0 text-center text-gray-400" aria-hidden="true">•</span><span><button type="button" @click.prevent="$store.modal.show('gdpr')" class="text-accent hover:underline">zpracováním osobních údajů</button> pro obchodní účely;</span></li>
-                            <li class="flex items-start gap-3"><span class="w-5 shrink-0 text-center text-gray-400" aria-hidden="true">•</span><span>použitím elektronického podpisu jako platného a závazného právního úkonu.</span></li>
+                            <li class="flex items-start gap-3"><span class="w-5 shrink-0 text-center text-gray-400" aria-hidden="true">•</span><span>použitím elektronického podpisu jako platného a závazného právního úkonu{{ requiresEarlyStartWaiver ? ';' : '.' }}</span></li>
+                            {% if requiresEarlyStartWaiver %}
+                                <li class="flex items-start gap-3"><span class="w-5 shrink-0 text-center text-gray-400" aria-hidden="true">•</span><span>výslovným započetím plnění před uplynutím 14denní lhůty pro odstoupení od smlouvy a beru na vědomí, že tím ztrácím právo odstoupit od smlouvy.</span></li>
+                            {% endif %}
                         </ul>
 
-                        {% if order.hasUploadedContract() %}
+                        {% if hasUploadedContract %}
                             <input type="hidden" name="accept_contract" value="1">
                         {% else %}
                             <input type="hidden" name="accept_contract" value="1" :disabled="!acceptAll">
                         {% endif %}
                         <input type="hidden" name="accept_vop" value="1" :disabled="!acceptAll">
+                        {% if requiresOperatingRules %}
+                            <input type="hidden" name="accept_operating_rules" value="1" :disabled="!acceptAll">
+                        {% endif %}
+                        <input type="hidden" name="accept_consumer_notice" value="1" :disabled="!acceptAll">
                         <input type="hidden" name="accept_gdpr" value="1" :disabled="!acceptAll">
                         <input type="hidden" name="signature_consent" value="1" :disabled="!acceptAll">
+                        {% if requiresEarlyStartWaiver %}
+                            <input type="hidden" name="accept_early_start_waiver" value="1" :disabled="!acceptAll">
+                        {% endif %}
                     </div>
+
+                    {# MANUAL_RECURRING information card. Replaces the AUTO recurring-payment
+                       disclosure + consent block when the customer pays each cycle one-time
+                       via an e-mail link / bank transfer (spec 036). No token is stored. #}
+                    {% if showManualInfo %}
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                        <h2 class="font-semibold text-gray-900 mb-2 flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                            Ručně schvalovaná platba
+                        </h2>
+                        <p class="text-sm text-gray-700">
+                            První platbu zaplatíte hned po podpisu. Před každou další platbou Vám 7 dní předem pošleme e-mail s odkazem k zaplacení.
+                            <strong>Žádné údaje o platební kartě se neukládají.</strong>
+                        </p>
+                    </div>
+                    {% endif %}
+
+                    {# Recurring-payment block — parameters + dedicated consent in one visually
+                       unified card. GoPay rule: parameters MUST sit visibly SEPARATE from the
+                       general T&C, and recurring consent MUST be a dedicated checkbox. Amounts
+                       come from the order's locked-in schedule (buildScheduleFromOrder), so an
+                       admin price override is honoured. See .claude/COMPLIANCE.md. #}
+                    {% if showRecurringConsent %}
+                    <div id="sign-recurring" class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+                        <h2 class="font-semibold text-gray-900 mb-3 flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-amber-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            Parametry opakované platby
+                        </h2>
+
+                        {# Parameters list per GoPay rule "Jaké informace musím prezentovat
+                           pro opakované platby" — order and labels match the GoPay reviewer
+                           checklist verbatim; do not reword without re-reading the source. #}
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between gap-3">
+                                <span class="text-gray-600 shrink-0">Účel platby</span>
+                                <span class="font-medium text-right">Pronájem skladovací jednotky</span>
+                            </div>
+                            <div class="flex justify-between gap-3">
+                                <span class="text-gray-600 shrink-0">Maximální částka opakované platby</span>
+                                <span class="font-medium text-right">{{ recurringPaymentLegalMaxInCzk|number_format(0, ',', ' ') }} Kč</span>
+                            </div>
+                            <div class="flex justify-between gap-3">
+                                <span class="text-gray-600 shrink-0">Částka jednotlivé platby</span>
+                                <span class="font-medium text-right">
+                                    <strong>Fixní</strong>, {{ paymentSchedule.monthlyAmountInCzk|number_format(0, ',', ' ') }} Kč / měsíc <span class="text-xs text-gray-500 font-normal">vč. DPH</span>
+                                    {% if not paymentSchedule.isOpenEnded %}
+                                        <br><span class="text-xs text-gray-500 font-normal">Poslední doplatek bude prorátován podle počtu zbývajících dní (jen u smluv na dobu určitou).</span>
+                                    {% endif %}
+                                </span>
+                            </div>
+                            <div class="flex justify-between gap-3">
+                                <span class="text-gray-600 shrink-0">Frekvence a den strhávání</span>
+                                <span class="font-medium text-right">
+                                    <strong>Fixní</strong>, měsíční — vždy ke stejnému dni v měsíci jako první platba<br>
+                                    <span class="text-xs text-gray-500 font-normal">Pokud připadne na nepracovní den, strhne se následující pracovní den.</span>
+                                </span>
+                            </div>
+                            <div class="flex justify-between gap-3">
+                                <span class="text-gray-600 shrink-0">Doba trvání</span>
+                                <span class="font-medium text-right">
+                                    {% if paymentSchedule.isOpenEnded %}
+                                        Po celou dobu trvání nájmu / do odvolání souhlasu zákazníkem
+                                    {% else %}
+                                        {{ paymentSchedule.entryCount }} platby do {{ order.endDate|date('d.m.Y') }}
+                                    {% endif %}
+                                </span>
+                            </div>
+                            <div class="flex justify-between gap-3">
+                                <span class="text-gray-600 shrink-0">Forma komunikace pro změnu nastavení</span>
+                                <span class="font-medium text-right"><a href="mailto:simek@fajnesklady.cz" class="text-accent hover:underline">simek@fajnesklady.cz</a></span>
+                            </div>
+                            <div class="flex justify-between gap-3">
+                                <span class="text-gray-600 shrink-0">Zrušení a storno opakované platby</span>
+                                <span class="font-medium text-right">
+                                    <a href="mailto:simek@fajnesklady.cz" class="text-accent hover:underline">simek@fajnesklady.cz</a> — kdykoli, bez sankce<br>
+                                    <span class="text-xs text-gray-500 font-normal">Podrobně viz Podmínky opakovaných plateb, čl. VI.</span>
+                                </span>
+                            </div>
+                        </div>
+
+                        <p class="text-xs text-gray-500 mt-3">
+                            Úplné znění naleznete v <button type="button" @click.prevent="$store.modal.show('recurring')" class="text-accent hover:underline font-medium">Podmínkách opakovaných plateb</button>.
+                            Souhlas potvrzujete zaškrtnutím pole níže — ten je dle pravidel GoPay vyžadován samostatně.
+                        </p>
+
+                        {# Dedicated consent checkbox — REQUIRED to be separate from
+                           the master T&C consent above (GoPay rule + Podmínky čl. I). #}
+                        <label class="mt-4 pt-3 border-t border-amber-200 flex items-start gap-3 cursor-pointer">
+                            <input type="checkbox" x-model="acceptRecurring"
+                                   data-form-guard-target="required"
+                                   data-form-guard-anchor="#sign-recurring"
+                                   class="form-checkbox h-5 w-5 mt-0.5 border-amber-300 shrink-0">
+                            <span class="text-sm text-gray-800">
+                                <strong>Souhlasím s opakovanou platbou</strong> v parametrech uvedených výše a s uložením platebních údajů na bráně GoPay.
+                            </span>
+                        </label>
+                        <input type="hidden" name="accept_recurring_payments" value="1" :disabled="!acceptRecurring">
+
+                        {# PCI-DSS Level 1 disclosure — GoPay rule requires this be
+                           visible AT the consent point, not just in the linked modal. #}
+                        <p class="mt-3 text-xs text-gray-500">
+                            Společnost <strong>GOPAY s.r.o.</strong> nakládá s údaji Vaší platební karty podle mezinárodního bezpečnostního standardu <strong>PCI-DSS Level 1</strong> — nejvyšší úroveň datové bezpečnosti ve finančním sektoru. Čísla karet ani CVV s námi GoPay nesdílí a Pronajímatel k nim nemá přístup.
+                        </p>
+                    </div>
+                    {% endif %}
+
+                    {% if showPaymentLogos %}
+                    {# Payment card logos + SSL/3DS notice — only for card (GoPay) flows. #}
+                    <div class="flex flex-col items-center gap-2 py-2">
+                        {% include 'components/payment_logos.html.twig' %}
+                        <p class="text-xs text-gray-500 flex items-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                            Vaše platba je zabezpečena 256-bit SSL/TLS šifrováním a 3D Secure 2.0.
+                        </p>
+                    </div>
+                    {% endif %}
 
                     {# Hidden at rest; form_guard reveals it when a blocked submit is attempted. #}
                     <p class="form-error hidden mb-2" data-form-guard-target="summary" role="alert">
@@ -274,7 +461,7 @@
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
                         </svg>
-                        <span data-form-guard-target="label">Podepsat smlouvu</span>
+                        <span data-form-guard-target="label">{{ hasUploadedContract ? 'Přijmout a podepsat' : 'Podepsat smlouvu' }}</span>
                     </button>
                 </form>
             </div>
@@ -284,8 +471,16 @@
         {% embed 'public/_term_modal.html.twig' with { id: 'vop', title: 'Všeobecné obchodní podmínky' } %}
             {% block body %}{% include 'public/_terms_and_conditions_content.html.twig' %}{% endblock %}
         {% endembed %}
+        {% embed 'public/_term_modal.html.twig' with { id: 'consumer', title: 'Poučení o právech Spotřebitele' } %}
+            {% block body %}{% include 'public/_consumer_notice_content.html.twig' %}{% endblock %}
+        {% endembed %}
         {% embed 'public/_term_modal.html.twig' with { id: 'gdpr', title: 'Ochrana osobních údajů' } %}
             {% block body %}{% include 'public/_privacy_policy_content.html.twig' %}{% endblock %}
         {% endembed %}
+        {% if showRecurringConsent %}
+            {% embed 'public/_term_modal.html.twig' with { id: 'recurring', title: 'Podmínky opakovaných plateb' } %}
+                {% block body %}{% include 'public/_recurring_payments_terms_content.html.twig' %}{% endblock %}
+            {% endembed %}
+        {% endif %}
     </div>
 {% endblock %}

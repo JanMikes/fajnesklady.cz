@@ -40,7 +40,8 @@ Stack: PHP 8.5 (Docker image `ghcr.io/thedevs-cz/php:8.5-fajnesklady`) · Symfon
 - `/pokuta/{id}/platba/iniciovat` → `FinePaymentInitiateController`
 - `/pokuta/{id}/platba/navrat` → `FinePaymentReturnController`
 - `/predavaci-protokol/{id}` → `Public\HandoverViewController` (UriSigner-protected — signed link mailed to tenant; lets them upload signature/photos without logging in)
-- `/podpis/{token}` → `CustomerSigningController`
+- `/podpis/{token}` → `CustomerSigningController` — onboarding signing page; situation-aware parity with the order flow (scenario B renders the shared `templates/public/_contract_terms.html.twig`; scenario A previews the uploaded contract; contextual logos + recurring consent; spec 072)
+- `/podpis/{token}/smlouva` → `Public\CustomerSigningContractController` — serves the admin-uploaded contract inline for the scenario-A signing preview (signing-token-gated, path-confined to `var/contracts`; spec 072)
 - `/podpis/dokonceno/{id}` → `CustomerSigningCompleteController`
 - `/opakovana-platba/{contractId}/zrusit` → `CancelRecurringPaymentController` (UriSigner-protected)
 - `/vzor-smlouvy` → `ContractSampleController` — sample contract PDF
@@ -278,7 +279,7 @@ User, Place, PlaceAccess, PlaceAccessRequest, PlaceChangeRequest, PlaceStorageCo
 - **Identity**: `Identity\ProvideIdentity` (UUID v7), `Identity\RandomIdentityProvider` (prod), `tests/.../PredictableIdentityProvider`.
 - **ARES lookup**: `AresService`, `AresLookup` (+ `Value\AresResult`, `Value\AresSubject`, `Value\AresAddress`).
 - **Uploads / files**: `PlaceFileUploader`, `StoragePhotoUploader`, `StorageTypePhotoUploader`, `HandoverPhotoUploader`, `PublicFilesystem`, `SignatureStorage`.
-- **Domain utilities**: `PriceCalculator`, `CommissionCalculator`, `ContractService`, `ContractDocumentGenerator`, `DocumentPdfConverter`, `StorageMapImageGenerator`, `StorageAssignment`, `StorageAvailabilityChecker`, `StorageCodeGenerator`, `Storage\StorageOccupancyService`, `AuditLogger`, `AuditLogDescriptionRenderer`, `EmailLogger`.
+- **Domain utilities**: `PriceCalculator`, `CommissionCalculator`, `ContractService`, `ContractDocumentGenerator`, `DocumentPdfConverter`, `StorageMapImageGenerator`, `StorageAssignment`, `StorageAvailabilityChecker` (single source of truth for window-aware availability — `isAvailable()` single + `availabilityForStorages()` bulk share one `decide()` overlap predicate over orders/contracts/manual blocks; the `Storage.status` column is display-only and must never gate a booking — spec 071), `StorageCodeGenerator`, `Storage\StorageOccupancyService`, `AuditLogger`, `AuditLogDescriptionRenderer`, `EmailLogger`.
 - **Excel export**: `Excel\ExcelExporter`, `Excel\ExcelSheet`, `Excel\ExcelColumn`, `Excel\ExcelColumnType`. Drives every `*Export*Controller`.
 - **Form helpers**: `Form\StorageChoiceBuilder`, `Form\EmailLogFilterFactory`.
 - **Messenger**: `Messenger\HandlerFailureUnwrap` (mandatory at every dispatch site that catches handler exceptions — see `.claude/MESSENGER.md`).
@@ -304,12 +305,12 @@ User, Place, PlaceAccess, PlaceAccessRequest, PlaceChangeRequest, PlaceStorageCo
 
 ## Twig (`src/Twig/`)
 
-- Components: `AdminOnboardingForm` (Live Component — unified onboarding, spec 050), `BillingInfoForm`, `OrderForm`, `PlaceOccupancyMap` (Live Component — date-shifting occupancy canvas, spec 047), `RevenueChart`.
+- Components: `AdminOnboardingForm` (Live Component — unified onboarding, spec 050; window-aware storage selection gated by the date-range `StorageAvailabilityChecker`, spec 071), `BillingInfoForm`, `OrderForm` (Live Component — hosts the reactive order map that repaints on date/type change; storage availability is window-derived via `StorageAvailabilityChecker`, spec 071), `PlaceOccupancyMap` (Live Component — date-shifting occupancy canvas, spec 047), `RevenueChart`.
 - Extensions: `BankTransactionExtension`, `FineExtension` (fine type labels, amount formatting), `OperationsExtension` (sidebar badge count for admin operations hub), `OrderReferenceExtension` (canonical order reference filter — see `Order\OrderReferenceFormatter`), `OverdueExtension` (severity badges / labels), `RoleLabelExtension`, `UploadExtension`, `PlaceAddressExtension` (`place_address`, `place_navigation_url`, `place_has_navigation`).
 
 ## Value objects (`src/Value/`)
 
-`AresResult`, `AresSubject`, `AresAddress`, `Address\AddressSuggestion`, `Address\AddressValidationResult`, `FakturoidInvoice`, `FakturoidSubject`, `FioBankTransaction`, `GoPayPayment`, `GoPayPaymentStatus`, `OperationsAlertSummary`, `OverdueSummary`, `OverdueContractView`, `OverdueSeverity`, `PaymentSchedule`, `PaymentScheduleEntry`, `RentalSpan`, `RentalSpanKind`, `StorageRentalView`, `UserListCriteria` + `UserListRow` (free-text search criteria + enriched sortable row for the admin/landlord user list).
+`AresResult`, `AresSubject`, `AresAddress`, `Address\AddressSuggestion`, `Address\AddressValidationResult`, `FakturoidInvoice`, `FakturoidSubject`, `FioBankTransaction`, `GoPayPayment`, `GoPayPaymentStatus`, `OperationsAlertSummary`, `OverdueSummary`, `OverdueContractView`, `OverdueSeverity`, `PaymentSchedule`, `PaymentScheduleEntry`, `RentalSpan`, `RentalSpanKind`, `StorageAvailability` (spec 071 — `isAvailable` + window-derived `StorageStatus` from `StorageAvailabilityChecker::availabilityForStorages()`; NOT the mutable `Storage.status` column), `StorageRentalView`, `UserListCriteria` + `UserListRow` (free-text search criteria + enriched sortable row for the admin/landlord user list).
 
 ## Exceptions (`src/Exception/`)
 
