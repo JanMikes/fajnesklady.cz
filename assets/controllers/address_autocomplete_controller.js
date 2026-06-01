@@ -10,22 +10,25 @@ export default class extends Controller {
         this.dropdown = null;
         this.suggestions = [];
         this.activeIndex = -1;
+        this.activeInput = null;
         this.debounceHandle = null;
         this.blurHandle = null;
 
         this.boundOnInput = (event) => this.onInput(event);
         this.boundOnKeydown = (event) => this.onKeydown(event);
         this.boundOnBlur = () => this.onBlur();
-        this.boundOnFocus = () => this.cancelHide();
+        this.boundOnFocus = (event) => this.onFocus(event);
         this.boundOnAddressEdit = (event) => this.onAddressEdit(event);
         this.boundOnDocumentClick = (event) => this.onDocumentClick(event);
 
-        if (this.hasStreetInputTarget) {
-            this.streetInputTarget.addEventListener('input', this.boundOnInput);
-            this.streetInputTarget.addEventListener('keydown', this.boundOnKeydown);
-            this.streetInputTarget.addEventListener('blur', this.boundOnBlur);
-            this.streetInputTarget.addEventListener('focus', this.boundOnFocus);
-            this.streetInputTarget.setAttribute('autocomplete', 'street-address');
+        const tokens = { streetInput: 'street-address', cityInput: 'address-level2' };
+        for (const input of this.triggerInputs()) {
+            input.addEventListener('input', this.boundOnInput);
+            input.addEventListener('keydown', this.boundOnKeydown);
+            input.addEventListener('blur', this.boundOnBlur);
+            input.addEventListener('focus', this.boundOnFocus);
+            const token = tokens[input.dataset.addressAutocompleteTarget];
+            if (token) input.setAttribute('autocomplete', token);
         }
 
         for (const input of this.editableInputs()) {
@@ -36,11 +39,11 @@ export default class extends Controller {
     }
 
     disconnect() {
-        if (this.hasStreetInputTarget) {
-            this.streetInputTarget.removeEventListener('input', this.boundOnInput);
-            this.streetInputTarget.removeEventListener('keydown', this.boundOnKeydown);
-            this.streetInputTarget.removeEventListener('blur', this.boundOnBlur);
-            this.streetInputTarget.removeEventListener('focus', this.boundOnFocus);
+        for (const input of this.triggerInputs()) {
+            input.removeEventListener('input', this.boundOnInput);
+            input.removeEventListener('keydown', this.boundOnKeydown);
+            input.removeEventListener('blur', this.boundOnBlur);
+            input.removeEventListener('focus', this.boundOnFocus);
         }
         for (const input of this.editableInputs()) {
             input.removeEventListener('input', this.boundOnAddressEdit);
@@ -52,6 +55,15 @@ export default class extends Controller {
         this.removeDropdown();
     }
 
+    // Inputs that trigger a suggestion fetch (Street + City). City-only queries
+    // hit Photon poorly, so buildQuery() always combines both fields.
+    triggerInputs() {
+        const inputs = [];
+        if (this.hasStreetInputTarget) inputs.push(this.streetInputTarget);
+        if (this.hasCityInputTarget) inputs.push(this.cityInputTarget);
+        return inputs;
+    }
+
     editableInputs() {
         const inputs = [];
         if (this.hasStreetInputTarget) inputs.push(this.streetInputTarget);
@@ -61,15 +73,35 @@ export default class extends Controller {
     }
 
     onInput(event) {
-        const query = (event.target.value ?? '').trim();
+        // Moving to a different field re-anchors the dropdown under it.
+        if (this.activeInput && this.activeInput !== event.target) {
+            this.removeDropdown();
+        }
+        this.activeInput = event.target;
+        const typed = (event.target.value ?? '').trim();
         if (this.debounceHandle) clearTimeout(this.debounceHandle);
 
-        if (query.length < 3) {
+        // Min-length gate is on the field actually being typed into; the query
+        // sent to Photon combines Street + City for better hits.
+        if (typed.length < 3) {
             this.removeDropdown();
             return;
         }
 
+        const query = this.buildQuery();
         this.debounceHandle = setTimeout(() => this.fetchSuggestions(query), DEBOUNCE_MS);
+    }
+
+    onFocus(event) {
+        this.activeInput = event.target;
+        this.cancelHide();
+    }
+
+    buildQuery() {
+        const parts = [];
+        if (this.hasStreetInputTarget && this.streetInputTarget.value.trim()) parts.push(this.streetInputTarget.value.trim());
+        if (this.hasCityInputTarget && this.cityInputTarget.value.trim()) parts.push(this.cityInputTarget.value.trim());
+        return parts.join(', ');
     }
 
     onAddressEdit(event) {
@@ -132,8 +164,13 @@ export default class extends Controller {
             this.dropdown.setAttribute('data-live-ignore', '');
             this.dropdown.setAttribute('role', 'listbox');
 
-            // Position relative to the street input.
-            const wrapper = this.streetInputTarget.parentElement;
+            // Anchor under whichever field the user is typing into (Street or City).
+            const anchor = this.activeInput ?? (this.hasStreetInputTarget ? this.streetInputTarget : null);
+            if (!anchor) {
+                this.dropdown = null;
+                return;
+            }
+            const wrapper = anchor.parentElement;
             wrapper.style.position = 'relative';
             wrapper.appendChild(this.dropdown);
         }
@@ -159,6 +196,7 @@ export default class extends Controller {
         this.dropdown = null;
         this.suggestions = [];
         this.activeIndex = -1;
+        this.activeInput = null;
     }
 
     onKeydown(event) {

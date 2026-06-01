@@ -1,3 +1,4 @@
+{% import 'components/_address_override.html.twig' as addr %}
 {% set formData = form.vars.data %}
 {% set invoiceToCompany = formData.invoiceToCompany ?? false %}
 {% set rentalType = formData.rentalType %}
@@ -72,12 +73,7 @@
                 {% endif %}
 
                 <h3 class="font-semibold text-gray-800 mt-6 mb-3">{{ invoiceToCompany ? 'Sídlo společnosti' : 'Fakturační adresa' }}</h3>
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    {{ form_row(form.billingStreet) }}
-                    {{ form_row(form.billingCity) }}
-                    {{ form_row(form.billingPostalCode) }}
-                </div>
-                {{ form_row(form.addressOverride) }}
+                {{ addr.render_live(form) }}
             </div>
         </div>
 
