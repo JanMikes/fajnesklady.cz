@@ -12,7 +12,7 @@
 
     <form method="get" action="{{ path('admin_orders_list') }}" class="mb-4 flex items-center gap-2 flex-wrap">
         {% if filter %}<input type="hidden" name="filter" value="{{ filter }}">{% endif %}
-        <input type="search" name="q" value="{{ search }}" placeholder="Hledat číslo objednávky nebo zákazníka…" class="input input-bordered input-sm w-72 max-w-full">
+        <input type="search" name="q" value="{{ search }}" placeholder="Hledat číslo objednávky nebo zákazníka…" class="form-input text-sm py-1.5 w-72 max-w-full">
         <button type="submit" class="btn btn-sm btn-primary">Hledat</button>
         {% if search %}
             <a href="{{ path('admin_orders_list', filter ? {filter: filter} : {}) }}" class="btn btn-sm btn-ghost">Zrušit</a>

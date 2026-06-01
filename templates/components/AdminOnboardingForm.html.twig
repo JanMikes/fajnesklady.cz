@@ -124,7 +124,7 @@
                             data-model="norender|placeId"
                             data-action="change->live#action"
                             data-live-action-param="onPlaceChange"
-                            class="form-select w-full">
+                            class="form-input w-full">
                         <option value="">-- Vyberte pobočku --</option>
                         {% for place in this.places %}
                             <option value="{{ place.id }}" {{ this.placeId == place.id.toRfc4122() ? 'selected' }}>
@@ -147,7 +147,7 @@
                                 data-model="norender|storageTypeId"
                                 data-action="change->live#action"
                                 data-live-action-param="onStorageTypeChange"
-                                class="form-select w-full">
+                                class="form-input w-full">
                             <option value="">-- Vyberte typ --</option>
                             {% for type in this.storageTypes %}
                                 <option value="{{ type.id }}" {{ this.storageTypeId == type.id.toRfc4122() ? 'selected' }}>

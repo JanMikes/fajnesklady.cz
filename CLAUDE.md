@@ -302,6 +302,17 @@ Available: `UserAlreadyExists`, `UserNotFound`, `PlaceNotFound`, `StorageTypeNot
 
 ## Frontend
 
+### Design system — NOT real DaisyUI (read before using any component class)
+
+CSS is **Tailwind v4** (`assets/styles/app.css`, single `@import "tailwindcss"`), compiled by `symfonycasts/tailwind-bundle` using the **standalone Tailwind binary**. There is **no npm, no `package.json`, no `node_modules`, and no DaisyUI plugin.**
+
+Despite a commit named *"DaisyUI migration"* and class names that look like DaisyUI (`btn-sm`, `btn-ghost`, `card`, `badge-success`, `table-zebra`, `modal-box`, …), **DaisyUI is not installed.** Those are a **hand-rolled subset** of DaisyUI-named classes, each defined manually with `@apply` in `app.css`. A DaisyUI class that nobody defined there (e.g. `input-bordered`, `btn-warning`, `form-select`, `select-bordered`, `textarea-bordered`) **compiles silently to nothing** — the element renders unstyled. Tailwind does not error on unknown classes, so this fails invisibly.
+
+Rules:
+- **Form controls** (`<input>`, `<select>`, `<textarea>`): use the `.form-input` class. Do NOT use DaisyUI form classes, and do NOT hand-roll ad-hoc `border-gray-300 rounded-md shadow-sm focus:…` utilities — `.form-input` owns the border, radius, shadow, and brand-accent focus. Checkboxes/radios are the exception (they keep `h-4 w-4 … border-gray-300 rounded`). Forms rendered via Symfony's form theme (`templates/form/tailwind_theme.html.twig`) already get `.form-input` automatically.
+- **Any other component class** (`btn-*`, `badge-*`, `card`, `table`, `modal-*`, `alert-*`): before using it, confirm it is defined in `app.css`. If it isn't, either use one that is, or add the new variant to `app.css` (matching the existing `@apply` style) — never assume DaisyUI will provide it.
+- After editing `app.css`, run `composer tailwind:build` (or `docker compose exec web php bin/console tailwind:build`). A clean build also validates every `@apply` references a real utility.
+
 ### Turbo
 
 Hotwire Turbo is installed but **disabled globally** via `data-turbo="false"` on `<body>` in `base.html.twig`. To enable Turbo on specific elements, add `data-turbo="true"`:
