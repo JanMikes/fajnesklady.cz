@@ -79,6 +79,42 @@ export default class extends Controller {
         }
     }
 
+    // Set/relax the selectable range. Pass null to clear a bound (e.g. no max).
+    setRange(minDate, maxDate) {
+        if (!this.picker) return;
+        this.picker.set('minDate', minDate ?? null);
+        this.picker.set('maxDate', maxDate ?? null);
+    }
+
+    // Clear the value if it now falls outside [minDate, maxDate]. Returns true if cleared.
+    clearIfOutsideRange() {
+        if (!this.picker) return false;
+        const current = this.picker.selectedDates[0];
+        if (!current) return false;
+        const { minDate, maxDate } = this.picker.config;
+        if ((minDate && current < minDate) || (maxDate && current > maxDate)) {
+            this.picker.clear();
+            this.element.dispatchEvent(new Event('blur')); // re-run live validateField where wired
+            return true;
+        }
+        return false;
+    }
+
+    // Enable/disable interaction; clears the value when disabling so a disabled
+    // field can never retain a value that escapes the start+7 rule.
+    setEnabled(enabled) {
+        if (!this.picker) return;
+        this.picker.set('clickOpens', enabled);
+        const visible = this.picker.altInput ?? this.element;
+        visible.disabled = !enabled;
+        visible.classList.toggle('opacity-50', !enabled);
+        visible.classList.toggle('cursor-not-allowed', !enabled);
+        if (!enabled && this.picker.selectedDates.length) {
+            this.picker.clear();
+            this.element.dispatchEvent(new Event('blur'));
+        }
+    }
+
     parseDate(dateString) {
         if (!dateString) {
             return undefined;

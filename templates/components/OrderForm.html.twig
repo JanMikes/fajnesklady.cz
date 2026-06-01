@@ -249,7 +249,9 @@
                                     }}) }}
                                 </div>
                                 {% if rentalIsLimited %}
-                                    <div data-controller="duration-preset">
+                                    <div data-controller="duration-preset"
+                                         data-duration-preset-min-gap-days-value="7"
+                                         data-duration-preset-max-months-value="12">
                                         {{ form_row(form.endDate, {attr: {
                                             'data-action': 'blur->live#action',
                                             'data-live-action-param': 'validateField',

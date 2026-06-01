@@ -4,9 +4,16 @@ const PRESETS = [1, 3, 6];
 
 export default class extends Controller {
     static targets = ['button', 'hint'];
+    static values = {
+        minGapDays: { type: Number, default: 7 },
+        maxMonths: { type: Number, default: 0 },
+    };
 
     connect() {
-        this.boundSync = () => this.syncEnabledState();
+        this.boundSync = () => {
+            this.syncEnabledState();
+            this.syncEndConstraints();
+        };
         // The startDate flatpickr's hidden input is outside this controller's root
         // (it sits in its own form_row). Listen at document level so we catch
         // every value change, including programmatic setDate() calls.
@@ -15,6 +22,7 @@ export default class extends Controller {
         document.addEventListener('input', this.boundSync, true);
         document.addEventListener('change', this.boundSync, true);
         this.syncEnabledState();
+        this.syncEndConstraints();
     }
 
     disconnect() {
@@ -72,6 +80,25 @@ export default class extends Controller {
             this.hintTarget.hidden = hasStart;
         }
     }
+
+    syncEndConstraints() {
+        const endInput = this.endInput();
+        if (!endInput) return;
+        const endCtrl = this.application.getControllerForElementAndIdentifier(endInput, 'datepicker');
+        if (!endCtrl || !endCtrl.picker) return; // brief Live-morph window — guard like apply()
+
+        const start = parseIsoDate(this.startInput()?.value ?? '');
+        if (!start) {
+            endCtrl.setRange(null, null);
+            endCtrl.setEnabled(false); // disabled + cleared until a start exists
+            return;
+        }
+        endCtrl.setEnabled(true);
+        const min = addDaysSafe(start, this.minGapDaysValue); // start + 7 days
+        const max = this.maxMonthsValue > 0 ? addMonthsSafe(start, this.maxMonthsValue) : null; // +1y or none
+        endCtrl.setRange(min, max);
+        endCtrl.clearIfOutsideRange(); // drop an already-picked, now-invalid end date
+    }
 }
 
 function parseIsoDate(value) {
@@ -80,6 +107,11 @@ function parseIsoDate(value) {
     if (!m) return null;
     const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
     return isNaN(d.getTime()) ? null : d;
+}
+
+function addDaysSafe(date, days) {
+    const result = new Date(date.getFullYear(), date.getMonth(), date.getDate() + days);
+    return result;
 }
 
 function addMonthsSafe(date, months) {

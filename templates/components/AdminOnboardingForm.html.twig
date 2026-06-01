@@ -99,7 +99,11 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {{ form_row(form.startDate) }}
                     {% if rentalIsLimited %}
-                        {{ form_row(form.endDate) }}
+                        <div data-controller="duration-preset"
+                             data-duration-preset-min-gap-days-value="7"
+                             data-duration-preset-max-months-value="0">
+                            {{ form_row(form.endDate) }}
+                        </div>
                     {% else %}
                         {% do form.endDate.setRendered %}
                     {% endif %}
