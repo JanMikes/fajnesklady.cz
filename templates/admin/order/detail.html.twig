@@ -518,14 +518,14 @@
                     <label for="new_amount_czk" class="block text-sm font-medium text-gray-700">Nová částka opakované platby (Kč / měsíc, vč. DPH) <span class="text-gray-400">— volitelné</span></label>
                     <input type="number" step="0.01" min="0" max="15000" name="new_amount_czk" id="new_amount_czk"
                            placeholder="např. 3 500,00"
-                           class="mt-1 block w-full sm:w-1/2 rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring-accent text-sm">
+                           class="form-input mt-1 sm:w-1/2 text-sm">
                     <p class="mt-1 text-xs text-gray-500">Pokud se mění cena, vyplňte. Maximální částka opakované platby je 15&nbsp;000&nbsp;Kč (Podmínky čl. III).</p>
                 </div>
                 <div>
                     <label for="admin_note" class="block text-sm font-medium text-gray-700">Poznámka pro zákazníka <span class="text-gray-400">— volitelné, doporučené</span></label>
                     <textarea name="admin_note" id="admin_note" rows="3"
                               placeholder="např. Důvod změny ceny, datum účinnosti, …"
-                              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring-accent text-sm"></textarea>
+                              class="form-input mt-1 text-sm"></textarea>
                     <p class="mt-1 text-xs text-gray-500">Krátký lidský komentář, který se objeví v e-mailu. Vyplňte alespoň částku nebo poznámku.</p>
                 </div>
                 <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
@@ -742,21 +742,21 @@
                     <div>
                         <label class="flex items-center gap-2">
                             <input type="radio" name="termination_type" value="with_notice" checked
-                                   class="text-red-600 focus:ring-red-500">
+                                   class="form-radio accent-red-600 focus:ring-red-500">
                             <span class="text-sm text-gray-700">S výpovědní dobou (1 měsíc)</span>
                         </label>
                     </div>
                     <div>
                         <label class="flex items-center gap-2">
                             <input type="radio" name="termination_type" value="immediate"
-                                   class="text-red-600 focus:ring-red-500">
+                                   class="form-radio accent-red-600 focus:ring-red-500">
                             <span class="text-sm text-gray-700">Okamžitě pro porušení smlouvy</span>
                         </label>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-600">Důvod (volitelný)</label>
                         <textarea name="reason" rows="2" maxlength="500"
-                                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm"></textarea>
+                                  class="form-input mt-1 text-sm"></textarea>
                     </div>
                 </div>
                 <div class="mt-4">

@@ -293,7 +293,7 @@
                 <form action="{{ path('portal_users_deactivate', {id: user.id}) }}" method="post">
                     <div class="form-group mt-4">
                         <label class="form-label">Důvod deaktivace (volitelný)</label>
-                        <textarea name="reason" class="textarea textarea-bordered w-full" rows="3" placeholder="Např. Porušení podmínek služby..."></textarea>
+                        <textarea name="reason" class="form-input w-full" rows="3" placeholder="Např. Porušení podmínek služby..."></textarea>
                     </div>
                     <div class="modal-action">
                         <button type="button" class="btn btn-ghost" onclick="document.getElementById('deactivateModal').close()">Zrušit</button>

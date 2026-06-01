@@ -417,7 +417,7 @@
                                            {{ isAutoSelection ? 'checked' : '' }}
                                            data-model="on(change)|selectionMode"
                                            data-action="change->order-selection-mode#switch"
-                                           class="h-4 w-4 text-accent focus:ring-accent border-gray-300">
+                                           class="form-radio">
                                     <label for="selection-mode-auto" class="ml-3 text-sm text-gray-700 cursor-pointer">
                                         Vybrat místo automaticky
                                         <span class="block text-xs text-gray-500">Přidělíme vám první volnou skladovou jednotku tohoto typu.</span>
@@ -429,7 +429,7 @@
                                            {{ isAutoSelection ? '' : 'checked' }}
                                            data-model="on(change)|selectionMode"
                                            data-action="change->order-selection-mode#switch"
-                                           class="h-4 w-4 text-accent focus:ring-accent border-gray-300">
+                                           class="form-radio">
                                     <label for="selection-mode-manual" class="ml-3 text-sm text-gray-700 cursor-pointer">
                                         Chci si vybrat místo z mapy
                                         <span class="block text-xs text-gray-500">Po výběru se zobrazí mapa pobočky s rozložením skladů.</span>
