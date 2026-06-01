@@ -53,6 +53,14 @@ final class AdminOnboardingForm extends AbstractController
     #[LiveProp]
     public ?string $submitError = null;
 
+    /**
+     * Surfaced next to the place/storage selection when the admin submits
+     * without having picked a storage unit (or place/type). Rendered as a
+     * [data-live-error] anchor so live-form-scroll lands the page on it.
+     */
+    #[LiveProp]
+    public ?string $storageError = null;
+
     public function __construct(
         private readonly PlaceRepository $placeRepository,
         private readonly StorageTypeRepository $storageTypeRepository,
@@ -252,6 +260,7 @@ final class AdminOnboardingForm extends AbstractController
     public function submit(): ?RedirectResponse
     {
         $this->submitError = null;
+        $this->storageError = null;
         $this->submitForm();
 
         $form = $this->getForm();
@@ -269,7 +278,7 @@ final class AdminOnboardingForm extends AbstractController
 
         $storage = $this->getSelectedStorage();
         if (null === $storage) {
-            $this->submitError = 'Vyberte skladovou jednotku z mapy.';
+            $this->storageError = 'Vyberte skladovou jednotku z mapy.';
 
             return null;
         }
@@ -277,7 +286,7 @@ final class AdminOnboardingForm extends AbstractController
         $storageType = $this->getSelectedStorageType();
         $place = $this->getSelectedPlace();
         if (null === $storageType || null === $place) {
-            $this->submitError = 'Vyberte pobočku a typ skladové jednotky.';
+            $this->storageError = 'Vyberte pobočku a typ skladové jednotky.';
 
             return null;
         }

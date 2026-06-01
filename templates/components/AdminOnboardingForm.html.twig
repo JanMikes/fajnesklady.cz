@@ -11,7 +11,7 @@
 {% set isBankTransfer = paymentMethod is not null and paymentMethod.value == 'bank_transfer' %}
 
 <div {{ attributes.defaults({
-    'data-controller': 'admin-onboarding-bridge',
+    'data-controller': 'admin-onboarding-bridge live-form-scroll',
     'data-action': 'storage-map:select->admin-onboarding-bridge#handleStorageSelect',
 }) }}>
     {{ form_start(form, {attr: {novalidate: 'novalidate', 'data-turbo': 'false'}}) }}
@@ -112,9 +112,12 @@
         </div>
 
         {# 5. Pobočka #}
-        <div class="card">
+        <div class="card" data-form-error-section>
             <div class="card-body">
                 <h2 class="text-lg font-bold text-gray-900 mb-4">Pobočka</h2>
+                {% if this.storageError %}
+                    <p class="form-error mb-3" data-live-error role="alert">{{ this.storageError }}</p>
+                {% endif %}
                 <div>
                     <label for="admin-onboarding-place" class="form-label">Pobočka</label>
                     <select id="admin-onboarding-place"
@@ -350,13 +353,19 @@
             </div>
         </div>
 
-        {# 15. Submit #}
+        {# 15. Submit — never disabled; submit() validates and surfaces a scroll-to-error
+           (live-form-scroll). data-loading locks the button while the request is in flight
+           to prevent a double submit. #}
         <div class="flex justify-end">
             <button type="button"
-                    data-action="live#action"
+                    data-action="live#action live-form-scroll#markSubmit"
                     data-live-action-param="submit"
-                    class="btn btn-primary btn-lg"
-                    {% if not this.storageId %}disabled{% endif %}>
+                    data-loading="action(submit)|addAttr(disabled)"
+                    class="btn btn-primary btn-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" class="hidden animate-spin h-5 w-5 mr-2" data-loading="action(submit)|removeClass(hidden)" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
                 Vytvořit onboarding
             </button>
         </div>

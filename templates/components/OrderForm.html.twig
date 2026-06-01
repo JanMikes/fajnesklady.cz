@@ -12,7 +12,7 @@
 {% set rentalIsLimited = form.vars.data.rentalType is null or form.vars.data.rentalType.value == 'limited' %}
 {% set isYearly = form.vars.data.paymentFrequency is defined and form.vars.data.paymentFrequency.value == 'yearly' and this.isEligibleForFrequencyChoice() %}
 
-<div {{ attributes }}>
+<div {{ attributes.defaults({'data-controller': 'live-form-scroll'}) }}>
     <div class="grid lg:grid-cols-3 gap-8">
         {# Order Form #}
         <div class="lg:col-span-2 order-2 lg:order-1">
@@ -23,7 +23,7 @@
                     {{ form_start(form, {attr: {
                         'novalidate': 'novalidate',
                         'class': 'space-y-8',
-                        'data-action': 'submit->live#action:prevent',
+                        'data-action': 'submit->live#action:prevent live-form-scroll#markSubmit',
                         'data-live-action-param': 'submit',
                     }}) }}
 
@@ -459,7 +459,12 @@
                                 </svg>
                                 Zpět na výběr
                             </a>
-                            <button type="submit" class="btn btn-primary btn-lg">
+                            <button type="submit" class="btn btn-primary btn-lg"
+                                    data-loading="action(submit)|addAttr(disabled)">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="hidden animate-spin h-5 w-5 mr-2" data-loading="action(submit)|removeClass(hidden)" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                </svg>
                                 Pokračovat k podpisu
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />

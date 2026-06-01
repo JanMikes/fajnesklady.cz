@@ -49,7 +49,7 @@
          }"
          @signature:signed.window="signed = true"
          @signature:cleared.window="signed = false">
-      <div data-controller="signature"
+      <div data-controller="signature form-guard"
            data-signature-customer-name-value="{{ customerFullName }}">
         <div class="card">
             <div class="card-body">
@@ -249,7 +249,7 @@
                 </div>
 
                 {# Signing Date & Place #}
-                <div class="border border-gray-200 rounded-lg p-4 mb-6">
+                <div id="accept-signing-place" class="border border-gray-200 rounded-lg p-4 mb-6">
                     <h3 class="font-semibold text-gray-900 mb-3">Datum a místo podpisu</h3>
 
                     <div class="grid grid-cols-2 gap-4">
@@ -266,6 +266,8 @@
                                    x-model="signingPlace"
                                    placeholder="např. Praha"
                                    required
+                                   data-form-guard-target="required"
+                                   data-form-guard-anchor="#accept-signing-place"
                                    class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-accent focus:border-accent">
                         </div>
                     </div>
@@ -274,7 +276,7 @@
                 {# Inline signature — manual draw on the left, ready-made styled
                    variants on the right. Each is its own radio so picking a
                    typed style implies signing method = "typed" with that style. #}
-                <div class="border border-gray-200 rounded-lg p-4 mb-6"
+                <div id="accept-signature" class="border border-gray-200 rounded-lg p-4 mb-6"
                      x-data="{ choice: '' }">
                     <h3 class="font-semibold text-gray-900 mb-3">Způsob podpisu</h3>
                     <p x-show="!choice" class="text-xs text-gray-500 mb-3">Vyberte jednu z níže uvedených variant — buď nakreslete vlastní podpis, nebo zvolte hotový styl.</p>
@@ -337,7 +339,11 @@
 
                 {# Accept Form #}
                 <form method="post">
-                    <input type="hidden" name="signature_data" data-signature-target="dataField" value="">
+                    <input type="hidden" name="submit_token" value="{{ submitToken }}">
+                    {# signature_data is the authoritative signed value; form-guard treats it as a
+                       required field and scrolls to the signature section when it is empty. #}
+                    <input type="hidden" name="signature_data" data-signature-target="dataField"
+                           data-form-guard-target="required" data-form-guard-anchor="#accept-signature" value="">
                     <input type="hidden" name="signing_method" data-signature-target="methodField" value="">
                     <input type="hidden" name="typed_name" data-signature-target="typedNameField" value="">
                     <input type="hidden" name="style_id" data-signature-target="styleIdField" value="">
@@ -347,9 +353,11 @@
                        as hidden inputs that submit "1" only when the master
                        checkbox is on, so the controller's per-field validation
                        needs no change. #}
-                    <div class="border border-gray-200 rounded-lg p-4 mb-6">
+                    <div id="accept-consent" class="border border-gray-200 rounded-lg p-4 mb-6">
                         <label class="flex items-start gap-3 cursor-pointer">
                             <input type="checkbox" x-model="acceptAll"
+                                   data-form-guard-target="required"
+                                   data-form-guard-anchor="#accept-consent"
                                    class="mt-1 h-5 w-5 text-accent border-gray-300 rounded focus:ring-accent shrink-0">
                             <span class="text-sm text-gray-800">
                                 <strong>Souhlasím se všemi níže uvedenými podmínkami a dokumenty</strong>
@@ -423,7 +431,7 @@
                        the information card above takes its place (no token, no
                        silent debit, no GoPay-managed parameters to disclose). #}
                     {% if isRecurring and formData.billingMode.value == 'auto_recurring' %}
-                    <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+                    <div id="accept-recurring" class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
                         <h2 class="font-semibold text-gray-900 mb-3 flex items-center">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-amber-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -493,6 +501,8 @@
                            the master T&C consent above (GoPay rule + Podmínky čl. I). #}
                         <label class="mt-4 pt-3 border-t border-amber-200 flex items-start gap-3 cursor-pointer">
                             <input type="checkbox" x-model="acceptRecurring"
+                                   data-form-guard-target="required"
+                                   data-form-guard-anchor="#accept-recurring"
                                    class="mt-0.5 h-5 w-5 text-accent border-amber-300 rounded focus:ring-accent shrink-0">
                             <span class="text-sm text-gray-800">
                                 <strong>Souhlasím s opakovanou platbou</strong> v parametrech uvedených výše a s uložením platebních údajů na bráně GoPay.
@@ -527,6 +537,11 @@
                         Kliknutím na tlačítko <strong>OBJEDNÁVÁM a zaplatím</strong> odesíláte závaznou objednávku, která zavazuje k zaplacení sjednané ceny.
                     </p>
 
+                    {# Hidden at rest; form_guard reveals it when a blocked submit is attempted. #}
+                    <p class="form-error hidden mb-2" data-form-guard-target="summary" role="alert">
+                        Některá pole nejsou vyplněná — doplňte prosím zvýrazněná pole.
+                    </p>
+
                     <div class="flex items-center justify-between pt-2">
                         <a href="{{ path('public_order_create', {placeId: place.id, storageTypeId: storageType.id, storageId: storage.id}) }}" class="inline-flex items-center text-gray-600 hover:text-gray-900">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -534,14 +549,19 @@
                             </svg>
                             Zpět na formulář
                         </a>
+                        {# Never disabled (spec 070): form_guard validates on submit, scrolls to the first
+                           missing field, and locks the button (spinner + "Odesílám…") after a valid submit. #}
                         <button type="submit"
                                 class="btn btn-primary btn-lg"
-                                :disabled="!(signed && acceptAll && acceptRecurring && signingPlace.trim())"
-                                :class="{'opacity-50 cursor-not-allowed': !(signed && acceptAll && acceptRecurring && signingPlace.trim())}">
+                                data-form-guard-target="submit">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="hidden animate-spin h-5 w-5 mr-2" data-form-guard-target="spinner" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                             </svg>
-                            OBJEDNÁVÁM a zaplatím
+                            <span data-form-guard-target="label">OBJEDNÁVÁM a zaplatím</span>
                         </button>
                     </div>
                 </form>

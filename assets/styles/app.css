@@ -137,6 +137,12 @@ select.form-input {
     @apply mt-1 text-sm text-red-600;
 }
 
+/* Transient red ring flashed on the section a blocked submit scrolled to
+   (form_guard_controller). Auto-removed after ~1.6s. */
+.form-guard-flash {
+    @apply ring-2 ring-red-400 ring-offset-2 rounded transition;
+}
+
 .form-help {
     @apply mt-1 text-sm text-gray-500;
 }

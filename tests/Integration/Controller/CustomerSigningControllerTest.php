@@ -7,6 +7,7 @@ namespace App\Tests\Integration\Controller;
 use App\Entity\Order;
 use App\Enum\OrderStatus;
 use App\Enum\PaymentMethod;
+use App\Enum\SigningMethod;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -85,6 +86,43 @@ class CustomerSigningControllerTest extends WebTestCase
         \assert(is_string($content));
         $this->assertStringContainsString('Bezplatný pronájem', $content);
         $this->assertStringNotContainsString('Měsíční platba', $content);
+    }
+
+    public function testAlreadySignedOrderRedirectsWithoutReprocessing(): void
+    {
+        $order = $this->makeSigningOrder(
+            paymentMethod: PaymentMethod::GOPAY,
+            firstPaymentPrice: 80_000,
+            storageRate: 150_000,
+            individualMonthlyAmount: 80_000,
+            paidThroughDate: null,
+        );
+
+        // Simulate a prior successful sign that left a signature while the token is still present
+        // (the concurrent-double-submit window). A second POST must not re-process the signing.
+        $order->attachSignature(
+            signaturePath: 'signatures/already-signed.png',
+            signingMethod: SigningMethod::DRAW,
+            typedName: null,
+            styleId: null,
+            signingPlace: 'Praha',
+            now: new \DateTimeImmutable('2025-06-15 12:00:00'),
+        );
+        $this->entityManager->flush();
+
+        $this->client->request('POST', '/podpis/'.$order->signingToken, [
+            'accept_contract' => '1',
+            'accept_vop' => '1',
+            'accept_gdpr' => '1',
+            'signature_consent' => '1',
+            'signature_data' => 'data:image/png;base64,iVBORw0KGgo=',
+            'signing_method' => 'draw',
+            'signing_place' => 'Brno',
+        ]);
+
+        $this->assertResponseRedirects();
+        $location = (string) $this->client->getResponse()->headers->get('Location');
+        $this->assertStringContainsString('/objednavka/'.$order->id->toRfc4122().'/platba', $location);
     }
 
     private function makeSigningOrder(

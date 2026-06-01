@@ -34,6 +34,14 @@ use Symfony\Component\Uid\Uuid;
 #[Route('/objednavka/{placeId}/{storageTypeId}/{storageId}/prijmout', name: 'public_order_accept', requirements: ['placeId' => '[0-9a-f-]{36}', 'storageTypeId' => '[0-9a-f-]{36}', 'storageId' => '[0-9a-f-]{36}'])]
 final class OrderAcceptController extends AbstractController
 {
+    /**
+     * One-time submit token. Issued on every render of the accept page, consumed
+     * on the first POST. A duplicate POST (double-click, retried request) finds no
+     * token and is routed to the already-created order instead of creating a second.
+     */
+    private const string SUBMIT_TOKEN_KEY = 'order_accept_submit_token';
+    private const string LAST_ORDER_ID_KEY = 'order_accept_last_order_id';
+
     public function __construct(
         private readonly PlaceRepository $placeRepository,
         private readonly StorageTypeRepository $storageTypeRepository,
@@ -63,6 +71,17 @@ final class OrderAcceptController extends AbstractController
         $storage = $this->storageRepository->find(Uuid::fromString($storageId));
         if (null === $storage) {
             throw new NotFoundHttpException('Skladová jednotka nenalezena.');
+        }
+
+        // Duplicate-submit guard first (POST only): a re-submitted POST has no valid one-time token,
+        // so we route it to the already-created order instead of running it through order creation
+        // again. Done before everything below — incl. the session-data check (cleared on success) and
+        // the availability re-check (which in 'auto' mode could re-route a duplicate onto a fresh unit).
+        if ($request->isMethod('POST')) {
+            $duplicateResponse = $this->guardDuplicateSubmit($request, $place, $storageType, $storage);
+            if (null !== $duplicateResponse) {
+                return $duplicateResponse;
+            }
         }
 
         // Read form data from session
@@ -116,6 +135,54 @@ final class OrderAcceptController extends AbstractController
             'recurringPaymentLegalMaxInCzk' => intdiv(PriceCalculator::MAX_RECURRING_PAYMENT_AMOUNT_IN_HALER, 100),
             'submitted' => self::emptySubmittedValues(),
             'now' => $now,
+            'submitToken' => $this->issueSubmitToken($request),
+        ]);
+    }
+
+    /**
+     * Issue (and store in the session) a fresh one-time submit token, returning it for the template.
+     */
+    private function issueSubmitToken(Request $request): string
+    {
+        $token = bin2hex(random_bytes(16));
+        $request->getSession()->set(self::SUBMIT_TOKEN_KEY, $token);
+
+        return $token;
+    }
+
+    /**
+     * Pop the one-time submit token and decide whether this POST is the original or a duplicate.
+     * Returns null when the token is valid (let the submit proceed); a redirect when it is a
+     * duplicate/stale submit (to the already-created order, or back to the form when none exists).
+     */
+    private function guardDuplicateSubmit(
+        Request $request,
+        \App\Entity\Place $place,
+        \App\Entity\StorageType $storageType,
+        \App\Entity\Storage $storage,
+    ): ?Response {
+        $session = $request->getSession();
+        $expected = $session->get(self::SUBMIT_TOKEN_KEY);
+        $provided = $request->request->getString('submit_token');
+        $session->remove(self::SUBMIT_TOKEN_KEY);
+
+        if (is_string($expected) && '' !== $expected && hash_equals($expected, $provided)) {
+            return null;
+        }
+
+        $lastOrderId = $session->get(self::LAST_ORDER_ID_KEY);
+        if (is_string($lastOrderId) && '' !== $lastOrderId) {
+            $this->addFlash('info', 'Vaše objednávka už byla odeslána. Pokračujte k platbě.');
+
+            return $this->redirectToRoute('public_order_payment', ['id' => $lastOrderId]);
+        }
+
+        $this->addFlash('error', 'Platnost formuláře vypršela. Odešlete prosím objednávku znovu.');
+
+        return $this->redirectToRoute('public_order_create', [
+            'placeId' => $place->id->toRfc4122(),
+            'storageTypeId' => $storageType->id->toRfc4122(),
+            'storageId' => $storage->id->toRfc4122(),
         ]);
     }
 
@@ -257,6 +324,9 @@ final class OrderAcceptController extends AbstractController
                     'acceptRecurring' => $acceptRecurringPayments,
                 ],
                 'now' => $now,
+                // Validation failed and the token was already consumed in __invoke; reissue so the
+                // corrected resubmit is accepted.
+                'submitToken' => $this->issueSubmitToken($request),
             ]);
         }
 
@@ -352,8 +422,10 @@ final class OrderAcceptController extends AbstractController
                 earlyStartWaiverAccepted: $requiresEarlyStartWaiver && $acceptEarlyStartWaiver,
             ));
 
-            // Clear session data
+            // Clear session data; remember the created order so a duplicate POST (token already
+            // consumed) is routed to it instead of creating a second order.
             $request->getSession()->remove('order_form_data');
+            $request->getSession()->set(self::LAST_ORDER_ID_KEY, $order->id->toRfc4122());
 
             $this->addFlash('success', 'Smlouva byla podepsána a skladová jednotka zarezervována. Pokračujte k platbě.');
 
@@ -390,6 +462,7 @@ final class OrderAcceptController extends AbstractController
                 'recurringPaymentLegalMaxInCzk' => intdiv(PriceCalculator::MAX_RECURRING_PAYMENT_AMOUNT_IN_HALER, 100),
                 'submitted' => self::emptySubmittedValues(),
                 'now' => $now,
+                'submitToken' => $this->issueSubmitToken($request),
             ]);
         }
     }

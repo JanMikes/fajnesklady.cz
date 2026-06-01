@@ -18,6 +18,10 @@ use Symfony\Component\Uid\Uuid;
 
 class OrderPaymentControllerTest extends WebTestCase
 {
+    // Matches OrderAcceptController's one-time submit token; seeded into the session by
+    // setOrderSessionData() and echoed back in each accept POST so the duplicate-submit guard passes.
+    private const SUBMIT_TOKEN = 'test-submit-token-070';
+
     private KernelBrowser $client;
     private EntityManagerInterface $entityManager;
     private MockGoPayClient $goPayClient;
@@ -56,6 +60,11 @@ class OrderPaymentControllerTest extends WebTestCase
         $this->assertSelectorExists('input[name="signature_data"]');
         $this->assertSelectorExists('input[name="signing_method"]');
         $this->assertSelectorExists('input[name="signature_consent"]');
+        // Spec 070: one-time submit token + form-guard wiring; submit button is no longer disabled.
+        $this->assertSelectorExists('input[name="submit_token"]');
+        $this->assertSelectorExists('[data-controller~="form-guard"]');
+        $this->assertSelectorExists('button[type="submit"][data-form-guard-target="submit"]');
+        $this->assertSelectorNotExists('button[type="submit"][disabled]');
     }
 
     public function testAcceptTermsWithSignatureRedirectsToPayment(): void
@@ -64,6 +73,7 @@ class OrderPaymentControllerTest extends WebTestCase
         $this->setOrderSessionData();
 
         $this->client->request('POST', $this->buildAcceptUrl($storage), [
+            'submit_token' => self::SUBMIT_TOKEN,
             'accept_contract' => '1',
             'accept_vop' => '1',
             'accept_consumer_notice' => '1',
@@ -101,6 +111,7 @@ class OrderPaymentControllerTest extends WebTestCase
         $this->setOrderSessionData();
 
         $this->client->request('POST', $this->buildAcceptUrl($storage), [
+            'submit_token' => self::SUBMIT_TOKEN,
             'accept_contract' => '1',
             'accept_vop' => '1',
             'accept_consumer_notice' => '1',
@@ -119,6 +130,7 @@ class OrderPaymentControllerTest extends WebTestCase
         $this->setOrderSessionData();
 
         $this->client->request('POST', $this->buildAcceptUrl($storage), [
+            'submit_token' => self::SUBMIT_TOKEN,
             'accept_contract' => '1',
             'accept_vop' => '1',
             'accept_consumer_notice' => '1',
@@ -137,6 +149,7 @@ class OrderPaymentControllerTest extends WebTestCase
         $this->setOrderSessionData();
 
         $this->client->request('POST', $this->buildAcceptUrl($storage), [
+            'submit_token' => self::SUBMIT_TOKEN,
             // missing accept_contract
             'accept_vop' => '1',
             'accept_consumer_notice' => '1',
@@ -155,6 +168,7 @@ class OrderPaymentControllerTest extends WebTestCase
         $this->setOrderSessionData();
 
         $this->client->request('POST', $this->buildAcceptUrl($storage), [
+            'submit_token' => self::SUBMIT_TOKEN,
             'accept_contract' => '1',
             // missing accept_vop
             'accept_consumer_notice' => '1',
@@ -173,6 +187,7 @@ class OrderPaymentControllerTest extends WebTestCase
         $this->setOrderSessionData();
 
         $this->client->request('POST', $this->buildAcceptUrl($storage), [
+            'submit_token' => self::SUBMIT_TOKEN,
             'accept_contract' => '1',
             'accept_vop' => '1',
             // missing accept_consumer_notice
@@ -191,6 +206,7 @@ class OrderPaymentControllerTest extends WebTestCase
         $this->setOrderSessionData();
 
         $this->client->request('POST', $this->buildAcceptUrl($storage), [
+            'submit_token' => self::SUBMIT_TOKEN,
             'accept_contract' => '1',
             'accept_vop' => '1',
             'accept_consumer_notice' => '1',
@@ -209,6 +225,7 @@ class OrderPaymentControllerTest extends WebTestCase
         $this->setOrderSessionData(unlimited: true);
 
         $this->client->request('POST', $this->buildAcceptUrl($storage), [
+            'submit_token' => self::SUBMIT_TOKEN,
             'accept_contract' => '1',
             'accept_vop' => '1',
             'accept_consumer_notice' => '1',
@@ -231,6 +248,7 @@ class OrderPaymentControllerTest extends WebTestCase
         $this->setOrderSessionData(endDate: '2025-07-05');
 
         $this->client->request('POST', $this->buildAcceptUrl($storage), [
+            'submit_token' => self::SUBMIT_TOKEN,
             'accept_contract' => '1',
             'accept_vop' => '1',
             'accept_consumer_notice' => '1',
@@ -304,6 +322,7 @@ class OrderPaymentControllerTest extends WebTestCase
         $this->setOrderSessionData();
 
         $this->client->request('POST', $this->buildAcceptUrl($storage), [
+            'submit_token' => self::SUBMIT_TOKEN,
             'accept_contract' => '1',
             'accept_vop' => '1',
             'accept_consumer_notice' => '1',
@@ -532,6 +551,7 @@ class OrderPaymentControllerTest extends WebTestCase
             'endDate' => $unlimited ? null : ($endDate ?? '2025-07-22'),
             'selectionMode' => $selectionMode,
         ]);
+        $session->set('order_accept_submit_token', self::SUBMIT_TOKEN);
         $session->save();
 
         $this->client->getCookieJar()->set(

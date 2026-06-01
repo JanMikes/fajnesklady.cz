@@ -22,7 +22,7 @@
          x-data="{ signed: false, signingPlace: '', acceptAll: false }"
          @signature:signed.window="signed = true"
          @signature:cleared.window="signed = false">
-      <div data-controller="signature"
+      <div data-controller="signature form-guard"
            data-signature-customer-name-value="{{ customerFullName }}">
         <div class="card">
             <div class="card-body">
@@ -142,18 +142,20 @@
                 </div>
 
                 {# Signing Place #}
-                <div class="border border-gray-200 rounded-lg p-4 mb-6">
+                <div id="sign-place" class="border border-gray-200 rounded-lg p-4 mb-6">
                     <label for="signing_place" class="form-label-required block font-semibold text-gray-900 mb-3">Místo podpisu</label>
                     <input type="text" id="signing_place" x-model="signingPlace"
                            placeholder="např. Praha"
                            required
+                           data-form-guard-target="required"
+                           data-form-guard-anchor="#sign-place"
                            class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-accent focus:border-accent">
                 </div>
 
                 {# Inline signature — manual draw on the left, ready-made styled
                    variants on the right. Each is its own radio so picking a
                    typed style implies signing method = "typed" with that style. #}
-                <div class="border border-gray-200 rounded-lg p-4 mb-6"
+                <div id="sign-signature" class="border border-gray-200 rounded-lg p-4 mb-6"
                      x-data="{ choice: '' }">
                     <h3 class="font-semibold text-gray-900 mb-3">Způsob podpisu</h3>
                     <p x-show="!choice" class="text-xs text-gray-500 mb-3">Vyberte jednu z níže uvedených variant — buď nakreslete vlastní podpis, nebo zvolte hotový styl.</p>
@@ -215,16 +217,21 @@
 
                 {# Signing Form #}
                 <form method="post" id="signing-form">
-                    <input type="hidden" name="signature_data" data-signature-target="dataField" value="">
+                    {# signature_data is the authoritative signed value; form-guard treats it as a
+                       required field and scrolls to the signature section when it is empty. #}
+                    <input type="hidden" name="signature_data" data-signature-target="dataField"
+                           data-form-guard-target="required" data-form-guard-anchor="#sign-signature" value="">
                     <input type="hidden" name="signing_method" data-signature-target="methodField" value="">
                     <input type="hidden" name="typed_name" data-signature-target="typedNameField" value="">
                     <input type="hidden" name="style_id" data-signature-target="styleIdField" value="">
                     <input type="hidden" name="signing_place" :value="signingPlace">
 
                     {# Single consolidated consent. #}
-                    <div class="border border-gray-200 rounded-lg p-4 mb-6">
+                    <div id="sign-consent" class="border border-gray-200 rounded-lg p-4 mb-6">
                         <label class="flex items-start gap-3 cursor-pointer">
                             <input type="checkbox" x-model="acceptAll"
+                                   data-form-guard-target="required"
+                                   data-form-guard-anchor="#sign-consent"
                                    class="mt-1 h-5 w-5 text-accent border-gray-300 rounded focus:ring-accent shrink-0">
                             <span class="text-sm text-gray-800">
                                 <strong>Souhlasím se všemi níže uvedenými podmínkami a dokumenty</strong>
@@ -253,11 +260,21 @@
                         <input type="hidden" name="signature_consent" value="1" :disabled="!acceptAll">
                     </div>
 
+                    {# Hidden at rest; form_guard reveals it when a blocked submit is attempted. #}
+                    <p class="form-error hidden mb-2" data-form-guard-target="summary" role="alert">
+                        Některá pole nejsou vyplněná — doplňte prosím zvýrazněná pole.
+                    </p>
+
+                    {# Never disabled (spec 070): form_guard validates on submit, scrolls to the first
+                       missing field, and locks the button (spinner + "Odesílám…") after a valid submit. #}
                     <button type="submit"
                             class="btn btn-primary w-full"
-                            :disabled="!(signed && acceptAll && signingPlace.trim())"
-                            :class="{'opacity-50 cursor-not-allowed': !(signed && acceptAll && signingPlace.trim())}">
-                        Podepsat smlouvu
+                            data-form-guard-target="submit">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="hidden animate-spin h-5 w-5 mr-2" data-form-guard-target="spinner" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                        </svg>
+                        <span data-form-guard-target="label">Podepsat smlouvu</span>
                     </button>
                 </form>
             </div>

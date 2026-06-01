@@ -61,6 +61,12 @@ final class CustomerSigningController extends AbstractController
 
     private function handlePost(Request $request, \App\Entity\Order $order): Response
     {
+        // Idempotency: if the order is already signed (e.g. a duplicate POST that beat the
+        // token-clearing of the first one), don't re-process — route straight to the next step.
+        if ($order->hasSignature()) {
+            return $this->redirectAfterSigning($order);
+        }
+
         $accepted = $request->request->getBoolean('accept_contract');
         $signatureData = $request->request->getString('signature_data');
         $signingMethodValue = $request->request->getString('signing_method');
@@ -125,15 +131,7 @@ final class CustomerSigningController extends AbstractController
                 signerUserAgent: substr((string) $request->headers->get('User-Agent', ''), 0, 500) ?: null,
             ));
 
-            if (PaymentMethod::EXTERNAL === $order->paymentMethod) {
-                return $this->redirectToRoute('public_customer_signing_complete', ['id' => $order->id]);
-            }
-
-            if ($order->hasUnpaidDebt()) {
-                return $this->redirectToRoute('public_order_debt_payment', ['id' => $order->id]);
-            }
-
-            return $this->redirectToRoute('public_order_payment', ['id' => $order->id]);
+            return $this->redirectAfterSigning($order);
         } catch (\Exception $e) {
             $this->logger->error('Customer signing failed', ['exception' => $e]);
             $this->addFlash('error', 'Při podpisu smlouvy došlo k chybě. Zkuste to prosím znovu.');
@@ -146,5 +144,22 @@ final class CustomerSigningController extends AbstractController
                 'priceViewModel' => SigningPriceViewModel::fromOrder($order),
             ]);
         }
+    }
+
+    /**
+     * Next step after a (possibly already-completed) signing: external/free orders go to the
+     * completion page, orders with outstanding debt to the debt payment, the rest to payment.
+     */
+    private function redirectAfterSigning(\App\Entity\Order $order): Response
+    {
+        if (PaymentMethod::EXTERNAL === $order->paymentMethod) {
+            return $this->redirectToRoute('public_customer_signing_complete', ['id' => $order->id]);
+        }
+
+        if ($order->hasUnpaidDebt()) {
+            return $this->redirectToRoute('public_order_debt_payment', ['id' => $order->id]);
+        }
+
+        return $this->redirectToRoute('public_order_payment', ['id' => $order->id]);
     }
 }
