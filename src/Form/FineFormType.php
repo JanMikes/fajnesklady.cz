@@ -8,6 +8,7 @@ use App\Enum\FineType;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\EnumType;
 use Symfony\Component\Form\Extension\Core\Type\IntegerType;
+use Symfony\Component\Form\Extension\Core\Type\NumberType;
 use Symfony\Component\Form\Extension\Core\Type\TextareaType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
@@ -26,11 +27,14 @@ final class FineFormType extends AbstractType
                 'label' => 'Typ pokuty',
                 'placeholder' => 'Vyberte typ pokuty',
             ])
-            ->add('amountInHaler', IntegerType::class, [
-                'label' => 'Částka (v haléřích)',
+            ->add('amountInCzk', NumberType::class, [
+                'label' => 'Částka (Kč)',
+                'scale' => 2,
                 'attr' => [
                     'data-fine-form-target' => 'amount',
-                    'min' => 1,
+                    'inputmode' => 'decimal',
+                    'min' => 0.01,
+                    'step' => '0.01',
                 ],
             ])
             ->add('nonReturnDays', IntegerType::class, [
@@ -41,12 +45,15 @@ final class FineFormType extends AbstractType
                     'min' => 1,
                 ],
             ])
-            ->add('latePaymentBaseInHaler', IntegerType::class, [
-                'label' => 'Základ dluhu (v haléřích)',
+            ->add('latePaymentBaseInCzk', NumberType::class, [
+                'label' => 'Základ dluhu (Kč)',
+                'scale' => 2,
                 'required' => false,
                 'attr' => [
                     'data-fine-form-target' => 'latePaymentBase',
-                    'min' => 1,
+                    'inputmode' => 'decimal',
+                    'min' => 0.01,
+                    'step' => '0.01',
                 ],
             ])
             ->add('latePaymentDays', IntegerType::class, [

@@ -21,7 +21,7 @@ export default class extends Controller {
 
         switch (type) {
             case 'dirty_storage':
-                this.amountTarget.value = 600000;
+                this.amountTarget.value = 6000;
                 this.updateDisplay();
                 break;
             case 'non_return':
@@ -47,15 +47,15 @@ export default class extends Controller {
         if (type === 'non_return') {
             const days = parseInt(this.nonReturnDaysTarget.value) || 0;
             if (days > 0) {
-                this.amountTarget.value = 200000 * days;
+                this.amountTarget.value = 2000 * days;
             }
         } else if (type === 'late_payment') {
-            const base = parseInt(this.latePaymentBaseTarget.value) || 0;
+            const base = parseFloat(this.latePaymentBaseTarget.value) || 0;
             const days = parseInt(this.latePaymentDaysTarget.value) || 0;
             if (base > 0 && days > 0) {
-                const percentCalc = Math.round(base * 0.0025 * days);
-                const minCalc = 25000 * days;
-                this.amountTarget.value = Math.max(percentCalc, minCalc);
+                const percentCalc = base * 0.0025 * days;
+                const minCalc = 250 * days;
+                this.amountTarget.value = round2(Math.max(percentCalc, minCalc));
             }
         }
 
@@ -64,12 +64,16 @@ export default class extends Controller {
 
     updateDisplay() {
         if (this.hasAmountDisplayTarget) {
-            const amount = parseInt(this.amountTarget.value) || 0;
+            const amount = parseFloat(this.amountTarget.value) || 0;
             if (amount > 0) {
-                this.amountDisplayTarget.textContent = `= ${(amount / 100).toLocaleString('cs-CZ')} Kč`;
+                this.amountDisplayTarget.textContent = `= ${amount.toLocaleString('cs-CZ')} Kč`;
             } else {
                 this.amountDisplayTarget.textContent = '';
             }
         }
     }
+}
+
+function round2(x) {
+    return Math.round(x * 100) / 100;
 }

@@ -14,11 +14,11 @@ final class FineFormData
 
     #[Assert\NotBlank]
     #[Assert\Positive]
-    public ?int $amountInHaler = null;
+    public ?float $amountInCzk = null;
 
     public ?int $nonReturnDays = null;
 
-    public ?int $latePaymentBaseInHaler = null;
+    public ?float $latePaymentBaseInCzk = null;
 
     public ?int $latePaymentDays = null;
 

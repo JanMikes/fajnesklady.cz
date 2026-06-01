@@ -44,12 +44,12 @@ final class AdminFineCreateController extends AbstractController
             $admin = $this->getUser();
 
             assert(null !== $formData->type);
-            assert(null !== $formData->amountInHaler);
+            assert(null !== $formData->amountInCzk);
 
             $this->commandBus->dispatch(new IssueFineCommand(
                 contractId: $contract->id,
                 type: $formData->type,
-                amountInHaler: $formData->amountInHaler,
+                amountInHaler: (int) round($formData->amountInCzk * 100),
                 description: $formData->description,
                 issuedById: $admin->id,
             ));
