@@ -10,12 +10,21 @@
         } %}
     </div>
 
+    <form method="get" action="{{ path('admin_orders_list') }}" class="mb-4 flex items-center gap-2 flex-wrap">
+        {% if filter %}<input type="hidden" name="filter" value="{{ filter }}">{% endif %}
+        <input type="search" name="q" value="{{ search }}" placeholder="Hledat číslo objednávky nebo zákazníka…" class="input input-bordered input-sm w-72 max-w-full">
+        <button type="submit" class="btn btn-sm btn-primary">Hledat</button>
+        {% if search %}
+            <a href="{{ path('admin_orders_list', filter ? {filter: filter} : {}) }}" class="btn btn-sm btn-ghost">Zrušit</a>
+        {% endif %}
+    </form>
+
     <div class="mb-4 flex items-center gap-2 flex-wrap">
-        <a href="{{ path('admin_orders_list') }}" class="btn btn-sm {{ filter ? 'btn-ghost' : 'btn-primary' }}">Vše</a>
-        <a href="{{ path('admin_orders_list', {filter: 'individual'}) }}" class="btn btn-sm {{ filter == 'individual' ? 'btn-warning' : 'btn-ghost' }}">Indiv. cena ({{ filterCounts.individual }})</a>
-        <a href="{{ path('admin_orders_list', {filter: 'external'}) }}" class="btn btn-sm {{ filter == 'external' ? 'btn-info' : 'btn-ghost' }}">Externí předplatné ({{ filterCounts.external }})</a>
-        <a href="{{ path('admin_orders_list', {filter: 'ending'}) }}" class="btn btn-sm {{ filter == 'ending' ? 'btn-error' : 'btn-ghost' }}">Předplatné brzy končí ({{ filterCounts.ending }})</a>
-        <a href="{{ path('admin_orders_list', {filter: 'free'}) }}" class="btn btn-sm {{ filter == 'free' ? 'btn-success' : 'btn-ghost' }}">Zdarma ({{ filterCounts.free }})</a>
+        <a href="{{ path('admin_orders_list', search ? {q: search} : {}) }}" class="btn btn-sm {{ filter ? 'btn-ghost' : 'btn-primary' }}">Vše</a>
+        <a href="{{ path('admin_orders_list', {filter: 'individual', q: search}) }}" class="btn btn-sm {{ filter == 'individual' ? 'btn-warning' : 'btn-ghost' }}">Indiv. cena ({{ filterCounts.individual }})</a>
+        <a href="{{ path('admin_orders_list', {filter: 'external', q: search}) }}" class="btn btn-sm {{ filter == 'external' ? 'btn-info' : 'btn-ghost' }}">Externí předplatné ({{ filterCounts.external }})</a>
+        <a href="{{ path('admin_orders_list', {filter: 'ending', q: search}) }}" class="btn btn-sm {{ filter == 'ending' ? 'btn-error' : 'btn-ghost' }}">Předplatné brzy končí ({{ filterCounts.ending }})</a>
+        <a href="{{ path('admin_orders_list', {filter: 'free', q: search}) }}" class="btn btn-sm {{ filter == 'free' ? 'btn-success' : 'btn-ghost' }}">Zdarma ({{ filterCounts.free }})</a>
     </div>
 
     <div class="card">
@@ -23,7 +32,7 @@
             <table class="table table-zebra">
                 <thead>
                     <tr>
-                        <th>ID objednávky</th>
+                        <th>Číslo</th>
                         <th>Zákazník</th>
                         <th>Sklad</th>
                         <th>Pobočka</th>
@@ -36,15 +45,15 @@
                 </thead>
                 <tbody>
                     {% for order in orders %}
+                        {% set contract = contractsByOrderId[order.id.toRfc4122()] ?? null %}
                         <tr>
-                            <td class="font-mono text-sm">{{ order.id|slice(0, 8) }}...</td>
+                            <td class="font-mono text-sm">
+                                <a href="{{ path('admin_order_detail', {id: order.id}) }}" class="link">{{ order_reference(order) }}</a>
+                            </td>
                             <td>
                                 <a href="{{ path('portal_users_view', {id: order.user.id}) }}" class="link">
                                     {{ order.user.fullName }}
                                 </a>
-                                {% if debtorIdSet[order.user.id.toRfc4122()] is defined %}
-                                    <span class="badge badge-error badge-sm ml-1" title="Zákazník má platbu po splatnosti">Dlužník</span>
-                                {% endif %}
                                 <div class="text-xs text-gray-500">{{ order.user.email }}</div>
                             </td>
                             <td class="text-gray-900">{{ order.storage.number }}</td>
@@ -91,6 +100,15 @@
                                     {% if order.paidThroughDate %}
                                         <span class="badge badge-info badge-sm" title="Externí platba do {{ order.paidThroughDate|date('d.m.Y') }}">Předplaceno do {{ order.paidThroughDate|date('d.m.Y') }}</span>
                                     {% endif %}
+                                    {% if contract and contract.outstandingDebtAmount and contract.outstandingDebtAmount > 0 %}
+                                        <span class="badge badge-error badge-sm" title="Smlouva má nesplacený dluh">Dluh {{ (contract.outstandingDebtAmount / 100)|number_format(0, ',', ' ') }} Kč</span>
+                                    {% endif %}
+                                    {% if contract and overdueContractIdSet[contract.id.toRfc4122()] is defined %}
+                                        <span class="badge badge-error badge-sm" title="Smlouva je po splatnosti">Po splatnosti</span>
+                                    {% endif %}
+                                    {% if order.onboardingDebtInHaler and order.onboardingDebtInHaler > 0 and order.debtPaidAt is null %}
+                                        <span class="badge badge-warning badge-sm" title="Nesplacený onboarding dluh">Onboarding dluh {{ (order.onboardingDebtInHaler / 100)|number_format(0, ',', ' ') }} Kč</span>
+                                    {% endif %}
                                 </div>
                             </td>
                             <td class="text-gray-500 text-sm">{{ order.createdAt|date('d.m.Y H:i') }}</td>
@@ -102,7 +120,9 @@
                         </tr>
                     {% else %}
                         <tr>
-                            <td colspan="9" class="text-center text-gray-500 py-8">Žádné objednávky nenalezeny</td>
+                            <td colspan="9" class="text-center text-gray-500 py-8">
+                                {{ search ? 'Žádné objednávky neodpovídají hledání.' : 'Žádné objednávky nenalezeny' }}
+                            </td>
                         </tr>
                     {% endfor %}
                 </tbody>
@@ -114,7 +134,7 @@
                 currentPage: currentPage,
                 totalPages: totalPages,
                 route: 'admin_orders_list',
-                routeParams: filter ? {filter: filter} : {},
+                routeParams: {filter: filter, q: search},
             } %}
         {% endif %}
     </div>

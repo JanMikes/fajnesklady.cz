@@ -640,6 +640,37 @@ class ContractRepositoryTest extends KernelTestCase
         $this->assertSame([], $emptyInput);
     }
 
+    public function testFindOverdueContractIdsRestrictsToGivenOrders(): void
+    {
+        $now = new \DateTimeImmutable('2025-06-15 12:00:00');
+
+        $user = $this->createUser('overdue-contract-ids@test.com');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storageA = $this->createStorage($storageType, $place, 'OCA1');
+        $storageB = $this->createStorage($storageType, $place, 'OCB1');
+
+        // Overdue: terminated with outstanding debt.
+        $orderDebt = $this->createOrder($user, $storageA, $now->modify('-60 days'), $now->modify('-30 days'));
+        $contractDebt = $this->createContract($orderDebt, $user, $storageA, $now->modify('-60 days'), $now->modify('-30 days'));
+        $contractDebt->setOutstandingDebt(120000);
+
+        // Healthy contract — must not appear.
+        $orderClean = $this->createOrder($user, $storageB, $now->modify('-30 days'), null);
+        $this->createContract($orderClean, $user, $storageB, $now->modify('-30 days'), null);
+
+        $this->entityManager->flush();
+
+        $withBoth = $this->repository->findOverdueContractIds($now, [$orderDebt->id, $orderClean->id]);
+        $cleanOnly = $this->repository->findOverdueContractIds($now, [$orderClean->id]);
+        $emptyInput = $this->repository->findOverdueContractIds($now, []);
+
+        $this->assertContains($contractDebt->id->toRfc4122(), $withBoth);
+        $this->assertCount(1, $withBoth);
+        $this->assertSame([], $cleanOnly);
+        $this->assertSame([], $emptyInput);
+    }
+
     public function testCountAndSumActiveRecurringAtPlaceScopedByOwner(): void
     {
         $tenant = $this->createUser('tenant-rec-place@test.com');

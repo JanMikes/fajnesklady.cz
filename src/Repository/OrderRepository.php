@@ -474,15 +474,16 @@ class OrderRepository
     }
 
     /**
-     * Paginated admin orders, optionally narrowed by an onboarding-related filter.
+     * Paginated admin orders, optionally narrowed by an onboarding-related filter
+     * and/or a free-text search (order/contract reference or customer name/email).
      *
      * @param ?string $filter null | 'individual' | 'external' | 'ending' | 'free'
      *
      * @return Order[]
      */
-    public function findAdminFiltered(\DateTimeImmutable $now, ?string $filter, int $page, int $limit): array
+    public function findAdminFiltered(\DateTimeImmutable $now, ?string $filter, int $page, int $limit, ?string $search = null): array
     {
-        $qb = $this->buildAdminFilteredQueryBuilder($now, $filter)
+        $qb = $this->buildAdminFilteredQueryBuilder($now, $filter, $search)
             ->orderBy('o.createdAt', 'DESC')
             ->setFirstResult(($page - 1) * $limit)
             ->setMaxResults($limit);
@@ -490,10 +491,10 @@ class OrderRepository
         return $qb->getQuery()->getResult();
     }
 
-    public function countByAdminFilter(\DateTimeImmutable $now, ?string $filter): int
+    public function countByAdminFilter(\DateTimeImmutable $now, ?string $filter, ?string $search = null): int
     {
-        $qb = $this->buildAdminFilteredQueryBuilder($now, $filter)
-            ->select('COUNT(o.id)');
+        $qb = $this->buildAdminFilteredQueryBuilder($now, $filter, $search)
+            ->select('COUNT(DISTINCT o.id)');
 
         return (int) $qb->getQuery()->getSingleScalarResult();
     }
@@ -501,21 +502,38 @@ class OrderRepository
     /**
      * @return array{individual: int, external: int, ending: int, free: int}
      */
-    public function countAllAdminFilters(\DateTimeImmutable $now): array
+    public function countAllAdminFilters(\DateTimeImmutable $now, ?string $search = null): array
     {
         return [
-            'individual' => $this->countByAdminFilter($now, 'individual'),
-            'external' => $this->countByAdminFilter($now, 'external'),
-            'ending' => $this->countByAdminFilter($now, 'ending'),
-            'free' => $this->countByAdminFilter($now, 'free'),
+            'individual' => $this->countByAdminFilter($now, 'individual', $search),
+            'external' => $this->countByAdminFilter($now, 'external', $search),
+            'ending' => $this->countByAdminFilter($now, 'ending', $search),
+            'free' => $this->countByAdminFilter($now, 'free', $search),
         ];
     }
 
-    private function buildAdminFilteredQueryBuilder(\DateTimeImmutable $now, ?string $filter): \Doctrine\ORM\QueryBuilder
+    private function buildAdminFilteredQueryBuilder(\DateTimeImmutable $now, ?string $filter, ?string $search = null): \Doctrine\ORM\QueryBuilder
     {
         $qb = $this->entityManager->createQueryBuilder()
             ->from(Order::class, 'o')
             ->select('o');
+
+        if (null !== $search && '' !== $search) {
+            // CAST(uuid AS text) isn't expressible in core DQL, so the textual
+            // id/name matching runs as a native query (Postgres `::text`) that
+            // returns the matching order ids; we then constrain the DQL builder
+            // to that set, keeping the filter predicates (and pagination/count)
+            // in one place.
+            $matchedIds = $this->searchOrderIds($search);
+
+            if ([] === $matchedIds) {
+                // No textual match — force an empty result without an invalid
+                // empty `IN ()` (which blows up at the DBAL layer).
+                $qb->andWhere('1 = 0');
+            } else {
+                $qb->andWhere('o.id IN (:searchIds)')->setParameter('searchIds', $matchedIds);
+            }
+        }
 
         switch ($filter) {
             case 'individual':
@@ -546,14 +564,52 @@ class OrderRepository
     }
 
     /**
+     * Order ids matching a free-text search. Matches the canonical order
+     * reference (spec 067) and the legacy contract-derived number, plus
+     * customer name / e-mail.
+     *
+     * The reference token is the segment after the last '-' so a pasted
+     * `2026-0601-019E4643` and a bare `019E4643` both reduce to the same uuid8
+     * prefix; it's matched (lower-cased) against the leading 8 hex chars of
+     * BOTH the order id and the contract id (the customer-facing number is
+     * order-derived, historical "Číslo smlouvy" was contract-derived).
+     *
+     * @return list<Uuid>
+     */
+    private function searchOrderIds(string $search): array
+    {
+        $dashPos = strrpos($search, '-');
+        $refToken = strtolower(false !== $dashPos ? substr($search, $dashPos + 1) : $search);
+
+        $rows = $this->entityManager->getConnection()->executeQuery(
+            <<<'SQL'
+                SELECT o.id::text AS id
+                FROM orders o
+                INNER JOIN users u ON u.id = o.user_id
+                LEFT JOIN contract c ON c.order_id = o.id
+                WHERE o.id::text LIKE :ref
+                   OR c.id::text LIKE :ref
+                   OR LOWER(u.first_name || ' ' || u.last_name) LIKE :nameq
+                   OR LOWER(u.email) LIKE :nameq
+                SQL,
+            [
+                'ref' => $refToken.'%',
+                'nameq' => '%'.mb_strtolower($search).'%',
+            ],
+        )->fetchAllAssociative();
+
+        return array_map(static fn (array $r): Uuid => Uuid::fromString((string) $r['id']), $rows);
+    }
+
+    /**
      * Streamed iteration for export. Honours the same admin filter as
      * {@see self::findAdminFiltered()} but without pagination.
      *
      * @return iterable<Order>
      */
-    public function streamAdminFiltered(\DateTimeImmutable $now, ?string $filter): iterable
+    public function streamAdminFiltered(\DateTimeImmutable $now, ?string $filter, ?string $search = null): iterable
     {
-        $qb = $this->buildAdminFilteredQueryBuilder($now, $filter)
+        $qb = $this->buildAdminFilteredQueryBuilder($now, $filter, $search)
             ->orderBy('o.createdAt', 'DESC');
 
         $batch = 0;

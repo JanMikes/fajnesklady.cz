@@ -669,6 +669,41 @@ class ContractRepository
     }
 
     /**
+     * RFC-4122 contract UUID strings of contracts that are currently overdue,
+     * restricted to the contracts belonging to the given order IDs. Mirrors the
+     * WHERE logic of {@see self::findOverdueUserIds()} but keys on the contract
+     * itself — lets a paginated order grid badge only the visible page's orders
+     * (Contract is OneToOne → Order) without recomputing the full overdue set.
+     *
+     * @param Uuid[] $orderIds
+     *
+     * @return list<string>
+     */
+    public function findOverdueContractIds(\DateTimeImmutable $now, array $orderIds): array
+    {
+        if ([] === $orderIds) {
+            return [];
+        }
+
+        /** @var array<int, array{contractId: string}> $rows */
+        $rows = $this->entityManager->createQueryBuilder()
+            ->select('c.id AS contractId')
+            ->from(Contract::class, 'c')
+            ->where(
+                '(c.terminatedAt IS NULL AND (c.failedBillingAttempts > 0 OR '
+                .'(c.nextBillingDate IS NOT NULL AND c.nextBillingDate < :overdueThreshold))) OR '
+                .'(c.outstandingDebtAmount IS NOT NULL AND c.outstandingDebtAmount > 0)'
+            )
+            ->andWhere('c.order IN (:orderIds)')
+            ->setParameter('overdueThreshold', $now->modify('-1 day'))
+            ->setParameter('orderIds', $orderIds)
+            ->getQuery()
+            ->getArrayResult();
+
+        return array_values(array_map(static fn (array $r): string => (string) $r['contractId'], $rows));
+    }
+
+    /**
      * Aggregate per-user contract stats keyed by RFC-4122 user UUID string.
      *
      * Stats per user:

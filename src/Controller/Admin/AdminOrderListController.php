@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Controller\Admin;
 
 use App\Entity\Order;
+use App\Repository\ContractRepository;
 use App\Repository\OrderRepository;
-use App\Service\Overdue\OverdueChecker;
 use Psr\Clock\ClockInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -20,7 +20,7 @@ final class AdminOrderListController extends AbstractController
 {
     public function __construct(
         private readonly OrderRepository $orderRepository,
-        private readonly OverdueChecker $overdueChecker,
+        private readonly ContractRepository $contractRepository,
         private readonly ClockInterface $clock,
     ) {
     }
@@ -36,27 +36,33 @@ final class AdminOrderListController extends AbstractController
         $filterParam = $request->query->get('filter');
         $filter = is_string($filterParam) && in_array($filterParam, self::FILTERS, true) ? $filterParam : null;
 
-        if (null === $filter) {
+        $raw = trim((string) $request->query->get('q', ''));
+        $search = '' === $raw ? null : $raw;
+
+        if (null === $filter && null === $search) {
             $orders = $this->orderRepository->findAllPaginated($page, $limit);
             $totalOrders = $this->orderRepository->countTotal();
         } else {
-            $orders = $this->orderRepository->findAdminFiltered($now, $filter, $page, $limit);
-            $totalOrders = $this->orderRepository->countByAdminFilter($now, $filter);
+            $orders = $this->orderRepository->findAdminFiltered($now, $filter, $page, $limit, $search);
+            $totalOrders = $this->orderRepository->countByAdminFilter($now, $filter, $search);
         }
 
         $totalPages = (int) ceil($totalOrders / $limit);
 
-        $pageUserIds = array_map(static fn (Order $o) => $o->user->id, $orders);
-        $debtorIdSet = array_flip($this->overdueChecker->filterOverdueUserIds($now, $pageUserIds));
+        $pageOrderIds = array_map(static fn (Order $o): \Symfony\Component\Uid\Uuid => $o->id, $orders);
+        $contractsByOrderId = $this->contractRepository->findByOrderIds($pageOrderIds);
+        $overdueContractIdSet = array_flip($this->contractRepository->findOverdueContractIds($now, $pageOrderIds));
 
         return $this->render('admin/order/list.html.twig', [
             'orders' => $orders,
             'currentPage' => $page,
             'totalPages' => $totalPages,
             'totalOrders' => $totalOrders,
-            'debtorIdSet' => $debtorIdSet,
+            'contractsByOrderId' => $contractsByOrderId,
+            'overdueContractIdSet' => $overdueContractIdSet,
             'filter' => $filter,
-            'filterCounts' => $this->orderRepository->countAllAdminFilters($now),
+            'search' => $search,
+            'filterCounts' => $this->orderRepository->countAllAdminFilters($now, $search),
         ]);
     }
 }

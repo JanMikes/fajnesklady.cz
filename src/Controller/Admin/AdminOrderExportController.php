@@ -10,6 +10,7 @@ use App\Service\Excel\ExcelColumn;
 use App\Service\Excel\ExcelColumnType;
 use App\Service\Excel\ExcelExporter;
 use App\Service\Excel\ExcelSheet;
+use App\Service\Order\OrderReferenceFormatter;
 use Psr\Clock\ClockInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -26,6 +27,7 @@ final class AdminOrderExportController extends AbstractController
     public function __construct(
         private readonly OrderRepository $orderRepository,
         private readonly ExcelExporter $excelExporter,
+        private readonly OrderReferenceFormatter $orderReferenceFormatter,
         private readonly ClockInterface $clock,
     ) {
     }
@@ -35,6 +37,9 @@ final class AdminOrderExportController extends AbstractController
         $now = $this->clock->now();
         $filterParam = $request->query->get('filter');
         $filter = is_string($filterParam) && in_array($filterParam, self::FILTERS, true) ? $filterParam : null;
+
+        $raw = trim((string) $request->query->get('q', ''));
+        $search = '' === $raw ? null : $raw;
 
         $columns = [
             new ExcelColumn('Číslo objednávky'),
@@ -55,12 +60,13 @@ final class AdminOrderExportController extends AbstractController
             new ExcelColumn('Externí předplatné do', ExcelColumnType::DATE),
         ];
 
-        $orders = $this->orderRepository->streamAdminFiltered($now, $filter);
-        $rows = (static function () use ($orders): \Generator {
+        $orders = $this->orderRepository->streamAdminFiltered($now, $filter, $search);
+        $referenceFormatter = $this->orderReferenceFormatter;
+        $rows = (static function () use ($orders, $referenceFormatter): \Generator {
             foreach ($orders as $order) {
                 /* @var Order $order */
                 yield [
-                    substr($order->id->toRfc4122(), 0, 8),
+                    $referenceFormatter->format($order),
                     $order->createdAt,
                     $order->status->label(),
                     $order->user->fullName,
