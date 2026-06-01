@@ -9,7 +9,7 @@ overview so we don't have to grep on every change.
 
 | # | Document | Generator / Source | Storage location | Customer access |
 |---|---|---|---|---|
-| 1 | Faktura (PDF) | Fakturoid → `InvoicingService` | absolute path on disk via `Invoice.pdfPath` | `InvoicePdfController` (auth, per-invoice) + `OrderInvoiceDownloadController` (public, UUID-gated, primary invoice only) |
+| 1 | Faktura (PDF) | Fakturoid → `InvoicingService` (`issueInvoiceForOrder` / `issueInvoiceForRecurringPayment` / `issueInvoiceForDebt` — incl. the onboarding-debt invoice) | absolute path on disk via `Invoice.pdfPath` | `InvoicePdfController` (auth, per-invoice) + `OrderInvoiceDownloadController` (public, UUID-gated, primary invoice only) |
 | 2 | Smlouva (DOCX) | `ContractDocumentGenerator` | `var/contracts/contract_{uuid}_{date}.docx` via `Contract.documentPath` | `ContractDownloadController` (auth) |
 | 3 | Smlouva (PDF) | `DocumentPdfConverter` (on-the-fly from DOCX) | not persisted | `ContractPdfController` (auth) + `OrderContractDownloadController` (public, UUID-gated) |
 | 4 | Mapa skladu (PNG, vyznačená jednotka) | `StorageMapImageGenerator::generate(Storage)` | not persisted (regenerated on every fetch) | `OrderMapDownloadController` at `/objednavka/{id}/dokumenty/mapa.png` (public, UUID-gated, COMPLETED only) |
@@ -42,6 +42,8 @@ Three customer-facing e-mails map onto three business events:
 **When the standalone invoice e-mail still fires:**
 - Every recurring monthly charge (`IssueInvoiceOnRecurringChargeHandler` creates the invoice, no `OrderCompleted` follows, `emailedAt` stays null).
 - First-payment fallbacks: if Fakturoid was unreachable during `SendRentalActivatedEmailHandler`, the backstop cron `app:issue-missing-invoices` (5-min cadence, 15-min grace) issues the invoice later — `InvoiceCreated` then routes through `SendInvoiceEmailHandler` because `emailedAt` is still null.
+
+**Onboarding-debt receipt + invoice (spec 073).** When an onboarding debt clears (GoPay webhook or FIO cron → `Order::markDebtPaid()` → `OnboardingDebtPaid`), `SendOnboardingDebtPaidEmailHandler` sends a separate **"Dluh uhrazen"** receipt (`email/debt_paid.html.twig`) and bundles a Fakturoid **debt invoice** issued via `InvoicingService::issueInvoiceForDebt` (gross amount = vč. DPH, `from_total_with_vat`), using the same attach-then-`markEmailed` trick as step 2 to suppress the standalone "Faktura" e-mail. Issuance is best-effort — a Fakturoid outage still sends the receipt without the attachment. There is **no** backstop for debt invoices (`app:issue-missing-invoices` only covers paid orders with no invoice, not debts); the handler swallows the error and the event succeeds, so a failed debt invoice is **not** auto-retried — the admin issues it manually in Fakturoid if needed. A sibling admin heads-up (`email/debt_paid_admin.html.twig`) goes to every `ROLE_ADMIN`.
 
 **Why step 1 and step 2 ship the same legal pack.** Customers lose e-mails; reproducing the four legal documents in step 2 means whichever inbox they search, they find everything. `OrderEmailAttachments::attachLegalDocuments` is the single source of truth — both handlers call it, guaranteeing byte-identical attachments.
 

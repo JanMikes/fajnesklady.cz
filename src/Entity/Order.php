@@ -11,6 +11,7 @@ use App\Enum\PaymentFrequency;
 use App\Enum\PaymentMethod;
 use App\Enum\RentalType;
 use App\Enum\SigningMethod;
+use App\Event\OnboardingDebtPaid;
 use App\Event\OrderCancelled;
 use App\Event\OrderCompleted;
 use App\Event\OrderCreated;
@@ -512,6 +513,13 @@ class Order implements EntityWithEvents
     public function markDebtPaid(\DateTimeImmutable $now): void
     {
         $this->debtPaidAt = $now;
+
+        $this->recordThat(new OnboardingDebtPaid(
+            orderId: $this->id,
+            userId: $this->user->id,
+            amountInHaler: $this->onboardingDebtInHaler ?? 0, // non-null > 0 whenever a debt exists; ?? 0 satisfies PHPStan
+            occurredOn: $now,
+        ));
     }
 
     public function setDebtGoPayPaymentId(string $paymentId): void

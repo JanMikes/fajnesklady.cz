@@ -56,6 +56,20 @@ final class MockFakturoidClient implements FakturoidClient
         return $invoice;
     }
 
+    public function createDebtInvoice(int $subjectId, Order $order): FakturoidInvoice
+    {
+        $invoiceId = $this->nextInvoiceId++;
+        $invoice = new FakturoidInvoice(
+            id: $invoiceId,
+            number: 'FV-'.date('Y').'-'.str_pad((string) $invoiceId, 4, '0', STR_PAD_LEFT),
+            total: $order->onboardingDebtInHaler ?? 0,
+        );
+
+        $this->createdInvoices[$invoice->id] = $invoice;
+
+        return $invoice;
+    }
+
     public function createRecurringInvoice(int $subjectId, Contract $contract, int $amount, \DateTimeImmutable $billingDate): FakturoidInvoice
     {
         $invoiceId = $this->nextInvoiceId++;

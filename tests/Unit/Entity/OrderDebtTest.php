@@ -10,6 +10,7 @@ use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\RentalType;
+use App\Event\OnboardingDebtPaid;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
@@ -87,6 +88,24 @@ class OrderDebtTest extends TestCase
         $order->markDebtPaid($now);
 
         self::assertSame($now, $order->debtPaidAt);
+    }
+
+    public function testMarkDebtPaidRecordsOnboardingDebtPaidEvent(): void
+    {
+        $order = $this->createOrder();
+        $order->setOnboardingDebt(50000);
+        $order->popEvents(); // clear the OrderCreated event from construction
+
+        $now = new \DateTimeImmutable('2025-06-15 12:00:00');
+        $order->markDebtPaid($now);
+
+        $events = $order->popEvents();
+        self::assertCount(1, $events);
+        self::assertInstanceOf(OnboardingDebtPaid::class, $events[0]);
+        self::assertTrue($order->id->equals($events[0]->orderId));
+        self::assertTrue($order->user->id->equals($events[0]->userId));
+        self::assertSame(50000, $events[0]->amountInHaler);
+        self::assertSame($now, $events[0]->occurredOn);
     }
 
     public function testHasUnpaidDebtReturnsFalseForZeroDebt(): void

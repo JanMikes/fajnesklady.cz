@@ -19,6 +19,12 @@ interface FakturoidClient
 
     public function createInvoice(int $subjectId, Order $order): FakturoidInvoice;
 
+    /**
+     * Invoice for the pre-existing onboarding debt (Order.onboardingDebtInHaler).
+     * The amount is gross (vč. DPH), taxed like rent — see createInvoice.
+     */
+    public function createDebtInvoice(int $subjectId, Order $order): FakturoidInvoice;
+
     public function createRecurringInvoice(int $subjectId, Contract $contract, int $amount, \DateTimeImmutable $billingDate): FakturoidInvoice;
 
     public function downloadInvoicePdf(int $invoiceId): string;

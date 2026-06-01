@@ -147,6 +147,58 @@ class InvoicingServiceTest extends TestCase
         $this->assertSame('FV-2025-0002', $invoice->invoiceNumber);
     }
 
+    public function testIssueInvoiceForDebtIssuesPaidInvoiceFromDebtAmount(): void
+    {
+        $user = $this->createUser();
+        $user->setFakturoidSubjectId(54321, new \DateTimeImmutable());
+        $order = $this->createOrder($user);
+        $order->setOnboardingDebt(120_000); // 1 200 Kč gross
+        $paidAt = new \DateTimeImmutable('2025-06-15 10:00:00');
+        $order->markDebtPaid($paidAt);
+        $now = new \DateTimeImmutable('2025-06-15 12:00:00');
+        $invoiceId = Uuid::v7();
+
+        $fakturoidClient = $this->createMock(FakturoidClient::class);
+        $fakturoidClient->expects($this->never())->method('createInvoice');
+        $fakturoidClient->expects($this->once())
+            ->method('createDebtInvoice')
+            ->with(54321, $order)
+            ->willReturn(new FakturoidInvoice(70001, 'FV-2025-DEBT', 120_000));
+        // The debt is already paid, so the invoice is marked paid at debtPaidAt.
+        $fakturoidClient->expects($this->once())
+            ->method('markInvoiceAsPaid')
+            ->with(70001, $paidAt);
+        $fakturoidClient->expects($this->once())
+            ->method('downloadInvoicePdf')
+            ->with(70001)
+            ->willReturn('%PDF-1.4 debt invoice');
+
+        $identityProvider = $this->createStub(ProvideIdentity::class);
+        $identityProvider->method('next')->willReturn($invoiceId);
+
+        $invoiceRepository = $this->createMock(InvoiceRepository::class);
+        $invoiceRepository->expects($this->once())->method('save');
+
+        $userRepository = $this->createStub(UserRepository::class);
+
+        $service = new InvoicingService(
+            $fakturoidClient,
+            $identityProvider,
+            $invoiceRepository,
+            $userRepository,
+            new NullLogger(),
+            $this->tempDir,
+        );
+
+        $invoice = $service->issueInvoiceForDebt($order, $now);
+
+        $this->assertSame($invoiceId, $invoice->id);
+        $this->assertSame($order, $invoice->order);
+        $this->assertSame(120_000, $invoice->amount);
+        $this->assertSame('FV-2025-DEBT', $invoice->invoiceNumber);
+        $this->assertTrue($invoice->hasPdf());
+    }
+
     public function testIssueInvoiceForOrderRecreatesSubjectWhenStaleAndRetries(): void
     {
         // Regression: a Fakturoid subject_id stored on a User can be deleted
