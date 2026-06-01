@@ -14,8 +14,15 @@
 {# Availability map data — derived for the chosen window by the SAME checker enforcement uses; re-rendered on every date/type change so the map repaints reactively. #}
 {% set mapStoragesJson = this.getStoragesJson() %}
 
+{# order-selection-mode's `mode` value MUST be server-rendered from selectionMode:
+   this controller lives on the Live Component root, so every morph re-renders this
+   element. Without the attribute the morph strips the client-written value back to
+   its 'auto' default, re-firing modeValueChanged() and re-hiding the map right after
+   the radio reveals it (blink-then-hide). Server-rendering it keeps client + morph
+   in sync, exactly like the other show/hide flags above. #}
 <div {{ attributes.defaults({
     'data-controller': 'live-form-scroll order-map-bridge order-selection-mode',
+    'data-order-selection-mode-mode-value': this.selectionMode,
     'data-action': 'storage-map:select->order-map-bridge#selectStorage',
 }) }}>
     <div class="grid lg:grid-cols-3 gap-8">

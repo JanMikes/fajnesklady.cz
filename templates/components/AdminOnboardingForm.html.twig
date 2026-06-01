@@ -164,16 +164,11 @@
         {# 7. Mapa skladu #}
         {% set selectedPlace = this.selectedPlace %}
         {% set selectedStorageType = this.selectedStorageType %}
-        {% if selectedPlace and selectedStorageType and selectedPlace.mapImagePath %}
+        {% if selectedPlace and selectedStorageType and selectedPlace.mapImagePath and this.hasValidWindow() %}
             <div class="card">
                 <div class="card-body">
                     <h2 class="text-lg font-bold text-gray-900 mb-4">Výběr skladové jednotky</h2>
                     <p class="text-sm text-gray-600 mb-4">Klikněte na dostupnou (zelenou) skladovou jednotku na mapě.</p>
-                    {% if not this.hasValidWindow() %}
-                        <div class="mb-4 rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800">
-                            Nejdříve zvolte typ pronájmu a termín — dostupnost jednotek se zobrazí podle vybraných dat.
-                        </div>
-                    {% endif %}
                     <div data-controller="storage-map"
                          data-storage-map-map-image-value="{{ asset('uploads/' ~ selectedPlace.mapImagePath) }}"
                          data-storage-map-storages-value="{{ this.storagesJson|e('html_attr') }}"
@@ -190,6 +185,13 @@
                              class="hidden fixed z-50 pointer-events-none bg-white border border-gray-200 rounded-md shadow-lg p-3 text-xs max-w-xs"></div>
                     </div>
                 </div>
+            </div>
+        {% elseif selectedPlace and selectedStorageType and selectedPlace.mapImagePath %}
+            {# Place + type + map are ready, but the availability query has no rental window yet.
+               Rendering the map now would paint every unit as greyed-out "nedostupný" (reads as broken),
+               so hold it back behind a concise prompt until a rental type + date are chosen. #}
+            <div class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                Nejdříve zvolte typ pronájmu a termín — poté se zobrazí mapa s dostupností skladových jednotek.
             </div>
         {% elseif selectedPlace and selectedStorageType and not selectedPlace.mapImagePath %}
             <div class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
