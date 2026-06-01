@@ -706,34 +706,35 @@ export default class extends Controller {
             `;
         }
 
-        // Position tooltip near pointer, accounting for zoom/pan
+        // Position the tooltip near the pointer. The tooltip is `position: fixed`,
+        // so coordinates are viewport-relative and independent of the controller's
+        // surrounding layout (padding, offset parents) across the order / onboarding
+        // / occupancy templates. `getPointerPosition()` is stage-local, so add the
+        // stage's viewport offset to convert it into viewport coordinates.
         const pointerPos = this.stage.getPointerPosition();
         if (!pointerPos) return;
 
-        const containerRect = this.element.getBoundingClientRect();
         const stageRect = this.containerTarget.getBoundingClientRect();
-        const stageOffsetTop = stageRect.top - containerRect.top;
+        const pointerX = stageRect.left + pointerPos.x;
+        const pointerY = stageRect.top + pointerPos.y;
 
         this.tooltipTarget.classList.remove('hidden');
         const tooltipRect = this.tooltipTarget.getBoundingClientRect();
 
-        let left = pointerPos.x + 15;
-        let top = stageOffsetTop + pointerPos.y - 10;
+        let left = pointerX + 15;
+        let top = pointerY - 10;
 
-        // Overflow right
-        if (left + tooltipRect.width > containerRect.width - 10) {
-            left = pointerPos.x - tooltipRect.width - 15;
+        // Flip to the left of the pointer if it would overflow the stage's right edge
+        if (left + tooltipRect.width > stageRect.right - 10) {
+            left = pointerX - tooltipRect.width - 15;
         }
+        left = Math.max(stageRect.left + 10, left);
 
-        // Overflow left
-        left = Math.max(10, left);
-
-        // Overflow bottom
-        if (top + tooltipRect.height > stageRect.bottom - containerRect.top - 10) {
-            top = stageOffsetTop + pointerPos.y - tooltipRect.height - 10;
+        // Flip above the pointer if it would overflow the stage's bottom edge
+        if (top + tooltipRect.height > stageRect.bottom - 10) {
+            top = pointerY - tooltipRect.height - 10;
         }
-
-        top = Math.max(stageOffsetTop + 10, top);
+        top = Math.max(stageRect.top + 10, top);
 
         this.tooltipTarget.style.left = `${left}px`;
         this.tooltipTarget.style.top = `${top}px`;
