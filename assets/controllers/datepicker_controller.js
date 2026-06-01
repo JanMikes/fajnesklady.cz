@@ -35,7 +35,16 @@ export default class extends Controller {
             // Lenient parser: accept "6.6.1992", "6. 6. 1992", "6/6/1992", "6-6-1992",
             // any spacing variant, plus the ISO Y-m-d that flatpickr itself uses for
             // minDate/maxDate/defaultDate and the hidden input value.
-            parseDate: this.parseDate
+            parseDate: this.parseDate,
+            // A calendar selection fires onChange but no blur (focus stays on the
+            // alt-input after the picker closes), so the blur-wired live validation
+            // never re-runs and a stale error lingers until the user clicks away.
+            // Forward it to the same blur the manual-typing path already triggers.
+            // this.element.value is updated by flatpickr before onChange fires, so
+            // validateField re-validates against the picked date.
+            onChange: () => {
+                this.element.dispatchEvent(new Event('blur'));
+            }
         };
 
         if (this.minDateValue) {
