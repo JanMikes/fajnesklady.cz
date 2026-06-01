@@ -1,6 +1,6 @@
 # Project Map — Fajnesklady.cz
 
-Reference for spec writing & implementation. Regenerate if structure drifts significantly. Generated 2026-05-27.
+Reference for spec writing & implementation. Regenerate if structure drifts significantly. Generated 2026-06-01.
 
 Stack: PHP 8.5 (Docker image `ghcr.io/thedevs-cz/php:8.5-fajnesklady`) · Symfony · Postgres 17 · FrankenPHP · Tailwind · Stimulus.
 
@@ -43,6 +43,8 @@ Stack: PHP 8.5 (Docker image `ghcr.io/thedevs-cz/php:8.5-fajnesklady`) · Symfon
 - `/podpis/{token}` → `CustomerSigningController`
 - `/podpis/dokonceno/{id}` → `CustomerSigningCompleteController`
 - `/opakovana-platba/{contractId}/zrusit` → `CancelRecurringPaymentController` (UriSigner-protected)
+- `/vzor-smlouvy` → `ContractSampleController` — sample contract PDF
+- `/qr-platba/{variableSymbol}/{amountInHaler}` → `QrPaymentImageController` — SPD bank-transfer QR PNG (VS + amount in haléře)
 - `/pouceni-spotrebitele` → `ConsumerNoticeController`
 - `/ochrana-osobnich-udaju` → `PrivacyPolicyController`
 - `/obchodni-podminky` → `TermsAndConditionsController`
@@ -122,6 +124,10 @@ Stack: PHP 8.5 (Docker image `ghcr.io/thedevs-cz/php:8.5-fajnesklady`) · Symfon
 - `/portal/admin/orders` → `AdminOrderListController`
 - `/portal/admin/orders/{id}` → `AdminOrderDetailController`
 - `/portal/admin/orders/{id}/cancel` → `AdminOrderCancelController`
+- `/portal/admin/orders/{id}/resend-signing-link` → `AdminOrderResendSigningLinkController` (POST; re-dispatches `AdminOnboardingInitiated`)
+- `/portal/admin/orders/{id}/send-billing-reminder` → `AdminOrderSendBillingReminderController` (POST; re-dispatches `ManualBillingPaymentRequested`)
+- `/portal/admin/orders/{id}/send-fine-reminder/{fineId}` → `AdminOrderSendFineReminderController` (POST; re-dispatches `FinePaymentReminderRequested`)
+- `/portal/admin/orders/{id}/send-onboarding-reminder` → `AdminOrderSendOnboardingReminderController` (POST; re-dispatches `OnboardingPaymentReminderRequested`)
 - `/portal/admin/orders/export` → `AdminOrderExportController`
 - `/portal/admin/places` → `AdminPlaceListController`
 - `/portal/admin/places/export` → `AdminPlaceExportController`
@@ -226,14 +232,14 @@ Order: OrderCreated, OrderPlaced, OrderPaid, OrderCompleted, OrderCancelled, Ord
 
 Place / handover: PlaceProposed, PlaceAccessRequested, PlaceAccessRequestApproved, PlaceAccessRequestDenied, HandoverProtocolCreated, HandoverCompleted, HandoverExpired, HandoverReminderDue.
 
-Contracts / billing: ContractExpiringSoon, ContractPriceChanged, ContractTerminated, ContractTerminatedDueToPaymentFailure, InvoiceCreated, RecurringPaymentEstablished, RecurringPaymentCharged, RecurringPaymentFailed, RecurringPaymentCancelled, RecurringPaymentAdvanceNoticeNeeded, TerminationNoticeRequested, PaymentDemandSent, ExternalPrepaymentEndingSoon, PaymentAmountMismatch, ManualBillingPaymentRequested, ManualBillingPaymentOverdue, OnboardingPaymentReminderRequested, OnboardingDebtPaymentRequested.
+Contracts / billing: ContractExpiringSoon, ContractPriceChanged, ContractTerminated, ContractTerminatedDueToPaymentFailure, InvoiceCreated, RecurringPaymentEstablished, RecurringPaymentCharged, RecurringPaymentFailed, RecurringPaymentCancelled, RecurringPaymentAdvanceNoticeNeeded, TerminationNoticeRequested, PaymentDemandSent, ExternalPrepaymentEndingSoon, PaymentAmountMismatch, BankTransferAmountMismatch (FIO transfer paid wrong amount; carries bankTransactionId + order/contract + expected/received), ManualBillingPaymentRequested, ManualBillingPaymentOverdue, OnboardingPaymentReminderRequested, OnboardingDebtPaymentRequested.
 
 Fines: FineIssued, FinePaid, FinePaymentReminderRequested.
 
 Admin notifications: OverdueDigestRequested.
 
 Handlers (in `src/Event/`):
-- Email side-effects: `Send*EmailHandler` (welcome, verification, password reset, order confirmation, signing link, contract ready/expiring/terminated, handover request/reminder/completed, invoice, recurring-payment established/cancelled/failed/advance-notice + admin variants, manual-billing payment-requested / payment-overdue + admin variant, place access approved/denied/requested, place proposed, payment default, amount mismatch alert, external-prepayment ending soon, termination notice + admin, payment demand + admin, overdue digest, onboarding payment reminder, debt payment request, fine issued/paid/reminder).
+- Email side-effects: `Send*EmailHandler` (welcome, verification, password reset, order confirmation, signing link, contract ready/expiring/terminated, handover request/reminder/completed, invoice, recurring-payment established/cancelled/failed/advance-notice + admin variants, manual-billing payment-requested / payment-overdue + admin variant, place access approved/denied/requested, place proposed, payment default, amount mismatch alert (`SendAmountMismatchAlertEmailHandler`), bank-transfer amount mismatch customer + admin (`SendBankTransferMismatch{Customer,Admin}EmailHandler` on `BankTransferAmountMismatch`), external-prepayment ending soon, termination notice + admin, payment demand + admin, overdue digest, onboarding payment reminder, debt payment request, fine issued/paid/reminder).
 - Bookkeeping: `PersistContractPriceChangeHandler` (persists `ContractPriceChange` audit row on `ContractPriceChanged`), `IssueInvoiceOnRecurringChargeHandler`, `RecordPaymentOnOrderPaidHandler`, `RecordPaymentOnRecurringChargeHandler`, `ReleaseStorageOnHandoverCompletedHandler`, `ForceReleaseStorageOnHandoverExpiredHandler`, `SendStorageAvailabilityWarningHandler`. First-payment invoice is issued synchronously by `SendRentalActivatedEmailHandler` so the PDF can be bundled into the post-payment e-mail; the standalone `SendInvoiceEmailHandler` is the fallback (also used by every recurring charge).
 - Framework subscribers (not domain events): `DomainEventsSubscriber` (flushes recorded entity events via the messenger middleware), `SentryScopeResetSubscriber` (resets Sentry scope on kernel `REQUEST`).
 
@@ -257,7 +263,7 @@ User, Place, PlaceAccess, PlaceAccessRequest, PlaceChangeRequest, PlaceStorageCo
 
 - **Payment / GoPay**: `GoPay\GoPayClient`, `GoPay\GoPayApiClient`, `GoPay\GoPayException`, `GoPay\PaymentNotConfirmedException`, `RecurringPaymentCancelUrlGenerator`, `OrderStatusUrlGenerator`.
 - **Payment / Bank transfer**: `Payment\FioClient` (FIO banka API), `Payment\QrPaymentGenerator` (SPD QR codes), `Payment\VariableSymbolGenerator` (CRC32-based 10-digit VS from UUID).
-- **Order display**: `Order\OrderDisplayStatus`, `Order\OrderDisplayStatusCase`, `Order\OrderDisplayStatusResolver`, `Order\OrderStatusViewModel`, `Order\OrderStatusViewModelFactory`. `OrderService` orchestrates higher-level order operations. `OrderEmailAttachments` + `OrderEmailAttachmentsService` bundle contract/invoice/map/VOP PDFs into outbound mail (falls back to `Contract.documentPath` paper PDF when `Order.hasSignature()` is false — migrate flow).
+- **Order display**: `Order\OrderDisplayStatus`, `Order\OrderDisplayStatusCase`, `Order\OrderDisplayStatusResolver`, `Order\OrderStatusViewModel`, `Order\OrderStatusViewModelFactory`. `Order\OrderReferenceFormatter` — single source of truth for the canonical customer-facing order reference (`Y-md-UUID8`, equals the contract's `${CONTRACT_NUMBER}`); surfaced via `Twig\OrderReferenceExtension`. `OrderService` orchestrates higher-level order operations. `OrderEmailAttachments` + `OrderEmailAttachmentsService` bundle contract/invoice/map/VOP PDFs into outbound mail (falls back to `Contract.documentPath` paper PDF when `Order.hasSignature()` is false — migrate flow).
 - **Customer billing situation (spec 043)**: `Order\CustomerBillingSituation` (the enum spine: GOPAY_FIRST_CHARGE / EXTERNALLY_PREPAID / FREE; `fromOrder(Order)` + `fromContract(Contract)` factories — free wins over prepaid). Feeds four content VOs read by signing/onboarding surfaces: `Order\SigningPriceViewModel` (signing page), `Order\SigningEmailContent` (signing-link email), `Order\CompletionPageViewModel` (signing complete page), `Order\RentalActivatedEmailContent` (rental activated email).
 - **Onboarding**: `Onboarding\OnboardingReminderSchedule` (D+2 / D+5 calendar-day stage matcher for `app:send-onboarding-payment-reminders`), `Onboarding\DebtPaymentService` (onboarding debt GoPay/bank-transfer payment orchestration).
 - **Invoicing / billing**: `Fakturoid\FakturoidClient`, `Fakturoid\FakturoidApiClient`, `Fakturoid\StaleFakturoidSubjectException`, `InvoicingService`, `SelfBillingService`, `Billing\RecurringAmountCalculator` (frequency-aware; reads `Contract::getEffectiveRecurringAmount()` + cadence-aware proration), `Billing\ManualBillingReminderSchedule` (per-stage cron offsets for `MANUAL_RECURRING` contracts).
@@ -299,11 +305,11 @@ User, Place, PlaceAccess, PlaceAccessRequest, PlaceChangeRequest, PlaceStorageCo
 ## Twig (`src/Twig/`)
 
 - Components: `AdminOnboardingForm` (Live Component — unified onboarding, spec 050), `BillingInfoForm`, `OrderForm`, `PlaceOccupancyMap` (Live Component — date-shifting occupancy canvas, spec 047), `RevenueChart`.
-- Extensions: `BankTransactionExtension`, `FineExtension` (fine type labels, amount formatting), `OperationsExtension` (sidebar badge count for admin operations hub), `OverdueExtension` (severity badges / labels), `RoleLabelExtension`, `UploadExtension`, `PlaceAddressExtension` (`place_address`, `place_navigation_url`, `place_has_navigation`).
+- Extensions: `BankTransactionExtension`, `FineExtension` (fine type labels, amount formatting), `OperationsExtension` (sidebar badge count for admin operations hub), `OrderReferenceExtension` (canonical order reference filter — see `Order\OrderReferenceFormatter`), `OverdueExtension` (severity badges / labels), `RoleLabelExtension`, `UploadExtension`, `PlaceAddressExtension` (`place_address`, `place_navigation_url`, `place_has_navigation`).
 
 ## Value objects (`src/Value/`)
 
-`AresResult`, `AresSubject`, `AresAddress`, `Address\AddressSuggestion`, `Address\AddressValidationResult`, `FakturoidInvoice`, `FakturoidSubject`, `FioBankTransaction`, `GoPayPayment`, `GoPayPaymentStatus`, `OperationsAlertSummary`, `OverdueSummary`, `OverdueContractView`, `OverdueSeverity`, `PaymentSchedule`, `PaymentScheduleEntry`, `RentalSpan`, `RentalSpanKind`, `StorageRentalView`.
+`AresResult`, `AresSubject`, `AresAddress`, `Address\AddressSuggestion`, `Address\AddressValidationResult`, `FakturoidInvoice`, `FakturoidSubject`, `FioBankTransaction`, `GoPayPayment`, `GoPayPaymentStatus`, `OperationsAlertSummary`, `OverdueSummary`, `OverdueContractView`, `OverdueSeverity`, `PaymentSchedule`, `PaymentScheduleEntry`, `RentalSpan`, `RentalSpanKind`, `StorageRentalView`, `UserListCriteria` + `UserListRow` (free-text search criteria + enriched sortable row for the admin/landlord user list).
 
 ## Exceptions (`src/Exception/`)
 
