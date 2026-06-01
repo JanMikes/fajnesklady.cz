@@ -86,6 +86,21 @@ final readonly class OverdueChecker
         return $this->contractRepository->findOverdueUserIds($now, $userIds);
     }
 
+    /**
+     * Overdue views restricted to a single user's contracts. Sibling of
+     * {@see self::summariseForPlace()}; the admin user-detail page keys these
+     * by contract id to badge each order row with severity / daysOverdue.
+     *
+     * @return list<OverdueContractView>
+     */
+    public function findOverdueViewsForUser(\DateTimeImmutable $now, Uuid $userId): array
+    {
+        return array_values(array_filter(
+            $this->findOverdueViews($now),
+            static fn (OverdueContractView $v): bool => $v->contract->user->id->equals($userId),
+        ));
+    }
+
     private function buildView(Contract $contract, \DateTimeImmutable $now): OverdueContractView
     {
         if (null !== $contract->terminatedAt && null !== $contract->outstandingDebtAmount && $contract->outstandingDebtAmount > 0) {

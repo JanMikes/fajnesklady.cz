@@ -55,6 +55,38 @@ class ContractRepository
     }
 
     /**
+     * Contracts for the given order IDs, keyed by `order.id->toRfc4122()`.
+     * Lets the admin user-detail grid attach each order's contract financial
+     * state in one batch query (Contract is OneToOne → Order).
+     *
+     * @param Uuid[] $orderIds
+     *
+     * @return array<string, Contract>
+     */
+    public function findByOrderIds(array $orderIds): array
+    {
+        if ([] === $orderIds) {
+            return [];
+        }
+
+        /** @var Contract[] $contracts */
+        $contracts = $this->entityManager->createQueryBuilder()
+            ->select('c')
+            ->from(Contract::class, 'c')
+            ->where('c.order IN (:ids)')
+            ->setParameter('ids', $orderIds)
+            ->getQuery()
+            ->getResult();
+
+        $byOrderId = [];
+        foreach ($contracts as $contract) {
+            $byOrderId[$contract->order->id->toRfc4122()] = $contract;
+        }
+
+        return $byOrderId;
+    }
+
+    /**
      * @return Contract[]
      */
     public function findByUser(User $user): array

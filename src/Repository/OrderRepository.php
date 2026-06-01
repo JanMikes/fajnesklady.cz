@@ -53,6 +53,28 @@ class OrderRepository
     }
 
     /**
+     * All of a user's orders, newest first, with storage / storage type / place
+     * join-fetched so the admin user-detail grid renders "what & where" without
+     * N+1 lazy loads.
+     *
+     * @return list<Order>
+     */
+    public function findByUserWithDetails(Uuid $userId): array
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('o', 's', 'st', 'p')
+            ->from(Order::class, 'o')
+            ->leftJoin('o.storage', 's')
+            ->leftJoin('s.storageType', 'st')
+            ->leftJoin('s.place', 'p')
+            ->where('o.user = :userId')
+            ->setParameter('userId', $userId)
+            ->orderBy('o.createdAt', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
      * @return Order[]
      */
     public function findByStorage(Storage $storage): array

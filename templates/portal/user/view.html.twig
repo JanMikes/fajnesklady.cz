@@ -143,6 +143,148 @@
         </div>
     </div>
 
+    <div class="card mt-6">
+        <div class="card-body">
+            <h2 class="text-xl font-bold text-gray-900 mb-4">Finanční přehled</h2>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div>
+                    <div class="text-sm text-gray-500">Aktivní smlouvy</div>
+                    <div class="text-2xl font-bold text-gray-900">
+                        {{ stats ? stats.activeCount : 0 }}
+                        <span class="text-base font-normal text-gray-500">/ {{ stats ? stats.totalCount : 0 }}</span>
+                    </div>
+                </div>
+                <div>
+                    <div class="text-sm text-gray-500">MRR</div>
+                    <div class="text-2xl font-bold text-gray-900">{{ ((stats ? stats.mrrInHaler : 0) / 100)|number_format(0, ',', ' ') }} Kč</div>
+                </div>
+                {% if stats and stats.yrrInHaler > 0 %}
+                    <div>
+                        <div class="text-sm text-gray-500">YRR</div>
+                        <div class="text-2xl font-bold text-gray-900">{{ (stats.yrrInHaler / 100)|number_format(0, ',', ' ') }} Kč</div>
+                    </div>
+                {% endif %}
+                <div>
+                    <div class="text-sm text-gray-500">Celkový dluh</div>
+                    <div class="text-2xl font-bold {{ totalDebtInHaler > 0 ? 'text-red-600' : 'text-gray-900' }}">
+                        {{ (totalDebtInHaler / 100)|number_format(0, ',', ' ') }} Kč
+                    </div>
+                </div>
+            </div>
+            {% if overdueViewsByContractId is not empty %}
+                <div class="mt-4">
+                    <span class="badge badge-error">Po splatnosti</span>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card mt-6">
+        <div class="card-body">
+            <h2 class="text-xl font-bold text-gray-900 mb-4">Objednávky</h2>
+            <div class="overflow-x-auto">
+                <table class="table table-zebra">
+                    <thead>
+                        <tr>
+                            <th>Číslo</th>
+                            <th>Stav</th>
+                            <th>Co / kde</th>
+                            <th>Období</th>
+                            <th>Cena</th>
+                            <th>Dluh / splatnost</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% set statusClass = {
+                            'created': 'badge-ghost',
+                            'reserved': 'badge-info',
+                            'awaiting_payment': 'badge-warning',
+                            'paid': 'badge-success',
+                            'completed': 'badge-success',
+                            'cancelled': 'badge-error',
+                            'expired': 'badge-error'
+                        } %}
+                        {% set statusLabel = {
+                            'created': 'Vytvořeno',
+                            'reserved': 'Rezervováno',
+                            'awaiting_payment': 'Čeká na platbu',
+                            'paid': 'Zaplaceno',
+                            'completed': 'Dokončeno',
+                            'cancelled': 'Zrušeno',
+                            'expired': 'Expirováno'
+                        } %}
+                        {% for order in orders %}
+                            {% set contract = contractsByOrderId[order.id.toRfc4122()] ?? null %}
+                            {% set overdueView = contract ? (overdueViewsByContractId[contract.id.toRfc4122()] ?? null) : null %}
+                            <tr>
+                                <td class="font-mono text-sm">
+                                    <a href="{{ path('admin_order_detail', {id: order.id}) }}" class="link">
+                                        {{ order.createdAt|date('Y') }}-{{ order.createdAt|date('md') }}-{{ order.id.toRfc4122()|slice(0, 8)|upper }}
+                                    </a>
+                                </td>
+                                <td>
+                                    <div class="flex flex-wrap gap-1">
+                                        <span class="badge {{ statusClass[order.status.value] ?? 'badge-ghost' }}">
+                                            {{ statusLabel[order.status.value] ?? order.status.value }}
+                                        </span>
+                                    </div>
+                                </td>
+                                <td class="text-sm">
+                                    <div class="text-gray-900">{{ order.storage.storageType.name }} ({{ order.storage.number }})</div>
+                                    <div class="text-gray-500">{{ order.storage.place.name }}</div>
+                                </td>
+                                <td class="text-sm">
+                                    {{ order.startDate|date('d.m.Y') }}
+                                    {% if order.endDate %}
+                                        – {{ order.endDate|date('d.m.Y') }}
+                                    {% else %}
+                                        <span class="text-gray-500">(automat. prodlužování)</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-sm">
+                                    <div class="font-medium">{{ (order.firstPaymentPrice / 100)|number_format(0, ',', ' ') }} Kč{% if order.isRecurring %} / měsíc{% endif %}</div>
+                                    {% if order.individualMonthlyAmount is not null %}
+                                        {% if order.individualMonthlyAmount == 0 %}
+                                            <span class="badge badge-success badge-sm" title="Smlouva zdarma — bez fakturace">Zdarma</span>
+                                        {% else %}
+                                            <span class="badge badge-warning badge-sm" title="Individuální měsíční cena: {{ (order.individualMonthlyAmount / 100)|number_format(0, ',', ' ') }} Kč">Indiv.</span>
+                                        {% endif %}
+                                    {% endif %}
+                                </td>
+                                <td class="text-sm">
+                                    {% set hasIndicator = false %}
+                                    {% if contract and contract.outstandingDebtAmount and contract.outstandingDebtAmount > 0 %}
+                                        {% set hasIndicator = true %}
+                                        <div><span class="badge badge-error badge-sm">Dluh {{ (contract.outstandingDebtAmount / 100)|number_format(0, ',', ' ') }} Kč</span></div>
+                                    {% endif %}
+                                    {% if overdueView %}
+                                        {% set hasIndicator = true %}
+                                        <div class="mt-1">
+                                            <span class="badge {{ overdueView.severity.badgeClass }} badge-sm" title="{{ overdueView.reasonLabel }}">
+                                                {{ overdueView.daysOverdue }} dní po splatnosti
+                                            </span>
+                                        </div>
+                                    {% endif %}
+                                    {% if order.onboardingDebtInHaler and order.onboardingDebtInHaler > 0 and order.debtPaidAt is null %}
+                                        {% set hasIndicator = true %}
+                                        <div class="mt-1"><span class="badge badge-warning badge-sm">Onboarding dluh {{ (order.onboardingDebtInHaler / 100)|number_format(0, ',', ' ') }} Kč</span></div>
+                                    {% endif %}
+                                    {% if not hasIndicator %}
+                                        <span class="text-gray-400">—</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center text-gray-500 py-8">Zákazník nemá žádné objednávky.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     {% if not user.isDeactivated and user.id != app.user.id %}
         <dialog id="deactivateModal" class="modal">
             <div class="modal-box">
