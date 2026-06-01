@@ -73,7 +73,7 @@
                 {% endif %}
 
                 <h3 class="font-semibold text-gray-800 mt-6 mb-3">{{ invoiceToCompany ? 'Sídlo společnosti' : 'Fakturační adresa' }}</h3>
-                {{ addr.render_live(form) }}
+                {{ addr.render_live(form, false) }}
             </div>
         </div>
 

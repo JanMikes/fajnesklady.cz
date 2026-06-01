@@ -30,31 +30,36 @@ final class AdminOnboardingFormType extends AbstractType
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $builder
+            // Admin enters the *customer's* identity here. Native types stay (email/tel/date
+            // keyboards + validation), but browser autofill is suppressed on every identity
+            // field so the browser neither injects the admin's own saved data nor offers to
+            // save the customer's data under the admin's profile.
             ->add('email', EmailType::class, [
                 'label' => 'E-mail',
                 'empty_data' => '',
-                'attr' => ['placeholder' => 'zakaznik@example.com'],
+                'attr' => ['placeholder' => 'zakaznik@example.com', 'autocomplete' => 'off'],
             ])
             ->add('firstName', TextType::class, [
                 'label' => 'Jméno',
                 'empty_data' => '',
-                'attr' => ['placeholder' => 'Jan'],
+                'attr' => ['placeholder' => 'Jan', 'autocomplete' => 'off'],
             ])
             ->add('lastName', TextType::class, [
                 'label' => 'Příjmení',
                 'empty_data' => '',
-                'attr' => ['placeholder' => 'Novák'],
+                'attr' => ['placeholder' => 'Novák', 'autocomplete' => 'off'],
             ])
             ->add('phone', TelType::class, [
                 'label' => 'Telefon',
                 'required' => false,
-                'attr' => ['placeholder' => '+420 123 456 789'],
+                'attr' => ['placeholder' => '+420 123 456 789', 'autocomplete' => 'off'],
             ])
             ->add('birthDate', DateType::class, [
                 'label' => 'Datum narození',
                 'required' => false,
                 'widget' => 'single_text',
                 'attr' => [
+                    'autocomplete' => 'off',
                     'data-datepicker-max-date-value' => (new \DateTimeImmutable('today'))->modify('-18 years')->format('Y-m-d'),
                 ],
             ])
@@ -65,17 +70,17 @@ final class AdminOnboardingFormType extends AbstractType
             ->add('companyName', TextType::class, [
                 'label' => 'Název firmy',
                 'required' => false,
-                'attr' => ['placeholder' => 'Firma s.r.o.'],
+                'attr' => ['placeholder' => 'Firma s.r.o.', 'autocomplete' => 'off'],
             ])
             ->add('companyId', TextType::class, [
                 'label' => 'IČO',
                 'required' => false,
-                'attr' => ['placeholder' => '12345678', 'maxlength' => 8],
+                'attr' => ['placeholder' => '12345678', 'maxlength' => 8, 'inputmode' => 'numeric', 'autocomplete' => 'off'],
             ])
             ->add('companyVatId', TextType::class, [
                 'label' => 'DIČ',
                 'required' => false,
-                'attr' => ['placeholder' => 'CZ12345678'],
+                'attr' => ['placeholder' => 'CZ12345678', 'autocomplete' => 'off'],
             ])
             ->add('billingStreet', TextType::class, [
                 'label' => 'Ulice a číslo popisné',
@@ -168,7 +173,8 @@ final class AdminOnboardingFormType extends AbstractType
                 'label' => 'Individuální měsíční cena (Kč)',
                 'required' => false,
                 'scale' => 2,
-                'attr' => ['placeholder' => '1500.00'],
+                // NumberType scale 2 renders type=text; the decimal keypad helps on mobile.
+                'attr' => ['placeholder' => '1500.00', 'inputmode' => 'decimal', 'autocomplete' => 'off'],
                 'help' => 'Maximálně 15 000 Kč (zákonný strop pro opakované platby).',
             ])
             ->add('isExternallyPrepaid', CheckboxType::class, [
@@ -189,14 +195,14 @@ final class AdminOnboardingFormType extends AbstractType
             ->add('variableSymbol', TextType::class, [
                 'label' => 'Variabilní symbol',
                 'required' => false,
-                'attr' => ['placeholder' => 'Ponechte prázdné pro automatické vygenerování'],
+                'attr' => ['placeholder' => 'Ponechte prázdné pro automatické vygenerování', 'inputmode' => 'numeric', 'autocomplete' => 'off'],
                 'help' => 'Pouze pro bankovní převod. Číselný, max 10 číslic.',
             ])
             ->add('debtAmountInCzk', NumberType::class, [
                 'label' => 'Dluh z předchozí smlouvy (Kč)',
                 'required' => false,
                 'html5' => true,
-                'attr' => ['placeholder' => '0', 'min' => 0, 'step' => 1],
+                'attr' => ['placeholder' => '0', 'min' => 0, 'step' => 1, 'autocomplete' => 'off'],
                 'help' => 'Pokud má zákazník nevyplacený dluh, zadejte částku v Kč. Zákazník musí dluh uhradit před zahájením nového pronájmu.',
             ]);
     }

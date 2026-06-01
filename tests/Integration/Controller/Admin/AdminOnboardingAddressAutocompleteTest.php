@@ -65,7 +65,9 @@ final class AdminOnboardingAddressAutocompleteTest extends WebTestCase
         $postal = $crawler->filter('[data-address-autocomplete-target="postalCodeInput"]')->first();
 
         self::assertSame('numeric', $postal->attr('inputmode'), 'PSČ must request the numeric keypad on mobile.');
-        self::assertSame('postal-code', $postal->attr('autocomplete'), 'PSČ must carry the autofill token.');
+        // Spec 062: browser address autofill is suppressed on the onboarding form so the
+        // admin's own PSČ isn't injected; the numeric keypad hint above stays.
+        self::assertSame('off', $postal->attr('autocomplete'), 'PSČ autofill must be suppressed on the onboarding form.');
         // type="number" would strip the "110 00" space — must stay text.
         self::assertNotSame('number', $postal->attr('type'));
         // The merge must not clobber the FormType placeholder / maxlength.
@@ -73,8 +75,11 @@ final class AdminOnboardingAddressAutocompleteTest extends WebTestCase
         self::assertSame('10', $postal->attr('maxlength'));
     }
 
-    public function testStreetAndCityCarryAutofillTokens(): void
+    public function testStreetAndCityHaveAutofillSuppressed(): void
     {
+        // Spec 062: the onboarding form passes browserAutofill=false to the address macro
+        // so the browser does not inject the admin's own street/city; the Photon dropdown
+        // targets (asserted above) keep working.
         $this->client->loginUser($this->findUserByEmail('admin@example.com'), 'main');
 
         $crawler = $this->client->request('GET', '/portal/admin/onboarding');
@@ -84,8 +89,37 @@ final class AdminOnboardingAddressAutocompleteTest extends WebTestCase
         $street = $crawler->filter('[data-address-autocomplete-target="streetInput"]')->first();
         $city = $crawler->filter('[data-address-autocomplete-target="cityInput"]')->first();
 
-        self::assertSame('street-address', $street->attr('autocomplete'));
-        self::assertSame('address-level2', $city->attr('autocomplete'));
+        self::assertSame('off', $street->attr('autocomplete'));
+        self::assertSame('off', $city->attr('autocomplete'));
+    }
+
+    public function testIdentityAndNumericFieldsSuppressAutofillAndKeepKeyboardHints(): void
+    {
+        // Spec 062: every identity/contact/numeric field on the onboarding form carries
+        // autocomplete="off"; numeric fields still request the right mobile keypad.
+        $this->client->loginUser($this->findUserByEmail('admin@example.com'), 'main');
+
+        $crawler = $this->client->request('GET', '/portal/admin/onboarding');
+
+        $this->assertResponseIsSuccessful();
+
+        $autocompleteOff = static function (string $nameSuffix) use ($crawler): void {
+            $input = $crawler->filter(sprintf('[name$="[%s]"]', $nameSuffix))->first();
+            self::assertGreaterThan(0, $input->count(), sprintf('Field "%s" should be rendered.', $nameSuffix));
+            self::assertSame('off', $input->attr('autocomplete'), sprintf('Field "%s" must suppress browser autofill.', $nameSuffix));
+        };
+
+        // Identity / contact fields (always rendered).
+        $autocompleteOff('email');
+        $autocompleteOff('firstName');
+        $autocompleteOff('lastName');
+        $autocompleteOff('phone');
+        $autocompleteOff('birthDate');
+
+        // EmailType keeps its native type so the email keyboard + validation survive.
+        self::assertSame('email', $crawler->filter('[name$="[email]"]')->first()->attr('type'));
+        // TelType keeps the tel keypad.
+        self::assertSame('tel', $crawler->filter('[name$="[phone]"]')->first()->attr('type'));
     }
 
     public function testOverrideCheckboxIsHiddenByDefault(): void

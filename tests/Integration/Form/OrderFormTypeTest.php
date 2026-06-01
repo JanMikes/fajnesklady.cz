@@ -39,4 +39,20 @@ final class OrderFormTypeTest extends KernelTestCase
         self::assertSame('', $data->email);
         self::assertSame('', $data->lastName);
     }
+
+    public function testCompanyFieldsCarryNativeHints(): void
+    {
+        // Spec 062: IČO gets a numeric keypad with no autofill token (none exists for IČO),
+        // company name gets the standard `organization` autofill, DIČ suppresses autofill noise.
+        $view = $this->formFactory->create(OrderFormType::class, new OrderFormData())->createView();
+
+        $companyId = $view->children['companyId']->vars['attr'];
+        self::assertSame('numeric', $companyId['inputmode']);
+        self::assertSame('off', $companyId['autocomplete']);
+        self::assertSame(8, $companyId['maxlength'], 'maxlength must be preserved.');
+        self::assertSame('12345678', $companyId['placeholder'], 'placeholder must be preserved.');
+
+        self::assertSame('organization', $view->children['companyName']->vars['attr']['autocomplete']);
+        self::assertSame('off', $view->children['companyVatId']->vars['attr']['autocomplete']);
+    }
 }

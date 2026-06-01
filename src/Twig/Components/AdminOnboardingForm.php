@@ -249,7 +249,7 @@ final class AdminOnboardingForm extends AbstractController
     }
 
     #[LiveAction]
-    public function submit(): RedirectResponse|null
+    public function submit(): ?RedirectResponse
     {
         $this->submitError = null;
         $this->submitForm();

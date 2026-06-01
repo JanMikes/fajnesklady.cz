@@ -4,26 +4,29 @@
    `blur->live#action validateField` wiring for Live Components that drive
    on-blur server validation. #}
 
-{% macro render(form) %}
-    {{ _self.render_inner(form, false) }}
+{% macro render(form, browserAutofill = true) %}
+    {{ _self.render_inner(form, false, browserAutofill) }}
 {% endmacro %}
 
-{% macro render_live(form) %}
-    {{ _self.render_inner(form, true) }}
+{% macro render_live(form, browserAutofill = true) %}
+    {{ _self.render_inner(form, true, browserAutofill) }}
 {% endmacro %}
 
-{% macro render_inner(form, liveValidate) %}
+{# browserAutofill=false suppresses the browser's *own* address autofill (used by the
+   admin onboarding form, where the admin enters the customer's address — see spec 062).
+   The Photon dropdown targets and the numeric PSČ keypad are kept either way. #}
+{% macro render_inner(form, liveValidate, browserAutofill = true) %}
     {% set streetAttr = {
         'data-address-autocomplete-target': 'streetInput',
-        'autocomplete': 'street-address',
+        'autocomplete': browserAutofill ? 'street-address' : 'off',
     } %}
     {% set cityAttr = {
         'data-address-autocomplete-target': 'cityInput',
-        'autocomplete': 'address-level2',
+        'autocomplete': browserAutofill ? 'address-level2' : 'off',
     } %}
     {% set postalAttr = {
         'data-address-autocomplete-target': 'postalCodeInput',
-        'autocomplete': 'postal-code',
+        'autocomplete': browserAutofill ? 'postal-code' : 'off',
         'inputmode': 'numeric',
     } %}
 

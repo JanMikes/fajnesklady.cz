@@ -103,6 +103,9 @@ final class OrderFormType extends AbstractType
                 'attr' => [
                     'placeholder' => '12345678',
                     'maxlength' => 8,
+                    // 8 digits → numeric keypad; no WHATWG autofill token exists for IČO.
+                    'inputmode' => 'numeric',
+                    'autocomplete' => 'off',
                 ],
             ])
             ->add('companyName', TextType::class, [
@@ -110,6 +113,7 @@ final class OrderFormType extends AbstractType
                 'required' => false,
                 'attr' => [
                     'placeholder' => 'Firma s.r.o.',
+                    'autocomplete' => 'organization',
                 ],
             ])
             ->add('companyVatId', TextType::class, [
@@ -117,6 +121,8 @@ final class OrderFormType extends AbstractType
                 'required' => false,
                 'attr' => [
                     'placeholder' => 'CZ12345678',
+                    // No autofill token for DIČ; suppress noise (keeps the text keyboard for "CZ…").
+                    'autocomplete' => 'off',
                 ],
             ])
             ->add('billingStreet', TextType::class, [
