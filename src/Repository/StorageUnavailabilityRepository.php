@@ -154,6 +154,45 @@ class StorageUnavailabilityRepository
     }
 
     /**
+     * Bulk variant of {@see self::findOverlappingByStorage()} — manual blocks
+     * overlapping [$startDate, $endDate] for a set of storages in one query.
+     * Unlike {@see self::findByStoragesInDateRange()}, $endDate is nullable so an
+     * open-ended (UNLIMITED) requested window is supported. Used to compute the
+     * availability map without an N+1 per storage.
+     *
+     * @param Storage[] $storages
+     *
+     * @return StorageUnavailability[]
+     */
+    public function findOverlappingByStorages(
+        array $storages,
+        \DateTimeImmutable $startDate,
+        ?\DateTimeImmutable $endDate,
+    ): array {
+        if ([] === $storages) {
+            return [];
+        }
+
+        $qb = $this->entityManager->createQueryBuilder()
+            ->select('su')
+            ->from(StorageUnavailability::class, 'su')
+            ->where('su.storage IN (:storages)')
+            ->setParameter('storages', $storages);
+
+        if (null === $endDate) {
+            $qb->andWhere('su.endDate IS NULL OR su.endDate >= :startDate')
+                ->setParameter('startDate', $startDate);
+        } else {
+            $qb->andWhere('su.startDate <= :endDate')
+                ->andWhere('su.endDate IS NULL OR su.endDate >= :startDate')
+                ->setParameter('startDate', $startDate)
+                ->setParameter('endDate', $endDate);
+        }
+
+        return $qb->getQuery()->getResult();
+    }
+
+    /**
      * Find all unavailability records for storages owned by a user.
      *
      * @return StorageUnavailability[]

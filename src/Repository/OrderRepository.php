@@ -227,6 +227,21 @@ class OrderRepository
     }
 
     /**
+     * Order statuses that occupy a storage for its rental window. Shared by the
+     * single- and bulk-storage overlap queries so the availability map (via
+     * {@see \App\Service\StorageAvailabilityChecker}) can never disagree with
+     * order-acceptance enforcement about what "blocking" means.
+     *
+     * @var list<OrderStatus>
+     */
+    private const BLOCKING_STATUSES = [
+        OrderStatus::CREATED,
+        OrderStatus::RESERVED,
+        OrderStatus::AWAITING_PAYMENT,
+        OrderStatus::PAID,
+    ];
+
+    /**
      * Find orders that overlap with a given period and block the storage.
      * Considers orders in active states (created, reserved, awaiting_payment, paid).
      *
@@ -244,12 +259,7 @@ class OrderRepository
             ->where('o.storage = :storage')
             ->andWhere('o.status IN (:statuses)')
             ->setParameter('storage', $storage)
-            ->setParameter('statuses', [
-                OrderStatus::CREATED,
-                OrderStatus::RESERVED,
-                OrderStatus::AWAITING_PAYMENT,
-                OrderStatus::PAID,
-            ]);
+            ->setParameter('statuses', self::BLOCKING_STATUSES);
 
         if (null !== $excludeOrder) {
             $qb->andWhere('o.id != :excludeId')
@@ -262,6 +272,47 @@ class OrderRepository
                 ->setParameter('startDate', $startDate);
         } else {
             // Standard overlap: startA <= endB AND startB <= endA
+            $qb->andWhere('o.startDate <= :endDate')
+                ->andWhere('o.endDate IS NULL OR o.endDate >= :startDate')
+                ->setParameter('startDate', $startDate)
+                ->setParameter('endDate', $endDate);
+        }
+
+        return $qb->getQuery()->getResult();
+    }
+
+    /**
+     * Bulk variant of {@see self::findOverlappingByStorage()} — all blocking
+     * orders overlapping [$startDate, $endDate] for a set of storages in one
+     * query. Mirrors the single-storage predicate exactly (same statuses, same
+     * null-end open-ended logic). Used to compute the availability map without
+     * an N+1 per storage.
+     *
+     * @param Storage[] $storages
+     *
+     * @return Order[]
+     */
+    public function findOverlappingByStorages(
+        array $storages,
+        \DateTimeImmutable $startDate,
+        ?\DateTimeImmutable $endDate,
+    ): array {
+        if ([] === $storages) {
+            return [];
+        }
+
+        $qb = $this->entityManager->createQueryBuilder()
+            ->select('o')
+            ->from(Order::class, 'o')
+            ->where('o.storage IN (:storages)')
+            ->andWhere('o.status IN (:statuses)')
+            ->setParameter('storages', $storages)
+            ->setParameter('statuses', self::BLOCKING_STATUSES);
+
+        if (null === $endDate) {
+            $qb->andWhere('o.endDate IS NULL OR o.endDate >= :startDate')
+                ->setParameter('startDate', $startDate);
+        } else {
             $qb->andWhere('o.startDate <= :endDate')
                 ->andWhere('o.endDate IS NULL OR o.endDate >= :startDate')
                 ->setParameter('startDate', $startDate)

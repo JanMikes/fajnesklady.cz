@@ -16,6 +16,7 @@ use App\Repository\PlatformSettingsRepository;
 use App\Repository\StorageRepository;
 use App\Repository\UserRepository;
 use App\Service\PriceCalculator;
+use App\Service\StorageAvailabilityChecker;
 use App\Value\PaymentSchedule;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\FormInterface;
@@ -68,6 +69,7 @@ final class OrderForm extends AbstractController
         private readonly UrlGeneratorInterface $urlGenerator,
         private readonly PriceCalculator $priceCalculator,
         private readonly PlatformSettingsRepository $platformSettingsRepository,
+        private readonly StorageAvailabilityChecker $availabilityChecker,
     ) {
     }
 
@@ -108,6 +110,109 @@ final class OrderForm extends AbstractController
         }
 
         return $storage;
+    }
+
+    /**
+     * The rental window the customer has currently chosen, or null when it is
+     * not yet usable (no start date, or LIMITED without a valid end). UNLIMITED
+     * resolves to an open-ended window (null end). This is the SAME window the
+     * availability map, the select guard, and order-acceptance enforcement all
+     * key on.
+     *
+     * Read from the live {@see $formValues} (the client's current field values),
+     * NOT getForm()->getData(): a LiveAction such as selectStorage runs BEFORE
+     * the #[PreReRender] form submit, so getData() would still hold the
+     * session-hydrated model, not the dates the customer just typed. Mirrors the
+     * existing formValues access in {@see self::validateField()}.
+     *
+     * @return array{\DateTimeImmutable, ?\DateTimeImmutable}|null
+     */
+    private function resolveWindow(): ?array
+    {
+        $start = $this->parseFormDate($this->formValues['startDate'] ?? null);
+        if (null === $start) {
+            return null;
+        }
+
+        $rentalType = (string) ($this->formValues['rentalType'] ?? '');
+        if (RentalType::UNLIMITED->value === $rentalType) {
+            return [$start, null];
+        }
+
+        if (RentalType::LIMITED->value !== $rentalType) {
+            return null;
+        }
+
+        $end = $this->parseFormDate($this->formValues['endDate'] ?? null);
+        if (null === $end || $end <= $start) {
+            return null;
+        }
+
+        return [$start, $end];
+    }
+
+    private function parseFormDate(mixed $value): ?\DateTimeImmutable
+    {
+        if (!is_string($value) || '' === trim($value)) {
+            return null;
+        }
+
+        // Date fields render as single_text (HTML5 date) → 'Y-m-d'.
+        $date = \DateTimeImmutable::createFromFormat('!Y-m-d', trim($value));
+
+        return false === $date ? null : $date;
+    }
+
+    /**
+     * Whether the customer has chosen enough of the rental window for the map to
+     * show real availability. Until then the map greys out and prompts for dates.
+     */
+    public function hasValidWindow(): bool
+    {
+        return null !== $this->resolveWindow();
+    }
+
+    /**
+     * Map payload for every storage at this place, with per-storage availability
+     * derived for the chosen window via the SAME {@see StorageAvailabilityChecker}
+     * enforcement uses. Re-rendered by the Live Component on each rental-type /
+     * date change, so the map repaints reactively. Until a valid window exists,
+     * every unit is reported unavailable (the template greys the map + prompts).
+     */
+    public function getStoragesJson(): string
+    {
+        $storages = $this->storageRepository->findByPlace($this->place);
+        $window = $this->resolveWindow();
+        $availability = null === $window
+            ? []
+            : $this->availabilityChecker->availabilityForStorages($storages, $window[0], $window[1]);
+
+        $payload = [];
+        foreach ($storages as $storage) {
+            $key = $storage->id->toRfc4122();
+            $available = $availability[$key] ?? null;
+            $payload[] = [
+                'id' => $key,
+                'number' => $storage->number,
+                'storageTypeId' => $storage->storageType->id->toRfc4122(),
+                'storageTypeName' => $storage->storageType->name,
+                'coordinates' => $storage->coordinates,
+                'dimensions' => $storage->storageType->getDimensionsInMeters(),
+                'status' => null !== $available ? $available->derivedStatus->value : $storage->status->value,
+                'available' => null !== $available && $available->isAvailable,
+                'pricePerWeek' => $storage->getEffectivePricePerWeekInCzk(),
+                'pricePerMonth' => $storage->getEffectivePricePerMonthInCzk(),
+                'isUniform' => $storage->storageType->uniformStorages,
+                // Unit-specific photos first ("show me this exact unit"), then the
+                // generic storage-type photos ("…and what others of this type look like").
+                'photoUrls' => array_merge(
+                    array_map(static fn ($p) => '/uploads/'.$p->path, $storage->getPhotos()->toArray()),
+                    array_map(static fn ($p) => '/uploads/'.$p->path, $storage->storageType->getPhotos()->toArray()),
+                ),
+            ];
+        }
+
+        return json_encode($payload, JSON_THROW_ON_ERROR);
     }
 
     /**
@@ -257,7 +362,14 @@ final class OrderForm extends AbstractController
             return;
         }
 
-        if (!$candidate->isAvailable()) {
+        // Gate on the SAME date-range check enforcement uses — not the mutable
+        // Storage::status enum, which drifts. No window chosen yet → no selection.
+        $window = $this->resolveWindow();
+        if (null === $window) {
+            return;
+        }
+
+        if (!$this->availabilityChecker->isAvailable($candidate, $window[0], $window[1])) {
             return;
         }
 

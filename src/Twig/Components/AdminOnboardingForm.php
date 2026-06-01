@@ -11,6 +11,7 @@ use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\PaymentFrequency;
+use App\Enum\RentalType;
 use App\Form\AdminOnboardingFormData;
 use App\Form\AdminOnboardingFormType;
 use App\Repository\PlaceRepository;
@@ -19,6 +20,7 @@ use App\Repository\StorageRepository;
 use App\Repository\StorageTypeRepository;
 use App\Service\Messenger\HandlerFailureUnwrap;
 use App\Service\PriceCalculator;
+use App\Service\StorageAvailabilityChecker;
 use App\Value\PaymentSchedule;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -70,6 +72,7 @@ final class AdminOnboardingForm extends AbstractController
         private readonly UrlGeneratorInterface $urlGenerator,
         private readonly LoggerInterface $logger,
         private readonly PlatformSettingsRepository $platformSettingsRepository,
+        private readonly StorageAvailabilityChecker $availabilityChecker,
     ) {
     }
 
@@ -146,6 +149,64 @@ final class AdminOnboardingForm extends AbstractController
         return $this->storageRepository->find(Uuid::fromString($this->storageId));
     }
 
+    /**
+     * The rental window the admin has currently chosen, or null when it is not
+     * yet usable (no rental type / start date, or LIMITED without a valid end).
+     * UNLIMITED resolves to an open-ended window (null end). Drives the same
+     * availability check the order-acceptance enforcement uses.
+     *
+     * Read from the live {@see $formValues} (the admin's current field values),
+     * NOT getForm()->getData(): a LiveAction such as selectStorage runs BEFORE
+     * the #[PreReRender] form submit, so getData() would still hold the freshly
+     * instantiated (empty) model, not the dates just entered.
+     *
+     * @return array{\DateTimeImmutable, ?\DateTimeImmutable}|null
+     */
+    private function resolveWindow(): ?array
+    {
+        $start = $this->parseFormDate($this->formValues['startDate'] ?? null);
+        if (null === $start) {
+            return null;
+        }
+
+        $rentalType = (string) ($this->formValues['rentalType'] ?? '');
+        if (RentalType::UNLIMITED->value === $rentalType) {
+            return [$start, null];
+        }
+
+        if (RentalType::LIMITED->value !== $rentalType) {
+            return null;
+        }
+
+        $end = $this->parseFormDate($this->formValues['endDate'] ?? null);
+        if (null === $end || $end <= $start) {
+            return null;
+        }
+
+        return [$start, $end];
+    }
+
+    private function parseFormDate(mixed $value): ?\DateTimeImmutable
+    {
+        if (!is_string($value) || '' === trim($value)) {
+            return null;
+        }
+
+        // Date fields render as single_text (HTML5 date) → 'Y-m-d'.
+        $date = \DateTimeImmutable::createFromFormat('!Y-m-d', trim($value));
+
+        return false === $date ? null : $date;
+    }
+
+    /**
+     * Whether the admin has chosen enough of the rental window for the map to
+     * show real availability. Until then the map greys out and prompts for dates.
+     */
+    public function hasValidWindow(): bool
+    {
+        return null !== $this->resolveWindow();
+    }
+
     public function getStoragesJson(): string
     {
         $place = $this->getSelectedPlace();
@@ -156,17 +217,25 @@ final class AdminOnboardingForm extends AbstractController
         }
 
         $storages = $this->storageRepository->findByPlace($place);
+        $window = $this->resolveWindow();
+        $availability = null === $window
+            ? []
+            : $this->availabilityChecker->availabilityForStorages($storages, $window[0], $window[1]);
+
         $payload = [];
 
         foreach ($storages as $storage) {
+            $key = $storage->id->toRfc4122();
+            $available = $availability[$key] ?? null;
             $payload[] = [
-                'id' => $storage->id->toRfc4122(),
+                'id' => $key,
                 'number' => $storage->number,
                 'storageTypeId' => $storage->storageType->id->toRfc4122(),
                 'storageTypeName' => $storage->storageType->name,
                 'dimensions' => $storage->storageType->getDimensionsInMeters(),
                 'coordinates' => $storage->coordinates,
-                'status' => $storage->status->value,
+                'status' => null !== $available ? $available->derivedStatus->value : $storage->status->value,
+                'available' => null !== $available && $available->isAvailable,
                 'lockCode' => $storage->lockCode,
                 'tenantName' => null,
                 'rentedFrom' => null,
@@ -216,6 +285,8 @@ final class AdminOnboardingForm extends AbstractController
     #[LiveAction]
     public function selectStorage(#[LiveArg] string $storageId): void
     {
+        $this->storageError = null;
+
         if (!Uuid::isValid($storageId)) {
             return;
         }
@@ -227,6 +298,22 @@ final class AdminOnboardingForm extends AbstractController
 
         $storageType = $this->getSelectedStorageType();
         if (null === $storageType || !$candidate->storageType->id->equals($storageType->id)) {
+            return;
+        }
+
+        // Hard block: onboarding must never assign a unit that is occupied or
+        // blocked for the chosen window — renting the same unit twice is always a
+        // mistake. Same date-range checker the order-acceptance enforcement uses.
+        $window = $this->resolveWindow();
+        if (null === $window) {
+            $this->storageError = 'Nejdříve zvolte typ pronájmu a termín (datum začátku, u doby určité i konce).';
+
+            return;
+        }
+
+        if (!$this->availabilityChecker->isAvailable($candidate, $window[0], $window[1])) {
+            $this->storageError = 'Tato skladová jednotka je ve zvoleném období obsazená nebo blokovaná. Vyberte jinou.';
+
             return;
         }
 
