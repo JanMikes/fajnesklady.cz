@@ -1,6 +1,6 @@
 # 072 — Onboarding signing page: parity with the order flow (contract display, preview, contextual logos, recurring consent)
 
-**Status:** ready
+**Status:** done
 **Type:** UX + bug-fix bundle + compliance parity
 **Scope:** medium (~10 files: 1 new shared contract partial + refactor `order_accept.html.twig` to use it, rewrite `customer_signing.html.twig`, extend `CustomerSigningController`, 1 new preview controller + route, 1 small `Order` helper, add 2 modals, tests, PROJECT_MAP/BACKLOG/COMPLIANCE updates)
 **Depends on:** spec 050 (unified admin onboarding → every onboarding signs VOP via `/podpis/{token}`, optional uploaded contract), spec 043 (`CustomerBillingSituation`, `SigningPriceViewModel`), spec 070 (`form-guard` controller, submit-token / consent wiring), spec 016 + `.claude/COMPLIANCE.md` (recurring consent, logos, § 1826a)

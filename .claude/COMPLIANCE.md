@@ -106,6 +106,7 @@ The following MUST appear on the order form, order accept page, payment page, an
 - **Mastercard ID Check** (formerly SecureCode) — 3D Secure indicator
 - **GoPay** logo, wrapped in `<a href="https://www.gopay.com" target="_blank" rel="noopener">…</a>`
 - Text indicator: **"Zabezpečeno SSL/TLS šifrováním a 3D Secure 2.0"** near the payment area on `order_accept.html.twig` and `order_payment.html.twig`
+- The onboarding signing page `customer_signing.html.twig` (spec 072) also renders the in-page logos + SSL/3DS note, but **contextually**: only when the customer will pay the first charge by card (`order.paymentMethod = GOPAY` in the pay-flow). For bank transfer, externally-prepaid, and free onboardings the in-page logos are hidden (no card surface). The footer logos still appear on every page regardless.
 
 If we ever enable Apple Pay / Google Pay through GoPay, their official wordmarks are added to the same partial.
 
@@ -138,6 +139,7 @@ Cookie-consent compliance is governed separately. Don't add it to this file unle
 - `src/Command/ChargeRecurringPaymentHandler.php` `calculateBillingAmount()` — the cron equivalent of `buildPaymentSchedule`'s tail-prorate branch; **must stay in sync**.
 - `templates/components/OrderForm.html.twig`, `templates/public/order_accept.html.twig`, `templates/public/order_payment.html.twig` — render the schedule.
 - `templates/public/order_accept.html.twig` — submit button label, pre-disclosure, dedicated recurring consent, parameters card.
+- `templates/public/customer_signing.html.twig` — onboarding signing page (spec 072): dedicated recurring consent + parameters card (AUTO card flows only, amounts from `PriceCalculator::buildScheduleFromOrder`), PCI-DSS disclosure, contextual card/3DS/GoPay logos. Submit stays signing-focused (NOT `OBJEDNÁVÁM a zaplatím` — the button signs and routes to the separate payment page, which carries the binding § 1826a disclosure).
 - `templates/public/order_payment.html.twig` — identification block, SSL/3DS notice, GoPay logos.
 - `templates/components/OrderForm.html.twig` — pre-purchase legal-doc links, VAT in prices.
 - `templates/components/payment_logos.html.twig` — card + 3DS + GoPay-link logos.

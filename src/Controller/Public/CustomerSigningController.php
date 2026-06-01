@@ -5,10 +5,14 @@ declare(strict_types=1);
 namespace App\Controller\Public;
 
 use App\Command\CustomerSignOnboardingCommand;
+use App\Entity\Order;
+use App\Enum\BillingMode;
 use App\Enum\PaymentMethod;
 use App\Enum\SigningMethod;
 use App\Repository\OrderRepository;
+use App\Service\Order\CustomerBillingSituation;
 use App\Service\Order\SigningPriceViewModel;
+use App\Service\PriceCalculator;
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -24,6 +28,7 @@ final class CustomerSigningController extends AbstractController
         private readonly OrderRepository $orderRepository,
         private readonly MessageBusInterface $commandBus,
         private readonly ClockInterface $clock,
+        private readonly PriceCalculator $priceCalculator,
         private readonly LoggerInterface $logger,
     ) {
     }
@@ -47,19 +52,13 @@ final class CustomerSigningController extends AbstractController
         }
 
         if ($request->isMethod('POST')) {
-            return $this->handlePost($request, $order);
+            return $this->handlePost($request, $order, $now);
         }
 
-        return $this->render('public/customer_signing.html.twig', [
-            'order' => $order,
-            'storage' => $order->storage,
-            'storageType' => $order->storage->storageType,
-            'place' => $order->storage->getPlace(),
-            'priceViewModel' => SigningPriceViewModel::fromOrder($order),
-        ]);
+        return $this->renderForm($order, self::emptySubmitted(), $now);
     }
 
-    private function handlePost(Request $request, \App\Entity\Order $order): Response
+    private function handlePost(Request $request, Order $order, \DateTimeImmutable $now): Response
     {
         // Idempotency: if the order is already signed (e.g. a duplicate POST that beat the
         // token-clearing of the first one), don't re-process — route straight to the next step.
@@ -67,12 +66,18 @@ final class CustomerSigningController extends AbstractController
             return $this->redirectAfterSigning($order);
         }
 
+        $context = $this->computeContext($order, $now);
+
         $accepted = $request->request->getBoolean('accept_contract');
         $signatureData = $request->request->getString('signature_data');
         $signingMethodValue = $request->request->getString('signing_method');
         $signatureConsent = $request->request->getBoolean('signature_consent');
         $acceptVop = $request->request->getBoolean('accept_vop');
+        $acceptOperatingRules = $request->request->getBoolean('accept_operating_rules');
+        $acceptConsumerNotice = $request->request->getBoolean('accept_consumer_notice');
         $acceptGdpr = $request->request->getBoolean('accept_gdpr');
+        $acceptRecurringPayments = $request->request->getBoolean('accept_recurring_payments');
+        $acceptEarlyStartWaiver = $request->request->getBoolean('accept_early_start_waiver');
         $signingPlace = trim($request->request->getString('signing_place'));
 
         $errors = [];
@@ -82,8 +87,22 @@ final class CustomerSigningController extends AbstractController
         if (!$acceptVop) {
             $errors[] = 'Pro pokračování je nutné souhlasit s všeobecnými obchodními podmínkami.';
         }
+        if ($context['requiresOperatingRules'] && !$acceptOperatingRules) {
+            $errors[] = 'Pro pokračování je nutné souhlasit s provozním řádem.';
+        }
+        if (!$acceptConsumerNotice) {
+            $errors[] = 'Pro pokračování je nutné souhlasit s poučením o právech spotřebitele.';
+        }
         if (!$acceptGdpr) {
             $errors[] = 'Pro pokračování je nutné souhlasit se zpracováním osobních údajů.';
+        }
+        // MANUAL_RECURRING customers are not consenting to a stored-card charge — the
+        // dedicated checkbox is hidden for them, so only AUTO requires it.
+        if ($context['showRecurringConsent'] && !$acceptRecurringPayments) {
+            $errors[] = 'Pro pokračování je nutné souhlasit s podmínkami opakovaných plateb.';
+        }
+        if ($context['requiresEarlyStartWaiver'] && !$acceptEarlyStartWaiver) {
+            $errors[] = 'Pro pokračování je nutné souhlasit se vzdáním se práva na odstoupení od smlouvy ve 14denní lhůtě.';
         }
         if ('' === $signatureData) {
             $errors[] = 'Pro pokračování je nutné přidat podpis.';
@@ -105,13 +124,16 @@ final class CustomerSigningController extends AbstractController
                 $this->addFlash('error', $error);
             }
 
-            return $this->render('public/customer_signing.html.twig', [
-                'order' => $order,
-                'storage' => $order->storage,
-                'storageType' => $order->storage->storageType,
-                'place' => $order->storage->getPlace(),
-                'priceViewModel' => SigningPriceViewModel::fromOrder($order),
-            ]);
+            $submitted = [
+                'signingPlace' => $signingPlace,
+                'acceptAll' => ($order->hasUploadedContract() || $accepted) && $acceptVop && $acceptConsumerNotice
+                    && $acceptGdpr && $signatureConsent
+                    && (!$context['requiresOperatingRules'] || $acceptOperatingRules)
+                    && (!$context['requiresEarlyStartWaiver'] || $acceptEarlyStartWaiver),
+                'acceptRecurring' => $acceptRecurringPayments,
+            ];
+
+            return $this->renderForm($order, $submitted, $now);
         }
 
         try {
@@ -136,21 +158,82 @@ final class CustomerSigningController extends AbstractController
             $this->logger->error('Customer signing failed', ['exception' => $e]);
             $this->addFlash('error', 'Při podpisu smlouvy došlo k chybě. Zkuste to prosím znovu.');
 
-            return $this->render('public/customer_signing.html.twig', [
-                'order' => $order,
-                'storage' => $order->storage,
-                'storageType' => $order->storage->storageType,
-                'place' => $order->storage->getPlace(),
-                'priceViewModel' => SigningPriceViewModel::fromOrder($order),
-            ]);
+            return $this->renderForm($order, self::emptySubmitted(), $now);
         }
+    }
+
+    /**
+     * @param array{signingPlace: string, acceptAll: bool, acceptRecurring: bool} $submitted
+     */
+    private function renderForm(Order $order, array $submitted, \DateTimeImmutable $now): Response
+    {
+        $context = $this->computeContext($order, $now);
+
+        return $this->render('public/customer_signing.html.twig', [
+            'order' => $order,
+            'storage' => $order->storage,
+            'storageType' => $order->storage->storageType,
+            'place' => $order->storage->getPlace(),
+            'priceViewModel' => SigningPriceViewModel::fromOrder($order),
+            'isRecurring' => $context['isRecurring'],
+            'showRecurringConsent' => $context['showRecurringConsent'],
+            'showManualInfo' => $context['showManualInfo'],
+            'showPaymentLogos' => $context['showPaymentLogos'],
+            'requiresOperatingRules' => $context['requiresOperatingRules'],
+            'requiresEarlyStartWaiver' => $context['requiresEarlyStartWaiver'],
+            'paymentSchedule' => $context['paymentSchedule'],
+            'recurringPaymentLegalMaxInCzk' => intdiv(PriceCalculator::MAX_RECURRING_PAYMENT_AMOUNT_IN_HALER, 100),
+            'submitted' => $submitted,
+        ]);
+    }
+
+    /**
+     * Single source of truth for the situation-aware show/validate gates, shared by
+     * the render path and the POST validation so display and validation never drift.
+     *
+     * @return array{
+     *     isRecurring: bool,
+     *     showRecurringConsent: bool,
+     *     showManualInfo: bool,
+     *     showPaymentLogos: bool,
+     *     requiresOperatingRules: bool,
+     *     requiresEarlyStartWaiver: bool,
+     *     paymentSchedule: \App\Value\PaymentSchedule|null,
+     * }
+     */
+    private function computeContext(Order $order, \DateTimeImmutable $now): array
+    {
+        // GOPAY_FIRST_CHARGE means "the customer pays the first charge through us"
+        // (GoPay or bank transfer) — as opposed to externally-prepaid / free, which
+        // have no payment step and therefore no logos / recurring consent.
+        $isPayFlow = CustomerBillingSituation::GOPAY_FIRST_CHARGE === CustomerBillingSituation::fromOrder($order);
+        $isRecurring = $order->isRecurring();
+
+        return [
+            'isRecurring' => $isRecurring,
+            'showRecurringConsent' => $isPayFlow && $isRecurring && BillingMode::AUTO_RECURRING === $order->billingMode,
+            'showManualInfo' => $isPayFlow && $isRecurring && BillingMode::MANUAL_RECURRING === $order->billingMode,
+            'showPaymentLogos' => $isPayFlow && PaymentMethod::GOPAY === $order->paymentMethod,
+            'requiresOperatingRules' => null !== $order->storage->getPlace()->operatingRulesPath,
+            'requiresEarlyStartWaiver' => !$order->hasUploadedContract()
+                && $order->startDate < $now->setTime(0, 0, 0)->modify('+14 days'),
+            'paymentSchedule' => $isRecurring ? $this->priceCalculator->buildScheduleFromOrder($order) : null,
+        ];
+    }
+
+    /**
+     * @return array{signingPlace: string, acceptAll: bool, acceptRecurring: bool}
+     */
+    private static function emptySubmitted(): array
+    {
+        return ['signingPlace' => '', 'acceptAll' => false, 'acceptRecurring' => false];
     }
 
     /**
      * Next step after a (possibly already-completed) signing: external/free orders go to the
      * completion page, orders with outstanding debt to the debt payment, the rest to payment.
      */
-    private function redirectAfterSigning(\App\Entity\Order $order): Response
+    private function redirectAfterSigning(Order $order): Response
     {
         if (PaymentMethod::EXTERNAL === $order->paymentMethod) {
             return $this->redirectToRoute('public_customer_signing_complete', ['id' => $order->id]);

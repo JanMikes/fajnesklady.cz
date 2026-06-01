@@ -750,4 +750,32 @@ class OrderTest extends TestCase
         $this->assertTrue($order->hasAcceptedTerms());
         $this->assertTrue($order->hasSignature());
     }
+
+    public function testUploadedContractIsImageFalseWithoutUpload(): void
+    {
+        $order = $this->createOrder();
+
+        $this->assertFalse($order->hasUploadedContract());
+        $this->assertFalse($order->uploadedContractIsImage());
+    }
+
+    public function testUploadedContractIsImageTrueForImages(): void
+    {
+        foreach (['contract_x.png', 'contract_x.jpg', 'contract_x.JPEG'] as $path) {
+            $order = $this->createOrder();
+            $order->setUploadedContractDocumentPath('/var/contracts/'.$path);
+
+            $this->assertTrue($order->hasUploadedContract());
+            $this->assertTrue($order->uploadedContractIsImage(), $path);
+        }
+    }
+
+    public function testUploadedContractIsImageFalseForPdf(): void
+    {
+        $order = $this->createOrder();
+        $order->setUploadedContractDocumentPath('/var/contracts/contract_x.pdf');
+
+        $this->assertTrue($order->hasUploadedContract());
+        $this->assertFalse($order->uploadedContractIsImage());
+    }
 }
