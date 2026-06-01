@@ -41,6 +41,21 @@ class FakturoidApiClientTest extends TestCase
         $this->assertSame(21, $captured['lines'][0]['vat_rate']);
     }
 
+    public function testCreateDebtInvoiceSendsVatPriceModeFromTotalWithVat(): void
+    {
+        $user = $this->createUser();
+        $order = $this->createOrder($user);
+        $order->setOnboardingDebt(60_000); // 600 Kč gross — the figure the admin entered.
+
+        $captured = $this->captureCreatePayload(static fn (FakturoidApiClient $client): mixed => $client->createDebtInvoice(123, $order));
+
+        // The debt amount is gross (vč. DPH); without this flag Fakturoid would add 21 % on top — guards spec 034.
+        $this->assertSame('from_total_with_vat', $captured['vat_price_mode']);
+        $this->assertEquals(600, $captured['lines'][0]['unit_price']);
+        $this->assertSame(21, $captured['lines'][0]['vat_rate']);
+        $this->assertStringContainsString('dluh', mb_strtolower((string) $captured['lines'][0]['name']));
+    }
+
     public function testCreateRecurringInvoiceSendsVatPriceModeFromTotalWithVat(): void
     {
         $user = $this->createUser();

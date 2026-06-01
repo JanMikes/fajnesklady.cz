@@ -74,6 +74,51 @@ readonly class InvoicingService
         return $invoice;
     }
 
+    public function issueInvoiceForDebt(Order $order, \DateTimeImmutable $now): Invoice
+    {
+        $user = $order->user;
+
+        $subjectId = $this->ensureFakturoidSubject($user, $now);
+
+        try {
+            $fakturoidInvoice = $this->fakturoidClient->createDebtInvoice($subjectId, $order);
+        } catch (StaleFakturoidSubjectException $e) {
+            $subjectId = $this->recreateFakturoidSubject($user, $now, $e->subjectId);
+            $fakturoidInvoice = $this->fakturoidClient->createDebtInvoice($subjectId, $order);
+        }
+
+        // The debt is already paid when this runs, so mark the invoice paid immediately.
+        $this->fakturoidClient->markInvoiceAsPaid($fakturoidInvoice->id, $order->debtPaidAt ?? $now);
+
+        $invoice = new Invoice(
+            id: $this->identityProvider->next(),
+            order: $order,
+            user: $user,
+            fakturoidInvoiceId: $fakturoidInvoice->id,
+            invoiceNumber: $fakturoidInvoice->number,
+            amount: $fakturoidInvoice->total,
+            issuedAt: $now,
+            createdAt: $now,
+        );
+
+        // Save invoice first so InvoiceCreated event fires (email sent even without PDF)
+        $this->invoiceRepository->save($invoice);
+
+        // PDF download is best-effort — invoice email is sent regardless
+        try {
+            $pdfContent = $this->fakturoidClient->downloadInvoicePdf($fakturoidInvoice->id);
+            $pdfPath = $this->storePdf($invoice, $pdfContent);
+            $invoice->attachPdf($pdfPath);
+        } catch (\Throwable $e) {
+            $this->logger->warning('Failed to download debt invoice PDF', [
+                'invoice_id' => $fakturoidInvoice->id,
+                'exception' => $e,
+            ]);
+        }
+
+        return $invoice;
+    }
+
     public function issueInvoiceForRecurringPayment(Contract $contract, int $amount, \DateTimeImmutable $chargedAt): Invoice
     {
         $user = $contract->user;

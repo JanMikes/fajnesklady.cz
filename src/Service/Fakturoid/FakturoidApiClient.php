@@ -171,6 +171,62 @@ final readonly class FakturoidApiClient implements FakturoidClient
         );
     }
 
+    public function createDebtInvoice(int $subjectId, Order $order): FakturoidInvoice
+    {
+        $place = $order->storage->getPlace();
+
+        try {
+            $response = $this->manager->getInvoicesProvider()->create([
+                'subject_id' => $subjectId,
+                // The debt amount is gross (vč. DPH); Fakturoid must back-calculate VAT, not add it on top.
+                'vat_price_mode' => 'from_total_with_vat',
+                'lines' => [
+                    [
+                        // The debt is from a previous arrangement — name it generically, tagged by place for the books.
+                        'name' => sprintf('Úhrada dluhu z předchozí smlouvy (%s)', $place->name),
+                        'quantity' => 1,
+                        'unit_price' => $order->getDebtAmountInCzk(),
+                        'vat_rate' => $this->vatRate,
+                    ],
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            $context = [
+                'subject_id' => $subjectId,
+                'order_id' => $order->id->toRfc4122(),
+                'exception' => $e,
+            ];
+
+            if ($e instanceof RequestException) {
+                $body = $e->getResponse()->getBody();
+                $body->rewind();
+                $context['status'] = $e->getResponse()->getStatusCode();
+                $context['body'] = $body->getContents();
+            }
+
+            if ($this->isStaleSubjectError($context)) {
+                // Caller (InvoicingService) recreates the subject and retries —
+                // log at info so the recovery doesn't pollute the error stream.
+                $this->logger->info('Fakturoid subject no longer exists; caller will recreate', $context);
+
+                throw new StaleFakturoidSubjectException($subjectId, $e);
+            }
+
+            $this->logger->error('Fakturoid debt invoice creation failed', $context);
+
+            throw $e;
+        }
+
+        /** @var \stdClass $body */
+        $body = $response->getBody();
+
+        return new FakturoidInvoice(
+            id: (int) $body->id,
+            number: (string) $body->number,
+            total: (int) round((float) $body->total * 100),
+        );
+    }
+
     public function createRecurringInvoice(int $subjectId, Contract $contract, int $amount, \DateTimeImmutable $billingDate): FakturoidInvoice
     {
         $storage = $contract->storage;
