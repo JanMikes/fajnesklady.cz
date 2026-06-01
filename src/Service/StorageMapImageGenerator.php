@@ -62,29 +62,77 @@ readonly class StorageMapImageGenerator
             return;
         }
 
-        $x = (int) round((float) $coords['x']);
-        $y = (int) round((float) $coords['y']);
-        $width = (int) round((float) $coords['width']);
-        $height = (int) round((float) $coords['height']);
+        $width = (float) $coords['width'];
+        $height = (float) $coords['height'];
 
-        if ($width <= 0 || $height <= 0) {
+        if ($width <= 0.0 || $height <= 0.0) {
             return;
         }
 
-        if ($isHighlighted) {
-            $image->drawRectangle(function ($rectangle) use ($x, $y, $width, $height): void {
-                $rectangle->at($x, $y);
-                $rectangle->size($width, $height);
-                $rectangle->background('rgba(34, 197, 94, 0.4)');
-                $rectangle->border('rgba(22, 163, 74, 1.0)', 3);
-            });
-        } else {
-            $image->drawRectangle(function ($rectangle) use ($x, $y, $width, $height): void {
-                $rectangle->at($x, $y);
-                $rectangle->size($width, $height);
-                $rectangle->background('rgba(156, 163, 175, 0.3)');
-                $rectangle->border('rgba(107, 114, 128, 0.5)', 1);
-            });
+        $corners = self::rotatedCorners(
+            (float) $coords['x'],
+            (float) $coords['y'],
+            $width,
+            $height,
+            (float) $coords['rotation'],
+        );
+
+        // Keep the existing highlighted / dimmed styling untouched.
+        [$background, $border, $borderWidth] = $isHighlighted
+            ? ['rgba(34, 197, 94, 0.4)', 'rgba(22, 163, 74, 1.0)', 3]
+            : ['rgba(156, 163, 175, 0.3)', 'rgba(107, 114, 128, 0.5)', 1];
+
+        $image->drawPolygon(function ($polygon) use ($corners, $background, $border, $borderWidth): void {
+            foreach ($corners as [$px, $py]) {
+                $polygon->point($px, $py);
+            }
+            $polygon->background($background);
+            $polygon->border($border, $borderWidth);
+        });
+    }
+
+    /**
+     * Four corners (clockwise from top-left) of a rectangle rotated around its center,
+     * matching the Konva transform used by the interactive picker
+     * (assets/controllers/storage_map_controller.js:465). Rotation is in degrees,
+     * clockwise in image (y-down) space — the same standard matrix Konva applies.
+     *
+     * @return list<array{int, int}>
+     */
+    public static function rotatedCorners(
+        float $x,
+        float $y,
+        float $width,
+        float $height,
+        float $rotationDegrees,
+    ): array {
+        $centerX = $x + $width / 2;
+        $centerY = $y + $height / 2;
+        $halfWidth = $width / 2;
+        $halfHeight = $height / 2;
+
+        $rad = deg2rad($rotationDegrees);
+        $cos = cos($rad);
+        $sin = sin($rad);
+
+        // Offsets from center, clockwise: top-left, top-right, bottom-right, bottom-left.
+        $offsets = [
+            [-$halfWidth, -$halfHeight],
+            [$halfWidth, -$halfHeight],
+            [$halfWidth, $halfHeight],
+            [-$halfWidth, $halfHeight],
+        ];
+
+        $corners = [];
+        foreach ($offsets as [$offsetX, $offsetY]) {
+            $rotatedX = $offsetX * $cos - $offsetY * $sin;
+            $rotatedY = $offsetX * $sin + $offsetY * $cos;
+            $corners[] = [
+                (int) round($centerX + $rotatedX),
+                (int) round($centerY + $rotatedY),
+            ];
         }
+
+        return $corners;
     }
 }
