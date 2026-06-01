@@ -15,6 +15,8 @@ use App\Enum\RentalType;
 use App\Enum\TerminationReason;
 use App\Exception\UserNotFound;
 use App\Repository\UserRepository;
+use App\Value\UserListCriteria;
+use App\Value\UserListRow;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ManagerRegistry;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -472,6 +474,165 @@ class UserRepositoryTest extends KernelTestCase
         $inactive = $this->repository->countWithoutActiveContracts($now);
 
         $this->assertSame($total, $active + $inactive);
+    }
+
+    public function testFindForAdminListSearchMatchesNameEmailAndPhoneCaseInsensitively(): void
+    {
+        $now = new \DateTimeImmutable('2025-06-15 12:00:00');
+        $user = new User(Uuid::v7(), 'searchable-user@example.com', 'password', 'Bohuslav', 'Černý', $now);
+        $user->updateProfile('Bohuslav', 'Černý', '+420777123456', $now);
+        $this->entityManager->persist($user);
+        $this->entityManager->flush();
+
+        // Name fragment, different case + diacritics.
+        $byName = $this->emailsForCriteria(new UserListCriteria('černý', null, 'created', 'desc', 1, 100), $now);
+        $this->assertContains('searchable-user@example.com', $byName);
+
+        // Email fragment.
+        $byEmail = $this->emailsForCriteria(new UserListCriteria('SEARCHABLE-USER', null, 'created', 'desc', 1, 100), $now);
+        $this->assertContains('searchable-user@example.com', $byEmail);
+
+        // Phone fragment.
+        $byPhone = $this->emailsForCriteria(new UserListCriteria('777123', null, 'created', 'desc', 1, 100), $now);
+        $this->assertContains('searchable-user@example.com', $byPhone);
+
+        // Non-matching fragment excludes the user.
+        $noMatch = $this->emailsForCriteria(new UserListCriteria('zzzznomatch', null, 'created', 'desc', 1, 100), $now);
+        $this->assertNotContains('searchable-user@example.com', $noMatch);
+    }
+
+    public function testCountForAdminListMatchesRowCountWithSearch(): void
+    {
+        $now = new \DateTimeImmutable('2025-06-15 12:00:00');
+        $user = new User(Uuid::v7(), 'count-match@example.com', 'password', 'Uniquefragmentxyz', 'Person', $now);
+        $this->entityManager->persist($user);
+        $this->entityManager->flush();
+
+        $criteria = new UserListCriteria('uniquefragmentxyz', null, 'created', 'desc', 1, 100);
+        $rows = $this->repository->findForAdminList($criteria, $now);
+        $count = $this->repository->countForAdminList($criteria, $now);
+
+        $this->assertCount(1, $rows);
+        $this->assertSame(1, $count);
+        $this->assertSame('count-match@example.com', $rows[0]->email);
+    }
+
+    public function testFindForAdminListSortByMrrDescPlacesZeroContractUsersLast(): void
+    {
+        $now = new \DateTimeImmutable('2025-06-15 12:00:00');
+
+        // A paying tenant (active monthly contract => MRR > 0) and a never-rented user (MRR = 0).
+        $payer = $this->createDebtorWithActiveMonthlyContract('mrr-payer@example.com', $now);
+        $zero = new User(Uuid::v7(), 'mrr-zero@example.com', 'password', 'Zero', 'Mrr', $now);
+        $this->entityManager->persist($zero);
+        $this->entityManager->flush();
+
+        $rows = $this->repository->findForAdminList(
+            new UserListCriteria(null, null, 'mrr', 'desc', 1, 1000),
+            $now,
+        );
+
+        $payerIndex = $this->indexOfEmail($rows, 'mrr-payer@example.com');
+        $zeroIndex = $this->indexOfEmail($rows, 'mrr-zero@example.com');
+
+        $this->assertGreaterThanOrEqual(0, $payerIndex);
+        $this->assertGreaterThanOrEqual(0, $zeroIndex);
+        $this->assertLessThan($zeroIndex, $payerIndex, 'Payer (MRR>0) must rank above zero-MRR user when sorting MRR desc.');
+        $this->assertGreaterThan(0, $rows[$payerIndex]->mrrInHaler);
+        $this->assertSame(0, $rows[$zeroIndex]->mrrInHaler);
+        $this->assertSame(0, $rows[$zeroIndex]->totalCount);
+        \assert($payer instanceof User);
+    }
+
+    public function testFindForAdminListCombinesSearchWithFilter(): void
+    {
+        $now = new \DateTimeImmutable('2025-06-15 12:00:00');
+        $unverified = new User(Uuid::v7(), 'combo-unverified@example.com', 'password', 'Comboname', 'Unv', $now);
+        $verified = new User(Uuid::v7(), 'combo-verified@example.com', 'password', 'Comboname', 'Ver', $now);
+        $verified->markAsVerified($now);
+        $this->entityManager->persist($unverified);
+        $this->entityManager->persist($verified);
+        $this->entityManager->flush();
+
+        $emails = $this->emailsForCriteria(
+            new UserListCriteria('comboname', 'unverified', 'created', 'desc', 1, 100),
+            $now,
+        );
+
+        $this->assertContains('combo-unverified@example.com', $emails);
+        $this->assertNotContains('combo-verified@example.com', $emails);
+    }
+
+    /**
+     * @param UserListRow[] $rows
+     */
+    private function indexOfEmail(array $rows, string $email): int
+    {
+        foreach ($rows as $index => $row) {
+            if ($row->email === $email) {
+                return $index;
+            }
+        }
+
+        return -1;
+    }
+
+    /**
+     * @return string[]
+     */
+    private function emailsForCriteria(UserListCriteria $criteria, \DateTimeImmutable $now): array
+    {
+        return array_map(
+            static fn (UserListRow $row): string => $row->email,
+            $this->repository->findForAdminList($criteria, $now),
+        );
+    }
+
+    private function createDebtorWithActiveMonthlyContract(string $email, \DateTimeImmutable $now): User
+    {
+        $user = new User(Uuid::v7(), $email, 'password', 'Pay', 'Er', $now);
+        $place = new Place(Uuid::v7(), 'MRR Place', 'Address', 'City', '00000', null, $now);
+        $storageType = new StorageType(Uuid::v7(), $place, 'Box', 100, 100, 100, 10000, 35000, 35000, 35000 * 12, $now);
+        $storage = new Storage(
+            Uuid::v7(),
+            'MR-'.bin2hex(random_bytes(2)),
+            ['x' => 0, 'y' => 0, 'width' => 100, 'height' => 100, 'rotation' => 0],
+            $storageType,
+            $place,
+            $now,
+        );
+        $order = new Order(
+            Uuid::v7(),
+            $user,
+            $storage,
+            RentalType::UNLIMITED,
+            PaymentFrequency::MONTHLY,
+            $now->modify('-30 days'),
+            null,
+            35000,
+            $now->modify('+7 days'),
+            $now->modify('-30 days'),
+        );
+        $contract = new Contract(
+            Uuid::v7(),
+            $order,
+            $user,
+            $storage,
+            RentalType::UNLIMITED,
+            $now->modify('-30 days'),
+            null,
+            $now->modify('-30 days'),
+        );
+
+        $this->entityManager->persist($user);
+        $this->entityManager->persist($place);
+        $this->entityManager->persist($storageType);
+        $this->entityManager->persist($storage);
+        $this->entityManager->persist($order);
+        $this->entityManager->persist($contract);
+        $this->entityManager->flush();
+
+        return $user;
     }
 
     public function testUpdateUser(): void

@@ -36,9 +36,11 @@ final class UserExportController extends AbstractController
         $now = $this->clock->now();
         $filterParam = $request->query->get('filter');
         $filter = match ($filterParam) {
-            'overdue', 'onboarded', 'active', 'inactive' => $filterParam,
+            'overdue', 'onboarded', 'active', 'inactive', 'unverified' => $filterParam,
             default => null,
         };
+        $searchParam = $request->query->get('q');
+        $search = (null !== $searchParam && '' !== trim($searchParam)) ? trim($searchParam) : null;
 
         $columns = [
             new ExcelColumn('Jméno'),
@@ -60,11 +62,11 @@ final class UserExportController extends AbstractController
         // user table is bounded by total users (~hundreds), not orders, so the
         // single ID round-trip pays for itself versus N per-row queries inside
         // the row-streaming loop. See spec 028 §6.C.
-        $allIds = $this->userRepository->findIdsForExport($filter, $now);
+        $allIds = $this->userRepository->findIdsForExport($filter, $search, $now);
         $debtorIdSet = array_flip($this->overdueChecker->filterOverdueUserIds($now, $allIds));
         $onboardedIdSet = array_flip($this->userRepository->findOnboardedUserIds($allIds));
 
-        $users = $this->userRepository->streamForExport($filter, $now);
+        $users = $this->userRepository->streamForExport($filter, $search, $now);
         $rows = (static function () use ($users, $debtorIdSet, $onboardedIdSet): \Generator {
             foreach ($users as $user) {
                 /* @var User $user */

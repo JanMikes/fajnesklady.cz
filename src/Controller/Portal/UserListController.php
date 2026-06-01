@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace App\Controller\Portal;
 
-use App\Entity\User;
 use App\Repository\ContractRepository;
 use App\Repository\UserRepository;
-use App\Service\Overdue\OverdueChecker;
+use App\Value\UserListCriteria;
 use Psr\Clock\ClockInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -22,84 +21,44 @@ final class UserListController extends AbstractController
     public function __construct(
         private readonly UserRepository $userRepository,
         private readonly ContractRepository $contractRepository,
-        private readonly OverdueChecker $overdueChecker,
         private readonly ClockInterface $clock,
     ) {
     }
 
     public function __invoke(Request $request): Response
     {
-        $page = max(1, (int) $request->query->get('page', '1'));
-        $limit = 20;
-        $filterParam = $request->query->get('filter');
-        $filter = match ($filterParam) {
-            'overdue', 'onboarded', 'active', 'inactive', 'unverified' => $filterParam,
-            default => null,
-        };
         $now = $this->clock->now();
 
-        // Cache the active-user-ids subquery once per request — used by the
-        // active/inactive paginator paths AND the chip badge counts. Without
-        // caching the same DISTINCT-IDENTITY scan runs 3-4× per page render.
+        $criteria = UserListCriteria::fromRequest(
+            search: $request->query->get('q'),
+            filter: $request->query->get('filter'),
+            sort: $request->query->get('sort'),
+            direction: $request->query->get('dir'),
+            page: (int) $request->query->get('page', '1'),
+        );
+
+        $rows = $this->userRepository->findForAdminList($criteria, $now);
+        $totalUsers = $this->userRepository->countForAdminList($criteria, $now);
+        $totalPages = (int) ceil($totalUsers / $criteria->limit);
+
+        // Filter-chip counts stay GLOBAL — independent of the active search —
+        // so chips show totals while the search narrows the table (spec 066 §3).
         $activeUserIds = $this->contractRepository->findActiveContractUserIdsSubquery($now);
 
-        switch ($filter) {
-            case 'overdue':
-                $users = $this->userRepository->findOverduePaginated($page, $limit, $now);
-                $totalUsers = $this->userRepository->countOverdueUsers($now);
-
-                break;
-            case 'onboarded':
-                $users = $this->userRepository->findOnboardedPaginated($page, $limit);
-                $totalUsers = $this->userRepository->countOnboarded();
-
-                break;
-            case 'active':
-                $users = $this->userRepository->findWithActiveContractsPaginated($page, $limit, $now, $activeUserIds);
-                $totalUsers = $this->userRepository->countWithActiveContracts($now, $activeUserIds);
-
-                break;
-            case 'inactive':
-                $users = $this->userRepository->findWithoutActiveContractsPaginated($page, $limit, $now, $activeUserIds);
-                $totalUsers = $this->userRepository->countWithoutActiveContracts($now, $activeUserIds);
-
-                break;
-            case 'unverified':
-                $users = $this->userRepository->findUnverifiedPaginated($page, $limit);
-                $totalUsers = $this->userRepository->countUnverified();
-
-                break;
-            default:
-                $users = $this->userRepository->findAllPaginated($page, $limit);
-                $totalUsers = $this->userRepository->countTotal();
-        }
-
-        $totalPages = (int) ceil($totalUsers / $limit);
-        $overdueUserCount = $this->userRepository->countOverdueUsers($now);
-        $onboardedUserCount = $this->userRepository->countOnboarded();
-        $activeUserCount = $this->userRepository->countWithActiveContracts($now, $activeUserIds);
-        $inactiveUserCount = $this->userRepository->countWithoutActiveContracts($now, $activeUserIds);
-        $unverifiedUserCount = $this->userRepository->countUnverified();
-
-        $pageUserIds = array_map(static fn (User $u) => $u->id, $users);
-        $debtorIdSet = array_flip($this->overdueChecker->filterOverdueUserIds($now, $pageUserIds));
-        $onboardedIdSet = array_flip($this->userRepository->findOnboardedUserIds($pageUserIds));
-        $customerStats = $this->contractRepository->loadCustomerStatsByUserIds($pageUserIds, $now);
-
         return $this->render('portal/user/list.html.twig', [
-            'users' => $users,
-            'currentPage' => $page,
+            'rows' => $rows,
+            'currentPage' => $criteria->page,
             'totalPages' => $totalPages,
             'totalUsers' => $totalUsers,
-            'filter' => $filter,
-            'overdueUserCount' => $overdueUserCount,
-            'onboardedUserCount' => $onboardedUserCount,
-            'activeUserCount' => $activeUserCount,
-            'inactiveUserCount' => $inactiveUserCount,
-            'unverifiedUserCount' => $unverifiedUserCount,
-            'debtorIdSet' => $debtorIdSet,
-            'onboardedIdSet' => $onboardedIdSet,
-            'customerStats' => $customerStats,
+            'filter' => $criteria->filter,
+            'search' => $criteria->search,
+            'sort' => $criteria->sortColumn,
+            'dir' => $criteria->sortDirection,
+            'overdueUserCount' => $this->userRepository->countOverdueUsers($now),
+            'onboardedUserCount' => $this->userRepository->countOnboarded(),
+            'activeUserCount' => $this->userRepository->countWithActiveContracts($now, $activeUserIds),
+            'inactiveUserCount' => $this->userRepository->countWithoutActiveContracts($now, $activeUserIds),
+            'unverifiedUserCount' => $this->userRepository->countUnverified(),
         ]);
     }
 }

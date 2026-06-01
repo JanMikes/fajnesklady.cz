@@ -104,6 +104,66 @@ class UserListControllerTest extends WebTestCase
         $this->assertGreaterThan(0, $crawler->filter('a.btn-primary:contains("Vše")')->count());
     }
 
+    public function testSearchNarrowsTableToMatchingUser(): void
+    {
+        $this->client->loginUser($this->findUserByEmail('admin@example.com'), 'main');
+
+        $crawler = $this->client->request('GET', '/portal/users?q=tenant@example.com');
+
+        $this->assertResponseIsSuccessful();
+        $tableText = implode(' ', $crawler->filter('table tbody td')->extract(['_text']));
+        $this->assertStringContainsString('tenant@example.com', $tableText);
+        $this->assertStringNotContainsString('landlord@example.com', $tableText);
+    }
+
+    public function testSearchPreservesActiveFilterChip(): void
+    {
+        $this->client->loginUser($this->findUserByEmail('admin@example.com'), 'main');
+
+        $crawler = $this->client->request('GET', '/portal/users?q=example&filter=unverified');
+
+        $this->assertResponseIsSuccessful();
+        // The hidden filter field keeps the chip active across a search submit.
+        $this->assertGreaterThan(0, $crawler->filter('a.btn-accent:contains("Neověření")')->count());
+    }
+
+    public function testNoMatchShowsEmptyState(): void
+    {
+        $this->client->loginUser($this->findUserByEmail('admin@example.com'), 'main');
+
+        $this->client->request('GET', '/portal/users?q=zzz-definitely-no-such-user');
+
+        $this->assertResponseIsSuccessful();
+        $this->assertSelectorTextContains('body', 'Žádní uživatelé neodpovídají hledání.');
+    }
+
+    public function testSortableHeaderTogglesDirectionAndRendersArrow(): void
+    {
+        $this->client->loginUser($this->findUserByEmail('admin@example.com'), 'main');
+
+        // Active sort=mrr&dir=desc — the MRR header link must flip to asc and show the ▼ arrow.
+        $crawler = $this->client->request('GET', '/portal/users?sort=mrr&dir=desc');
+
+        $this->assertResponseIsSuccessful();
+        $mrrHeader = $crawler->filter('th:contains("MRR")');
+        $this->assertStringContainsString('▼', $mrrHeader->text());
+        $toggleLink = $mrrHeader->filter('a')->attr('href');
+        $this->assertStringContainsString('sort=mrr', (string) $toggleLink);
+        $this->assertStringContainsString('dir=asc', (string) $toggleLink);
+    }
+
+    public function testInvalidSortFallsBackToCreatedDesc(): void
+    {
+        $this->client->loginUser($this->findUserByEmail('admin@example.com'), 'main');
+
+        $crawler = $this->client->request('GET', '/portal/users?sort=evil&dir=evil');
+
+        $this->assertResponseIsSuccessful();
+        // Default sort = created desc — the Vytvořeno header carries the active ▼ arrow.
+        $createdHeader = $crawler->filter('th:contains("Vytvořeno")');
+        $this->assertStringContainsString('▼', $createdHeader->text());
+    }
+
     public function testNonAdminGetsForbidden(): void
     {
         $this->client->loginUser($this->findUserByEmail('user@example.com'), 'main');

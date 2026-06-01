@@ -9,11 +9,50 @@ use App\Entity\Order;
 use App\Entity\User;
 use App\Enum\UserRole;
 use App\Exception\UserNotFound;
+use App\Value\UserListCriteria;
+use App\Value\UserListRow;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 
 class UserRepository
 {
+    /**
+     * Mirrors {@see ContractRepository::findOverdueUserIds()} as a correlated
+     * EXISTS over the listed user. Kept in sync with that predicate manually.
+     */
+    private const string OVERDUE_EXISTS = <<<'SQL'
+        EXISTS (
+            SELECT 1 FROM contract oc
+            WHERE oc.user_id = u.id
+              AND (
+                (oc.terminated_at IS NULL AND (oc.failed_billing_attempts > 0 OR
+                    (oc.next_billing_date IS NOT NULL AND oc.next_billing_date < :overdueThreshold)))
+                OR (oc.outstanding_debt_amount IS NOT NULL AND oc.outstanding_debt_amount > 0)
+              )
+        )
+        SQL;
+
+    private const string ONBOARDED_EXISTS = <<<'SQL'
+        EXISTS (
+            SELECT 1 FROM orders oo
+            WHERE oo.user_id = u.id AND oo.is_admin_created = true
+        )
+        SQL;
+
+    /**
+     * Correlated EXISTS for "user has ≥1 active (non-terminated, not-yet-expired)
+     * contract" — mirrors {@see ContractRepository::findActiveContractUserIdsSubquery()}.
+     */
+    private const string ACTIVE_CONTRACT_EXISTS = <<<'SQL'
+        EXISTS (
+            SELECT 1 FROM contract ac
+            WHERE ac.user_id = u.id
+              AND ac.terminated_at IS NULL
+              AND (ac.end_date IS NULL OR ac.end_date >= :now)
+        )
+        SQL;
+
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly ContractRepository $contractRepository,
@@ -61,6 +100,104 @@ class UserRepository
     }
 
     /**
+     * One enriched SQL query backing the admin user list (spec 066). Returns
+     * rows already carrying the derived columns (active/total contract counts,
+     * MRR, YRR, overdue, onboarded) so search / filter / sort / pagination all
+     * operate over the full enriched dataset instead of per-page enrichment.
+     *
+     * The MRR / YRR / active / total aggregate sub-select reuses the exact
+     * predicates of {@see ContractRepository::loadCustomerStatsByUserIds()}.
+     * The overdue EXISTS mirrors {@see ContractRepository::findOverdueUserIds()}
+     * (no free-contract filter there, matching the badge it currently powers).
+     *
+     * @return list<UserListRow>
+     */
+    public function findForAdminList(UserListCriteria $criteria, \DateTimeImmutable $now): array
+    {
+        [$where, $params, $types] = $this->buildAdminListPredicate($criteria, $now);
+
+        // Sort column comes from the whitelist in UserListCriteria — never raw
+        // user input — so interpolating it is safe (DBAL can't bind identifiers).
+        $orderBy = sprintf('%s %s, u.id ASC', $criteria->sortExpression(), 'asc' === $criteria->sortDirection ? 'ASC' : 'DESC');
+
+        $params['limit'] = $criteria->limit;
+        $params['offset'] = ($criteria->page - 1) * $criteria->limit;
+
+        $sql = sprintf(
+            <<<'SQL'
+                SELECT
+                    u.id::text AS id,
+                    u.first_name,
+                    u.last_name,
+                    u.email,
+                    u.phone,
+                    u.roles,
+                    u.is_verified,
+                    u.deactivated_at,
+                    u.created_at,
+                    COALESCE(agg.active_count, 0) AS active_count,
+                    COALESCE(agg.total_count, 0) AS total_count,
+                    COALESCE(agg.mrr, 0) AS mrr,
+                    COALESCE(agg.yrr, 0) AS yrr,
+                    %s AS is_overdue,
+                    %s AS is_onboarded
+                FROM users u
+                LEFT JOIN (%s) agg ON agg.user_id = u.id
+                WHERE %s
+                ORDER BY %s
+                LIMIT :limit OFFSET :offset
+                SQL,
+            self::OVERDUE_EXISTS,
+            self::ONBOARDED_EXISTS,
+            $this->aggregateSubSelect(),
+            $where,
+            $orderBy,
+        );
+
+        $rows = $this->entityManager->getConnection()->executeQuery($sql, $params, $types)->fetchAllAssociative();
+
+        return array_map(static function (array $row): UserListRow {
+            /** @var array<string> $roles */
+            $roles = json_decode((string) $row['roles'], true, 512, \JSON_THROW_ON_ERROR);
+
+            return new UserListRow(
+                id: Uuid::fromString((string) $row['id']),
+                fullName: trim(sprintf('%s %s', (string) $row['first_name'], (string) $row['last_name'])),
+                email: (string) $row['email'],
+                phone: null !== $row['phone'] ? (string) $row['phone'] : null,
+                roles: $roles,
+                isVerified: (bool) $row['is_verified'],
+                isDeactivated: null !== $row['deactivated_at'],
+                createdAt: new \DateTimeImmutable((string) $row['created_at']),
+                activeCount: (int) $row['active_count'],
+                totalCount: (int) $row['total_count'],
+                mrrInHaler: (int) $row['mrr'],
+                yrrInHaler: (int) $row['yrr'],
+                isOverdue: (bool) $row['is_overdue'],
+                isOnboarded: (bool) $row['is_onboarded'],
+            );
+        }, $rows);
+    }
+
+    public function countForAdminList(UserListCriteria $criteria, \DateTimeImmutable $now): int
+    {
+        [$where, $params, $types] = $this->buildAdminListPredicate($criteria, $now);
+
+        $sql = sprintf(
+            <<<'SQL'
+                SELECT COUNT(*)
+                FROM users u
+                LEFT JOIN (%s) agg ON agg.user_id = u.id
+                WHERE %s
+                SQL,
+            $this->aggregateSubSelect(),
+            $where,
+        );
+
+        return (int) $this->entityManager->getConnection()->executeQuery($sql, $params, $types)->fetchOne();
+    }
+
+    /**
      * @return User[]
      */
     public function findAllPaginated(int $page, int $limit): array
@@ -92,7 +229,7 @@ class UserRepository
         $result = $connection->executeQuery(
             'SELECT COUNT(id) FROM users WHERE is_verified = :isVerified',
             ['isVerified' => true],
-            ['isVerified' => \Doctrine\DBAL\Types\Types::BOOLEAN]
+            ['isVerified' => Types::BOOLEAN]
         )->fetchOne();
 
         return (int) $result;
@@ -104,7 +241,7 @@ class UserRepository
         $result = $connection->executeQuery(
             'SELECT COUNT(id) FROM users WHERE roles::jsonb @> :role::jsonb',
             ['role' => json_encode([$role])],
-            ['role' => \Doctrine\DBAL\Types\Types::STRING]
+            ['role' => Types::STRING]
         )->fetchOne();
 
         return (int) $result;
@@ -121,7 +258,7 @@ class UserRepository
         $ids = $connection->executeQuery(
             'SELECT id FROM users WHERE roles::jsonb @> :role::jsonb',
             ['role' => json_encode([$role->value])],
-            ['role' => \Doctrine\DBAL\Types\Types::STRING]
+            ['role' => Types::STRING]
         )->fetchFirstColumn();
 
         if (0 === count($ids)) {
@@ -156,8 +293,8 @@ class UserRepository
                 'adminRole' => json_encode([UserRole::ADMIN->value]),
             ],
             [
-                'landlordRole' => \Doctrine\DBAL\Types\Types::STRING,
-                'adminRole' => \Doctrine\DBAL\Types\Types::STRING,
+                'landlordRole' => Types::STRING,
+                'adminRole' => Types::STRING,
             ]
         )->fetchFirstColumn();
 
@@ -353,9 +490,9 @@ class UserRepository
      *
      * @return iterable<User>
      */
-    public function streamForExport(?string $filter, \DateTimeImmutable $now): iterable
+    public function streamForExport(?string $filter, ?string $search, \DateTimeImmutable $now): iterable
     {
-        $qb = $this->buildExportQueryBuilder($filter, $now);
+        $qb = $this->buildExportQueryBuilder($filter, $search, $now);
 
         $batch = 0;
         foreach ($qb->getQuery()->toIterable() as $user) {
@@ -374,10 +511,10 @@ class UserRepository
      *
      * @return Uuid[]
      */
-    public function findIdsForExport(?string $filter, \DateTimeImmutable $now): array
+    public function findIdsForExport(?string $filter, ?string $search, \DateTimeImmutable $now): array
     {
         /** @var array<int, array{id: Uuid}> $rows */
-        $rows = $this->buildExportQueryBuilder($filter, $now)
+        $rows = $this->buildExportQueryBuilder($filter, $search, $now)
             ->select('u.id')
             ->getQuery()
             ->getArrayResult();
@@ -385,7 +522,7 @@ class UserRepository
         return array_map(static fn (array $r): Uuid => $r['id'], $rows);
     }
 
-    private function buildExportQueryBuilder(?string $filter, \DateTimeImmutable $now): \Doctrine\ORM\QueryBuilder
+    private function buildExportQueryBuilder(?string $filter, ?string $search, \DateTimeImmutable $now): \Doctrine\ORM\QueryBuilder
     {
         $qb = $this->entityManager->createQueryBuilder()
             ->select('u')
@@ -393,34 +530,111 @@ class UserRepository
             ->orderBy('u.createdAt', 'DESC')
             ->addOrderBy('u.id', 'DESC');
 
+        $trimmedSearch = null !== $search ? trim($search) : '';
+        if ('' !== $trimmedSearch) {
+            $qb->andWhere(
+                "LOWER(CONCAT(u.firstName, ' ', u.lastName)) LIKE :search "
+                .'OR LOWER(u.email) LIKE :search '
+                .'OR LOWER(u.phone) LIKE :search'
+            )->setParameter('search', '%'.mb_strtolower($trimmedSearch).'%');
+        }
+
         switch ($filter) {
             case 'overdue':
-                $qb->where('u.id IN (:ids)')
+                $qb->andWhere('u.id IN (:ids)')
                     ->setParameter('ids', $this->overdueUserIdsSubquery($now));
 
                 break;
             case 'onboarded':
-                $qb->where('u.id IN (:ids)')
+                $qb->andWhere('u.id IN (:ids)')
                     ->setParameter('ids', $this->onboardedUserIdsSubquery());
 
                 break;
             case 'active':
-                $qb->where('u.id IN (:ids)')
+                $qb->andWhere('u.id IN (:ids)')
                     ->setParameter('ids', $this->contractRepository->findActiveContractUserIdsSubquery($now));
 
                 break;
             case 'inactive':
-                $qb->where('u.id NOT IN (:ids)')
+                $qb->andWhere('u.id NOT IN (:ids)')
                     ->setParameter('ids', $this->contractRepository->findActiveContractUserIdsSubquery($now));
 
                 break;
             case 'unverified':
-                $qb->where('u.isVerified = false');
+                $qb->andWhere('u.isVerified = false');
 
                 break;
         }
 
         return $qb;
+    }
+
+    /**
+     * Shared FROM/JOIN WHERE clause + bound params for the admin-list query and
+     * its matching count. Returns [whereSql, params, types].
+     *
+     * @return array{string, array<string, mixed>, array<string, mixed>}
+     */
+    private function buildAdminListPredicate(UserListCriteria $criteria, \DateTimeImmutable $now): array
+    {
+        $params = [
+            'now' => $now,
+            'overdueThreshold' => $now->modify('-1 day'),
+        ];
+        $types = [
+            'now' => Types::DATETIME_IMMUTABLE,
+            'overdueThreshold' => Types::DATETIME_IMMUTABLE,
+        ];
+
+        $conditions = [];
+
+        if (null !== $criteria->search) {
+            $conditions[] = '((u.first_name || \' \' || u.last_name) ILIKE :search OR u.email ILIKE :search OR u.phone ILIKE :search)';
+            $params['search'] = '%'.$criteria->search.'%';
+            $types['search'] = Types::STRING;
+        }
+
+        $filterClause = match ($criteria->filter) {
+            'overdue' => self::OVERDUE_EXISTS,
+            'onboarded' => self::ONBOARDED_EXISTS,
+            'active' => self::ACTIVE_CONTRACT_EXISTS,
+            'inactive' => 'NOT '.self::ACTIVE_CONTRACT_EXISTS,
+            'unverified' => 'u.is_verified = false',
+            default => null,
+        };
+        if (null !== $filterClause) {
+            $conditions[] = $filterClause;
+        }
+
+        $where = [] === $conditions ? 'TRUE' : implode(' AND ', $conditions);
+
+        return [$where, $params, $types];
+    }
+
+    private function aggregateSubSelect(): string
+    {
+        return <<<'SQL'
+            SELECT c.user_id,
+                   COUNT(*) AS total_count,
+                   COUNT(*) FILTER (
+                       WHERE c.terminated_at IS NULL
+                         AND (c.end_date IS NULL OR c.end_date >= :now)
+                   ) AS active_count,
+                   COALESCE(SUM(COALESCE(c.individual_monthly_amount, o.total_price)) FILTER (
+                       WHERE c.terminated_at IS NULL
+                         AND (c.end_date IS NULL OR c.end_date >= :now)
+                         AND (c.end_date IS NULL OR (c.end_date - c.start_date) >= 28)
+                         AND c.payment_frequency != 'yearly'
+                   ), 0) AS mrr,
+                   COALESCE(SUM(o.total_price) FILTER (
+                       WHERE c.terminated_at IS NULL
+                         AND (c.end_date IS NULL OR c.end_date >= :now)
+                         AND c.payment_frequency = 'yearly'
+                   ), 0) AS yrr
+            FROM contract c
+            INNER JOIN orders o ON o.id = c.order_id
+            GROUP BY c.user_id
+            SQL;
     }
 
     /**
