@@ -109,38 +109,13 @@ final class OrderCreateController extends AbstractController
             );
         }
 
-        // Initial pricing rendered into the Alpine pricing preview. The Live
-        // Component takes over once a different storage is picked from the map.
-        $weeklyPrice = $preSelectedStorage->getEffectivePricePerWeekInCzk();
-        $monthlyPrice = $preSelectedStorage->getEffectivePricePerMonthInCzk();
-
-        $storages = $this->storageRepository->findByPlace($place);
-        $storagesData = array_map(static fn ($s) => [
-            'id' => $s->id->toRfc4122(),
-            'number' => $s->number,
-            'storageTypeId' => $s->storageType->id->toRfc4122(),
-            'storageTypeName' => $s->storageType->name,
-            'coordinates' => $s->coordinates,
-            'status' => $s->status->value,
-            'dimensions' => $s->storageType->getDimensionsInMeters(),
-            'pricePerWeek' => $s->getEffectivePricePerWeekInCzk(),
-            'pricePerMonth' => $s->getEffectivePricePerMonthInCzk(),
-            'isUniform' => $s->storageType->uniformStorages,
-            // Unit-specific photos first ("show me this exact unit"), then the
-            // generic storage-type photos ("…and what others of this type look like").
-            'photoUrls' => array_merge(
-                array_map(static fn ($p) => '/uploads/'.$p->path, $s->getPhotos()->toArray()),
-                array_map(static fn ($p) => '/uploads/'.$p->path, $s->storageType->getPhotos()->toArray()),
-            ),
-        ], $storages);
-
+        // The OrderForm Live Component owns the map payload now (it derives
+        // per-storage availability for the customer's chosen window), so the
+        // controller only needs to hand it the pre-selected unit + context.
         return $this->render('public/order_create.html.twig', [
             'storageType' => $storageType,
             'place' => $place,
-            'weeklyPrice' => $weeklyPrice,
-            'monthlyPrice' => $monthlyPrice,
             'preSelectedStorage' => $preSelectedStorage,
-            'storagesJson' => json_encode($storagesData),
         ]);
     }
 }

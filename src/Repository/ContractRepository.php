@@ -184,7 +184,12 @@ class ContractRepository
 
     /**
      * Active (non-terminated) contracts overlapping [$from, $to] for the given
-     * storages. Drives the calendar Gantt strip + per-day detail panel.
+     * storages. Drives the calendar Gantt strip + per-day detail panel, and the
+     * availability map (via {@see \App\Service\StorageAvailabilityChecker}).
+     *
+     * $to is nullable: a null upper bound means the requested window is
+     * open-ended (UNLIMITED), so any active contract from $from onward overlaps —
+     * mirroring {@see self::findOverlappingByStorage()}'s null-end branch.
      *
      * @param Storage[] $storages
      *
@@ -193,25 +198,28 @@ class ContractRepository
     public function findOverlappingByStorages(
         array $storages,
         \DateTimeImmutable $from,
-        \DateTimeImmutable $to,
+        ?\DateTimeImmutable $to,
     ): array {
         if ([] === $storages) {
             return [];
         }
 
-        return $this->entityManager->createQueryBuilder()
+        $qb = $this->entityManager->createQueryBuilder()
             ->select('c')
             ->from(Contract::class, 'c')
             ->where('c.storage IN (:storages)')
             ->andWhere('c.terminatedAt IS NULL')
-            ->andWhere('c.startDate <= :to')
             ->andWhere('c.endDate IS NULL OR c.endDate >= :from')
             ->setParameter('storages', $storages)
             ->setParameter('from', $from)
-            ->setParameter('to', $to)
-            ->orderBy('c.startDate', 'ASC')
-            ->getQuery()
-            ->getResult();
+            ->orderBy('c.startDate', 'ASC');
+
+        if (null !== $to) {
+            $qb->andWhere('c.startDate <= :to')
+                ->setParameter('to', $to);
+        }
+
+        return $qb->getQuery()->getResult();
     }
 
     /**

@@ -11,6 +11,7 @@ use App\Enum\StorageStatus;
 use App\Repository\ContractRepository;
 use App\Repository\OrderRepository;
 use App\Repository\StorageUnavailabilityRepository;
+use App\Value\StorageAvailability;
 
 /**
  * Service for checking storage availability.
@@ -80,6 +81,82 @@ final readonly class StorageAvailabilityChecker
         }
 
         return true;
+    }
+
+    /**
+     * Bulk, date-range availability for a set of storages over ONE window.
+     * Reuses the EXACT predicates of {@see self::isAvailable()} — manual block
+     * status + overlapping unavailability records + overlapping orders +
+     * overlapping contracts — so the availability map can never disagree with
+     * order-acceptance enforcement. Runs three queries total (not per storage).
+     *
+     * @param Storage[] $storages
+     *
+     * @return array<string, StorageAvailability> keyed by Storage->id->toRfc4122()
+     */
+    public function availabilityForStorages(
+        array $storages,
+        \DateTimeImmutable $startDate,
+        ?\DateTimeImmutable $endDate,
+    ): array {
+        if ([] === $storages) {
+            return [];
+        }
+
+        $blockedIds = [];
+        foreach ($this->unavailabilityRepository->findOverlappingByStorages($storages, $startDate, $endDate) as $block) {
+            $blockedIds[$block->storage->id->toRfc4122()] = true;
+        }
+
+        $contractedIds = [];
+        foreach ($this->contractRepository->findOverlappingByStorages($storages, $startDate, $endDate) as $contract) {
+            $contractedIds[$contract->storage->id->toRfc4122()] = true;
+        }
+
+        $orderedIds = [];
+        foreach ($this->orderRepository->findOverlappingByStorages($storages, $startDate, $endDate) as $order) {
+            $orderedIds[$order->storage->id->toRfc4122()] = true;
+        }
+
+        $result = [];
+        foreach ($storages as $storage) {
+            $key = $storage->id->toRfc4122();
+            $result[$key] = $this->decide(
+                $storage,
+                hasOverlappingBlock: isset($blockedIds[$key]),
+                hasOverlappingContract: isset($contractedIds[$key]),
+                hasOverlappingOrder: isset($orderedIds[$key]),
+            );
+        }
+
+        return $result;
+    }
+
+    /**
+     * Decide a storage's availability + derived status from its booking state.
+     * Precedence mirrors {@see self::getBlockingReasons()}: manual block, then
+     * active contract, then blocking order. A storage manually marked
+     * unavailable is blocked on every date, regardless of overlaps.
+     */
+    private function decide(
+        Storage $storage,
+        bool $hasOverlappingBlock,
+        bool $hasOverlappingContract,
+        bool $hasOverlappingOrder,
+    ): StorageAvailability {
+        if (StorageStatus::MANUALLY_UNAVAILABLE === $storage->status || $hasOverlappingBlock) {
+            return new StorageAvailability(false, StorageStatus::MANUALLY_UNAVAILABLE);
+        }
+
+        if ($hasOverlappingContract) {
+            return new StorageAvailability(false, StorageStatus::OCCUPIED);
+        }
+
+        if ($hasOverlappingOrder) {
+            return new StorageAvailability(false, StorageStatus::RESERVED);
+        }
+
+        return new StorageAvailability(true, StorageStatus::AVAILABLE);
     }
 
     /**

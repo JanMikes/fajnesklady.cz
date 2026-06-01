@@ -11,23 +11,18 @@ use App\Repository\PlatformSettingsRepository;
 use App\Repository\StorageRepository;
 use App\Repository\UserRepository;
 use App\Service\PriceCalculator;
+use App\Service\StorageAvailabilityChecker;
 use App\Twig\Components\OrderForm;
 use App\Value\PaymentSchedule;
 use App\Value\PaymentScheduleEntry;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\HttpFoundation\RequestStack;
-use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Twig\Environment;
 
 final class OrderFormTest extends KernelTestCase
 {
     private EntityManagerInterface $entityManager;
-    private StorageRepository $storageRepository;
-    private UserRepository $userRepository;
-    private UrlGeneratorInterface $urlGenerator;
-    private PriceCalculator $priceCalculator;
-    private PlatformSettingsRepository $platformSettingsRepository;
     private Environment $twig;
 
     protected function setUp(): void
@@ -35,13 +30,6 @@ final class OrderFormTest extends KernelTestCase
         self::bootKernel();
         $container = static::getContainer();
         $this->entityManager = $container->get('doctrine')->getManager();
-        $this->storageRepository = $container->get(StorageRepository::class);
-        $this->userRepository = $container->get(UserRepository::class);
-        // 'router' is publicly registered and implements UrlGeneratorInterface; the interface alias
-        // is private and inlined out of the test container, so we fetch the concrete service id.
-        $this->urlGenerator = $container->get('router');
-        $this->priceCalculator = $container->get(PriceCalculator::class);
-        $this->platformSettingsRepository = $container->get(PlatformSettingsRepository::class);
         $this->twig = $container->get('test.twig');
     }
 
@@ -85,11 +73,23 @@ final class OrderFormTest extends KernelTestCase
     public function testSelectStorageRejectsUnavailableStorage(): void
     {
         [$place, $storageType, $a1] = $this->loadCentrumSmallContext('A1');
-        // A4 is MANUALLY_UNAVAILABLE per fixtures.
+        // A4 is MANUALLY_UNAVAILABLE per fixtures — blocked on every date by the checker.
         $a4 = $this->findStorageByNumber('A4');
 
         $component = $this->makeComponent($place, $storageType, $a1);
         $component->selectStorage($a4->id->toRfc4122());
+
+        self::assertSame($a1->id->toRfc4122(), $component->storageId);
+    }
+
+    public function testSelectStorageRejectedUntilRentalWindowChosen(): void
+    {
+        [$place, $storageType, $a1] = $this->loadCentrumSmallContext('A1');
+        $a2 = $this->findStorageByNumber('A2');
+
+        // No dates chosen → no usable window → nothing is selectable (Q1 gate).
+        $component = $this->makeComponent($place, $storageType, $a1, []);
+        $component->selectStorage($a2->id->toRfc4122());
 
         self::assertSame($a1->id->toRfc4122(), $component->storageId);
     }
@@ -111,6 +111,50 @@ final class OrderFormTest extends KernelTestCase
         $component = $this->makeComponent($place, $storageType, $a1);
 
         self::assertTrue($component->getSelectedStorage()->id->equals($a1->id));
+    }
+
+    public function testGetStoragesJsonReflectsDerivedAvailabilityForChosenWindow(): void
+    {
+        [$place, $storageType, $a1] = $this->loadCentrumSmallContext('A1');
+
+        $component = $this->makeComponent($place, $storageType, $a1);
+        /** @var array<int, array<string, mixed>> $payload */
+        $payload = json_decode($component->getStoragesJson(), true, flags: JSON_THROW_ON_ERROR);
+
+        $byNumber = [];
+        foreach ($payload as $entry) {
+            $byNumber[$entry['number']] = $entry;
+        }
+
+        // A2 is free (no records) → available; A4 is MANUALLY_UNAVAILABLE → not.
+        self::assertTrue($byNumber['A2']['available']);
+        self::assertFalse($byNumber['A4']['available']);
+        self::assertSame('manually_unavailable', $byNumber['A4']['status']);
+    }
+
+    public function testGetStoragesJsonMarksEverythingUnavailableUntilWindowChosen(): void
+    {
+        [$place, $storageType, $a1] = $this->loadCentrumSmallContext('A1');
+
+        $component = $this->makeComponent($place, $storageType, $a1, []);
+        /** @var array<int, array<string, mixed>> $payload */
+        $payload = json_decode($component->getStoragesJson(), true, flags: JSON_THROW_ON_ERROR);
+
+        self::assertNotEmpty($payload);
+        foreach ($payload as $entry) {
+            self::assertFalse(
+                $entry['available'],
+                sprintf('Storage %s must be unavailable until a rental window is chosen.', $entry['number']),
+            );
+        }
+    }
+
+    public function testHasValidWindowReflectsTheChosenDates(): void
+    {
+        [$place, $storageType, $a1] = $this->loadCentrumSmallContext('A1');
+
+        self::assertTrue($this->makeComponent($place, $storageType, $a1)->hasValidWindow());
+        self::assertFalse($this->makeComponent($place, $storageType, $a1, [])->hasValidWindow());
     }
 
     // Spec 042: the customer-facing schedule panel must never expose a lifetime sum across recurring charges.
@@ -170,15 +214,43 @@ final class OrderFormTest extends KernelTestCase
         self::assertStringNotContainsString('16 500', $rendered);
     }
 
-    private function makeComponent(Place $place, StorageType $storageType, Storage $storage): OrderForm
+    /**
+     * @param array<string, string>|null $formValues live field values (rentalType/startDate/endDate);
+     *                                               null → a valid LIMITED window, [] → no window
+     */
+    private function makeComponent(Place $place, StorageType $storageType, Storage $storage, ?array $formValues = null): OrderForm
     {
-        // selectStorage / getSelectedStorage do not need session state, so a fresh RequestStack is fine here.
-        $component = new OrderForm($this->storageRepository, $this->userRepository, new RequestStack(), $this->urlGenerator, $this->priceCalculator, $this->platformSettingsRepository);
+        $container = static::getContainer();
+        $component = new OrderForm(
+            $container->get(StorageRepository::class),
+            $container->get(UserRepository::class),
+            new RequestStack(),
+            $container->get('router'),
+            $container->get(PriceCalculator::class),
+            $container->get(PlatformSettingsRepository::class),
+            $container->get(StorageAvailabilityChecker::class),
+        );
+
         $component->place = $place;
         $component->storageType = $storageType;
         $component->storageId = $storage->id->toRfc4122();
+        // selectStorage / getStoragesJson resolve the window from the live form values
+        // (the client's current field values), exactly as they do during a LiveAction.
+        $component->formValues = $formValues ?? $this->limitedWindowValues();
 
         return $component;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function limitedWindowValues(): array
+    {
+        return [
+            'rentalType' => 'limited',
+            'startDate' => (new \DateTimeImmutable('+10 days'))->format('Y-m-d'),
+            'endDate' => (new \DateTimeImmutable('+40 days'))->format('Y-m-d'),
+        ];
     }
 
     /**

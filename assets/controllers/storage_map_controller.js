@@ -509,9 +509,11 @@ export default class extends Controller {
         group.add(rect);
         group.add(text);
 
-        // Determine if this storage is clickable
+        // Determine if this storage is clickable. In select mode (order +
+        // onboarding) availability is the date-range-derived `available` flag —
+        // never the mutable status enum, which drifts vs. enforcement.
         const isClickable = this.selectModeValue
-            ? storage.status === 'available'
+            ? storage.available === true
                 && storage.storageTypeId === this.currentStorageTypeIdValue
                 && storage.id !== this.highlightStorageValue
             : storage.status === 'available';
@@ -743,9 +745,10 @@ export default class extends Controller {
     }
 
     getStatusText(status, storage) {
-        // Simplified labels in order mode
+        // Simplified labels in booking (order/onboarding) mode — keyed on the
+        // date-range-derived `available` flag, not the stale status enum.
         if (this.hasCurrentStorageTypeIdValue && this.currentStorageTypeIdValue) {
-            if (storage && storage.storageTypeId === this.currentStorageTypeIdValue && status === 'available') {
+            if (storage && storage.storageTypeId === this.currentStorageTypeIdValue && storage.available === true) {
                 return 'Volný';
             }
             return 'Nedostupný';
@@ -761,9 +764,10 @@ export default class extends Controller {
     }
 
     getStatusClass(status, storage) {
-        // Simplified classes in order mode
+        // Simplified classes in booking (order/onboarding) mode — keyed on the
+        // date-range-derived `available` flag, not the stale status enum.
         if (this.hasCurrentStorageTypeIdValue && this.currentStorageTypeIdValue) {
-            if (storage && storage.storageTypeId === this.currentStorageTypeIdValue && status === 'available') {
+            if (storage && storage.storageTypeId === this.currentStorageTypeIdValue && storage.available === true) {
                 return 'badge-success';
             }
             return 'badge-ghost';
@@ -779,9 +783,10 @@ export default class extends Controller {
     }
 
     getStorageColor(storage) {
-        // In order mode: only available storages of the current type are green
+        // In booking (order/onboarding) mode: only date-range-available storages
+        // of the current type are green; everything else is greyed.
         if (this.hasCurrentStorageTypeIdValue && this.currentStorageTypeIdValue) {
-            if (storage.storageTypeId === this.currentStorageTypeIdValue && storage.status === 'available') {
+            if (storage.storageTypeId === this.currentStorageTypeIdValue && storage.available === true) {
                 return '#22c55e';
             }
             return '#9ca3af';
