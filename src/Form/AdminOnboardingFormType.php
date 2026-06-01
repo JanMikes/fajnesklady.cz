@@ -185,6 +185,9 @@ final class AdminOnboardingFormType extends AbstractType
                 'label' => 'Předplaceno do',
                 'required' => false,
                 'widget' => 'single_text',
+                'attr' => [
+                    'data-datepicker-min-date-value' => (new \DateTimeImmutable('today'))->format('Y-m-d'),
+                ],
                 'help' => 'Po vypršení předplatného bude zákazníkovi 7 dní předem zaslán e-mail s žádostí o nastavení automatické platby.',
             ])
             ->add('contractDocument', FileType::class, [

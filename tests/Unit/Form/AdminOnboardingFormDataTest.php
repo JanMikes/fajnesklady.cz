@@ -76,8 +76,8 @@ final class AdminOnboardingFormDataTest extends TestCase
     {
         $data = $this->validData();
         $data->rentalType = RentalType::LIMITED;
-        $data->startDate = new \DateTimeImmutable('2025-06-15');
-        $data->endDate = new \DateTimeImmutable('2025-06-18');
+        $data->startDate = new \DateTimeImmutable('today');
+        $data->endDate = new \DateTimeImmutable('today +3 days');
 
         $violations = $this->violationsAt('endDate', $data);
         self::assertNotEmpty($violations);
@@ -184,7 +184,7 @@ final class AdminOnboardingFormDataTest extends TestCase
         $data->debtAmountInCzk = 500.0;
         $data->paymentMethod = PaymentMethod::EXTERNAL;
         $data->isExternallyPrepaid = true;
-        $data->paidThroughDate = new \DateTimeImmutable('2026-01-01');
+        $data->paidThroughDate = (new \DateTimeImmutable('today'))->modify('+6 months');
 
         $violations = $this->violationsAt('paymentMethod', $data);
         self::assertNotEmpty($violations);
@@ -242,6 +242,75 @@ final class AdminOnboardingFormDataTest extends TestCase
         self::assertNotEmpty($violations);
     }
 
+    public function testPaidThroughDateInThePastIsRejected(): void
+    {
+        $data = $this->validData();
+        $data->isExternallyPrepaid = true;
+        $data->paidThroughDate = new \DateTimeImmutable('today -1 day');
+
+        $violations = $this->violationsAt('paidThroughDate', $data);
+        self::assertNotEmpty($violations);
+    }
+
+    public function testPaidThroughDateTodayPasses(): void
+    {
+        $data = $this->validData();
+        $data->isExternallyPrepaid = true;
+        $data->paidThroughDate = new \DateTimeImmutable('today');
+
+        $violations = $this->violationsAt('paidThroughDate', $data);
+        self::assertEmpty($violations);
+    }
+
+    public function testBackdatedNonFreeStartRequiresPrepaidDate(): void
+    {
+        $data = $this->validData();
+        $data->startDate = new \DateTimeImmutable('today -1 day');
+        $data->monthlyPriceMode = 'standard';
+        $data->isExternallyPrepaid = false;
+        $data->paidThroughDate = null;
+
+        $violations = $this->violationsAt('paidThroughDate', $data);
+        self::assertNotEmpty($violations);
+    }
+
+    public function testBackdatedFreeStartDoesNotRequirePrepaidDate(): void
+    {
+        $data = $this->validData();
+        $data->startDate = new \DateTimeImmutable('today -1 day');
+        $data->monthlyPriceMode = 'free';
+        $data->isExternallyPrepaid = false;
+        $data->paidThroughDate = null;
+
+        $violations = $this->violationsAt('paidThroughDate', $data);
+        self::assertEmpty($violations);
+    }
+
+    public function testBackdatedNonFreeStartWithFutureDatePasses(): void
+    {
+        $data = $this->validData();
+        $data->startDate = new \DateTimeImmutable('today -1 day');
+        $data->monthlyPriceMode = 'standard';
+        $data->paidThroughDate = new \DateTimeImmutable('today +30 days');
+
+        $violations = $this->violationsAt('paidThroughDate', $data);
+        self::assertEmpty($violations);
+    }
+
+    public function testStartsInPastReflectsStartDate(): void
+    {
+        $data = $this->validData();
+
+        $data->startDate = new \DateTimeImmutable('today -1 day');
+        self::assertTrue($data->startsInPast());
+
+        $data->startDate = new \DateTimeImmutable('today');
+        self::assertFalse($data->startsInPast());
+
+        $data->startDate = new \DateTimeImmutable('today +1 day');
+        self::assertFalse($data->startsInPast());
+    }
+
     /**
      * @return array<int, \Symfony\Component\Validator\ConstraintViolationInterface>
      */
@@ -279,7 +348,7 @@ final class AdminOnboardingFormDataTest extends TestCase
         $data->addressOverride = true;
         $data->rentalType = RentalType::UNLIMITED;
         $data->expectedDuration = ExpectedDuration::MEDIUM;
-        $data->startDate = new \DateTimeImmutable('2025-06-15');
+        $data->startDate = new \DateTimeImmutable('today');
         $data->paymentMethod = PaymentMethod::GOPAY;
         $data->billingMode = BillingMode::AUTO_RECURRING;
         $data->paymentFrequency = PaymentFrequency::MONTHLY;

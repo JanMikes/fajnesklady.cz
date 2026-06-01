@@ -114,6 +114,12 @@ final class AdminOnboardingFormData implements HasBillingAddress
             && null !== $this->billingPostalCode && '' !== $this->billingPostalCode;
     }
 
+    public function startsInPast(): bool
+    {
+        return null !== $this->startDate
+            && $this->startDate < new \DateTimeImmutable('today');
+    }
+
     #[Assert\Callback]
     public function validateCompanyInfo(ExecutionContextInterface $context): void
     {
@@ -276,6 +282,10 @@ final class AdminOnboardingFormData implements HasBillingAddress
             return;
         }
 
+        if ($this->startsInPast()) {
+            return; // backdated → handled by validatePaidThroughDate
+        }
+
         if ($this->isExternallyPrepaid) {
             return;
         }
@@ -290,24 +300,42 @@ final class AdminOnboardingFormData implements HasBillingAddress
     #[Assert\Callback]
     public function validatePaidThroughDate(ExecutionContextInterface $context): void
     {
-        if (!$this->isExternallyPrepaid) {
+        // The "Předplaceno do" date is in play when the customer prepaid externally, or
+        // when the rental starts in the past (elapsed period must already be covered).
+        // Never for free rentals. When not in play it is nulled at submit — don't validate
+        // a stale value.
+        $collected = 'free' !== $this->monthlyPriceMode
+            && ($this->isExternallyPrepaid || $this->startsInPast());
+
+        if (!$collected) {
             return;
         }
 
         if (null === $this->paidThroughDate) {
-            $context->buildViolation('Zadejte datum, do kdy je předplaceno.')
+            $context->buildViolation($this->startsInPast()
+                ? 'Datum začátku je v minulosti — zadejte datum, do kdy má zákazník předplaceno (dnes nebo v budoucnosti).'
+                : 'Zadejte datum, do kdy je předplaceno.')
                 ->atPath('paidThroughDate')
                 ->addViolation();
 
             return;
         }
 
+        // Must be today or in the future.
+        if ($this->paidThroughDate < new \DateTimeImmutable('today')) {
+            $context->buildViolation('Datum „Předplaceno do" musí být dnes nebo v budoucnosti.')
+                ->atPath('paidThroughDate')
+                ->addViolation();
+        }
+
+        // Cannot precede the start date.
         if (null !== $this->startDate && $this->paidThroughDate < $this->startDate) {
             $context->buildViolation('Datum předplatby nemůže být před datem začátku.')
                 ->atPath('paidThroughDate')
                 ->addViolation();
         }
 
+        // For fixed-term rentals, cannot exceed the contract end.
         if (RentalType::LIMITED === $this->rentalType
             && null !== $this->endDate
             && $this->paidThroughDate > $this->endDate

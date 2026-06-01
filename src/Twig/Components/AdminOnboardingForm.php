@@ -383,7 +383,10 @@ final class AdminOnboardingForm extends AbstractController
             'free' => 0,
             default => null,
         };
-        $paidThroughDate = $formData->isExternallyPrepaid ? $formData->paidThroughDate : null;
+        $paidThroughDate = ($formData->isExternallyPrepaid
+            || ($formData->startsInPast() && 'free' !== $formData->monthlyPriceMode))
+            ? $formData->paidThroughDate
+            : null;
 
         $uploadedContractPath = null;
         if (null !== $formData->contractDocument) {
