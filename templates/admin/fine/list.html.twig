@@ -42,18 +42,13 @@
     </div>
 
     {# Search #}
-    <form method="get" action="{{ path('admin_fine_list') }}" class="mb-6">
-        {% if status %}
-            <input type="hidden" name="status" value="{{ status }}">
+    <form method="get" action="{{ path('admin_fine_list') }}" class="mb-4 flex items-center gap-2">
+        {% if status %}<input type="hidden" name="status" value="{{ status }}">{% endif %}
+        <input type="search" name="search" value="{{ search }}" placeholder="Hledat zákazníka (jméno, e-mail)…" class="form-input text-sm py-1.5 w-72">
+        <button type="submit" class="btn btn-sm btn-primary">Hledat</button>
+        {% if search %}
+            <a href="{{ path('admin_fine_list', {status: status}) }}" class="btn btn-sm btn-ghost">Zrušit</a>
         {% endif %}
-        <div class="flex gap-2">
-            <input type="text" name="search" value="{{ search }}" placeholder="Hledat zákazníka (jméno, email)..."
-                   class="form-input max-w-md text-sm">
-            <button type="submit" class="btn btn-primary btn-sm">Hledat</button>
-            {% if search %}
-                <a href="{{ path('admin_fine_list', {status: status}) }}" class="btn btn-secondary btn-sm">Zrušit</a>
-            {% endif %}
-        </div>
     </form>
 
     <p class="text-sm text-gray-500 mb-4">Celkem: {{ totalFines }} {{ totalFines == 1 ? 'pokuta' : (totalFines < 5 and totalFines > 1 ? 'pokuty' : 'pokut') }}</p>
