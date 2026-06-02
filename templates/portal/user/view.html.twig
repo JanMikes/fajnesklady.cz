@@ -170,6 +170,18 @@
                         {{ (totalDebtInHaler / 100)|number_format(0, ',', ' ') }} Kč
                     </div>
                 </div>
+                <div>
+                    <div class="text-sm text-gray-500">Po splatnosti</div>
+                    <div class="text-2xl font-bold {{ overdueAmountInHaler > 0 ? 'text-red-600' : 'text-gray-900' }}">
+                        {{ (overdueAmountInHaler / 100)|number_format(0, ',', ' ') }} Kč
+                    </div>
+                </div>
+                <div>
+                    <div class="text-sm text-gray-500">Pokuty</div>
+                    <div class="text-2xl font-bold {{ finesAmountInHaler > 0 ? 'text-red-600' : 'text-gray-900' }}">
+                        {{ (finesAmountInHaler / 100)|number_format(0, ',', ' ') }} Kč
+                    </div>
+                </div>
             </div>
             {% if overdueViewsByContractId is not empty %}
                 <div class="mt-4">

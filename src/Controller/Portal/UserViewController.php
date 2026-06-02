@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Controller\Portal;
 
+use App\Entity\Fine;
 use App\Entity\Order;
 use App\Repository\ContractRepository;
+use App\Repository\FineRepository;
 use App\Repository\OrderRepository;
 use App\Repository\UserRepository;
 use App\Service\Overdue\OverdueChecker;
@@ -24,6 +26,7 @@ final class UserViewController extends AbstractController
         private readonly UserRepository $userRepository,
         private readonly OrderRepository $orderRepository,
         private readonly ContractRepository $contractRepository,
+        private readonly FineRepository $fineRepository,
         private readonly OverdueChecker $overdueChecker,
         private readonly ClockInterface $clock,
     ) {
@@ -40,9 +43,13 @@ final class UserViewController extends AbstractController
         );
         $stats = $this->contractRepository->loadCustomerStatsByUserIds([$user->id], $now)[$user->id->toRfc4122()] ?? null;
 
+        // Total overdue = sum of the per-contract overdue amounts the checker
+        // surfaces (terminated debt or the missed monthly charge per contract).
         $overdueViewsByContractId = [];
+        $overdueAmountInHaler = 0;
         foreach ($this->overdueChecker->findOverdueViewsForUser($now, $user->id) as $view) {
             $overdueViewsByContractId[$view->contract->id->toRfc4122()] = $view;
+            $overdueAmountInHaler += $view->overdueAmount;
         }
 
         // Total debt = contract outstanding debt across all the user's contracts
@@ -58,6 +65,12 @@ final class UserViewController extends AbstractController
             }
         }
 
+        // Outstanding fines = unpaid, non-cancelled contractual fines (spec 053).
+        $finesAmountInHaler = array_sum(array_map(
+            static fn (Fine $fine): int => $fine->amountInHaler,
+            $this->fineRepository->findUnpaidByUser($user),
+        ));
+
         return $this->render('portal/user/view.html.twig', [
             'user' => $user,
             'orders' => $orders,
@@ -65,6 +78,8 @@ final class UserViewController extends AbstractController
             'stats' => $stats,
             'overdueViewsByContractId' => $overdueViewsByContractId,
             'totalDebtInHaler' => $totalDebtInHaler,
+            'overdueAmountInHaler' => $overdueAmountInHaler,
+            'finesAmountInHaler' => $finesAmountInHaler,
             'now' => $now,
         ]);
     }
