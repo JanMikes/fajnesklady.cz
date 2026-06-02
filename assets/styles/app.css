@@ -866,17 +866,30 @@ select[data-controller~="tom-select"] {
     pointer-events: none;
 }
 
+/* TomSelect copies the original <select>'s class list onto the wrapper, but not
+   its width. The wrapper is block-level, so inside a flex item with no width it
+   collapses to the rendered item text (e.g. "Vše" → a few px wide). Pin a
+   sensible min-width matching the sibling text inputs (w-56) so it never
+   collapses, and fill the container when one is provided (flex-1 layouts). */
 .ts-wrapper.form-input {
-    @apply border-0 p-0 shadow-none bg-transparent;
+    @apply border-0 p-0 shadow-none bg-transparent w-full min-w-[14rem];
 }
 
 .ts-wrapper.single .ts-control {
     @apply min-h-[42px] border border-gray-300 rounded-md px-3 py-2 text-sm shadow-sm bg-white;
 }
 
+/* Compact variant: admin filter rows render the <select> with `text-sm py-1.5`
+   to match their compact text/date inputs. TomSelect copies `text-sm` onto the
+   wrapper, so key off it to shrink the control to the same ~34px height. */
+.ts-wrapper.form-input.text-sm .ts-control {
+    @apply min-h-0 py-1.5;
+}
+
+/* Match .form-input:focus exactly — accent border, no extra ring. */
 .ts-wrapper.single.input-active .ts-control,
 .ts-wrapper.single.focus .ts-control {
-    @apply ring-1 border-gray-400;
+    border-color: var(--color-accent);
 }
 
 .ts-wrapper .ts-dropdown {
