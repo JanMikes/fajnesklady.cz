@@ -92,6 +92,40 @@ class PaymentRepositoryTest extends KernelTestCase
         $this->assertSame(0, $this->repository->sumPaidByOrder($order));
     }
 
+    public function testSumPaidForOrderCombinesInitialOrderPaymentAndRecurringContractPayments(): void
+    {
+        $tenant = $this->createUser('tenant-lifecycle@test.com');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType($place);
+        $storage = $this->createStorage($storageType, $place, 'PLC1');
+        $order = $this->createOrder($tenant, $storage, new \DateTimeImmutable('2025-06-15'), new \DateTimeImmutable('2025-12-15'));
+        $contract = $this->createContract($order, $tenant, $storage, $order->startDate, $order->endDate);
+
+        // Initial payment links to the order only (RecordPaymentOnOrderPaidHandler).
+        $this->createPayment($order, null, $storage, 200_00, new \DateTimeImmutable('2025-06-15'));
+        // Recurring charges link to the contract only (RecordPaymentOnRecurringChargeHandler).
+        $this->createPayment(null, $contract, $storage, 200_00, new \DateTimeImmutable('2025-07-15'));
+        $this->entityManager->flush();
+
+        // By-contract alone would miss the initial 200 Kč; the lifecycle sum must include it.
+        $this->assertSame(200_00, $this->repository->sumPaidByContract($contract));
+        $this->assertSame(400_00, $this->repository->sumPaidForOrder($order, $contract));
+    }
+
+    public function testSumPaidForOrderFallsBackToOrderBeforeContractExists(): void
+    {
+        $tenant = $this->createUser('tenant-lifecycle-nocontract@test.com');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType($place);
+        $storage = $this->createStorage($storageType, $place, 'PLC2');
+        $order = $this->createOrder($tenant, $storage, new \DateTimeImmutable('2025-06-15'), null);
+
+        $this->createPayment($order, null, $storage, 200_00, new \DateTimeImmutable('2025-06-15'));
+        $this->entityManager->flush();
+
+        $this->assertSame(200_00, $this->repository->sumPaidForOrder($order, null));
+    }
+
     public function testSumAtPlaceAndPeriodScopedByPlaceAndOwner(): void
     {
         $tenant = $this->createUser('tenant-place-period@test.com');

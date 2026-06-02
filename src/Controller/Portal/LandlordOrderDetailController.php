@@ -60,9 +60,7 @@ final class LandlordOrderDetailController extends AbstractController
         }
 
         $paymentSchedule = $this->priceCalculator->buildScheduleFromOrder($order);
-        $totalPaid = null !== $contract
-            ? $this->paymentRepository->sumPaidByContract($contract)
-            : $this->paymentRepository->sumPaidByOrder($order);
+        $totalPaid = $this->paymentRepository->sumPaidForOrder($order, $contract);
 
         return $this->render('portal/landlord/order/detail.html.twig', [
             'order' => $order,

@@ -115,6 +115,33 @@ class PaymentRepository
     }
 
     /**
+     * Total amount (in halíře) the tenant has paid across an order's whole
+     * lifecycle: the initial payment (linked to the Order — see
+     * RecordPaymentOnOrderPaidHandler) plus every recurring charge (linked to
+     * the Contract once it exists — see RecordPaymentOnRecurringChargeHandler).
+     *
+     * The initial payment is never re-linked to the contract, so summing by
+     * contract alone would always miss it. A Payment is linked to exactly one
+     * of order/contract, and SUM counts each matching row once, so the OR
+     * never double-counts. Pass $contract = null before the contract exists.
+     */
+    public function sumPaidForOrder(Order $order, ?Contract $contract): int
+    {
+        $qb = $this->entityManager->createQueryBuilder()
+            ->select('SUM(p.amount)')
+            ->from(Payment::class, 'p')
+            ->where('p.order = :order')
+            ->setParameter('order', $order);
+
+        if (null !== $contract) {
+            $qb->orWhere('p.contract = :contract')
+                ->setParameter('contract', $contract);
+        }
+
+        return (int) ($qb->getQuery()->getSingleScalarResult() ?? 0);
+    }
+
+    /**
      * Find all payments for storages owned by a landlord in a specific period.
      *
      * @return Payment[]

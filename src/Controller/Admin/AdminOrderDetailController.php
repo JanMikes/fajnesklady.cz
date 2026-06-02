@@ -73,9 +73,7 @@ final class AdminOrderDetailController extends AbstractController
         }
 
         $paymentSchedule = $this->priceCalculator->buildScheduleFromOrder($order);
-        $totalPaid = null !== $contract
-            ? $this->paymentRepository->sumPaidByContract($contract)
-            : $this->paymentRepository->sumPaidByOrder($order);
+        $totalPaid = $this->paymentRepository->sumPaidForOrder($order, $contract);
 
         $isUserOverdue = [] !== $this->overdueChecker->filterOverdueUserIds(
             $now,

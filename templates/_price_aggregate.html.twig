@@ -1,9 +1,14 @@
 {# Extra rows for staff: "Zaplaceno" + (when applicable) "K zaplacení celkem".
    Caller is responsible for gating: only include from admin/landlord templates.
    Inputs:
-     order            Order
-     paymentSchedule  PaymentSchedule
-     totalPaid        int   halíře, sum of Payment.amount
+     order                     Order
+     paymentSchedule           PaymentSchedule
+     totalPaid                 int  halíře, money credited to this order/contract
+                                    (sum of every Payment row — drives billing)
+     bankTransferReceivedTotal int  (optional) halíře, money matched from incoming
+                                    bank transfers. Only differs from totalPaid when
+                                    a wire was received but not (fully) recorded as a
+                                    Payment — a reconciliation gap worth flagging.
    For unlimited-recurring orders the "K zaplacení celkem" row is omitted —
    the lifetime total is undefined.
 #}
@@ -18,6 +23,9 @@
     <dt class="text-sm font-medium text-gray-500">Přijato bankovním převodem</dt>
     <dd class="mt-1 text-sm text-amber-600 font-semibold">
         {{ (bankTransferReceivedTotal / 100)|number_format(2, ',', ' ') }} Kč
+    </dd>
+    <dd class="mt-0.5 text-xs text-amber-600">
+        Neshoduje se se zaplacenou částkou — zkontrolujte spárování plateb.
     </dd>
 </div>
 {% endif %}
