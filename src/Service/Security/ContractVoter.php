@@ -36,7 +36,7 @@ final class ContractVoter extends Voter
         $contract = $subject;
 
         // Admins can do anything
-        if (in_array('ROLE_ADMIN', $user->getRoles(), true)) {
+        if ($user->isAdmin()) {
             return true;
         }
 
@@ -50,7 +50,7 @@ final class ContractVoter extends Voter
         }
 
         // Landlords can view/download contracts for their storages
-        if (in_array('ROLE_LANDLORD', $user->getRoles(), true)) {
+        if ($user->isLandlord()) {
             $isOwned = $contract->storage->isOwnedBy($user);
 
             // Landlords cannot terminate user contracts (only users can)

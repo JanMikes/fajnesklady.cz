@@ -16,6 +16,7 @@ use App\Enum\RentalType;
 use App\Exception\NoStorageAvailable;
 use App\Repository\ContractRepository;
 use App\Repository\OrderRepository;
+use App\Repository\StorageRepository;
 use App\Service\Identity\ProvideIdentity;
 
 /**
@@ -31,6 +32,7 @@ final readonly class OrderService
         private ContractRepository $contractRepository,
         private StorageAssignment $storageAssignment,
         private StorageAvailabilityChecker $availabilityChecker,
+        private StorageRepository $storageRepository,
         private PriceCalculator $priceCalculator,
         private AuditLogger $auditLogger,
     ) {
@@ -55,6 +57,18 @@ final readonly class OrderService
         ?int $monthlyPriceOverride = null,
         ?ExpectedDuration $expectedDuration = null,
     ): Order {
+        // A per-customer monthly price override is a *monthly* figure and is not
+        // supported for yearly billing: accepting a positive override would
+        // charge a single month as the "first payment" and then silently ignore
+        // it on every recurring yearly charge (Contract::getEffectiveRecurringAmount
+        // reads the storage yearly rate). The admin onboarding form blocks the
+        // 'custom' price mode for YEARLY — this is the defence-in-depth backstop.
+        // 0 is the "free" sentinel and is explicitly allowed: a free yearly
+        // contract issues no recurring charge at all, so there is nothing to drop.
+        if (null !== $monthlyPriceOverride && 0 !== $monthlyPriceOverride && PaymentFrequency::YEARLY === $paymentFrequency) {
+            throw new \InvalidArgumentException('Per-customer monthly price override is not supported for yearly billing.');
+        }
+
         if (null !== $preSelectedStorage) {
             // Validate pre-selected storage
             if (!$preSelectedStorage->storageType->id->equals($storageType->id)) {
@@ -62,12 +76,6 @@ final readonly class OrderService
             }
             if (!$preSelectedStorage->place->id->equals($place->id)) {
                 throw new \InvalidArgumentException('Pre-selected storage does not belong to the specified place.');
-            }
-            // Date-window check (matches the controller's check) instead of entity-status only —
-            // status drifts (e.g. OCCUPIED set at contract creation for a Sept booking) would otherwise
-            // reject perfectly free windows.
-            if (!$this->availabilityChecker->isAvailable($preSelectedStorage, $startDate, $endDate)) {
-                throw NoStorageAvailable::forStorageType($storageType, $startDate, $endDate);
             }
             $storage = $preSelectedStorage;
         } else {
@@ -79,6 +87,22 @@ final readonly class OrderService
                 $endDate,
                 $user,
             );
+        }
+
+        // Serialise concurrent bookings of THIS storage. There is no DB-level
+        // exclusion constraint on bookings, so without a lock two requests can
+        // both pass the availability check and both persist a blocking order on
+        // the same unit. Take a row-level write lock, then (re-)verify
+        // availability UNDER the lock and before persisting. The order is saved
+        // below as status CREATED — which findOverlappingByStorage treats as
+        // blocking — within this same command-bus transaction, so a competing
+        // booking blocks on the lock until we commit and then sees our order.
+        // The date-window check (not entity status) is deliberate: Storage.status
+        // drifts (e.g. OCCUPIED from a future booking) and would reject free windows.
+        $this->storageRepository->lockForBooking($storage);
+
+        if (!$this->availabilityChecker->isAvailable($storage, $startDate, $endDate)) {
+            throw NoStorageAvailable::forStorageType($storageType, $startDate, $endDate);
         }
 
         // Calculate first payment price. For YEARLY this is the yearly amount;

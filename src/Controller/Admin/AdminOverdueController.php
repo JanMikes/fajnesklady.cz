@@ -25,7 +25,10 @@ final class AdminOverdueController extends AbstractController
     {
         $now = $this->clock->now();
         $views = $this->overdueChecker->findOverdueViews($now);
-        $summary = $this->overdueChecker->summarise($now);
+        // Derive the summary from the views we already computed instead of
+        // calling summarise($now), which would re-run findOverdueViews() (query
+        // + N hydrations) a second time for the same request.
+        $summary = $this->overdueChecker->summariseViews($views);
 
         return $this->render('admin/overdue/list.html.twig', [
             'views' => $views,

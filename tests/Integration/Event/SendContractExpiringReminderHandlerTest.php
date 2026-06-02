@@ -61,10 +61,12 @@ class SendContractExpiringReminderHandlerTest extends KernelTestCase
 
         $context = $email->getContext();
         $this->assertTrue($context['isLimited']);
-        $this->assertStringEndsWith(
+        $this->assertStringContainsString(
             '/objednavka/prodlouzit/'.$contract->order->id->toRfc4122(),
             $context['renewalUrl'],
         );
+        // The renewal link must be HMAC-signed (it prefills the customer's PII).
+        $this->assertStringContainsString('_hash=', $context['renewalUrl']);
 
         $body = $this->renderHtmlBody($email);
         $this->assertStringContainsString('Prodloužit pronájem', $body);

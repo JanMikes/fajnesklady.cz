@@ -38,6 +38,23 @@ final readonly class OrderStatusUrlGenerator
         return $this->uriSigner->sign($url);
     }
 
+    /**
+     * Signed one-click renewal link mailed to the customer. Signing prevents
+     * order-id enumeration of a page that prefills the customer's PII; the
+     * controller also accepts the authenticated owner (the portal renew button
+     * links unsigned).
+     */
+    public function generateRenewal(Order $order): string
+    {
+        $url = $this->urlGenerator->generate(
+            'public_order_renew',
+            ['previousOrderId' => $order->id->toRfc4122()],
+            UrlGeneratorInterface::ABSOLUTE_URL,
+        );
+
+        return $this->uriSigner->sign($url);
+    }
+
     public function generateContractDownload(Order $order, bool $forDownload = false): string
     {
         $url = $this->urlGenerator->generate(

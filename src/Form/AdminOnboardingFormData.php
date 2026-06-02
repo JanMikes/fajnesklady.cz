@@ -205,6 +205,23 @@ final class AdminOnboardingFormData implements HasBillingAddress
     }
 
     #[Assert\Callback]
+    public function validateYearlyHasNoCustomPrice(ExecutionContextInterface $context): void
+    {
+        // A custom monthly price is a *monthly* figure; yearly contracts bill
+        // off the storage's yearly rate (Contract::getEffectiveRecurringAmount)
+        // and ignore individualMonthlyAmount entirely. Allowing both would
+        // undercharge the first payment AND silently drop the override on every
+        // recurring yearly charge. Reject the combination outright — there is no
+        // per-customer yearly override today (mirrored by a hard guard in
+        // OrderService::createOrder).
+        if (PaymentFrequency::YEARLY === $this->paymentFrequency && 'custom' === $this->monthlyPriceMode) {
+            $context->buildViolation('Individuální cena není u roční platby podporována — cena se řídí ročním ceníkem skladu. Zvolte standardní cenu, nebo přepněte na měsíční platbu.')
+                ->atPath('customMonthlyPriceInCzk')
+                ->addViolation();
+        }
+    }
+
+    #[Assert\Callback]
     public function validateBillingMode(ExecutionContextInterface $context): void
     {
         if (null === $this->paymentMethod || null === $this->rentalType) {

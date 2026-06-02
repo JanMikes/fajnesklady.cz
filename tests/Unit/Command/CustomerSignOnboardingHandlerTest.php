@@ -93,6 +93,7 @@ class CustomerSignOnboardingHandlerTest extends TestCase
             $contractRepository,
             $storageAssignment,
             $availabilityChecker,
+            $storageRepository,
             $priceCalculator,
             $auditLogger,
         );

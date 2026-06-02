@@ -43,7 +43,19 @@ final readonly class OverdueChecker
 
     public function summarise(\DateTimeImmutable $now): OverdueSummary
     {
-        $views = $this->findOverdueViews($now);
+        return $this->summariseViews($this->findOverdueViews($now));
+    }
+
+    /**
+     * Build a summary from already-computed views. Lets a caller that already
+     * holds the view list (the overdue dashboard renders the views AND a
+     * summary) avoid running findOverdueViews() — the query + hydration + the
+     * per-row lazy loads — a second time.
+     *
+     * @param OverdueContractView[] $views
+     */
+    public function summariseViews(array $views): OverdueSummary
+    {
         $totalAmount = array_sum(array_map(static fn (OverdueContractView $v): int => $v->overdueAmount, $views));
 
         return new OverdueSummary(

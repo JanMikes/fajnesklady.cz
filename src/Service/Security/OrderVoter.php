@@ -35,7 +35,7 @@ final class OrderVoter extends Voter
         $order = $subject;
 
         // Admins can do anything
-        if (in_array('ROLE_ADMIN', $user->getRoles(), true)) {
+        if ($user->isAdmin()) {
             return true;
         }
 
@@ -45,7 +45,7 @@ final class OrderVoter extends Voter
         }
 
         // Landlords can view orders for their storages
-        if (in_array('ROLE_LANDLORD', $user->getRoles(), true)) {
+        if ($user->isLandlord()) {
             return $order->storage->isOwnedBy($user);
         }
 

@@ -25,6 +25,28 @@ class StorageRepository
         $this->entityManager->persist($storage);
     }
 
+    /**
+     * Row-level write lock (SELECT … FOR UPDATE) on the storage row so
+     * concurrent booking transactions serialise on this unit; in production the
+     * surrounding command-bus doctrine_transaction holds the lock until commit.
+     *
+     * Uses raw DBAL rather than EntityManager::lock() or a DQL query lock: both
+     * of those pre-check the ORM connection's isTransactionActive(), which
+     * reports false under the DAMA test transaction (DAMA opens the transaction
+     * beneath DBAL's nesting counter) and throws TransactionRequiredException.
+     * Raw DBAL simply emits FOR UPDATE and participates in whatever transaction
+     * is open (the middleware's in prod, DAMA's in tests).
+     *
+     * @see \App\Service\OrderService::createOrder()
+     */
+    public function lockForBooking(Storage $storage): void
+    {
+        $this->entityManager->getConnection()->executeQuery(
+            'SELECT id FROM storage WHERE id = CAST(:id AS uuid) FOR UPDATE',
+            ['id' => (string) $storage->id],
+        );
+    }
+
     public function delete(Storage $storage): void
     {
         $this->entityManager->remove($storage);
