@@ -80,6 +80,17 @@ export default class extends Controller {
         this.renderMinimap();
     }
 
+    // Stimulus fires this when data-storage-map-current-storage-type-id-value changes —
+    // the onboarding/order Live Component swaps the chosen storage type while the
+    // storages payload stays identical (availability is window-derived and
+    // type-independent, so storagesValueChanged never fires for a type switch).
+    // Without this repaint the map keeps the old type's units green/clickable.
+    currentStorageTypeIdValueChanged() {
+        if (!this.initialized) return;
+        this.renderStorages();
+        this.renderMinimap();
+    }
+
     disconnect() {
         if (this.resizeObserver) {
             this.resizeObserver.disconnect();
