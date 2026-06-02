@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller\Public;
 
+use App\Entity\User;
 use App\Enum\OrderStatus;
 use App\Enum\RentalType;
 use App\Form\OrderFormData;
@@ -11,7 +12,10 @@ use App\Repository\OrderRepository;
 use Psr\Clock\ClockInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\RedirectResponse;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\HttpFoundation\UriSigner;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Uid\Uuid;
@@ -27,10 +31,11 @@ final class OrderRenewController extends AbstractController
         private readonly OrderRepository $orderRepository,
         private readonly RequestStack $requestStack,
         private readonly ClockInterface $clock,
+        private readonly UriSigner $uriSigner,
     ) {
     }
 
-    public function __invoke(string $previousOrderId): RedirectResponse
+    public function __invoke(Request $request, string $previousOrderId): RedirectResponse
     {
         if (!Uuid::isValid($previousOrderId)) {
             throw new NotFoundHttpException('Objednávka nenalezena.');
@@ -39,6 +44,20 @@ final class OrderRenewController extends AbstractController
         $previous = $this->orderRepository->find(Uuid::fromString($previousOrderId));
         if (null === $previous) {
             throw new NotFoundHttpException('Objednávka nenalezena.');
+        }
+
+        // The renewal page prefills the previous customer's personal data
+        // (name, address, birth date, billing details) into the visitor's
+        // session, so the visitor must be entitled to it: either the
+        // authenticated owner of the previous order (portal "Prodloužit"
+        // button — links unsigned) OR someone following the HMAC-signed link
+        // mailed to the customer. A stranger with a guessed or forwarded order
+        // id and no valid signature is rejected.
+        $currentUser = $this->getUser();
+        $isOwner = $currentUser instanceof User && $previous->user->id->equals($currentUser->id);
+
+        if (!$isOwner && !$this->uriSigner->checkRequest($request)) {
+            throw new AccessDeniedHttpException('Neplatný nebo expirovaný odkaz.');
         }
 
         $storage = $previous->storage;

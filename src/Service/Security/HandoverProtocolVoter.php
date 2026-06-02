@@ -37,7 +37,7 @@ final class HandoverProtocolVoter extends Voter
         $contract = $protocol->contract;
 
         // Admins can do anything
-        if (in_array('ROLE_ADMIN', $user->getRoles(), true)) {
+        if ($user->isAdmin()) {
             return true;
         }
 

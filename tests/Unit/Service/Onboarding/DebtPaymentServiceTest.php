@@ -146,6 +146,7 @@ class DebtPaymentServiceTest extends TestCase
             $contractRepository,
             $storageAssignment,
             $availabilityChecker,
+            $storageRepository,
             new PriceCalculator(),
             $auditLogger,
         );

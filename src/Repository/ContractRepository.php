@@ -534,8 +534,16 @@ class ContractRepository
     public function findWithPaymentIssues(\DateTimeImmutable $now): array
     {
         return $this->entityManager->createQueryBuilder()
-            ->select('c')
+            // Fetch-join the to-one relations the overdue views + dashboard
+            // tiles + export all traverse (user, storage→type/place, order) so
+            // rendering them doesn't fire a lazy query per contract (N+1).
+            ->select('c', 'u', 's', 'st', 'p', 'o')
             ->from(Contract::class, 'c')
+            ->leftJoin('c.user', 'u')
+            ->leftJoin('c.storage', 's')
+            ->leftJoin('s.storageType', 'st')
+            ->leftJoin('s.place', 'p')
+            ->leftJoin('c.order', 'o')
             ->where(
                 // Active contracts with billing problems
                 '(c.terminatedAt IS NULL AND (c.failedBillingAttempts > 0 OR '

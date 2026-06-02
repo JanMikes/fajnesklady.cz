@@ -6,6 +6,7 @@ namespace App\Tests\Integration\Controller\Public;
 
 use App\DataFixtures\OrderFixtures;
 use App\Entity\Order;
+use App\Service\OrderStatusUrlGenerator;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -14,12 +15,15 @@ class OrderRenewControllerTest extends WebTestCase
 {
     private KernelBrowser $client;
     private EntityManagerInterface $entityManager;
+    private OrderStatusUrlGenerator $urlGenerator;
 
     protected function setUp(): void
     {
         parent::setUp();
         $this->client = static::createClient();
-        $this->entityManager = static::getContainer()->get('doctrine')->getManager();
+        $container = static::getContainer();
+        $this->entityManager = $container->get('doctrine')->getManager();
+        $this->urlGenerator = $container->get(OrderStatusUrlGenerator::class);
     }
 
     protected function tearDown(): void
@@ -33,7 +37,8 @@ class OrderRenewControllerTest extends WebTestCase
         $previous = $this->findOrderByReference(OrderFixtures::REF_ORDER_COMPLETED);
         $previousUser = $previous->user;
 
-        $this->client->request('GET', $this->buildUrl($previous));
+        // Signed link = the guest email flow: works without a session.
+        $this->requestSigned($this->urlGenerator->generateRenewal($previous));
 
         $this->assertResponseRedirects();
         $location = (string) $this->client->getResponse()->headers->get('Location');
@@ -69,7 +74,7 @@ class OrderRenewControllerTest extends WebTestCase
     {
         $previous = $this->findOrderByReference(OrderFixtures::REF_ORDER_COMPLETED_UNLIMITED);
 
-        $this->client->request('GET', $this->buildUrl($previous));
+        $this->requestSigned($this->urlGenerator->generateRenewal($previous));
 
         $this->assertResponseRedirects();
         $location = (string) $this->client->getResponse()->headers->get('Location');
@@ -91,7 +96,7 @@ class OrderRenewControllerTest extends WebTestCase
     {
         $previous = $this->findOrderByReference(OrderFixtures::REF_ORDER_CANCELLED);
 
-        $this->client->request('GET', $this->buildUrl($previous));
+        $this->requestSigned($this->urlGenerator->generateRenewal($previous));
 
         $this->assertResponseRedirects();
         $location = (string) $this->client->getResponse()->headers->get('Location');
@@ -102,16 +107,34 @@ class OrderRenewControllerTest extends WebTestCase
         $this->assertNull($sessionData);
     }
 
+    public function testOwnerCanRenewWithoutSignature(): void
+    {
+        // The portal "Prodloužit" button links unsigned; the authenticated owner
+        // is entitled to their own data, so the owner path must work.
+        $previous = $this->findOrderByReference(OrderFixtures::REF_ORDER_COMPLETED);
+        $this->client->loginUser($previous->user, 'main');
+
+        $this->client->request('GET', '/objednavka/prodlouzit/'.$previous->id->toRfc4122());
+
+        $this->assertResponseRedirects();
+    }
+
+    public function testUnsignedAnonymousRequestIsDenied(): void
+    {
+        // Real order id, but no signature and not logged in: must NOT leak the
+        // previous customer's prefilled PII (name, address, birth date).
+        $previous = $this->findOrderByReference(OrderFixtures::REF_ORDER_COMPLETED);
+
+        $this->client->request('GET', '/objednavka/prodlouzit/'.$previous->id->toRfc4122());
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
     public function testUnknownOrderIdReturns404(): void
     {
         $this->client->request('GET', '/objednavka/prodlouzit/00000000-0000-7000-8000-000000000000');
 
         $this->assertResponseStatusCodeSame(404);
-    }
-
-    private function buildUrl(Order $order): string
-    {
-        return '/objednavka/prodlouzit/'.$order->id->toRfc4122();
     }
 
     private function findOrderByReference(string $reference): Order
@@ -138,5 +161,21 @@ class OrderRenewControllerTest extends WebTestCase
         \assert($order instanceof Order, sprintf('Fixture order %s not found', $reference));
 
         return $order;
+    }
+
+    /**
+     * Request the signed URL via the test client, preserving the host:port that
+     * UriSigner used to compute the hash. Without aligning HTTP_HOST, the request
+     * URI rebuilt inside Symfony differs from the signed input and verification
+     * fails. Mirrors OrderStatusControllerTest::requestSigned().
+     */
+    private function requestSigned(string $absoluteUrl): void
+    {
+        $parsed = parse_url($absoluteUrl);
+        $path = $parsed['path'] ?? '/';
+        $query = isset($parsed['query']) ? '?'.$parsed['query'] : '';
+        $host = ($parsed['host'] ?? 'localhost').(isset($parsed['port']) ? ':'.$parsed['port'] : '');
+
+        $this->client->request('GET', $path.$query, [], [], ['HTTP_HOST' => $host]);
     }
 }

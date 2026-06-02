@@ -328,6 +328,11 @@ Hotwire Turbo is installed but **disabled globally** via `data-turbo="false"` on
 - `tests/Integration/` - Repository/controller tests (uses DAMA DoctrineTestBundle)
 - **MockClock**: Tests use fixed time `2025-06-15 12:00:00 UTC` - never use `new \DateTimeImmutable()`
 - **Fixtures**: Prefer using fixture data over creating test data dynamically. See [.claude/FIXTURES.md](.claude/FIXTURES.md) for reference constants and available test data
+- **Every controller MUST have at least one integration test.** Minimum bar per controller:
+  - **Happy path**: the correct authenticated role gets the correct status code (`200` for GET pages, the expected `3xx` redirect / `Location` for POST actions, the right `Content-Type` for downloads/exports).
+  - **Authorization**: assert the guard actually denies — unauthenticated → redirect to `/login`; wrong role → `403`; and for owner-scoped resources, a non-owner of the right role → `403` (cross-tenant isolation). This applies even to controllers that look "firewall-protected": `/portal/admin/*` is only `ROLE_USER` at the firewall, so the `ROLE_ADMIN` gate lives in the controller (`#[IsGranted]`) and must be tested. Public payment/webhook/signed-URL routes (`/objednavka/*`, `/pokuta/*`, `/opakovana-platba/*`, `/qr-platba/*`, document `*.pdf`/`*.png`) are under NO firewall — their only guard is the in-controller token / `UriSigner` / order-id check, so each needs an explicit "bad/missing signature or id → 404/403" test.
+  - Shared role/redirect assertions for simple GET pages can live in the data-provider methods of `tests/Integration/Controller/ControllerAccessTest.php`; complex flows get a dedicated test file.
+- **`composer quality` does NOT run integration tests** — it is `phpstan` + `test:unit` only. For any controller / template / form / routing change, run the full `composer test` before committing, or the controller tests above won't execute in your loop.
 
 ## Fixtures (Development Only)
 

@@ -116,6 +116,36 @@ final class AdminOnboardingFormDataTest extends TestCase
         self::assertSame(BillingMode::MANUAL_RECURRING, $data->billingMode);
     }
 
+    public function testYearlyWithCustomPriceIsRejected(): void
+    {
+        // A per-customer monthly price is not supported for yearly billing —
+        // it would undercharge the first payment and be ignored on every
+        // recurring yearly charge. The form must block the combination.
+        $data = $this->validData();
+        $data->rentalType = RentalType::LIMITED;
+        $data->startDate = new \DateTimeImmutable('today');
+        $data->endDate = new \DateTimeImmutable('today +400 days');
+        $data->paymentFrequency = PaymentFrequency::YEARLY;
+        $data->monthlyPriceMode = 'custom';
+        $data->customMonthlyPriceInCzk = 1500.0;
+
+        $violations = $this->violationsAt('customMonthlyPriceInCzk', $data);
+        self::assertNotEmpty($violations);
+    }
+
+    public function testYearlyWithStandardPricePasses(): void
+    {
+        $data = $this->validData();
+        $data->rentalType = RentalType::LIMITED;
+        $data->startDate = new \DateTimeImmutable('today');
+        $data->endDate = new \DateTimeImmutable('today +400 days');
+        $data->paymentFrequency = PaymentFrequency::YEARLY;
+        $data->monthlyPriceMode = 'standard';
+
+        $violations = $this->violationsAt('customMonthlyPriceInCzk', $data);
+        self::assertEmpty($violations);
+    }
+
     public function testExternalNonFreeRequiresPrepaidDate(): void
     {
         $data = $this->validData();

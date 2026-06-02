@@ -33,6 +33,6 @@ final class StorageTypeVoter extends Voter
         }
 
         // Only admins can manage storage types
-        return in_array('ROLE_ADMIN', $user->getRoles(), true);
+        return $user->isAdmin();
     }
 }

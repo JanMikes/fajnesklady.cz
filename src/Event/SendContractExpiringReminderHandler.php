@@ -14,7 +14,6 @@ use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Mime\Address;
-use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 #[AsMessageHandler]
 final readonly class SendContractExpiringReminderHandler
@@ -22,7 +21,6 @@ final readonly class SendContractExpiringReminderHandler
     public function __construct(
         private ContractRepository $contractRepository,
         private MailerInterface $mailer,
-        private UrlGeneratorInterface $urlGenerator,
         private OrderStatusUrlGenerator $statusUrlGenerator,
         private PlaceAddressFormatter $addressFormatter,
         private OrderReferenceFormatter $orderReferenceFormatter,
@@ -40,11 +38,9 @@ final readonly class SendContractExpiringReminderHandler
 
         $statusUrl = $this->statusUrlGenerator->generate($contract->order);
 
-        $renewalUrl = $this->urlGenerator->generate(
-            'public_order_renew',
-            ['previousOrderId' => $contract->order->id->toRfc4122()],
-            UrlGeneratorInterface::ABSOLUTE_URL,
-        );
+        // Signed link — the renewal page prefills the customer's PII, so it
+        // must not be reachable by guessing an order id (see OrderRenewController).
+        $renewalUrl = $this->statusUrlGenerator->generateRenewal($contract->order);
 
         $subject = 1 === $event->daysRemaining
             ? 'Zítra končí Vaše smlouva - '.$place->name

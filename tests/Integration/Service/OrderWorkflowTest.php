@@ -546,6 +546,53 @@ class OrderWorkflowTest extends KernelTestCase
         $this->assertSame('+1 year', $contract->getBillingCadenceStep());
     }
 
+    public function testYearlyWithPositiveMonthlyOverrideIsRejected(): void
+    {
+        [$tenant, $storageType, $place] = $this->getFixtures();
+        $now = $this->clock->now();
+
+        // A per-customer monthly price is meaningless for yearly billing and
+        // would be silently dropped on recurring charges — must be rejected.
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->orderService->createOrder(
+            user: $tenant,
+            storageType: $storageType,
+            place: $place,
+            rentalType: RentalType::UNLIMITED,
+            startDate: $now->modify('+1 day'),
+            endDate: null,
+            now: $now,
+            paymentFrequency: PaymentFrequency::YEARLY,
+            monthlyPriceOverride: 150000,
+            expectedDuration: ExpectedDuration::LONG,
+        );
+    }
+
+    public function testYearlyWithFreeOverrideIsAllowed(): void
+    {
+        // 0 is the "free" sentinel: a free yearly contract issues no recurring
+        // charge, so the per-customer-override guard must NOT reject it.
+        [$tenant, $storageType, $place] = $this->getFixtures();
+        $now = $this->clock->now();
+
+        $order = $this->orderService->createOrder(
+            user: $tenant,
+            storageType: $storageType,
+            place: $place,
+            rentalType: RentalType::UNLIMITED,
+            startDate: $now->modify('+1 day'),
+            endDate: null,
+            now: $now,
+            paymentFrequency: PaymentFrequency::YEARLY,
+            monthlyPriceOverride: 0,
+            expectedDuration: ExpectedDuration::LONG,
+        );
+
+        $this->assertSame(0, $order->firstPaymentPrice);
+        $this->assertSame(PaymentFrequency::YEARLY, $order->paymentFrequency);
+    }
+
     /**
      * @return array{User, StorageType, Place}
      */

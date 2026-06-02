@@ -512,6 +512,15 @@ class Order implements EntityWithEvents
 
     public function markDebtPaid(\DateTimeImmutable $now): void
     {
+        // Idempotent by construction: the GoPay webhook and the FIO cron can
+        // both race to clear the same debt. Without this guard a second call
+        // would re-record OnboardingDebtPaid (→ a duplicate Fakturoid debt
+        // invoice + receipt email). Callers still pre-check hasUnpaidDebt(),
+        // but the entity must not depend on caller discipline.
+        if (null !== $this->debtPaidAt) {
+            return;
+        }
+
         $this->debtPaidAt = $now;
 
         $this->recordThat(new OnboardingDebtPaid(

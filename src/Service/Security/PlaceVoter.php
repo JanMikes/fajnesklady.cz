@@ -46,12 +46,12 @@ final class PlaceVoter extends Voter
         $place = $subject;
 
         // Admins can do anything
-        if (in_array('ROLE_ADMIN', $user->getRoles(), true)) {
+        if ($user->isAdmin()) {
             return true;
         }
 
         // Landlords
-        if (in_array('ROLE_LANDLORD', $user->getRoles(), true)) {
+        if ($user->isLandlord()) {
             return match ($attribute) {
                 // All landlords can view all places
                 self::VIEW => true,

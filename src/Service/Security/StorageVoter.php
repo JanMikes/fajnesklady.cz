@@ -46,12 +46,12 @@ final class StorageVoter extends Voter
         $storage = $subject;
 
         // Admins can do anything
-        if (in_array('ROLE_ADMIN', $user->getRoles(), true)) {
+        if ($user->isAdmin()) {
             return true;
         }
 
         // Landlords can only manage storages they own
-        if (in_array('ROLE_LANDLORD', $user->getRoles(), true)) {
+        if ($user->isLandlord()) {
             // Must be the owner for any access
             if (!$storage->isOwnedBy($user)) {
                 return false;
