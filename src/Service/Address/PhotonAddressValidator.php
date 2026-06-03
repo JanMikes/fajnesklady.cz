@@ -80,15 +80,23 @@ final readonly class PhotonAddressValidator implements AddressValidator
             return [];
         }
 
-        $cacheKey = 'address_suggest.'.md5($normalizedQuery);
+        // v2: street is now resolved from `name` for street-type features and
+        // street-less (city / postcode) results are dropped — bust v1-format entries
+        // still cached under the long suggest TTL.
+        $cacheKey = 'address_suggest.v2.'.md5($normalizedQuery);
 
         try {
             return $this->cache->get($cacheKey, function (ItemInterface $item) use ($query): array {
                 $item->expiresAfter(self::SUGGEST_CACHE_TTL_SECONDS);
 
-                $features = $this->fetchFeatures(trim($query), 8);
+                // Over-fetch and restrict to street + house layers. Photon spends
+                // result slots on city/postcode-only entries otherwise, and those
+                // are dead ends for a residential address; over-fetching leaves
+                // enough real addresses after the street-less ones are dropped.
+                $features = $this->fetchFeatures(trim($query), 15, ['street', 'house']);
 
                 $suggestions = [];
+                $seen = [];
                 foreach ($features as $feature) {
                     $properties = $feature['properties'] ?? null;
                     if (!is_array($properties)) {
@@ -99,14 +107,25 @@ final readonly class PhotonAddressValidator implements AddressValidator
                         continue;
                     }
 
-                    $street = (string) ($properties['street'] ?? '');
+                    $street = $this->resolveStreet($properties);
                     $houseNumber = (string) ($properties['housenumber'] ?? '');
                     $city = (string) ($properties['city'] ?? $properties['town'] ?? $properties['village'] ?? '');
                     $postalCode = preg_replace('/\s+/', '', (string) ($properties['postcode'] ?? '')) ?? '';
 
-                    if ('' === $city || '' === $postalCode) {
+                    // A residential address needs a street. Dropping street-less
+                    // features removes the confusing "700 30 Ostrava" (city + PSČ,
+                    // no street) entries that showed up for a street query.
+                    if ('' === $street || '' === $city || '' === $postalCode) {
                         continue;
                     }
+
+                    // Collapse duplicates — e.g. a POI sitting on the street and the
+                    // street feature itself both resolve to the same address.
+                    $dedupeKey = mb_strtolower($street.'|'.$houseNumber.'|'.$city.'|'.$postalCode);
+                    if (isset($seen[$dedupeKey])) {
+                        continue;
+                    }
+                    $seen[$dedupeKey] = true;
 
                     $suggestions[] = new AddressSuggestion(
                         street: $street,
@@ -117,7 +136,15 @@ final readonly class PhotonAddressValidator implements AddressValidator
                     );
                 }
 
-                return $suggestions;
+                // Most specific first: addresses carrying a house number before bare
+                // streets. usort is stable (PHP 8), so Photon's relevance order is
+                // preserved within each group.
+                usort(
+                    $suggestions,
+                    static fn (AddressSuggestion $a, AddressSuggestion $b): int => (int) ('' !== $b->houseNumber) <=> (int) ('' !== $a->houseNumber),
+                );
+
+                return array_slice($suggestions, 0, 8);
             });
         } catch (\Throwable $e) {
             $this->logger->warning('Address suggest failed', [
@@ -130,16 +157,48 @@ final readonly class PhotonAddressValidator implements AddressValidator
     }
 
     /**
+     * Photon stores the street name of a `type=street` (highway) feature in `name`,
+     * not in `street` (which it only fills for house / POI features). Without this
+     * fallback those street results lose their name and render as "<postcode> <city>".
+     * Gated to street-type features so a city / locality `name` is never taken as a
+     * street. Mirrors the `street ?? name` fallback already used by featureMatches().
+     *
+     * @param array<string, mixed> $properties
+     */
+    private function resolveStreet(array $properties): string
+    {
+        $street = trim((string) ($properties['street'] ?? ''));
+        if ('' !== $street) {
+            return $street;
+        }
+
+        $isStreetFeature = 'street' === ($properties['type'] ?? null)
+            || 'highway' === ($properties['osm_key'] ?? null);
+
+        return $isStreetFeature ? trim((string) ($properties['name'] ?? '')) : '';
+    }
+
+    /**
+     * @param list<string> $layers Photon `layer` filters (e.g. street, house)
+     *
      * @return list<array<string, mixed>>
      */
-    private function fetchFeatures(string $query, int $limit): array
+    private function fetchFeatures(string $query, int $limit, array $layers = []): array
     {
-        $response = $this->httpClient->request('GET', self::PHOTON_URL, [
-            'query' => [
-                'q' => $query,
-                'limit' => $limit,
-                'lang' => 'default',
-            ],
+        $url = self::PHOTON_URL.'?'.http_build_query([
+            'q' => $query,
+            'limit' => $limit,
+            'lang' => 'default',
+        ], '', '&', \PHP_QUERY_RFC3986);
+
+        // Photon (Spring) binds `layer` as a repeated param (?layer=a&layer=b).
+        // Symfony's `query` option would encode an array as layer[0]=…, which Photon
+        // ignores, so append the repeated params to the URL by hand.
+        foreach ($layers as $layer) {
+            $url .= '&layer='.rawurlencode($layer);
+        }
+
+        $response = $this->httpClient->request('GET', $url, [
             'timeout' => self::REQUEST_TIMEOUT_SECONDS,
             'headers' => [
                 'User-Agent' => self::USER_AGENT,
