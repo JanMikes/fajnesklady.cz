@@ -81,23 +81,21 @@ final readonly class PhotonAddressValidator implements AddressValidator
             return [];
         }
 
-        // v3: restricted to the street layer (the house layer pulled in POIs/buildings
-        // matched by their *name* — e.g. a villa named "Františka" or a "Františkánský
-        // klášter" — which outranked the actual streets). Bust older cached formats.
-        $cacheKey = 'address_suggest.v3.'.md5($normalizedQuery);
+        // v4: street + house layers (so a typed house number resolves to a real
+        // address) plus a query-relevance filter to strip the name-matched POIs the
+        // house layer would otherwise pull in. Bust older cached formats.
+        $cacheKey = 'address_suggest.v4.'.md5($normalizedQuery);
 
         try {
             $suggestions = $this->cache->get($cacheKey, function (ItemInterface $item) use ($query): array {
                 $item->expiresAfter(self::SUGGEST_CACHE_TTL_SECONDS);
 
-                // Streets only. The house layer matches POIs/buildings by name and
-                // their relevance outranks real streets (a building named "Františka"
-                // sitting on Masarykova would top a "Františka" search). Czech house
-                // data is sparse anyway and the customer types the number into the
-                // field — so street-level + manual number is both cleaner and more
-                // relevant. Over-fetch (15) so foreign streets dropped below still
-                // leave a full Czech list. Photon's relevance order is kept as-is.
-                $features = $this->fetchFeatures(trim($query), 15, ['street']);
+                // Street + house layers so typing a number ("… 31", "… 237/31")
+                // resolves to the actual house. Over-fetch (15) so foreign results and
+                // name-matched POIs dropped below still leave a full Czech list; the
+                // relevance filter (matchesQueryStreet) then removes addresses whose
+                // street doesn't match what was typed. Photon's relevance order is kept.
+                $features = $this->fetchFeatures(trim($query), 15, ['street', 'house']);
 
                 $suggestions = [];
                 $seen = [];
@@ -120,6 +118,14 @@ final readonly class PhotonAddressValidator implements AddressValidator
                     // features removes the confusing "700 30 Ostrava" (city + PSČ,
                     // no street) entries that showed up for a street query.
                     if ('' === $street || '' === $city || '' === $postalCode) {
+                        continue;
+                    }
+
+                    // Drop results matched by their POI name rather than by the street
+                    // the customer typed (a villa named "Františka" on Masarykova, a
+                    // "Františkánský klášter", a foreign street) — and unrelated streets
+                    // like "Františka Metelce" for a "Františka Formana" query.
+                    if (!$this->matchesQueryStreet($query, $street, $city)) {
                         continue;
                     }
 
@@ -179,6 +185,33 @@ final readonly class PhotonAddressValidator implements AddressValidator
             || 'highway' === ($properties['osm_key'] ?? null);
 
         return $isStreetFeature ? trim((string) ($properties['name'] ?? '')) : '';
+    }
+
+    /**
+     * Photon also matches features by their *name*, so a "Františka" query surfaces a
+     * villa named "Františka" (street Masarykova) or a "Františkánský klášter" whose
+     * street is unrelated. Keep a suggestion only when every non-numeric query token
+     * appears in its street + city, so real streets/houses on the typed street stay
+     * and name-matched noise is dropped. Numeric tokens (house numbers like 31 or
+     * 237/31) are matched by Photon, not here, so they are skipped.
+     */
+    private function matchesQueryStreet(string $query, string $street, string $city): bool
+    {
+        $haystack = $this->slugifyForCompare($street.' '.$city);
+
+        foreach (preg_split('/\s+/', trim($query)) ?: [] as $token) {
+            // Skip house-number tokens (31, 237/31, 12a, …); Photon matches those.
+            if ('' === $token || 1 === preg_match('/\d/', $token)) {
+                continue;
+            }
+
+            $needle = $this->slugifyForCompare($token);
+            if ('' !== $needle && !str_contains($haystack, $needle)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**

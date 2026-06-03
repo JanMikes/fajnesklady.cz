@@ -242,6 +242,57 @@ final class AddressValidatorTest extends TestCase
         self::assertSame('12', $suggestions[1]->houseNumber);
     }
 
+    public function testSuggestReturnsHouseNumberAddressWhenNumberIsTyped(): void
+    {
+        // Photon resolves "Františka Formana 31" (and "237/31") to a real house;
+        // it must be surfaced with its number, not collapsed to a bare street.
+        $responseBody = json_encode([
+            'features' => [
+                ['properties' => [
+                    'countrycode' => 'CZ', 'osm_key' => 'place', 'type' => 'house',
+                    'street' => 'Františka Formana', 'housenumber' => '31',
+                    'postcode' => '70030', 'city' => 'Ostrava',
+                ]],
+            ],
+        ], JSON_THROW_ON_ERROR);
+
+        $httpClient = new MockHttpClient(new MockResponse($responseBody, ['http_code' => 200]));
+        $validator = new PhotonAddressValidator($httpClient, new ArrayAdapter(), $this->createStub(LoggerInterface::class));
+
+        $suggestions = $validator->suggest('Františka Formana 237/31');
+
+        self::assertCount(1, $suggestions);
+        self::assertSame('31', $suggestions[0]->houseNumber);
+        self::assertSame('Františka Formana 31, 700 30 Ostrava', $suggestions[0]->displayLabel);
+    }
+
+    public function testSuggestDropsResultsWhoseStreetDoesNotMatchTheQuery(): void
+    {
+        // A villa NAMED "Františka" on Masarykova (matched by name, not street) must
+        // be dropped; the real "Františka Diviše" street kept.
+        $responseBody = json_encode([
+            'features' => [
+                ['properties' => [
+                    'countrycode' => 'CZ', 'osm_key' => 'building', 'type' => 'house',
+                    'name' => 'Františka', 'street' => 'Masarykova', 'housenumber' => '184',
+                    'postcode' => '76326', 'city' => 'Luhačovice',
+                ]],
+                ['properties' => [
+                    'countrycode' => 'CZ', 'osm_key' => 'highway', 'type' => 'street',
+                    'name' => 'Františka Diviše', 'postcode' => '10400', 'city' => 'Praha',
+                ]],
+            ],
+        ], JSON_THROW_ON_ERROR);
+
+        $httpClient = new MockHttpClient(new MockResponse($responseBody, ['http_code' => 200]));
+        $validator = new PhotonAddressValidator($httpClient, new ArrayAdapter(), $this->createStub(LoggerInterface::class));
+
+        $suggestions = $validator->suggest('Františka');
+
+        self::assertCount(1, $suggestions);
+        self::assertSame('Františka Diviše', $suggestions[0]->street);
+    }
+
     public function testSuggestSkipsForeignFeatures(): void
     {
         $responseBody = json_encode([
