@@ -215,10 +215,10 @@ final class AddressValidatorTest extends TestCase
         self::assertSame('72400', $suggestions[1]->postalCode);
     }
 
-    public function testSuggestRanksHouseNumberAddressesBeforeBareStreets(): void
+    public function testSuggestPreservesPhotonRelevanceOrder(): void
     {
-        // Photon returns the street first, the specific house second; we want the
-        // more specific house-number address at the top.
+        // We must NOT re-rank: Photon's relevance order is authoritative. An earlier
+        // house-number-first sort promoted name-matched POIs above the real streets.
         $responseBody = json_encode([
             'features' => [
                 ['properties' => [
@@ -238,8 +238,8 @@ final class AddressValidatorTest extends TestCase
         $suggestions = $validator->suggest('Hlavní 12');
 
         self::assertCount(2, $suggestions);
-        self::assertSame('12', $suggestions[0]->houseNumber, 'House-number address must rank first.');
-        self::assertSame('', $suggestions[1]->houseNumber);
+        self::assertSame('', $suggestions[0]->houseNumber, 'Photon order is kept; the street stays first.');
+        self::assertSame('12', $suggestions[1]->houseNumber);
     }
 
     public function testSuggestSkipsForeignFeatures(): void
