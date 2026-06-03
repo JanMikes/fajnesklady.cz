@@ -19,10 +19,12 @@ const MIN_QUERY_LENGTH = 3;
  * after every selection. Here the search box owns the dropdown; the real fields have
  * no suggest listener, so neither problem can happen.
  *
- * Visibility is a pure function of (manualForced OR any field has a value). The
- * server renders the same condition, so a Live Component morph re-renders a
- * consistent state; `applyMode()` re-asserts after every morph for the one case the
- * server can't see (manual mode chosen while the fields are still empty).
+ * Visibility follows `mode`: 'auto' reveals the fields iff they hold a value (the
+ * default, and the state after a pick), while an explicit 'manual'/'search' choice
+ * overrides that without touching the field values. The server renders the value-
+ * derived ('auto') condition, so `applyMode()` re-asserts after every morph
+ * (live:render:finished) for the cases where an explicit choice disagrees with the
+ * field values.
  */
 export default class extends Controller {
     static targets = [
@@ -47,7 +49,10 @@ export default class extends Controller {
         this.abortController = null;
         this.cache = new Map(); // query -> suggestions, dedupes keystrokes within a page view
         this.lastQuery = null;
-        this.manualForced = false;
+        // 'auto'   -> reveal the fields iff they hold a value (default / after a pick)
+        // 'manual' -> user chose "Zadat ručně": keep fields revealed even when empty
+        // 'search' -> user chose "Vyhledat adresu": keep the search box even when fields are filled
+        this.mode = 'auto';
 
         this.boundOnSearchInput = () => this.onSearchInput();
         this.boundOnSearchKeydown = (event) => this.onSearchKeydown(event);
@@ -69,9 +74,9 @@ export default class extends Controller {
         }
 
         document.addEventListener('click', this.boundOnDocumentClick);
-        // Live Components re-render the macro from server state on every morph; the
-        // server can't know about a manual-mode choice made while the fields are
-        // still empty, so re-assert the reveal state after each render.
+        // Live Components re-render the macro from server (value-derived) state on
+        // every morph; it can't know about an explicit search/manual choice that
+        // disagrees with the field values, so re-assert the mode after each render.
         document.addEventListener('live:render:finished', this.boundOnLiveRender);
 
         this.applyMode();
@@ -111,14 +116,21 @@ export default class extends Controller {
     }
 
     applyMode() {
-        const reveal = this.manualForced || this.hasAnyAddressValue();
+        let reveal;
+        if (this.mode === 'search') {
+            reveal = false;
+        } else if (this.mode === 'manual') {
+            reveal = true;
+        } else {
+            reveal = this.hasAnyAddressValue();
+        }
         if (this.hasSearchSectionTarget) this.searchSectionTarget.classList.toggle('hidden', reveal);
         if (this.hasManualSectionTarget) this.manualSectionTarget.classList.toggle('hidden', !reveal);
     }
 
     showManual(event) {
         if (event) event.preventDefault();
-        this.manualForced = true;
+        this.mode = 'manual';
         this.cancelSearch();
         this.applyMode();
         if (this.hasStreetInputTarget) this.streetInputTarget.focus();
@@ -126,22 +138,16 @@ export default class extends Controller {
 
     showSearch(event) {
         if (event) event.preventDefault();
-        // Going back to search means replacing the address. Clear the fields so the
-        // server-derived mode agrees with the client — otherwise the next morph,
-        // seeing the old values, would snap us straight back to the reveal state.
-        this.clearFields();
-        this.manualForced = false;
+        // Show the search box WITHOUT touching the field values — the user may be
+        // looking up a replacement, or may keep what's there. The explicit 'search'
+        // mode keeps this sticky across morphs (applyMode re-asserts on
+        // live:render:finished), so the fields don't need clearing to stay hidden.
+        this.mode = 'search';
         this.setStatus('');
         this.applyMode();
         if (this.hasSearchInputTarget) {
             this.searchInputTarget.value = '';
             this.searchInputTarget.focus();
-        }
-    }
-
-    clearFields() {
-        for (const input of this.addressInputs()) {
-            if ((input.value ?? '') !== '') this.setFieldValue(input, '');
         }
     }
 
@@ -312,6 +318,8 @@ export default class extends Controller {
             this.searchInputTarget.value = '';
             this.searchInputTarget.blur();
         }
+        // Back to value-driven reveal: the fields now hold the picked address.
+        this.mode = 'auto';
         this.applyMode();
     }
 
