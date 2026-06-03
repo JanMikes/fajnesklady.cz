@@ -1,33 +1,46 @@
-{# Renders the three billing-address fields with an autocomplete dropdown +
-   override checkbox (soft-warn UX from spec 037). Use render() in plain
-   templates; render_live() emits the same structure with per-field
-   `blur->live#action validateField` wiring for Live Components that drive
-   on-blur server validation. #}
+{# Address entry: a single Photon-backed search box that, on selection, fills and
+   reveals the three real fields (street / city / PSČ) for verification. "Zadat
+   ručně" reveals the same fields empty for manual entry. The three fields always
+   live in the DOM and are submitted with the form — only their visibility is
+   toggled by the `address-autocomplete` Stimulus controller.
+
+   render()      -> plain templates.
+   render_live() -> Live Components; adds per-field `blur->live#action validateField`
+                    wiring for on-blur server validation, plus the soft-warn override
+                    block (spec 037).
+
+   The `browserAutofill` argument is kept for call-site compatibility but is no longer
+   used: browser address-autofill is now suppressed on every field (autocomplete=off)
+   so it can never collide with our own dropdown — that collision (two dropdowns at
+   once) was the core defect of the previous three-autocomplete-fields design. #}
 
 {% macro render(form, browserAutofill = true) %}
-    {{ _self.render_inner(form, false, browserAutofill) }}
+    {{ _self.render_inner(form, false) }}
 {% endmacro %}
 
 {% macro render_live(form, browserAutofill = true) %}
-    {{ _self.render_inner(form, true, browserAutofill) }}
+    {{ _self.render_inner(form, true) }}
 {% endmacro %}
 
-{# browserAutofill=false suppresses the browser's *own* address autofill (used by the
-   admin onboarding form, where the admin enters the customer's address — see spec 062).
-   The Photon dropdown targets and the numeric PSČ keypad are kept either way. #}
-{% macro render_inner(form, liveValidate, browserAutofill = true) %}
+{% macro render_inner(form, liveValidate) %}
     {% set streetAttr = {
         'data-address-autocomplete-target': 'streetInput',
-        'autocomplete': browserAutofill ? 'street-address' : 'off',
+        'autocomplete': 'off',
+        'data-1p-ignore': 'true',
+        'data-lpignore': 'true',
     } %}
     {% set cityAttr = {
         'data-address-autocomplete-target': 'cityInput',
-        'autocomplete': browserAutofill ? 'address-level2' : 'off',
+        'autocomplete': 'off',
+        'data-1p-ignore': 'true',
+        'data-lpignore': 'true',
     } %}
     {% set postalAttr = {
         'data-address-autocomplete-target': 'postalCodeInput',
-        'autocomplete': browserAutofill ? 'postal-code' : 'off',
+        'autocomplete': 'off',
         'inputmode': 'numeric',
+        'data-1p-ignore': 'true',
+        'data-lpignore': 'true',
     } %}
 
     {% if liveValidate %}
@@ -48,51 +61,117 @@
         }) %}
     {% endif %}
 
-    {# Show the override container only when billingStreet has BOTH a value
-       and a violation — the AddressExists validator only fires for non-empty
-       addresses, so an empty-and-erroring field is just a NotBlank failure
-       where the override doesn't apply. #}
+    {# Show the override block only when billingStreet has BOTH a value and a
+       violation — the AddressExists validator only fires for non-empty addresses. #}
     {% set streetHasValue = form.billingStreet.vars.value is not empty %}
     {% set streetHasViolation = streetHasValue and form.billingStreet.vars.errors|length > 0 %}
 
+    {# Reveal the three fields (vs. the search box) whenever the address is already
+       populated or erroring. The Stimulus controller renders the SAME condition, so a
+       Live morph re-renders a consistent state. #}
+    {% set addressPrefilled =
+        form.billingStreet.vars.value is not empty
+        or form.billingCity.vars.value is not empty
+        or form.billingPostalCode.vars.value is not empty
+        or streetHasViolation %}
+
+    {% set searchId = 'address-search-' ~ form.billingStreet.vars.id %}
+
     <div {{ stimulus_controller('address-autocomplete') }} class="space-y-4">
-        <div>
-            {{ form_row(form.billingStreet, {
-                label_attr: {class: 'form-label-required'},
-                attr: streetAttr,
-            }) }}
+        {# --- Search box --------------------------------------------------- #}
+        <div data-address-autocomplete-target="searchSection" class="{{ addressPrefilled ? 'hidden ' : '' }}space-y-1">
+            <label for="{{ searchId }}" class="form-label">Adresa</label>
+
+            {# data-live-ignore: this whole search UI (typed text, spinner, dropdown)
+               is client-owned and has no server representation — keep morphs away. #}
+            <div class="relative" data-live-ignore>
+                <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </span>
+                <input type="text"
+                       id="{{ searchId }}"
+                       data-address-autocomplete-target="searchInput"
+                       class="form-input pl-10! pr-10!"
+                       placeholder="Začněte psát ulici a město…"
+                       autocomplete="off"
+                       autocapitalize="off"
+                       spellcheck="false"
+                       data-1p-ignore="true"
+                       data-lpignore="true"
+                       role="combobox"
+                       aria-autocomplete="list"
+                       aria-expanded="false"
+                       aria-controls="{{ searchId }}-listbox">
+                <span data-address-autocomplete-target="spinner"
+                      class="hidden absolute inset-y-0 right-0 flex items-center pr-3 text-accent"
+                      aria-hidden="true">
+                    <svg class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                    </svg>
+                </span>
+            </div>
+
+            <p class="text-xs text-gray-500">
+                Vyhledejte adresu, nebo ji
+                <button type="button" data-action="address-autocomplete#showManual" class="text-accent hover:underline">zadejte ručně</button>.
+            </p>
         </div>
 
-        <div class="grid md:grid-cols-2 gap-4">
-            <div>
-                {{ form_row(form.billingCity, {
-                    label_attr: {class: 'form-label-required'},
-                    attr: cityAttr,
-                }) }}
+        {# --- The three real fields (revealed after a pick, or for manual entry) --- #}
+        <div data-address-autocomplete-target="manualSection" class="{{ addressPrefilled ? '' : 'hidden ' }}space-y-4">
+            <div class="flex items-center justify-between gap-2">
+                {# data-live-ignore: the controller sets the "filled from search"
+                   confirmation client-side; a morph must not wipe it. #}
+                <p data-address-autocomplete-target="statusText"
+                   class="text-sm text-green-700 min-h-5"
+                   aria-live="polite"
+                   data-live-ignore></p>
+                <button type="button" data-action="address-autocomplete#showSearch" class="shrink-0 text-sm text-accent hover:underline">
+                    Vyhledat adresu
+                </button>
             </div>
-            <div>
-                {{ form_row(form.billingPostalCode, {
-                    label_attr: {class: 'form-label-required'},
-                    attr: postalAttr,
-                }) }}
-            </div>
-        </div>
 
-        {# Override checkbox surfaces when the server-side check emitted an
-           AddressExists violation (lands at path 'billingStreet'). Hidden by
-           default; revealed by removing the 'hidden' class once a violation
-           lands so the customer can confirm an edge-case address. #}
-        <div data-address-autocomplete-target="overrideContainer"
-             class="{{ streetHasViolation ? '' : 'hidden ' }}rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-            <p class="font-medium mb-1">Tuto adresu se nepodařilo ověřit v registru.</p>
-            <p class="mb-2 text-amber-800">Zkontrolujte ulici, město i PSČ. Pokud je adresa správná, pokračujte zaškrtnutím níže.</p>
-            <label class="flex items-center cursor-pointer">
-                {{ form_widget(form.addressOverride, {attr: {
-                    'data-address-autocomplete-target': 'overrideCheckbox',
-                    'class': 'mr-2',
-                }}) }}
-                <span>{{ form.addressOverride.vars.label|default('Adresa je správná, pokračovat') }}</span>
-            </label>
+            <div>
+                {{ form_row(form.billingStreet, {
+                    label_attr: {class: 'form-label-required'},
+                    attr: streetAttr,
+                }) }}
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-4">
+                <div>
+                    {{ form_row(form.billingCity, {
+                        label_attr: {class: 'form-label-required'},
+                        attr: cityAttr,
+                    }) }}
+                </div>
+                <div>
+                    {{ form_row(form.billingPostalCode, {
+                        label_attr: {class: 'form-label-required'},
+                        attr: postalAttr,
+                    }) }}
+                </div>
+            </div>
+
+            {# Soft-warn override: surfaces when the server-side AddressExists check
+               could not match the address (violation lands at path 'billingStreet').
+               Hidden until a violation lands so the customer can confirm an edge-case
+               address the Photon registry doesn't recognise. #}
+            <div data-address-autocomplete-target="overrideContainer"
+                 class="{{ streetHasViolation ? '' : 'hidden ' }}rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+                <p class="font-medium mb-1">Tuto adresu se nepodařilo ověřit v registru.</p>
+                <p class="mb-2 text-amber-800">Zkontrolujte ulici, město i PSČ. Pokud je adresa správná, pokračujte zaškrtnutím níže.</p>
+                <label class="flex items-center cursor-pointer">
+                    {{ form_widget(form.addressOverride, {attr: {
+                        'data-address-autocomplete-target': 'overrideCheckbox',
+                        'class': 'mr-2',
+                    }}) }}
+                    <span>{{ form.addressOverride.vars.label|default('Adresa je správná, pokračovat') }}</span>
+                </label>
+            </div>
         </div>
     </div>
 {% endmacro %}

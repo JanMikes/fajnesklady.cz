@@ -2,69 +2,101 @@ import { Controller } from '@hotwired/stimulus';
 
 const DEBOUNCE_MS = 250;
 const BLUR_HIDE_MS = 150;
+const MIN_QUERY_LENGTH = 3;
 
+/**
+ * Address entry as a single Photon-backed search box.
+ *
+ * The user types into ONE search field (`searchInput`); picking a suggestion fills
+ * and reveals the three real fields (street / city / PSČ) for verification. "Zadat
+ * ručně" reveals the same fields empty for manual entry. The three fields always
+ * live in the DOM and are submitted with the form — only their visibility toggles.
+ *
+ * Why a dedicated search box instead of autocompleting the three fields directly
+ * (the old design): the real fields carried WHATWG autofill tokens, so the browser
+ * popped its own address dropdown on top of ours. And filling them programmatically
+ * re-fired the `input` listener that lived on those same fields, re-querying Photon
+ * after every selection. Here the search box owns the dropdown; the real fields have
+ * no suggest listener, so neither problem can happen.
+ *
+ * Visibility is a pure function of (manualForced OR any field has a value). The
+ * server renders the same condition, so a Live Component morph re-renders a
+ * consistent state; `applyMode()` re-asserts after every morph for the one case the
+ * server can't see (manual mode chosen while the fields are still empty).
+ */
 export default class extends Controller {
-    static targets = ['streetInput', 'cityInput', 'postalCodeInput', 'overrideCheckbox', 'overrideContainer'];
+    static targets = [
+        'searchInput',
+        'searchSection',
+        'manualSection',
+        'spinner',
+        'statusText',
+        'streetInput',
+        'cityInput',
+        'postalCodeInput',
+        'overrideCheckbox',
+        'overrideContainer',
+    ];
 
     connect() {
         this.dropdown = null;
         this.suggestions = [];
         this.activeIndex = -1;
-        this.activeInput = null;
         this.debounceHandle = null;
         this.blurHandle = null;
+        this.abortController = null;
+        this.cache = new Map(); // query -> suggestions, dedupes keystrokes within a page view
+        this.lastQuery = null;
+        this.manualForced = false;
 
-        this.boundOnInput = (event) => this.onInput(event);
-        this.boundOnKeydown = (event) => this.onKeydown(event);
-        this.boundOnBlur = () => this.onBlur();
-        this.boundOnFocus = (event) => this.onFocus(event);
+        this.boundOnSearchInput = () => this.onSearchInput();
+        this.boundOnSearchKeydown = (event) => this.onSearchKeydown(event);
+        this.boundOnSearchBlur = () => this.onSearchBlur();
+        this.boundOnSearchFocus = () => this.onSearchFocus();
         this.boundOnAddressEdit = (event) => this.onAddressEdit(event);
         this.boundOnDocumentClick = (event) => this.onDocumentClick(event);
+        this.boundOnLiveRender = () => this.applyMode();
 
-        const tokens = { streetInput: 'street-address', cityInput: 'address-level2' };
-        for (const input of this.triggerInputs()) {
-            input.addEventListener('input', this.boundOnInput);
-            input.addEventListener('keydown', this.boundOnKeydown);
-            input.addEventListener('blur', this.boundOnBlur);
-            input.addEventListener('focus', this.boundOnFocus);
-            const token = tokens[input.dataset.addressAutocompleteTarget];
-            if (token) input.setAttribute('autocomplete', token);
+        if (this.hasSearchInputTarget) {
+            this.searchInputTarget.addEventListener('input', this.boundOnSearchInput);
+            this.searchInputTarget.addEventListener('keydown', this.boundOnSearchKeydown);
+            this.searchInputTarget.addEventListener('blur', this.boundOnSearchBlur);
+            this.searchInputTarget.addEventListener('focus', this.boundOnSearchFocus);
         }
 
-        for (const input of this.editableInputs()) {
+        for (const input of this.addressInputs()) {
             input.addEventListener('input', this.boundOnAddressEdit);
         }
 
         document.addEventListener('click', this.boundOnDocumentClick);
+        // Live Components re-render the macro from server state on every morph; the
+        // server can't know about a manual-mode choice made while the fields are
+        // still empty, so re-assert the reveal state after each render.
+        document.addEventListener('live:render:finished', this.boundOnLiveRender);
+
+        this.applyMode();
     }
 
     disconnect() {
-        for (const input of this.triggerInputs()) {
-            input.removeEventListener('input', this.boundOnInput);
-            input.removeEventListener('keydown', this.boundOnKeydown);
-            input.removeEventListener('blur', this.boundOnBlur);
-            input.removeEventListener('focus', this.boundOnFocus);
+        if (this.hasSearchInputTarget) {
+            this.searchInputTarget.removeEventListener('input', this.boundOnSearchInput);
+            this.searchInputTarget.removeEventListener('keydown', this.boundOnSearchKeydown);
+            this.searchInputTarget.removeEventListener('blur', this.boundOnSearchBlur);
+            this.searchInputTarget.removeEventListener('focus', this.boundOnSearchFocus);
         }
-        for (const input of this.editableInputs()) {
+        for (const input of this.addressInputs()) {
             input.removeEventListener('input', this.boundOnAddressEdit);
         }
         document.removeEventListener('click', this.boundOnDocumentClick);
+        document.removeEventListener('live:render:finished', this.boundOnLiveRender);
 
         if (this.debounceHandle) clearTimeout(this.debounceHandle);
         if (this.blurHandle) clearTimeout(this.blurHandle);
+        if (this.abortController) this.abortController.abort();
         this.removeDropdown();
     }
 
-    // Inputs that trigger a suggestion fetch (Street + City). City-only queries
-    // hit Photon poorly, so buildQuery() always combines both fields.
-    triggerInputs() {
-        const inputs = [];
-        if (this.hasStreetInputTarget) inputs.push(this.streetInputTarget);
-        if (this.hasCityInputTarget) inputs.push(this.cityInputTarget);
-        return inputs;
-    }
-
-    editableInputs() {
+    addressInputs() {
         const inputs = [];
         if (this.hasStreetInputTarget) inputs.push(this.streetInputTarget);
         if (this.hasCityInputTarget) inputs.push(this.cityInputTarget);
@@ -72,79 +104,120 @@ export default class extends Controller {
         return inputs;
     }
 
-    onInput(event) {
-        // Moving to a different field re-anchors the dropdown under it.
-        if (this.activeInput && this.activeInput !== event.target) {
-            this.removeDropdown();
+    // --- Reveal state (search vs. the three fields) -------------------------
+
+    hasAnyAddressValue() {
+        return this.addressInputs().some((input) => (input.value ?? '').trim() !== '');
+    }
+
+    applyMode() {
+        const reveal = this.manualForced || this.hasAnyAddressValue();
+        if (this.hasSearchSectionTarget) this.searchSectionTarget.classList.toggle('hidden', reveal);
+        if (this.hasManualSectionTarget) this.manualSectionTarget.classList.toggle('hidden', !reveal);
+    }
+
+    showManual(event) {
+        if (event) event.preventDefault();
+        this.manualForced = true;
+        this.cancelSearch();
+        this.applyMode();
+        if (this.hasStreetInputTarget) this.streetInputTarget.focus();
+    }
+
+    showSearch(event) {
+        if (event) event.preventDefault();
+        // Going back to search means replacing the address. Clear the fields so the
+        // server-derived mode agrees with the client — otherwise the next morph,
+        // seeing the old values, would snap us straight back to the reveal state.
+        this.clearFields();
+        this.manualForced = false;
+        this.setStatus('');
+        this.applyMode();
+        if (this.hasSearchInputTarget) {
+            this.searchInputTarget.value = '';
+            this.searchInputTarget.focus();
         }
-        this.activeInput = event.target;
-        const typed = (event.target.value ?? '').trim();
+    }
+
+    clearFields() {
+        for (const input of this.addressInputs()) {
+            if ((input.value ?? '') !== '') this.setFieldValue(input, '');
+        }
+    }
+
+    // --- Search / suggest ---------------------------------------------------
+
+    onSearchFocus() {
+        this.cancelHide();
+        const query = (this.searchInputTarget.value ?? '').trim();
+        if (query.length >= MIN_QUERY_LENGTH && this.suggestions.length > 0) {
+            this.renderDropdown(this.suggestions);
+        }
+    }
+
+    onSearchInput() {
+        const query = (this.searchInputTarget.value ?? '').trim();
         if (this.debounceHandle) clearTimeout(this.debounceHandle);
 
-        // Min-length gate is on the field actually being typed into; the query
-        // sent to Photon combines Street + City for better hits.
-        if (typed.length < 3) {
+        if (query.length < MIN_QUERY_LENGTH) {
+            this.hideSpinner();
             this.removeDropdown();
             return;
         }
 
-        const query = this.buildQuery();
+        if (this.cache.has(query)) {
+            this.hideSpinner();
+            this.renderDropdown(this.cache.get(query));
+            return;
+        }
+
+        // Show the spinner up front (before the debounce + network) so the user has
+        // immediate feedback that something is happening — the missing-feedback gap
+        // was the "it feels broken, then a panel pops in a second later" complaint.
+        this.showSpinner();
         this.debounceHandle = setTimeout(() => this.fetchSuggestions(query), DEBOUNCE_MS);
     }
 
-    onFocus(event) {
-        this.activeInput = event.target;
-        this.cancelHide();
-    }
-
-    buildQuery() {
-        const parts = [];
-        if (this.hasStreetInputTarget && this.streetInputTarget.value.trim()) parts.push(this.streetInputTarget.value.trim());
-        if (this.hasCityInputTarget && this.cityInputTarget.value.trim()) parts.push(this.cityInputTarget.value.trim());
-        return parts.join(', ');
-    }
-
-    onAddressEdit(event) {
-        // Manual edit to any of the three address inputs invalidates a prior
-        // override — the address has changed, the user must re-confirm.
-        if (this.hasOverrideCheckboxTarget && event.isTrusted && this.overrideCheckboxTarget.checked) {
-            this.overrideCheckboxTarget.checked = false;
-            this.overrideCheckboxTarget.dispatchEvent(new Event('change', { bubbles: true }));
-        }
-    }
-
-    onBlur() {
-        // Slight delay so click events on dropdown items still fire.
-        if (this.blurHandle) clearTimeout(this.blurHandle);
-        this.blurHandle = setTimeout(() => this.removeDropdown(), BLUR_HIDE_MS);
-    }
-
-    cancelHide() {
-        if (this.blurHandle) {
-            clearTimeout(this.blurHandle);
-            this.blurHandle = null;
-        }
-    }
-
-    onDocumentClick(event) {
-        if (!this.element.contains(event.target)) {
-            this.removeDropdown();
-        }
-    }
-
     async fetchSuggestions(query) {
+        this.lastQuery = query;
+
+        if (this.cache.has(query)) {
+            this.hideSpinner();
+            this.renderDropdown(this.cache.get(query));
+            return;
+        }
+
+        // Cancel any in-flight request so a slow earlier response can't arrive late
+        // and re-open the dropdown after the user has already moved on / selected.
+        if (this.abortController) this.abortController.abort();
+        this.abortController = new AbortController();
+
         try {
             const response = await fetch(`/api/address/suggest?q=${encodeURIComponent(query)}`, {
-                headers: { 'Accept': 'application/json' },
+                headers: { Accept: 'application/json' },
+                signal: this.abortController.signal,
             });
             if (!response.ok) {
+                this.hideSpinner();
                 this.removeDropdown();
                 return;
             }
             const data = await response.json();
             const suggestions = Array.isArray(data.suggestions) ? data.suggestions : [];
+            this.cache.set(query, suggestions);
+
+            // The user may have kept typing while this was in flight — ignore a stale
+            // result that no longer matches the box.
+            if (query !== (this.searchInputTarget.value ?? '').trim()) {
+                this.hideSpinner();
+                return;
+            }
+
+            this.hideSpinner();
             this.renderDropdown(suggestions);
-        } catch (e) {
+        } catch (error) {
+            if (error.name === 'AbortError') return; // superseded by a newer query/selection
+            this.hideSpinner();
             this.removeDropdown();
         }
     }
@@ -152,41 +225,54 @@ export default class extends Controller {
     renderDropdown(suggestions) {
         this.suggestions = suggestions;
         this.activeIndex = -1;
+        this.ensureDropdown();
+        if (!this.dropdown) return;
+
+        this.dropdown.innerHTML = '';
 
         if (suggestions.length === 0) {
-            this.removeDropdown();
+            const li = document.createElement('li');
+            li.className = 'px-3 py-2 text-gray-500';
+            li.append('Nenašli jsme žádnou adresu. ');
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'text-accent hover:underline font-medium';
+            button.textContent = 'Zadat ručně';
+            button.addEventListener('mousedown', (event) => {
+                event.preventDefault();
+                this.showManual();
+            });
+            li.appendChild(button);
+            this.dropdown.appendChild(li);
+            this.setSearchExpanded(true);
             return;
         }
 
-        if (!this.dropdown) {
-            this.dropdown = document.createElement('ul');
-            this.dropdown.className = 'absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg max-h-72 overflow-auto text-sm';
-            this.dropdown.setAttribute('data-live-ignore', '');
-            this.dropdown.setAttribute('role', 'listbox');
-
-            // Anchor under whichever field the user is typing into (Street or City).
-            const anchor = this.activeInput ?? (this.hasStreetInputTarget ? this.streetInputTarget : null);
-            if (!anchor) {
-                this.dropdown = null;
-                return;
-            }
-            const wrapper = anchor.parentElement;
-            wrapper.style.position = 'relative';
-            wrapper.appendChild(this.dropdown);
-        }
-
-        this.dropdown.innerHTML = '';
         suggestions.forEach((suggestion, index) => {
             const li = document.createElement('li');
+            li.id = `${this.dropdown.id}-opt-${index}`;
             li.className = 'px-3 py-2 cursor-pointer hover:bg-accent/10';
-            li.textContent = suggestion.displayLabel;
             li.setAttribute('role', 'option');
+            li.textContent = suggestion.displayLabel;
             li.addEventListener('mousedown', (event) => {
                 event.preventDefault();
                 this.applySuggestion(index);
             });
             this.dropdown.appendChild(li);
         });
+        this.setSearchExpanded(true);
+    }
+
+    ensureDropdown() {
+        if (this.dropdown || !this.hasSearchInputTarget) return;
+        this.dropdown = document.createElement('ul');
+        this.dropdown.id = `${this.searchInputTarget.id}-listbox`;
+        this.dropdown.className = 'absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg max-h-72 overflow-auto text-sm';
+        // The search UI sits inside a data-live-ignore wrapper, but mark the dropdown
+        // too so a morph that does reach it can't strip an open list mid-interaction.
+        this.dropdown.setAttribute('data-live-ignore', '');
+        this.dropdown.setAttribute('role', 'listbox');
+        this.searchInputTarget.parentElement.appendChild(this.dropdown);
     }
 
     removeDropdown() {
@@ -194,15 +280,56 @@ export default class extends Controller {
             this.dropdown.parentNode.removeChild(this.dropdown);
         }
         this.dropdown = null;
-        this.suggestions = [];
         this.activeIndex = -1;
-        this.activeInput = null;
+        this.setSearchExpanded(false);
+        if (this.hasSearchInputTarget) this.searchInputTarget.removeAttribute('aria-activedescendant');
     }
 
-    onKeydown(event) {
-        if (!this.dropdown || this.suggestions.length === 0) {
-            return;
+    applySuggestion(index) {
+        const suggestion = this.suggestions[index];
+        if (!suggestion) return;
+
+        if (this.abortController) this.abortController.abort();
+        if (this.debounceHandle) clearTimeout(this.debounceHandle);
+
+        const fullStreet = [suggestion.street, suggestion.houseNumber].filter(Boolean).join(' ').trim();
+        this.setFieldValue(this.streetInputTarget, fullStreet);
+        if (this.hasCityInputTarget) this.setFieldValue(this.cityInputTarget, suggestion.city);
+        if (this.hasPostalCodeInputTarget) this.setFieldValue(this.postalCodeInputTarget, this.formatPostalCode(suggestion.postalCode));
+
+        // The address came from Photon, so any prior soft-warn override no longer applies.
+        if (this.hasOverrideCheckboxTarget && this.overrideCheckboxTarget.checked) {
+            this.overrideCheckboxTarget.checked = false;
+            this.overrideCheckboxTarget.dispatchEvent(new Event('change', { bubbles: true }));
         }
+
+        this.setStatus('Adresa vyplněna z vyhledávání');
+        this.suggestions = [];
+        this.lastQuery = null;
+        this.removeDropdown();
+        this.hideSpinner();
+        if (this.hasSearchInputTarget) {
+            this.searchInputTarget.value = '';
+            this.searchInputTarget.blur();
+        }
+        this.applyMode();
+    }
+
+    onAddressEdit(event) {
+        // A real (user-typed) edit to any field invalidates a soft-warn override —
+        // the address changed, so the customer must re-confirm. Synthetic events
+        // from setFieldValue() are isTrusted=false and skip this.
+        if (this.hasOverrideCheckboxTarget && event.isTrusted && this.overrideCheckboxTarget.checked) {
+            this.overrideCheckboxTarget.checked = false;
+            this.overrideCheckboxTarget.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+    }
+
+    // --- Keyboard navigation ------------------------------------------------
+
+    onSearchKeydown(event) {
+        if (!this.dropdown || this.suggestions.length === 0) return;
+
         if (event.key === 'ArrowDown') {
             event.preventDefault();
             this.moveActive(1);
@@ -221,45 +348,73 @@ export default class extends Controller {
     }
 
     moveActive(delta) {
-        if (this.suggestions.length === 0) return;
         this.activeIndex = (this.activeIndex + delta + this.suggestions.length) % this.suggestions.length;
-        const items = this.dropdown.querySelectorAll('li');
-        items.forEach((item, index) => {
-            if (index === this.activeIndex) {
-                item.classList.add('bg-accent/10');
-            } else {
-                item.classList.remove('bg-accent/10');
-            }
-        });
+        const items = this.dropdown.querySelectorAll('li[role="option"]');
+        items.forEach((item, index) => item.classList.toggle('bg-accent/10', index === this.activeIndex));
+        const active = items[this.activeIndex];
+        if (active && this.hasSearchInputTarget) {
+            this.searchInputTarget.setAttribute('aria-activedescendant', active.id);
+            active.scrollIntoView({ block: 'nearest' });
+        }
     }
 
-    applySuggestion(index) {
-        const suggestion = this.suggestions[index];
-        if (!suggestion) return;
+    // --- Dropdown lifecycle helpers ----------------------------------------
 
-        const fullStreet = [suggestion.street, suggestion.houseNumber].filter(Boolean).join(' ').trim();
-        this.setInputValue(this.streetInputTarget, fullStreet);
+    onSearchBlur() {
+        if (this.blurHandle) clearTimeout(this.blurHandle);
+        this.blurHandle = setTimeout(() => this.removeDropdown(), BLUR_HIDE_MS);
+    }
 
-        if (this.hasCityInputTarget) {
-            this.setInputValue(this.cityInputTarget, suggestion.city);
+    cancelHide() {
+        if (this.blurHandle) {
+            clearTimeout(this.blurHandle);
+            this.blurHandle = null;
         }
-        if (this.hasPostalCodeInputTarget) {
-            this.setInputValue(this.postalCodeInputTarget, suggestion.postalCode);
-        }
+    }
 
-        if (this.hasOverrideCheckboxTarget && this.overrideCheckboxTarget.checked) {
-            this.overrideCheckboxTarget.checked = false;
-            this.overrideCheckboxTarget.dispatchEvent(new Event('change', { bubbles: true }));
-        }
+    onDocumentClick(event) {
+        if (!this.element.contains(event.target)) this.removeDropdown();
+    }
 
+    cancelSearch() {
+        if (this.debounceHandle) clearTimeout(this.debounceHandle);
+        if (this.abortController) this.abortController.abort();
+        this.hideSpinner();
         this.removeDropdown();
+        this.suggestions = [];
     }
 
-    setInputValue(input, value) {
+    // --- Small DOM helpers --------------------------------------------------
+
+    setFieldValue(input, value) {
         if (!input) return;
         input.value = value;
-        // Dispatch synthetic events so Live Components re-sync.
+        // Dispatch synthetic events so Live Components re-sync the model. The address
+        // fields have no suggest listener, so this can't retrigger a fetch.
         input.dispatchEvent(new Event('input', { bubbles: true }));
         input.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    formatPostalCode(postalCode) {
+        const digits = (postalCode ?? '').replace(/\s+/g, '');
+        return digits.length === 5 ? `${digits.slice(0, 3)} ${digits.slice(3)}` : (postalCode ?? '');
+    }
+
+    setStatus(text) {
+        if (this.hasStatusTextTarget) this.statusTextTarget.textContent = text;
+    }
+
+    showSpinner() {
+        if (this.hasSpinnerTarget) this.spinnerTarget.classList.remove('hidden');
+        if (this.hasSearchInputTarget) this.searchInputTarget.setAttribute('aria-busy', 'true');
+    }
+
+    hideSpinner() {
+        if (this.hasSpinnerTarget) this.spinnerTarget.classList.add('hidden');
+        if (this.hasSearchInputTarget) this.searchInputTarget.removeAttribute('aria-busy');
+    }
+
+    setSearchExpanded(expanded) {
+        if (this.hasSearchInputTarget) this.searchInputTarget.setAttribute('aria-expanded', expanded ? 'true' : 'false');
     }
 }

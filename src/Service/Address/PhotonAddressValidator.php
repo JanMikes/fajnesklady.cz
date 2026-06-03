@@ -18,7 +18,10 @@ final readonly class PhotonAddressValidator implements AddressValidator
     private const string USER_AGENT = 'fajnesklady.cz address validation (info@fajnesklady.cz)';
     private const float REQUEST_TIMEOUT_SECONDS = 3.0;
     private const int VALIDATE_CACHE_TTL_SECONDS = 7 * 24 * 60 * 60;
-    private const int SUGGEST_CACHE_TTL_SECONDS = 24 * 60 * 60;
+    // Suggestions are keyed by the typed query; addresses are stable, so cache the
+    // Photon response for a month to keep external calls (and latency) down. Validate
+    // stays at 7 days so registry corrections to a confirmed address get re-checked.
+    private const int SUGGEST_CACHE_TTL_SECONDS = 30 * 24 * 60 * 60;
 
     public function __construct(
         private HttpClientInterface $httpClient,
