@@ -9,6 +9,7 @@ export default class extends Controller {
         'addBtn', 'copyBtn', 'snapCheckbox',
         'coordX', 'coordY', 'coordW', 'coordH', 'coordR',
         'zoomLabel', 'minimap',
+        'photoList', 'photoManageLink', 'photoHint',
     ];
     static values = {
         mapImage: String,
@@ -16,6 +17,7 @@ export default class extends Controller {
         storageTypes: Array,
         apiUrl: String,
         generateCodeUrl: String,
+        storageEditUrlTemplate: String,
     }
 
     GRID_SIZE = 10;
@@ -550,6 +552,44 @@ export default class extends Controller {
                 this.deleteBtnTarget.title = '';
             }
         }
+
+        this.renderPhotos(storage);
+    }
+
+    // --- Photos ---
+    // Per-unit photo upload/delete lives on the dedicated storage edit page
+    // (full form + validation + lightbox). Here we preview the unit's photos
+    // and link to that page. A storage must be saved (have an id) first.
+    renderPhotos(storage) {
+        const isSaved = !storage.isNew && !!storage.id;
+
+        if (this.hasPhotoHintTarget) {
+            this.photoHintTarget.classList.toggle('hidden', isSaved);
+        }
+        if (this.hasPhotoManageLinkTarget) {
+            this.photoManageLinkTarget.classList.toggle('hidden', !isSaved);
+            if (isSaved && this.storageEditUrlTemplateValue) {
+                this.photoManageLinkTarget.href = this.storageEditUrlTemplateValue.replace('__ID__', storage.id);
+            }
+        }
+
+        if (!this.hasPhotoListTarget) return;
+
+        const photos = isSaved && Array.isArray(storage.photos) ? storage.photos : [];
+
+        if (!isSaved) {
+            this.photoListTarget.innerHTML = '';
+            return;
+        }
+
+        if (photos.length === 0) {
+            this.photoListTarget.innerHTML = '<p class="text-xs text-gray-500">Zatím žádné fotografie tohoto skladu.</p>';
+            return;
+        }
+
+        this.photoListTarget.innerHTML = photos.map(photo =>
+            `<img src="${photo.url}" alt="Fotografie skladu" class="h-12 w-12 object-cover rounded border border-gray-200">`
+        ).join('');
     }
 
     hideForm() {

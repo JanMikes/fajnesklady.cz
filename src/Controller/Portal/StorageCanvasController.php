@@ -67,6 +67,11 @@ final class StorageCanvasController extends AbstractController
                 array_map(static fn ($p) => '/uploads/'.$p->path, $s->getPhotos()->toArray()),
                 array_map(static fn ($p) => '/uploads/'.$p->path, $s->storageType->getPhotos()->toArray()),
             ),
+            // Unit-specific photos only, for the canvas editor's photo panel.
+            'photos' => array_map(static fn ($p) => [
+                'id' => $p->id->toRfc4122(),
+                'url' => '/uploads/'.$p->path,
+            ], $s->getPhotos()->toArray()),
         ], $storages);
 
         return $this->render('portal/storage/canvas.html.twig', [

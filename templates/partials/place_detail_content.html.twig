@@ -73,7 +73,7 @@
                 <div class="card-body">
                     <h3 class="text-xl font-bold text-gray-900 mb-2">{{ storageType.name }}</h3>
 
-                    {# Photo gallery — hero only, remaining photos reachable via lightbox. #}
+                    {# Photo gallery — hero + thumbnail strip; extra photos fold into a "+N" tile and open in the lightbox. #}
                     {% if storageType.hasPhotos %}
                         <div class="mb-3">
                             {% include 'partials/photo_gallery.html.twig' with {
@@ -81,7 +81,9 @@
                                 gallery_key: 'storage-type-' ~ storageType.id,
                                 caption: 'Typ skladu: ' ~ storageType.name,
                                 hero_max_h: 'max-h-40',
-                                layout: 'hero-only',
+                                thumb_max_h: 'max-h-16',
+                                layout: 'hero',
+                                max_thumbs: 4,
                                 alt: storageType.name,
                             } only %}
                         </div>

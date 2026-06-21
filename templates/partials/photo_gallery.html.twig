@@ -12,10 +12,16 @@
      caption     — string, optional. Shown as the lightbox title.
      hero_max_h  — Tailwind class for hero height cap. Default max-h-64.
      thumb_max_h — Tailwind class for thumb / strip height cap. Default max-h-20.
+     max_thumbs  — int|null. In the 'hero' layout, cap how many thumbnails are
+                   shown below the hero; any beyond the cap are reachable from a
+                   "+N" overlay on the last visible thumbnail (and via the
+                   lightbox). null = show every thumbnail. Default null.
      layout      — 'hero' (default), 'hero-only', or 'strip':
-                     hero      — first photo as hero + rest as a thumb strip.
+                     hero      — first photo as hero + the rest as a visible
+                                 thumb strip (capped by max_thumbs).
                      hero-only — first photo as hero; remaining photos
                                  reachable only via the lightbox (compact card).
+                                 A small count badge signals how many exist.
                      strip     — all photos at thumb size in a flex row,
                                  no hero (sidebar / dense lists).
      alt         — string, optional <img alt>. Default ''.
@@ -25,6 +31,7 @@
 {% set layout = layout ?? 'hero' %}
 {% set alt = alt ?? '' %}
 {% set caption = caption ?? '' %}
+{% set max_thumbs = max_thumbs ?? null %}
 {% if photos|length > 0 %}
     {% if layout == 'strip' %}
         <div class="flex flex-wrap gap-2">
@@ -43,29 +50,63 @@
     {% else %}
         {# Hero — first photo, full image visible. #}
         <a href="{{ asset('uploads/' ~ photos|first.path) }}"
-           class="glightbox block bg-gray-50 rounded-lg overflow-hidden"
+           class="glightbox relative block bg-gray-50 rounded-lg overflow-hidden"
            data-gallery="{{ gallery_key }}"
            {% if caption %}data-glightbox="title: {{ caption|e('html_attr') }}"{% endif %}
            aria-label="Otevřít v plné velikosti">
             <img src="{{ asset('uploads/' ~ photos|first.path) }}"
                  alt="{{ alt }}"
                  class="w-full {{ hero_max_h }} object-contain mx-auto">
+            {% if layout == 'hero-only' and photos|length > 1 %}
+                {# Affordance: tell the customer there are more photos behind the hero. #}
+                <span class="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-xs font-medium text-white">
+                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    {{ photos|length }}
+                </span>
+            {% endif %}
         </a>
 
-        {% if layout == 'hero' and photos|length > 1 %}
-            <div class="mt-2 flex flex-wrap gap-2">
-                {% for photo in photos|slice(1) %}
-                    <a href="{{ asset('uploads/' ~ photo.path) }}"
-                       class="glightbox bg-gray-50 rounded overflow-hidden flex-shrink-0"
-                       data-gallery="{{ gallery_key }}"
-                       {% if caption %}data-glightbox="title: {{ caption|e('html_attr') }}"{% endif %}
-                       aria-label="Otevřít v plné velikosti">
-                        <img src="{{ asset('uploads/' ~ photo.path) }}"
-                             alt="{{ alt }}"
-                             class="{{ thumb_max_h }} w-auto object-contain">
-                    </a>
-                {% endfor %}
-            </div>
+        {% if layout == 'hero' %}
+            {% set rest = photos|slice(1) %}
+            {% if max_thumbs is not null and rest|length > max_thumbs %}
+                {% set visible_thumbs = rest|slice(0, max_thumbs) %}
+                {% set overflow_thumbs = rest|slice(max_thumbs) %}
+            {% else %}
+                {% set visible_thumbs = rest %}
+                {% set overflow_thumbs = [] %}
+            {% endif %}
+
+            {% if visible_thumbs|length > 0 %}
+                <div class="mt-2 flex flex-wrap gap-2">
+                    {% for photo in visible_thumbs %}
+                        {% set is_overflow_tile = loop.last and overflow_thumbs|length > 0 %}
+                        <a href="{{ asset('uploads/' ~ photo.path) }}"
+                           class="glightbox relative bg-gray-50 rounded overflow-hidden flex-shrink-0"
+                           data-gallery="{{ gallery_key }}"
+                           {% if caption %}data-glightbox="title: {{ caption|e('html_attr') }}"{% endif %}
+                           aria-label="Otevřít v plné velikosti">
+                            <img src="{{ asset('uploads/' ~ photo.path) }}"
+                                 alt="{{ alt }}"
+                                 class="{{ thumb_max_h }} w-auto object-contain {% if is_overflow_tile %}brightness-50{% endif %}">
+                            {% if is_overflow_tile %}
+                                <span class="absolute inset-0 flex items-center justify-center text-white font-semibold text-sm">+{{ overflow_thumbs|length }}</span>
+                            {% endif %}
+                        </a>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            {# Overflow photos: hidden, but reachable via the lightbox from the "+N" tile. #}
+            {% for photo in overflow_thumbs %}
+                <a href="{{ asset('uploads/' ~ photo.path) }}"
+                   class="glightbox hidden"
+                   data-gallery="{{ gallery_key }}"
+                   {% if caption %}data-glightbox="title: {{ caption|e('html_attr') }}"{% endif %}
+                   aria-hidden="true"
+                   tabindex="-1"></a>
+            {% endfor %}
         {% elseif layout == 'hero-only' %}
             {# Strip hidden — keep remaining photos reachable from the hero via the lightbox. #}
             {% for photo in photos|slice(1) %}

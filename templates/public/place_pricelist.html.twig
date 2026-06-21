@@ -72,9 +72,25 @@
                             <tr class="{% if not isAvailable %}opacity-70{% endif %}">
                                 <td class="!py-3">
                                     {% if storageType.hasPhotos %}
-                                        <img src="{{ asset('uploads/' ~ storageType.photos|first.path) }}"
-                                             alt="{{ storageType.name }}"
-                                             class="h-16 w-20 object-cover rounded bg-gray-50">
+                                        <a href="{{ asset('uploads/' ~ storageType.photos|first.path) }}"
+                                           class="glightbox relative block h-16 w-20 rounded overflow-hidden bg-gray-50"
+                                           data-gallery="pricelist-row-{{ storageType.id }}"
+                                           data-glightbox="title: {{ storageType.name|e('html_attr') }}"
+                                           aria-label="Otevřít fotografie">
+                                            <img src="{{ asset('uploads/' ~ storageType.photos|first.path) }}"
+                                                 alt="{{ storageType.name }}"
+                                                 class="h-16 w-20 object-cover">
+                                            {% if storageType.photos|length > 1 %}
+                                                <span class="absolute bottom-0.5 right-0.5 rounded bg-black/60 px-1 text-[10px] font-medium text-white">+{{ storageType.photos|length - 1 }}</span>
+                                            {% endif %}
+                                        </a>
+                                        {% for photo in storageType.photos|slice(1) %}
+                                            <a href="{{ asset('uploads/' ~ photo.path) }}"
+                                               class="glightbox hidden"
+                                               data-gallery="pricelist-row-{{ storageType.id }}"
+                                               data-glightbox="title: {{ storageType.name|e('html_attr') }}"
+                                               aria-hidden="true" tabindex="-1"></a>
+                                        {% endfor %}
                                     {% else %}
                                         <div class="h-16 w-20 rounded bg-gray-100 flex items-center justify-center text-gray-400">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -162,9 +178,25 @@
                     <div class="card-body">
                         <div class="flex gap-3 mb-3">
                             {% if storageType.hasPhotos %}
-                                <img src="{{ asset('uploads/' ~ storageType.photos|first.path) }}"
-                                     alt="{{ storageType.name }}"
-                                     class="h-20 w-24 object-cover rounded bg-gray-50 flex-shrink-0">
+                                <a href="{{ asset('uploads/' ~ storageType.photos|first.path) }}"
+                                   class="glightbox relative block h-20 w-24 rounded overflow-hidden bg-gray-50 flex-shrink-0"
+                                   data-gallery="pricelist-card-{{ storageType.id }}"
+                                   data-glightbox="title: {{ storageType.name|e('html_attr') }}"
+                                   aria-label="Otevřít fotografie">
+                                    <img src="{{ asset('uploads/' ~ storageType.photos|first.path) }}"
+                                         alt="{{ storageType.name }}"
+                                         class="h-20 w-24 object-cover">
+                                    {% if storageType.photos|length > 1 %}
+                                        <span class="absolute bottom-1 right-1 rounded bg-black/60 px-1.5 text-xs font-medium text-white">+{{ storageType.photos|length - 1 }}</span>
+                                    {% endif %}
+                                </a>
+                                {% for photo in storageType.photos|slice(1) %}
+                                    <a href="{{ asset('uploads/' ~ photo.path) }}"
+                                       class="glightbox hidden"
+                                       data-gallery="pricelist-card-{{ storageType.id }}"
+                                       data-glightbox="title: {{ storageType.name|e('html_attr') }}"
+                                       aria-hidden="true" tabindex="-1"></a>
+                                {% endfor %}
                             {% else %}
                                 <div class="h-20 w-24 rounded bg-gray-100 flex items-center justify-center text-gray-400 flex-shrink-0">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
