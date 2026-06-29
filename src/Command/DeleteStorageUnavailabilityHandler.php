@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Command;
 
+use App\Entity\StorageUnavailability;
 use App\Repository\StorageUnavailabilityRepository;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -28,14 +29,21 @@ final readonly class DeleteStorageUnavailabilityHandler
         $storage = $unavailability->storage;
         $this->unavailabilityRepository->delete($unavailability);
 
-        // Release the storage if it was marked unavailable by this record
+        // Recompute the unit's status from whatever blocks REMAIN active today —
+        // unconditionally, NOT only when the deleted block is still active. A
+        // bounded block that already lapsed still left the unit stuck
+        // `manually_unavailable` (the status was set when the block was created
+        // and nothing resets it on expiry), so deleting such a block must release
+        // the unit. We keep it blocked only when ANOTHER block covers today; the
+        // just-removed row isn't flushed yet, so exclude it by id.
         $today = $this->clock->now();
-        if ($unavailability->isActiveOn($today)) {
-            // Check if there are other active unavailabilities
-            $otherUnavailabilities = $this->unavailabilityRepository->findActiveByStorageOnDate($storage, $today);
-            if (0 === count($otherUnavailabilities)) {
-                $storage->release($today);
-            }
+        $otherActiveBlocks = array_filter(
+            $this->unavailabilityRepository->findActiveByStorageOnDate($storage, $today),
+            static fn (StorageUnavailability $block): bool => !$block->id->equals($unavailability->id),
+        );
+
+        if ([] === $otherActiveBlocks) {
+            $storage->release($today);
         }
     }
 }

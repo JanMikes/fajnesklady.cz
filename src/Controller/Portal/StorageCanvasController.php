@@ -8,6 +8,8 @@ use App\Repository\PlaceRepository;
 use App\Repository\StorageRepository;
 use App\Repository\StorageTypeRepository;
 use App\Service\Security\PlaceVoter;
+use App\Service\Storage\StorageStatusReconciler;
+use Psr\Clock\ClockInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -22,6 +24,8 @@ final class StorageCanvasController extends AbstractController
         private readonly PlaceRepository $placeRepository,
         private readonly StorageRepository $storageRepository,
         private readonly StorageTypeRepository $storageTypeRepository,
+        private readonly StorageStatusReconciler $statusReconciler,
+        private readonly ClockInterface $clock,
     ) {
     }
 
@@ -48,6 +52,13 @@ final class StorageCanvasController extends AbstractController
         $storages = $this->storageRepository->findByPlace($place);
         $storageTypes = $this->storageTypeRepository->findByPlace($place);
 
+        // Status drives the canvas colour + edit-gating. Derive it LIVE from the
+        // current bookings (the same source the occupancy map / storage list use)
+        // rather than trusting the denormalized storage.status column, so the
+        // canvas can never show a unit as blocked/occupied while the rest of the
+        // UI shows it free (or vice-versa) when that cached column has drifted.
+        $derivedStatuses = $this->statusReconciler->deriveStatuses($storages, $this->clock->now());
+
         // For the type dropdown, use all active types (not just those already used at this place)
         $storageTypesData = array_map(fn ($t) => [
             'id' => $t->id->toRfc4122(),
@@ -60,7 +71,7 @@ final class StorageCanvasController extends AbstractController
             'number' => $s->number,
             'storageTypeId' => $s->storageType->id->toRfc4122(),
             'coordinates' => $s->coordinates,
-            'status' => $s->status->value,
+            'status' => $derivedStatuses[$s->id->toRfc4122()]->value,
             'lockCode' => $s->lockCode,
             // Unit-specific photos first, then the generic storage-type photos.
             'photoUrls' => array_merge(

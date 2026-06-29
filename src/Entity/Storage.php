@@ -103,6 +103,26 @@ class Storage
     }
 
     /**
+     * Force the denormalized status to a value derived from live bookings.
+     *
+     * Used by {@see \App\Service\Storage\StorageStatusReconciler} (hourly cron
+     * + per-event) to heal any drift between this cached column and the
+     * authoritative Order / Contract / StorageUnavailability rows. Returns
+     * whether the status actually changed, so callers can avoid a no-op flush.
+     */
+    public function reconcileStatusTo(StorageStatus $status, \DateTimeImmutable $now): bool
+    {
+        if ($this->status === $status) {
+            return false;
+        }
+
+        $this->status = $status;
+        $this->updatedAt = $now;
+
+        return true;
+    }
+
+    /**
      * @param array{x: int|float, y: int|float, width: int|float, height: int|float, rotation: int|float, normalized?: bool} $coordinates
      */
     public function updateDetails(
