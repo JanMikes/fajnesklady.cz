@@ -1,6 +1,6 @@
 {% extends 'user/layout.html.twig' %}
 
-{% block title %}Fajnesklady.cz - Bezpečné uskladnění vašich věcí ve skladovacích jednotkách{% endblock %}
+{% block title %}Fajnesklady.cz - Bezpečné uskladnění Vašich věcí ve skladovacích jednotkách{% endblock %}
 
 {% block stylesheets %}
     {{ parent() }}
@@ -32,9 +32,9 @@
 
         {# Content overlay #}
         <div class="hero-content pt-16 pb-10">
-            <img src="{{ asset('images/logo-white.svg') }}" alt="Fajnesklady.cz" class="h-14 sm:h-16 md:h-24 mb-5 sm:mb-6 drop-shadow-lg">
+            <img src="{{ asset('images/logo-white-no-text.svg') }}" alt="Fajnesklady.cz" class="h-14 sm:h-16 md:h-24 mb-5 sm:mb-6 drop-shadow-lg">
             <h1 class="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-bold mb-4 sm:mb-6 max-w-4xl leading-tight drop-shadow-lg">
-                Bezpečné uskladnění<br class="hidden md:block"> vašich věcí
+                Bezpečné uskladnění<br class="hidden md:block"> Vašich věcí
             </h1>
             <p class="text-base sm:text-lg md:text-xl mb-8 sm:mb-10 text-white/90 max-w-2xl leading-relaxed">
                 Skladovací jednotky s přístupem 24/7, kompletním zabezpečením a flexibilním pronájmem
@@ -78,7 +78,7 @@
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-20">
             <div class="text-center mb-10">
                 <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Přehled poboček a cen</h2>
-                <p class="text-gray-600 max-w-2xl mx-auto text-lg">Najděte nejbližší pobočku a porovnejte ceny skladovacích jednotek</p>
+                <p class="text-gray-600 max-w-2xl mx-auto text-lg">Najděte nejbližší pobočku a nejvhodnější skladovací jednotku</p>
             </div>
 
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3 mb-5">
@@ -176,64 +176,51 @@
              data-place-wizard-places-value="{{ placesData|json_encode|e('html_attr') }}">
         <div class="py-20 max-w-6xl mx-auto px-4">
             <div class="text-center mb-16">
-                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Jak to funguje?</h2>
-                <p class="text-gray-600 max-w-2xl mx-auto text-lg">Pronájem skladovací jednotky zvládnete ve 3 jednoduchých krocích</p>
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6">Jak to funguje?</h2>
+                <p class="text-gray-600 max-w-3xl mx-auto text-lg leading-relaxed">
+                    Naše skladovací jednotky můžete využít na sezónní věci, jako jsou lyže, kola, pneumatiky, střešní boxy nebo třeba kožich po babičce, který nosíte jen v zimě. V případě stěhování jsou naše sklady ideálním místem, kde můžete na libovolnou dobu uložit vše potřebné. Využijte naše služby i v případě, že Vás vyhodí drahá polovička z domu. Ale pozor! Ne, abyste se nám tam nastěhovali! V neposlední řadě nabízíme skladovací prostory i firmám, které potřebují nárazově nebo trvale řešit, kam uložit svůj inventář, ať už sezónně nebo po celý rok. My tady máme uložený náš sen o obchodu s akvaristikou.
+                </p>
             </div>
 
-            <div class="grid md:grid-cols-3 gap-8 lg:gap-12">
-                {# Step 1 #}
-                <button type="button" class="relative text-left w-full group" data-action="place-wizard#open">
-                    <div class="bg-white rounded-2xl p-8 shadow-lg group-hover:shadow-xl group-hover:border-primary/30 transition-all h-full border border-gray-100 cursor-pointer">
-                        <div class="w-16 h-16 rounded-2xl text-white flex items-center justify-center mb-6" style="background: linear-gradient(to bottom right, #e54545, #b82829)">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 lg:gap-8 max-w-4xl mx-auto">
+                {# Krok 1 #}
+                <button type="button" class="group flex flex-col items-center text-center bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all border border-gray-100 hover:border-primary/30 cursor-pointer" data-action="place-wizard#open">
+                    <div class="relative mb-5">
+                        <div class="w-16 h-16 rounded-2xl text-white flex items-center justify-center group-hover:scale-110 transition-transform" style="background: linear-gradient(to bottom right, #e54545, #b82829)">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                             </svg>
                         </div>
-                        <div class="absolute -top-3 -right-3 w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold text-lg shadow-lg">1</div>
-                        <h3 class="text-xl font-bold text-gray-900 mb-3">Vyberte pobočku</h3>
-                        <p class="text-gray-600 leading-relaxed">Prohlédněte si naše pobočky na interaktivní mapě a vyberte tu, která je vám nejblíže.</p>
-                        <p class="text-primary font-semibold text-sm mt-4 flex items-center group-hover:translate-x-1 transition-transform">
-                            Začít zde
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                        </p>
+                        <div class="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm shadow-lg">1</div>
                     </div>
+                    <h3 class="text-lg font-bold text-gray-900">Vyberte pobočku</h3>
                 </button>
 
-                {# Step 2 #}
-                <button type="button" class="relative text-left w-full group" data-action="place-wizard#open">
-                    <div class="bg-white rounded-2xl p-8 shadow-lg group-hover:shadow-xl group-hover:border-primary/30 transition-all h-full border border-gray-100 cursor-pointer">
-                        <div class="w-16 h-16 rounded-2xl text-white flex items-center justify-center mb-6" style="background: linear-gradient(to bottom right, #e54545, #b82829)">
+                {# Krok 2 #}
+                <button type="button" class="group flex flex-col items-center text-center bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all border border-gray-100 hover:border-primary/30 cursor-pointer" data-action="place-wizard#open">
+                    <div class="relative mb-5">
+                        <div class="w-16 h-16 rounded-2xl text-white flex items-center justify-center group-hover:scale-110 transition-transform" style="background: linear-gradient(to bottom right, #e54545, #b82829)">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
                             </svg>
                         </div>
-                        <div class="absolute -top-3 -right-3 w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold text-lg shadow-lg">2</div>
-                        <h3 class="text-xl font-bold text-gray-900 mb-3">Zvolte velikost</h3>
-                        <p class="text-gray-600 leading-relaxed">Vyberte skladovací jednotku podle vašich potřeb - nabízíme různé velikosti od malých po velké.</p>
-                        <p class="text-primary font-semibold text-sm mt-4 flex items-center group-hover:translate-x-1 transition-transform">
-                            Začít zde
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                        </p>
+                        <div class="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm shadow-lg">2</div>
                     </div>
+                    <h3 class="text-lg font-bold text-gray-900">Zvolte velikost</h3>
                 </button>
 
-                {# Step 3 #}
-                <button type="button" class="relative text-left w-full group" data-action="place-wizard#open">
-                    <div class="bg-white rounded-2xl p-8 shadow-lg group-hover:shadow-xl group-hover:border-primary/30 transition-all h-full border border-gray-100 cursor-pointer">
-                        <div class="w-16 h-16 rounded-2xl text-white flex items-center justify-center mb-6" style="background: linear-gradient(to bottom right, #e54545, #b82829)">
+                {# Krok 3 #}
+                <button type="button" class="group flex flex-col items-center text-center bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all border border-gray-100 hover:border-primary/30 cursor-pointer" data-action="place-wizard#open">
+                    <div class="relative mb-5">
+                        <div class="w-16 h-16 rounded-2xl text-white flex items-center justify-center group-hover:scale-110 transition-transform" style="background: linear-gradient(to bottom right, #e54545, #b82829)">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                         </div>
-                        <div class="absolute -top-3 -right-3 w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold text-lg shadow-lg">3</div>
-                        <h3 class="text-xl font-bold text-gray-900 mb-3">Objednejte online</h3>
-                        <p class="text-gray-600 leading-relaxed">Dokončete objednávku online a ihned získáte přístupové údaje ke své skladovací jednotce.</p>
-                        <p class="text-primary font-semibold text-sm mt-4 flex items-center group-hover:translate-x-1 transition-transform">
-                            Začít zde
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-                        </p>
+                        <div class="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm shadow-lg">3</div>
                     </div>
+                    <h3 class="text-lg font-bold text-gray-900">Objednejte online</h3>
                 </button>
             </div>
         </div>
@@ -260,7 +247,7 @@
         </div>
     </section>
 
-    {# Our Story Section #}
+    {# Why choose us section #}
     <section id="nas-pribeh" class="py-20 relative overflow-hidden">
         {# Decorative background elements #}
         <div class="absolute inset-0 pointer-events-none">
@@ -283,174 +270,49 @@
             {# Header with personality #}
             <div class="text-center mb-16">
                 <h2 class="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-6 leading-tight">
-                    Jak fungují<br class="hidden sm:block">
-                    <span class="text-accent">Fajnesklady.cz</span>?
+                    Proč si vybrat <span class="text-accent">Fajnesklady.cz</span>?
                 </h2>
             </div>
 
-            {# Use cases grid #}
-            <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                {# Seasonal items #}
-                <div class="group bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100 hover:border-accent/30 hover:-translate-y-1">
-                    <div class="w-14 h-14 rounded-2xl text-white flex items-center justify-center mb-5 group-hover:scale-110 transition-transform" style="background: linear-gradient(to bottom right, #e54545, #b82829)">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
-                        </svg>
-                    </div>
-                    <h3 class="text-lg font-bold text-gray-900 mb-2">Sezónní věci</h3>
-                    <p class="text-gray-600 text-sm leading-relaxed">
-                        Lyže, kola, pneumatiky, střešní boxy nebo třeba kožich po babičce, který nosíte jen v zimě.
+            {# Why-choose-us pictograms (old-site design) #}
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-12 lg:gap-x-0 lg:gap-y-0 lg:divide-x lg:divide-gray-200">
+                {# Security #}
+                <div class="flex flex-col items-center text-center px-4 lg:px-8">
+                    <img src="{{ asset('images/icons/feature-zabezpeceni.png') }}" alt="" class="h-20 w-auto mb-6">
+                    <h3 class="text-2xl font-bold text-gray-900 mb-4">Zabezpečení</h3>
+                    <p class="text-gray-600 leading-relaxed">
+                        Celý areál Fajných skladů je hlídán 24/7 ultra špičkovým kamerovým systémem a senzory pohybu. Kdyby se mělo stéblo pohnout, naši lidé o tom budou vědět.
                     </p>
                 </div>
 
-                {# Moving #}
-                <div class="group bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100 hover:border-accent/30 hover:-translate-y-1">
-                    <div class="w-14 h-14 rounded-2xl text-white flex items-center justify-center mb-5 group-hover:scale-110 transition-transform" style="background: linear-gradient(to bottom right, #e54545, #b82829)">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                        </svg>
-                    </div>
-                    <h3 class="text-lg font-bold text-gray-900 mb-2">Stěhování</h3>
-                    <p class="text-gray-600 text-sm leading-relaxed">
-                        Ideální místo, kde můžete na libovolnou dobu uložit vše potřebné při stěhování.
+                {# Access #}
+                <div class="flex flex-col items-center text-center px-4 lg:px-8">
+                    <img src="{{ asset('images/icons/feature-pristupnost.png') }}" alt="" class="h-20 w-auto mb-6">
+                    <h3 class="text-2xl font-bold text-gray-900 mb-4">Přístupnost</h3>
+                    <p class="text-gray-600 leading-relaxed">
+                        Na místo se dostanete každou hodinu každého dne, pomocí vlastního přístupového ovládání k hlavní bráně a klíčům ke skladovací jednotce.
                     </p>
                 </div>
 
-                {# Emergency #}
-                <div class="group bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100 hover:border-accent/30 hover:-translate-y-1">
-                    <div class="w-14 h-14 rounded-2xl text-white flex items-center justify-center mb-5 group-hover:scale-110 transition-transform" style="background: linear-gradient(to bottom right, #e54545, #b82829)">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                        </svg>
-                    </div>
-                    <h3 class="text-lg font-bold text-gray-900 mb-2">Nouzové řešení</h3>
-                    <p class="text-gray-600 text-sm leading-relaxed">
-                        Když vás vyhodí drahá polovička z domu. Ale pozor – ne, abyste se nám tam nastěhovali!
+                {# Insurance #}
+                <div class="flex flex-col items-center text-center px-4 lg:px-8">
+                    <img src="{{ asset('images/icons/feature-pojisteni.png') }}" alt="" class="h-20 w-auto mb-6">
+                    <h3 class="text-2xl font-bold text-gray-900 mb-4">Pojištění</h3>
+                    <p class="text-gray-600 leading-relaxed">
+                        Obsah každé skladovací jednotky je pojištěn, pro případ živelné pohromy a odcizení. S námi můžete v noci v klidu spát. O vaše věci je u nás postaráno.
                     </p>
                 </div>
 
-                {# Business #}
-                <div class="group bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100 hover:border-accent/30 hover:-translate-y-1">
-                    <div class="w-14 h-14 rounded-2xl text-white flex items-center justify-center mb-5 group-hover:scale-110 transition-transform" style="background: linear-gradient(to bottom right, #e54545, #b82829)">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                        </svg>
-                    </div>
-                    <h3 class="text-lg font-bold text-gray-900 mb-2">Pro firmy</h3>
-                    <p class="text-gray-600 text-sm leading-relaxed">
-                        Skladovací prostory pro firmy – nárazově nebo trvale, sezónně nebo celoročně.
+                {# Flexibility #}
+                <div class="flex flex-col items-center text-center px-4 lg:px-8">
+                    <img src="{{ asset('images/icons/feature-flexibilita.png') }}" alt="" class="h-20 w-auto mb-6">
+                    <h3 class="text-2xl font-bold text-gray-900 mb-4">Flexibilní pronájem</h3>
+                    <p class="text-gray-600 leading-relaxed">
+                        Potřebujete skladovací jednotku na týden? Není problém. Potřebujete ji na měsíc? To je taky v cajku. V případě, že potřebujete prodloužit pronájem, stačí se domluvit na konkrétních podmínkách.
                     </p>
                 </div>
             </div>
 
-        </div>
-    </section>
-
-    {# Benefits Section #}
-    <section class="py-20">
-        <div class="max-w-6xl mx-auto px-4">
-            <div class="text-center mb-16">
-                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Proč si vybrat Fajnesklady.cz?</h2>
-                <p class="text-gray-600 max-w-2xl mx-auto text-lg">Nabízíme bezpečné a flexibilní skladování za transparentní ceny</p>
-            </div>
-
-            <div class="grid md:grid-cols-3 gap-8">
-            {# Security #}
-            <div class="group">
-                <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all h-full border border-gray-100 hover:border-accent/20">
-                    <div class="flex items-center gap-4 mb-6">
-                        <div class="w-12 h-12 rounded-xl text-white flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform" style="background: linear-gradient(to bottom right, #e54545, #b82829)">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                            </svg>
-                        </div>
-                        <h3 class="text-xl font-bold text-gray-900">Zabezpečení 24/7</h3>
-                    </div>
-                    <ul class="space-y-3 text-gray-600">
-                        <li class="flex items-start gap-3">
-                            <svg class="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
-                            <span>Kamerový systém non-stop</span>
-                        </li>
-                        <li class="flex items-start gap-3">
-                            <svg class="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
-                            <span>Pohybová čidla v areálu</span>
-                        </li>
-                        <li class="flex items-start gap-3">
-                            <svg class="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
-                            <span>Pojištění proti krádeži</span>
-                        </li>
-                        <li class="flex items-start gap-3">
-                            <svg class="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
-                            <span>Individuální klíče</span>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-
-            {# Access #}
-            <div class="group">
-                <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all h-full border border-gray-100 hover:border-accent/20">
-                    <div class="flex items-center gap-4 mb-6">
-                        <div class="w-12 h-12 rounded-xl text-white flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform" style="background: linear-gradient(to bottom right, #e54545, #b82829)">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                        </div>
-                        <h3 class="text-xl font-bold text-gray-900">Přístup kdykoliv</h3>
-                    </div>
-                    <ul class="space-y-3 text-gray-600">
-                        <li class="flex items-start gap-3">
-                            <svg class="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
-                            <span>24 hodin denně, 7 dní v týdnu</span>
-                        </li>
-                        <li class="flex items-start gap-3">
-                            <svg class="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
-                            <span>Vlastní ovladač k bráně</span>
-                        </li>
-                        <li class="flex items-start gap-3">
-                            <svg class="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
-                            <span>Žádné omezení návštěv</span>
-                        </li>
-                        <li class="flex items-start gap-3">
-                            <svg class="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
-                            <span>Rychlé nakládání/vykládání</span>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-
-            {# Flexibility #}
-            <div class="group">
-                <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all h-full border border-gray-100 hover:border-accent/20">
-                    <div class="flex items-center gap-4 mb-6">
-                        <div class="w-12 h-12 rounded-xl text-white flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform" style="background: linear-gradient(to bottom right, #e54545, #b82829)">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                            </svg>
-                        </div>
-                        <h3 class="text-xl font-bold text-gray-900">Flexibilní pronájem</h3>
-                    </div>
-                    <ul class="space-y-3 text-gray-600">
-                        <li class="flex items-start gap-3">
-                            <svg class="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
-                            <span>Týdenní nebo měsíční pronájem</span>
-                        </li>
-                        <li class="flex items-start gap-3">
-                            <svg class="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
-                            <span>Bez dlouhodobých závazků</span>
-                        </li>
-                        <li class="flex items-start gap-3">
-                            <svg class="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
-                            <span>Snadné rozšíření prostoru</span>
-                        </li>
-                        <li class="flex items-start gap-3">
-                            <svg class="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
-                            <span>Transparentní ceny</span>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-            </div>
         </div>
     </section>
 
