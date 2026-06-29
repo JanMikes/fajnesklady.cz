@@ -161,7 +161,10 @@
                     </div>
                 {% endif %}
             {% else %}
-                <p class="text-sm text-gray-500">Pronajímatel zatím protokol nevyplnil.</p>
+                <p class="text-sm text-gray-500 mb-4">Pronajímatel zatím protokol nevyplnil.</p>
+                <a href="{{ path('portal_landlord_handover_view', {id: protocol.id}) }}" class="btn btn-primary btn-sm">
+                    Vyplnit za pronajímatele
+                </a>
             {% endif %}
         </div>
     </div>
