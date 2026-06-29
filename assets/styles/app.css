@@ -77,6 +77,21 @@ button {
     @apply bg-transparent border-gray-300 text-gray-700 hover:bg-gray-50 shadow-none;
 }
 
+.btn-outline-accent {
+    @apply bg-transparent shadow-none;
+    color: var(--color-accent);
+    border: 2px solid var(--color-accent);
+}
+
+.btn-outline-accent:hover {
+    @apply text-white;
+    background-color: var(--color-accent);
+}
+
+.btn-outline-accent:focus {
+    --tw-ring-color: var(--color-accent);
+}
+
 .btn-circle {
     @apply rounded-full p-2 min-w-0;
 }
@@ -814,6 +829,83 @@ span.flatpickr-weekday {
 .btn-hero-secondary:hover {
     background-color: rgba(255, 255, 255, 0.25);
     border-color: rgba(255, 255, 255, 0.6);
+}
+
+/* How-it-works process flow (1 -> 2 -> 3) */
+.process-flow {
+    @apply flex flex-col items-center gap-10 sm:flex-row sm:items-start sm:justify-center sm:gap-0;
+}
+
+.process-step {
+    @apply flex flex-col items-center text-center;
+    flex: 0 0 auto;
+    width: 11rem;
+    max-width: 100%;
+}
+
+.process-step__circle {
+    @apply relative flex h-20 w-20 items-center justify-center rounded-full text-white shadow-lg;
+    background: linear-gradient(to bottom right, #e54545, #b82829);
+}
+
+.process-step__num {
+    @apply absolute -top-2 -right-2 flex h-7 w-7 items-center justify-center rounded-full border-2 text-sm font-bold shadow;
+    background: #fff;
+    color: var(--color-accent);
+    border-color: var(--color-accent);
+}
+
+.process-step__label {
+    @apply mt-4 text-base font-bold text-gray-900;
+}
+
+/* Connector line between steps (desktop only) */
+.process-connector {
+    @apply relative hidden overflow-hidden rounded-full sm:block;
+    flex: 1 1 0%;
+    height: 3px;
+    margin-top: 2.4rem;
+    background: #e2e8f0;
+}
+
+.process-connector__fill {
+    @apply absolute inset-0 origin-left;
+    transform: scaleX(0);
+    background: linear-gradient(to right, #e54545, #b82829);
+}
+
+/* Left-to-right reveal — triggered by the step-flow controller */
+.process-step,
+.process-connector {
+    opacity: 0;
+    transform: translateY(12px);
+    transition: opacity 500ms ease, transform 500ms ease;
+    transition-delay: calc(var(--step-index, 0) * 160ms);
+}
+
+.process-flow.in-view .process-step,
+.process-flow.in-view .process-connector {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.process-connector__fill {
+    transition: transform 600ms ease;
+}
+
+.process-flow.in-view .process-connector__fill {
+    transform: scaleX(1);
+    transition-delay: calc(var(--step-index, 0) * 160ms + 200ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .process-step,
+    .process-connector,
+    .process-connector__fill {
+        opacity: 1;
+        transform: none;
+        transition: none;
+    }
 }
 
 /* Section backgrounds */

@@ -182,46 +182,62 @@
                 </p>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 lg:gap-8 max-w-4xl mx-auto">
-                {# Krok 1 #}
-                <button type="button" class="group flex flex-col items-center text-center bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all border border-gray-100 hover:border-primary/30 cursor-pointer" data-action="place-wizard#open">
-                    <div class="relative mb-5">
-                        <div class="w-16 h-16 rounded-2xl text-white flex items-center justify-center group-hover:scale-110 transition-transform" style="background: linear-gradient(to bottom right, #e54545, #b82829)">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div class="max-w-4xl mx-auto">
+                {# Process flow 1 → 2 → 3 (non-clickable) — animated reveal left-to-right #}
+                <div class="process-flow" data-controller="step-flow">
+                    {# Krok 1 #}
+                    <div class="process-step" style="--step-index: 0">
+                        <div class="process-step__circle">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-9 w-9" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                             </svg>
+                            <span class="process-step__num">1</span>
                         </div>
-                        <div class="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm shadow-lg">1</div>
+                        <h3 class="process-step__label">Vyberte pobočku</h3>
                     </div>
-                    <h3 class="text-lg font-bold text-gray-900">Vyberte pobočku</h3>
-                </button>
 
-                {# Krok 2 #}
-                <button type="button" class="group flex flex-col items-center text-center bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all border border-gray-100 hover:border-primary/30 cursor-pointer" data-action="place-wizard#open">
-                    <div class="relative mb-5">
-                        <div class="w-16 h-16 rounded-2xl text-white flex items-center justify-center group-hover:scale-110 transition-transform" style="background: linear-gradient(to bottom right, #e54545, #b82829)">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <div class="process-connector" style="--step-index: 1" aria-hidden="true">
+                        <span class="process-connector__fill"></span>
+                    </div>
+
+                    {# Krok 2 #}
+                    <div class="process-step" style="--step-index: 2">
+                        <div class="process-step__circle">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-9 w-9" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
                             </svg>
+                            <span class="process-step__num">2</span>
                         </div>
-                        <div class="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm shadow-lg">2</div>
+                        <h3 class="process-step__label">Zvolte velikost</h3>
                     </div>
-                    <h3 class="text-lg font-bold text-gray-900">Zvolte velikost</h3>
-                </button>
 
-                {# Krok 3 #}
-                <button type="button" class="group flex flex-col items-center text-center bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all border border-gray-100 hover:border-primary/30 cursor-pointer" data-action="place-wizard#open">
-                    <div class="relative mb-5">
-                        <div class="w-16 h-16 rounded-2xl text-white flex items-center justify-center group-hover:scale-110 transition-transform" style="background: linear-gradient(to bottom right, #e54545, #b82829)">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <div class="process-connector" style="--step-index: 3" aria-hidden="true">
+                        <span class="process-connector__fill"></span>
+                    </div>
+
+                    {# Krok 3 #}
+                    <div class="process-step" style="--step-index: 4">
+                        <div class="process-step__circle">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-9 w-9" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
+                            <span class="process-step__num">3</span>
                         </div>
-                        <div class="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm shadow-lg">3</div>
+                        <h3 class="process-step__label">Objednejte online</h3>
                     </div>
-                    <h3 class="text-lg font-bold text-gray-900">Objednejte online</h3>
-                </button>
+                </div>
+
+                {# CTA — takes over opening the wizard modal #}
+                <div class="text-center mt-14">
+                    <button type="button" data-action="place-wizard#open"
+                            class="btn btn-outline-accent btn-lg text-lg px-8 py-4 group">
+                        Vybrat skladovací jednotku
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 ml-2 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                    </button>
+                </div>
             </div>
         </div>
 
