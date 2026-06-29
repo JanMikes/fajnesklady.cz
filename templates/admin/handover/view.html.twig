@@ -123,7 +123,10 @@
                     </div>
                 {% endif %}
             {% else %}
-                <p class="text-sm text-gray-500">Nájemce zatím protokol nevyplnil.</p>
+                <p class="text-sm text-gray-500 mb-4">Nájemce zatím protokol nevyplnil.</p>
+                <a href="{{ path('portal_user_handover_view', {id: protocol.id}) }}" class="btn btn-primary btn-sm">
+                    Vyplnit za nájemce
+                </a>
             {% endif %}
         </div>
     </div>
