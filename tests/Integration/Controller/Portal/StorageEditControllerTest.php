@@ -70,6 +70,40 @@ class StorageEditControllerTest extends WebTestCase
         $this->assertCount(1, $createdPhotos);
     }
 
+    /**
+     * Regression: a storage whose STORED coordinates violate the create-only
+     * Range constraints (e.g. width 0 produced by the canvas) used to fail
+     * validation on the edit form — which never builds the coordinate fields —
+     * so the violation bubbled to the form root and rendered nowhere, returning
+     * a silent 422 that made the unit impossible to edit. The coordinate
+     * constraints now live in the 'Create' validation group and must not run in
+     * edit mode.
+     */
+    public function testStorageWithDegenerateStoredCoordinatesCanStillBeSaved(): void
+    {
+        $admin = $this->findUserByEmail('admin@example.com');
+        $this->client->loginUser($admin, 'main');
+
+        $storage = $this->findStorageByNumber('A1');
+
+        // Corrupt the stored coordinates the way a zero-size canvas box can.
+        $coordinatesProperty = new \ReflectionProperty(Storage::class, 'coordinates');
+        $coordinatesProperty->setValue($storage, ['x' => 0, 'y' => 0, 'width' => 0, 'height' => 0, 'rotation' => 0]);
+        $this->entityManager->flush();
+
+        $this->client->request(
+            'POST',
+            '/portal/storages/'.$storage->id->toRfc4122().'/edit',
+            ['storage_form' => [
+                'number' => $storage->number,
+                'storageTypeId' => $storage->storageType->id->toRfc4122(),
+            ]],
+        );
+
+        // Before the fix this was a silent 422; it must now redirect on success.
+        $this->assertResponseRedirects();
+    }
+
     public function testNonOwnerLandlordCannotEdit(): void
     {
         // A1 is owned by landlord (not landlord2).

@@ -81,10 +81,22 @@
         <div class="card">
             <div class="card-body">
                 {{ form_start(form, {'attr': {'enctype': 'multipart/form-data'}}) }}
+                    {# Form-level errors (e.g. POST too large, or a constraint with no rendered field).
+                       Without this, such errors return a silent 422 with nothing shown to the user. #}
+                    {% if form.vars.errors|length > 0 %}
+                        <div class="alert alert-error mb-4">{{ form_errors(form) }}</div>
+                    {% endif %}
+
                     <div class="mb-4">
                         <label for="{{ form.number.vars.id }}" class="block text-sm font-semibold text-gray-700 mb-2">Číslo skladu</label>
                         {{ form_widget(form.number) }}
                         {{ form_errors(form.number) }}
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="{{ form.storageTypeId.vars.id }}" class="block text-sm font-semibold text-gray-700 mb-2">Typ skladu</label>
+                        {{ form_widget(form.storageTypeId) }}
+                        {{ form_errors(form.storageTypeId) }}
                     </div>
 
                     {% if form.pricePerWeek is defined and form.pricePerMonth is defined %}

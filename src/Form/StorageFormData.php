@@ -17,22 +17,27 @@ final class StorageFormData
     #[Assert\NotBlank(message: 'Vyberte typ skladu')]
     public ?string $storageTypeId = null;
 
-    #[Assert\NotBlank(message: 'Vyberte místo')]
+    // place + coordinates are only editable when CREATING a storage (the edit form
+    // never builds these fields). Scope their constraints to the 'Create' group so
+    // they are NOT validated in edit mode — otherwise a storage with degenerate
+    // stored coordinates (e.g. width 0 from the canvas) can never be saved, and the
+    // resulting violation bubbles to the form root with no field to render it.
+    #[Assert\NotBlank(message: 'Vyberte místo', groups: ['Create'])]
     public ?string $placeId = null;
 
-    #[Assert\Range(min: 0, minMessage: 'Pozice X musí být kladná')]
+    #[Assert\Range(min: 0, minMessage: 'Pozice X musí být kladná', groups: ['Create'])]
     public int $coordinateX = 0;
 
-    #[Assert\Range(min: 0, minMessage: 'Pozice Y musí být kladná')]
+    #[Assert\Range(min: 0, minMessage: 'Pozice Y musí být kladná', groups: ['Create'])]
     public int $coordinateY = 0;
 
-    #[Assert\Range(min: 1, minMessage: 'Šířka musí být alespoň 1')]
+    #[Assert\Range(min: 1, minMessage: 'Šířka musí být alespoň 1', groups: ['Create'])]
     public int $coordinateWidth = 50;
 
-    #[Assert\Range(min: 1, minMessage: 'Výška musí být alespoň 1')]
+    #[Assert\Range(min: 1, minMessage: 'Výška musí být alespoň 1', groups: ['Create'])]
     public int $coordinateHeight = 50;
 
-    #[Assert\Range(min: 0, max: 360, notInRangeMessage: 'Rotace musí být mezi 0 a 360')]
+    #[Assert\Range(min: 0, max: 360, notInRangeMessage: 'Rotace musí být mezi 0 a 360', groups: ['Create'])]
     public int $coordinateRotation = 0;
 
     /** Custom price in CZK (optional, null means use default from storage type) */

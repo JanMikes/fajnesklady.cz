@@ -15,6 +15,7 @@ use Symfony\Component\Form\Extension\Core\Type\IntegerType;
 use Symfony\Component\Form\Extension\Core\Type\NumberType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
+use Symfony\Component\Form\FormInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 use Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface;
@@ -182,6 +183,11 @@ class StorageFormType extends AbstractType
             'storage_type' => null,
             'is_edit' => false,
             'place' => null,
+            // Edit mode only builds number/type/price/photo fields, so the
+            // place + coordinate constraints (group 'Create') must NOT run there.
+            'validation_groups' => static fn (FormInterface $form): array => true === $form->getConfig()->getOption('is_edit')
+                ? ['Default']
+                : ['Default', 'Create'],
         ]);
         $resolver->setAllowedTypes('storage_type', ['null', StorageType::class]);
         $resolver->setAllowedTypes('is_edit', 'bool');
