@@ -32,17 +32,28 @@ export default class extends Controller {
             altInputClass: 'form-input',
             allowInput: true,
             disableMobile: true,
+            // Close the calendar as soon as a day is chosen — picking a date is a
+            // complete action here (no time component), so keeping it open reads as
+            // unresponsive.
+            closeOnSelect: true,
             // Lenient parser: accept "6.6.1992", "6. 6. 1992", "6/6/1992", "6-6-1992",
             // any spacing variant, plus the ISO Y-m-d that flatpickr itself uses for
             // minDate/maxDate/defaultDate and the hidden input value.
             parseDate: this.parseDate,
-            // A calendar selection fires onChange but no blur (focus stays on the
-            // alt-input after the picker closes), so the blur-wired live validation
-            // never re-runs and a stale error lingers until the user clicks away.
-            // Forward it to the same blur the manual-typing path already triggers.
-            // this.element.value is updated by flatpickr before onChange fires, so
-            // validateField re-validates against the picked date.
+            // The hidden <input> is bound to the Live Component model via the form's
+            // data-model="on(change)|*", so the picked value only reaches `formValues`
+            // (and therefore server-side validation) on a `change` event. flatpickr
+            // sets this.element.value BEFORE this hook runs, but only emits its OWN
+            // native change AFTER every onChange hook — too late for any blur-wired
+            // validateField that fires in between, which would then validate a STALE
+            // (empty) value and surface a phantom "required/invalid" error.
+            //
+            // So drive the model ourselves here, in order:
+            //   1. change/input  -> Live model updates synchronously (formValues fresh)
+            //   2. blur          -> blur-wired validateField re-validates the fresh value
             onChange: () => {
+                this.element.dispatchEvent(new Event('input', { bubbles: true }));
+                this.element.dispatchEvent(new Event('change', { bubbles: true }));
                 this.element.dispatchEvent(new Event('blur'));
             }
         };

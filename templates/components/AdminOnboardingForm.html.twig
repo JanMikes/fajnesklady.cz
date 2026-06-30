@@ -32,7 +32,11 @@
                     {{ form_row(form.lastName) }}
                     {{ form_row(form.phone) }}
                     {% if not invoiceToCompany %}
-                        {{ form_row(form.birthDate) }}
+                        {{ form_row(form.birthDate, {attr: {
+                            'data-action': 'blur->live#action',
+                            'data-live-action-param': 'validateField',
+                            'data-live-field-param': 'birthDate',
+                        }}) }}
                     {% else %}
                         {% do form.birthDate.setRendered %}
                     {% endif %}
@@ -327,6 +331,11 @@
         <div class="card">
             <div class="card-body">
                 <h2 class="text-lg font-bold text-gray-900 mb-4">Externí předplatné</h2>
+                {% set paidThroughAttr = {
+                    'data-action': 'blur->live#action',
+                    'data-live-action-param': 'validateField',
+                    'data-live-field-param': 'paidThroughDate',
+                } %}
                 {% if formData.startsInPast and monthlyPriceMode != 'free' %}
                     <div class="mb-3 bg-amber-50 border border-amber-200 rounded-lg p-4">
                         <p class="text-sm text-amber-800">
@@ -335,11 +344,11 @@
                         </p>
                     </div>
                     {% do form.isExternallyPrepaid.setRendered %}
-                    {{ form_row(form.paidThroughDate) }}
+                    {{ form_row(form.paidThroughDate, {attr: paidThroughAttr}) }}
                 {% else %}
                     {{ form_row(form.isExternallyPrepaid) }}
                     {% if isExternallyPrepaid %}
-                        {{ form_row(form.paidThroughDate) }}
+                        {{ form_row(form.paidThroughDate, {attr: paidThroughAttr}) }}
                     {% else %}
                         {% do form.paidThroughDate.setRendered %}
                     {% endif %}
