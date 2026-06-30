@@ -1,11 +1,21 @@
-# https://github.com/docker/build-push-action/blob/master/docs/advanced/tags-labels.md
+# Release — build the image once per env and deploy to lily via the shared
+# reusable workflow (TheDevs-cz/ci). No more SSH-to-spare: each job calls
+# `_ship.yml`, which builds+pushes ghcr.io/janmikes/fajnesklady.cz and then
+# HMAC-POSTs https://deploy.lily.srv.thedevs.cz/hooks/<app> (per-app secret).
+#
+# Both envs run the SAME image; staging vs production differs only by the .env
+# rendered from each app's Infisical project on the box (lily.srv).
+#
+# Trigger: only after the `Tests` workflow succeeds on main (keeps the
+# tests-must-pass gate the old SSH pipeline had). Staging deploys first, then
+# production (needs: ship-staging) — the original ordering.
+#
+# Secrets (set on this repo): DEPLOY_WEBHOOK_SECRET (production HMAC key) and
+# DEPLOY_WEBHOOK_SECRET_STAGING (staging HMAC key). Passed EXPLICITLY because
+# the reusable workflow lives under a different owner (secrets: inherit can't
+# cross owners).
 
 name: Release
-
-permissions:
-    contents: read
-    deployments: write
-    packages: write
 
 on:
     workflow_run:
@@ -15,112 +25,32 @@ on:
         branches:
             - main
 
+permissions:
+    contents: read
+    packages: write
+
 jobs:
-    docker:
-        name: "Docker images"
-        runs-on: ubuntu-latest
+    ship-staging:
         if: ${{ github.event.workflow_run.conclusion == 'success' }}
-        steps:
-            -   name: Checkout
-                uses: actions/checkout@v6
+        uses: TheDevs-cz/ci/.github/workflows/_ship.yml@v1
+        secrets:
+            DEPLOY_WEBHOOK_SECRET: ${{ secrets.DEPLOY_WEBHOOK_SECRET_STAGING }}
+        with:
+            app: fajnesklady-staging
+            image: ghcr.io/janmikes/fajnesklady.cz
+            deploy_host: lily.srv.thedevs.cz
+            build_args: APP_VERSION=${{ github.event.workflow_run.head_sha }}
+            await_deploy: false
 
-            -   name: Docker meta
-                id: meta
-                uses: docker/metadata-action@v6
-                with:
-                    # list of Docker images to use as base name for tags
-                    images: ghcr.io/janmikes/fajnesklady.cz
-                    # generate Docker tags based on the following events/attributes
-                    tags: |
-                        type=ref,event=branch
-                        type=sha
-
-            -   name: Set up Docker Buildx
-                uses: docker/setup-buildx-action@v4
-
-            -   name: Login to GHCR
-                if: github.event_name != 'pull_request'
-                uses: docker/login-action@v4
-                with:
-                    registry: ghcr.io
-                    username: ${{ github.repository_owner }}
-                    password: ${{ secrets.GITHUB_TOKEN }}
-
-            -   name: Build and push
-                uses: docker/build-push-action@v7
-                with:
-                    push: ${{ github.event_name != 'pull_request' }}
-                    tags: ${{ steps.meta.outputs.tags }}
-                    labels: ${{ steps.meta.outputs.labels }}
-                    cache-from: type=gha, scope=${{ github.workflow }}
-                    cache-to: type=gha, scope=${{ github.workflow }}
-                    build-args: APP_VERSION=${{ github.sha }}
-
-    deploy-staging:
-        runs-on: ubuntu-latest
+    ship-production:
+        needs: ship-staging
         if: ${{ github.event.workflow_run.conclusion == 'success' }}
-        needs:
-            - docker
-        concurrency:
-            group: deploy-staging
-            cancel-in-progress: false
-        environment:
-            name: staging
-            url: https://fajnesklady.thedevs.cz
-        steps:
-            -   name: Deploy to staging
-                uses: appleboy/ssh-action@v1.2.5
-                with:
-                    host: spare.srv.thedevs.cz
-                    username: ${{ secrets.DEPLOY_USERNAME }}
-                    key: ${{ secrets.DEPLOY_PRIVATE_KEY }}
-                    script: cd /deployment/fajnesklady-staging && ./deploy.sh
-
-            -   name: Verify staging health
-                run: |
-                    for i in 1 2 3 4 5 6 7 8 9 10; do
-                      code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 https://fajnesklady.thedevs.cz/-/health-check/liveness || true)
-                      echo "attempt $i: $code"
-                      if [ "$code" = "200" ]; then
-                        curl -s --max-time 15 https://fajnesklady.thedevs.cz/-/health-check/liveness
-                        exit 0
-                      fi
-                      sleep 6
-                    done
-                    echo "Staging health check failed after retries"
-                    exit 1
-
-    deploy-production:
-        runs-on: ubuntu-latest
-        if: ${{ github.event.workflow_run.conclusion == 'success' }}
-        needs:
-            - docker
-            - deploy-staging
-        concurrency:
-            group: deploy-production
-            cancel-in-progress: false
-        environment:
-            name: production
-            url: https://new.fajnesklady.cz
-        steps:
-            -   name: Deploy to production
-                uses: appleboy/ssh-action@v1.2.5
-                with:
-                    host: spare.srv.thedevs.cz
-                    username: ${{ secrets.DEPLOY_USERNAME }}
-                    key: ${{ secrets.DEPLOY_PRIVATE_KEY }}
-                    script: cd /deployment/fajnesklady && ./deploy.sh
-
-            -   name: Verify production health
-                run: |
-                    for i in 1 2 3 4 5 6 7 8 9 10; do
-                      code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 https://new.fajnesklady.cz/-/health-check/liveness || true)
-                      echo "attempt $i: $code"
-                      if [ "$code" = "200" ]; then
-                        curl -s --max-time 15 https://new.fajnesklady.cz/-/health-check/liveness
-                        exit 0
-                      fi
-                      sleep 6
-                    done
-                    echo "Production health check failed after retries"
-                    exit 1
+        uses: TheDevs-cz/ci/.github/workflows/_ship.yml@v1
+        secrets:
+            DEPLOY_WEBHOOK_SECRET: ${{ secrets.DEPLOY_WEBHOOK_SECRET }}
+        with:
+            app: fajnesklady
+            image: ghcr.io/janmikes/fajnesklady.cz
+            deploy_host: lily.srv.thedevs.cz
+            build_args: APP_VERSION=${{ github.event.workflow_run.head_sha }}
+            await_deploy: false
