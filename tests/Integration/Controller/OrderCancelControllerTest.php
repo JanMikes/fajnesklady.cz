@@ -84,13 +84,29 @@ class OrderCancelControllerTest extends WebTestCase
 
         $order = $this->findReservedOrder();
 
-        $this->client->request('POST', '/portal/landlord/orders/'.$order->id->toRfc4122().'/cancel');
+        $this->client->request('POST', '/portal/landlord/orders/'.$order->id->toRfc4122().'/cancel', ['password' => 'password']);
 
         $this->assertResponseRedirects('/portal/landlord/orders/'.$order->id->toRfc4122());
 
         $this->entityManager->clear();
         $updatedOrder = $this->entityManager->find(Order::class, $order->id);
         $this->assertSame(OrderStatus::CANCELLED, $updatedOrder->status);
+    }
+
+    public function testLandlordCancelRejectsWrongPassword(): void
+    {
+        $landlord = $this->findUserByEmail(UserFixtures::LANDLORD_EMAIL);
+        $this->client->loginUser($landlord, 'main');
+
+        $order = $this->findReservedOrder();
+
+        $this->client->request('POST', '/portal/landlord/orders/'.$order->id->toRfc4122().'/cancel', ['password' => 'wrong-password']);
+
+        $this->assertResponseRedirects('/portal/landlord/orders/'.$order->id->toRfc4122());
+
+        $this->entityManager->clear();
+        $updatedOrder = $this->entityManager->find(Order::class, $order->id);
+        $this->assertSame(OrderStatus::RESERVED, $updatedOrder->status);
     }
 
     public function testOtherLandlordCannotCancelOrder(): void

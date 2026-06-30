@@ -172,9 +172,20 @@
                                     </td>
                                     <td class="px-3 py-2 text-sm whitespace-nowrap">
                                         {% if fine.isPayable() %}
-                                            <form action="{{ path('admin_fine_cancel', {id: fine.id}) }}" method="post" class="inline" onsubmit="return confirm('Opravdu chcete zrušit tuto pokutu?');">
-                                                <button type="submit" class="text-red-600 hover:text-red-800 text-sm font-medium">Zrušit</button>
-                                            </form>
+                                            <button type="button"
+                                                    onclick="document.getElementById('cancelFineModal-{{ fine.id }}').showModal()"
+                                                    class="text-red-600 hover:text-red-800 text-sm font-medium">Zrušit</button>
+                                            {% embed 'components/_danger_modal.html.twig' with {
+                                                id: 'cancelFineModal-' ~ fine.id,
+                                                title: 'Zrušit pokutu',
+                                                action: path('admin_fine_cancel', {id: fine.id}),
+                                            } %}
+                                                {% block description %}
+                                                    Pokuta bude zrušena.
+                                                    <strong class="text-red-700">Tato akce je nevratná.</strong>
+                                                {% endblock %}
+                                                {% block submit_label %}Zrušit pokutu{% endblock %}
+                                            {% endembed %}
                                         {% endif %}
                                     </td>
                                 </tr>
@@ -709,14 +720,25 @@
                 Objednávku můžete zrušit, dokud nebyla zaplacena. Po zrušení bude skladová jednotka uvolněna a zákazník obdrží email.
             </p>
             <div class="mt-4">
-                <form action="{{ path('admin_order_cancel', {id: order.id}) }}" method="post" onsubmit="return confirm('Opravdu chcete zrušit tuto objednávku? Tato akce je nevratná.');">
-                    <button type="submit" class="inline-flex items-center px-4 py-2 border border-red-300 shadow-sm text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50">
-                        <svg class="h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                        Zrušit objednávku
-                    </button>
-                </form>
+                <button type="button"
+                        onclick="document.getElementById('adminCancelOrderModal').showModal()"
+                        class="inline-flex items-center px-4 py-2 border border-red-300 shadow-sm text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50">
+                    <svg class="h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    Zrušit objednávku
+                </button>
+                {% embed 'components/_danger_modal.html.twig' with {
+                    id: 'adminCancelOrderModal',
+                    title: 'Zrušit objednávku',
+                    action: path('admin_order_cancel', {id: order.id}),
+                } %}
+                    {% block description %}
+                        Po zrušení bude skladová jednotka uvolněna a zákazník obdrží email.
+                        <strong class="text-red-700">Tato akce je nevratná.</strong>
+                    {% endblock %}
+                    {% block submit_label %}Zrušit objednávku{% endblock %}
+                {% endembed %}
             </div>
         </div>
     </div>
@@ -736,35 +758,46 @@
     <div class="mt-6 bg-white shadow overflow-hidden sm:rounded-lg border border-red-200">
         <div class="px-4 py-5 sm:p-6">
             <h3 class="text-lg font-medium text-red-900">Ukončit smlouvu</h3>
-            <form action="{{ path('admin_contract_terminate', {id: contract.id}) }}" method="post"
-                  onsubmit="return confirm('Opravdu chcete ukončit tuto smlouvu? Tato akce je nevratná.');">
-                <div class="mt-3 space-y-3">
-                    <div>
-                        <label class="flex items-center gap-2">
-                            <input type="radio" name="termination_type" value="with_notice" checked
-                                   class="form-radio accent-red-600 focus:ring-red-500">
-                            <span class="text-sm text-gray-700">S výpovědní dobou (1 měsíc)</span>
-                        </label>
+            <div class="mt-4">
+                <button type="button"
+                        onclick="document.getElementById('terminateContractModal').showModal()"
+                        class="inline-flex items-center px-4 py-2 border border-red-300 shadow-sm text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50">
+                    Ukončit smlouvu
+                </button>
+            </div>
+            {% embed 'components/_danger_modal.html.twig' with {
+                id: 'terminateContractModal',
+                title: 'Ukončit smlouvu',
+                action: path('admin_contract_terminate', {id: contract.id}),
+            } %}
+                {% block description %}
+                    <strong class="text-red-700">Tato akce je nevratná.</strong>
+                {% endblock %}
+                {% block extra_fields %}
+                    <div class="space-y-3">
+                        <div>
+                            <label class="flex items-center gap-2">
+                                <input type="radio" name="termination_type" value="with_notice" checked
+                                       class="form-radio accent-red-600 focus:ring-red-500">
+                                <span class="text-sm text-gray-700">S výpovědní dobou (1 měsíc)</span>
+                            </label>
+                        </div>
+                        <div>
+                            <label class="flex items-center gap-2">
+                                <input type="radio" name="termination_type" value="immediate"
+                                       class="form-radio accent-red-600 focus:ring-red-500">
+                                <span class="text-sm text-gray-700">Okamžitě pro porušení smlouvy</span>
+                            </label>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600">Důvod (volitelný)</label>
+                            <textarea name="reason" rows="2" maxlength="500"
+                                      class="form-input mt-1 text-sm"></textarea>
+                        </div>
                     </div>
-                    <div>
-                        <label class="flex items-center gap-2">
-                            <input type="radio" name="termination_type" value="immediate"
-                                   class="form-radio accent-red-600 focus:ring-red-500">
-                            <span class="text-sm text-gray-700">Okamžitě pro porušení smlouvy</span>
-                        </label>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-600">Důvod (volitelný)</label>
-                        <textarea name="reason" rows="2" maxlength="500"
-                                  class="form-input mt-1 text-sm"></textarea>
-                    </div>
-                </div>
-                <div class="mt-4">
-                    <button type="submit" class="inline-flex items-center px-4 py-2 border border-red-300 shadow-sm text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50">
-                        Ukončit smlouvu
-                    </button>
-                </div>
-            </form>
+                {% endblock %}
+                {% block submit_label %}Ukončit smlouvu{% endblock %}
+            {% endembed %}
         </div>
     </div>
     {% endif %}

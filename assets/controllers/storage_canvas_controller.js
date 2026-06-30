@@ -10,6 +10,7 @@ export default class extends Controller {
         'coordX', 'coordY', 'coordW', 'coordH', 'coordR',
         'zoomLabel', 'minimap',
         'photoList', 'photoManageLink', 'photoHint',
+        'deletePasswordModal', 'deletePassword', 'deleteError',
     ];
     static values = {
         mapImage: String,
@@ -1023,12 +1024,12 @@ export default class extends Controller {
         }
     }
 
-    async deleteStorage() {
+    deleteStorage() {
         const storage = this.getSelectedStorage();
         if (!storage) return;
 
         if (!storage.id) {
-            // Remove unsaved storage
+            // Remove unsaved storage — no server call, no password needed
             this.storages.splice(this.selectedIndex, 1);
             this.deselectStorage();
             this.renderStorages();
@@ -1036,19 +1037,67 @@ export default class extends Controller {
             return;
         }
 
-        if (!confirm('Opravdu chcete smazat tento sklad?')) return;
+        // Saved storage: require password confirmation (Nebezpečná zóna)
+        if (!this.hasDeletePasswordModalTarget) return;
+
+        if (this.hasDeletePasswordTarget) {
+            this.deletePasswordTarget.value = '';
+        }
+        this.hideDeleteError();
+        this.deletePasswordModalTarget.showModal();
+    }
+
+    closeDeleteModal() {
+        if (this.hasDeletePasswordModalTarget) {
+            this.deletePasswordModalTarget.close();
+        }
+    }
+
+    hideDeleteError() {
+        if (this.hasDeleteErrorTarget) {
+            this.deleteErrorTarget.textContent = '';
+            this.deleteErrorTarget.classList.add('hidden');
+        }
+    }
+
+    showDeleteError(message) {
+        if (this.hasDeleteErrorTarget) {
+            this.deleteErrorTarget.textContent = message;
+            this.deleteErrorTarget.classList.remove('hidden');
+        }
+    }
+
+    async confirmDeleteStorage(event) {
+        event.preventDefault();
+
+        const storage = this.getSelectedStorage();
+        if (!storage || !storage.id) {
+            this.closeDeleteModal();
+            return;
+        }
+
+        const password = this.hasDeletePasswordTarget ? this.deletePasswordTarget.value : '';
 
         try {
             const response = await fetch(`${this.apiUrlValue}/${storage.id}`, {
                 method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password }),
             });
 
-            if (!response.ok) {
+            if (response.status === 422) {
                 const error = await response.json();
-                alert(error.message || 'Chyba při mazání skladu');
+                this.showDeleteError(error.message || 'Zadané heslo není správné.');
                 return;
             }
 
+            if (!response.ok) {
+                const error = await response.json();
+                this.showDeleteError(error.message || 'Chyba při mazání skladu');
+                return;
+            }
+
+            this.closeDeleteModal();
             this.storages.splice(this.selectedIndex, 1);
             this.deselectStorage();
             this.renderStorages();
@@ -1056,7 +1105,7 @@ export default class extends Controller {
             this.showNotification('Sklad smazán');
         } catch (err) {
             console.error('Delete error:', err);
-            alert('Chyba při mazání skladu');
+            this.showDeleteError('Chyba při mazání skladu');
         }
     }
 

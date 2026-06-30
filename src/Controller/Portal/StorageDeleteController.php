@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Controller\Portal;
 
 use App\Command\DeleteStorageCommand;
+use App\Entity\User;
 use App\Exception\StorageCannotBeDeleted;
 use App\Repository\StorageRepository;
+use App\Service\Security\PasswordConfirmation;
 use App\Service\Security\StorageVoter;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -14,6 +16,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Messenger\Exception\HandlerFailedException;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\CurrentUser;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Uid\Uuid;
 
@@ -24,10 +27,11 @@ final class StorageDeleteController extends AbstractController
     public function __construct(
         private readonly StorageRepository $storageRepository,
         private readonly MessageBusInterface $commandBus,
+        private readonly PasswordConfirmation $passwordConfirmation,
     ) {
     }
 
-    public function __invoke(Request $request, string $id): Response
+    public function __invoke(Request $request, string $id, #[CurrentUser] User $user): Response
     {
         $storage = $this->storageRepository->get(Uuid::fromString($id));
 
@@ -36,6 +40,15 @@ final class StorageDeleteController extends AbstractController
 
         $storageTypeId = $storage->storageType->id->toRfc4122();
         $placeId = $storage->place->id->toRfc4122();
+
+        if (!$this->passwordConfirmation->isValid($user, $request->request->getString('password'))) {
+            $this->addFlash('error', 'Zadané heslo není správné. Akce nebyla provedena.');
+
+            return $this->redirectToRoute('portal_storages_list', [
+                'placeId' => $placeId,
+                'storage_type' => $storageTypeId,
+            ]);
+        }
 
         try {
             $command = new DeleteStorageCommand(storageId: $storage->id);

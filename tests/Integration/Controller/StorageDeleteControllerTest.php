@@ -41,7 +41,7 @@ class StorageDeleteControllerTest extends WebTestCase
         $storage = $this->findStorageByNumber('B3');
         $placeId = $storage->getPlace()->id->toRfc4122();
 
-        $this->client->request('DELETE', '/api/places/'.$placeId.'/storages/'.$storage->id->toRfc4122());
+        $this->client->request('DELETE', '/api/places/'.$placeId.'/storages/'.$storage->id->toRfc4122(), [], [], ['CONTENT_TYPE' => 'application/json'], (string) json_encode(['password' => 'password']));
 
         $this->assertResponseStatusCodeSame(409);
 
@@ -59,7 +59,7 @@ class StorageDeleteControllerTest extends WebTestCase
         $storage = $this->findStorageByNumber('B1');
         $placeId = $storage->getPlace()->id->toRfc4122();
 
-        $this->client->request('DELETE', '/api/places/'.$placeId.'/storages/'.$storage->id->toRfc4122());
+        $this->client->request('DELETE', '/api/places/'.$placeId.'/storages/'.$storage->id->toRfc4122(), [], [], ['CONTENT_TYPE' => 'application/json'], (string) json_encode(['password' => 'password']));
 
         $this->assertResponseStatusCodeSame(409);
 
@@ -78,7 +78,7 @@ class StorageDeleteControllerTest extends WebTestCase
         $placeId = $storage->getPlace()->id->toRfc4122();
         $storageId = $storage->id->toRfc4122();
 
-        $this->client->request('DELETE', '/api/places/'.$placeId.'/storages/'.$storageId);
+        $this->client->request('DELETE', '/api/places/'.$placeId.'/storages/'.$storageId, [], [], ['CONTENT_TYPE' => 'application/json'], (string) json_encode(['password' => 'password']));
 
         $this->assertResponseStatusCodeSame(204);
 
@@ -101,7 +101,7 @@ class StorageDeleteControllerTest extends WebTestCase
         // Storage B3 is OCCUPIED
         $storage = $this->findStorageByNumber('B3');
 
-        $this->client->request('POST', '/portal/storages/'.$storage->id->toRfc4122().'/delete');
+        $this->client->request('POST', '/portal/storages/'.$storage->id->toRfc4122().'/delete', ['password' => 'password']);
 
         $this->assertResponseRedirects();
 
@@ -118,7 +118,7 @@ class StorageDeleteControllerTest extends WebTestCase
         // Storage B1 is RESERVED
         $storage = $this->findStorageByNumber('B1');
 
-        $this->client->request('POST', '/portal/storages/'.$storage->id->toRfc4122().'/delete');
+        $this->client->request('POST', '/portal/storages/'.$storage->id->toRfc4122().'/delete', ['password' => 'password']);
 
         $this->assertResponseRedirects();
 
@@ -136,7 +136,7 @@ class StorageDeleteControllerTest extends WebTestCase
         $storage = $this->findStorageByNumber('A2');
         $storageId = $storage->id;
 
-        $this->client->request('POST', '/portal/storages/'.$storage->id->toRfc4122().'/delete');
+        $this->client->request('POST', '/portal/storages/'.$storage->id->toRfc4122().'/delete', ['password' => 'password']);
 
         $this->assertResponseRedirects();
 
@@ -145,6 +145,50 @@ class StorageDeleteControllerTest extends WebTestCase
         $deletedStorage = $this->entityManager->find(Storage::class, $storageId);
         $this->assertNotNull($deletedStorage);
         $this->assertTrue($deletedStorage->isDeleted());
+    }
+
+    // ===========================================
+    // PASSWORD CONFIRMATION (Nebezpečná zóna)
+    // ===========================================
+
+    public function testApiDeleteRejectsWrongPassword(): void
+    {
+        $admin = $this->findUserByEmail('admin@example.com');
+        $this->client->loginUser($admin, 'main');
+
+        // Storage A1 is AVAILABLE — only the wrong password should block deletion
+        $storage = $this->findStorageByNumber('A1');
+        $placeId = $storage->getPlace()->id->toRfc4122();
+
+        $this->client->request('DELETE', '/api/places/'.$placeId.'/storages/'.$storage->id->toRfc4122(), [], [], ['CONTENT_TYPE' => 'application/json'], (string) json_encode(['password' => 'wrong-password']));
+
+        $this->assertResponseStatusCodeSame(422);
+
+        $this->entityManager->clear();
+        $reloaded = $this->entityManager->find(Storage::class, $storage->id);
+        $this->assertNotNull($reloaded);
+        $this->assertFalse($reloaded->isDeleted());
+    }
+
+    public function testPortalDeleteRejectsWrongPassword(): void
+    {
+        $admin = $this->findUserByEmail('admin@example.com');
+        $this->client->loginUser($admin, 'main');
+
+        // Storage A2 is AVAILABLE — only the wrong password should block deletion
+        $storage = $this->findStorageByNumber('A2');
+        $storageId = $storage->id;
+
+        $this->client->request('POST', '/portal/storages/'.$storage->id->toRfc4122().'/delete', ['password' => 'wrong-password']);
+
+        $this->assertResponseRedirects();
+        $this->client->followRedirect();
+        $this->assertSelectorExists('[data-flash-type="error"]');
+
+        $this->entityManager->clear();
+        $reloaded = $this->entityManager->find(Storage::class, $storageId);
+        $this->assertNotNull($reloaded);
+        $this->assertFalse($reloaded->isDeleted());
     }
 
     // ===========================================

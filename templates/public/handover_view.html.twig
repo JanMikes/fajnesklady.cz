@@ -91,6 +91,7 @@
                 <p class="text-sm text-gray-600 mb-4">Nahrajte fotografie stavu skladu a potvrďte, že jste sklad vyklidili.</p>
 
                 {{ form_start(form, {'attr': {'enctype': 'multipart/form-data'}}) }}
+                    {% include 'components/_form_root_errors.html.twig' with { form: form } %}
                     <div class="space-y-6">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Fotografie</label>

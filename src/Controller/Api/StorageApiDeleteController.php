@@ -5,15 +5,19 @@ declare(strict_types=1);
 namespace App\Controller\Api;
 
 use App\Command\DeleteStorageCommand;
+use App\Entity\User;
 use App\Exception\StorageCannotBeDeleted;
 use App\Repository\StorageRepository;
+use App\Service\Security\PasswordConfirmation;
 use App\Service\Security\StorageVoter;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Messenger\Exception\HandlerFailedException;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\CurrentUser;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Uid\Uuid;
 
@@ -24,10 +28,11 @@ final class StorageApiDeleteController extends AbstractController
     public function __construct(
         private readonly StorageRepository $storageRepository,
         private readonly MessageBusInterface $commandBus,
+        private readonly PasswordConfirmation $passwordConfirmation,
     ) {
     }
 
-    public function __invoke(string $placeId, string $storageId): JsonResponse
+    public function __invoke(Request $request, string $placeId, string $storageId, #[CurrentUser] User $user): JsonResponse
     {
         $storage = $this->storageRepository->get(Uuid::fromString($storageId));
         $this->denyAccessUnlessGranted(StorageVoter::DELETE, $storage);
@@ -35,6 +40,10 @@ final class StorageApiDeleteController extends AbstractController
         // Verify storage belongs to the place
         if (!$storage->getPlace()->id->equals(Uuid::fromString($placeId))) {
             return new JsonResponse(['message' => 'Sklad nepatri k tomuto mistu'], Response::HTTP_BAD_REQUEST);
+        }
+
+        if (!$this->passwordConfirmation->isValid($user, $request->getPayload()->getString('password'))) {
+            return new JsonResponse(['message' => 'Zadané heslo není správné.'], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
         try {

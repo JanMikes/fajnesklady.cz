@@ -746,6 +746,20 @@ class ControllerAccessTest extends WebTestCase
         $this->assertResponseStatusCodeSame(403);
     }
 
+    public function testPlaceDeleteRejectsWrongPassword(): void
+    {
+        $place = $this->getFixturePlace();
+        $admin = $this->getFixtureAdmin();
+        $this->login($admin);
+
+        // Correct role, but wrong password → blocked, redirected back to the place detail
+        $this->client->request('POST', '/portal/places/'.$place->id->toRfc4122().'/delete', [
+            'password' => 'wrong-password',
+        ]);
+
+        $this->assertResponseRedirects('/portal/places/'.$place->id->toRfc4122());
+    }
+
     // ===========================================
     // STORAGE LIST - Landlord/Admin
     // ===========================================
@@ -1626,6 +1640,25 @@ class ControllerAccessTest extends WebTestCase
         $this->client->request('POST', '/portal/users/'.$target->id->toRfc4122().'/deactivate');
 
         $this->assertResponseStatusCodeSame(403);
+    }
+
+    public function testUserDeactivateRejectsWrongPassword(): void
+    {
+        $target = $this->createUser('deactivate-wrong-pw-target@example.com', UserRole::USER);
+        $admin = $this->getFixtureAdmin();
+        $this->login($admin);
+
+        // Correct admin role, but wrong password → blocked, redirected back to the user detail
+        $this->client->request('POST', '/portal/users/'.$target->id->toRfc4122().'/deactivate', [
+            'password' => 'wrong-password',
+        ]);
+
+        $this->assertResponseRedirects('/portal/users/'.$target->id->toRfc4122());
+
+        $this->entityManager->clear();
+        $reloaded = $this->entityManager->find(User::class, $target->id);
+        $this->assertNotNull($reloaded);
+        $this->assertFalse($reloaded->isDeactivated());
     }
 
     // ===========================================

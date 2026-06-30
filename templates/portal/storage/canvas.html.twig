@@ -379,6 +379,33 @@
                         </div>
                     </div>
                 </dialog>
+
+                {# Delete storage confirmation (password) modal — Nebezpečná zóna #}
+                <dialog data-storage-canvas-target="deletePasswordModal" class="modal">
+                    <div class="modal-box">
+                        <h3 class="text-lg font-bold text-red-700">Smazat sklad</h3>
+                        <p class="py-2 text-sm text-gray-600">
+                            Trvale a nevratně odstraní tento sklad i jeho data.
+                            <strong class="text-red-700">Tato akce je nevratná.</strong>
+                        </p>
+                        <form data-action="submit->storage-canvas#confirmDeleteStorage">
+                            <div class="form-group mt-4">
+                                <label class="form-label" for="canvasDeletePassword">Pro potvrzení zadejte své heslo</label>
+                                <input type="password" id="canvasDeletePassword"
+                                       data-storage-canvas-target="deletePassword"
+                                       autocomplete="current-password"
+                                       class="form-input w-full" required>
+                                <p data-storage-canvas-target="deleteError" class="form-error hidden"></p>
+                            </div>
+                            <div class="modal-action">
+                                <button type="button" class="btn btn-ghost"
+                                        data-action="click->storage-canvas#closeDeleteModal">Zrušit</button>
+                                <button type="submit" class="btn btn-error">Smazat sklad</button>
+                            </div>
+                        </form>
+                    </div>
+                    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+                </dialog>
             </div>
         </div>
     {% endif %}

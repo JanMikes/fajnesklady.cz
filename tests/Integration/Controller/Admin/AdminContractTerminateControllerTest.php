@@ -48,6 +48,7 @@ class AdminContractTerminateControllerTest extends WebTestCase
         $this->client->request('POST', $this->url($contract), [
             'termination_type' => 'immediate',
             'reason' => 'Porušení smlouvy',
+            'password' => 'password',
         ]);
 
         $this->assertResponseRedirects('/portal/admin/orders/'.$contract->order->id->toRfc4122());
@@ -68,6 +69,7 @@ class AdminContractTerminateControllerTest extends WebTestCase
         $this->client->request('POST', $this->url($contract), [
             'termination_type' => 'with_notice',
             'reason' => '',
+            'password' => 'password',
         ]);
 
         $this->assertResponseRedirects('/portal/admin/orders/'.$contract->order->id->toRfc4122());
@@ -78,6 +80,25 @@ class AdminContractTerminateControllerTest extends WebTestCase
         $this->assertFalse($contract->isTerminated());
         $this->assertTrue($contract->hasPendingTermination());
         $this->assertNotNull($contract->terminatesAt);
+    }
+
+    public function testRejectsWrongPassword(): void
+    {
+        $contract = $this->createTestContract();
+        $this->entityManager->flush();
+
+        $this->loginAsAdmin();
+        $this->client->request('POST', $this->url($contract), [
+            'termination_type' => 'immediate',
+            'password' => 'wrong-password',
+        ]);
+
+        $this->assertResponseRedirects('/portal/admin/orders/'.$contract->order->id->toRfc4122());
+        $flashes = $this->client->getRequest()->getSession()->getFlashBag()->get('error');
+        $this->assertNotEmpty($flashes);
+
+        $this->entityManager->refresh($contract);
+        $this->assertFalse($contract->isTerminated());
     }
 
     public function testNonAdminGets403(): void
@@ -104,6 +125,7 @@ class AdminContractTerminateControllerTest extends WebTestCase
         $this->loginAsAdmin();
         $this->client->request('POST', $this->url($contract), [
             'termination_type' => 'immediate',
+            'password' => 'password',
         ]);
 
         $this->assertResponseRedirects('/portal/admin/orders/'.$contract->order->id->toRfc4122());
@@ -119,6 +141,7 @@ class AdminContractTerminateControllerTest extends WebTestCase
         $this->loginAsAdmin();
         $this->client->request('POST', $this->url($contract), [
             'termination_type' => 'invalid',
+            'password' => 'password',
         ]);
 
         $this->assertResponseRedirects('/portal/admin/orders/'.$contract->order->id->toRfc4122());

@@ -1,0 +1,13 @@
+{# Renders form-LEVEL (root) validation errors — those that attach to the form
+   itself rather than a specific field. The main real-world source is an
+   oversized multipart upload (POST body over PHP post_max_size), which Symfony
+   reports as a root error; a constraint on a data property with no rendered
+   field can also bubble here. The per-field {{ form_errors(form.x) }} calls and
+   form_end()'s form_rest never render root errors, so without this the form
+   returns a silent HTTP 422 with nothing shown to the user.
+
+   Usage: {% include 'components/_form_root_errors.html.twig' with { form: myForm } %}
+   immediately after {{ form_start(...) }}. #}
+{% if form.vars.errors|length > 0 %}
+    <div class="alert alert-error mb-4">{{ form_errors(form) }}</div>
+{% endif %}

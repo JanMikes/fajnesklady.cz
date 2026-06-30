@@ -293,24 +293,21 @@
     </div>
 
     {% if not user.isDeactivated and user.id != app.user.id %}
-        <dialog id="deactivateModal" class="modal">
-            <div class="modal-box">
-                <h3 class="text-lg font-bold">Deaktivovat uživatele</h3>
-                <p class="py-2 text-gray-600">Uživatel se nebude moci přihlásit. Volitelně můžete zadat důvod, který se mu zobrazí.</p>
-                <form action="{{ path('portal_users_deactivate', {id: user.id}) }}" method="post">
-                    <div class="form-group mt-4">
-                        <label class="form-label">Důvod deaktivace (volitelný)</label>
-                        <textarea name="reason" class="form-input w-full" rows="3" placeholder="Např. Porušení podmínek služby..."></textarea>
-                    </div>
-                    <div class="modal-action">
-                        <button type="button" class="btn btn-ghost" onclick="document.getElementById('deactivateModal').close()">Zrušit</button>
-                        <button type="submit" class="btn btn-error">Deaktivovat</button>
-                    </div>
-                </form>
-            </div>
-            <form method="dialog" class="modal-backdrop">
-                <button>close</button>
-            </form>
-        </dialog>
+        {% embed 'components/_danger_modal.html.twig' with {
+            id: 'deactivateModal',
+            title: 'Deaktivovat uživatele',
+            action: path('portal_users_deactivate', {id: user.id}),
+        } %}
+            {% block description %}
+                Uživatel se nebude moci přihlásit. Volitelně můžete zadat důvod, který se mu zobrazí.
+            {% endblock %}
+            {% block extra_fields %}
+                <div class="form-group">
+                    <label class="form-label" for="deactivateModal__reason">Důvod deaktivace (volitelný)</label>
+                    <textarea name="reason" id="deactivateModal__reason" class="form-input w-full" rows="3" placeholder="Např. Porušení podmínek služby..."></textarea>
+                </div>
+            {% endblock %}
+            {% block submit_label %}Deaktivovat{% endblock %}
+        {% endembed %}
     {% endif %}
 {% endblock %}

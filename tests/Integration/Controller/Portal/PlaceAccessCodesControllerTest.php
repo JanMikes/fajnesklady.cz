@@ -129,7 +129,7 @@ class PlaceAccessCodesControllerTest extends WebTestCase
 
         $countBefore = $this->countUsage($place);
 
-        $this->client->request('POST', '/portal/places/'.$place->id->toRfc4122().'/access-codes/reset');
+        $this->client->request('POST', '/portal/places/'.$place->id->toRfc4122().'/access-codes/reset', ['password' => 'password']);
 
         $this->assertResponseRedirects();
 
@@ -145,6 +145,31 @@ class PlaceAccessCodesControllerTest extends WebTestCase
         $this->assertContains('0042', $codes);
         $this->assertContains('0577', $codes);
         $this->assertNotContains('9876', $codes);
+    }
+
+    public function testResetRejectsWrongPassword(): void
+    {
+        $this->loginAsAdmin();
+        $place = $this->getPrahaCentrum();
+
+        $this->entityManager->persist(new PlaceStorageCodeUsage(
+            id: \Symfony\Component\Uid\Uuid::v7(),
+            place: $place,
+            code: '9876',
+            usedAt: new \DateTimeImmutable(),
+        ));
+        $this->entityManager->flush();
+
+        $countBefore = $this->countUsage($place);
+
+        $this->client->request('POST', '/portal/places/'.$place->id->toRfc4122().'/access-codes/reset', ['password' => 'wrong-password']);
+
+        $this->assertResponseRedirects();
+
+        $this->entityManager->clear();
+        $countAfter = $this->countUsage($this->entityManager->find(Place::class, $place->id));
+
+        $this->assertSame($countBefore, $countAfter, 'Nothing should be released when the password is wrong.');
     }
 
     public function testBulkGenerateRequiresCodesEnabled(): void

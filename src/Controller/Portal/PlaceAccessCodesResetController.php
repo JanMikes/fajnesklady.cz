@@ -5,14 +5,18 @@ declare(strict_types=1);
 namespace App\Controller\Portal;
 
 use App\Command\ReleaseUnusedStorageCodesCommand;
+use App\Entity\User;
 use App\Repository\PlaceRepository;
+use App\Service\Security\PasswordConfirmation;
 use App\Service\Security\PlaceVoter;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Messenger\Stamp\HandledStamp;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\CurrentUser;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Uid\Uuid;
 
@@ -27,13 +31,20 @@ final class PlaceAccessCodesResetController extends AbstractController
     public function __construct(
         private readonly PlaceRepository $placeRepository,
         private readonly MessageBusInterface $commandBus,
+        private readonly PasswordConfirmation $passwordConfirmation,
     ) {
     }
 
-    public function __invoke(string $placeId): Response
+    public function __invoke(Request $request, string $placeId, #[CurrentUser] User $user): Response
     {
         $place = $this->placeRepository->get(Uuid::fromString($placeId));
         $this->denyAccessUnlessGranted(PlaceVoter::MANAGE_CODES, $place);
+
+        if (!$this->passwordConfirmation->isValid($user, $request->request->getString('password'))) {
+            $this->addFlash('error', 'Zadané heslo není správné. Akce nebyla provedena.');
+
+            return $this->redirectToRoute('portal_place_access_codes', ['placeId' => $place->id->toRfc4122()]);
+        }
 
         if (!$place->storageCodesEnabled) {
             throw new BadRequestHttpException('Přístupové kódy nejsou pro toto místo povolené.');

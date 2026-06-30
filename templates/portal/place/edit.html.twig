@@ -49,6 +49,7 @@
         <div class="card">
             <div class="card-body">
                 {{ form_start(form, {'attr': {'enctype': 'multipart/form-data'}}) }}
+                    {% include 'components/_form_root_errors.html.twig' with { form: form } %}
                     <div class="mb-4">
                         <label for="{{ form.type.vars.id }}" class="block text-sm font-semibold text-gray-700 mb-2">Typ místa</label>
                         {{ form_widget(form.type, {'attr': {'class': 'form-input w-full'}}) }}

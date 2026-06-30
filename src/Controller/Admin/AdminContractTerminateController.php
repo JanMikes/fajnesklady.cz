@@ -5,13 +5,16 @@ declare(strict_types=1);
 namespace App\Controller\Admin;
 
 use App\Command\AdminTerminateContractCommand;
+use App\Entity\User;
 use App\Repository\ContractRepository;
+use App\Service\Security\PasswordConfirmation;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\CurrentUser;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Uid\Uuid;
 
@@ -22,10 +25,11 @@ final class AdminContractTerminateController extends AbstractController
     public function __construct(
         private readonly ContractRepository $contractRepository,
         private readonly MessageBusInterface $commandBus,
+        private readonly PasswordConfirmation $passwordConfirmation,
     ) {
     }
 
-    public function __invoke(string $id, Request $request): Response
+    public function __invoke(string $id, Request $request, #[CurrentUser] User $user): Response
     {
         if (!Uuid::isValid($id)) {
             throw new NotFoundHttpException('Smlouva nenalezena.');
@@ -35,6 +39,12 @@ final class AdminContractTerminateController extends AbstractController
             $contract = $this->contractRepository->get(Uuid::fromString($id));
         } catch (\Exception) {
             throw new NotFoundHttpException('Smlouva nenalezena.');
+        }
+
+        if (!$this->passwordConfirmation->isValid($user, $request->request->getString('password'))) {
+            $this->addFlash('error', 'Zadané heslo není správné. Akce nebyla provedena.');
+
+            return $this->redirectToRoute('admin_order_detail', ['id' => $contract->order->id]);
         }
 
         $terminationType = $request->request->getString('termination_type');

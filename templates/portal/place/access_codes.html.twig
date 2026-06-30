@@ -52,10 +52,19 @@
                                     Vygenerovat kódy pro prázdné sklady{% if emptyCount > 0 %} ({{ emptyCount }}){% endif %}
                                 </button>
                             </form>
-                            <form method="post" action="{{ path('portal_place_access_codes_reset', {placeId: place.id}) }}"
-                                  onsubmit="return confirm('Tímto trvale smažete historii použitých kódů. Kódy aktuálně přiřazené skladům zůstanou zachovány. Pokračovat?');">
-                                <button type="submit" class="btn btn-secondary">Resetovat použité kódy</button>
-                            </form>
+                            <button type="button" class="btn btn-secondary"
+                                    onclick="document.getElementById('resetAccessCodesModal').showModal()">Resetovat použité kódy</button>
+                            {% embed 'components/_danger_modal.html.twig' with {
+                                id: 'resetAccessCodesModal',
+                                title: 'Resetovat použité kódy',
+                                action: path('portal_place_access_codes_reset', {placeId: place.id}),
+                            } %}
+                                {% block description %}
+                                    Tímto trvale smažete historii použitých kódů. Kódy aktuálně přiřazené skladům
+                                    zůstanou zachovány. <strong class="text-red-700">Tato akce je nevratná.</strong>
+                                {% endblock %}
+                                {% block submit_label %}Resetovat kódy{% endblock %}
+                            {% endembed %}
                         </div>
                     </div>
                 </div>
