@@ -39,7 +39,7 @@ final class PlaceBrowseDetailController extends AbstractController
             throw new NotFoundHttpException('Pobočka nenalezena.');
         }
 
-        $storageTypes = $this->storageTypeRepository->findActiveByPlace($place);
+        $storageTypes = $this->storageTypeRepository->findPubliclyOrderableByPlace($place);
 
         $startDate = new \DateTimeImmutable('tomorrow');
         $endDate = $startDate->modify('+30 days');

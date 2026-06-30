@@ -40,7 +40,7 @@ final class HomeController extends AbstractController
         $sortKeyById = [];
 
         foreach ($places as $place) {
-            $storageTypes = $this->storageTypeRepository->findActiveByPlace($place);
+            $storageTypes = $this->storageTypeRepository->findPubliclyOrderableByPlace($place);
 
             $placeTotal = 0;
             $placeAvailable = 0;

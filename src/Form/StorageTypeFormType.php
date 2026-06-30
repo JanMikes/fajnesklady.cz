@@ -134,6 +134,12 @@ class StorageTypeFormType extends AbstractType
 
         ]);
 
+        $builder->add('adminOnly', CheckboxType::class, [
+            'label' => 'Pouze pro administrátory (skrýt z veřejné nabídky)',
+            'required' => false,
+            'help' => 'Tento typ se nezobrazí zákazníkům na webu (úvod, detail pobočky, ceník) a nelze jej veřejně objednat. Sklady tohoto typu může pronajmout pouze administrátor (např. při onboardingu).',
+        ]);
+
         $builder->add('photos', FileType::class, [
             'label' => 'Fotografie',
             'required' => false,

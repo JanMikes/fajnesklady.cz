@@ -35,6 +35,7 @@ final readonly class UpdateStorageTypeHandler
             defaultPricePerYear: $command->defaultPricePerYear,
             description: $command->description,
             uniformStorages: $command->uniformStorages,
+            adminOnly: $command->adminOnly,
             now: $this->clock->now(),
         );
 

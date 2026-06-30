@@ -46,6 +46,9 @@
                         <tr>
                             <td class="font-medium text-gray-900">
                                 {{ storageType.name }}
+                                {% if storageType.adminOnly %}
+                                    <span class="badge badge-warning badge-sm ml-1" title="Skryté z veřejné nabídky – pronajme pouze administrátor">Jen pro adminy</span>
+                                {% endif %}
                                 {% if storageType.hasPhotos %}
                                     <span class="ml-1 text-accent" title="Obsahuje fotografie">
                                         <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">

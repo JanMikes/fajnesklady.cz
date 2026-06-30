@@ -19,6 +19,7 @@ final class StorageTypeFixtures extends Fixture implements DependentFixtureInter
     public const REF_MEDIUM_CENTRUM = 'storage-type-medium-centrum';
     public const REF_LARGE_CENTRUM = 'storage-type-large-centrum';
     public const REF_CUSTOM_CENTRUM = 'storage-type-custom-centrum';
+    public const REF_ADMIN_ONLY_CENTRUM = 'storage-type-admin-only-centrum';
 
     // Praha Jih
     public const REF_SMALL_JIH = 'storage-type-small-jih';
@@ -134,6 +135,26 @@ final class StorageTypeFixtures extends Fixture implements DependentFixtureInter
         );
         $manager->persist($customCentrum);
         $this->addReference(self::REF_CUSTOM_CENTRUM, $customCentrum);
+
+        // Admin-only storage type at Praha Centrum — hidden from all customer-facing
+        // surfaces (homepage, place detail, price list, tenant browse) and not publicly
+        // orderable. Only an admin can place a customer into it via onboarding.
+        $adminOnlyCentrum = new StorageType(
+            id: Uuid::v7(),
+            place: $placePrahaCentrum,
+            name: 'Admin box (skrytý)',
+            innerWidth: 180,
+            innerHeight: 180,
+            innerLength: 180,
+            defaultPricePerWeek: 32000,
+            defaultPricePerMonth: 110000,
+            defaultPricePerMonthLongTerm: 94000,
+            defaultPricePerYear: 940_000,
+            createdAt: $now,
+            adminOnly: true,
+        );
+        $manager->persist($adminOnlyCentrum);
+        $this->addReference(self::REF_ADMIN_ONLY_CENTRUM, $adminOnlyCentrum);
 
         // Praha Jih storage types
         $smallJih = new StorageType(

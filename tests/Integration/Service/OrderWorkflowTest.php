@@ -514,6 +514,7 @@ class OrderWorkflowTest extends KernelTestCase
             defaultPricePerYear: $storageType->defaultPricePerMonth * 10,
             description: $storageType->description,
             uniformStorages: $storageType->uniformStorages,
+            adminOnly: $storageType->adminOnly,
             now: $this->clock->now(),
         );
 

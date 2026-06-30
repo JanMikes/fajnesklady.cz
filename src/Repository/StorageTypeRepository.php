@@ -103,6 +103,29 @@ class StorageTypeRepository
     }
 
     /**
+     * Active, non-deleted types a customer may actually order at this place.
+     * Excludes admin-only types, which are reserved for admin onboarding and
+     * never offered on the homepage, place detail, price list or tenant browse.
+     *
+     * @return StorageType[]
+     */
+    public function findPubliclyOrderableByPlace(Place $place): array
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('st')
+            ->from(StorageType::class, 'st')
+            ->where('st.place = :place')
+            ->andWhere('st.isActive = :active')
+            ->andWhere('st.deletedAt IS NULL')
+            ->andWhere('st.adminOnly = false')
+            ->setParameter('place', $place)
+            ->setParameter('active', true)
+            ->orderBy('st.name', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
      * @return StorageType[]
      */
     public function findByPlacePaginated(Place $place, int $page, int $limit): array

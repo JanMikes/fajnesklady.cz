@@ -64,7 +64,9 @@ final class OrderAcceptController extends AbstractController
         }
 
         $storageType = $this->storageTypeRepository->find(Uuid::fromString($storageTypeId));
-        if (null === $storageType || !$storageType->isActive) {
+        // adminOnly types are reserved for admin onboarding and must never be
+        // publicly orderable — reject even if someone reached the accept step directly.
+        if (null === $storageType || !$storageType->isActive || $storageType->adminOnly) {
             throw new NotFoundHttpException('Typ skladové jednotky nenalezen.');
         }
 

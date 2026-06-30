@@ -41,7 +41,7 @@ final class PlaceDetailController extends AbstractController
             return $this->redirectToRoute('portal_browse_place_detail', ['id' => $id]);
         }
 
-        $storageTypes = $this->storageTypeRepository->findActiveByPlace($place);
+        $storageTypes = $this->storageTypeRepository->findPubliclyOrderableByPlace($place);
 
         // Calculate availability for next 30 days for each storage type
         $startDate = new \DateTimeImmutable('tomorrow');

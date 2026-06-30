@@ -36,7 +36,7 @@ final class PlaceBrowseListController extends AbstractController
         $endDate = $startDate->modify('+30 days');
 
         foreach ($places as $place) {
-            $storageTypes = $this->storageTypeRepository->findActiveByPlace($place);
+            $storageTypes = $this->storageTypeRepository->findPubliclyOrderableByPlace($place);
             $lowestPrice = $this->getLowestPrice($storageTypes);
 
             $placesWithStorageTypes[] = [

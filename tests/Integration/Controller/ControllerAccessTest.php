@@ -356,9 +356,13 @@ class ControllerAccessTest extends WebTestCase
         $place = $this->getFixturePlace();
         $this->login($admin);
 
-        $this->client->request('GET', '/portal/places/'.$place->id->toRfc4122().'/storage-types/create');
+        $crawler = $this->client->request('GET', '/portal/places/'.$place->id->toRfc4122().'/storage-types/create');
 
         $this->assertResponseIsSuccessful();
+        // The adminOnly checkbox is rendered manually in its styled block. Assert it
+        // appears exactly once — a count of 2 would mean form_end()/form_rest()
+        // duplicated it because the manual render was missing.
+        $this->assertCount(1, $crawler->filter('#storage_type_form_adminOnly'));
     }
 
     public function testStorageListRequiresLandlordRole(): void

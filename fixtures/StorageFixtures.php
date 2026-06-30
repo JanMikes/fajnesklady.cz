@@ -59,6 +59,9 @@ final class StorageFixtures extends Fixture implements DependentFixtureInterface
     // place dashboard).
     public const REF_SMALL_Z1_LANDLORD2 = 'storage-small-z1-landlord2';
 
+    // Praha Centrum - storage of the admin-only type (only rentable via admin onboarding).
+    public const REF_ADMIN_ONLY_AO1 = 'storage-admin-only-ao1';
+
     public function __construct(
         private ClockInterface $clock,
     ) {
@@ -112,6 +115,9 @@ final class StorageFixtures extends Fixture implements DependentFixtureInterface
 
         /** @var StorageType $customType */
         $customType = $this->getReference(StorageTypeFixtures::REF_CUSTOM_CENTRUM, StorageType::class);
+
+        /** @var StorageType $adminOnlyType */
+        $adminOnlyType = $this->getReference(StorageTypeFixtures::REF_ADMIN_ONLY_CENTRUM, StorageType::class);
 
         // Small boxes A1-A5 in Praha Centrum (owned by landlord)
         $smallRefs = [self::REF_SMALL_A1, self::REF_SMALL_A2, self::REF_SMALL_A3, self::REF_SMALL_A4, self::REF_SMALL_A5];
@@ -289,6 +295,20 @@ final class StorageFixtures extends Fixture implements DependentFixtureInterface
         );
         $manager->persist($storageZ1);
         $this->addReference(self::REF_SMALL_Z1_LANDLORD2, $storageZ1);
+
+        // AO1 - storage of the admin-only type at Praha Centrum. Never offered to
+        // customers; reachable only through admin onboarding.
+        $storageAo1 = new Storage(
+            id: Uuid::v7(),
+            number: 'AO1',
+            coordinates: ['x' => 1000, 'y' => 300, 'width' => 180, 'height' => 180, 'rotation' => 0, 'normalized' => true],
+            storageType: $adminOnlyType,
+            place: $placePrahaCentrum,
+            createdAt: $now,
+            owner: $landlord,
+        );
+        $manager->persist($storageAo1);
+        $this->addReference(self::REF_ADMIN_ONLY_AO1, $storageAo1);
 
         $manager->flush();
     }

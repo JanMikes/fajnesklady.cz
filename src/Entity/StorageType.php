@@ -29,6 +29,15 @@ class StorageType
     #[ORM\Column]
     public private(set) bool $uniformStorages = true;
 
+    /**
+     * When true the type is never offered to customers: it is hidden from the
+     * public homepage, place detail, price list and tenant browse, and the
+     * public order routes reject it. Only an admin can place a customer into it
+     * (via onboarding). Landlords still manage it normally in the portal.
+     */
+    #[ORM\Column(options: ['default' => false])]
+    public private(set) bool $adminOnly = false;
+
     #[ORM\Column(nullable: true)]
     public private(set) ?int $outerWidth = null;
 
@@ -74,10 +83,12 @@ class StorageType
         ?int $outerWidth = null,
         ?int $outerHeight = null,
         ?int $outerLength = null,
+        bool $adminOnly = false,
     ) {
         $this->updatedAt = $createdAt;
         $this->photos = new ArrayCollection();
         $this->uniformStorages = $uniformStorages;
+        $this->adminOnly = $adminOnly;
         $this->outerWidth = $outerWidth;
         $this->outerHeight = $outerHeight;
         $this->outerLength = $outerLength;
@@ -177,6 +188,7 @@ class StorageType
         int $defaultPricePerYear,
         ?string $description,
         bool $uniformStorages,
+        bool $adminOnly,
         \DateTimeImmutable $now,
     ): void {
         $this->name = $name;
@@ -192,6 +204,7 @@ class StorageType
         $this->defaultPricePerYear = $defaultPricePerYear;
         $this->description = $description;
         $this->uniformStorages = $uniformStorages;
+        $this->adminOnly = $adminOnly;
         $this->updatedAt = $now;
     }
 

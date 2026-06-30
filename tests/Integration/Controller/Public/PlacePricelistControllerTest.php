@@ -61,6 +61,18 @@ class PlacePricelistControllerTest extends WebTestCase
         );
     }
 
+    public function testAdminOnlyStorageTypeIsHidden(): void
+    {
+        $place = $this->findPlaceByName('Sklad Praha - Centrum');
+
+        $this->client->request('GET', '/pobocka/'.$place->id->toRfc4122().'/cenik');
+
+        $this->assertResponseIsSuccessful();
+        $body = (string) $this->client->getResponse()->getContent();
+        // The admin-only fixture type must never appear in the public price list.
+        $this->assertStringNotContainsString('Admin box', $body);
+    }
+
     public function testReturns404ForUnknownUuid(): void
     {
         $this->client->request('GET', '/pobocka/'.Uuid::v7()->toRfc4122().'/cenik');

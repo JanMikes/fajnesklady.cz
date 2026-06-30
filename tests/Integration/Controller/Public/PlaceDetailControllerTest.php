@@ -67,6 +67,20 @@ class PlaceDetailControllerTest extends WebTestCase
         );
     }
 
+    public function testAdminOnlyStorageTypeIsHidden(): void
+    {
+        $place = $this->findPlaceByName('Sklad Praha - Centrum');
+
+        $this->client->request('GET', '/pobocka/'.$place->id->toRfc4122());
+
+        $this->assertResponseIsSuccessful();
+        $body = (string) $this->client->getResponse()->getContent();
+        // The admin-only fixture type at this place must not be offered to the public…
+        $this->assertStringNotContainsString('Admin box', $body);
+        // …while normal active types still render.
+        $this->assertStringContainsString('Maly box', $body);
+    }
+
     public function testAuthenticatedUserIsRedirectedToBrowseDetail(): void
     {
         $user = $this->findUserByEmail('user@example.com');

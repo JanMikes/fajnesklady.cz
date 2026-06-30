@@ -23,6 +23,7 @@ final readonly class UpdateStorageTypeCommand
         public int $defaultPricePerYear,
         public ?string $description,
         public bool $uniformStorages = true,
+        public bool $adminOnly = false,
     ) {
     }
 }

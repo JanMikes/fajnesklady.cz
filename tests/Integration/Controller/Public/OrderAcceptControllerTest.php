@@ -83,6 +83,17 @@ class OrderAcceptControllerTest extends WebTestCase
         self::assertSame(1, $this->countOrdersForStorage($storage));
     }
 
+    public function testAdminOnlyStorageTypeReturns404(): void
+    {
+        // AO1 is a storage of the admin-only type — the accept route must reject it
+        // (the guard fires before the session check, so no form session is needed).
+        $storage = $this->findAvailableStorage('AO1');
+
+        $this->client->request('GET', $this->acceptUrl($storage));
+
+        self::assertResponseStatusCodeSame(404);
+    }
+
     /**
      * @return array<string, string>
      */

@@ -62,6 +62,9 @@ final class StorageTypeFormData
 
     public bool $uniformStorages = true;
 
+    /** When true, the type is hidden from all customer-facing surfaces and can only be rented out by an admin via onboarding. */
+    public bool $adminOnly = false;
+
     /**
      * @var UploadedFile[]
      */
@@ -90,6 +93,7 @@ final class StorageTypeFormData
         $formData->defaultPricePerYear = $storageType->getDefaultPricePerYearInCzk();
         $formData->description = $storageType->description;
         $formData->uniformStorages = $storageType->uniformStorages;
+        $formData->adminOnly = $storageType->adminOnly;
 
         return $formData;
     }

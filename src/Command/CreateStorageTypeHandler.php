@@ -43,6 +43,7 @@ final readonly class CreateStorageTypeHandler
             outerWidth: $command->outerWidth,
             outerHeight: $command->outerHeight,
             outerLength: $command->outerLength,
+            adminOnly: $command->adminOnly,
         );
 
         if (null !== $command->description) {
@@ -60,6 +61,7 @@ final readonly class CreateStorageTypeHandler
                 defaultPricePerYear: $command->defaultPricePerYear,
                 description: $command->description,
                 uniformStorages: $command->uniformStorages,
+                adminOnly: $command->adminOnly,
                 now: $now,
             );
         }

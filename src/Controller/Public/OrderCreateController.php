@@ -46,7 +46,9 @@ final class OrderCreateController extends AbstractController
 
         $storageType = $this->storageTypeRepository->find(Uuid::fromString($storageTypeId));
 
-        if (null === $storageType || !$storageType->isActive) {
+        // adminOnly types are reserved for admin onboarding and must never be
+        // publicly orderable — reject a direct/guessed URL the same as a missing type.
+        if (null === $storageType || !$storageType->isActive || $storageType->adminOnly) {
             throw new NotFoundHttpException('Typ skladové jednotky nenalezen.');
         }
 

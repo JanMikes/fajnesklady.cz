@@ -60,6 +60,7 @@ final class StorageTypeCreateController extends AbstractController
                 defaultPricePerYear: $defaultPricePerYear,
                 description: $formData->description,
                 uniformStorages: $formData->uniformStorages,
+                adminOnly: $formData->adminOnly,
             );
 
             $envelope = $this->commandBus->dispatch($command);

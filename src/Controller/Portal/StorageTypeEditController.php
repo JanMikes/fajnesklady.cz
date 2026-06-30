@@ -68,6 +68,7 @@ final class StorageTypeEditController extends AbstractController
                 defaultPricePerYear: $defaultPricePerYear,
                 description: $formData->description,
                 uniformStorages: $formData->uniformStorages,
+                adminOnly: $formData->adminOnly,
             );
 
             $this->commandBus->dispatch($command);

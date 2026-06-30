@@ -229,6 +229,7 @@ class StorageTypeTest extends TestCase
             defaultPricePerYear: 60000 * 12,
             description: 'Test description',
             uniformStorages: true,
+            adminOnly: false,
             now: $updatedAt,
         );
 
@@ -280,6 +281,7 @@ class StorageTypeTest extends TestCase
             defaultPricePerYear: 30000 * 12,
             description: null,
             uniformStorages: true,
+            adminOnly: false,
             now: $updatedAt,
         );
 
@@ -388,10 +390,93 @@ class StorageTypeTest extends TestCase
             defaultPricePerYear: 30000 * 12,
             description: null,
             uniformStorages: false,
+            adminOnly: false,
             now: $updatedAt,
         );
 
         $this->assertFalse($storageType->uniformStorages);
+        $this->assertSame($updatedAt, $storageType->updatedAt);
+    }
+
+    public function testAdminOnlyDefaultsToFalse(): void
+    {
+        $storageType = new StorageType(
+            id: Uuid::v7(),
+            place: $this->createPlace(),
+            name: 'Test',
+            innerWidth: 100,
+            innerHeight: 100,
+            innerLength: 100,
+            defaultPricePerWeek: 10000,
+            defaultPricePerMonth: 30000,
+            defaultPricePerMonthLongTerm: 30000,
+            defaultPricePerYear: 30000 * 12,
+            createdAt: new \DateTimeImmutable(),
+        );
+
+        $this->assertFalse($storageType->adminOnly);
+    }
+
+    public function testAdminOnlyCanBeSetToTrue(): void
+    {
+        $storageType = new StorageType(
+            id: Uuid::v7(),
+            place: $this->createPlace(),
+            name: 'Hidden box',
+            innerWidth: 100,
+            innerHeight: 100,
+            innerLength: 100,
+            defaultPricePerWeek: 10000,
+            defaultPricePerMonth: 30000,
+            defaultPricePerMonthLongTerm: 30000,
+            defaultPricePerYear: 30000 * 12,
+            createdAt: new \DateTimeImmutable(),
+            adminOnly: true,
+        );
+
+        $this->assertTrue($storageType->adminOnly);
+    }
+
+    public function testUpdateDetailsUpdatesAdminOnly(): void
+    {
+        $createdAt = new \DateTimeImmutable('2024-01-01 10:00:00');
+        $updatedAt = new \DateTimeImmutable('2024-01-01 11:00:00');
+
+        $storageType = new StorageType(
+            id: Uuid::v7(),
+            place: $this->createPlace(),
+            name: 'Test',
+            innerWidth: 100,
+            innerHeight: 100,
+            innerLength: 100,
+            defaultPricePerWeek: 10000,
+            defaultPricePerMonth: 30000,
+            defaultPricePerMonthLongTerm: 30000,
+            defaultPricePerYear: 30000 * 12,
+            createdAt: $createdAt,
+        );
+
+        $this->assertFalse($storageType->adminOnly);
+
+        $storageType->updateDetails(
+            name: 'Updated',
+            innerWidth: 100,
+            innerHeight: 100,
+            innerLength: 100,
+            outerWidth: null,
+            outerHeight: null,
+            outerLength: null,
+            defaultPricePerWeek: 10000,
+            defaultPricePerMonth: 30000,
+            defaultPricePerMonthLongTerm: 30000,
+            defaultPricePerYear: 30000 * 12,
+            description: null,
+            uniformStorages: true,
+            adminOnly: true,
+            now: $updatedAt,
+        );
+
+        $this->assertTrue($storageType->adminOnly);
         $this->assertSame($updatedAt, $storageType->updatedAt);
     }
 

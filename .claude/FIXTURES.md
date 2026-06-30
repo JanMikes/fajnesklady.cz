@@ -61,6 +61,7 @@ Storage types belong to a specific Place.
 | `StorageTypeFixtures::REF_MEDIUM_CENTRUM` | Stredni box | 2m x 2m x 2m | 350 CZK | 1200 CZK |
 | `StorageTypeFixtures::REF_LARGE_CENTRUM` | Velky box | 3m x 2.5m x 4m | 800 CZK | 2800 CZK |
 | `StorageTypeFixtures::REF_CUSTOM_CENTRUM` | Custom box | 2.5m x 2.2m x 3m | 400 CZK | 1400 CZK |
+| `StorageTypeFixtures::REF_ADMIN_ONLY_CENTRUM` | Admin box (skrytý) | 1.8m x 1.8m x 1.8m | 320 CZK | 1100 CZK | **adminOnly=true** — hidden from all customer surfaces; admin-onboarding only |
 
 ### Praha Jih
 | Constant | Name | Weekly | Monthly |
@@ -103,6 +104,7 @@ Storage types belong to a specific Place.
 | `StorageFixtures::REF_MEDIUM_B3` | B3 | Medium | OCCUPIED (active contract) |
 | `StorageFixtures::REF_LARGE_C1` | C1 | Large | OCCUPIED (unlimited contract) |
 | `StorageFixtures::REF_LARGE_C2` | C2 | Large | MANUALLY_UNAVAILABLE |
+| `StorageFixtures::REF_ADMIN_ONLY_AO1` | AO1 | Admin box (skrytý) | AVAILABLE (admin-onboarding only; never publicly orderable) |
 
 ### Praha Jih
 | Constant | Number | Type | Status |

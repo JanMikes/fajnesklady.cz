@@ -94,6 +94,16 @@ final class OrderCreateControllerTest extends WebTestCase
         $this->assertResponseStatusCodeSame(400);
     }
 
+    public function testAdminOnlyStorageTypeReturns404(): void
+    {
+        // AO1 is a storage of the admin-only type at Praha Centrum — never publicly orderable.
+        $ao1 = $this->findStorageByNumber('AO1');
+
+        $this->client->request('GET', $this->orderUrl($ao1->place, $ao1->storageType, $ao1));
+
+        $this->assertResponseStatusCodeSame(404);
+    }
+
     public function testMissingStorageRedirectsToFirstAvailable(): void
     {
         [$place, $storageType] = $this->centrumSmall('A1');
