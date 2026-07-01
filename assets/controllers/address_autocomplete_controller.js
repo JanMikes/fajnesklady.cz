@@ -19,14 +19,17 @@ const MIN_QUERY_LENGTH = 3;
  * after every selection. Here the search box owns the dropdown; the real fields have
  * no suggest listener, so neither problem can happen.
  *
- * Visibility follows `mode`: 'auto' reveals the fields iff they hold a value (the
- * default, and the state after a pick), while an explicit 'manual'/'search' choice
- * overrides that without touching the field values. The server renders the value-
- * derived ('auto') condition, so `applyMode()` re-asserts after every morph
- * (live:render:finished) for the cases where an explicit choice disagrees with the
- * field values.
+ * Visibility follows `mode`: 'auto' reveals the fields iff they hold a value or a
+ * validation error (the default, and the state after a pick), while an explicit
+ * 'manual'/'search' choice overrides that without touching the field values. The
+ * server renders the same value/violation-derived ('auto') condition and passes the
+ * violation state via the `hasViolation` value, so `applyMode()` re-asserts after
+ * every morph (live:render:finished) for the cases where an explicit choice
+ * disagrees with the field values.
  */
 export default class extends Controller {
+    static values = { hasViolation: { type: Boolean, default: false } };
+
     static targets = [
         'searchInput',
         'searchSection',
@@ -122,7 +125,7 @@ export default class extends Controller {
         } else if (this.mode === 'manual') {
             reveal = true;
         } else {
-            reveal = this.hasAnyAddressValue();
+            reveal = this.hasAnyAddressValue() || this.hasViolationValue;
         }
         if (this.hasSearchSectionTarget) this.searchSectionTarget.classList.toggle('hidden', reveal);
         if (this.hasManualSectionTarget) this.manualSectionTarget.classList.toggle('hidden', !reveal);

@@ -66,6 +66,12 @@ export default class extends Controller {
         const top = anchor.getBoundingClientRect().top + window.scrollY - this.offsetValue;
         window.scrollTo({ top: Math.max(top, 0), behavior: 'smooth' });
 
+        // A date field's visible input is a flatpickr alt-input — focusing it pops
+        // the calendar open right over the error text below the field. The scroll
+        // is feedback enough there; skip the focus for date fields.
+        if (anchor.querySelector('[data-controller~="datepicker"]')) {
+            return;
+        }
         const focusable = anchor.querySelector('input:not([type=hidden]), select, textarea');
         focusable?.focus?.({ preventScroll: true });
     }

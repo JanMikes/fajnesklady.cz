@@ -76,7 +76,10 @@
                     {% do form.companyVatId.setRendered %}
                 {% endif %}
 
-                <h3 class="font-semibold text-gray-800 mt-6 mb-3">{{ invoiceToCompany ? 'Sídlo společnosti' : 'Fakturační adresa' }}</h3>
+                <h3 class="font-semibold text-gray-800 mt-6 mb-1">{{ invoiceToCompany ? 'Sídlo společnosti' : 'Fakturační adresa' }}</h3>
+                {# The card opens with the company checkbox, so without this hint the
+                   address reads as company-only — it is required for every customer. #}
+                <p class="text-sm text-gray-500 mb-3">{{ invoiceToCompany ? 'Adresa sídla z obchodního rejstříku.' : 'Adresa zákazníka pro smlouvu a fakturaci — povinný údaj.' }}</p>
                 {{ addr.render_live(form, false) }}
             </div>
         </div>

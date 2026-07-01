@@ -66,21 +66,33 @@
     {% set streetHasValue = form.billingStreet.vars.value is not empty %}
     {% set streetHasViolation = streetHasValue and form.billingStreet.vars.errors|length > 0 %}
 
-    {# Reveal the three fields (vs. the search box) whenever the address is already
-       populated or erroring. The Stimulus controller renders the SAME condition, so a
-       Live morph re-renders a consistent state. #}
-    {% set addressPrefilled =
+    {# ANY violation on the three fields — including NotBlank on empty fields after a
+       submit. Field errors render inside the manual section, so a violation must
+       always reveal it: otherwise the form 422s with no visible error anywhere. #}
+    {% set addressHasViolation =
+        form.billingStreet.vars.errors|length > 0
+        or form.billingCity.vars.errors|length > 0
+        or form.billingPostalCode.vars.errors|length > 0 %}
+
+    {% set addressHasValue =
         form.billingStreet.vars.value is not empty
         or form.billingCity.vars.value is not empty
-        or form.billingPostalCode.vars.value is not empty
-        or streetHasViolation %}
+        or form.billingPostalCode.vars.value is not empty %}
+
+    {# Reveal the three fields (vs. the search box) whenever the address is already
+       populated or erroring. The Stimulus controller renders the SAME condition (it
+       receives the violation state via the hasViolation value), so a Live morph
+       re-renders a consistent state. #}
+    {% set addressPrefilled = addressHasValue or addressHasViolation %}
 
     {% set searchId = 'address-search-' ~ form.billingStreet.vars.id %}
 
-    <div {{ stimulus_controller('address-autocomplete') }} class="space-y-4">
+    <div {{ stimulus_controller('address-autocomplete', { hasViolation: addressHasViolation }) }} class="space-y-4">
         {# --- Search box --------------------------------------------------- #}
         <div data-address-autocomplete-target="searchSection" class="{{ addressPrefilled ? 'hidden ' : '' }}space-y-1">
-            <label for="{{ searchId }}" class="form-label">Adresa</label>
+            {# Required marker follows the underlying street field — the macro also
+               serves forms where the address is optional (e.g. admin user edit). #}
+            <label for="{{ searchId }}" class="form-label{{ form.billingStreet.vars.required ? ' form-label-required' : '' }}">Adresa</label>
 
             {# data-live-ignore: this whole search UI (typed text, spinner, dropdown)
                is client-owned and has no server representation — keep morphs away. #}
@@ -118,6 +130,13 @@
                 Vyhledejte adresu, nebo ji
                 <button type="button" data-action="address-autocomplete#showManual" class="text-accent hover:underline">zadejte ručně</button>.
             </p>
+
+            {# The NotBlank errors live on the three fields in the (hidden) manual
+               section. If the user explicitly switched back to the search box and then
+               submitted, this hint is the only visible trace of the failed validation. #}
+            {% if addressHasViolation and not addressHasValue %}
+                <p class="form-error">Vyplňte prosím fakturační adresu — vyhledejte ji, nebo ji zadejte ručně.</p>
+            {% endif %}
         </div>
 
         {# --- The three real fields (revealed after a pick, or for manual entry) --- #}
