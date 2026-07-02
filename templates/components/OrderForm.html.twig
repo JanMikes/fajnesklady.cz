@@ -574,7 +574,10 @@
                                         <span class="ml-1 text-xs font-medium text-accent">(platí pro vás)</span>
                                     {% endif %}
                                 </span>
-                                <span class="font-semibold {{ applicableRate == 'weekly' ? 'text-accent' : 'text-gray-900' }}">{{ weeklyPrice|number_format(0, ',', ' ') }} Kč <span class="text-xs text-gray-500 font-normal">vč. DPH</span></span>
+                                <span class="font-semibold {{ applicableRate == 'weekly' ? 'text-accent' : 'text-gray-900' }} text-right">
+                                    {{ weeklyPrice|number_format(0, ',', ' ') }} Kč
+                                    <span class="text-xs text-gray-500 font-normal block">za týden vč. DPH</span>
+                                </span>
                             </div>
                         {% endif %}
 
@@ -586,7 +589,10 @@
                                         <span class="ml-1 text-xs font-medium text-accent">(platí pro vás)</span>
                                     {% endif %}
                                 </span>
-                                <span class="font-semibold {{ applicableRate == 'monthly_short' ? 'text-accent' : 'text-gray-900' }}">{{ monthlyPrice|number_format(0, ',', ' ') }} Kč <span class="text-xs text-gray-500 font-normal">vč. DPH</span></span>
+                                <span class="font-semibold {{ applicableRate == 'monthly_short' ? 'text-accent' : 'text-gray-900' }} text-right">
+                                    {{ monthlyPrice|number_format(0, ',', ' ') }} Kč
+                                    <span class="text-xs text-gray-500 font-normal block">za měsíc vč. DPH</span>
+                                </span>
                             </div>
                         {% endif %}
 
@@ -598,7 +604,10 @@
                                         <span class="ml-1 text-xs font-medium text-accent">(platí pro vás)</span>
                                     {% endif %}
                                 </span>
-                                <span class="font-semibold {{ applicableRate == 'monthly_long' ? 'text-accent' : 'text-gray-900' }}">{{ longTermMonthlyPrice|number_format(0, ',', ' ') }} Kč <span class="text-xs text-gray-500 font-normal">vč. DPH</span></span>
+                                <span class="font-semibold {{ applicableRate == 'monthly_long' ? 'text-accent' : 'text-gray-900' }} text-right">
+                                    {{ longTermMonthlyPrice|number_format(0, ',', ' ') }} Kč
+                                    <span class="text-xs text-gray-500 font-normal block">za měsíc vč. DPH</span>
+                                </span>
                             </div>
                         {% endif %}
 
@@ -613,7 +622,8 @@
                                 </span>
                                 <span class="font-semibold {{ applicableRate == 'yearly' ? 'text-accent' : 'text-gray-900' }} text-right">
                                     {{ yearlyPrice|number_format(0, ',', ' ') }} Kč
-                                    <span class="text-xs text-gray-500 font-normal block">≈ {{ this.getYearlyMonthlyEquivalentInCzk(selectedStorage)|number_format(0, ',', ' ') }} Kč / měsíc vč. DPH</span>
+                                    <span class="text-xs text-gray-500 font-normal block">za rok vč. DPH</span>
+                                    <span class="text-xs text-gray-500 font-normal block">≈ {{ this.getYearlyMonthlyEquivalentInCzk(selectedStorage)|number_format(0, ',', ' ') }} Kč / měsíc</span>
                                 </span>
                             </div>
                         {% endif %}

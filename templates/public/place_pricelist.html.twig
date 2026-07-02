@@ -56,9 +56,9 @@
                             <th scope="col" class="w-24">Foto</th>
                             <th scope="col">Sklad</th>
                             <th scope="col">Rozměry</th>
-                            <th scope="col" class="text-right">Týdně</th>
-                            <th scope="col" class="text-right">Krátkodobá měs.</th>
-                            <th scope="col" class="text-right">Dlouhodobá měs.</th>
+                            <th scope="col" class="text-right">Týdenní sazba</th>
+                            <th scope="col" class="text-right">Krátkodobá (1–6 měs.)</th>
+                            <th scope="col" class="text-right">Dlouhodobá (6+ měs.)</th>
                             <th scope="col" class="text-center">Dostupnost</th>
                             <th scope="col" class="text-right">Akce</th>
                         </tr>
@@ -114,6 +114,7 @@
                                 </td>
                                 <td class="text-right font-medium">
                                     {{ storageType.defaultPricePerWeekInCzk|number_format(0, ',', ' ') }} Kč
+                                    <div class="text-xs text-gray-500 font-normal">za týden</div>
                                 </td>
                                 <td class="text-right">
                                     {% if priceRange and priceRange.min != priceRange.max %}
@@ -123,6 +124,7 @@
                                     {% else %}
                                         <span class="font-semibold text-primary-600">{{ storageType.defaultPricePerMonthInCzk|number_format(0, ',', ' ') }} Kč</span>
                                     {% endif %}
+                                    <div class="text-xs text-gray-500 font-normal">za měsíc</div>
                                 </td>
                                 <td class="text-right">
                                     {% if priceRangeLongTerm and priceRangeLongTerm.min != priceRangeLongTerm.max %}
@@ -132,6 +134,7 @@
                                     {% else %}
                                         <span class="font-semibold text-primary-600">{{ storageType.defaultPricePerMonthLongTermInCzk|number_format(0, ',', ' ') }} Kč</span>
                                     {% endif %}
+                                    <div class="text-xs text-gray-500 font-normal">za měsíc</div>
                                 </td>
                                 <td class="text-center">
                                     {% if isAvailable %}
@@ -220,11 +223,12 @@
 
                         <div class="grid grid-cols-2 gap-2 text-sm mb-3 py-2 border-t border-b border-gray-100">
                             <div>
-                                <div class="text-xs text-gray-500 uppercase tracking-wide">Týdně</div>
+                                <div class="text-xs text-gray-500 uppercase tracking-wide">Týdenní sazba</div>
                                 <div class="font-medium">{{ storageType.defaultPricePerWeekInCzk|number_format(0, ',', ' ') }} Kč</div>
+                                <div class="text-xs text-gray-500">za týden</div>
                             </div>
                             <div>
-                                <div class="text-xs text-gray-500 uppercase tracking-wide">Krátkodobá měs.</div>
+                                <div class="text-xs text-gray-500 uppercase tracking-wide">Krátkodobá (1–6 měs.)</div>
                                 <div class="font-semibold text-primary-600">
                                     {% if priceRange and priceRange.min != priceRange.max %}
                                         {{ (priceRange.min / 100)|number_format(0, ',', ' ') }} – {{ (priceRange.max / 100)|number_format(0, ',', ' ') }} Kč
@@ -234,9 +238,10 @@
                                         {{ storageType.defaultPricePerMonthInCzk|number_format(0, ',', ' ') }} Kč
                                     {% endif %}
                                 </div>
+                                <div class="text-xs text-gray-500">za měsíc</div>
                             </div>
                             <div class="col-span-2">
-                                <div class="text-xs text-gray-500 uppercase tracking-wide">Dlouhodobá měs.</div>
+                                <div class="text-xs text-gray-500 uppercase tracking-wide">Dlouhodobá (6+ měs.)</div>
                                 <div class="font-semibold text-primary-600">
                                     {% if priceRangeLongTerm and priceRangeLongTerm.min != priceRangeLongTerm.max %}
                                         {{ (priceRangeLongTerm.min / 100)|number_format(0, ',', ' ') }} – {{ (priceRangeLongTerm.max / 100)|number_format(0, ',', ' ') }} Kč
@@ -246,6 +251,7 @@
                                         {{ storageType.defaultPricePerMonthLongTermInCzk|number_format(0, ',', ' ') }} Kč
                                     {% endif %}
                                 </div>
+                                <div class="text-xs text-gray-500">za měsíc</div>
                             </div>
                         </div>
 
