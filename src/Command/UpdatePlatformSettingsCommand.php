@@ -8,6 +8,7 @@ final readonly class UpdatePlatformSettingsCommand
 {
     public function __construct(
         public int $bankTransferSurchargeInHaler,
+        public int $overdueTerminationDays,
     ) {
     }
 }

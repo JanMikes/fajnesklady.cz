@@ -4,16 +4,13 @@ declare(strict_types=1);
 
 namespace App\Console;
 
-use App\Command\CancelRecurringPaymentCommand;
 use App\Command\ChargeRecurringPaymentCommand;
 use App\Entity\Contract;
-use App\Enum\TerminationReason;
-use App\Event\ContractTerminatedDueToPaymentFailure;
 use App\Event\PaymentDemandSent;
 use App\Event\RecurringPaymentFailed;
 use App\Repository\ContractRepository;
+use App\Repository\PlatformSettingsRepository;
 use App\Service\AuditLogger;
-use App\Service\ContractService;
 use App\Service\GoPay\GoPayException;
 use App\Service\GoPay\PaymentNotConfirmedException;
 use App\Service\Messenger\HandlerFailureUnwrap;
@@ -31,13 +28,13 @@ use Symfony\Component\Messenger\MessageBusInterface;
 
 #[AsCommand(
     name: 'app:retry-failed-payments',
-    description: 'Retry failed recurring payments (after 3 days) or cancel if retry also fails',
+    description: 'Retry failed recurring payments (day 3 and day 7); termination is handled by app:terminate-overdue-contracts',
 )]
 final class RetryFailedPaymentsCommand extends Command
 {
     public function __construct(
         private readonly ContractRepository $contractRepository,
-        private readonly ContractService $contractService,
+        private readonly PlatformSettingsRepository $settingsRepository,
         private readonly ManagerRegistry $doctrine,
         private readonly MessageBusInterface $commandBus,
         #[Autowire(service: 'event.bus')]
@@ -65,7 +62,7 @@ final class RetryFailedPaymentsCommand extends Command
         $io->info(sprintf('Found %d contracts needing payment retry.', count($contracts)));
 
         $successCount = 0;
-        $cancelledCount = 0;
+        $failedCount = 0;
 
         foreach ($contracts as $contract) {
             $attemptsBefore = $contract->failedBillingAttempts;
@@ -81,18 +78,19 @@ final class RetryFailedPaymentsCommand extends Command
                     || $exception instanceof PaymentNotConfirmedException;
 
                 $this->recordRetryFailure($contract, $exception, $isExpectedFailure, $isLastAttempt, $now, $io);
+                ++$failedCount;
 
                 if ($isExpectedFailure && $isLastAttempt) {
-                    if ($this->terminateForPaymentDefault($contract, $now, $io)) {
-                        ++$cancelledCount;
-                    }
+                    // Termination for payment default is owned by the daily
+                    // app:terminate-overdue-contracts sweep (spec 078).
+                    $io->text(sprintf('  [NO MORE RETRIES] Contract %s failed final attempt %d; app:terminate-overdue-contracts will terminate it.', $contract->id, $contract->failedBillingAttempts));
                 } elseif ($isExpectedFailure) {
                     $io->text(sprintf('  [RETRY LATER] Contract %s failed attempt %d, will retry later.', $contract->id, $contract->failedBillingAttempts));
                 }
             }
         }
 
-        $io->success(sprintf('Processed: %d success, %d cancelled.', $successCount, $cancelledCount));
+        $io->success(sprintf('Processed: %d success, %d failed.', $successCount, $failedCount));
 
         return Command::SUCCESS;
     }
@@ -140,10 +138,16 @@ final class RetryFailedPaymentsCommand extends Command
                     occurredOn: $now,
                 ));
 
-                // VOP XI: send formal "Výzva k úhradě" after 2nd failure (day 3)
+                // VOP XI: send formal "Výzva k úhradě" after 2nd failure (day 3).
+                // The payment deadline mirrors the configurable auto-termination
+                // limit: due date + N days (never in the past).
                 if (2 === $contract->failedBillingAttempts && null === $contract->paymentDemandSentAt) {
                     $contract->recordPaymentDemandSent($now);
-                    $deadline = $now->modify('+4 days'); // day 3 + 4 = day 7 from original failure
+
+                    $days = $this->settingsRepository->getSettings()->overdueTerminationDays;
+                    /** @var \DateTimeImmutable $dueDate */
+                    $dueDate = $contract->nextBillingDate; // set while a charge is unpaid
+                    $deadline = max($now, $dueDate->modify(sprintf('+%d days', $days)));
 
                     $this->auditLogger->log(
                         entityType: 'contract',
@@ -191,52 +195,6 @@ final class RetryFailedPaymentsCommand extends Command
             ]);
 
             $this->doctrine->resetManager();
-        }
-    }
-
-    /**
-     * Cancel recurring payment, calculate outstanding debt, terminate contract,
-     * and emit the payment-default event. Wrapped in its own try/catch so a
-     * follow-up failure here cannot stop the rest of the cron loop.
-     *
-     * @return bool true if the termination was recorded successfully
-     */
-    private function terminateForPaymentDefault(Contract $contract, \DateTimeImmutable $now, SymfonyStyle $io): bool
-    {
-        try {
-            $this->commandBus->dispatch(new CancelRecurringPaymentCommand($contract));
-
-            $outstandingDebt = $this->contractService->calculateOutstandingDebt($contract, $now);
-            if ($outstandingDebt > 0) {
-                $contract->setOutstandingDebt($outstandingDebt);
-            }
-
-            $this->contractService->terminateContract($contract, $now, TerminationReason::PAYMENT_FAILURE);
-            $this->getEntityManager()->flush();
-
-            $this->eventBus->dispatch(new ContractTerminatedDueToPaymentFailure(
-                contractId: $contract->id,
-                outstandingDebtAmount: $outstandingDebt,
-                occurredOn: $now,
-            ));
-
-            $io->warning(sprintf(
-                '  [PAYMENT DEFAULT] Contract %s terminated. Outstanding debt: %s Kč',
-                $contract->id,
-                number_format($outstandingDebt / 100, 2, ',', ' '),
-            ));
-
-            return true;
-        } catch (\Throwable $cancelException) {
-            $this->logger->error('Failed to cancel/terminate contract after payment failure', [
-                'contract_id' => $contract->id->toRfc4122(),
-                'exception' => $cancelException,
-            ]);
-            $io->error(sprintf('  [ERROR] Contract %s: Failed to cancel/terminate: %s', $contract->id, $cancelException->getMessage()));
-
-            $this->doctrine->resetManager();
-
-            return false;
         }
     }
 

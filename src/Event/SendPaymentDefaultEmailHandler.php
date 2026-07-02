@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Event;
 
+use App\Enum\BillingMode;
 use App\Enum\UserRole;
 use App\Repository\ContractRepository;
 use App\Repository\UserRepository;
@@ -34,6 +35,7 @@ final readonly class SendPaymentDefaultEmailHandler
         $storageType = $storage->storageType;
         $place = $storage->getPlace();
         $debtCzk = $event->outstandingDebtAmount / 100;
+        $isCardPayment = BillingMode::AUTO_RECURRING === $contract->billingMode;
 
         // Email to tenant
         $tenantEmail = (new TemplatedEmail())
@@ -48,6 +50,7 @@ final readonly class SendPaymentDefaultEmailHandler
                 'storageNumber' => $storage->number,
                 'outstandingDebt' => $debtCzk,
                 'hasDebt' => $event->outstandingDebtAmount > 0,
+                'isCardPayment' => $isCardPayment,
                 'statusUrl' => $this->statusUrlGenerator->generate($contract->order),
             ]);
 
@@ -81,6 +84,7 @@ final readonly class SendPaymentDefaultEmailHandler
                     'storageNumber' => $storage->number,
                     'outstandingDebt' => $debtCzk,
                     'hasDebt' => $event->outstandingDebtAmount > 0,
+                    'isCardPayment' => $isCardPayment,
                     'paidThroughDate' => $contract->paidThroughDate,
                     'terminatedAt' => $contract->terminatedAt,
                 ]);

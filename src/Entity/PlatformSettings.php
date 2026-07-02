@@ -14,6 +14,14 @@ class PlatformSettings
     #[ORM\Column(options: ['default' => 10_000])]
     public private(set) int $bankTransferSurchargeInHaler = 10_000;
 
+    /**
+     * Days after `Contract.nextBillingDate` before an unpaid contract is
+     * terminated without notice by `app:terminate-overdue-contracts`
+     * (VOP čl. XI — requires arrears of more than 7 days, so 7 is the floor).
+     */
+    #[ORM\Column(options: ['default' => 7])]
+    public private(set) int $overdueTerminationDays = 7;
+
     #[ORM\Column]
     public private(set) \DateTimeImmutable $updatedAt;
 
@@ -29,6 +37,12 @@ class PlatformSettings
     public function updateSurcharge(int $surchargeInHaler, \DateTimeImmutable $now): void
     {
         $this->bankTransferSurchargeInHaler = $surchargeInHaler;
+        $this->updatedAt = $now;
+    }
+
+    public function updateOverdueTerminationDays(int $days, \DateTimeImmutable $now): void
+    {
+        $this->overdueTerminationDays = $days;
         $this->updatedAt = $now;
     }
 

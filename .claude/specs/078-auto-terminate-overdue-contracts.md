@@ -1,6 +1,6 @@
 # 078 — Auto-terminate contracts N days po splatnosti (VOP čl. XI), configurable in platform settings
 
-**Status:** ready
+**Status:** done
 **Type:** feature (billing lifecycle + ops)
 **Scope:** medium (~14 files + 1 migration in this repo, +1 crontab line in the `lily.srv` repo)
 **Depends on:** spec 076 (in-progress — touches the same files: `Contract`, `ContractRepository`, retry/termination tests). Implement AFTER 076 lands to avoid conflicts.

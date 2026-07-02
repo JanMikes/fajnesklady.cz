@@ -501,7 +501,7 @@ class ContractRepository
     public function findNeedingRetry(\DateTimeImmutable $now): array
     {
         $retryAfter3Days = $now->modify('-3 days');
-        // VOP XI: terminate at day 7 (not day 10). Day 3 + 4 more = day 7.
+        // VOP XI: final retry at day 7 (not day 10). Day 3 + 4 more = day 7.
         $retryAfter4Days = $now->modify('-4 days');
 
         return $this->entityManager->createQueryBuilder()
@@ -529,8 +529,9 @@ class ContractRepository
      *   ContractService::terminateContract() voids it during termination
      * - MANUAL_RECURRING past endDate with no pending billing and no retries
      *
-     * Contracts mid-retry (failedBillingAttempts > 0) are owned by
-     * app:retry-failed-payments, which terminates for payment default itself.
+     * Contracts mid-retry (failedBillingAttempts > 0) keep being retried by
+     * app:retry-failed-payments; payment-default termination is owned by
+     * app:terminate-overdue-contracts (spec 078).
      *
      * @return Contract[]
      */
@@ -550,6 +551,40 @@ class ContractRepository
             ->setParameter('oneTime', BillingMode::ONE_TIME->value)
             ->setParameter('autoRecurring', BillingMode::AUTO_RECURRING->value)
             ->setParameter('manualRecurring', BillingMode::MANUAL_RECURRING->value)
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Contracts in arrears long enough for VOP čl. XI no-notice termination:
+     * payment was due (nextBillingDate) and has not been received for the
+     * platform-configured number of days. Covers AUTO (failed charges),
+     * MANUAL (unpaid cycle), and externally-prepaid (lapsed paidThroughDate)
+     * alike — nextBillingDate only advances when a payment is recorded.
+     * ONE_TIME contracts (nextBillingDate NULL) never match.
+     *
+     * Free contracts are filtered in PHP by the caller (mirrors OverdueChecker,
+     * keeps the "free" definition in one place: {@see Contract::isFree()}).
+     *
+     * @return Contract[]
+     */
+    public function findOverdueForTermination(\DateTimeImmutable $overdueSince): array
+    {
+        return $this->entityManager->createQueryBuilder()
+            // Same fetch-joins as findWithPaymentIssues() so the debt calc +
+            // audit log + emails don't lazy-load per row (N+1).
+            ->select('c', 'u', 's', 'st', 'p', 'o')
+            ->from(Contract::class, 'c')
+            ->leftJoin('c.user', 'u')
+            ->leftJoin('c.storage', 's')
+            ->leftJoin('s.storageType', 'st')
+            ->leftJoin('s.place', 'p')
+            ->leftJoin('c.order', 'o')
+            ->where('c.terminatedAt IS NULL')
+            ->andWhere('c.nextBillingDate IS NOT NULL')
+            ->andWhere('c.nextBillingDate <= :overdueSince')
+            ->setParameter('overdueSince', $overdueSince)
+            ->orderBy('c.nextBillingDate', 'ASC')
             ->getQuery()
             ->getResult();
     }

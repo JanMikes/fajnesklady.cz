@@ -28,8 +28,12 @@
         <h2>{{ name }},</h2>
 
         <div class="alert-box">
-            <p>Vaše smlouva na pronájem skladovací jednotky byla <strong>ukončena z důvodu opakovaného neuhrazení platby</strong>.</p>
-            <p>I přes opakované pokusy o stržení platby se nepodařilo platbu provést.</p>
+            <p>Vaše smlouva na pronájem skladovací jednotky byla <strong>ukončena bez výpovědní doby z důvodu neuhrazení nájemného</strong>, v souladu s čl. XI Všeobecných obchodních podmínek (prodlení s úhradou delší než sedm dní).</p>
+            {% if isCardPayment %}
+                <p>I přes opakované pokusy o stržení platby z Vaší karty se úhradu nepodařilo provést.</p>
+            {% else %}
+                <p>Platba za aktuální období nebyla ani po splatnosti připsána na náš účet.</p>
+            {% endif %}
         </div>
 
         {% if hasDebt %}
@@ -56,6 +60,8 @@
                 </tr>
             </table>
         </div>
+
+        <p><strong>Upozornění dle čl. X VOP:</strong> Skladovací jednotku jste povinni vyklidit do 15 kalendářních dnů od ukončení smlouvy. Po uplynutí této lhůty je Pronajímatel oprávněn jednotku vyklidit na Vaše náklady.</p>
 
         <p>Pokud se jednalo o omyl nebo chcete situaci řešit, prosím kontaktujte nás co nejdříve.</p>
 

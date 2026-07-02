@@ -41,7 +41,7 @@ class AdminSettingsControllerTest extends WebTestCase
         $this->client->loginUser($this->findUserByEmail('user@example.com'), 'main');
 
         $this->client->request('POST', '/portal/admin/nastaveni', [
-            'platform_settings_form' => ['bankTransferSurchargeInCzk' => '0'],
+            'platform_settings_form' => ['bankTransferSurchargeInCzk' => '0', 'overdueTerminationDays' => '7'],
         ]);
 
         $this->assertResponseStatusCodeSame(403);
@@ -61,11 +61,13 @@ class AdminSettingsControllerTest extends WebTestCase
         $this->loginAsAdmin();
 
         $this->client->request('POST', '/portal/admin/nastaveni', [
-            'platform_settings_form' => ['bankTransferSurchargeInCzk' => '0'],
+            'platform_settings_form' => ['bankTransferSurchargeInCzk' => '0', 'overdueTerminationDays' => '7'],
         ]);
 
         $this->assertResponseRedirects('/portal/admin/nastaveni');
-        $this->assertSame(0, $this->reloadSettings()->bankTransferSurchargeInHaler);
+        $settings = $this->reloadSettings();
+        $this->assertSame(0, $settings->bankTransferSurchargeInHaler);
+        $this->assertSame(7, $settings->overdueTerminationDays);
     }
 
     public function testSavingNonZeroValuePersists(): void
@@ -73,11 +75,13 @@ class AdminSettingsControllerTest extends WebTestCase
         $this->loginAsAdmin();
 
         $this->client->request('POST', '/portal/admin/nastaveni', [
-            'platform_settings_form' => ['bankTransferSurchargeInCzk' => '150'],
+            'platform_settings_form' => ['bankTransferSurchargeInCzk' => '150', 'overdueTerminationDays' => '14'],
         ]);
 
         $this->assertResponseRedirects('/portal/admin/nastaveni');
-        $this->assertSame(15_000, $this->reloadSettings()->bankTransferSurchargeInHaler);
+        $settings = $this->reloadSettings();
+        $this->assertSame(15_000, $settings->bankTransferSurchargeInHaler);
+        $this->assertSame(14, $settings->overdueTerminationDays);
     }
 
     public function testSavingWritesAuditLog(): void
@@ -85,7 +89,7 @@ class AdminSettingsControllerTest extends WebTestCase
         $this->loginAsAdmin();
 
         $this->client->request('POST', '/portal/admin/nastaveni', [
-            'platform_settings_form' => ['bankTransferSurchargeInCzk' => '0'],
+            'platform_settings_form' => ['bankTransferSurchargeInCzk' => '0', 'overdueTerminationDays' => '7'],
         ]);
 
         $this->assertResponseRedirects('/portal/admin/nastaveni');
@@ -112,11 +116,37 @@ class AdminSettingsControllerTest extends WebTestCase
         $this->loginAsAdmin();
 
         $this->client->request('POST', '/portal/admin/nastaveni', [
-            'platform_settings_form' => ['bankTransferSurchargeInCzk' => '-5'],
+            'platform_settings_form' => ['bankTransferSurchargeInCzk' => '-5', 'overdueTerminationDays' => '7'],
         ]);
 
         // Invalid form → no dispatch; the row bootstrapped by getSettings() keeps the default 100 Kč.
         $this->assertSame(10_000, $this->reloadSettings()->bankTransferSurchargeInHaler);
+    }
+
+    public function testOverdueDaysBelowVopFloorIsRejected(): void
+    {
+        $this->loginAsAdmin();
+
+        $this->client->request('POST', '/portal/admin/nastaveni', [
+            'platform_settings_form' => ['bankTransferSurchargeInCzk' => '100', 'overdueTerminationDays' => '5'],
+        ]);
+
+        // Invalid form → no dispatch; the settings keep the VOP-floor default 7.
+        $content = (string) $this->client->getResponse()->getContent();
+        $this->assertStringContainsString('Počet dní musí být mezi 7 a 60.', $content);
+        $this->assertSame(7, $this->reloadSettings()->overdueTerminationDays);
+    }
+
+    public function testSettingsPageShowsOverdueTerminationField(): void
+    {
+        $this->loginAsAdmin();
+
+        $this->client->request('GET', '/portal/admin/nastaveni');
+
+        $this->assertResponseIsSuccessful();
+        $content = (string) $this->client->getResponse()->getContent();
+        $this->assertStringContainsString('Automatické ukončení smlouvy po splatnosti (dny)', $content);
+        $this->assertStringContainsString('Platby po splatnosti', $content);
     }
 
     private function reloadSettings(): PlatformSettings

@@ -28,7 +28,11 @@
         <h2>{{ adminName }},</h2>
 
         <div class="alert-box">
-            <p><strong>Smlouva byla automaticky ukončena z důvodu 3 neúspěšných pokusů o platbu.</strong></p>
+            {% if isCardPayment %}
+                <p><strong>Smlouva byla automaticky ukončena z důvodu neúspěšných pokusů o stržení platby (VOP čl. XI).</strong></p>
+            {% else %}
+                <p><strong>Smlouva byla automaticky ukončena z důvodu neuhrazení platby po splatnosti (VOP čl. XI).</strong></p>
+            {% endif %}
             <p>Je nutné kontaktovat nájemce a vymáhat dlužnou částku.</p>
         </div>
 
@@ -79,6 +83,10 @@
                 <tr>
                     <td>Číslo skladovací jednotky:</td>
                     <td>{{ storageNumber }}</td>
+                </tr>
+                <tr>
+                    <td>Způsob platby:</td>
+                    <td>{{ isCardPayment ? 'Karta (GoPay)' : 'Bankovní převod / externí' }}</td>
                 </tr>
             </table>
         </div>

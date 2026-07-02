@@ -34,7 +34,11 @@ final class AdminSettingsController extends AbstractController
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            $this->commandBus->dispatch(new UpdatePlatformSettingsCommand($formData->toHaler()));
+            $this->commandBus->dispatch(new UpdatePlatformSettingsCommand(
+                bankTransferSurchargeInHaler: $formData->toHaler(),
+                // Non-null after validation; cast defensively like toHaler() does.
+                overdueTerminationDays: (int) ($formData->overdueTerminationDays ?? 7),
+            ));
 
             $this->addFlash('success', 'Nastavení bylo uloženo.');
 

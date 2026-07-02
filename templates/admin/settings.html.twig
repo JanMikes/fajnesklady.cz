@@ -27,6 +27,11 @@
                         {{ form_row(form.bankTransferSurchargeInCzk) }}
                     </div>
 
+                    <h2 class="text-lg font-semibold mb-4 mt-8">Platby po splatnosti</h2>
+                    <div class="mb-4">
+                        {{ form_row(form.overdueTerminationDays) }}
+                    </div>
+
                     <button type="submit" class="btn btn-primary">
                         Uložit nastavení
                     </button>

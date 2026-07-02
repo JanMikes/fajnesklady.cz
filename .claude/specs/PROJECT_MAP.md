@@ -186,7 +186,7 @@ Stack: PHP 8.5 (Docker image `ghcr.io/thedevs-cz/php:8.5-fajnesklady`) · Symfon
 | `Payment` | Payment tx | selfBillingInvoice, order, contract, storage; GoPay status |
 | `BankAccountMapping` | Maps sender bank account → order/user for FIO reconciliation; unique on `(accountNumber, order)` | user, order, createdBy:User |
 | `BankTransaction` | FIO bank transaction record; auto/manual pairing to order/contract; unique on `fioTransactionId`; status: unmatched/matched/ignored | pairedOrder, pairedContract, pairedBy:User |
-| `PlatformSettings` | Singleton admin-configurable settings; `bankTransferSurchargeInHaler` (default 10 000 = 100 CZK) | — |
+| `PlatformSettings` | Singleton admin-configurable settings; `bankTransferSurchargeInHaler` (default 10 000 = 100 CZK), `overdueTerminationDays` (default 7, min 7 = VOP čl. XI floor — drives `app:terminate-overdue-contracts`) | — |
 | `HandoverProtocol` (records events) | Check-in/out doc | contract(1:1); photos |
 | `HandoverPhoto` | Image in handover | handoverProtocol |
 | `PlaceAccessRequest` (records events) | Request manager access | requester, place, approver |
@@ -325,7 +325,7 @@ Domain exceptions, most carrying `#[WithHttpStatus]`:
 | `app:expire-orders` | Mark unpaid orders past their per-place expiration window as expired |
 | `app:issue-missing-invoices` | Backstop: issue Fakturoid invoice for paid orders that ended up without one (15-min grace, avoids racing the synchronous path in `SendRentalActivatedEmailHandler`) |
 | `app:process-recurring-payments` | Charge `AUTO_RECURRING` contracts due today via GoPay (records `RecurringPaymentCharged` / `RecurringPaymentFailed`) |
-| `app:retry-failed-payments` | Retry recurring charges that previously failed (after 3 days) or cancel if retry also fails |
+| `app:retry-failed-payments` | Retry recurring charges that previously failed (day 3 and day 7); termination is handled by `app:terminate-overdue-contracts` |
 | `app:send-recurring-payment-advance-notice` | Email customer N days before next charge (≥6-month gap rule, Podmínky čl. V) |
 | `app:send-manual-billing-payment-requests` | Per-cycle payment-request & overdue reminders for `MANUAL_RECURRING` contracts; idempotent via `ManualPaymentRequest.sentStages` |
 | `app:send-external-prepayment-ending-soon` | Email customer when external-prepayment runway nearly used up |
@@ -334,6 +334,7 @@ Domain exceptions, most carrying `#[WithHttpStatus]`:
 | `app:send-expiration-reminders` | Email customer ahead of fixed-term contract end |
 | `app:send-fine-payment-reminders` | D+7 / D+14 reminders for unpaid fines; idempotent via stage tracking on `Fine` |
 | `app:process-contract-terminations` | Apply scheduled terminations + emit `ContractTerminated` |
+| `app:terminate-overdue-contracts` | Daily 12:30 Prague — terminate every active non-free contract with `nextBillingDate` ≥ `PlatformSettings.overdueTerminationDays` in the past (VOP čl. XI, all payment tracks) → `ContractTerminatedDueToPaymentFailure` |
 | `app:process-handover-protocols` | Send handover requests/reminders, expire stale protocols |
 | `app:generate-self-billing-invoices` | Issue monthly landlord self-billing invoices |
 | `app:process-fio-transactions` | Poll FIO banka API and auto-match incoming bank transfer payments to orders/contracts |

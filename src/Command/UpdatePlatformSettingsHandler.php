@@ -23,8 +23,11 @@ final readonly class UpdatePlatformSettingsHandler
     {
         $settings = $this->settingsRepository->getSettings();
         $oldValue = $settings->bankTransferSurchargeInHaler;
+        $oldOverdueDays = $settings->overdueTerminationDays;
 
-        $settings->updateSurcharge($command->bankTransferSurchargeInHaler, $this->clock->now());
+        $now = $this->clock->now();
+        $settings->updateSurcharge($command->bankTransferSurchargeInHaler, $now);
+        $settings->updateOverdueTerminationDays($command->overdueTerminationDays, $now);
         $this->settingsRepository->save($settings);
 
         $this->auditLogger->log(
@@ -34,6 +37,8 @@ final readonly class UpdatePlatformSettingsHandler
             payload: [
                 'old_value_haler' => $oldValue,
                 'new_value_haler' => $command->bankTransferSurchargeInHaler,
+                'old_overdue_termination_days' => $oldOverdueDays,
+                'new_overdue_termination_days' => $command->overdueTerminationDays,
             ],
         );
     }

@@ -297,7 +297,8 @@ class Contract implements EntityWithEvents
             return false;
         }
 
-        // VOP XI compliance: day 0 initial fail, day 3 first retry, day 7 second retry + terminate
+        // VOP XI compliance: day 0 initial fail, day 3 first retry, day 7 final retry
+        // (termination is handled by app:terminate-overdue-contracts)
         return match ($this->failedBillingAttempts) {
             1 => $now >= $this->lastBillingFailedAt->modify('+3 days'),
             2 => $now >= $this->lastBillingFailedAt->modify('+4 days'),
