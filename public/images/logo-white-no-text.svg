@@ -1,10 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="92.612" height="87.353" viewBox="8.076 0 92.612 87.353">
-  <g id="fajne_skaldy_logo_sign" data-name="fajne skaldy logo sign" transform="translate(-360.4 -291.955)">
-    <g id="XMLID_408_" transform="translate(360.4 291.955)">
-      <g id="Group_4" data-name="Group 4" transform="translate(0 0)">
-        <path id="XMLID_410_" d="M420.321,294.846v11.507h19.615c-12.553,21.707-24.845,42.891-37.4,64.6-12.553-21.707-24.845-42.891-37.137-64.336h31.122V317.86H385.276c5.754,10.2,11.507,19.876,17.261,30.076,5.754-9.938,11.246-19.615,17.261-29.814H408.552V283.6h44.46c-2.092,3.661-3.923,7.061-6.015,10.461a4.417,4.417,0,0,1-2.615.785H420.321Z" transform="translate(-352.324 -283.6)" fill="#fff"/>
-        <path id="XMLID_409_" d="M360.4,283.6h44.722v11.246H369.553c-1.569,0-2.615-.262-3.4-1.831C364.061,289.877,362.231,287,360.4,283.6Z" transform="translate(-352.324 -283.6)" fill="#fff"/>
-      </g>
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Vrstva_1" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 100.7 87.4">
+  <!-- Generator: Adobe Illustrator 30.6.0, SVG Export Plug-In . SVG Version: 2.1.4 Build 109)  -->
+  <defs>
+    <style>
+      .st0 {
+        fill: #fff;
+      }
+    </style>
+  </defs>
+  <g id="fajne_skaldy_logo_black">
+    <g id="Group_4">
+      <path class="st0" d="M68,11.2v11.5h19.6c-12.6,21.7-24.8,42.9-37.4,64.6-12.6-21.7-24.8-42.9-37.1-64.3h31.1v11.2h-11.2c5.8,10.2,11.5,19.9,17.3,30.1,5.8-9.9,11.2-19.6,17.3-29.8h-11.2V0h44.5c-2.1,3.7-3.9,7.1-6,10.5-.8.5-1.7.8-2.6.8h-24.1Z"/>
+      <path class="st0" d="M0,0h44.7v11.2H9.2c-1.6,0-2.6-.3-3.4-1.8C3.7,6.3,1.8,3.4,0,0Z"/>
     </g>
   </g>
 </svg>
