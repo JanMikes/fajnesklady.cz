@@ -1,6 +1,6 @@
 # 016 — GoPay & VOP compliance pass on the ordering flow
 
-**Status:** ready (Phase 1 + 2); Phase 3 deferred
+**Status:** done (all 3 phases shipped in commit a1aaa6d)
 **Type:** compliance / legal
 **Scope:** large (10–12 files; legal text + UI labels + emails + cron)
 **Depends on:** 015 (consolidated consent — partially superseded for recurring payments). Adds to 010/011/013.
