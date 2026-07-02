@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Console;
 
+use App\Command\ExpireOrderCommand;
 use App\Entity\Order;
 use App\Repository\OrderRepository;
-use App\Service\OrderService;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
@@ -15,6 +15,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -29,7 +30,7 @@ use Symfony\Component\Uid\Uuid;
 final class ExpireOrdersCommand extends Command
 {
     public function __construct(
-        private readonly OrderService $orderService,
+        private readonly MessageBusInterface $commandBus,
         private readonly OrderRepository $orderRepository,
         private readonly ClockInterface $clock,
         private readonly EntityManagerInterface $entityManager,
@@ -63,8 +64,10 @@ final class ExpireOrdersCommand extends Command
                     continue;
                 }
 
-                $this->orderService->expireOrder($order, $now);
-                $this->entityManager->flush();
+                // Through the command bus so its middleware both flushes and
+                // dispatches the buffered OrderExpired domain event — a manual
+                // flush here would leave the event buffered forever.
+                $this->commandBus->dispatch(new ExpireOrderCommand($order));
                 ++$expired;
             } catch (\Throwable $e) {
                 ++$failed;

@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Console;
 
+use App\Command\IssueInvoiceForOrderCommand;
 use App\Entity\Order;
 use App\Repository\OrderRepository;
-use App\Service\InvoicingService;
-use Doctrine\ORM\EntityManagerInterface;
+use App\Service\Messenger\HandlerFailureUnwrap;
 use Doctrine\Persistence\ManagerRegistry;
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
@@ -16,6 +16,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\Messenger\MessageBusInterface;
 
 /**
  * Backstop for the first-payment invoice. The happy path issues the invoice
@@ -38,7 +39,7 @@ final class IssueMissingInvoicesCommand extends Command
 
     public function __construct(
         private readonly OrderRepository $orderRepository,
-        private readonly InvoicingService $invoicingService,
+        private readonly MessageBusInterface $commandBus,
         private readonly ClockInterface $clock,
         private readonly LoggerInterface $logger,
         private readonly ManagerRegistry $doctrine,
@@ -67,14 +68,18 @@ final class IssueMissingInvoicesCommand extends Command
 
         foreach ($orders as $order) {
             try {
-                $this->invoicingService->issueInvoiceForOrder($order, $now);
-                $this->getEntityManager()->flush();
+                // Through the command bus so its middleware both flushes the
+                // invoice AND dispatches the buffered InvoiceCreated event —
+                // a manual flush here would silently drop the event and the
+                // customer's "Faktura" e-mail with it.
+                $this->commandBus->dispatch(new IssueInvoiceForOrderCommand($order));
                 ++$successCount;
                 $io->text(sprintf('  [OK] Order %s — invoice issued.', $order->id));
-            } catch (\Throwable $e) {
+            } catch (\Throwable $rawException) {
                 ++$failureCount;
-                $this->recordFailure($order, $e);
-                $io->error(sprintf('  [FAIL] Order %s: %s', $order->id, $e->getMessage()));
+                $exception = HandlerFailureUnwrap::unwrap($rawException);
+                $this->recordFailure($order, $exception);
+                $io->error(sprintf('  [FAIL] Order %s: %s', $order->id, $exception->getMessage()));
             }
         }
 
@@ -104,23 +109,5 @@ final class IssueMissingInvoicesCommand extends Command
 
             $this->doctrine->resetManager();
         }
-    }
-
-    private function getEntityManager(): EntityManagerInterface
-    {
-        $manager = $this->doctrine->getManager();
-        if (!$manager instanceof EntityManagerInterface) {
-            throw new \LogicException('Default Doctrine manager is not an ORM EntityManager.');
-        }
-
-        if (!$manager->isOpen()) {
-            $this->doctrine->resetManager();
-            $reset = $this->doctrine->getManager();
-            \assert($reset instanceof EntityManagerInterface);
-
-            return $reset;
-        }
-
-        return $manager;
     }
 }

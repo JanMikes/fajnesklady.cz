@@ -95,7 +95,6 @@ final class ProcessRecurringPaymentsCommand extends Command
         try {
             if ($isExpectedFailure) {
                 $contract->recordFailedBillingAttempt($now);
-                $this->getEntityManager()->flush();
 
                 $this->auditLogger->log(
                     entityType: 'contract',
@@ -108,6 +107,11 @@ final class ProcessRecurringPaymentsCommand extends Command
                     orderId: $contract->order->id,
                     userIdContext: $contract->user->id,
                 );
+
+                // Console commands are outside the doctrine_transaction
+                // middleware — this flush must come AFTER the audit persist,
+                // or the row would only ever be committed by accident.
+                $this->getEntityManager()->flush();
 
                 $this->eventBus->dispatch(new RecurringPaymentFailed(
                     contractId: $contract->id,

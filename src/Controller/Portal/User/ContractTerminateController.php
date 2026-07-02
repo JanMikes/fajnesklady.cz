@@ -7,7 +7,6 @@ namespace App\Controller\Portal\User;
 use App\Command\CancelRecurringPaymentCommand;
 use App\Entity\User;
 use App\Repository\ContractRepository;
-use App\Service\AuditLogger;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -25,7 +24,6 @@ final class ContractTerminateController extends AbstractController
     public function __construct(
         private readonly ContractRepository $contractRepository,
         private readonly MessageBusInterface $commandBus,
-        private readonly AuditLogger $auditLogger,
     ) {
     }
 
@@ -66,8 +64,9 @@ final class ContractTerminateController extends AbstractController
             return $this->redirectToRoute('portal_user_order_detail', ['id' => $contract->order->id]);
         }
 
+        // Audit logging lives in CancelRecurringPaymentHandler — anything
+        // persisted here after dispatch() returns would never be flushed.
         $this->commandBus->dispatch(new CancelRecurringPaymentCommand($contract));
-        $this->auditLogger->logContractRecurringCancelled($contract);
 
         $this->addFlash('success', sprintf(
             'Opakované platby byly zrušeny. Smlouva skončí %s.',

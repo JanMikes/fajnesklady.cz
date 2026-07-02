@@ -74,7 +74,42 @@ See `src/Console/ProcessRecurringPaymentsCommand.php` for the canonical pattern.
 transport. Everything else runs synchronously on the bus. The retry strategy is
 `max_retries: 3`, exponential backoff multiplier 2.
 
-## 5. GoPay webhooks are NOT registered globally
+## 5. Nothing flushes after `dispatch()` returns — writes outside the envelope are silently lost
+
+The `doctrine_transaction` middleware flushes INSIDE the `dispatch()` call, on
+handler success. There is no kernel-terminate flush, no request-end flush,
+nothing. Consequences, each of which has been a real shipped bug (full audit
+2026-07-02):
+
+- **Controller persists after dispatch** — `$bus->dispatch(...)` followed by
+  `$auditLogger->log(...)` discards the audit row on every request: the
+  dispatch's flush already ran, and nothing flushes again. Log inside the
+  handler (preferred — every dispatch site gets the trail, see
+  `CancelRecurringPaymentHandler`), or before the dispatch when the audit is
+  specific to that call site (see the `AdminOrderSend*` controllers).
+- **Controller that never dispatches** — mutating an entity or calling a
+  repository `save()` directly in a controller flushes nothing at all. The
+  success flash still renders. Route the write through a command
+  (`AdminSettingsController` bug, commit a77342f).
+- **Console command mutating after its last `flush()`** — the tail mutation is
+  lost on the last loop iteration, or accidentally committed by the NEXT
+  iteration's dispatch (recording state that isn't true — e.g. a "reminder
+  sent" counter for a reminder that threw). Flush explicitly after every
+  mutation batch, and `clear()` in the catch so a failed iteration's pending
+  changes can't leak into the next one's flush.
+- **Domain events after a manual `flush()`** — `DomainEventsSubscriber` buffers
+  events recorded via `recordThat()` at flush time, but only
+  `DispatchDomainEventsMiddleware` (command.bus/event.bus) ever pops the
+  buffer. A console command that mutates + manually flushes leaves the events
+  buffered forever — `IssueMissingInvoicesCommand` silently dropped every
+  customer invoice e-mail this way. Dispatch a command on the bus instead of
+  calling the service + `flush()` directly.
+
+Review heuristic: inside `src/Controller` (and any non-handler service it
+calls), every write must be able to answer "which dispatch's flush commits
+this?" — if the answer is "the one that already returned", it's a bug.
+
+## 6. GoPay webhooks are NOT registered globally
 
 There is no GoPay-side webhook configuration. Each `createPayment` /
 `createRecurringPayment` call passes a `notification_url` field built from the

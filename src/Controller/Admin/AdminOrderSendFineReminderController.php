@@ -57,12 +57,9 @@ final class AdminOrderSendFineReminderController extends AbstractController
             return $this->redirectToRoute('admin_order_detail', ['id' => $id]);
         }
 
-        $this->eventBus->dispatch(new FinePaymentReminderRequested(
-            fineId: $fine->id,
-            stage: 0,
-            occurredOn: $this->clock->now(),
-        ));
-
+        // Audit BEFORE dispatch: the event bus's doctrine_transaction flush is
+        // the only flush in this request — anything persisted after dispatch()
+        // returns is silently lost.
         $this->auditLogger->log(
             entityType: 'order',
             entityId: $order->id->toRfc4122(),
@@ -71,6 +68,12 @@ final class AdminOrderSendFineReminderController extends AbstractController
             orderId: $order->id,
             userIdContext: $order->user->id,
         );
+
+        $this->eventBus->dispatch(new FinePaymentReminderRequested(
+            fineId: $fine->id,
+            stage: 0,
+            occurredOn: $this->clock->now(),
+        ));
 
         $this->addFlash('success', 'Připomínka pokuty byla odeslána.');
 

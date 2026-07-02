@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Command;
 
 use App\Event\RecurringPaymentCancelled;
+use App\Service\AuditLogger;
 use App\Service\GoPay\GoPayClient;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -17,6 +18,7 @@ final readonly class CancelRecurringPaymentHandler
         private GoPayClient $goPayClient,
         private ClockInterface $clock,
         private MessageBusInterface $eventBus,
+        private AuditLogger $auditLogger,
     ) {
     }
 
@@ -32,6 +34,11 @@ final readonly class CancelRecurringPaymentHandler
         }
 
         $contract->cancelRecurringPayment();
+
+        // Audit here (not at dispatch sites) so the command bus's flush covers
+        // the row and every cancellation path — tenant portal, signed e-mail
+        // link, payment-default cron — gets the same trail.
+        $this->auditLogger->logContractRecurringCancelled($contract);
 
         $this->eventBus->dispatch(new RecurringPaymentCancelled(
             contractId: $contract->id,

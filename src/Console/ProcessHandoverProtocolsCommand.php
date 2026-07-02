@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console;
 
 use App\Command\CreateHandoverProtocolCommand;
+use App\Entity\HandoverProtocol;
 use App\Event\HandoverExpired;
 use App\Event\HandoverReminderDue;
 use App\Repository\ContractRepository;
@@ -19,6 +20,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Component\Uid\Uuid;
 
 #[AsCommand(
     name: 'app:process-handover-protocols',
@@ -138,13 +140,26 @@ final class ProcessHandoverProtocolsCommand extends Command
 
     private function sendReminders(SymfonyStyle $io, \DateTimeImmutable $now): int
     {
-        $protocols = $this->handoverProtocolRepository->findIncompleteForReminders($now);
+        // Iterate over ids and re-fetch each protocol so the clear() in the
+        // catch below can't detach the remaining protocols mid-loop.
+        $ids = array_map(
+            static fn (HandoverProtocol $protocol): Uuid => $protocol->id,
+            $this->handoverProtocolRepository->findIncompleteForReminders($now),
+        );
+
         $reminded = 0;
 
-        foreach ($protocols as $protocol) {
+        foreach ($ids as $id) {
+            $protocol = $this->entityManager->find(HandoverProtocol::class, $id);
+            if (null === $protocol) {
+                continue;
+            }
+
             try {
                 $protocol->recordReminderSent($now);
 
+                // The event bus's doctrine_transaction middleware flushes the
+                // reminder counter together with the handled event.
                 $this->eventBus->dispatch(new HandoverReminderDue(
                     handoverProtocolId: $protocol->id,
                     contractId: $protocol->contract->id,
@@ -152,7 +167,6 @@ final class ProcessHandoverProtocolsCommand extends Command
                     occurredOn: $now,
                 ));
 
-                $this->entityManager->flush();
                 ++$reminded;
 
                 $io->text(sprintf(
@@ -165,6 +179,10 @@ final class ProcessHandoverProtocolsCommand extends Command
                     'handover_protocol_id' => $protocol->id->toRfc4122(),
                     'exception' => $e,
                 ]);
+                // Discard the pending counter increment — otherwise the next
+                // iteration's event-bus flush would commit a reminder that
+                // was never actually sent.
+                $this->entityManager->clear();
             }
         }
 

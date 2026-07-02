@@ -299,6 +299,12 @@ Available: `UserAlreadyExists`, `UserNotFound`, `PlaceNotFound`, `StorageTypeNot
   - Kernel / security event subscribers that fire from the HTTP request lifecycle (`LoginSuccessEvent`, request-terminate hooks, etc.) — no middleware envelope, so they own their own flush.
   - Existing audit-log writer repositories that intentionally commit out-of-band so the audit row survives even if the parent transaction rolls back (e.g. `EmailLogRepository`).
   Every manual `flush()` MUST have an inline comment immediately above the call explaining why it is required. If you can't write that justification cleanly, it shouldn't be there — push the work back through a message handler instead.
+- **Writes are silently LOST outside the messenger envelope** (this class of bug has shipped repeatedly — it makes features look like they work while nothing reaches the database):
+  - The `doctrine_transaction` flush happens INSIDE `dispatch()`. **Anything persisted or mutated in a controller AFTER a `dispatch()` returns — including `AuditLogger::log()` — is never flushed and silently discarded.** Audit-log inside the handler, or before the dispatch, never after.
+  - A controller that mutates an entity / calls a repository `save()` without dispatching anything at all flushes nothing either (that was the `/portal/admin/nastaveni` bug: success flash shown, value never saved).
+  - In console commands a manual `flush()` covers only what precedes it; a mutation after the last flush is lost when it's the last iteration — or worse, accidentally committed by the NEXT iteration's dispatch.
+  - Domain events recorded on entities (`recordThat()`) are dispatched by `DispatchDomainEventsMiddleware`, which only runs on the buses. **A manual `flush()` in a console command buffers the events forever — they never dispatch** (this silently dropped customer invoice e-mails). Route the mutation through a command on the bus instead.
+  Full details and the audit that found these: [.claude/MESSENGER.md](.claude/MESSENGER.md) §5.
 
 ## Frontend
 

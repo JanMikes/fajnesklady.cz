@@ -53,13 +53,9 @@ final class AdminOrderSendBillingReminderController extends AbstractController
             return $this->redirectToRoute('admin_order_detail', ['id' => $id]);
         }
 
-        $this->eventBus->dispatch(new ManualBillingPaymentRequested(
-            contractId: $contract->id,
-            manualPaymentRequestId: $pendingRequest->id,
-            stage: 'manual',
-            occurredOn: $now,
-        ));
-
+        // Audit BEFORE dispatch: the event bus's doctrine_transaction flush is
+        // the only flush in this request — anything persisted after dispatch()
+        // returns is silently lost.
         $this->auditLogger->log(
             entityType: 'order',
             entityId: $order->id->toRfc4122(),
@@ -68,6 +64,13 @@ final class AdminOrderSendBillingReminderController extends AbstractController
             orderId: $order->id,
             userIdContext: $order->user->id,
         );
+
+        $this->eventBus->dispatch(new ManualBillingPaymentRequested(
+            contractId: $contract->id,
+            manualPaymentRequestId: $pendingRequest->id,
+            stage: 'manual',
+            occurredOn: $now,
+        ));
 
         $this->addFlash('success', 'Výzva k platbě byla odeslána.');
 

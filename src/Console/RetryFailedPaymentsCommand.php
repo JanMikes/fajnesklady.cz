@@ -114,7 +114,6 @@ final class RetryFailedPaymentsCommand extends Command
         try {
             if ($isExpectedFailure) {
                 $contract->recordFailedBillingAttempt($now);
-                $this->getEntityManager()->flush();
 
                 $this->auditLogger->log(
                     entityType: 'contract',
@@ -129,6 +128,11 @@ final class RetryFailedPaymentsCommand extends Command
                     userIdContext: $contract->user->id,
                 );
 
+                // Console commands are outside the doctrine_transaction
+                // middleware — this flush must come AFTER the audit persist,
+                // or the row would only ever be committed by accident.
+                $this->getEntityManager()->flush();
+
                 $this->eventBus->dispatch(new RecurringPaymentFailed(
                     contractId: $contract->id,
                     attempt: $contract->failedBillingAttempts,
@@ -139,15 +143,7 @@ final class RetryFailedPaymentsCommand extends Command
                 // VOP XI: send formal "Výzva k úhradě" after 2nd failure (day 3)
                 if (2 === $contract->failedBillingAttempts && null === $contract->paymentDemandSentAt) {
                     $contract->recordPaymentDemandSent($now);
-                    // Console commands are outside the doctrine_transaction middleware
-                    $this->getEntityManager()->flush();
-
                     $deadline = $now->modify('+4 days'); // day 3 + 4 = day 7 from original failure
-                    $this->eventBus->dispatch(new PaymentDemandSent(
-                        contractId: $contract->id,
-                        deadline: $deadline,
-                        occurredOn: $now,
-                    ));
 
                     $this->auditLogger->log(
                         entityType: 'contract',
@@ -160,6 +156,18 @@ final class RetryFailedPaymentsCommand extends Command
                         orderId: $contract->order->id,
                         userIdContext: $contract->user->id,
                     );
+
+                    // Console commands are outside the doctrine_transaction
+                    // middleware — flush AFTER the audit persist so the legal
+                    // "payment demand sent" trail is committed even when this
+                    // contract is the last one in the run.
+                    $this->getEntityManager()->flush();
+
+                    $this->eventBus->dispatch(new PaymentDemandSent(
+                        contractId: $contract->id,
+                        deadline: $deadline,
+                        occurredOn: $now,
+                    ));
                 }
 
                 $this->logger->error('Recurring payment retry failed', [
