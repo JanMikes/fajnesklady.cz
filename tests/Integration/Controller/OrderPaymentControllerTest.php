@@ -606,6 +606,9 @@ class OrderPaymentControllerTest extends WebTestCase
             ->where('s.status = :status')
             ->andWhere('p.isActive = true')
             ->andWhere('st.isActive = true')
+            // OrderAcceptController 404s on admin-only storage types; without this filter
+            // the arbitrary-order LIMIT 1 can pick the admin-only fixture (AO1) and flake.
+            ->andWhere('st.adminOnly = false')
             ->setParameter('status', StorageStatus::AVAILABLE)
             ->setMaxResults(1)
             ->getQuery()
