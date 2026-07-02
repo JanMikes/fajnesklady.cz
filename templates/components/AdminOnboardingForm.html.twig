@@ -1,8 +1,6 @@
 {% import 'components/_address_override.html.twig' as addr %}
 {% set formData = form.vars.data %}
 {% set invoiceToCompany = formData.invoiceToCompany ?? false %}
-{% set rentalType = formData.rentalType %}
-{% set rentalIsLimited = rentalType is null or rentalType.value == 'limited' %}
 {% set paymentMethod = formData.paymentMethod %}
 {% set paymentFrequency = formData.paymentFrequency %}
 {% set isYearly = paymentFrequency is not null and paymentFrequency.value == 'yearly' %}
@@ -84,36 +82,34 @@
             </div>
         </div>
 
-        {# 3. Typ pronájmu #}
-        <div class="card">
-            <div class="card-body">
-                <h2 class="text-lg font-bold text-gray-900 mb-4">Typ pronájmu</h2>
-                <div class="space-y-4">
-                    {{ form_row(form.rentalType) }}
-                    {% if rentalType is not null and rentalType.value == 'unlimited' %}
-                        {{ form_row(form.expectedDuration) }}
-                    {% else %}
-                        {% do form.expectedDuration.setRendered %}
-                    {% endif %}
-                </div>
-            </div>
-        </div>
-
-        {# 4. Datum #}
+        {# 3. Datum #}
         <div class="card">
             <div class="card-body">
                 <h2 class="text-lg font-bold text-gray-900 mb-4">Datum</h2>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {{ form_row(form.startDate) }}
-                    {% if rentalIsLimited %}
-                        <div data-controller="duration-preset"
-                             data-duration-preset-min-gap-days-value="7"
-                             data-duration-preset-max-months-value="0">
-                            {{ form_row(form.endDate) }}
+                    <div data-controller="duration-preset"
+                         data-duration-preset-min-gap-days-value="7"
+                         data-duration-preset-max-months-value="0">
+                        {{ form_row(form.endDate) }}
+
+                        <div class="mt-2 flex flex-wrap gap-2">
+                            <span class="text-xs text-gray-500 self-center mr-1">Rychlá volba:</span>
+                            {% for months in [3, 6, 12] %}
+                                <button type="button"
+                                        data-duration-preset-target="button"
+                                        data-action="duration-preset#apply"
+                                        data-months="{{ months }}"
+                                        class="btn btn-outline btn-sm">
+                                    {{ months == 12 ? '1 rok' : (months >= 5 ? months ~ ' měsíců' : months ~ ' měsíce') }}
+                                </button>
+                            {% endfor %}
                         </div>
-                    {% else %}
-                        {% do form.endDate.setRendered %}
-                    {% endif %}
+
+                        <p data-duration-preset-target="hint" class="text-xs text-gray-500 mt-1" hidden>
+                            Nejdříve zvolte datum začátku.
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -196,9 +192,9 @@
         {% elseif selectedPlace and selectedStorageType and selectedPlace.mapImagePath %}
             {# Place + type + map are ready, but the availability query has no rental window yet.
                Rendering the map now would paint every unit as greyed-out "nedostupný" (reads as broken),
-               so hold it back behind a concise prompt until a rental type + date are chosen. #}
+               so hold it back behind a concise prompt until the dates are chosen. #}
             <div class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-                Nejdříve zvolte typ pronájmu a termín — poté se zobrazí mapa s dostupností skladových jednotek.
+                Nejdříve zvolte termín pronájmu — poté se zobrazí mapa s dostupností skladových jednotek.
             </div>
         {% elseif selectedPlace and selectedStorageType and not selectedPlace.mapImagePath %}
             <div class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
@@ -301,31 +297,32 @@
             </div>
         </div>
 
-        {# 11. Frekvence a způsob plateb #}
+        {# 11. Frekvence plateb — billing mode je odvozený (spec 076): karta = automatická
+           měsíční, převod/externí = ruční, roční = vždy ruční převodem. #}
         <div class="card">
             <div class="card-body">
-                <h2 class="text-lg font-bold text-gray-900 mb-4">Frekvence a způsob plateb</h2>
+                <h2 class="text-lg font-bold text-gray-900 mb-4">Frekvence plateb</h2>
                 {{ form_row(form.paymentFrequency) }}
 
-                {% if isYearly or isBankTransfer %}
-                    {% if isYearly %}
-                        <div class="mt-3 bg-blue-50 border border-blue-200 rounded-lg p-4">
-                            <p class="text-sm text-blue-900">
-                                <strong>Roční platba se vždy odbavuje ručně.</strong>
-                                Kartu si neukládáme — další platbu obdržíte e-mailem před vypršením roku.
-                            </p>
-                        </div>
-                    {% endif %}
-                    {% if isBankTransfer and not isYearly %}
-                        <div class="mt-3 bg-blue-50 border border-blue-200 rounded-lg p-4">
-                            <p class="text-sm text-blue-900">
-                                Bankovní převod — zákazník obdrží fakturu e-mailem, platba je vždy ruční.
-                            </p>
-                        </div>
-                    {% endif %}
-                    {% do form.billingMode.setRendered %}
-                {% else %}
-                    {{ form_row(form.billingMode) }}
+                {% if isYearly %}
+                    <div class="mt-3 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <p class="text-sm text-blue-900">
+                            <strong>Roční platba se vždy odbavuje ručně a platí se převodem nebo externě.</strong>
+                            Karta se neukládá — výzvu k další platbě obdrží zákazník e-mailem před vypršením roku.
+                        </p>
+                    </div>
+                {% elseif isBankTransfer %}
+                    <div class="mt-3 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <p class="text-sm text-blue-900">
+                            Bankovní převod — zákazník obdrží před každou platbou e-mail s platebními údaji a QR kódem.
+                        </p>
+                    </div>
+                {% elseif paymentMethod is not null and paymentMethod.value == 'gopay' %}
+                    <div class="mt-3 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <p class="text-sm text-blue-900">
+                            GoPay — zákazník při podpisu nastaví automatickou měsíční platbu kartou.
+                        </p>
+                    </div>
                 {% endif %}
             </div>
         </div>

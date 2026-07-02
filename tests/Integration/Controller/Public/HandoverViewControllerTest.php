@@ -38,7 +38,7 @@ class HandoverViewControllerTest extends WebTestCase
 
     public function testUnsignedRequestReturns403(): void
     {
-        $protocol = $this->createPendingHandoverForUnlimitedContract();
+        $protocol = $this->createPendingHandoverForRecurringContract();
 
         $this->client->request('GET', '/predavaci-protokol/'.$protocol->id->toRfc4122());
 
@@ -47,7 +47,7 @@ class HandoverViewControllerTest extends WebTestCase
 
     public function testTamperedSignatureReturns403(): void
     {
-        $protocol = $this->createPendingHandoverForUnlimitedContract();
+        $protocol = $this->createPendingHandoverForRecurringContract();
         $signed = $this->urlGenerator->generateTenantView($protocol);
         $tampered = preg_replace('/_hash=[^&]+/', '_hash=tampered', $signed);
         \assert(is_string($tampered));
@@ -59,7 +59,7 @@ class HandoverViewControllerTest extends WebTestCase
 
     public function testValidSignatureRendersForm(): void
     {
-        $protocol = $this->createPendingHandoverForUnlimitedContract();
+        $protocol = $this->createPendingHandoverForRecurringContract();
 
         $this->requestSigned($this->urlGenerator->generateTenantView($protocol));
 
@@ -77,7 +77,7 @@ class HandoverViewControllerTest extends WebTestCase
 
     public function testValidPostCompletesTenantSide(): void
     {
-        $protocol = $this->createPendingHandoverForUnlimitedContract();
+        $protocol = $this->createPendingHandoverForRecurringContract();
         $signed = $this->urlGenerator->generateTenantView($protocol);
 
         $this->requestSigned($signed);
@@ -104,7 +104,7 @@ class HandoverViewControllerTest extends WebTestCase
 
     public function testRevisitAfterCompletionShowsReadOnlySummaryWithoutForm(): void
     {
-        $protocol = $this->createPendingHandoverForUnlimitedContract();
+        $protocol = $this->createPendingHandoverForRecurringContract();
         $protocol->completeTenantSide('Vyplněno dříve.', $this->clock->now());
         $this->entityManager->flush();
 
@@ -122,21 +122,20 @@ class HandoverViewControllerTest extends WebTestCase
         self::assertStringContainsString('Vaše část', $body);
     }
 
-    private function createPendingHandoverForUnlimitedContract(): HandoverProtocol
+    private function createPendingHandoverForRecurringContract(): HandoverProtocol
     {
-        // REF_CONTRACT_UNLIMITED → C1 in Praha Centrum (storageCodesEnabled=true).
+        // REF_CONTRACT_RECURRING → C1 in Praha Centrum (storageCodesEnabled=true).
         // Contract is active and storage is owned by the fixture landlord.
         $contract = $this->entityManager->createQueryBuilder()
             ->select('c')
             ->from(Contract::class, 'c')
             ->join('c.storage', 's')
             ->where('s.number = :number')
-            ->andWhere('c.endDate IS NULL')
             ->andWhere('c.terminatedAt IS NULL')
             ->setParameter('number', 'C1')
             ->getQuery()
             ->getOneOrNullResult();
-        \assert($contract instanceof Contract, 'Active unlimited contract on C1 must exist in fixtures');
+        \assert($contract instanceof Contract, 'Active recurring contract on C1 must exist in fixtures');
 
         $existing = $this->entityManager->createQueryBuilder()
             ->select('hp')

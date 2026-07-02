@@ -13,7 +13,6 @@ use App\Entity\StorageUnavailability;
 use App\Entity\User;
 use App\Enum\OrderStatus;
 use App\Enum\PaymentFrequency;
-use App\Enum\RentalType;
 use App\Enum\StorageStatus;
 use App\Repository\ContractRepository;
 use App\Repository\OrderRepository;
@@ -224,7 +223,7 @@ final class StorageStatusReconcilerTest extends TestCase
     private function makeContract(
         Storage $storage,
         \DateTimeImmutable $start,
-        ?\DateTimeImmutable $end,
+        \DateTimeImmutable $end,
     ): Contract {
         $order = $this->makeOrder($storage, $start, $end, OrderStatus::COMPLETED);
 
@@ -233,7 +232,6 @@ final class StorageStatusReconcilerTest extends TestCase
             order: $order,
             user: $this->tenant,
             storage: $storage,
-            rentalType: null === $end ? RentalType::UNLIMITED : RentalType::LIMITED,
             startDate: $start,
             endDate: $end,
             createdAt: $start,
@@ -250,7 +248,6 @@ final class StorageStatusReconcilerTest extends TestCase
             id: Uuid::v7(),
             user: $this->tenant,
             storage: $storage,
-            rentalType: null === $end ? RentalType::UNLIMITED : RentalType::LIMITED,
             paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: $start,
             endDate: $end,

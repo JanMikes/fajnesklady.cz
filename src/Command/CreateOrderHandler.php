@@ -24,13 +24,11 @@ final readonly class CreateOrderHandler
             user: $command->user,
             storageType: $command->storageType,
             place: $command->place,
-            rentalType: $command->rentalType,
             startDate: $command->startDate,
             endDate: $command->endDate,
             now: $this->clock->now(),
             paymentFrequency: $command->paymentFrequency,
             preSelectedStorage: $command->preSelectedStorage,
-            expectedDuration: $command->expectedDuration,
         );
     }
 }

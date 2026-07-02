@@ -8,7 +8,6 @@ use App\Entity\Order;
 use App\Enum\BillingMode;
 use App\Enum\OrderStatus;
 use App\Enum\PaymentMethod;
-use App\Enum\RentalType;
 use App\Enum\SigningMethod;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -146,9 +145,8 @@ class CustomerSigningControllerTest extends WebTestCase
             individualMonthlyAmount: 80_000,
             paidThroughDate: null,
             billingMode: BillingMode::AUTO_RECURRING,
-            rentalType: RentalType::UNLIMITED,
-            clearEndDate: true,
             startDate: new \DateTimeImmutable('2025-08-01'),
+            endDate: new \DateTimeImmutable('2026-08-01'),
         );
 
         $this->client->request('GET', '/podpis/'.$order->signingToken);
@@ -172,9 +170,8 @@ class CustomerSigningControllerTest extends WebTestCase
             individualMonthlyAmount: 80_000,
             paidThroughDate: null,
             billingMode: BillingMode::MANUAL_RECURRING,
-            rentalType: RentalType::UNLIMITED,
-            clearEndDate: true,
             startDate: new \DateTimeImmutable('2025-08-01'),
+            endDate: new \DateTimeImmutable('2026-08-01'),
         );
 
         $this->client->request('GET', '/podpis/'.$order->signingToken);
@@ -269,9 +266,8 @@ class CustomerSigningControllerTest extends WebTestCase
             individualMonthlyAmount: 80_000,
             paidThroughDate: null,
             billingMode: BillingMode::AUTO_RECURRING,
-            rentalType: RentalType::UNLIMITED,
-            clearEndDate: true,
             startDate: new \DateTimeImmutable('2025-08-01'),
+            endDate: new \DateTimeImmutable('2026-08-01'),
         );
 
         $this->client->request('POST', '/podpis/'.$order->signingToken, [
@@ -344,10 +340,8 @@ class CustomerSigningControllerTest extends WebTestCase
         ?int $individualMonthlyAmount,
         ?\DateTimeImmutable $paidThroughDate,
         BillingMode $billingMode = BillingMode::AUTO_RECURRING,
-        ?RentalType $rentalType = null,
         ?\DateTimeImmutable $startDate = null,
         ?\DateTimeImmutable $endDate = null,
-        bool $clearEndDate = false,
         ?string $uploadedContractPath = null,
     ): Order {
         // Find the single available RESERVED order we can safely mutate (DAMA rolls back per test).
@@ -368,15 +362,10 @@ class CustomerSigningControllerTest extends WebTestCase
 
         $orderReflection = new \ReflectionClass($order);
         $orderReflection->getProperty('firstPaymentPrice')->setValue($order, $firstPaymentPrice);
-        if (null !== $rentalType) {
-            $orderReflection->getProperty('rentalType')->setValue($order, $rentalType);
-        }
         if (null !== $startDate) {
             $orderReflection->getProperty('startDate')->setValue($order, $startDate);
         }
-        if ($clearEndDate) {
-            $orderReflection->getProperty('endDate')->setValue($order, null);
-        } elseif (null !== $endDate) {
+        if (null !== $endDate) {
             $orderReflection->getProperty('endDate')->setValue($order, $endDate);
         }
 

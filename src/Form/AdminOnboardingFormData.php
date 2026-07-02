@@ -5,10 +5,8 @@ declare(strict_types=1);
 namespace App\Form;
 
 use App\Enum\BillingMode;
-use App\Enum\ExpectedDuration;
 use App\Enum\PaymentFrequency;
 use App\Enum\PaymentMethod;
-use App\Enum\RentalType;
 use App\Form\Address\HasBillingAddress;
 use App\Service\PriceCalculator;
 use App\Validator\AddressExists;
@@ -63,20 +61,20 @@ final class AdminOnboardingFormData implements HasBillingAddress
 
     public bool $addressOverride = false;
 
-    #[Assert\NotNull(message: 'Vyberte typ pronájmu.')]
-    public ?RentalType $rentalType = null;
-
-    public ?ExpectedDuration $expectedDuration = null;
-
     #[Assert\NotNull(message: 'Zadejte datum začátku.')]
     public ?\DateTimeImmutable $startDate = null;
 
+    #[Assert\NotNull(message: 'Zadejte datum konce.')]
     public ?\DateTimeImmutable $endDate = null;
 
     #[Assert\NotNull(message: 'Vyberte způsob platby.')]
     public ?PaymentMethod $paymentMethod = null;
 
-    #[Assert\NotNull(message: 'Vyberte způsob následných plateb.')]
+    /**
+     * Never an admin choice (spec 076) — derived from paymentMethod +
+     * frequency + rental length by {@see self::deriveBillingMode()} via
+     * {@see BillingMode::derive()}. Read by the component's submit().
+     */
     public ?BillingMode $billingMode = null;
 
     #[Assert\NotNull(message: 'Vyberte frekvenci platby.')]
@@ -165,28 +163,18 @@ final class AdminOnboardingFormData implements HasBillingAddress
     #[Assert\Callback]
     public function validateDates(ExecutionContextInterface $context): void
     {
-        if (null === $this->startDate) {
+        if (null === $this->startDate || null === $this->endDate) {
             return;
         }
 
-        if (RentalType::LIMITED === $this->rentalType) {
-            if (null === $this->endDate) {
-                $context->buildViolation('Pro omezený pronájem je vyžadováno datum konce.')
-                    ->atPath('endDate')
-                    ->addViolation();
+        $rentalDays = $this->endDate <= $this->startDate
+            ? 0
+            : (int) $this->startDate->diff($this->endDate)->days;
 
-                return;
-            }
-
-            $rentalDays = $this->endDate <= $this->startDate
-                ? 0
-                : (int) $this->startDate->diff($this->endDate)->days;
-
-            if ($rentalDays < 7) {
-                $context->buildViolation('Minimální doba pronájmu je 7 dní.')
-                    ->atPath('endDate')
-                    ->addViolation();
-            }
+        if ($rentalDays < 7) {
+            $context->buildViolation('Minimální doba pronájmu je 7 dní.')
+                ->atPath('endDate')
+                ->addViolation();
         }
     }
 
@@ -222,31 +210,23 @@ final class AdminOnboardingFormData implements HasBillingAddress
     }
 
     #[Assert\Callback]
-    public function validateBillingMode(ExecutionContextInterface $context): void
+    public function validatePaymentMethod(ExecutionContextInterface $context): void
     {
-        if (null === $this->paymentMethod || null === $this->rentalType) {
+        // Spec 076: cards only establish recurring monthly payments.
+        if (PaymentMethod::GOPAY === $this->paymentMethod && PaymentFrequency::YEARLY === $this->paymentFrequency) {
+            $context->buildViolation('Roční platbu lze platit pouze bankovním převodem.')
+                ->atPath('paymentFrequency')
+                ->addViolation();
+        }
+
+        $rentalDays = $this->rentalDays();
+        if (null === $rentalDays) {
             return;
         }
 
-        if (PaymentFrequency::YEARLY === $this->paymentFrequency) {
-            $this->billingMode = BillingMode::MANUAL_RECURRING;
-
-            return;
-        }
-
-        if (PaymentMethod::BANK_TRANSFER === $this->paymentMethod) {
-            $this->billingMode = BillingMode::MANUAL_RECURRING;
-
-            return;
-        }
-
-        if (null === $this->billingMode) {
-            return;
-        }
-
-        if (RentalType::UNLIMITED === $this->rentalType && BillingMode::AUTO_RECURRING !== $this->billingMode) {
-            $context->buildViolation('Pro pronájem na dobu neurčitou je dostupná pouze automatická platba kartou.')
-                ->atPath('billingMode')
+        if (PaymentMethod::GOPAY === $this->paymentMethod && $rentalDays < PriceCalculator::WEEKLY_THRESHOLD_DAYS) {
+            $context->buildViolation('Platba kartou je dostupná pro pronájmy od 31 dnů. Kratší pronájem se platí bankovním převodem.')
+                ->atPath('paymentMethod')
                 ->addViolation();
         }
     }
@@ -254,38 +234,51 @@ final class AdminOnboardingFormData implements HasBillingAddress
     #[Assert\Callback]
     public function validatePaymentFrequency(ExecutionContextInterface $context): void
     {
-        if (null === $this->paymentFrequency || PaymentFrequency::YEARLY !== $this->paymentFrequency) {
+        if (PaymentFrequency::YEARLY !== $this->paymentFrequency) {
             return;
         }
 
-        if (RentalType::LIMITED === $this->rentalType
-            && null !== $this->startDate && null !== $this->endDate
-            && (int) $this->startDate->diff($this->endDate)->days < PriceCalculator::YEARLY_THRESHOLD_DAYS
-        ) {
+        $rentalDays = $this->rentalDays();
+        if (null === $rentalDays) {
+            return;
+        }
+
+        if ($rentalDays < PriceCalculator::YEARLY_THRESHOLD_DAYS) {
             $context->buildViolation('Roční platba je dostupná pouze pro pronájem na 12 měsíců a déle.')
                 ->atPath('paymentFrequency')
                 ->addViolation();
-
-            return;
-        }
-
-        if (null === $this->billingMode || BillingMode::MANUAL_RECURRING !== $this->billingMode) {
-            $this->billingMode = BillingMode::MANUAL_RECURRING;
         }
     }
 
+    /**
+     * Runs after the other payment callbacks (declaration order): billing mode
+     * always follows {@see BillingMode::derive()}. EXTERNAL derives to
+     * MANUAL_RECURRING (payments handled outside the system, no token).
+     */
     #[Assert\Callback]
-    public function validateExpectedDuration(ExecutionContextInterface $context): void
+    public function deriveBillingMode(ExecutionContextInterface $context): void
     {
-        if (RentalType::UNLIMITED !== $this->rentalType) {
+        $rentalDays = $this->rentalDays();
+        if (null === $this->paymentMethod || null === $rentalDays) {
             return;
         }
 
-        if (null === $this->expectedDuration) {
-            $context->buildViolation('Vyberte předpokládanou dobu pronájmu.')
-                ->atPath('expectedDuration')
-                ->addViolation();
+        $this->billingMode = BillingMode::derive(
+            $this->paymentMethod,
+            $this->paymentFrequency ?? PaymentFrequency::MONTHLY,
+            $rentalDays,
+        );
+    }
+
+    private function rentalDays(): ?int
+    {
+        if (null === $this->startDate || null === $this->endDate) {
+            return null;
         }
+
+        return $this->endDate <= $this->startDate
+            ? 0
+            : (int) $this->startDate->diff($this->endDate)->days;
     }
 
     #[Assert\Callback]
@@ -352,11 +345,8 @@ final class AdminOnboardingFormData implements HasBillingAddress
                 ->addViolation();
         }
 
-        // For fixed-term rentals, cannot exceed the contract end.
-        if (RentalType::LIMITED === $this->rentalType
-            && null !== $this->endDate
-            && $this->paidThroughDate > $this->endDate
-        ) {
+        // Cannot exceed the contract end.
+        if (null !== $this->endDate && $this->paidThroughDate > $this->endDate) {
             $context->buildViolation('Datum předplatby nemůže být po datu konce smlouvy.')
                 ->atPath('paidThroughDate')
                 ->addViolation();

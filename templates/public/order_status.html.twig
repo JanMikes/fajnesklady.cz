@@ -205,10 +205,23 @@
             </div>
         {% endif %}
 
+        {% if vm.prolongUrl %}
+            <div class="mb-6 rounded-lg border border-green-200 bg-green-50 p-4">
+                <div class="flex items-start justify-between gap-4 flex-wrap">
+                    <p class="text-sm text-green-800">
+                        <strong>Pokračovat v pronájmu?</strong>
+                        Smlouvu prodloužíte jedním klikem — stejná skladovací jednotka, stejné podmínky.
+                    </p>
+                    <a href="{{ vm.prolongUrl }}" class="btn btn-primary whitespace-nowrap">Prodloužit smlouvu</a>
+                </div>
+            </div>
+        {% endif %}
+
         {% include 'components/customer_billing_status.html.twig' with {
             contract: vm.contract,
             now: vm.now,
-            manualNowUrl: vm.payManualNowUrl,
+            manualNowVariableSymbol: vm.manualNowVariableSymbol,
+            manualNowBankAccount: vm.manualNowBankAccount,
             manualNowAmount: vm.manualNowAmountInHaler,
             manualNowPeriodStart: vm.manualNowPeriodStart,
             nextManualDate: vm.nextManualPaymentRequestDate,
@@ -271,9 +284,6 @@
                                     {% set displayEndDate = contract is defined and contract ? contract.endDate : order.endDate %}
                                     {% if displayEndDate %}
                                         {{ displayEndDate|date('d.m.Y') }}
-                                        {% if order.rentalType.value == 'unlimited' %}
-                                            <span class="text-xs text-gray-500">(prodlužuje se automaticky)</span>
-                                        {% endif %}
                                     {% else %}
                                         od {{ order.startDate|date('d.m.Y') }}
                                     {% endif %}

@@ -120,20 +120,9 @@
                         <dd class="mt-1 text-sm text-gray-900 font-mono">{{ order.id|slice(0, 8)|upper }}</dd>
                     </div>
                     <div>
-                        <dt class="text-sm font-medium text-gray-500">Typ pronájmu</dt>
-                        <dd class="mt-1 text-sm text-gray-900">
-                            Na dobu určitou
-                            {% if order.rentalType.value == 'unlimited' %}
-                                <span class="text-sm text-gray-500">(s automatickým prodlužováním)</span>
-                            {% endif %}
-                        </dd>
+                        <dt class="text-sm font-medium text-gray-500">Způsob platby</dt>
+                        <dd class="mt-1 text-sm text-gray-900">{{ order.billingMode.label() }}</dd>
                     </div>
-                    {% if order.expectedDuration %}
-                        <div>
-                            <dt class="text-sm font-medium text-gray-500">Předpokládaná doba pronájmu</dt>
-                            <dd class="mt-1 text-sm text-gray-900">{{ order.expectedDuration.label }}</dd>
-                        </div>
-                    {% endif %}
                     <div>
                         <dt class="text-sm font-medium text-gray-500">Datum začátku</dt>
                         <dd class="mt-1 text-sm text-gray-900">{{ order.startDate|date('d.m.Y') }}</dd>
@@ -144,9 +133,7 @@
                             {% set displayEndDate = contract ? contract.endDate : order.endDate %}
                             {% if displayEndDate %}
                                 {{ displayEndDate|date('d.m.Y') }}
-                                {% if order.rentalType.value == 'unlimited' %}
-                                    <span class="text-xs text-gray-500">(prodlužuje se automaticky)</span>
-                                {% elseif contract and daysRemaining is not null and contract.terminatedAt is null %}
+                                {% if contract and daysRemaining is not null and contract.terminatedAt is null %}
                                     <span class="text-gray-500">({{ daysRemaining }} {{ daysRemaining == 1 ? 'den' : (daysRemaining < 5 ? 'dny' : 'dni') }})</span>
                                 {% endif %}
                             {% else %}

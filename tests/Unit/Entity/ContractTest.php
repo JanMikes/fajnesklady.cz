@@ -12,7 +12,6 @@ use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\BillingMode;
 use App\Enum\PaymentFrequency;
-use App\Enum\RentalType;
 use App\Enum\TerminationReason;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
@@ -80,7 +79,6 @@ class ContractTest extends TestCase
             id: Uuid::v7(),
             user: $user,
             storage: $storage,
-            rentalType: RentalType::LIMITED,
             paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: $createdAt->modify('+1 day'),
             endDate: $createdAt->modify('+30 days'),
@@ -94,7 +92,6 @@ class ContractTest extends TestCase
         ?Order $order = null,
         ?User $user = null,
         ?Storage $storage = null,
-        RentalType $rentalType = RentalType::LIMITED,
         ?\DateTimeImmutable $startDate = null,
         ?\DateTimeImmutable $endDate = null,
         ?\DateTimeImmutable $createdAt = null,
@@ -105,13 +102,13 @@ class ContractTest extends TestCase
         $order ??= $this->createOrder($user, $storage);
         $createdAt ??= new \DateTimeImmutable();
         $startDate ??= $createdAt->modify('+1 day');
+        $endDate ??= $startDate->modify('+12 months');
 
         return new Contract(
             id: Uuid::v7(),
             order: $order,
             user: $user,
             storage: $storage,
-            rentalType: $rentalType,
             startDate: $startDate,
             endDate: $endDate,
             createdAt: $createdAt,
@@ -133,7 +130,6 @@ class ContractTest extends TestCase
             order: $order,
             user: $user,
             storage: $storage,
-            rentalType: RentalType::LIMITED,
             startDate: $startDate,
             endDate: $endDate,
             createdAt: $now,
@@ -143,7 +139,6 @@ class ContractTest extends TestCase
         $this->assertSame($order, $contract->order);
         $this->assertSame($user, $contract->user);
         $this->assertSame($storage, $contract->storage);
-        $this->assertSame(RentalType::LIMITED, $contract->rentalType);
         $this->assertSame($startDate, $contract->startDate);
         $this->assertSame($endDate, $contract->endDate);
         $this->assertSame($now, $contract->createdAt);
@@ -152,13 +147,46 @@ class ContractTest extends TestCase
         $this->assertNull($contract->terminatedAt);
     }
 
-    public function testCreateUnlimitedContract(): void
+    public function testHasAvailabilityGuaranteeForAutoRecurringWithLiveToken(): void
     {
-        $contract = $this->createContract(rentalType: RentalType::UNLIMITED, endDate: null);
+        $contract = $this->createContract();
+        $contract->applyBillingMode(BillingMode::AUTO_RECURRING);
 
-        $this->assertSame(RentalType::UNLIMITED, $contract->rentalType);
-        $this->assertNull($contract->endDate);
-        $this->assertTrue($contract->isUnlimited());
+        // No GoPay token yet — no guarantee
+        $this->assertFalse($contract->hasAvailabilityGuarantee());
+
+        $contract->setRecurringPayment('12345', new \DateTimeImmutable('2025-02-01'), new \DateTimeImmutable('2025-02-01'));
+
+        $this->assertTrue($contract->hasAvailabilityGuarantee());
+    }
+
+    public function testHasAvailabilityGuaranteeFalseForManualRecurring(): void
+    {
+        $contract = $this->createContract();
+        $contract->applyBillingMode(BillingMode::MANUAL_RECURRING);
+        $contract->setRecurringPayment('12345', new \DateTimeImmutable('2025-02-01'), new \DateTimeImmutable('2025-02-01'));
+
+        $this->assertFalse($contract->hasAvailabilityGuarantee());
+    }
+
+    public function testHasAvailabilityGuaranteeLostOnTermination(): void
+    {
+        $contract = $this->createContract();
+        $contract->applyBillingMode(BillingMode::AUTO_RECURRING);
+        $contract->setRecurringPayment('12345', new \DateTimeImmutable('2025-02-01'), new \DateTimeImmutable('2025-02-01'));
+        $contract->terminate(new \DateTimeImmutable());
+
+        $this->assertFalse($contract->hasAvailabilityGuarantee());
+    }
+
+    public function testHasAvailabilityGuaranteeLostOnPendingTermination(): void
+    {
+        $contract = $this->createContract();
+        $contract->applyBillingMode(BillingMode::AUTO_RECURRING);
+        $contract->setRecurringPayment('12345', new \DateTimeImmutable('2025-02-01'), new \DateTimeImmutable('2025-02-01'));
+        $contract->requestTermination(new \DateTimeImmutable(), new \DateTimeImmutable('+1 month'));
+
+        $this->assertFalse($contract->hasAvailabilityGuarantee());
     }
 
     public function testSign(): void
@@ -256,27 +284,6 @@ class ContractTest extends TestCase
         $this->assertFalse($contract->isActive($afterEndDate));
     }
 
-    public function testIsActiveForUnlimitedContractWithNoEndDate(): void
-    {
-        $contract = $this->createContract(rentalType: RentalType::UNLIMITED, endDate: null);
-
-        $farFuture = new \DateTimeImmutable('2030-01-01');
-
-        $this->assertTrue($contract->isActive($farFuture));
-    }
-
-    public function testIsUnlimited(): void
-    {
-        $unlimitedContract = $this->createContract(rentalType: RentalType::UNLIMITED, endDate: null);
-        $this->assertTrue($unlimitedContract->isUnlimited());
-
-        $limitedContract = $this->createContract(
-            rentalType: RentalType::LIMITED,
-            endDate: new \DateTimeImmutable('+30 days'),
-        );
-        $this->assertFalse($limitedContract->isUnlimited());
-    }
-
     public function testIsSigned(): void
     {
         $contract = $this->createContract();
@@ -326,7 +333,6 @@ class ContractTest extends TestCase
             order: $order,
             user: $user,
             storage: $storage,
-            rentalType: RentalType::LIMITED,
             startDate: new \DateTimeImmutable('2024-01-01'),
             endDate: new \DateTimeImmutable('2024-12-31'),
             createdAt: new \DateTimeImmutable('2024-01-01'),
@@ -359,7 +365,7 @@ class ContractTest extends TestCase
 
     public function testSetRecurringPayment(): void
     {
-        $contract = $this->createContract(rentalType: RentalType::UNLIMITED, endDate: null);
+        $contract = $this->createContract();
         $nextBillingDate = new \DateTimeImmutable('2024-02-01');
 
         $contract->setRecurringPayment('12345', $nextBillingDate, $nextBillingDate);
@@ -371,14 +377,14 @@ class ContractTest extends TestCase
 
     public function testHasActiveRecurringPaymentReturnsFalseWithoutSetup(): void
     {
-        $contract = $this->createContract(rentalType: RentalType::UNLIMITED, endDate: null);
+        $contract = $this->createContract();
 
         $this->assertFalse($contract->hasActiveRecurringPayment());
     }
 
     public function testRecordBillingCharge(): void
     {
-        $contract = $this->createContract(rentalType: RentalType::UNLIMITED, endDate: null);
+        $contract = $this->createContract();
         $contract->setRecurringPayment('12345', new \DateTimeImmutable('2024-02-01'), new \DateTimeImmutable('2024-02-01'));
 
         // Simulate a failed attempt first
@@ -398,7 +404,7 @@ class ContractTest extends TestCase
 
     public function testRecordFailedBillingAttempt(): void
     {
-        $contract = $this->createContract(rentalType: RentalType::UNLIMITED, endDate: null);
+        $contract = $this->createContract();
         $contract->setRecurringPayment('12345', new \DateTimeImmutable('2024-02-01'), new \DateTimeImmutable('2024-02-01'));
 
         $contract->recordFailedBillingAttempt(new \DateTimeImmutable());
@@ -413,7 +419,7 @@ class ContractTest extends TestCase
 
     public function testCancelRecurringPayment(): void
     {
-        $contract = $this->createContract(rentalType: RentalType::UNLIMITED, endDate: null);
+        $contract = $this->createContract();
         $contract->setRecurringPayment('12345', new \DateTimeImmutable('2024-02-01'), new \DateTimeImmutable('2024-02-01'));
 
         $this->assertTrue($contract->hasActiveRecurringPayment());
@@ -427,7 +433,7 @@ class ContractTest extends TestCase
 
     public function testIsDueBilling(): void
     {
-        $contract = $this->createContract(rentalType: RentalType::UNLIMITED, endDate: null);
+        $contract = $this->createContract();
         $contract->setRecurringPayment('12345', new \DateTimeImmutable('2024-02-01'), new \DateTimeImmutable('2024-02-01'));
 
         // Before due date
@@ -442,14 +448,14 @@ class ContractTest extends TestCase
 
     public function testIsDueBillingReturnsFalseWithoutRecurringPayment(): void
     {
-        $contract = $this->createContract(rentalType: RentalType::LIMITED, endDate: new \DateTimeImmutable('+30 days'));
+        $contract = $this->createContract(endDate: new \DateTimeImmutable('+30 days'));
 
         $this->assertFalse($contract->isDueBilling(new \DateTimeImmutable()));
     }
 
     public function testNeedsRetry(): void
     {
-        $contract = $this->createContract(rentalType: RentalType::UNLIMITED, endDate: null);
+        $contract = $this->createContract();
         $contract->setRecurringPayment('12345', new \DateTimeImmutable('2024-02-01'), new \DateTimeImmutable('2024-02-01'));
 
         // Before failure
@@ -467,7 +473,7 @@ class ContractTest extends TestCase
 
     public function testNeedsRetryAfterSecondFailure(): void
     {
-        $contract = $this->createContract(rentalType: RentalType::UNLIMITED, endDate: null);
+        $contract = $this->createContract();
         $contract->setRecurringPayment('12345', new \DateTimeImmutable('2024-02-01'), new \DateTimeImmutable('2024-02-01'));
 
         $failedAt = new \DateTimeImmutable('2024-02-01');
@@ -483,7 +489,7 @@ class ContractTest extends TestCase
 
     public function testNeedsRetryReturnsFalseAfterThirdFailure(): void
     {
-        $contract = $this->createContract(rentalType: RentalType::UNLIMITED, endDate: null);
+        $contract = $this->createContract();
         $contract->setRecurringPayment('12345', new \DateTimeImmutable('2024-02-01'), new \DateTimeImmutable('2024-02-01'));
 
         $contract->recordFailedBillingAttempt(new \DateTimeImmutable());
@@ -496,7 +502,7 @@ class ContractTest extends TestCase
 
     public function testTerminateWithReason(): void
     {
-        $contract = $this->createContract(rentalType: RentalType::UNLIMITED, endDate: null);
+        $contract = $this->createContract();
         $now = new \DateTimeImmutable();
 
         $contract->terminate($now, TerminationReason::PAYMENT_FAILURE);
@@ -519,7 +525,7 @@ class ContractTest extends TestCase
 
     public function testOutstandingDebt(): void
     {
-        $contract = $this->createContract(rentalType: RentalType::UNLIMITED, endDate: null);
+        $contract = $this->createContract();
 
         $this->assertFalse($contract->hasOutstandingDebt());
 
@@ -531,7 +537,7 @@ class ContractTest extends TestCase
 
     public function testOutstandingDebtZeroIsNotDebt(): void
     {
-        $contract = $this->createContract(rentalType: RentalType::UNLIMITED, endDate: null);
+        $contract = $this->createContract();
         $contract->setOutstandingDebt(0);
 
         $this->assertFalse($contract->hasOutstandingDebt());
@@ -539,7 +545,7 @@ class ContractTest extends TestCase
 
     public function testRequestTermination(): void
     {
-        $contract = $this->createContract(rentalType: RentalType::UNLIMITED, endDate: null);
+        $contract = $this->createContract();
         $noticedAt = new \DateTimeImmutable('2024-03-01');
         $terminatesAt = new \DateTimeImmutable('2024-04-01');
 
@@ -553,7 +559,7 @@ class ContractTest extends TestCase
 
     public function testRequestTerminationThrowsIfAlreadyTerminated(): void
     {
-        $contract = $this->createContract(rentalType: RentalType::UNLIMITED, endDate: null);
+        $contract = $this->createContract();
         $contract->terminate(new \DateTimeImmutable());
 
         $this->expectException(\DomainException::class);
@@ -562,7 +568,7 @@ class ContractTest extends TestCase
 
     public function testRequestTerminationThrowsIfAlreadyPending(): void
     {
-        $contract = $this->createContract(rentalType: RentalType::UNLIMITED, endDate: null);
+        $contract = $this->createContract();
         $contract->requestTermination(new \DateTimeImmutable(), new \DateTimeImmutable('+1 month'));
 
         $this->expectException(\DomainException::class);
@@ -571,7 +577,7 @@ class ContractTest extends TestCase
 
     public function testIsTerminationDue(): void
     {
-        $contract = $this->createContract(rentalType: RentalType::UNLIMITED, endDate: null);
+        $contract = $this->createContract();
         $contract->requestTermination(
             new \DateTimeImmutable('2024-03-01'),
             new \DateTimeImmutable('2024-04-01'),
@@ -582,7 +588,7 @@ class ContractTest extends TestCase
         $this->assertTrue($contract->isTerminationDue(new \DateTimeImmutable('2024-04-15')));
     }
 
-    public function testEffectiveEndDateForLimited(): void
+    public function testEffectiveEndDateReturnsEndDate(): void
     {
         $endDate = new \DateTimeImmutable('+30 days');
         $contract = $this->createContract(endDate: $endDate);
@@ -590,20 +596,16 @@ class ContractTest extends TestCase
         $this->assertEquals($endDate, $contract->getEffectiveEndDate());
     }
 
-    public function testEffectiveEndDateForUnlimitedWithTerminationNotice(): void
+    public function testEffectiveEndDateReturnsTerminatesAtWhenTerminationPending(): void
     {
-        $contract = $this->createContract(rentalType: RentalType::UNLIMITED, endDate: null);
-        $terminatesAt = new \DateTimeImmutable('2024-04-01');
-        $contract->requestTermination(new \DateTimeImmutable('2024-03-01'), $terminatesAt);
+        $contract = $this->createContract(
+            startDate: new \DateTimeImmutable('2025-01-01'),
+            endDate: new \DateTimeImmutable('2026-01-01'),
+        );
+        $terminatesAt = new \DateTimeImmutable('2025-04-01');
+        $contract->requestTermination(new \DateTimeImmutable('2025-03-01'), $terminatesAt);
 
         $this->assertEquals($terminatesAt, $contract->getEffectiveEndDate());
-    }
-
-    public function testEffectiveEndDateForUnlimitedWithoutNotice(): void
-    {
-        $contract = $this->createContract(rentalType: RentalType::UNLIMITED, endDate: null);
-
-        $this->assertNull($contract->getEffectiveEndDate());
     }
 
     public function testGetEffectiveMonthlyAmountFallsBackToStorage(): void
@@ -716,7 +718,7 @@ class ContractTest extends TestCase
 
     public function testDaysUntilExternalPrepaymentEndsReturnsNullWhenContractTerminated(): void
     {
-        $contract = $this->createContract(rentalType: RentalType::UNLIMITED, endDate: null);
+        $contract = $this->createContract();
         $contract->markExternallyPrepaid(new \DateTimeImmutable('2025-07-15'));
         $contract->terminate(new \DateTimeImmutable('2025-06-10'));
 
@@ -760,7 +762,7 @@ class ContractTest extends TestCase
 
     public function testRecordPaymentDemandSent(): void
     {
-        $contract = $this->createContract(rentalType: RentalType::UNLIMITED, endDate: null);
+        $contract = $this->createContract();
         $now = new \DateTimeImmutable();
 
         $this->assertNull($contract->paymentDemandSentAt);
@@ -772,7 +774,7 @@ class ContractTest extends TestCase
 
     public function testRecordBillingChargeClearsPaymentDemand(): void
     {
-        $contract = $this->createContract(rentalType: RentalType::UNLIMITED, endDate: null);
+        $contract = $this->createContract();
         $contract->setRecurringPayment('12345', new \DateTimeImmutable('2024-02-01'), new \DateTimeImmutable('2024-02-01'));
         $contract->recordPaymentDemandSent(new \DateTimeImmutable());
 
@@ -789,7 +791,7 @@ class ContractTest extends TestCase
 
     public function testNeedsRetryVopCompliantTimingDay3ThenDay7(): void
     {
-        $contract = $this->createContract(rentalType: RentalType::UNLIMITED, endDate: null);
+        $contract = $this->createContract();
         $contract->setRecurringPayment('12345', new \DateTimeImmutable('2024-02-01'), new \DateTimeImmutable('2024-02-01'));
 
         // Day 0: initial failure
@@ -847,26 +849,7 @@ class ContractTest extends TestCase
         );
     }
 
-    // -- Spec 058: always "doba určitá" + auto-extension ----------------------
-
-    public function testRecordBillingChargeExtendsEndDateForRecurring(): void
-    {
-        $contract = $this->createContract(
-            rentalType: RentalType::UNLIMITED,
-            startDate: new \DateTimeImmutable('2025-01-01'),
-            endDate: new \DateTimeImmutable('2025-02-01'),
-        );
-        $contract->applyBillingMode(BillingMode::AUTO_RECURRING);
-        $contract->setRecurringPayment('12345', new \DateTimeImmutable('2025-02-01'), new \DateTimeImmutable('2025-02-01'));
-
-        $contract->recordBillingCharge(
-            new \DateTimeImmutable('2025-02-01'),
-            new \DateTimeImmutable('2025-03-01'),
-            new \DateTimeImmutable('2025-03-01'),
-        );
-
-        $this->assertEquals(new \DateTimeImmutable('2025-03-01'), $contract->endDate);
-    }
+    // -- Spec 058/076: always "doba určitá", no auto-extension ----------------
 
     public function testRecordBillingChargeDoesNotExtendEndDateForOneTime(): void
     {
@@ -886,15 +869,15 @@ class ContractTest extends TestCase
         $this->assertEquals($endDate, $contract->endDate);
     }
 
-    public function testRecordBillingChargeDoesNotExtendEndDateForLimitedRecurring(): void
+    public function testRecordBillingChargeDoesNotExtendEndDateForAutoRecurring(): void
     {
         $endDate = new \DateTimeImmutable('2025-07-01');
         $contract = $this->createContract(
-            rentalType: RentalType::LIMITED,
             startDate: new \DateTimeImmutable('2025-01-01'),
             endDate: $endDate,
         );
         $contract->applyBillingMode(BillingMode::AUTO_RECURRING);
+        $contract->setRecurringPayment('12345', new \DateTimeImmutable('2025-02-01'), new \DateTimeImmutable('2025-02-01'));
 
         $contract->recordBillingCharge(
             new \DateTimeImmutable('2025-02-01'),
@@ -908,7 +891,6 @@ class ContractTest extends TestCase
     public function testIsActiveReturnsTrueForAutoRecurringInGrace(): void
     {
         $contract = $this->createContract(
-            rentalType: RentalType::UNLIMITED,
             startDate: new \DateTimeImmutable('2025-01-01'),
             endDate: new \DateTimeImmutable('2025-02-01'),
         );
@@ -922,7 +904,6 @@ class ContractTest extends TestCase
     public function testIsActiveReturnsFalseForAutoRecurringAfterTokenRevoked(): void
     {
         $contract = $this->createContract(
-            rentalType: RentalType::UNLIMITED,
             startDate: new \DateTimeImmutable('2025-01-01'),
             endDate: new \DateTimeImmutable('2025-02-01'),
         );
@@ -937,7 +918,6 @@ class ContractTest extends TestCase
     public function testIsActiveReturnsTrueForManualRecurringInGrace(): void
     {
         $contract = $this->createContract(
-            rentalType: RentalType::UNLIMITED,
             startDate: new \DateTimeImmutable('2025-01-01'),
             endDate: new \DateTimeImmutable('2025-02-01'),
         );
@@ -955,7 +935,6 @@ class ContractTest extends TestCase
     public function testIsActiveReturnsFalseForManualRecurringNoGrace(): void
     {
         $contract = $this->createContract(
-            rentalType: RentalType::UNLIMITED,
             startDate: new \DateTimeImmutable('2025-01-01'),
             endDate: new \DateTimeImmutable('2025-02-01'),
         );
@@ -980,7 +959,6 @@ class ContractTest extends TestCase
     public function testIsInBillingGraceForManualRecurringWithFailedAttempts(): void
     {
         $contract = $this->createContract(
-            rentalType: RentalType::UNLIMITED,
             startDate: new \DateTimeImmutable('2025-01-01'),
             endDate: new \DateTimeImmutable('2025-02-01'),
         );
@@ -993,15 +971,51 @@ class ContractTest extends TestCase
         $this->assertTrue($contract->isActive(new \DateTimeImmutable('2025-02-15')));
     }
 
-    public function testIsLongTermMonthlyTrueForUnlimitedWithShortEndDate(): void
+    public function testEffectiveMonthlyAmountUsesLongTermRateFromThreshold(): void
     {
-        $contract = $this->createContract(
-            rentalType: RentalType::UNLIMITED,
+        $storageType = new StorageType(
+            id: Uuid::v7(),
+            place: $this->createPlace(),
+            name: 'Small Box',
+            innerWidth: 100,
+            innerHeight: 100,
+            innerLength: 100,
+            defaultPricePerWeek: 10000,
+            defaultPricePerMonth: 40000,
+            defaultPricePerMonthLongTerm: 35000,
+            defaultPricePerYear: 35000 * 12,
+            createdAt: new \DateTimeImmutable(),
+        );
+        $storage = new Storage(
+            id: Uuid::v7(),
+            number: 'A1',
+            coordinates: ['x' => 0, 'y' => 0, 'width' => 100, 'height' => 100, 'rotation' => 0],
+            storageType: $storageType,
+            place: $this->createPlace(),
+            createdAt: new \DateTimeImmutable(),
+            owner: $this->createOwner(),
+        );
+        $user = $this->createUser();
+        $order = $this->createOrder($user, $storage);
+
+        // 31 days < 180-day threshold → standard monthly rate
+        $shortTerm = $this->createContract(
+            order: $order,
+            user: $user,
+            storage: $storage,
             startDate: new \DateTimeImmutable('2025-01-01'),
             endDate: new \DateTimeImmutable('2025-02-01'),
         );
+        $this->assertSame(40000, $shortTerm->getEffectiveMonthlyAmount());
 
-        // UNLIMITED with 31-day endDate should still get long-term pricing
-        $this->assertSame(35000, $contract->getEffectiveMonthlyAmount());
+        // 365 days >= 180-day threshold → long-term monthly rate
+        $longTerm = $this->createContract(
+            order: $order,
+            user: $user,
+            storage: $storage,
+            startDate: new \DateTimeImmutable('2025-01-01'),
+            endDate: new \DateTimeImmutable('2026-01-01'),
+        );
+        $this->assertSame(35000, $longTerm->getEffectiveMonthlyAmount());
     }
 }

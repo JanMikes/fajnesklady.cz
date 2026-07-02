@@ -11,7 +11,6 @@ use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\OrderStatus;
 use App\Enum\PaymentFrequency;
-use App\Enum\RentalType;
 use App\Enum\SigningMethod;
 use App\Event\OrderCancelled;
 use App\Event\OrderCompleted;
@@ -80,25 +79,28 @@ class OrderTest extends TestCase
     private function createOrder(
         ?User $user = null,
         ?Storage $storage = null,
-        RentalType $rentalType = RentalType::LIMITED,
-        ?PaymentFrequency $paymentFrequency = null,
+        PaymentFrequency $paymentFrequency = PaymentFrequency::MONTHLY,
         ?\DateTimeImmutable $startDate = null,
         ?\DateTimeImmutable $endDate = null,
         int $firstPaymentPrice = 50000,
         ?\DateTimeImmutable $createdAt = null,
+        bool $legacyOpenEnded = false,
     ): Order {
         $owner = $this->createOwner();
         $user ??= $this->createUser();
         $storage ??= $this->createStorage($owner);
         $createdAt ??= new \DateTimeImmutable();
         $startDate ??= new \DateTimeImmutable('+1 day');
+        if (!$legacyOpenEnded) {
+            // Every new order is fixed-term; NULL endDate exists only on legacy rows.
+            $endDate ??= $startDate->modify('+12 months');
+        }
         $expiresAt = $createdAt->modify('+7 days');
 
         return new Order(
             id: Uuid::v7(),
             user: $user,
             storage: $storage,
-            rentalType: $rentalType,
             paymentFrequency: $paymentFrequency,
             startDate: $startDate,
             endDate: $endDate,
@@ -122,7 +124,6 @@ class OrderTest extends TestCase
             id: Uuid::v7(),
             user: $user,
             storage: $storage,
-            rentalType: RentalType::LIMITED,
             paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: $startDate,
             endDate: $endDate,
@@ -134,7 +135,6 @@ class OrderTest extends TestCase
         $this->assertInstanceOf(Uuid::class, $order->id);
         $this->assertSame($user, $order->user);
         $this->assertSame($storage, $order->storage);
-        $this->assertSame(RentalType::LIMITED, $order->rentalType);
         $this->assertSame(PaymentFrequency::MONTHLY, $order->paymentFrequency);
         $this->assertSame($startDate, $order->startDate);
         $this->assertSame($endDate, $order->endDate);
@@ -493,13 +493,13 @@ class OrderTest extends TestCase
         $this->assertNotNull($order5->cancellationBlockedReason());
     }
 
-    public function testIsUnlimited(): void
+    public function testIsOpenEnded(): void
     {
-        $unlimitedOrder = $this->createOrder(rentalType: RentalType::UNLIMITED);
-        $this->assertTrue($unlimitedOrder->isUnlimited());
+        $legacyOpenEndedOrder = $this->createOrder(legacyOpenEnded: true);
+        $this->assertTrue($legacyOpenEndedOrder->isOpenEnded());
 
-        $limitedOrder = $this->createOrder(rentalType: RentalType::LIMITED);
-        $this->assertFalse($limitedOrder->isUnlimited());
+        $fixedTermOrder = $this->createOrder();
+        $this->assertFalse($fixedTermOrder->isOpenEnded());
     }
 
     public function testPricingModePredicatesShortOneTime(): void
@@ -512,7 +512,7 @@ class OrderTest extends TestCase
         $this->assertFalse($order->isRecurring());
         $this->assertFalse($order->isFixedTermRecurring());
         $this->assertTrue($order->isOneTime());
-        $this->assertFalse($order->isUnlimited());
+        $this->assertFalse($order->isOpenEnded());
     }
 
     public function testPricingModePredicatesAtThresholdMinusOne(): void
@@ -537,21 +537,20 @@ class OrderTest extends TestCase
         $this->assertTrue($order->isRecurring());
         $this->assertTrue($order->isFixedTermRecurring());
         $this->assertFalse($order->isOneTime());
-        $this->assertFalse($order->isUnlimited());
+        $this->assertFalse($order->isOpenEnded());
     }
 
-    public function testPricingModePredicatesUnlimited(): void
+    public function testPricingModePredicatesLegacyOpenEnded(): void
     {
         $order = $this->createOrder(
-            rentalType: RentalType::UNLIMITED,
             startDate: new \DateTimeImmutable('2025-06-15'),
-            endDate: null,
+            legacyOpenEnded: true,
         );
 
         $this->assertTrue($order->isRecurring());
         $this->assertFalse($order->isFixedTermRecurring());
         $this->assertFalse($order->isOneTime());
-        $this->assertTrue($order->isUnlimited());
+        $this->assertTrue($order->isOpenEnded());
     }
 
     /**

@@ -215,8 +215,8 @@ final class OrderFormTest extends KernelTestCase
     }
 
     /**
-     * @param array<string, string>|null $formValues live field values (rentalType/startDate/endDate);
-     *                                               null → a valid LIMITED window, [] → no window
+     * @param array<string, string>|null $formValues live field values (startDate/endDate);
+     *                                               null → a valid window, [] → no window
      */
     private function makeComponent(Place $place, StorageType $storageType, Storage $storage, ?array $formValues = null): OrderForm
     {
@@ -236,7 +236,7 @@ final class OrderFormTest extends KernelTestCase
         $component->storageId = $storage->id->toRfc4122();
         // selectStorage / getStoragesJson resolve the window from the live form values
         // (the client's current field values), exactly as they do during a LiveAction.
-        $component->formValues = $formValues ?? $this->limitedWindowValues();
+        $component->formValues = $formValues ?? $this->validWindowValues();
 
         return $component;
     }
@@ -244,10 +244,9 @@ final class OrderFormTest extends KernelTestCase
     /**
      * @return array<string, string>
      */
-    private function limitedWindowValues(): array
+    private function validWindowValues(): array
     {
         return [
-            'rentalType' => 'limited',
             'startDate' => (new \DateTimeImmutable('+10 days'))->format('Y-m-d'),
             'endDate' => (new \DateTimeImmutable('+40 days'))->format('Y-m-d'),
         ];

@@ -6,7 +6,6 @@ namespace App\Tests\Integration\Event;
 
 use App\Entity\Order;
 use App\Enum\PaymentFrequency;
-use App\Enum\RentalType;
 use App\Event\OrderCancelled;
 use App\Event\SendOrderCancelledEmailHandler;
 use Doctrine\ORM\EntityManagerInterface;
@@ -47,7 +46,7 @@ class SendOrderCancelledEmailHandlerTest extends KernelTestCase
         }, priority: 1024);
     }
 
-    public function testEmailShowsMonthlyLabelForFixedTermRecurring(): void
+    public function testEmailShowsOneShotLabelForShortFixedTerm(): void
     {
         // 30-day rental → one-time (< 31 days threshold).
         $order = $this->findOrderByStorageNumber('B1');
@@ -60,8 +59,9 @@ class SendOrderCancelledEmailHandlerTest extends KernelTestCase
         $this->assertStringNotContainsString('Měsíční platba', $body);
     }
 
-    public function testEmailShowsMonthlyLabelForUnlimited(): void
+    public function testEmailShowsMonthlyLabelForFixedTermRecurring(): void
     {
+        // 12-month card-recurring rental → monthly billing.
         $order = $this->findOrderByStorageNumber('C1');
 
         ($this->handler)(new OrderCancelled($order->id, $this->clock->now()));
@@ -114,7 +114,6 @@ class SendOrderCancelledEmailHandlerTest extends KernelTestCase
             id: Uuid::v7(),
             user: $sourceOrder->user,
             storage: $sourceOrder->storage,
-            rentalType: RentalType::LIMITED,
             paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: $start,
             endDate: $end,

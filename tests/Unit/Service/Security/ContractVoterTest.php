@@ -11,7 +11,6 @@ use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\BillingMode;
-use App\Enum\RentalType;
 use App\Enum\UserRole;
 use App\Service\Security\ContractVoter;
 use PHPUnit\Framework\TestCase;
@@ -50,7 +49,7 @@ class ContractVoterTest extends TestCase
         return $user;
     }
 
-    private function createContract(User $contractUser, ?User $storageOwner = null, RentalType $rentalType = RentalType::LIMITED): Contract
+    private function createContract(User $contractUser, ?User $storageOwner = null): Contract
     {
         $place = new Place(
             id: Uuid::v7(),
@@ -90,10 +89,9 @@ class ContractVoterTest extends TestCase
             id: Uuid::v7(),
             user: $contractUser,
             storage: $storage,
-            rentalType: $rentalType,
             paymentFrequency: null,
             startDate: new \DateTimeImmutable('2024-01-15'),
-            endDate: RentalType::UNLIMITED === $rentalType ? null : new \DateTimeImmutable('2024-02-15'),
+            endDate: new \DateTimeImmutable('2025-01-15'),
             firstPaymentPrice: 35000,
             expiresAt: new \DateTimeImmutable('+7 days'),
             createdAt: new \DateTimeImmutable('2024-01-01'),
@@ -104,9 +102,8 @@ class ContractVoterTest extends TestCase
             order: $order,
             user: $contractUser,
             storage: $storage,
-            rentalType: $rentalType,
             startDate: $order->startDate,
-            endDate: $order->endDate,
+            endDate: new \DateTimeImmutable('2025-01-15'),
             createdAt: new \DateTimeImmutable(),
         );
     }
@@ -157,7 +154,7 @@ class ContractVoterTest extends TestCase
     {
         $user = $this->createUser();
         $landlord = $this->createUser(['ROLE_LANDLORD']);
-        $contract = $this->createContract($user, $landlord, RentalType::UNLIMITED);
+        $contract = $this->createContract($user, $landlord);
         $contract->applyBillingMode(BillingMode::AUTO_RECURRING);
         $token = $this->createToken($user);
 
@@ -170,7 +167,7 @@ class ContractVoterTest extends TestCase
     {
         $user = $this->createUser();
         $landlord = $this->createUser(['ROLE_LANDLORD']);
-        $contract = $this->createContract($user, $landlord, RentalType::LIMITED);
+        $contract = $this->createContract($user, $landlord);
         $contract->applyBillingMode(BillingMode::ONE_TIME);
         $token = $this->createToken($user);
 
@@ -183,7 +180,7 @@ class ContractVoterTest extends TestCase
     {
         $user = $this->createUser();
         $landlord = $this->createUser(['ROLE_LANDLORD']);
-        $contract = $this->createContract($user, $landlord, RentalType::UNLIMITED);
+        $contract = $this->createContract($user, $landlord);
         $contract->applyBillingMode(BillingMode::AUTO_RECURRING);
         $contract->terminate(new \DateTimeImmutable());
         $token = $this->createToken($user);
@@ -197,7 +194,7 @@ class ContractVoterTest extends TestCase
     {
         $user = $this->createUser();
         $landlord = $this->createUser(['ROLE_LANDLORD']);
-        $contract = $this->createContract($user, $landlord, RentalType::UNLIMITED);
+        $contract = $this->createContract($user, $landlord);
         $contract->applyBillingMode(BillingMode::AUTO_RECURRING);
         $contract->requestTermination(new \DateTimeImmutable(), new \DateTimeImmutable('+1 month'));
         $token = $this->createToken($user);
@@ -223,7 +220,7 @@ class ContractVoterTest extends TestCase
     {
         $tenant = $this->createUser();
         $landlord = $this->createUser(['ROLE_LANDLORD']);
-        $contract = $this->createContract($tenant, $landlord, RentalType::UNLIMITED);
+        $contract = $this->createContract($tenant, $landlord);
         $token = $this->createToken($landlord);
 
         $result = $this->voter->vote($token, $contract, [ContractVoter::TERMINATE]);
@@ -249,7 +246,7 @@ class ContractVoterTest extends TestCase
         $tenant = $this->createUser();
         $landlord = $this->createUser(['ROLE_LANDLORD']);
         $admin = $this->createUser(['ROLE_ADMIN']);
-        $contract = $this->createContract($tenant, $landlord, RentalType::UNLIMITED);
+        $contract = $this->createContract($tenant, $landlord);
         $token = $this->createToken($admin);
 
         $result = $this->voter->vote($token, $contract, [ContractVoter::TERMINATE]);

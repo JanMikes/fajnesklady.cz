@@ -10,8 +10,8 @@ use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
+use App\Enum\PaymentFrequency;
 use App\Enum\PaymentMethod;
-use App\Enum\RentalType;
 use App\Service\Order\CustomerBillingSituation;
 use App\Service\Order\RentalActivatedEmailContent;
 use PHPUnit\Framework\TestCase;
@@ -90,14 +90,15 @@ class RentalActivatedEmailContentTest extends TestCase
             owner: $owner,
         );
 
+        $startDate = new \DateTimeImmutable('+1 day');
+
         $order = new Order(
             id: Uuid::v7(),
             user: $user,
             storage: $storage,
-            rentalType: RentalType::UNLIMITED,
-            paymentFrequency: null,
-            startDate: new \DateTimeImmutable('+1 day'),
-            endDate: null,
+            paymentFrequency: PaymentFrequency::MONTHLY,
+            startDate: $startDate,
+            endDate: $startDate->modify('+12 months'),
             firstPaymentPrice: 80_000,
             expiresAt: new \DateTimeImmutable('+7 days'),
             createdAt: new \DateTimeImmutable(),
@@ -109,9 +110,8 @@ class RentalActivatedEmailContentTest extends TestCase
             order: $order,
             user: $user,
             storage: $storage,
-            rentalType: RentalType::UNLIMITED,
             startDate: $order->startDate,
-            endDate: null,
+            endDate: $order->startDate->modify('+12 months'),
             createdAt: new \DateTimeImmutable('2025-06-15 12:00:00'),
         );
     }

@@ -10,7 +10,6 @@ use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\PaymentMethod;
-use App\Enum\RentalType;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
@@ -149,7 +148,6 @@ class OrderOnboardingTest extends TestCase
             id: Uuid::v7(),
             user: $user,
             storage: $storage,
-            rentalType: RentalType::LIMITED,
             paymentFrequency: null,
             startDate: new \DateTimeImmutable('+1 day'),
             endDate: new \DateTimeImmutable('+30 days'),

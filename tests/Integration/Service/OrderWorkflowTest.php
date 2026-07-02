@@ -11,10 +11,8 @@ use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\BillingMode;
-use App\Enum\ExpectedDuration;
 use App\Enum\OrderStatus;
 use App\Enum\PaymentFrequency;
-use App\Enum\RentalType;
 use App\Enum\StorageStatus;
 use App\Service\OrderService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -51,7 +49,6 @@ class OrderWorkflowTest extends KernelTestCase
             $tenant,
             $storageType,
             $place,
-            RentalType::LIMITED,
             $startDate,
             $endDate,
             $now,
@@ -73,7 +70,6 @@ class OrderWorkflowTest extends KernelTestCase
             $tenant,
             $storageType,
             $place,
-            RentalType::LIMITED,
             $startDate,
             $endDate,
             $now,
@@ -107,7 +103,6 @@ class OrderWorkflowTest extends KernelTestCase
             $tenant,
             $storageType,
             $place,
-            RentalType::LIMITED,
             $startDate,
             $endDate,
             $pastDate,
@@ -117,7 +112,6 @@ class OrderWorkflowTest extends KernelTestCase
             $tenant,
             $storageType,
             $place,
-            RentalType::LIMITED,
             $startDate,
             $endDate,
             $pastDate,
@@ -146,7 +140,6 @@ class OrderWorkflowTest extends KernelTestCase
             $tenant,
             $storageType,
             $place,
-            RentalType::LIMITED,
             $startDate,
             $endDate,
             $now,
@@ -173,7 +166,6 @@ class OrderWorkflowTest extends KernelTestCase
             $tenant,
             $storageType,
             $place,
-            RentalType::LIMITED,
             $startDate,
             $endDate,
             $now,
@@ -202,7 +194,6 @@ class OrderWorkflowTest extends KernelTestCase
             $tenant,
             $storageType,
             $place,
-            RentalType::LIMITED,
             $startDate,
             $endDate,
             $now,
@@ -230,7 +221,6 @@ class OrderWorkflowTest extends KernelTestCase
         $this->assertTrue($contract->order->id->equals($order->id));
         $this->assertTrue($contract->user->id->equals($tenant->id));
         $this->assertTrue($contract->storage->id->equals($order->storage->id));
-        $this->assertSame($order->rentalType, $contract->rentalType);
         $this->assertEquals($order->startDate, $contract->startDate);
         $this->assertEquals($order->endDate, $contract->endDate);
     }
@@ -247,7 +237,6 @@ class OrderWorkflowTest extends KernelTestCase
             $tenant,
             $storageType,
             $place,
-            RentalType::LIMITED,
             $startDate,
             $endDate,
             $now,
@@ -273,7 +262,6 @@ class OrderWorkflowTest extends KernelTestCase
             $tenant,
             $storageType,
             $place,
-            RentalType::LIMITED,
             $startDate,
             $endDate,
             $now,
@@ -303,7 +291,6 @@ class OrderWorkflowTest extends KernelTestCase
             $tenant,
             $storageType,
             $place,
-            RentalType::LIMITED,
             $startDate,
             $endDate,
             $now,
@@ -320,25 +307,46 @@ class OrderWorkflowTest extends KernelTestCase
         $this->orderService->confirmPayment($order);
     }
 
-    public function testUnlimitedRentalOrderCreation(): void
+    public function testOrderCreationWithoutEndDateIsRejected(): void
     {
+        // Spec 076: every order is fixed-term — a null endDate must throw.
         [$tenant, $storageType, $place] = $this->getFixtures();
 
         $now = $this->clock->now();
         $startDate = $now->modify('+1 day');
 
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Every order must have an end date; open-ended rentals no longer exist.');
+
+        $this->orderService->createOrder(
+            $tenant,
+            $storageType,
+            $place,
+            $startDate,
+            null,
+            $now,
+        );
+    }
+
+    public function testTwelveMonthRentalUsesLongTermMonthlyRate(): void
+    {
+        [$tenant, $storageType, $place] = $this->getFixtures();
+
+        $now = $this->clock->now();
+        $startDate = $now->modify('+1 day');
+        $endDate = $startDate->modify('+12 months');
+
         $order = $this->orderService->createOrder(
             $tenant,
             $storageType,
             $place,
-            RentalType::UNLIMITED,
             $startDate,
-            null, // No end date for unlimited
+            $endDate,
             $now,
         );
 
-        $this->assertTrue($order->isUnlimited());
-        $this->assertNull($order->endDate);
+        $this->assertFalse($order->isOpenEnded());
+        $this->assertEquals($endDate, $order->endDate);
         // Maly box has defaultPricePerMonthLongTerm = 430 CZK = 43000 halere
         $this->assertSame(43000, $order->firstPaymentPrice);
     }
@@ -370,7 +378,6 @@ class OrderWorkflowTest extends KernelTestCase
             $tenant,
             $storage->storageType,
             $place,
-            RentalType::LIMITED,
             $startDate,
             $endDate,
             $now,
@@ -391,7 +398,7 @@ class OrderWorkflowTest extends KernelTestCase
             ->select('s')
             ->from(Storage::class, 's')
             ->where('s.number = :n')
-            ->setParameter('n', 'C1') // OCCUPIED, unlimited contract — always overlaps
+            ->setParameter('n', 'C1') // OCCUPIED, card-recurring contract with live token — blocks open-endedly
             ->getQuery()
             ->getSingleResult();
 
@@ -404,7 +411,6 @@ class OrderWorkflowTest extends KernelTestCase
             $tenant,
             $storage->storageType,
             $place,
-            RentalType::LIMITED,
             $startDate,
             $endDate,
             $now,
@@ -423,7 +429,6 @@ class OrderWorkflowTest extends KernelTestCase
             $tenant,
             $storageType,
             $place,
-            RentalType::LIMITED,
             new \DateTimeImmutable('2024-01-01'),
             new \DateTimeImmutable('2024-01-08'),
             $now,
@@ -431,49 +436,6 @@ class OrderWorkflowTest extends KernelTestCase
 
         // Maly box has pricePerWeek = 150 CZK = 15000 halere
         $this->assertSame(15000, $order->firstPaymentPrice);
-    }
-
-    public function testExpectedDurationIsStoredForUnlimitedRental(): void
-    {
-        [$tenant, $storageType, $place] = $this->getFixtures();
-
-        $now = $this->clock->now();
-
-        $order = $this->orderService->createOrder(
-            $tenant,
-            $storageType,
-            $place,
-            RentalType::UNLIMITED,
-            $now->modify('+1 day'),
-            null,
-            $now,
-            expectedDuration: ExpectedDuration::MEDIUM,
-        );
-
-        $this->assertSame(ExpectedDuration::MEDIUM, $order->expectedDuration);
-    }
-
-    public function testExpectedDurationIsDroppedForLimitedRental(): void
-    {
-        [$tenant, $storageType, $place] = $this->getFixtures();
-
-        $now = $this->clock->now();
-
-        // Defensive guard: even if a caller accidentally hands a non-null
-        // expectedDuration to a LIMITED rental, OrderService MUST drop it on
-        // the floor — the column is research-only and exclusive to UNLIMITED.
-        $order = $this->orderService->createOrder(
-            $tenant,
-            $storageType,
-            $place,
-            RentalType::LIMITED,
-            new \DateTimeImmutable('2024-01-01'),
-            new \DateTimeImmutable('2024-01-08'),
-            $now,
-            expectedDuration: ExpectedDuration::LONG,
-        );
-
-        $this->assertNull($order->expectedDuration);
     }
 
     private function countExpirableOrders(\DateTimeImmutable $now): int
@@ -491,12 +453,13 @@ class OrderWorkflowTest extends KernelTestCase
             ->getSingleScalarResult();
     }
 
-    public function testYearlyUnlimitedOrderPropagatesFrequencyToContract(): void
+    public function testYearlyOrderPropagatesFrequencyToContract(): void
     {
-        // Spec 045 — UNLIMITED yearly order. firstPaymentPrice is the yearly
-        // amount; the contract inherits paymentFrequency = YEARLY and is forced
-        // MANUAL_RECURRING. No GoPay token is stored, but CompleteOrderHandler
-        // still has to seed nextBillingDate (or the manual cron stays blind).
+        // Spec 045/076 — yearly order. firstPaymentPrice is the yearly
+        // amount; the contract inherits paymentFrequency = YEARLY and is
+        // MANUAL_RECURRING (yearly always derives manual billing). No GoPay
+        // token is stored, but CompleteOrderHandler still has to seed
+        // nextBillingDate (or the manual cron stays blind).
         [$tenant, $storageType, $place] = $this->getFixtures();
         // Seed an explicit yearly rate so we exercise the discount path rather
         // than the monthly×12 fallback.
@@ -519,17 +482,16 @@ class OrderWorkflowTest extends KernelTestCase
         );
 
         $now = $this->clock->now();
+        $startDate = $now->modify('+1 day');
 
         $order = $this->orderService->createOrder(
             user: $tenant,
             storageType: $storageType,
             place: $place,
-            rentalType: RentalType::UNLIMITED,
-            startDate: $now->modify('+1 day'),
-            endDate: null,
+            startDate: $startDate,
+            endDate: $startDate->modify('+12 months'),
             now: $now,
             paymentFrequency: PaymentFrequency::YEARLY,
-            expectedDuration: ExpectedDuration::LONG,
         );
         $order->setBillingMode(BillingMode::MANUAL_RECURRING);
 
@@ -551,6 +513,7 @@ class OrderWorkflowTest extends KernelTestCase
     {
         [$tenant, $storageType, $place] = $this->getFixtures();
         $now = $this->clock->now();
+        $startDate = $now->modify('+1 day');
 
         // A per-customer monthly price is meaningless for yearly billing and
         // would be silently dropped on recurring charges — must be rejected.
@@ -560,13 +523,11 @@ class OrderWorkflowTest extends KernelTestCase
             user: $tenant,
             storageType: $storageType,
             place: $place,
-            rentalType: RentalType::UNLIMITED,
-            startDate: $now->modify('+1 day'),
-            endDate: null,
+            startDate: $startDate,
+            endDate: $startDate->modify('+12 months'),
             now: $now,
             paymentFrequency: PaymentFrequency::YEARLY,
             monthlyPriceOverride: 150000,
-            expectedDuration: ExpectedDuration::LONG,
         );
     }
 
@@ -576,18 +537,17 @@ class OrderWorkflowTest extends KernelTestCase
         // charge, so the per-customer-override guard must NOT reject it.
         [$tenant, $storageType, $place] = $this->getFixtures();
         $now = $this->clock->now();
+        $startDate = $now->modify('+1 day');
 
         $order = $this->orderService->createOrder(
             user: $tenant,
             storageType: $storageType,
             place: $place,
-            rentalType: RentalType::UNLIMITED,
-            startDate: $now->modify('+1 day'),
-            endDate: null,
+            startDate: $startDate,
+            endDate: $startDate->modify('+12 months'),
             now: $now,
             paymentFrequency: PaymentFrequency::YEARLY,
             monthlyPriceOverride: 0,
-            expectedDuration: ExpectedDuration::LONG,
         );
 
         $this->assertSame(0, $order->firstPaymentPrice);

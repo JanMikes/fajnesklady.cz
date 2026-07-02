@@ -11,7 +11,6 @@ use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\PaymentFrequency;
-use App\Enum\RentalType;
 use App\Event\ContractPriceChanged;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
@@ -164,7 +163,6 @@ class ContractPriceChangedEventTest extends TestCase
             id: Uuid::v7(),
             user: $user,
             storage: $storage,
-            rentalType: RentalType::LIMITED,
             paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: new \DateTimeImmutable('+1 day'),
             endDate: new \DateTimeImmutable('+30 days'),
@@ -178,7 +176,6 @@ class ContractPriceChangedEventTest extends TestCase
             order: $order,
             user: $user,
             storage: $storage,
-            rentalType: RentalType::LIMITED,
             startDate: new \DateTimeImmutable(),
             endDate: new \DateTimeImmutable('+30 days'),
             createdAt: new \DateTimeImmutable(),

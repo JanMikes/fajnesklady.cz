@@ -28,21 +28,18 @@ final readonly class InitiatePaymentHandler
 
         $this->orderService->processPayment($order, $now);
 
-        // Branch on Order.billingMode — AUTO sets up a GoPay ON_DEMAND token,
-        // ONE_TIME and MANUAL_RECURRING take the same one-shot path because the
-        // customer is paying just the first month in both cases.
-        $payment = match ($order->billingMode) {
-            BillingMode::AUTO_RECURRING => $this->goPayClient->createRecurringPayment(
-                $order,
-                $command->returnUrl,
-                $command->notificationUrl,
-            ),
-            BillingMode::ONE_TIME, BillingMode::MANUAL_RECURRING => $this->goPayClient->createPayment(
-                $order,
-                $command->returnUrl,
-                $command->notificationUrl,
-            ),
-        };
+        // Spec 076: cards only establish recurring monthly payments. Every
+        // other billing mode is paid by bank transfer and never reaches this
+        // endpoint (the payment page renders a QR code, no GoPay JS).
+        if (BillingMode::AUTO_RECURRING !== $order->billingMode) {
+            throw new \LogicException('Card payments are recurring-only; non-recurring orders are paid by bank transfer.');
+        }
+
+        $payment = $this->goPayClient->createRecurringPayment(
+            $order,
+            $command->returnUrl,
+            $command->notificationUrl,
+        );
 
         $order->setGoPayPaymentId($payment->id);
 

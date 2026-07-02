@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Event;
 
-use App\Enum\RentalType;
 use App\Repository\ContractRepository;
 use App\Service\Order\OrderReferenceFormatter;
 use App\Service\OrderStatusUrlGenerator;
@@ -38,9 +37,10 @@ final readonly class SendContractExpiringReminderHandler
 
         $statusUrl = $this->statusUrlGenerator->generate($contract->order);
 
-        // Signed link — the renewal page prefills the customer's PII, so it
-        // must not be reachable by guessing an order id (see OrderRenewController).
-        $renewalUrl = $this->statusUrlGenerator->generateRenewal($contract->order);
+        // Signed link to the prolongation page (spec 077) — the contract is
+        // still active when this reminder fires, so continuation means
+        // prolonging in place, not a fresh order.
+        $prolongUrl = $this->statusUrlGenerator->generateProlongation($contract);
 
         $subject = 1 === $event->daysRemaining
             ? 'Zítra končí Vaše smlouva - '.$place->name
@@ -59,11 +59,10 @@ final readonly class SendContractExpiringReminderHandler
                 'placeNavigationUrl' => $this->addressFormatter->navigationUrl($place),
                 'storageType' => $storageType->name,
                 'storageNumber' => $storage->number,
-                'endDate' => $contract->endDate?->format('d.m.Y'),
+                'endDate' => $contract->endDate->format('d.m.Y'),
                 'daysRemaining' => $event->daysRemaining,
                 'statusUrl' => $statusUrl,
-                'renewalUrl' => $renewalUrl,
-                'isLimited' => RentalType::LIMITED === $contract->rentalType,
+                'prolongUrl' => $prolongUrl,
             ]);
 
         $email->getHeaders()->addTextHeader('X-Order-Id', $contract->order->id->toRfc4122());

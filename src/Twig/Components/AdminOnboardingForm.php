@@ -11,7 +11,6 @@ use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\PaymentFrequency;
-use App\Enum\RentalType;
 use App\Form\AdminOnboardingFormData;
 use App\Form\AdminOnboardingFormType;
 use App\Repository\PlaceRepository;
@@ -151,8 +150,7 @@ final class AdminOnboardingForm extends AbstractController
 
     /**
      * The rental window the admin has currently chosen, or null when it is not
-     * yet usable (no rental type / start date, or LIMITED without a valid end).
-     * UNLIMITED resolves to an open-ended window (null end). Drives the same
+     * yet usable (no start date, or no valid end after it). Drives the same
      * availability check the order-acceptance enforcement uses.
      *
      * Read from the live {@see $formValues} (the admin's current field values),
@@ -160,21 +158,12 @@ final class AdminOnboardingForm extends AbstractController
      * the #[PreReRender] form submit, so getData() would still hold the freshly
      * instantiated (empty) model, not the dates just entered.
      *
-     * @return array{\DateTimeImmutable, ?\DateTimeImmutable}|null
+     * @return array{\DateTimeImmutable, \DateTimeImmutable}|null
      */
     private function resolveWindow(): ?array
     {
         $start = $this->parseFormDate($this->formValues['startDate'] ?? null);
         if (null === $start) {
-            return null;
-        }
-
-        $rentalType = (string) ($this->formValues['rentalType'] ?? '');
-        if (RentalType::UNLIMITED->value === $rentalType) {
-            return [$start, null];
-        }
-
-        if (RentalType::LIMITED->value !== $rentalType) {
             return null;
         }
 
@@ -240,7 +229,7 @@ final class AdminOnboardingForm extends AbstractController
                 'tenantName' => null,
                 'rentedFrom' => null,
                 'rentedUntil' => null,
-                'isUnlimited' => false,
+                'hasGuarantee' => false,
                 'isTerminating' => false,
                 'startsOnViewDate' => false,
                 'endsOnViewDate' => false,
@@ -268,7 +257,7 @@ final class AdminOnboardingForm extends AbstractController
             return null;
         }
 
-        if (null === $data->startDate || null === $data->rentalType) {
+        if (null === $data->startDate || null === $data->endDate) {
             return null;
         }
 
@@ -306,7 +295,7 @@ final class AdminOnboardingForm extends AbstractController
         // mistake. Same date-range checker the order-acceptance enforcement uses.
         $window = $this->resolveWindow();
         if (null === $window) {
-            $this->storageError = 'Nejdříve zvolte typ pronájmu a termín (datum začátku, u doby určité i konce).';
+            $this->storageError = 'Nejdříve zvolte termín pronájmu (datum začátku i konce).';
 
             return;
         }
@@ -358,7 +347,7 @@ final class AdminOnboardingForm extends AbstractController
         /** @var AdminOnboardingFormData $formData */
         $formData = $form->getData();
         \assert(null !== $formData->startDate);
-        \assert(null !== $formData->rentalType);
+        \assert(null !== $formData->endDate);
         \assert(null !== $formData->paymentMethod);
         \assert(null !== $formData->billingMode);
         \assert(null !== $formData->paymentFrequency);
@@ -419,7 +408,6 @@ final class AdminOnboardingForm extends AbstractController
                 storage: $storage,
                 storageType: $storageType,
                 place: $place,
-                rentalType: $formData->rentalType,
                 startDate: $formData->startDate,
                 endDate: $formData->endDate,
                 paymentMethod: $formData->paymentMethod,
@@ -427,7 +415,6 @@ final class AdminOnboardingForm extends AbstractController
                 paidThroughDate: $paidThroughDate,
                 createdByAdminId: $admin->id,
                 billingMode: $formData->billingMode,
-                expectedDuration: $formData->expectedDuration,
                 paymentFrequency: $formData->paymentFrequency,
                 variableSymbolOverride: $formData->variableSymbol,
                 uploadedContractPath: $uploadedContractPath,

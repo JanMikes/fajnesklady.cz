@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Event;
 
-use App\Enum\PaymentMethod;
 use App\Repository\ContractRepository;
 use App\Repository\ManualPaymentRequestRepository;
 use App\Service\Billing\ManualBillingReminderSchedule;
@@ -67,8 +66,9 @@ final readonly class SendManualBillingPaymentOverdueEmailHandler
 
         $statusUrl = $this->statusUrlGenerator->generate($contract->order);
         $order = $contract->order;
-        $isBankTransfer = PaymentMethod::BANK_TRANSFER === $order->paymentMethod;
 
+        // Spec 076: every manual cycle is paid by bank transfer — the dispatcher
+        // guarantees a variable symbol before this event fires.
         $email = (new TemplatedEmail())
             ->from(new Address('noreply@fajnesklady.cz', 'Fajnesklady.cz'))
             ->to(new Address($user->email, $user->fullName))
@@ -82,12 +82,10 @@ final readonly class SendManualBillingPaymentOverdueEmailHandler
                 'amountInCzk' => number_format($request->amount / 100, 2, ',', ' '),
                 'periodStart' => $request->periodStart,
                 'periodEnd' => $request->periodEnd,
-                'gatewayUrl' => $isBankTransfer ? null : $request->goPayGatewayUrl,
                 'statusUrl' => $statusUrl,
-                'isBankTransfer' => $isBankTransfer,
-                'bankAccount' => $isBankTransfer ? $this->qrPaymentGenerator->getBankAccountFormatted() : null,
-                'variableSymbol' => $isBankTransfer ? $order->variableSymbol : null,
-                'qrCodeDataUri' => $isBankTransfer && null !== $order->variableSymbol
+                'bankAccount' => $this->qrPaymentGenerator->getBankAccountFormatted(),
+                'variableSymbol' => $order->variableSymbol,
+                'qrCodeDataUri' => null !== $order->variableSymbol
                     ? $this->qrPaymentGenerator->generateImageUrl($order->variableSymbol, $request->amount)
                     : null,
             ]);

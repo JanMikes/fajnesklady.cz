@@ -9,8 +9,8 @@ use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
+use App\Enum\PaymentFrequency;
 use App\Enum\PaymentMethod;
-use App\Enum\RentalType;
 use App\Service\Order\CustomerBillingSituation;
 use App\Service\Order\SigningPriceViewModel;
 use PHPUnit\Framework\TestCase;
@@ -84,14 +84,15 @@ class SigningPriceViewModelTest extends TestCase
             owner: $owner,
         );
 
+        $startDate = new \DateTimeImmutable('+1 day');
+
         $order = new Order(
             id: Uuid::v7(),
             user: $user,
             storage: $storage,
-            rentalType: RentalType::UNLIMITED,
-            paymentFrequency: null,
-            startDate: new \DateTimeImmutable('+1 day'),
-            endDate: null,
+            paymentFrequency: PaymentFrequency::MONTHLY,
+            startDate: $startDate,
+            endDate: $startDate->modify('+12 months'),
             firstPaymentPrice: $firstPaymentPrice,
             expiresAt: new \DateTimeImmutable('+7 days'),
             createdAt: new \DateTimeImmutable(),

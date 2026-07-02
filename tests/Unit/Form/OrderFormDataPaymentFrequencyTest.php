@@ -6,7 +6,7 @@ namespace App\Tests\Unit\Form;
 
 use App\Enum\BillingMode;
 use App\Enum\PaymentFrequency;
-use App\Enum\RentalType;
+use App\Enum\PaymentMethod;
 use App\Form\OrderFormData;
 use App\Tests\Mock\MockAddressValidator;
 use App\Validator\AddressExistsValidator;
@@ -16,14 +16,13 @@ use Symfony\Component\Validator\Validation;
 
 final class OrderFormDataPaymentFrequencyTest extends TestCase
 {
-    public function testShortLimitedYearlyFails(): void
+    public function testShortRentalYearlyFails(): void
     {
         $data = $this->validData();
-        $data->rentalType = RentalType::LIMITED;
-        $data->startDate = new \DateTimeImmutable('2026-06-01');
-        $data->endDate = new \DateTimeImmutable('2026-12-01'); // ~6 months
+        $data->paymentMethod = PaymentMethod::BANK_TRANSFER;
+        $data->startDate = new \DateTimeImmutable('+1 day');
+        $data->endDate = new \DateTimeImmutable('+181 days'); // ~6 months
         $data->paymentFrequency = PaymentFrequency::YEARLY;
-        $data->billingMode = BillingMode::MANUAL_RECURRING;
 
         $violations = $this->validator()->validate($data);
         $messages = array_map(static fn ($v): string => (string) $v->getMessage(), iterator_to_array($violations));
@@ -31,14 +30,13 @@ final class OrderFormDataPaymentFrequencyTest extends TestCase
         self::assertContains('Roční platba je dostupná pouze pro pronájem na 12 měsíců a déle.', $messages);
     }
 
-    public function testLimitedAtThresholdYearlyPasses(): void
+    public function testAtThresholdYearlyPasses(): void
     {
         $data = $this->validData();
-        $data->rentalType = RentalType::LIMITED;
-        $data->startDate = new \DateTimeImmutable('2026-06-01');
-        $data->endDate = new \DateTimeImmutable('2027-05-27'); // 360 days exactly
+        $data->paymentMethod = PaymentMethod::BANK_TRANSFER;
+        $data->startDate = new \DateTimeImmutable('+1 day');
+        $data->endDate = new \DateTimeImmutable('+361 days'); // 360 days exactly
         $data->paymentFrequency = PaymentFrequency::YEARLY;
-        $data->billingMode = BillingMode::MANUAL_RECURRING;
 
         $violations = $this->validator()->validate($data);
         $frequencyViolations = array_filter(
@@ -49,55 +47,41 @@ final class OrderFormDataPaymentFrequencyTest extends TestCase
         self::assertCount(0, $frequencyViolations);
     }
 
-    public function testUnlimitedYearlyAlwaysEligible(): void
+    public function testYearlyDerivesManualRecurring(): void
     {
+        // Yearly cadence can never run on a stored card — the derivation
+        // overwrites a stale AUTO value (e.g. restored from session).
         $data = $this->validData();
-        $data->rentalType = RentalType::UNLIMITED;
-        $data->endDate = null;
-        $data->expectedDuration = \App\Enum\ExpectedDuration::MEDIUM;
-        $data->paymentFrequency = PaymentFrequency::YEARLY;
-        $data->billingMode = BillingMode::MANUAL_RECURRING;
-
-        $violations = $this->validator()->validate($data);
-        $frequencyViolations = array_filter(
-            iterator_to_array($violations),
-            static fn ($v): bool => 'paymentFrequency' === $v->getPropertyPath(),
-        );
-
-        self::assertCount(0, $frequencyViolations);
-    }
-
-    public function testYearlyAutoCorrectsAutoToManual(): void
-    {
-        $data = $this->validData();
-        $data->rentalType = RentalType::UNLIMITED;
-        $data->endDate = null;
-        $data->expectedDuration = \App\Enum\ExpectedDuration::MEDIUM;
+        $data->paymentMethod = PaymentMethod::BANK_TRANSFER;
+        $data->startDate = new \DateTimeImmutable('+1 day');
+        $data->endDate = new \DateTimeImmutable('+366 days'); // 365 days
         $data->paymentFrequency = PaymentFrequency::YEARLY;
         $data->billingMode = BillingMode::AUTO_RECURRING;
 
-        $this->validator()->validate($data);
+        $violations = $this->validator()->validate($data);
 
-        // Validate side-effects: AUTO got silently corrected to MANUAL because
-        // yearly cadence can never run on a stored card.
+        self::assertCount(0, $violations);
         self::assertSame(BillingMode::MANUAL_RECURRING, $data->billingMode);
     }
 
-    public function testYearlySuppressesUnlimitedAutoRule(): void
+    public function testGopayYearlyFails(): void
     {
-        // UNLIMITED + MANUAL would normally fail with "only AUTO available"
-        // but YEARLY short-circuits the validateBillingMode rule.
+        // Cards only establish recurring monthly payments (spec 076) — yearly
+        // is bank-transfer territory even when the rental is long enough.
         $data = $this->validData();
-        $data->rentalType = RentalType::UNLIMITED;
-        $data->endDate = null;
-        $data->expectedDuration = \App\Enum\ExpectedDuration::MEDIUM;
+        $data->paymentMethod = PaymentMethod::GOPAY;
+        $data->startDate = new \DateTimeImmutable('+1 day');
+        $data->endDate = new \DateTimeImmutable('+366 days'); // 365 days
         $data->paymentFrequency = PaymentFrequency::YEARLY;
-        $data->billingMode = BillingMode::MANUAL_RECURRING;
 
         $violations = $this->validator()->validate($data);
-        $messages = array_map(static fn ($v): string => (string) $v->getMessage(), iterator_to_array($violations));
+        $frequencyViolations = array_filter(
+            iterator_to_array($violations),
+            static fn ($v): bool => 'paymentFrequency' === $v->getPropertyPath(),
+        );
+        $messages = array_map(static fn ($v): string => (string) $v->getMessage(), $frequencyViolations);
 
-        self::assertNotContains('Pro pronájem na dobu neurčitou je dostupná pouze automatická platba kartou.', $messages);
+        self::assertContains('Roční platbu lze platit pouze bankovním převodem.', $messages);
     }
 
     private function validData(): OrderFormData

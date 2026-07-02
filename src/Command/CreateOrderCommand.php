@@ -8,9 +8,7 @@ use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
-use App\Enum\ExpectedDuration;
 use App\Enum\PaymentFrequency;
-use App\Enum\RentalType;
 
 /**
  * Create a new order with storage assignment.
@@ -21,12 +19,10 @@ final readonly class CreateOrderCommand
         public User $user,
         public StorageType $storageType,
         public Place $place,
-        public RentalType $rentalType,
         public \DateTimeImmutable $startDate,
-        public ?\DateTimeImmutable $endDate,
+        public \DateTimeImmutable $endDate,
         public PaymentFrequency $paymentFrequency = PaymentFrequency::MONTHLY,
         public ?Storage $preSelectedStorage = null,
-        public ?ExpectedDuration $expectedDuration = null,
     ) {
     }
 }

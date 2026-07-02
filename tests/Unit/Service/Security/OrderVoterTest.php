@@ -9,7 +9,6 @@ use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
-use App\Enum\RentalType;
 use App\Service\Security\OrderVoter;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
@@ -87,7 +86,6 @@ class OrderVoterTest extends TestCase
             id: Uuid::v7(),
             user: $orderUser,
             storage: $storage,
-            rentalType: RentalType::LIMITED,
             paymentFrequency: null,
             startDate: new \DateTimeImmutable('2024-01-15'),
             endDate: new \DateTimeImmutable('2024-02-15'),

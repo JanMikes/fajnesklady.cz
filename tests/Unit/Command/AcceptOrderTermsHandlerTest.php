@@ -11,7 +11,6 @@ use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
-use App\Enum\RentalType;
 use App\Repository\AuditLogRepository;
 use App\Service\AuditLogger;
 use App\Service\Identity\ProvideIdentity;
@@ -148,7 +147,6 @@ class AcceptOrderTermsHandlerTest extends TestCase
             id: Uuid::v7(),
             user: $user,
             storage: $storage,
-            rentalType: RentalType::LIMITED,
             paymentFrequency: null,
             startDate: new \DateTimeImmutable('+1 day'),
             endDate: new \DateTimeImmutable('+30 days'),

@@ -53,7 +53,7 @@ final readonly class SendStorageAvailabilityWarningHandler
                 'userName' => $contract->user->fullName,
                 'userEmail' => $contract->user->email,
                 'storageNumber' => $contract->storage->number,
-                'contractEndDate' => $contract->endDate?->format('d.m.Y'),
+                'contractEndDate' => $contract->endDate->format('d.m.Y'),
             ];
         }
 
@@ -85,7 +85,7 @@ final readonly class SendStorageAvailabilityWarningHandler
                 'placeNavigationUrl' => $this->addressFormatter->navigationUrl($place),
                 'storageTypeName' => $storageType->name,
                 'storageNumber' => $storage->number,
-                'endDate' => $contract->endDate?->format('d.m.Y'),
+                'endDate' => $contract->endDate->format('d.m.Y'),
                 'portalUrl' => $portalUrl,
             ]);
 

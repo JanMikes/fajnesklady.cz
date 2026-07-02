@@ -10,7 +10,7 @@ use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
-use App\Enum\RentalType;
+use App\Enum\PaymentFrequency;
 use App\Event\PaymentAmountMismatch;
 use App\Event\SendAmountMismatchAlertEmailHandler;
 use App\Repository\ContractRepository;
@@ -170,10 +170,9 @@ final class SendAmountMismatchAlertEmailHandlerTest extends TestCase
             id: Uuid::v7(),
             user: $user,
             storage: $storage,
-            rentalType: RentalType::UNLIMITED,
-            paymentFrequency: null,
+            paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: $now,
-            endDate: null,
+            endDate: $now->modify('+12 months'),
             firstPaymentPrice: 150_000,
             expiresAt: $now->modify('+7 days'),
             createdAt: $now,
@@ -184,9 +183,8 @@ final class SendAmountMismatchAlertEmailHandlerTest extends TestCase
             order: $order,
             user: $user,
             storage: $storage,
-            rentalType: RentalType::UNLIMITED,
             startDate: $now,
-            endDate: null,
+            endDate: $now->modify('+12 months'),
             createdAt: $now,
         );
     }

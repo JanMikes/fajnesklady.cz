@@ -80,9 +80,9 @@ class OrderStatusControllerTest extends WebTestCase
 
     public function testActiveContractRendersAccessCodeBlockWhenStorageHasLockCode(): void
     {
-        // REF_ORDER_COMPLETED_UNLIMITED uses storage C1 in Praha Centrum which is
+        // REF_ORDER_COMPLETED_RECURRING uses storage C1 in Praha Centrum which is
         // seeded with lock code 0577 in fixtures. Contract is active (not terminated).
-        $order = $this->findOrderByReference(OrderFixtures::REF_ORDER_COMPLETED_UNLIMITED);
+        $order = $this->findOrderByReference(OrderFixtures::REF_ORDER_COMPLETED_RECURRING);
 
         $this->requestSigned($this->urlGenerator->generate($order));
 
@@ -98,7 +98,7 @@ class OrderStatusControllerTest extends WebTestCase
         // — flip the contract into a terminated state so the partial's gating
         // condition fails. Mutating the fixture inside the test is safe because
         // DAMA DoctrineTestBundle wraps each test in a rollback-only transaction.
-        $order = $this->findOrderByReference(OrderFixtures::REF_ORDER_COMPLETED_UNLIMITED);
+        $order = $this->findOrderByReference(OrderFixtures::REF_ORDER_COMPLETED_RECURRING);
         $contract = $this->contractRepository->findByOrder($order);
         \assert($contract instanceof Contract, 'Fixture order must have a contract');
         $contract->terminate(
@@ -205,9 +205,9 @@ class OrderStatusControllerTest extends WebTestCase
     private function findOrderByReference(string $reference): Order
     {
         // ReferenceRepository isn't available here, so we rely on the fixture
-        // ID being the only completed order on storage B3 (LIMITED, +29 days)
-        // — REF_ORDER_COMPLETED in fixtures/OrderFixtures.php:120-138.
-        // Match by the unique combination (B3 storage + LIMITED + active contract).
+        // ID being the only completed order on storage B3 (+29-day fixed term)
+        // — REF_ORDER_COMPLETED in fixtures/OrderFixtures.php.
+        // Match by the unique combination (storage number + active contract).
         $order = $this->entityManager->createQueryBuilder()
             ->select('o')
             ->from(Order::class, 'o')
@@ -215,7 +215,7 @@ class OrderStatusControllerTest extends WebTestCase
             ->where('s.number = :number')
             ->setParameter('number', match ($reference) {
                 OrderFixtures::REF_ORDER_COMPLETED => 'B3',
-                OrderFixtures::REF_ORDER_COMPLETED_UNLIMITED => 'C1',
+                OrderFixtures::REF_ORDER_COMPLETED_RECURRING => 'C1',
                 default => throw new \LogicException('Unknown reference '.$reference),
             })
             ->getQuery()
@@ -311,9 +311,9 @@ class OrderStatusControllerTest extends WebTestCase
 
     public function testHandoverBannerAbsentWhenNoProtocol(): void
     {
-        // REF_ORDER_COMPLETED_UNLIMITED → storage C1 → REF_CONTRACT_UNLIMITED has no
+        // REF_ORDER_COMPLETED_RECURRING → storage C1 → REF_CONTRACT_RECURRING has no
         // fixture handover protocol.
-        $order = $this->findOrderByReference(OrderFixtures::REF_ORDER_COMPLETED_UNLIMITED);
+        $order = $this->findOrderByReference(OrderFixtures::REF_ORDER_COMPLETED_RECURRING);
         $this->requestSigned($this->urlGenerator->generate($order));
 
         $this->assertResponseIsSuccessful();

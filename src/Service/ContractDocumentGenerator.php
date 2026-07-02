@@ -9,7 +9,6 @@ use App\Entity\Order;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
-use App\Enum\RentalType;
 use App\Service\Order\OrderReferenceFormatter;
 use PhpOffice\PhpWord\TemplateProcessor;
 
@@ -51,7 +50,6 @@ readonly class ContractDocumentGenerator
             documentNumber: $this->orderReferenceFormatter->format($contract->order),
             user: $contract->user,
             storage: $contract->storage,
-            rentalType: $contract->rentalType,
             startDate: $contract->startDate,
             endDate: $contract->endDate,
             documentDate: $contract->order->createdAt,
@@ -96,7 +94,6 @@ readonly class ContractDocumentGenerator
             documentNumber: $this->orderReferenceFormatter->format($order),
             user: $order->user,
             storage: $order->storage,
-            rentalType: $order->rentalType,
             startDate: $order->startDate,
             endDate: $order->endDate,
             documentDate: $order->createdAt,
@@ -111,7 +108,6 @@ readonly class ContractDocumentGenerator
         string $documentNumber,
         User $user,
         Storage $storage,
-        RentalType $rentalType,
         \DateTimeImmutable $startDate,
         ?\DateTimeImmutable $endDate,
         \DateTimeImmutable $documentDate,
@@ -128,7 +124,7 @@ readonly class ContractDocumentGenerator
 
         $processor->setValue('TENANT_INFO', $this->formatTenantInfo($user));
         $processor->setValue('STORAGE_DESCRIPTION', $this->formatStorageDescription($storage, $storage->storageType));
-        $processor->setValue('RENTAL_DURATION_TEXT', $this->formatRentalDuration($rentalType, $startDate, $endDate));
+        $processor->setValue('RENTAL_DURATION_TEXT', $this->formatRentalDuration($startDate, $endDate));
         $processor->setValue('CONTRACT_NUMBER', $documentNumber);
         $processor->setValue('CONTRACT_CITY', $place->city);
         $processor->setValue('CONTRACT_DATE', $documentDate->format('d.m.Y'));
@@ -216,7 +212,7 @@ readonly class ContractDocumentGenerator
         );
     }
 
-    private function formatRentalDuration(RentalType $rentalType, \DateTimeImmutable $startDate, ?\DateTimeImmutable $endDate): string
+    private function formatRentalDuration(\DateTimeImmutable $startDate, ?\DateTimeImmutable $endDate): string
     {
         $start = $startDate->format('d.m.Y');
 

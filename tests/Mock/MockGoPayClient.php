@@ -34,14 +34,28 @@ final class MockGoPayClient implements GoPayClient
 
     private bool $recurrenceStaysPending = false;
 
-    public function createPayment(Order $order, string $returnUrl, string $notificationUrl): GoPayPayment
+    public function createRecurringPayment(Order $order, string $returnUrl, string $notificationUrl): GoPayPayment
     {
         return $this->doCreatePayment();
     }
 
-    public function createRecurringPayment(Order $order, string $returnUrl, string $notificationUrl): GoPayPayment
-    {
-        return $this->doCreatePayment();
+    public function createRecurringCharge(
+        int $amount,
+        string $orderNumber,
+        string $orderDescription,
+        string $payerEmail,
+        string $returnUrl,
+        string $notificationUrl,
+    ): GoPayPayment {
+        $payment = $this->doCreatePayment();
+        $this->paymentStatuses[$payment->id] = new GoPayPaymentStatus(
+            id: $payment->id,
+            state: 'CREATED',
+            parentId: null,
+            amount: $amount,
+        );
+
+        return $payment;
     }
 
     public function createOneTimeCharge(

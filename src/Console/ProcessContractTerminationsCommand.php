@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Console;
 
+use App\Entity\Contract;
+use App\Enum\BillingMode;
 use App\Enum\TerminationReason;
 use App\Event\ContractTerminated;
 use App\Repository\ContractRepository;
 use App\Service\ContractService;
+use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ManagerRegistry;
 use Psr\Clock\ClockInterface;
@@ -57,16 +60,37 @@ final class ProcessContractTerminationsCommand extends Command
 
         foreach ($contracts as $contract) {
             try {
-                // Determine termination reason
-                $reason = null !== $contract->terminatesAt
-                    ? TerminationReason::TENANT_NOTICE  // User requested termination
-                    : TerminationReason::EXPIRED;        // LIMITED contract reached endDate
+                $entityManager = $this->getEntityManager();
+                $terminated = false;
 
-                $this->contractService->terminateContract($contract, $now, $reason);
+                // Explicit transaction: lock + re-validate right before
+                // terminating — a customer's prolongation may have moved the
+                // endDate between the candidate SELECT above and this point
+                // (spec 077). Lock order (contract, then storage inside
+                // terminate()) matches ProlongContractHandler, so the two
+                // serialise instead of deadlocking. The transaction also
+                // covers the flush that consoles must do themselves (no
+                // doctrine_transaction middleware here).
+                $entityManager->wrapInTransaction(function (EntityManagerInterface $em) use ($contract, $now, &$terminated): void {
+                    $em->refresh($contract, LockMode::PESSIMISTIC_WRITE);
 
-                // Console commands are outside the doctrine_transaction middleware,
-                // so we must flush explicitly to persist the termination.
-                $this->getEntityManager()->flush();
+                    if (!$this->isStillDueForTermination($contract, $now)) {
+                        return;
+                    }
+
+                    $reason = null !== $contract->terminatesAt
+                        ? TerminationReason::TENANT_NOTICE  // User requested termination
+                        : TerminationReason::EXPIRED;        // Contract reached endDate
+
+                    $this->contractService->terminateContract($contract, $now, $reason);
+                    $terminated = true;
+                });
+
+                if (!$terminated) {
+                    $io->text(sprintf('  [SKIP] Contract %s no longer due (prolonged meanwhile).', $contract->id));
+
+                    continue;
+                }
 
                 $this->eventBus->dispatch(new ContractTerminated(
                     contractId: $contract->id,
@@ -89,6 +113,35 @@ final class ProcessContractTerminationsCommand extends Command
         $io->success(sprintf('Terminated %d contracts.', $terminatedCount));
 
         return Command::SUCCESS;
+    }
+
+    /**
+     * PHP twin of {@see ContractRepository::findDueForTermination()}'s SQL —
+     * re-evaluated under the row lock so a just-committed prolongation (moved
+     * endDate, re-seeded nextBillingDate) takes the contract off the kill list.
+     */
+    private function isStillDueForTermination(Contract $contract, \DateTimeImmutable $now): bool
+    {
+        if ($contract->isTerminated()) {
+            return false;
+        }
+
+        if (null !== $contract->terminatesAt && $contract->terminatesAt <= $now) {
+            return true;
+        }
+
+        if ($contract->endDate > $now) {
+            return false;
+        }
+
+        return match ($contract->billingMode) {
+            BillingMode::ONE_TIME => true,
+            BillingMode::AUTO_RECURRING => 0 === $contract->failedBillingAttempts
+                && null === $contract->pendingRecurringPaymentId
+                && null === $contract->nextBillingDate,
+            BillingMode::MANUAL_RECURRING => null === $contract->nextBillingDate
+                && 0 === $contract->failedBillingAttempts,
+        };
     }
 
     private function getEntityManager(): EntityManagerInterface

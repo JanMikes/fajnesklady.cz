@@ -12,7 +12,6 @@ use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
-use App\Enum\RentalType;
 use App\Exception\StorageHasActiveRental;
 use App\Repository\ContractRepository;
 use App\Repository\OrderRepository;
@@ -131,7 +130,6 @@ class CreateStorageUnavailabilityHandlerTest extends TestCase
             order: $order,
             user: $this->user,
             storage: $this->storage,
-            rentalType: RentalType::LIMITED,
             startDate: new \DateTimeImmutable('2025-07-01'),
             endDate: new \DateTimeImmutable('2025-08-01'),
             createdAt: new \DateTimeImmutable(),
@@ -176,12 +174,11 @@ class CreateStorageUnavailabilityHandlerTest extends TestCase
         ($this->handler)($command);
     }
 
-    public function testBlockingFailsWhenOverlappingWithUnlimitedContract(): void
+    public function testBlockingFailsWhenOverlappingWithRecurringGuaranteeContract(): void
     {
         $order = $this->createOrder(
             new \DateTimeImmutable('2025-06-01'),
-            null,
-            RentalType::UNLIMITED,
+            new \DateTimeImmutable('2026-06-01'),
         );
 
         $contract = new Contract(
@@ -189,20 +186,25 @@ class CreateStorageUnavailabilityHandlerTest extends TestCase
             order: $order,
             user: $this->user,
             storage: $this->storage,
-            rentalType: RentalType::UNLIMITED,
             startDate: new \DateTimeImmutable('2025-06-01'),
-            endDate: null,
+            endDate: new \DateTimeImmutable('2026-06-01'),
             createdAt: new \DateTimeImmutable(),
+        );
+        $contract->setRecurringPayment(
+            'gopay-parent-payment-id',
+            new \DateTimeImmutable('2025-07-01'),
+            new \DateTimeImmutable('2025-07-01'),
         );
 
         $this->contractRepository->method('findOverlappingByStorage')->willReturn([$contract]);
         $this->orderRepository->method('findOverlappingByStorage')->willReturn([]);
 
-        // Trying to block any future period should fail because the unlimited contract never ends
+        // A contract with an availability guarantee (AUTO_RECURRING + live token)
+        // blocks the storage open-endedly, even past its end date
         $command = new CreateStorageUnavailabilityCommand(
             storageId: $this->storage->id,
-            startDate: new \DateTimeImmutable('2025-09-01'),
-            endDate: new \DateTimeImmutable('2025-09-30'),
+            startDate: new \DateTimeImmutable('2026-09-01'),
+            endDate: new \DateTimeImmutable('2026-09-30'),
             reason: 'Údržba',
             createdById: $this->user->id,
         );
@@ -224,7 +226,6 @@ class CreateStorageUnavailabilityHandlerTest extends TestCase
             order: $order,
             user: $this->user,
             storage: $this->storage,
-            rentalType: RentalType::LIMITED,
             startDate: new \DateTimeImmutable('2025-08-01'),
             endDate: new \DateTimeImmutable('2025-09-01'),
             createdAt: new \DateTimeImmutable(),
@@ -268,14 +269,12 @@ class CreateStorageUnavailabilityHandlerTest extends TestCase
 
     private function createOrder(
         \DateTimeImmutable $startDate,
-        ?\DateTimeImmutable $endDate,
-        RentalType $rentalType = RentalType::LIMITED,
+        \DateTimeImmutable $endDate,
     ): Order {
         return new Order(
             id: Uuid::v7(),
             user: $this->user,
             storage: $this->storage,
-            rentalType: $rentalType,
             paymentFrequency: null,
             startDate: $startDate,
             endDate: $endDate,

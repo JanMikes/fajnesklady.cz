@@ -6,10 +6,8 @@ namespace App\Form;
 
 use App\Entity\User;
 use App\Enum\BillingMode;
-use App\Enum\ExpectedDuration;
 use App\Enum\PaymentFrequency;
 use App\Enum\PaymentMethod;
-use App\Enum\RentalType;
 use App\Form\Address\HasBillingAddress;
 use App\Service\PriceCalculator;
 use App\Validator\AddressExists;
@@ -70,11 +68,6 @@ final class OrderFormData implements HasBillingAddress
      */
     public bool $addressOverride = false;
 
-    #[Assert\NotNull(message: 'Vyberte typ pronájmu.')]
-    public ?RentalType $rentalType = RentalType::LIMITED;
-
-    public ?ExpectedDuration $expectedDuration = null;
-
     #[Assert\NotNull(message: 'Vyberte datum začátku.')]
     public ?\DateTimeImmutable $startDate = null;
 
@@ -88,24 +81,20 @@ final class OrderFormData implements HasBillingAddress
     public string $selectionMode = 'auto';
 
     /**
-     * Selected by the customer when their rental is fixed-term LIMITED ≥ 28 days.
-     * Other durations are forced (UNLIMITED → AUTO_RECURRING, short LIMITED → ONE_TIME)
-     * by {@see self::validateBillingMode()} so a forged payload cannot bypass eligibility.
-     *
-     * Nullable so the Form DataMapper can map an empty radio submission back
-     * to the FormData without a TypeError (the per-field live-validation flow
-     * submits the form while individual fields are still empty). Consumers
-     * read it via {@see self::resolvedBillingMode()} which falls back to
-     * AUTO_RECURRING when not yet selected.
+     * Never a user choice (spec 076): derived from paymentMethod + frequency +
+     * rental length by {@see self::deriveBillingMode()} on every validation
+     * pass via {@see BillingMode::derive()}. Kept as a property because the
+     * session round-trip and OrderAcceptController's locking read it.
+     * Consumers read it via {@see self::resolvedBillingMode()} which falls
+     * back to AUTO_RECURRING when the dates are not filled in yet.
      */
     public ?BillingMode $billingMode = BillingMode::AUTO_RECURRING;
 
     /**
-     * Customer-chosen payment frequency (spec 045). MONTHLY for everyone by
-     * default; YEARLY surfaces only when the rental is UNLIMITED or LIMITED ≥
-     * {@see PriceCalculator::YEARLY_THRESHOLD_DAYS} days. YEARLY is always
-     * MANUAL_RECURRING by construction — picking it auto-corrects
-     * {@see self::$billingMode} below as a defence-in-depth guard.
+     * Customer-chosen payment frequency (spec 045). MONTHLY by default;
+     * YEARLY surfaces only for rentals ≥ {@see PriceCalculator::YEARLY_THRESHOLD_DAYS}
+     * days and is payable only by bank transfer (spec 076) — always
+     * MANUAL_RECURRING via {@see BillingMode::derive()}.
      *
      * Nullable to survive partial-form submissions during Live UX validation
      * (mirrors {@see self::$billingMode}). Consumers read it via
@@ -225,90 +214,44 @@ final class OrderFormData implements HasBillingAddress
                 ->addViolation();
         }
 
-        if (RentalType::LIMITED === $this->rentalType) {
-            if (null === $this->endDate) {
-                $context->buildViolation('Pro omezený pronájem je vyžadováno datum konce.')
-                    ->atPath('endDate')
-                    ->addViolation();
+        if (null === $this->endDate) {
+            $context->buildViolation('Vyberte datum konce pronájmu.')
+                ->atPath('endDate')
+                ->addViolation();
 
-                return;
-            }
-
-            $rentalDays = $this->endDate <= $this->startDate
-                ? 0
-                : (int) $this->startDate->diff($this->endDate)->days;
-
-            if ($rentalDays < 7) {
-                $context->buildViolation('Minimální doba pronájmu je 7 dní.')
-                    ->atPath('endDate')
-                    ->addViolation();
-
-                return;
-            }
-
-            $maxEnd = $this->startDate->modify('+1 year');
-            if ($this->endDate > $maxEnd) {
-                $context->buildViolation('Doba určitá může být maximálně 1 rok. Pro delší pronájem zvolte dobu neurčitou.')
-                    ->atPath('endDate')
-                    ->addViolation();
-            }
-        }
-    }
-
-    #[Assert\Callback]
-    public function validateExpectedDuration(ExecutionContextInterface $context): void
-    {
-        if (RentalType::UNLIMITED !== $this->rentalType) {
             return;
         }
 
-        if (null === $this->expectedDuration) {
-            $context->buildViolation('Vyberte předpokládanou dobu pronájmu.')
-                ->atPath('expectedDuration')
+        $rentalDays = $this->endDate <= $this->startDate
+            ? 0
+            : (int) $this->startDate->diff($this->endDate)->days;
+
+        if ($rentalDays < 7) {
+            $context->buildViolation('Minimální doba pronájmu je 7 dní.')
+                ->atPath('endDate')
                 ->addViolation();
         }
     }
 
     #[Assert\Callback]
-    public function validateBillingMode(ExecutionContextInterface $context): void
+    public function validatePaymentMethod(ExecutionContextInterface $context): void
     {
-        // YEARLY is always MANUAL_RECURRING — short-circuit so the UNLIMITED-
-        // forces-AUTO rule below does not fire for yearly UNLIMITED orders.
-        if (PaymentFrequency::YEARLY === $this->paymentFrequency) {
-            return;
-        }
-
-        // BANK_TRANSFER: no automated charge possible — force MANUAL_RECURRING
-        // for recurring orders, ONE_TIME for short ones.
-        if (PaymentMethod::BANK_TRANSFER === $this->paymentMethod) {
-            if (RentalType::LIMITED === $this->rentalType
-                && null !== $this->startDate && null !== $this->endDate
-                && (int) $this->startDate->diff($this->endDate)->days < PriceCalculator::WEEKLY_THRESHOLD_DAYS) {
-                $this->billingMode = BillingMode::ONE_TIME;
-            } elseif (BillingMode::AUTO_RECURRING === $this->billingMode) {
-                $this->billingMode = BillingMode::MANUAL_RECURRING;
-            }
-
-            return;
-        }
-
-        if (RentalType::UNLIMITED === $this->rentalType && BillingMode::AUTO_RECURRING !== $this->billingMode) {
-            $context->buildViolation('Pro pronájem na dobu neurčitou je dostupná pouze automatická platba kartou.')
-                ->atPath('billingMode')
+        // Spec 076: cards only establish recurring monthly payments.
+        if (PaymentMethod::GOPAY === $this->paymentMethod && PaymentFrequency::YEARLY === $this->paymentFrequency) {
+            $context->buildViolation('Roční platbu lze platit pouze bankovním převodem.')
+                ->atPath('paymentFrequency')
                 ->addViolation();
         }
 
-        // Short LIMITED rentals are always ONE_TIME — auto-correct silently. The
-        // form layer hides the billingMode radio in this case (see
-        // OrderForm::isEligibleForBillingModeChoice), so the FormData default
-        // AUTO_RECURRING reaches us unchanged for legitimate submissions.
-        // Raising a violation on a hidden field would stall the form with no
-        // surfaced error; pin the value instead.
-        if (RentalType::LIMITED === $this->rentalType
-            && null !== $this->startDate && null !== $this->endDate
-            && (int) $this->startDate->diff($this->endDate)->days < PriceCalculator::WEEKLY_THRESHOLD_DAYS
-            && BillingMode::ONE_TIME !== $this->billingMode) {
-            $this->billingMode = BillingMode::ONE_TIME;
+        $rentalDays = $this->rentalDays();
+        if (null === $rentalDays) {
+            return;
+        }
+
+        if (PaymentMethod::GOPAY === $this->paymentMethod && $rentalDays < PriceCalculator::WEEKLY_THRESHOLD_DAYS) {
+            $context->buildViolation('Platba kartou je dostupná pro pronájmy od 31 dnů. Kratší pronájem zaplatíte bankovním převodem.')
+                ->atPath('paymentMethod')
+                ->addViolation();
         }
     }
 
@@ -319,28 +262,44 @@ final class OrderFormData implements HasBillingAddress
             return;
         }
 
-        // Eligibility: UNLIMITED is always eligible; LIMITED needs the year cutoff.
-        if (RentalType::LIMITED === $this->rentalType) {
-            if (null === $this->startDate || null === $this->endDate) {
-                return;
-            }
-
-            if ((int) $this->startDate->diff($this->endDate)->days < PriceCalculator::YEARLY_THRESHOLD_DAYS) {
-                $context->buildViolation('Roční platba je dostupná pouze pro pronájem na 12 měsíců a déle.')
-                    ->atPath('paymentFrequency')
-                    ->addViolation();
-
-                return;
-            }
+        $rentalDays = $this->rentalDays();
+        if (null === $rentalDays) {
+            return;
         }
 
-        // Yearly is always MANUAL_RECURRING — auto-correct silently. The form
-        // layer hides the AUTO option for yearly, so the only way to reach
-        // this branch is a tampered payload. Don't surface a violation, just
-        // pin the mode so downstream code receives a consistent value.
-        if (BillingMode::MANUAL_RECURRING !== $this->billingMode) {
-            $this->billingMode = BillingMode::MANUAL_RECURRING;
+        if ($rentalDays < PriceCalculator::YEARLY_THRESHOLD_DAYS) {
+            $context->buildViolation('Roční platba je dostupná pouze pro pronájem na 12 měsíců a déle.')
+                ->atPath('paymentFrequency')
+                ->addViolation();
         }
+    }
+
+    /**
+     * Runs after every other callback (declaration order): billing mode is
+     * never a user choice, it always follows {@see BillingMode::derive()}.
+     * With missing/invalid dates the default is left in place — the form is
+     * invalid in that case anyway and nothing downstream reads the value.
+     */
+    #[Assert\Callback]
+    public function deriveBillingMode(ExecutionContextInterface $context): void
+    {
+        $rentalDays = $this->rentalDays();
+        if (null === $this->paymentMethod || null === $rentalDays) {
+            return;
+        }
+
+        $this->billingMode = BillingMode::derive($this->paymentMethod, $this->resolvedPaymentFrequency(), $rentalDays);
+    }
+
+    private function rentalDays(): ?int
+    {
+        if (null === $this->startDate || null === $this->endDate) {
+            return null;
+        }
+
+        return $this->endDate <= $this->startDate
+            ? 0
+            : (int) $this->startDate->diff($this->endDate)->days;
     }
 
     public static function fromUser(User $user): self
@@ -382,8 +341,6 @@ final class OrderFormData implements HasBillingAddress
             'billingCity' => $this->billingCity,
             'billingPostalCode' => $this->billingPostalCode,
             'addressOverride' => $this->addressOverride,
-            'rentalType' => $this->rentalType?->value,
-            'expectedDuration' => $this->expectedDuration?->value,
             'startDate' => $this->startDate?->format('Y-m-d'),
             'endDate' => $this->endDate?->format('Y-m-d'),
             'selectionMode' => $this->selectionMode,
@@ -413,10 +370,6 @@ final class OrderFormData implements HasBillingAddress
         $formData->billingCity = $data['billingCity'] ?? null;
         $formData->billingPostalCode = $data['billingPostalCode'] ?? null;
         $formData->addressOverride = (bool) ($data['addressOverride'] ?? false);
-        $formData->rentalType = isset($data['rentalType']) ? RentalType::tryFrom($data['rentalType']) : RentalType::LIMITED;
-        if (isset($data['expectedDuration'])) {
-            $formData->expectedDuration = ExpectedDuration::tryFrom($data['expectedDuration']);
-        }
         $formData->startDate = isset($data['startDate']) ? new \DateTimeImmutable($data['startDate']) : null;
         $formData->endDate = isset($data['endDate']) ? new \DateTimeImmutable($data['endDate']) : null;
         $mode = $data['selectionMode'] ?? null;

@@ -45,7 +45,7 @@ final readonly class AuditLogger
             payload: [
                 'user_id' => $order->user->id->toRfc4122(),
                 'storage_id' => $order->storage->id->toRfc4122(),
-                'rental_type' => $order->rentalType->value,
+                'billing_mode' => $order->billingMode->value,
                 'total_price' => $order->firstPaymentPrice,
                 'start_date' => $order->startDate->format('Y-m-d'),
                 'end_date' => $order->endDate?->format('Y-m-d'),
@@ -153,9 +153,9 @@ final readonly class AuditLogger
                 'order_id' => $contract->order->id->toRfc4122(),
                 'user_id' => $contract->user->id->toRfc4122(),
                 'storage_id' => $contract->storage->id->toRfc4122(),
-                'rental_type' => $contract->rentalType->value,
+                'billing_mode' => $contract->billingMode->value,
                 'start_date' => $contract->startDate->format('Y-m-d'),
-                'end_date' => $contract->endDate?->format('Y-m-d'),
+                'end_date' => $contract->endDate->format('Y-m-d'),
             ],
             orderId: $contract->order->id,
             userIdContext: $contract->user->id,
@@ -197,7 +197,7 @@ final readonly class AuditLogger
             entityId: $contract->id->toRfc4122(),
             eventType: 'expiring_soon',
             payload: [
-                'end_date' => $contract->endDate?->format('Y-m-d'),
+                'end_date' => $contract->endDate->format('Y-m-d'),
                 'days_remaining' => $daysRemaining,
             ],
             orderId: $contract->order->id,
@@ -274,24 +274,6 @@ final readonly class AuditLogger
         );
     }
 
-    public function logManualPaymentRequested(\App\Entity\ManualPaymentRequest $request, string $stage): void
-    {
-        $this->log(
-            entityType: 'manual_payment_request',
-            entityId: $request->id->toRfc4122(),
-            eventType: 'requested',
-            payload: [
-                'contract_id' => $request->contract->id->toRfc4122(),
-                'period_start' => $request->periodStart->format('Y-m-d'),
-                'stage' => $stage,
-                'amount' => $request->amount,
-                'gopay_payment_id' => $request->goPayPaymentId,
-            ],
-            orderId: $request->contract->order->id,
-            userIdContext: $request->contract->user->id,
-        );
-    }
-
     public function logManualPaymentReceived(\App\Entity\ManualPaymentRequest $request): void
     {
         $this->log(
@@ -309,6 +291,23 @@ final readonly class AuditLogger
         );
     }
 
+    public function logContractProlonged(Contract $contract, \DateTimeImmutable $previousEndDate): void
+    {
+        $this->log(
+            entityType: 'contract',
+            entityId: $contract->id->toRfc4122(),
+            eventType: 'prolonged',
+            payload: [
+                'previous_end_date' => $previousEndDate->format('Y-m-d'),
+                'new_end_date' => $contract->endDate->format('Y-m-d'),
+                'billing_mode' => $contract->billingMode->value,
+                'payment_method' => $contract->order->paymentMethod?->value,
+            ],
+            orderId: $contract->order->id,
+            userIdContext: $contract->user->id,
+        );
+    }
+
     public function logContractRecurringCancelled(Contract $contract): void
     {
         $this->log(
@@ -317,7 +316,7 @@ final readonly class AuditLogger
             eventType: 'recurring_cancelled',
             payload: [
                 'billing_mode' => $contract->billingMode->value,
-                'end_date' => $contract->endDate?->format('Y-m-d'),
+                'end_date' => $contract->endDate->format('Y-m-d'),
             ],
             orderId: $contract->order->id,
             userIdContext: $contract->user->id,

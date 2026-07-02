@@ -12,7 +12,6 @@ use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\PaymentFrequency;
-use App\Enum\RentalType;
 use App\Repository\PaymentRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ManagerRegistry;
@@ -40,8 +39,10 @@ class PaymentRepositoryTest extends KernelTestCase
         $place = $this->createPlace();
         $storageType = $this->createStorageType($place);
         $storage = $this->createStorage($storageType, $place, 'PSUM1');
-        $order = $this->createOrder($tenant, $storage, new \DateTimeImmutable('2025-06-15'), new \DateTimeImmutable('2025-12-15'));
-        $contract = $this->createContract($order, $tenant, $storage, $order->startDate, $order->endDate);
+        $start = new \DateTimeImmutable('2025-06-15');
+        $end = new \DateTimeImmutable('2025-12-15');
+        $order = $this->createOrder($tenant, $storage, $start, $end);
+        $contract = $this->createContract($order, $tenant, $storage, $start, $end);
 
         $this->createPayment($order, $contract, $storage, 500_000, new \DateTimeImmutable('2025-06-15'));
         $this->createPayment(null, $contract, $storage, 500_000, new \DateTimeImmutable('2025-07-15'));
@@ -57,8 +58,10 @@ class PaymentRepositoryTest extends KernelTestCase
         $place = $this->createPlace();
         $storageType = $this->createStorageType($place);
         $storage = $this->createStorage($storageType, $place, 'PSUM2');
-        $order = $this->createOrder($tenant, $storage, new \DateTimeImmutable('2025-06-15'), new \DateTimeImmutable('2025-12-15'));
-        $contract = $this->createContract($order, $tenant, $storage, $order->startDate, $order->endDate);
+        $start = new \DateTimeImmutable('2025-06-15');
+        $end = new \DateTimeImmutable('2025-12-15');
+        $order = $this->createOrder($tenant, $storage, $start, $end);
+        $contract = $this->createContract($order, $tenant, $storage, $start, $end);
 
         $this->entityManager->flush();
 
@@ -71,7 +74,7 @@ class PaymentRepositoryTest extends KernelTestCase
         $place = $this->createPlace();
         $storageType = $this->createStorageType($place);
         $storage = $this->createStorage($storageType, $place, 'PSUM3');
-        $order = $this->createOrder($tenant, $storage, new \DateTimeImmutable('2025-06-15'), null);
+        $order = $this->createOrder($tenant, $storage, new \DateTimeImmutable('2025-06-15'), new \DateTimeImmutable('2026-06-15'));
 
         // First payment recorded; contract not yet created.
         $this->createPayment($order, null, $storage, 500_000, new \DateTimeImmutable('2025-06-15'));
@@ -86,7 +89,7 @@ class PaymentRepositoryTest extends KernelTestCase
         $place = $this->createPlace();
         $storageType = $this->createStorageType($place);
         $storage = $this->createStorage($storageType, $place, 'PSUM4');
-        $order = $this->createOrder($tenant, $storage, new \DateTimeImmutable('2025-06-15'), null);
+        $order = $this->createOrder($tenant, $storage, new \DateTimeImmutable('2025-06-15'), new \DateTimeImmutable('2026-06-15'));
         $this->entityManager->flush();
 
         $this->assertSame(0, $this->repository->sumPaidByOrder($order));
@@ -98,8 +101,10 @@ class PaymentRepositoryTest extends KernelTestCase
         $place = $this->createPlace();
         $storageType = $this->createStorageType($place);
         $storage = $this->createStorage($storageType, $place, 'PLC1');
-        $order = $this->createOrder($tenant, $storage, new \DateTimeImmutable('2025-06-15'), new \DateTimeImmutable('2025-12-15'));
-        $contract = $this->createContract($order, $tenant, $storage, $order->startDate, $order->endDate);
+        $start = new \DateTimeImmutable('2025-06-15');
+        $end = new \DateTimeImmutable('2025-12-15');
+        $order = $this->createOrder($tenant, $storage, $start, $end);
+        $contract = $this->createContract($order, $tenant, $storage, $start, $end);
 
         // Initial payment links to the order only (RecordPaymentOnOrderPaidHandler).
         $this->createPayment($order, null, $storage, 200_00, new \DateTimeImmutable('2025-06-15'));
@@ -118,7 +123,7 @@ class PaymentRepositoryTest extends KernelTestCase
         $place = $this->createPlace();
         $storageType = $this->createStorageType($place);
         $storage = $this->createStorage($storageType, $place, 'PLC2');
-        $order = $this->createOrder($tenant, $storage, new \DateTimeImmutable('2025-06-15'), null);
+        $order = $this->createOrder($tenant, $storage, new \DateTimeImmutable('2025-06-15'), new \DateTimeImmutable('2026-06-15'));
 
         $this->createPayment($order, null, $storage, 200_00, new \DateTimeImmutable('2025-06-15'));
         $this->entityManager->flush();
@@ -139,12 +144,14 @@ class PaymentRepositoryTest extends KernelTestCase
         $storageA2 = $this->createStorage($stA, $placeA, 'PA2', $landlordB);
         $storageB1 = $this->createStorage($stB, $placeB, 'PB1', $landlordA);
 
-        $orderA1 = $this->createOrder($tenant, $storageA1, new \DateTimeImmutable('2025-05-01'), new \DateTimeImmutable('2025-12-01'));
-        $contractA1 = $this->createContract($orderA1, $tenant, $storageA1, $orderA1->startDate, $orderA1->endDate);
-        $orderA2 = $this->createOrder($tenant, $storageA2, new \DateTimeImmutable('2025-05-01'), new \DateTimeImmutable('2025-12-01'));
-        $contractA2 = $this->createContract($orderA2, $tenant, $storageA2, $orderA2->startDate, $orderA2->endDate);
-        $orderB1 = $this->createOrder($tenant, $storageB1, new \DateTimeImmutable('2025-05-01'), new \DateTimeImmutable('2025-12-01'));
-        $contractB1 = $this->createContract($orderB1, $tenant, $storageB1, $orderB1->startDate, $orderB1->endDate);
+        $start = new \DateTimeImmutable('2025-05-01');
+        $end = new \DateTimeImmutable('2025-12-01');
+        $orderA1 = $this->createOrder($tenant, $storageA1, $start, $end);
+        $contractA1 = $this->createContract($orderA1, $tenant, $storageA1, $start, $end);
+        $orderA2 = $this->createOrder($tenant, $storageA2, $start, $end);
+        $contractA2 = $this->createContract($orderA2, $tenant, $storageA2, $start, $end);
+        $orderB1 = $this->createOrder($tenant, $storageB1, $start, $end);
+        $contractB1 = $this->createContract($orderB1, $tenant, $storageB1, $start, $end);
 
         // May 2025 — included in May query
         $this->createPayment($orderA1, $contractA1, $storageA1, 100_000, new \DateTimeImmutable('2025-05-10'));
@@ -170,10 +177,12 @@ class PaymentRepositoryTest extends KernelTestCase
         $storageA = $this->createStorage($st, $place, 'RNG1', $landlordA);
         $storageB = $this->createStorage($st, $place, 'RNG2', $landlordB);
 
-        $orderA = $this->createOrder($tenant, $storageA, new \DateTimeImmutable('2025-05-01'), new \DateTimeImmutable('2025-12-01'));
-        $contractA = $this->createContract($orderA, $tenant, $storageA, $orderA->startDate, $orderA->endDate);
-        $orderB = $this->createOrder($tenant, $storageB, new \DateTimeImmutable('2025-05-01'), new \DateTimeImmutable('2025-12-01'));
-        $contractB = $this->createContract($orderB, $tenant, $storageB, $orderB->startDate, $orderB->endDate);
+        $start = new \DateTimeImmutable('2025-05-01');
+        $end = new \DateTimeImmutable('2025-12-01');
+        $orderA = $this->createOrder($tenant, $storageA, $start, $end);
+        $contractA = $this->createContract($orderA, $tenant, $storageA, $start, $end);
+        $orderB = $this->createOrder($tenant, $storageB, $start, $end);
+        $contractB = $this->createContract($orderB, $tenant, $storageB, $start, $end);
 
         $this->createPayment($orderA, $contractA, $storageA, 100_000, new \DateTimeImmutable('2025-06-01'));
         $this->createPayment(null, $contractA, $storageA, 200_000, new \DateTimeImmutable('2025-06-15'));
@@ -208,8 +217,10 @@ class PaymentRepositoryTest extends KernelTestCase
 
         $now = new \DateTimeImmutable('2025-06-15 12:00:00');
 
-        $order = $this->createOrder($tenant, $storage, $now->modify('-90 days'), $now->modify('+90 days'));
-        $contract = $this->createContract($order, $tenant, $storage, $order->startDate, $order->endDate);
+        $start = $now->modify('-90 days');
+        $end = $now->modify('+90 days');
+        $order = $this->createOrder($tenant, $storage, $start, $end);
+        $contract = $this->createContract($order, $tenant, $storage, $start, $end);
 
         $this->createPayment($order, $contract, $storage, 100_000, new \DateTimeImmutable('2025-04-10'));
         $this->createPayment(null, $contract, $storage, 100_000, new \DateTimeImmutable('2025-05-10'));
@@ -288,13 +299,12 @@ class PaymentRepositoryTest extends KernelTestCase
         return $storage;
     }
 
-    private function createOrder(User $user, Storage $storage, \DateTimeImmutable $startDate, ?\DateTimeImmutable $endDate): Order
+    private function createOrder(User $user, Storage $storage, \DateTimeImmutable $startDate, \DateTimeImmutable $endDate): Order
     {
         $order = new Order(
             id: Uuid::v7(),
             user: $user,
             storage: $storage,
-            rentalType: null === $endDate ? RentalType::UNLIMITED : RentalType::LIMITED,
             paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: $startDate,
             endDate: $endDate,
@@ -312,14 +322,13 @@ class PaymentRepositoryTest extends KernelTestCase
         User $user,
         Storage $storage,
         \DateTimeImmutable $startDate,
-        ?\DateTimeImmutable $endDate,
+        \DateTimeImmutable $endDate,
     ): Contract {
         $contract = new Contract(
             id: Uuid::v7(),
             order: $order,
             user: $user,
             storage: $storage,
-            rentalType: null === $endDate ? RentalType::UNLIMITED : RentalType::LIMITED,
             startDate: $startDate,
             endDate: $endDate,
             createdAt: new \DateTimeImmutable(),

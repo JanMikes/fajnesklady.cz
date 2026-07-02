@@ -12,7 +12,6 @@ use App\Entity\Place;
 use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\OrderStatus;
-use App\Enum\RentalType;
 use App\Service\Identity\ProvideIdentity;
 use App\Service\OrderService;
 use App\Tests\Mock\MockGoPayClient;
@@ -50,7 +49,7 @@ class ProcessPaymentNotificationHandlerTest extends KernelTestCase
 
     public function testProcessPaymentNotificationConfirmsAndCompletesOrder(): void
     {
-        $order = $this->createAndInitiatePayment(RentalType::LIMITED);
+        $order = $this->createAndInitiatePayment();
         $paymentId = $order->goPayPaymentId;
         \assert(null !== $paymentId);
 
@@ -69,7 +68,7 @@ class ProcessPaymentNotificationHandlerTest extends KernelTestCase
 
     public function testProcessPaymentNotificationCancelsOrderOnCanceled(): void
     {
-        $order = $this->createAndInitiatePayment(RentalType::LIMITED);
+        $order = $this->createAndInitiatePayment();
         $paymentId = $order->goPayPaymentId;
         \assert(null !== $paymentId);
 
@@ -86,7 +85,7 @@ class ProcessPaymentNotificationHandlerTest extends KernelTestCase
 
     public function testProcessPaymentNotificationStoresParentPaymentIdForRecurring(): void
     {
-        $order = $this->createAndInitiatePayment(RentalType::UNLIMITED);
+        $order = $this->createAndInitiatePayment();
         $paymentId = $order->goPayPaymentId;
         \assert(null !== $paymentId);
 
@@ -114,7 +113,7 @@ class ProcessPaymentNotificationHandlerTest extends KernelTestCase
         // UPDATE in OrderRepository::findByGoPayPaymentIdForUpdate makes the
         // second delivery serialise behind the first; in this sequential
         // test the second simply observes COMPLETED and bails on canBePaid().
-        $order = $this->createAndInitiatePayment(RentalType::LIMITED);
+        $order = $this->createAndInitiatePayment();
         $paymentId = $order->goPayPaymentId;
         \assert(null !== $paymentId);
 
@@ -153,7 +152,7 @@ class ProcessPaymentNotificationHandlerTest extends KernelTestCase
     public function testProcessPaymentNotificationIsIdempotentForDuplicateRecurringWebhooks(): void
     {
         // Arrange: an active recurring contract.
-        $order = $this->createAndInitiatePayment(RentalType::UNLIMITED);
+        $order = $this->createAndInitiatePayment();
         $paymentId = $order->goPayPaymentId;
         \assert(null !== $paymentId);
 
@@ -229,7 +228,7 @@ class ProcessPaymentNotificationHandlerTest extends KernelTestCase
     public function testProcessPaymentNotificationReconcileRecurringPayment(): void
     {
         // Set up a contract with recurring payment (same as ChargeRecurringPaymentHandlerTest)
-        $order = $this->createAndInitiatePayment(RentalType::UNLIMITED);
+        $order = $this->createAndInitiatePayment();
         $paymentId = $order->goPayPaymentId;
         \assert(null !== $paymentId);
 
@@ -296,7 +295,7 @@ class ProcessPaymentNotificationHandlerTest extends KernelTestCase
         // then dispatching the notification command (the "loser"). The handler
         // must not produce a second Payment row and must not throw — duplicate
         // is the expected outcome.
-        $order = $this->createAndInitiatePayment(RentalType::UNLIMITED);
+        $order = $this->createAndInitiatePayment();
         $paymentId = $order->goPayPaymentId;
         \assert(null !== $paymentId);
 
@@ -372,7 +371,7 @@ class ProcessPaymentNotificationHandlerTest extends KernelTestCase
         // the application-level existsByGoPayPaymentId() check is bypassed
         // (truly simultaneous transactions, both reading the table before
         // either commits).
-        $order = $this->createAndInitiatePayment(RentalType::UNLIMITED);
+        $order = $this->createAndInitiatePayment();
         $paymentId = $order->goPayPaymentId;
         \assert(null !== $paymentId);
 
@@ -427,7 +426,7 @@ class ProcessPaymentNotificationHandlerTest extends KernelTestCase
         // handler must (a) record what GoPay says (GoPay is the source of
         // truth for what was actually charged) and (b) dispatch a
         // PaymentAmountMismatch event so admin is alerted.
-        $order = $this->createAndInitiatePayment(RentalType::UNLIMITED);
+        $order = $this->createAndInitiatePayment();
         $paymentId = $order->goPayPaymentId;
         \assert(null !== $paymentId);
 
@@ -485,7 +484,7 @@ class ProcessPaymentNotificationHandlerTest extends KernelTestCase
         // Order branch (initial GoPay charge): the webhook reports an amount
         // different from the order's firstPaymentPrice. The handler must
         // dispatch a PaymentAmountMismatch event for admin visibility.
-        $order = $this->createAndInitiatePayment(RentalType::LIMITED);
+        $order = $this->createAndInitiatePayment();
         $paymentId = $order->goPayPaymentId;
         \assert(null !== $paymentId);
 
@@ -510,7 +509,7 @@ class ProcessPaymentNotificationHandlerTest extends KernelTestCase
         $this->assertNotNull($refreshedOrder->paidAt, 'Order should still be confirmed even when amount mismatches.');
     }
 
-    private function createAndInitiatePayment(RentalType $rentalType): \App\Entity\Order
+    private function createAndInitiatePayment(): \App\Entity\Order
     {
         /** @var User $tenant */
         $tenant = $this->entityManager->getRepository(User::class)->findOneBy(['email' => UserFixtures::TENANT_EMAIL]);
@@ -521,13 +520,12 @@ class ProcessPaymentNotificationHandlerTest extends KernelTestCase
 
         $now = $this->clock->now();
         $startDate = $now->modify('+1 day');
-        $endDate = RentalType::LIMITED === $rentalType ? $now->modify('+30 days') : null;
+        $endDate = $startDate->modify('+12 months');
 
         $order = $this->orderService->createOrder(
             $tenant,
             $storageType,
             $place,
-            $rentalType,
             $startDate,
             $endDate,
             $now,

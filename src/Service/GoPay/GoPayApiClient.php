@@ -20,27 +20,6 @@ final readonly class GoPayApiClient implements GoPayClient
     ) {
     }
 
-    public function createPayment(Order $order, string $returnUrl, string $notificationUrl): GoPayPayment
-    {
-        $storage = $order->storage;
-        $storageType = $storage->storageType;
-        $place = $storage->getPlace();
-
-        return $this->createOneTimeCharge(
-            amount: $order->firstPaymentPrice,
-            orderNumber: $order->id->toRfc4122(),
-            orderDescription: sprintf(
-                'Pronájem skladu %s - %s (%s)',
-                $storage->number,
-                $storageType->name,
-                $place->name,
-            ),
-            payerEmail: $order->user->email,
-            returnUrl: $returnUrl,
-            notificationUrl: $notificationUrl,
-        );
-    }
-
     public function createOneTimeCharge(
         int $amount,
         string $orderNumber,
@@ -73,16 +52,34 @@ final readonly class GoPayApiClient implements GoPayClient
         $storageType = $storage->storageType;
         $place = $storage->getPlace();
 
-        $paymentData = $this->buildOneTimeChargeData(
-            $order->firstPaymentPrice,
-            $order->id->toRfc4122(),
-            sprintf(
+        return $this->createRecurringCharge(
+            amount: $order->firstPaymentPrice,
+            orderNumber: $order->id->toRfc4122(),
+            orderDescription: sprintf(
                 'Pronájem skladu %s - %s (%s)',
                 $storage->number,
                 $storageType->name,
                 $place->name,
             ),
-            $order->user->email,
+            payerEmail: $order->user->email,
+            returnUrl: $returnUrl,
+            notificationUrl: $notificationUrl,
+        );
+    }
+
+    public function createRecurringCharge(
+        int $amount,
+        string $orderNumber,
+        string $orderDescription,
+        string $payerEmail,
+        string $returnUrl,
+        string $notificationUrl,
+    ): GoPayPayment {
+        $paymentData = $this->buildOneTimeChargeData(
+            $amount,
+            $orderNumber,
+            $orderDescription,
+            $payerEmail,
             $returnUrl,
             $notificationUrl,
         );

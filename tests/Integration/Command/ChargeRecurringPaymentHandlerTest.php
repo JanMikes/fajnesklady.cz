@@ -13,7 +13,6 @@ use App\Entity\Place;
 use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\PaymentFrequency;
-use App\Enum\RentalType;
 use App\Service\OrderService;
 use App\Tests\Mock\MockGoPayClient;
 use Doctrine\ORM\EntityManagerInterface;
@@ -107,6 +106,36 @@ class ChargeRecurringPaymentHandlerTest extends KernelTestCase
         }
 
         $this->assertTrue($exceptionThrown, 'Expected HandlerFailedException to be thrown');
+    }
+
+    public function testLastCycleChargeProratesAndStopsFutureBilling(): void
+    {
+        // Spec 076 hard stop: the final cycle is prorated to the contract end
+        // and nextBillingDate goes null — no auto-extension exists anymore.
+        $contract = $this->createContractWithRecurringPayment();
+        $endDate = $contract->endDate;
+        $parentPaymentId = $contract->goPayParentPaymentId;
+        \assert(null !== $parentPaymentId);
+
+        // Rewind the billing anchor so the upcoming charge is the last one
+        // (only 10 days remain until the contract end).
+        $contract->setRecurringPayment($parentPaymentId, $endDate->modify('-10 days'), $endDate->modify('-10 days'));
+        $this->entityManager->flush();
+
+        $this->commandBus->dispatch(new ChargeRecurringPaymentCommand($contract));
+
+        $this->entityManager->clear();
+        $refreshed = $this->entityManager->find(Contract::class, $contract->id);
+
+        $this->assertNull($refreshed->nextBillingDate, 'Final cycle must stop future charges.');
+        $this->assertEquals($endDate->format('Y-m-d'), $refreshed->paidThroughDate?->format('Y-m-d'));
+        $this->assertEquals($endDate->format('Y-m-d'), $refreshed->endDate->format('Y-m-d'), 'endDate must never advance on a charge.');
+
+        // 10 remaining days at the long-term monthly rate (43 000 halérů),
+        // rounded up to whole CZK: 10 × 43000 / 30 → 14 334 → 14 400.
+        $amounts = array_values($this->goPayClient->getRecurrenceAmounts());
+        $this->assertCount(1, $amounts);
+        $this->assertSame(14_400, $amounts[0]);
     }
 
     public function testChargeRespectsContractIndividualMonthlyAmount(): void
@@ -326,15 +355,15 @@ class ChargeRecurringPaymentHandlerTest extends KernelTestCase
 
         $now = $this->clock->now();
         $startDate = $now->modify('+1 day');
+        $endDate = $startDate->modify('+12 months');
 
-        // Create unlimited order
+        // Create a fixed-term monthly order (GoPay default → AUTO_RECURRING)
         $order = $this->orderService->createOrder(
             $tenant,
             $storageType,
             $place,
-            RentalType::UNLIMITED,
             $startDate,
-            null,
+            $endDate,
             $now,
             PaymentFrequency::MONTHLY,
         );

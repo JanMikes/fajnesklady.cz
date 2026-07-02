@@ -251,7 +251,7 @@
                                             {% endif %}
                                         {% endif %}
                                         <div class="h-6 {{ color }} {{ isToday ? 'outline outline-2 outline-accent -outline-offset-1' : '' }}"
-                                             title="{% if covering %}{{ covering.tenantName ?? 'Blokováno' }}{% if covering.endDate %} (do {{ covering.endDate|date('d.m.Y') }}{% if covering.isUnlimited %}, automat.{% endif %}){% endif %}{% else %}Volný{% endif %}">
+                                             title="{% if covering %}{{ covering.tenantName ?? 'Blokováno' }}{% if covering.endDate %} (do {{ covering.endDate|date('d.m.Y') }}){% endif %}{% else %}Volný{% endif %}">
                                         </div>
                                     {% endfor %}
                                 </div>
@@ -318,8 +318,8 @@
                                                     <span aria-hidden="true">⚠</span>
                                                     <span class="sr-only">ukončuje se</span>
                                                 </span>
-                                            {% elseif rentalView.isUnlimited %}
-                                                do {{ rentalView.rentedUntil|date('d.m.Y') }} <span class="text-xs text-gray-500" title="Automatické prodlužování">↻</span>
+                                            {% elseif rentalView.hasAvailabilityGuarantee %}
+                                                do {{ rentalView.rentedUntil|date('d.m.Y') }} <span class="text-xs text-gray-500" title="Garance dostupnosti — platba kartou">↻</span>
                                             {% else %}
                                                 do {{ rentalView.rentedUntil|date('d.m.Y') }}
                                             {% endif %}

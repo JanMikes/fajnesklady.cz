@@ -9,10 +9,8 @@ use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Enum\BillingMode;
-use App\Enum\ExpectedDuration;
 use App\Enum\PaymentFrequency;
 use App\Enum\PaymentMethod;
-use App\Enum\RentalType;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
@@ -39,21 +37,19 @@ final class AdminOnboardingHandlerTest extends TestCase
             storage: $storage,
             storageType: $storageType,
             place: $place,
-            rentalType: RentalType::UNLIMITED,
             startDate: new \DateTimeImmutable('2025-06-15'),
-            endDate: null,
+            endDate: new \DateTimeImmutable('2026-06-15'),
             paymentMethod: PaymentMethod::GOPAY,
             individualMonthlyAmount: null,
             paidThroughDate: null,
             createdByAdminId: Uuid::v7(),
             billingMode: BillingMode::AUTO_RECURRING,
-            expectedDuration: ExpectedDuration::MEDIUM,
             paymentFrequency: PaymentFrequency::MONTHLY,
         );
 
         self::assertSame('customer@example.com', $command->email);
         self::assertSame('Jan', $command->firstName);
-        self::assertSame(RentalType::UNLIMITED, $command->rentalType);
+        self::assertSame('2026-06-15', $command->endDate->format('Y-m-d'));
         self::assertSame(PaymentMethod::GOPAY, $command->paymentMethod);
         self::assertNull($command->variableSymbolOverride);
         self::assertNull($command->uploadedContractPath);
@@ -80,7 +76,6 @@ final class AdminOnboardingHandlerTest extends TestCase
             storage: $storage,
             storageType: $storageType,
             place: $place,
-            rentalType: RentalType::LIMITED,
             startDate: new \DateTimeImmutable('2025-06-15'),
             endDate: new \DateTimeImmutable('2025-12-15'),
             paymentMethod: PaymentMethod::BANK_TRANSFER,
@@ -88,7 +83,6 @@ final class AdminOnboardingHandlerTest extends TestCase
             paidThroughDate: new \DateTimeImmutable('2025-09-15'),
             createdByAdminId: Uuid::v7(),
             billingMode: BillingMode::MANUAL_RECURRING,
-            expectedDuration: null,
             paymentFrequency: PaymentFrequency::MONTHLY,
             variableSymbolOverride: '9999999999',
             uploadedContractPath: '/tmp/contract.pdf',
@@ -121,15 +115,13 @@ final class AdminOnboardingHandlerTest extends TestCase
             storage: $storage,
             storageType: $storageType,
             place: $place,
-            rentalType: RentalType::UNLIMITED,
             startDate: new \DateTimeImmutable('2025-06-15'),
-            endDate: null,
+            endDate: new \DateTimeImmutable('2026-06-15'),
             paymentMethod: PaymentMethod::EXTERNAL,
             individualMonthlyAmount: 0,
             paidThroughDate: null,
             createdByAdminId: Uuid::v7(),
-            billingMode: BillingMode::AUTO_RECURRING,
-            expectedDuration: ExpectedDuration::SHORT,
+            billingMode: BillingMode::MANUAL_RECURRING,
             paymentFrequency: PaymentFrequency::MONTHLY,
         );
 

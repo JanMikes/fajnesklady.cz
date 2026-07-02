@@ -143,10 +143,10 @@ class IssueMissingInvoicesCommandTest extends KernelTestCase
     {
         // Fixture-reference loading is not available from KernelTestCase, so
         // look orders up by the storage number that uniquely identifies each
-        // fixture row (B3 = REF_ORDER_COMPLETED, C1 = REF_ORDER_COMPLETED_UNLIMITED).
+        // fixture row (B3 = REF_ORDER_COMPLETED, C1 = REF_ORDER_COMPLETED_RECURRING).
         $storageNumberByRef = [
             OrderFixtures::REF_ORDER_COMPLETED => 'B3',
-            OrderFixtures::REF_ORDER_COMPLETED_UNLIMITED => 'C1',
+            OrderFixtures::REF_ORDER_COMPLETED_RECURRING => 'C1',
         ];
         $storageNumber = $storageNumberByRef[$reference] ?? throw new \InvalidArgumentException('Unmapped reference');
 

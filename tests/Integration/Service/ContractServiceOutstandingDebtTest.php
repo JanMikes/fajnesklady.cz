@@ -10,7 +10,7 @@ use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
-use App\Enum\RentalType;
+use App\Enum\PaymentFrequency;
 use App\Service\ContractService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -97,10 +97,9 @@ class ContractServiceOutstandingDebtTest extends KernelTestCase
             id: Uuid::v7(),
             user: $user,
             storage: $storage,
-            rentalType: RentalType::UNLIMITED,
-            paymentFrequency: null,
+            paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: new \DateTimeImmutable('2025-12-01'),
-            endDate: null,
+            endDate: new \DateTimeImmutable('2026-12-01'),
             firstPaymentPrice: $individualMonthly ?? $storageRate,
             expiresAt: new \DateTimeImmutable('+7 days'),
             createdAt: new \DateTimeImmutable(),
@@ -113,9 +112,8 @@ class ContractServiceOutstandingDebtTest extends KernelTestCase
             order: $order,
             user: $user,
             storage: $storage,
-            rentalType: RentalType::UNLIMITED,
             startDate: $order->startDate,
-            endDate: null,
+            endDate: new \DateTimeImmutable('2026-12-01'),
             createdAt: new \DateTimeImmutable('2025-12-01'),
         );
 

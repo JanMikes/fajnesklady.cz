@@ -17,7 +17,7 @@ use Symfony\Component\Uid\Uuid;
  * MockClock fixed at 2025-06-15 12:00:00 UTC.
  *
  * HandoverProtocolFixtures seeds 3 baseline protocols (PENDING / TENANT_COMPLETED
- * / PENDING overdue) covering 3 contracts. Tests below use REF_CONTRACT_UNLIMITED
+ * / PENDING overdue) covering 3 contracts. Tests below use REF_CONTRACT_RECURRING
  * — the only active fixture contract WITHOUT a baseline handover — so they can
  * seed their own protocol without colliding with the OneToOne constraint.
  */
@@ -39,7 +39,7 @@ class OperationsAlertsBuilderTest extends KernelTestCase
     public function testPendingProtocolCountsTowardBothWaitingBuckets(): void
     {
         $now = $this->clock->now();
-        $contract = $this->findContractByReference(ContractFixtures::REF_CONTRACT_UNLIMITED);
+        $contract = $this->findContractByReference(ContractFixtures::REF_CONTRACT_RECURRING);
 
         $before = $this->builder->build($now);
         $this->seedProtocol($contract, $now->modify('-3 days'));
@@ -52,7 +52,7 @@ class OperationsAlertsBuilderTest extends KernelTestCase
     public function testHandoverOverdueBucketFlagsProtocolsOlderThanFourteenDays(): void
     {
         $now = $this->clock->now();
-        $contract = $this->findContractByReference(ContractFixtures::REF_CONTRACT_UNLIMITED);
+        $contract = $this->findContractByReference(ContractFixtures::REF_CONTRACT_RECURRING);
 
         $before = $this->builder->build($now);
         $this->seedProtocol($contract, $now->modify('-16 days'));
@@ -64,7 +64,7 @@ class OperationsAlertsBuilderTest extends KernelTestCase
     public function testRecentProtocolDoesNotIncrementOverdueCount(): void
     {
         $now = $this->clock->now();
-        $contract = $this->findContractByReference(ContractFixtures::REF_CONTRACT_UNLIMITED);
+        $contract = $this->findContractByReference(ContractFixtures::REF_CONTRACT_RECURRING);
 
         $before = $this->builder->build($now);
         $this->seedProtocol($contract, $now->modify('-2 days'));
@@ -126,7 +126,7 @@ class OperationsAlertsBuilderTest extends KernelTestCase
     public function testTotalPendingCountMatchesScalarHelper(): void
     {
         $now = $this->clock->now();
-        $contract = $this->findContractByReference(ContractFixtures::REF_CONTRACT_UNLIMITED);
+        $contract = $this->findContractByReference(ContractFixtures::REF_CONTRACT_RECURRING);
         $this->seedProtocol($contract, $now->modify('-3 days'));
 
         $summary = $this->builder->build($now);
@@ -151,7 +151,7 @@ class OperationsAlertsBuilderTest extends KernelTestCase
     private function findContractByReference(string $reference): Contract
     {
         $number = match ($reference) {
-            ContractFixtures::REF_CONTRACT_UNLIMITED => 'C1',
+            ContractFixtures::REF_CONTRACT_RECURRING => 'C1',
             ContractFixtures::REF_CONTRACT_EXPIRING_7_DAYS => 'D3',
             default => throw new \InvalidArgumentException("Unknown contract reference: $reference"),
         };

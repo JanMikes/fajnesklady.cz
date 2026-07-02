@@ -162,13 +162,11 @@
         </div>
 
         <h3>Pokračovat v pronájmu?</h3>
-        <p>Stačí jeden klik — všechny údaje doplníme za Vás. Stejný sklad (pokud bude volný), stejné období, stejné fakturační údaje.</p>
+        <p>Stačí jeden klik — smlouva se prodlouží, stejná skladovací jednotka, stejné podmínky. Jen si zvolíte nové datum konce.</p>
 
         <div style="text-align: center;">
-            {% if isLimited %}
-                <a href="{{ renewalUrl }}" class="button button-extend">Prodloužit pronájem</a>
-                <br>
-            {% endif %}
+            <a href="{{ prolongUrl }}" class="button button-extend">Prodloužit pronájem</a>
+            <br>
             <a href="{{ statusUrl }}" style="color: #570df8; text-decoration: underline; font-size: 14px;">Zobrazit stav objednávky</a>
         </div>
 

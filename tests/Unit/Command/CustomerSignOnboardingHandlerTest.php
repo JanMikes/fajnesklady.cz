@@ -14,7 +14,6 @@ use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\OrderStatus;
 use App\Enum\PaymentMethod;
-use App\Enum\RentalType;
 use App\Enum\SigningMethod;
 use App\Repository\AuditLogRepository;
 use App\Repository\ContractRepository;
@@ -319,7 +318,6 @@ class CustomerSignOnboardingHandlerTest extends TestCase
             id: Uuid::v7(),
             user: $user,
             storage: $storage,
-            rentalType: RentalType::LIMITED,
             paymentFrequency: null,
             startDate: new \DateTimeImmutable('+1 day'),
             endDate: new \DateTimeImmutable('+30 days'),

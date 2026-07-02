@@ -16,7 +16,7 @@ use Symfony\Component\Uid\Uuid;
 final class InvoiceFixtures extends Fixture implements DependentFixtureInterface
 {
     public const REF_INVOICE_COMPLETED = 'invoice-completed';
-    public const REF_INVOICE_UNLIMITED = 'invoice-unlimited';
+    public const REF_INVOICE_RECURRING = 'invoice-recurring';
     public const REF_INVOICE_EXPIRING = 'invoice-expiring';
 
     public function __construct(
@@ -37,8 +37,8 @@ final class InvoiceFixtures extends Fixture implements DependentFixtureInterface
         /** @var Order $orderCompleted */
         $orderCompleted = $this->getReference(OrderFixtures::REF_ORDER_COMPLETED, Order::class);
 
-        /** @var Order $orderUnlimited */
-        $orderUnlimited = $this->getReference(OrderFixtures::REF_ORDER_COMPLETED_UNLIMITED, Order::class);
+        /** @var Order $orderRecurring */
+        $orderRecurring = $this->getReference(OrderFixtures::REF_ORDER_COMPLETED_RECURRING, Order::class);
 
         /** @var Order $orderExpiringSoon */
         $orderExpiringSoon = $this->getReference(OrderFixtures::REF_ORDER_EXPIRING_SOON, Order::class);
@@ -66,20 +66,20 @@ final class InvoiceFixtures extends Fixture implements DependentFixtureInterface
         $this->addReference(self::REF_INVOICE_COMPLETED, $invoiceCompleted);
 
         // Invoice for unlimited order
-        $invoiceUnlimited = new Invoice(
+        $invoiceRecurring = new Invoice(
             id: Uuid::v7(),
-            order: $orderUnlimited,
+            order: $orderRecurring,
             user: $user,
             fakturoidInvoiceId: 12345002,
             invoiceNumber: '2025-0002',
-            amount: $orderUnlimited->firstPaymentPrice,
+            amount: $orderRecurring->firstPaymentPrice,
             issuedAt: $now->modify('-34 days'),
             createdAt: $now->modify('-34 days'),
         );
-        $this->attachTestPdf($invoiceUnlimited);
-        $invoiceUnlimited->popEvents();
-        $manager->persist($invoiceUnlimited);
-        $this->addReference(self::REF_INVOICE_UNLIMITED, $invoiceUnlimited);
+        $this->attachTestPdf($invoiceRecurring);
+        $invoiceRecurring->popEvents();
+        $manager->persist($invoiceRecurring);
+        $this->addReference(self::REF_INVOICE_RECURRING, $invoiceRecurring);
 
         // Invoice for expiring order
         $invoiceExpiring = new Invoice(

@@ -41,7 +41,8 @@
             </table>
         </div>
 
-        {% if isBankTransfer|default(false) and bankAccount|default(null) %}
+        {# Spec 076: manual cycles are paid by bank transfer only — no GoPay link. #}
+        {% if bankAccount|default(null) %}
             <div style="background-color: #dbeafe; border: 1px solid #93c5fd; padding: 20px; border-radius: 5px; margin: 20px 0;">
                 <strong style="color: #1e3a5f;">Platební údaje pro bankovní převod:</strong>
                 <table style="width: 100%; margin-top: 10px; border-collapse: collapse;">
@@ -67,10 +68,6 @@
                 </div>
                 {% endif %}
             </div>
-        {% elseif gatewayUrl %}
-            <p style="text-align: center; margin: 28px 0;">
-                <a href="{{ gatewayUrl }}" class="cta">Zaplatit přes GoPay</a>
-            </p>
         {% endif %}
 
         <p style="text-align: center; margin: 20px 0;">

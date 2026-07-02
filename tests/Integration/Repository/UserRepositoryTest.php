@@ -11,7 +11,6 @@ use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\PaymentFrequency;
-use App\Enum\RentalType;
 use App\Enum\TerminationReason;
 use App\Exception\UserNotFound;
 use App\Repository\UserRepository;
@@ -219,10 +218,9 @@ class UserRepositoryTest extends KernelTestCase
             Uuid::v7(),
             $debtor,
             $storage,
-            RentalType::UNLIMITED,
             PaymentFrequency::MONTHLY,
             $now->modify('-30 days'),
-            null,
+            $now->modify('-30 days')->modify('+12 months'),
             35000,
             $now->modify('-23 days'),
             $now->modify('-30 days'),
@@ -232,9 +230,8 @@ class UserRepositoryTest extends KernelTestCase
             $order,
             $debtor,
             $storage,
-            RentalType::UNLIMITED,
             $now->modify('-30 days'),
-            null,
+            $now->modify('-30 days')->modify('+12 months'),
             $now->modify('-30 days'),
         );
         $contract->setOutstandingDebt(35000);
@@ -271,10 +268,9 @@ class UserRepositoryTest extends KernelTestCase
             Uuid::v7(),
             $tenant,
             $storage,
-            RentalType::UNLIMITED,
             PaymentFrequency::MONTHLY,
             $now->modify('-30 days'),
-            null,
+            $now->modify('-30 days')->modify('+12 months'),
             35000,
             $now->modify('+7 days'),
             $now->modify('-30 days'),
@@ -284,9 +280,8 @@ class UserRepositoryTest extends KernelTestCase
             $order,
             $tenant,
             $storage,
-            RentalType::UNLIMITED,
             $now->modify('-30 days'),
-            null,
+            $now->modify('-30 days')->modify('+12 months'),
             $now->modify('-30 days'),
         );
 
@@ -352,10 +347,9 @@ class UserRepositoryTest extends KernelTestCase
             Uuid::v7(),
             $activeTenant,
             $storageActive,
-            RentalType::UNLIMITED,
             PaymentFrequency::MONTHLY,
             $now->modify('-30 days'),
-            null,
+            $now->modify('-30 days')->modify('+12 months'),
             35000,
             $now->modify('+7 days'),
             $now->modify('-30 days'),
@@ -365,9 +359,8 @@ class UserRepositoryTest extends KernelTestCase
             $orderActive,
             $activeTenant,
             $storageActive,
-            RentalType::UNLIMITED,
             $now->modify('-30 days'),
-            null,
+            $now->modify('-30 days')->modify('+12 months'),
             $now->modify('-30 days'),
         );
 
@@ -375,10 +368,9 @@ class UserRepositoryTest extends KernelTestCase
             Uuid::v7(),
             $terminatedTenant,
             $storageTerminated,
-            RentalType::UNLIMITED,
             PaymentFrequency::MONTHLY,
             $now->modify('-60 days'),
-            null,
+            $now->modify('-60 days')->modify('+12 months'),
             35000,
             $now->modify('+7 days'),
             $now->modify('-60 days'),
@@ -388,9 +380,8 @@ class UserRepositoryTest extends KernelTestCase
             $orderTerminated,
             $terminatedTenant,
             $storageTerminated,
-            RentalType::UNLIMITED,
             $now->modify('-60 days'),
-            null,
+            $now->modify('-60 days')->modify('+12 months'),
             $now->modify('-60 days'),
         );
         $contractTerminated->terminate($now->modify('-1 day'), TerminationReason::TENANT_NOTICE);
@@ -441,10 +432,9 @@ class UserRepositoryTest extends KernelTestCase
             Uuid::v7(),
             $activeTenant,
             $storage,
-            RentalType::UNLIMITED,
             PaymentFrequency::MONTHLY,
             $now->modify('-30 days'),
-            null,
+            $now->modify('-30 days')->modify('+12 months'),
             35000,
             $now->modify('+7 days'),
             $now->modify('-30 days'),
@@ -454,9 +444,8 @@ class UserRepositoryTest extends KernelTestCase
             $order,
             $activeTenant,
             $storage,
-            RentalType::UNLIMITED,
             $now->modify('-30 days'),
-            null,
+            $now->modify('-30 days')->modify('+12 months'),
             $now->modify('-30 days'),
         );
 
@@ -605,10 +594,9 @@ class UserRepositoryTest extends KernelTestCase
             Uuid::v7(),
             $user,
             $storage,
-            RentalType::UNLIMITED,
             PaymentFrequency::MONTHLY,
             $now->modify('-30 days'),
-            null,
+            $now->modify('-30 days')->modify('+12 months'),
             35000,
             $now->modify('+7 days'),
             $now->modify('-30 days'),
@@ -618,9 +606,8 @@ class UserRepositoryTest extends KernelTestCase
             $order,
             $user,
             $storage,
-            RentalType::UNLIMITED,
             $now->modify('-30 days'),
-            null,
+            $now->modify('-30 days')->modify('+12 months'),
             $now->modify('-30 days'),
         );
 

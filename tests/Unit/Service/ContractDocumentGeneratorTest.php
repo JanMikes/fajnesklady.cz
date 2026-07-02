@@ -10,7 +10,6 @@ use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
-use App\Enum\RentalType;
 use App\Service\ContractDocumentGenerator;
 use App\Service\Order\OrderReferenceFormatter;
 use PHPUnit\Framework\TestCase;
@@ -101,16 +100,15 @@ class ContractDocumentGeneratorTest extends TestCase
         );
     }
 
-    private function createOrder(User $user, Storage $storage, RentalType $rentalType = RentalType::LIMITED): Order
+    private function createOrder(User $user, Storage $storage): Order
     {
         return new Order(
             id: Uuid::v7(),
             user: $user,
             storage: $storage,
-            rentalType: $rentalType,
             paymentFrequency: null,
             startDate: new \DateTimeImmutable('2024-01-15'),
-            endDate: RentalType::LIMITED === $rentalType ? new \DateTimeImmutable('2024-02-15') : null,
+            endDate: new \DateTimeImmutable('2024-02-15'),
             firstPaymentPrice: 35000,
             expiresAt: new \DateTimeImmutable('+7 days'),
             createdAt: new \DateTimeImmutable('2024-01-01'),
@@ -119,14 +117,16 @@ class ContractDocumentGeneratorTest extends TestCase
 
     private function createContract(Order $order): Contract
     {
+        $endDate = $order->endDate;
+        \assert(null !== $endDate);
+
         return new Contract(
             id: Uuid::v7(),
             order: $order,
             user: $order->user,
             storage: $order->storage,
-            rentalType: $order->rentalType,
             startDate: $order->startDate,
-            endDate: $order->endDate,
+            endDate: $endDate,
             createdAt: new \DateTimeImmutable('2024-01-01 10:00:00'),
         );
     }
@@ -241,19 +241,6 @@ class ContractDocumentGeneratorTest extends TestCase
         $this->assertFileExists($outputPath);
     }
 
-    public function testGenerateUnlimitedContractCreatesDocument(): void
-    {
-        $tenant = $this->createUser();
-        $storage = $this->createStorage();
-        $order = $this->createOrder($tenant, $storage, RentalType::UNLIMITED);
-        $contract = $this->createContract($order);
-
-        $templatePath = $this->createTestTemplate();
-        $outputPath = $this->generator->generate($contract, $templatePath);
-
-        $this->assertFileExists($outputPath);
-    }
-
     public function testPersistedContractDateMatchesOrderCreatedAtNotContractCreatedAt(): void
     {
         // The persisted file (portal/admin download) must carry the same
@@ -265,14 +252,15 @@ class ContractDocumentGeneratorTest extends TestCase
         $tenant = $this->createUser();
         $storage = $this->createStorage();
         $order = $this->createOrder($tenant, $storage);
+        $endDate = $order->endDate;
+        \assert(null !== $endDate);
         $contract = new Contract(
             id: Uuid::v7(),
             order: $order,
             user: $order->user,
             storage: $order->storage,
-            rentalType: $order->rentalType,
             startDate: $order->startDate,
-            endDate: $order->endDate,
+            endDate: $endDate,
             createdAt: new \DateTimeImmutable('2024-02-10 14:30:00'),
         );
 

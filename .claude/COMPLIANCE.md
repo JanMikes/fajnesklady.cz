@@ -45,35 +45,39 @@ These are the **website-canonical** values. The PDFs may say something else — 
 | Recurring-payment changes / cancellation | e-mail | **simek@fajnesklady.cz** (per Podmínky VI; this is intentional — kept distinct so recurring-payment ops route to the right person) |
 | Hlavní pobočka (provoz) | adresa | Collo Louky 1557, 738 01 Frýdek-Místek |
 
-## Billing modes (the three shapes of a rental)
+## Billing modes (the three shapes of a rental — spec 076)
 
-Every rental falls into exactly one of three modes. The customer-facing quote, the order entity's `totalPrice`, the GoPay call shape, and the recurring-billing cron all branch on the same rule. **Don't add a fourth mode without re-deriving the whole flow.**
+Every rental is **fixed-term** (`endDate` is always required; "doba neurčitá" no longer exists) and falls into exactly one of three modes. Billing mode is never a user choice — it is derived by `BillingMode::derive()` from the payment method + frequency + rental length. **Cards may ONLY establish recurring monthly payments** — no one-shot card charge exists anywhere in the rental flow (fines and onboarding-debt payments are a separate legal surface and keep one-shot GoPay).
 
-| Mode | When it applies | First charge | Subsequent charges | GoPay call shape |
+| Mode | When it applies | First charge | Subsequent charges | Payment shape |
 |---|---|---|---|---|
-| **One-shot (krátkodobý)** | Limited rental, < 28 dní | Full prorated total (weekly rate × weeks + daily tail) | None | `createPayment` (no `recurrence`) |
-| **Recurring fixed-end** | Limited rental, ≥ 28 dní (cap: 1 rok / 12 měsíců) | Full month at start | Cron runs monthly via `createRecurrence`. **Last charge is prorated** (`remainingDays × monthlyRate / 30`) | First charge: `createPayment` with `recurrence_cycle = ON_DEMAND`. Subsequent: `createRecurrence($parentPaymentId, …)` |
-| **Recurring open-ended (doba neurčitá)** | Unlimited rental | Full month at start | Same monthly rate forever via `createRecurrence`, until customer cancels | Same as fixed-end, but with no end date in the schedule |
+| **One-shot (krátkodobý)** | Bankovní převod, < 31 dní | Full prorated total (weekly rate × weeks + daily tail) | None | Bank transfer (QR + variabilní symbol) — karta není dostupná |
+| **Recurring card (AUTO_RECURRING)** | Platba kartou, ≥ 31 dní, VŽDY měsíční | Full month at start | Cron runs monthly via `createRecurrence` until `endDate`. **Last charge is prorated** (`remainingDays × monthlyRate / 30`) | First charge: GoPay `recurrence_cycle = ON_DEMAND`. Subsequent: `createRecurrence($parentPaymentId, …)` |
+| **Manual bank (MANUAL_RECURRING)** | Bankovní převod ≥ 31 dní (měsíčně), roční platba (≥ 360 dní, −10 %), EXTERNAL (admin onboarding) | Bank transfer | Per-cycle reminder e-mails with bank details + QR (žádný GoPay odkaz) | Bank transfer only |
 
 Hard rules:
 
-- **Limited rentals are capped at 1 rok.** The customer-facing form (`OrderFormData::validateDates`) refuses anything longer and points the customer at "doba neurčitá". This keeps the prorated-tail math from running across an arbitrarily long horizon and keeps recurring contracts comfortably under the GoPay 15 000 Kč single-charge ceiling.
-- **The "is this recurring?" question has exactly one source of truth: `PriceCalculator::needsRecurringBilling()`.** It returns `true` for unlimited *and* fixed-end ≥ 28 dní. Anywhere we render the recurring-payment consent block, gate on this — **not** on `endDate === null` (that historically hid the consent for fixed-end orders that nonetheless set up an ON_DEMAND token = compliance breach).
-- **The exact amount and date of every charge has exactly one source of truth: `PriceCalculator::buildPaymentSchedule()`.** It returns a `PaymentSchedule` value object with the full `[(date, amount), …]` list (open-ended schedules show only the first entry; the rest are added by the cron after each successful billing cycle). The customer-facing surfaces (order_create / order_accept / order_payment) and the recurring cron (`ChargeRecurringPaymentHandler::calculateBillingAmount`) MUST produce identical numbers — keep them in sync. There are unit tests pinning the math; if you need to change the cadence (e.g., switch away from `\DateTimeImmutable::modify('+1 month')` calendar months) update both call sites and the tests in the same commit.
-- **Cancellation does NOT retroactively refund.** Per Podmínky opakovaných plateb čl. VI, cancelling the recurring stops future charges; already-rendered service is settled. The "settle outstanding usage on cancel" feature for open-ended contracts is tracked separately (see backlog spec 019 if open).
+- **No upper duration cap.** The former 1-rok cap is gone; the datepicker and `OrderFormData::validateDates` accept any end date ≥ start + 7 days. Recurring charges are monthly amounts, so the GoPay 15 000 Kč single-charge ceiling is unaffected by rental length.
+- **Contracts hard-stop at `endDate`.** No auto-extension exists — recurring charges stop at the (prorated) last cycle, the termination cron then terminates the contract and voids the GoPay token. Continuation is an explicit prolongation (spec 077).
+- **Availability guarantee is the card product's selling point.** A live-token card contract blocks its storage open-endedly (nobody can pre-book any future window); bank-transfer rentals free the unit at `endDate`. Fixed wording (do not paraphrase):
+  - under the "Způsob platby" heading, always visible: *„Při volbě automatické platby kartou garantujeme dostupnost Vaší skladovací jednotky v případě potřeby prodloužení pronájmu."*
+  - when bank transfer is selected: *„Negarantujeme dostupnost vaší skladovací jednotky v případě potřeby prodloužení pronájmu."*
+- **The "is this recurring?" question has exactly one source of truth: `PriceCalculator::needsRecurringBilling()`.** It returns `true` for ≥ 31 dní. Anywhere we render the recurring-payment consent block, gate on this — **not** on the end date.
+- **The exact amount and date of every charge has exactly one source of truth: `PriceCalculator::buildPaymentSchedule()`.** It returns a `PaymentSchedule` value object with the full `[(date, amount), …]` list. The customer-facing surfaces (order_create / order_accept / order_payment) and the recurring cron (`ChargeRecurringPaymentHandler` / `RecurringAmountCalculator`) MUST produce identical numbers — keep them in sync. There are unit tests pinning the math; if you need to change the cadence (e.g., switch away from `\DateTimeImmutable::modify('+1 month')` calendar months) update both call sites and the tests in the same commit.
+- **Cancellation does NOT retroactively refund.** Per Podmínky opakovaných plateb čl. VI, cancelling the recurring stops future charges; already-rendered service is settled. The "settle outstanding usage on cancel" feature is tracked separately (see backlog spec 019 if open).
 
 ## Recurring payments (opakované platby)
 
 Hard requirements drawn from GoPay rules and Podmínky opakovaných plateb:
 
 - **Consent MUST be obtained via a dedicated, visibly separate checkbox** — not folded into a bundled "I agree to everything" master checkbox. The parameters of the recurring payment must be visually adjacent to that checkbox. Buried-in-T&C consent is explicitly disallowed by GoPay.
-- **GoPay recurrence type used by this site: `ON_DEMAND` for ALL recurring contracts** (fixed-end ≥ 28 dní *and* doba neurčitá). `recurrence_date_to = 2099-12-31` (effectively "no expiry"; per GoPay docs, must be strictly less than 2099-12-31, and our SDK accepts the boundary value). We never use `recurrence_cycle = DAY / WEEK / MONTH` (Automatic) — we want gate-per-charge on contract state, prorated tail support, and unified retry logic. If you ever consider switching unlimited rentals to Automatic, re-read [`specs/016-gopay-vop-compliance.md`](specs/016-gopay-vop-compliance.md) and the GoPay decision log first.
+- **GoPay recurrence type used by this site: `ON_DEMAND` for ALL card contracts** (cards are recurring-only; spec 076). `recurrence_date_to = 2099-12-31` (effectively "no expiry"; per GoPay docs, must be strictly less than 2099-12-31, and our SDK accepts the boundary value). We never use `recurrence_cycle = DAY / WEEK / MONTH` (Automatic) — we want gate-per-charge on contract state, prorated tail support, and unified retry logic. If you ever consider switching to Automatic, re-read [`specs/016-gopay-vop-compliance.md`](specs/016-gopay-vop-compliance.md) and the GoPay decision log first.
 - Parameters that MUST be displayed at the consent point — **in this order, with these exact labels**, because the order/labels are the ones we filed with GoPay underwriting:
   - **Účel platby** — "Pronájem skladovací jednotky"
   - **Maximální částka opakované platby** — **15 000 Kč** (legal ceiling per Podmínky III)
   - **Částka jednotlivé platby** — explicit **Fixní** label + the actual monthly amount in CZK incl. VAT. For fixed-end ≥ 28 dní rentals, must also disclose that the last installment is prorated by remaining days (otherwise GoPay treats the disclosure as misleading).
   - **Frekvence a den strhávání** — explicit **Fixní** label + "měsíční, vždy ke stejnému dni v měsíci jako první platba; pokud připadne na nepracovní den, strhne se následující pracovní den" (kept consistent with Podmínky opakovaných plateb čl. III).
-  - **Doba trvání** — "po celou dobu trvání nájmu / do odvolání souhlasu" (unlimited) **or** "{N} platby do {date}" (fixed-end).
+  - **Doba trvání** — "{N} platby do {date}" (every rental is fixed-end; spec 076).
   - **Forma komunikace pro změnu nastavení** — e-mailem na `simek@fajnesklady.cz` (this is a SEPARATE row from cancellation per GoPay checklist — even if the channel is the same, both rows must be present).
   - **Zrušení a storno opakované platby** — e-mailem na `simek@fajnesklady.cz`, kdykoli, bez sankce; odkaz na Podmínky čl. VI.
 - A **PCI-DSS Level 1** disclosure MUST appear immediately below the dedicated consent checkbox — not only inside the linked Podmínky modal. Required text:
@@ -85,14 +89,14 @@ Hard requirements drawn from GoPay rules and Podmínky opakovaných plateb:
 - Customer's consent record (timestamp, IP, params) MUST be retained for **at least 12 months past termination** of the recurring agreement.
 - Customer MUST be able to cancel the recurring payment at any time. Cancellation does not retroactively affect already-rendered services.
 
-### Yearly cadence (spec 045)
+### Yearly cadence (spec 045, revised by spec 076)
 
-When the customer (or admin during onboarding) picks **Roční platba**, the contract is billed as a one-shot annual GoPay payment, NOT as an `ON_DEMAND` recurring charge. The legal consequences:
+When the customer (or admin during onboarding) picks **Roční platba** (available for rentals ≥ 360 dní, advertised with a static **−10 %** badge), the contract is billed **by bank transfer only** — a card can never pay a yearly cycle (cards are recurring-monthly-only). The legal consequences:
 
-- The **15 000 Kč single-charge ceiling** from Podmínky opakovaných plateb čl. III does NOT apply — a yearly payment is a normal one-time charge, not a "single recurring charge". `MAX_RECURRING_PAYMENT_AMOUNT_IN_HALER` and the Podmínky PDF text remain accurate as written.
-- The **dedicated recurring-payment consent checkbox** described above MUST NOT be shown for YEARLY orders. The order accept template gates the consent block on `formData.billingMode.value == 'auto_recurring'`; YEARLY forces `MANUAL_RECURRING`, so the block is hidden by construction. Don't add a parallel block for yearly — there is no token, no silent debit, and no Podmínky-čl.-III parameter disclosure obligation.
-- **No Podmínky PDF re-issuance** is required when yearly is enabled per place — the document covers ON_DEMAND recurring charges, which yearly does not use.
-- Customer is reminded by e-mail 7 days before each yearly cycle (per `ManualBillingReminderSchedule`) and pays via a fresh one-shot GoPay link. This is the same MANUAL track spec 036 introduced; the only difference is the cadence anchor (`+1 year` instead of `+1 month`).
+- The **15 000 Kč single-charge ceiling** from Podmínky opakovaných plateb čl. III does NOT apply — there is no recurring card charge at all. `MAX_RECURRING_PAYMENT_AMOUNT_IN_HALER` and the Podmínky PDF text remain accurate as written.
+- The **dedicated recurring-payment consent checkbox** described above MUST NOT be shown for YEARLY orders. The order accept template gates the consent block on `formData.billingMode.value == 'auto_recurring'`; YEARLY derives to `MANUAL_RECURRING`, so the block is hidden by construction. Don't add a parallel block for yearly — there is no token, no silent debit, and no Podmínky-čl.-III parameter disclosure obligation.
+- **No Podmínky PDF re-issuance** is required — the document covers ON_DEMAND recurring charges, which yearly does not use.
+- Customer is reminded by e-mail 7 days before each yearly cycle (per `ManualBillingReminderSchedule`) and pays via bank transfer (bank details + QR in the e-mail — no GoPay link). This is the same MANUAL track spec 036 introduced; the only difference is the cadence anchor (`+1 year` instead of `+1 month`).
 - The "platba předem na celý rok" VOP wording is implicit in the per-order schedule; no new disclosure obligation under § 1826a OZ (no auto-renewal on a stored token).
 
 ## Payment-method logos & security indicators
@@ -135,7 +139,7 @@ Cookie-consent compliance is governed separately. Don't add it to this file unle
 
 - `src/Service/PriceCalculator.php` — `buildPaymentSchedule()` (single source of truth for the customer-facing schedule and the cron amounts), `needsRecurringBilling()` (single source of truth for "should we set up an ON_DEMAND token").
 - `src/Value/PaymentSchedule.php` + `src/Value/PaymentScheduleEntry.php` — value objects passed to every billing-related template.
-- `src/Form/OrderFormData.php` `validateDates()` — enforces the 1-rok cap on limited rentals.
+- `src/Form/OrderFormData.php` `validateDates()` — enforces the required end date + 7-day floor (no upper cap since spec 076); `BillingMode::derive()` — the payment matrix.
 - `src/Command/ChargeRecurringPaymentHandler.php` `calculateBillingAmount()` — the cron equivalent of `buildPaymentSchedule`'s tail-prorate branch; **must stay in sync**.
 - `templates/components/OrderForm.html.twig`, `templates/public/order_accept.html.twig`, `templates/public/order_payment.html.twig` — render the schedule.
 - `templates/public/order_accept.html.twig` — submit button label, pre-disclosure, dedicated recurring consent, parameters card.

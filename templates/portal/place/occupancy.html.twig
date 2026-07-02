@@ -143,8 +143,8 @@
                                         {{ view.rentedUntil|date('d.m.Y') }}
                                         {% if view.currentContract and view.currentContract.terminatesAt %}
                                             <span class="text-xs text-amber-600">(výpověď)</span>
-                                        {% elseif view.isUnlimited %}
-                                            <span class="text-xs text-gray-500">↻</span>
+                                        {% elseif view.hasAvailabilityGuarantee %}
+                                            <span class="text-xs text-gray-500" title="Garance dostupnosti — platba kartou">↻</span>
                                         {% endif %}
                                     {% else %}
                                         <span class="text-gray-400">—</span>

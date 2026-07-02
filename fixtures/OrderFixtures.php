@@ -8,7 +8,6 @@ use App\Entity\Order;
 use App\Entity\Storage;
 use App\Entity\User;
 use App\Enum\PaymentFrequency;
-use App\Enum\RentalType;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
@@ -26,8 +25,9 @@ final class OrderFixtures extends Fixture implements DependentFixtureInterface
     // Order in COMPLETED status (storage B3 - occupied, has contract)
     public const REF_ORDER_COMPLETED = 'order-completed';
 
-    // Second completed order for unlimited rental (storage C1 - occupied)
-    public const REF_ORDER_COMPLETED_UNLIMITED = 'order-completed-unlimited';
+    // Second completed order — card-recurring with a live token (storage C1 - occupied);
+    // exercises the spec-076 availability guarantee (open-ended block)
+    public const REF_ORDER_COMPLETED_RECURRING = 'order-completed-recurring';
 
     // Order in CANCELLED status (storage was released)
     public const REF_ORDER_CANCELLED = 'order-cancelled';
@@ -38,7 +38,7 @@ final class OrderFixtures extends Fixture implements DependentFixtureInterface
     // Order expiring soon for reminder tests
     public const REF_ORDER_EXPIRING_SOON = 'order-expiring-soon';
 
-    // Order backing the unlimited contract that has a pending termination
+    // Order backing the recurring contract that has a pending termination
     // notice — surfaces "ukončuje se" warnings on planning surfaces.
     public const REF_ORDER_TERMINATING = 'order-terminating';
 
@@ -84,7 +84,6 @@ final class OrderFixtures extends Fixture implements DependentFixtureInterface
             id: Uuid::v7(),
             user: $tenant,
             storage: $storageB1,
-            rentalType: RentalType::LIMITED,
             paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: $now->modify('+7 days'),
             endDate: $now->modify('+37 days'),
@@ -102,7 +101,6 @@ final class OrderFixtures extends Fixture implements DependentFixtureInterface
             id: Uuid::v7(),
             user: $tenant,
             storage: $storageB2,
-            rentalType: RentalType::LIMITED,
             paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: $now->modify('+14 days'),
             endDate: $now->modify('+44 days'),
@@ -125,7 +123,6 @@ final class OrderFixtures extends Fixture implements DependentFixtureInterface
             id: $completedOrderId,
             user: $user,
             storage: $storageB3,
-            rentalType: RentalType::LIMITED,
             paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: $now->modify('-1 day'),
             endDate: $now->modify('+29 days'),
@@ -142,35 +139,35 @@ final class OrderFixtures extends Fixture implements DependentFixtureInterface
         $manager->persist($orderCompleted);
         $this->addReference(self::REF_ORDER_COMPLETED, $orderCompleted);
 
-        // Order in COMPLETED status with unlimited rental
-        $unlimitedOrderId = Uuid::v7();
-        $orderUnlimited = new Order(
-            id: $unlimitedOrderId,
+        // Order in COMPLETED status — card-recurring, 12-month fixed term
+        $recurringOrderId = Uuid::v7();
+        $orderRecurring = new Order(
+            id: $recurringOrderId,
             user: $user,
             storage: $storageC1,
-            rentalType: RentalType::UNLIMITED,
-            paymentFrequency: null,
+            paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: $now->modify('-30 days'),
-            endDate: null, // Unlimited
+            // 24 months: templates gate the access code on Twig 'now' (REAL system
+            // time, not MockClock), so the fixture window must outlive real today.
+            endDate: $now->modify('+700 days'),
             firstPaymentPrice: 280000, // First month
             expiresAt: $now->modify('-37 days'),
             createdAt: $now->modify('-37 days'),
         );
-        $orderUnlimited->reserve($now->modify('-37 days'));
-        $orderUnlimited->acceptTerms($now->modify('-37 days'));
-        $orderUnlimited->markAwaitingPayment($now->modify('-36 days'));
-        $orderUnlimited->markPaid($now->modify('-35 days'));
+        $orderRecurring->reserve($now->modify('-37 days'));
+        $orderRecurring->acceptTerms($now->modify('-37 days'));
+        $orderRecurring->markAwaitingPayment($now->modify('-36 days'));
+        $orderRecurring->markPaid($now->modify('-35 days'));
         // complete() will be called from ContractFixtures after contract is created
-        $orderUnlimited->popEvents();
-        $manager->persist($orderUnlimited);
-        $this->addReference(self::REF_ORDER_COMPLETED_UNLIMITED, $orderUnlimited);
+        $orderRecurring->popEvents();
+        $manager->persist($orderRecurring);
+        $this->addReference(self::REF_ORDER_COMPLETED_RECURRING, $orderRecurring);
 
         // Order in CANCELLED status
         $orderCancelled = new Order(
             id: Uuid::v7(),
             user: $tenant,
             storage: $storageD1,
-            rentalType: RentalType::LIMITED,
             paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: $now->modify('+7 days'),
             endDate: $now->modify('+37 days'),
@@ -189,7 +186,6 @@ final class OrderFixtures extends Fixture implements DependentFixtureInterface
             id: Uuid::v7(),
             user: $tenant,
             storage: $storageD2,
-            rentalType: RentalType::LIMITED,
             paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: $now->modify('+7 days'),
             endDate: $now->modify('+37 days'),
@@ -210,7 +206,6 @@ final class OrderFixtures extends Fixture implements DependentFixtureInterface
             id: $expiringOrderId,
             user: $tenant,
             storage: $storageD3,
-            rentalType: RentalType::LIMITED,
             paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: $now->modify('-23 days'),
             endDate: $now->modify('+7 days'), // Expires in 7 days
@@ -227,7 +222,7 @@ final class OrderFixtures extends Fixture implements DependentFixtureInterface
         $manager->persist($orderExpiringSoon);
         $this->addReference(self::REF_ORDER_EXPIRING_SOON, $orderExpiringSoon);
 
-        // Order backing the unlimited "ukončuje se" contract on storage E1
+        // Order backing the recurring "ukončuje se" contract on storage E1
         // (Praha Jih, Medium). Started 60 days ago; the contract receives a
         // termination notice in ContractFixtures so planning surfaces render
         // the warning icon. Cannot live on a Praha Centrum small box (A-row)
@@ -239,10 +234,9 @@ final class OrderFixtures extends Fixture implements DependentFixtureInterface
             id: Uuid::v7(),
             user: $user,
             storage: $storageForTerminating,
-            rentalType: RentalType::UNLIMITED,
-            paymentFrequency: null,
+            paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: $now->modify('-60 days'),
-            endDate: null,
+            endDate: $now->modify('+305 days'), // 12 months from start
             firstPaymentPrice: 40000,
             expiresAt: $now->modify('-67 days'),
             createdAt: $now->modify('-67 days'),

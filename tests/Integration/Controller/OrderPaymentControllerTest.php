@@ -219,10 +219,14 @@ class OrderPaymentControllerTest extends WebTestCase
         $this->assertResponseIsSuccessful(); // Re-renders form with error
     }
 
-    public function testAcceptWithoutRecurringPaymentsCheckboxShowsErrorForUnlimitedRental(): void
+    public function testAcceptWithoutRecurringPaymentsCheckboxShowsErrorForAutoRecurringRental(): void
     {
+        // Card-paid (GOPAY) rental ≥ 31 days derives AUTO_RECURRING billing —
+        // the dedicated recurring-payment consent is required. Everything else
+        // is valid, so a 200 re-render (instead of a redirect to payment) can
+        // only mean the missing consent was rejected.
         $storage = $this->findAvailableStorage();
-        $this->setOrderSessionData(unlimited: true);
+        $this->setOrderSessionData();
 
         $this->client->request('POST', $this->buildAcceptUrl($storage), [
             'submit_token' => self::SUBMIT_TOKEN,
@@ -234,18 +238,20 @@ class OrderPaymentControllerTest extends WebTestCase
             'signature_data' => $this->createValidPngDataUrl(),
             'signing_method' => 'draw',
             'signature_consent' => '1',
+            'signing_place' => 'Praha',
+            'accept_early_start_waiver' => '1',
         ]);
 
         $this->assertResponseIsSuccessful(); // Re-renders form with error
     }
 
-    public function testAcceptRecurringPaymentsNotRequiredForShortLimitedRental(): void
+    public function testAcceptRecurringPaymentsNotRequiredForShortBankTransferRental(): void
     {
-        // Short limited rental (< 28 days) is billed as a one-off, so no
-        // recurring-payment consent is required. Anything ≥ 28 days falls into
-        // monthly recurring billing — see PriceCalculator::needsRecurringBilling.
+        // Short rental (< 31 days) is bank-transfer territory and billed as a
+        // one-off (BillingMode::derive → ONE_TIME), so no recurring-payment
+        // consent is required — see PriceCalculator::needsRecurringBilling.
         $storage = $this->findAvailableStorage();
-        $this->setOrderSessionData(endDate: '2025-07-05');
+        $this->setOrderSessionData(endDate: '2025-07-05', paymentMethod: 'bank_transfer', billingMode: 'one_time');
 
         $this->client->request('POST', $this->buildAcceptUrl($storage), [
             'submit_token' => self::SUBMIT_TOKEN,
@@ -528,8 +534,12 @@ class OrderPaymentControllerTest extends WebTestCase
         $this->entityManager->clear();
     }
 
-    private function setOrderSessionData(bool $unlimited = false, ?string $endDate = null, string $selectionMode = 'auto'): void
-    {
+    private function setOrderSessionData(
+        string $endDate = '2025-07-31',
+        string $selectionMode = 'auto',
+        string $paymentMethod = 'gopay',
+        string $billingMode = 'auto_recurring',
+    ): void {
         /** @var SessionFactoryInterface $sessionFactory */
         $sessionFactory = static::getContainer()->get('session.factory');
         $session = $sessionFactory->createSession();
@@ -546,10 +556,12 @@ class OrderPaymentControllerTest extends WebTestCase
             'billingStreet' => null,
             'billingCity' => null,
             'billingPostalCode' => null,
-            'rentalType' => $unlimited ? 'unlimited' : 'limited',
             'startDate' => '2025-06-22',
-            'endDate' => $unlimited ? null : ($endDate ?? '2025-07-22'),
+            'endDate' => $endDate,
             'selectionMode' => $selectionMode,
+            'paymentMethod' => $paymentMethod,
+            'paymentFrequency' => 'monthly',
+            'billingMode' => $billingMode,
         ]);
         $session->set('order_accept_submit_token', self::SUBMIT_TOKEN);
         $session->save();

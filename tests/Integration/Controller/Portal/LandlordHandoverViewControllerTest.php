@@ -16,7 +16,7 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Codes-enabled fixture place is "Sklad Praha - Centrum" — REF_CONTRACT_UNLIMITED
+ * Codes-enabled fixture place is "Sklad Praha - Centrum" — REF_CONTRACT_RECURRING
  * lives at storage C1 there, with the place's storageCodesEnabled=true and
  * digits=4. Tests pin to that contract so the codes path is exercised.
  *
@@ -45,7 +45,7 @@ class LandlordHandoverViewControllerTest extends WebTestCase
 
     public function testGetPreFillsFourDigitCodeWhenCodesEnabled(): void
     {
-        $protocol = $this->createPendingHandoverForUnlimitedContract();
+        $protocol = $this->createPendingHandoverForRecurringContract();
 
         $landlord = $this->findUserByEmail('landlord@example.com');
         $this->client->loginUser($landlord, 'main');
@@ -66,7 +66,7 @@ class LandlordHandoverViewControllerTest extends WebTestCase
 
     public function testInvalidCodeSubmissionRendersFormWithError(): void
     {
-        $protocol = $this->createPendingHandoverForUnlimitedContract();
+        $protocol = $this->createPendingHandoverForRecurringContract();
 
         $landlord = $this->findUserByEmail('landlord@example.com');
         $this->client->loginUser($landlord, 'main');
@@ -97,7 +97,7 @@ class LandlordHandoverViewControllerTest extends WebTestCase
 
     public function testRoleUserHittingLandlordUrlIsRedirectedToLoginAndSessionCleared(): void
     {
-        $protocol = $this->createPendingHandoverForUnlimitedContract();
+        $protocol = $this->createPendingHandoverForRecurringContract();
 
         $tenant = $this->findUserByEmail('user@example.com');
         $this->client->loginUser($tenant, 'main');
@@ -127,7 +127,7 @@ class LandlordHandoverViewControllerTest extends WebTestCase
     public function testWrongLandlordIsRedirectedToLoginAndSessionCleared(): void
     {
         // C1 belongs to landlord@; landlord2@ owns Ostrava, so the voter denies VIEW.
-        $protocol = $this->createPendingHandoverForUnlimitedContract();
+        $protocol = $this->createPendingHandoverForRecurringContract();
 
         $otherLandlord = $this->findUserByEmail('landlord2@example.com');
         $this->client->loginUser($otherLandlord, 'main');
@@ -146,14 +146,14 @@ class LandlordHandoverViewControllerTest extends WebTestCase
         );
     }
 
-    private function createPendingHandoverForUnlimitedContract(): HandoverProtocol
+    private function createPendingHandoverForRecurringContract(): HandoverProtocol
     {
-        // REF_CONTRACT_UNLIMITED → C1 in Praha Centrum (storageCodesEnabled=true).
+        // REF_CONTRACT_RECURRING → C1 in Praha Centrum (storageCodesEnabled=true).
         // Contract is active and storage is owned by the fixture landlord, so
         // the HandoverProtocolVoter::COMPLETE_LANDLORD permission resolves.
         $protocolRepository = static::getContainer()->get(HandoverProtocolRepository::class);
 
-        $contract = $this->findContractByReference(ContractFixtures::REF_CONTRACT_UNLIMITED);
+        $contract = $this->findContractByReference(ContractFixtures::REF_CONTRACT_RECURRING);
         $existing = $protocolRepository->findByContract($contract);
         if (null !== $existing) {
             return $existing;
@@ -176,14 +176,13 @@ class LandlordHandoverViewControllerTest extends WebTestCase
         // The test kernel doesn't expose the ReferenceRepository; resolve by
         // unique attributes that pin to the same fixture row.
         $contract = match ($reference) {
-            // Active unlimited contract → only one in fixtures with endDate=null
-            // and terminatedAt=null on storage C1.
-            ContractFixtures::REF_CONTRACT_UNLIMITED => $this->entityManager->createQueryBuilder()
+            // Active card-recurring contract → only one in fixtures with
+            // terminatedAt=null on storage C1.
+            ContractFixtures::REF_CONTRACT_RECURRING => $this->entityManager->createQueryBuilder()
                 ->select('c')
                 ->from(Contract::class, 'c')
                 ->join('c.storage', 's')
                 ->where('s.number = :number')
-                ->andWhere('c.endDate IS NULL')
                 ->andWhere('c.terminatedAt IS NULL')
                 ->setParameter('number', 'C1')
                 ->getQuery()

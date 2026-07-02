@@ -193,8 +193,8 @@
                                                     do {{ view.rentedUntil|date('d.m.Y') }}
                                                     <span aria-hidden="true">⚠</span>
                                                 </span>
-                                            {% elseif view.isUnlimited %}
-                                                do {{ view.rentedUntil|date('d.m.Y') }} <span class="text-xs text-gray-500" title="Automatické prodlužování">↻</span>
+                                            {% elseif view.hasAvailabilityGuarantee %}
+                                                do {{ view.rentedUntil|date('d.m.Y') }} <span class="text-xs text-gray-500" title="Garance dostupnosti — platba kartou">↻</span>
                                             {% else %}
                                                 do {{ view.rentedUntil|date('d.m.Y') }}
                                             {% endif %}

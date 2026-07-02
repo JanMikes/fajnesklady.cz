@@ -46,7 +46,7 @@ class SendContractExpiringReminderHandlerTest extends KernelTestCase
         }, priority: 1024);
     }
 
-    public function testEmailContainsRenewalCtaForLimitedContract(): void
+    public function testEmailContainsProlongCta(): void
     {
         $contract = $this->findContractByStorageNumber('D3');
 
@@ -59,18 +59,18 @@ class SendContractExpiringReminderHandlerTest extends KernelTestCase
         $email = $this->lastSentEmail();
         $this->assertInstanceOf(TemplatedEmail::class, $email);
 
+        // Spec 077: an active contract prolongs in place — the CTA points to
+        // the prolongation page, HMAC-signed for passwordless customers.
         $context = $email->getContext();
-        $this->assertTrue($context['isLimited']);
         $this->assertStringContainsString(
-            '/objednavka/prodlouzit/'.$contract->order->id->toRfc4122(),
-            $context['renewalUrl'],
+            '/smlouva/'.$contract->id->toRfc4122().'/prodlouzit',
+            $context['prolongUrl'],
         );
-        // The renewal link must be HMAC-signed (it prefills the customer's PII).
-        $this->assertStringContainsString('_hash=', $context['renewalUrl']);
+        $this->assertStringContainsString('_hash=', $context['prolongUrl']);
 
         $body = $this->renderHtmlBody($email);
         $this->assertStringContainsString('Prodloužit pronájem', $body);
-        $this->assertStringContainsString('/objednavka/prodlouzit/'.$contract->order->id->toRfc4122(), $body);
+        $this->assertStringContainsString('/smlouva/'.$contract->id->toRfc4122().'/prodlouzit', $body);
         $this->assertStringContainsString('Zobrazit stav objednávky', $body);
         $this->assertMatchesRegularExpression(
             '~/objednavka/[0-9a-f-]+/stav\?_hash=~',
@@ -79,8 +79,10 @@ class SendContractExpiringReminderHandlerTest extends KernelTestCase
         );
     }
 
-    public function testEmailHidesRenewalCtaForUnlimitedContract(): void
+    public function testEmailContainsRenewalCtaForCardRecurringContract(): void
     {
+        // Spec 076: no contract auto-extends, so even a live-token card contract
+        // gets the reminder with the continuation CTA.
         $contract = $this->findContractByStorageNumber('C1');
 
         ($this->handler)(new ContractExpiringSoon(
@@ -91,10 +93,9 @@ class SendContractExpiringReminderHandlerTest extends KernelTestCase
 
         $email = $this->lastSentEmail();
         $this->assertInstanceOf(TemplatedEmail::class, $email);
-        $this->assertFalse($email->getContext()['isLimited']);
 
         $body = $this->renderHtmlBody($email);
-        $this->assertStringNotContainsString('Prodloužit pronájem', $body);
+        $this->assertStringContainsString('Prodloužit pronájem', $body);
         $this->assertStringContainsString('Zobrazit stav objednávky', $body);
     }
 

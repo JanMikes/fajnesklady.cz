@@ -9,7 +9,7 @@ use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
-use App\Enum\RentalType;
+use App\Enum\PaymentFrequency;
 use App\Service\Vop\VopDocumentGenerator;
 use PhpOffice\PhpWord\IOFactory;
 use PhpOffice\PhpWord\PhpWord;
@@ -171,10 +171,9 @@ final class VopDocumentGeneratorTest extends TestCase
             id: Uuid::v7(),
             user: $user,
             storage: $storage,
-            rentalType: RentalType::UNLIMITED,
-            paymentFrequency: null,
+            paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: new \DateTimeImmutable('2025-06-15 12:00:00'),
-            endDate: null,
+            endDate: new \DateTimeImmutable('2026-06-15 12:00:00'),
             firstPaymentPrice: 35000,
             expiresAt: new \DateTimeImmutable('2025-06-22 12:00:00'),
             createdAt: new \DateTimeImmutable('2025-06-15 12:00:00'),

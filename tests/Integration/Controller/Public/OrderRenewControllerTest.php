@@ -32,7 +32,7 @@ class OrderRenewControllerTest extends WebTestCase
         static::ensureKernelShutdown();
     }
 
-    public function testRenewPaidLimitedOrderSeedsSessionAndRedirectsToOrderCreate(): void
+    public function testRenewPaidOrderSeedsSessionAndRedirectsToOrderCreate(): void
     {
         $previous = $this->findOrderByReference(OrderFixtures::REF_ORDER_COMPLETED);
         $previousUser = $previous->user;
@@ -56,7 +56,8 @@ class OrderRenewControllerTest extends WebTestCase
         $this->assertSame($previousUser->email, $sessionData['email']);
         $this->assertSame($previousUser->firstName, $sessionData['firstName']);
         $this->assertSame($previousUser->lastName, $sessionData['lastName']);
-        $this->assertSame('limited', $sessionData['rentalType']);
+        $this->assertArrayNotHasKey('rentalType', $sessionData);
+        $this->assertArrayNotHasKey('expectedDuration', $sessionData);
         $this->assertNotNull($sessionData['startDate']);
         $this->assertNotNull($sessionData['endDate']);
 
@@ -70,9 +71,9 @@ class OrderRenewControllerTest extends WebTestCase
         $this->assertSame($expectedEnd->format('Y-m-d'), $sessionData['endDate']);
     }
 
-    public function testRenewUnlimitedOrderSeedsSessionAndRedirectsToOrderCreate(): void
+    public function testRenewRecurringOrderSeedsSessionAndRedirectsToOrderCreate(): void
     {
-        $previous = $this->findOrderByReference(OrderFixtures::REF_ORDER_COMPLETED_UNLIMITED);
+        $previous = $this->findOrderByReference(OrderFixtures::REF_ORDER_COMPLETED_RECURRING);
 
         $this->requestSigned($this->urlGenerator->generateRenewal($previous));
 
@@ -89,7 +90,18 @@ class OrderRenewControllerTest extends WebTestCase
         $session = $this->client->getRequest()->getSession();
         $sessionData = $session->get('order_form_data');
         $this->assertIsArray($sessionData);
-        $this->assertSame('unlimited', $sessionData['rentalType']);
+        $this->assertArrayNotHasKey('rentalType', $sessionData);
+        $this->assertArrayNotHasKey('expectedDuration', $sessionData);
+
+        // Card-recurring renewals get fixed dates too: new period starts on the
+        // previous endDate (in the future relative to MockClock 2025-06-15) and
+        // lasts the same number of days as the previous rental.
+        $expectedStart = $previous->endDate;
+        \assert($expectedStart instanceof \DateTimeImmutable);
+        $duration = (int) $previous->startDate->diff($expectedStart)->days;
+        $expectedEnd = $expectedStart->modify(sprintf('+%d days', $duration));
+        $this->assertSame($expectedStart->format('Y-m-d'), $sessionData['startDate']);
+        $this->assertSame($expectedEnd->format('Y-m-d'), $sessionData['endDate']);
     }
 
     public function testRenewCancelledOrderRedirectsToFreshOrderCreateWithoutPrefill(): void
@@ -143,7 +155,7 @@ class OrderRenewControllerTest extends WebTestCase
         // Avoids reaching for the Doctrine fixtures reference repository at runtime.
         $storageByReference = [
             OrderFixtures::REF_ORDER_COMPLETED => 'B3',
-            OrderFixtures::REF_ORDER_COMPLETED_UNLIMITED => 'C1',
+            OrderFixtures::REF_ORDER_COMPLETED_RECURRING => 'C1',
             OrderFixtures::REF_ORDER_CANCELLED => 'D1',
         ];
 

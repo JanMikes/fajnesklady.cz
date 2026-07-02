@@ -11,8 +11,8 @@ use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\StorageUnavailability;
 use App\Entity\User;
+use App\Enum\BillingMode;
 use App\Enum\PaymentFrequency;
-use App\Enum\RentalType;
 use App\Enum\StorageStatus;
 use App\Service\StorageAvailabilityChecker;
 use Doctrine\ORM\EntityManagerInterface;
@@ -134,19 +134,44 @@ final class StorageAvailabilityCheckerTest extends KernelTestCase
         $this->assertSingleAgreesWithBulk($storage, $start, $end);
     }
 
-    public function testUnlimitedWindowOverlapsAnyActiveContractFromStartOnward(): void
+    public function testAutoRecurringOrderBlocksAnyFutureWindowBeyondItsEndDate(): void
     {
-        $tenant = $this->createUser('tenant-unlimited@test.com');
+        $tenant = $this->createUser('tenant-auto-order@test.com');
         [$place, $storageType] = $this->createPlaceAndType();
         $storage = $this->createStorage($storageType, $place, 'A1');
 
-        // Open-ended contract starting in the future.
-        $order = $this->createOrder($tenant, $storage, new \DateTimeImmutable('+30 days'), null, RentalType::UNLIMITED);
-        $this->createContract($order, $tenant, $storage, new \DateTimeImmutable('+30 days'), null, RentalType::UNLIMITED);
+        // Card-recurring order: blocks the storage open-endedly while alive (spec 076).
+        $order = $this->createOrder($tenant, $storage, new \DateTimeImmutable('+5 days'), new \DateTimeImmutable('+35 days'), BillingMode::AUTO_RECURRING);
+        $order->reserve(new \DateTimeImmutable());
         $this->entityManager->flush();
 
-        // Requested window is open-ended from +10 days — overlaps the future contract.
-        $start = new \DateTimeImmutable('+10 days');
+        // Requested window lies entirely AFTER the order's end date.
+        $start = new \DateTimeImmutable('+40 days');
+        $end = new \DateTimeImmutable('+70 days');
+
+        $availability = $this->checker->availabilityForStorages([$storage], $start, $end)[$storage->id->toRfc4122()];
+
+        self::assertFalse($availability->isAvailable);
+        self::assertSame(StorageStatus::RESERVED, $availability->derivedStatus);
+        $this->assertSingleAgreesWithBulk($storage, $start, $end);
+    }
+
+    public function testLiveTokenRecurringContractBlocksAnyFutureWindow(): void
+    {
+        $tenant = $this->createUser('tenant-guarantee@test.com');
+        [$place, $storageType] = $this->createPlaceAndType();
+        $storage = $this->createStorage($storageType, $place, 'A1');
+
+        // The order itself is ONE_TIME so only the CONTRACT's availability
+        // guarantee (AUTO_RECURRING + live token + no pending termination) can
+        // block windows past the contract's end date.
+        $order = $this->createOrder($tenant, $storage, new \DateTimeImmutable('+5 days'), new \DateTimeImmutable('+35 days'));
+        $contract = $this->createContract($order, $tenant, $storage, new \DateTimeImmutable('+5 days'), new \DateTimeImmutable('+35 days'));
+        $contract->setRecurringPayment('gopay-parent-guarantee', new \DateTimeImmutable('+35 days'), new \DateTimeImmutable('+35 days'));
+        $this->entityManager->flush();
+
+        // Open-ended request starting AFTER the contract's end date.
+        $start = new \DateTimeImmutable('+40 days');
 
         $availability = $this->checker->availabilityForStorages([$storage], $start, null)[$storage->id->toRfc4122()];
 
@@ -338,21 +363,23 @@ final class StorageAvailabilityCheckerTest extends KernelTestCase
         User $user,
         Storage $storage,
         \DateTimeImmutable $startDate,
-        ?\DateTimeImmutable $endDate,
-        RentalType $rentalType = RentalType::LIMITED,
+        \DateTimeImmutable $endDate,
+        BillingMode $billingMode = BillingMode::ONE_TIME,
     ): Order {
         $order = new Order(
             id: Uuid::v7(),
             user: $user,
             storage: $storage,
-            rentalType: $rentalType,
-            paymentFrequency: RentalType::UNLIMITED === $rentalType ? PaymentFrequency::MONTHLY : null,
+            paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: $startDate,
             endDate: $endDate,
             firstPaymentPrice: 50000,
             expiresAt: (new \DateTimeImmutable())->modify('+7 days'),
             createdAt: new \DateTimeImmutable(),
         );
+        // ONE_TIME (bank-transfer style) blocks only [startDate, endDate];
+        // AUTO_RECURRING blocks the storage open-endedly (spec 076 guarantee).
+        $order->setBillingMode($billingMode);
         $this->entityManager->persist($order);
 
         return $order;
@@ -363,15 +390,13 @@ final class StorageAvailabilityCheckerTest extends KernelTestCase
         User $user,
         Storage $storage,
         \DateTimeImmutable $startDate,
-        ?\DateTimeImmutable $endDate,
-        RentalType $rentalType = RentalType::LIMITED,
+        \DateTimeImmutable $endDate,
     ): Contract {
         $contract = new Contract(
             id: Uuid::v7(),
             order: $order,
             user: $user,
             storage: $storage,
-            rentalType: $rentalType,
             startDate: $startDate,
             endDate: $endDate,
             createdAt: new \DateTimeImmutable(),

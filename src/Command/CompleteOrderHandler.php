@@ -37,13 +37,13 @@ final readonly class CompleteOrderHandler
             $nextBillingDate = $now->modify($cadenceStep);
             $paidThroughDate = $nextBillingDate;
 
-            // Cap paidThroughDate to endDate for LIMITED contracts
-            if (null !== $contract->endDate && $paidThroughDate > $contract->endDate) {
+            // Cap paidThroughDate to the contract end
+            if ($paidThroughDate > $contract->endDate) {
                 $paidThroughDate = $contract->endDate;
             }
 
             // If contract ends before next billing, this is the only billing cycle
-            if (null !== $contract->endDate && $nextBillingDate >= $contract->endDate) {
+            if ($nextBillingDate >= $contract->endDate) {
                 $nextBillingDate = null;
             }
 
@@ -58,11 +58,11 @@ final readonly class CompleteOrderHandler
             $nextBillingDate = $now->modify($cadenceStep);
             $paidThroughDate = $nextBillingDate;
 
-            if (null !== $contract->endDate && $paidThroughDate > $contract->endDate) {
+            if ($paidThroughDate > $contract->endDate) {
                 $paidThroughDate = $contract->endDate;
             }
 
-            if (null !== $contract->endDate && $nextBillingDate >= $contract->endDate) {
+            if ($nextBillingDate >= $contract->endDate) {
                 $nextBillingDate = null;
             }
 

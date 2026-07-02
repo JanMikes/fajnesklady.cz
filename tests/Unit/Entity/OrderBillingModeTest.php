@@ -11,7 +11,6 @@ use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\BillingMode;
 use App\Enum\PaymentFrequency;
-use App\Enum\RentalType;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
@@ -38,13 +37,13 @@ final class OrderBillingModeTest extends TestCase
         // Pins the duplicated 28-day boundary between Order::isRecurring()
         // and BillingMode::isRecurring(). isRecurring(false) ⇒ ONE_TIME is
         // the correct billing mode; isRecurring(true) ⇒ AUTO or MANUAL.
-        $shortLimited = $this->createOrder(7);
-        $longLimited = $this->createOrder(45);
-        $unlimited = $this->createOrder(null);
+        $shortFixedTerm = $this->createOrder(7);
+        $longFixedTerm = $this->createOrder(45);
+        $yearLongFixedTerm = $this->createOrder(365);
 
-        self::assertFalse($shortLimited->isRecurring());
-        self::assertTrue($longLimited->isRecurring());
-        self::assertTrue($unlimited->isRecurring());
+        self::assertFalse($shortFixedTerm->isRecurring());
+        self::assertTrue($longFixedTerm->isRecurring());
+        self::assertTrue($yearLongFixedTerm->isRecurring());
     }
 
     public function testDefaultManualBillingScheduleMatchesPlaceDefaults(): void
@@ -71,7 +70,7 @@ final class OrderBillingModeTest extends TestCase
         self::assertSame(14, $order->manualBillingOffsetOverdueFinal);
     }
 
-    private function createOrder(?int $durationDays): Order
+    private function createOrder(int $durationDays): Order
     {
         $now = new \DateTimeImmutable('2025-06-15 12:00:00');
         $user = new User(Uuid::v7(), 'user@example.com', 'password', 'Test', 'User', $now);
@@ -106,15 +105,13 @@ final class OrderBillingModeTest extends TestCase
             createdAt: $now,
         );
 
-        $rentalType = null === $durationDays ? RentalType::UNLIMITED : RentalType::LIMITED;
         $startDate = $now->modify('+1 day');
-        $endDate = null === $durationDays ? null : $startDate->modify('+'.$durationDays.' days');
+        $endDate = $startDate->modify('+'.$durationDays.' days');
 
         return new Order(
             id: Uuid::v7(),
             user: $user,
             storage: $storage,
-            rentalType: $rentalType,
             paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: $startDate,
             endDate: $endDate,

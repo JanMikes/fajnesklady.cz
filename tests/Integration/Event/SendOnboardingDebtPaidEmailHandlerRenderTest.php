@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Tests\Integration\Event;
 
 use App\Entity\Order;
-use App\Enum\RentalType;
 use App\Event\OnboardingDebtPaid;
 use App\Event\SendOnboardingDebtPaidEmailHandler;
 use Doctrine\ORM\EntityManagerInterface;
@@ -104,7 +103,6 @@ class SendOnboardingDebtPaidEmailHandlerRenderTest extends KernelTestCase
             id: Uuid::v7(),
             user: $source->user,
             storage: $source->storage,
-            rentalType: RentalType::LIMITED,
             paymentFrequency: null,
             startDate: new \DateTimeImmutable('2025-06-20'),
             endDate: new \DateTimeImmutable('2025-07-20'),

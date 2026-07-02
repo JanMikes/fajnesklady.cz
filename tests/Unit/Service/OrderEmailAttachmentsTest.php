@@ -9,7 +9,6 @@ use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
-use App\Enum\RentalType;
 use App\Enum\SigningMethod;
 use App\Repository\ContractRepository;
 use App\Service\ContractDocumentGenerator;
@@ -42,7 +41,7 @@ class OrderEmailAttachmentsTest extends TestCase
         $this->removeDirectory($this->tempDir);
     }
 
-    public function testAttachesContractVopAndConsumerNoticeForLimitedRental(): void
+    public function testAttachesContractVopAndConsumerNoticeForFixedTermRental(): void
     {
         $order = $this->createOrder(endDate: new \DateTimeImmutable('2025-07-15'), withSignature: true);
         $email = new TemplatedEmail();
@@ -52,7 +51,7 @@ class OrderEmailAttachmentsTest extends TestCase
         $names = $this->attachmentNames($email);
         $this->assertContains('pouceni-spotrebitele.pdf', $names);
         $this->assertNotEmpty(array_filter($names, static fn ($n) => str_starts_with((string) $n, 'vop-')));
-        $this->assertNotContains('podminky-opakovanych-plateb.pdf', $names, 'Recurring terms are unlimited-only.');
+        $this->assertNotContains('podminky-opakovanych-plateb.pdf', $names, 'Recurring terms are legacy open-ended only.');
 
         $this->assertTrue($context['hasContract']);
         $this->assertTrue($context['hasVop']);
@@ -60,7 +59,7 @@ class OrderEmailAttachmentsTest extends TestCase
         $this->assertFalse($context['hasRecurringTerms']);
     }
 
-    public function testAttachesRecurringTermsForUnlimitedRental(): void
+    public function testAttachesRecurringTermsForLegacyOpenEndedOrder(): void
     {
         $order = $this->createOrder(endDate: null, withSignature: true);
         $email = new TemplatedEmail();
@@ -234,7 +233,6 @@ class OrderEmailAttachmentsTest extends TestCase
             id: Uuid::v7(),
             user: $user,
             storage: $storage,
-            rentalType: null === $endDate ? RentalType::UNLIMITED : RentalType::LIMITED,
             paymentFrequency: null,
             startDate: new \DateTimeImmutable(),
             endDate: $endDate,

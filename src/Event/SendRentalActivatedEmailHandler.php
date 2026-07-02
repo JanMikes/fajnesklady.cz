@@ -145,7 +145,7 @@ final readonly class SendRentalActivatedEmailHandler
             'storageType' => $storageType->name,
             'storageNumber' => $storage->number,
             'startDate' => $contract->startDate->format('d.m.Y'),
-            'endDate' => $contract->endDate?->format('d.m.Y') ?? 'Na dobu neurčitou',
+            'endDate' => $contract->endDate->format('d.m.Y'),
             'statusUrl' => $statusUrl,
             'isRecurring' => $isRecurring,
             'monthlyAmount' => $isRecurring ? number_format($contract->order->getFirstPaymentPriceInCzk(), 2, ',', ' ').' Kč' : null,

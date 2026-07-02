@@ -102,7 +102,7 @@ Storage types belong to a specific Place.
 | `StorageFixtures::REF_MEDIUM_B1` | B1 | Medium | RESERVED (order pending) |
 | `StorageFixtures::REF_MEDIUM_B2` | B2 | Medium | RESERVED (order paid) |
 | `StorageFixtures::REF_MEDIUM_B3` | B3 | Medium | OCCUPIED (active contract) |
-| `StorageFixtures::REF_LARGE_C1` | C1 | Large | OCCUPIED (unlimited contract) |
+| `StorageFixtures::REF_LARGE_C1` | C1 | Large | OCCUPIED (card-recurring contract, availability guarantee) |
 | `StorageFixtures::REF_LARGE_C2` | C2 | Large | MANUALLY_UNAVAILABLE |
 | `StorageFixtures::REF_ADMIN_ONLY_AO1` | AO1 | Admin box (skrytý) | AVAILABLE (admin-onboarding only; never publicly orderable) |
 
@@ -129,22 +129,22 @@ Storage types belong to a specific Place.
 
 ## Orders
 
-| Constant | User | Storage | Status | Rental Type |
-|----------|------|---------|--------|-------------|
-| `OrderFixtures::REF_ORDER_RESERVED` | TENANT | B1 | RESERVED | LIMITED |
-| `OrderFixtures::REF_ORDER_PAID` | TENANT | B2 | PAID | LIMITED |
-| `OrderFixtures::REF_ORDER_COMPLETED` | USER | B3 | COMPLETED | LIMITED |
-| `OrderFixtures::REF_ORDER_COMPLETED_UNLIMITED` | USER | C1 | COMPLETED | UNLIMITED |
-| `OrderFixtures::REF_ORDER_CANCELLED` | TENANT | D1 | CANCELLED | LIMITED |
-| `OrderFixtures::REF_ORDER_EXPIRED` | TENANT | D2 | EXPIRED | LIMITED |
-| `OrderFixtures::REF_ORDER_EXPIRING_SOON` | TENANT | D3 | COMPLETED | LIMITED |
+| Constant | User | Storage | Status | Period |
+|----------|------|---------|--------|--------|
+| `OrderFixtures::REF_ORDER_RESERVED` | TENANT | B1 | RESERVED | +7 → +37 days |
+| `OrderFixtures::REF_ORDER_PAID` | TENANT | B2 | PAID | +14 → +44 days |
+| `OrderFixtures::REF_ORDER_COMPLETED` | USER | B3 | COMPLETED | -1 → +29 days |
+| `OrderFixtures::REF_ORDER_COMPLETED_RECURRING` | USER | C1 | COMPLETED | -30 → +700 days (card-recurring, live token) |
+| `OrderFixtures::REF_ORDER_CANCELLED` | TENANT | D1 | CANCELLED | +7 → +37 days |
+| `OrderFixtures::REF_ORDER_EXPIRED` | TENANT | D2 | EXPIRED | +7 → +37 days |
+| `OrderFixtures::REF_ORDER_EXPIRING_SOON` | TENANT | D3 | COMPLETED | -23 → +7 days |
 
 ## Contracts
 
 | Constant | User | Storage | Status | End Date |
 |----------|------|---------|--------|----------|
 | `ContractFixtures::REF_CONTRACT_ACTIVE` | USER | B3 | Active, signed | +29 days |
-| `ContractFixtures::REF_CONTRACT_UNLIMITED` | USER | C1 | Active, signed | NULL (unlimited) |
+| `ContractFixtures::REF_CONTRACT_RECURRING` | USER | C1 | Active, signed, live GoPay token (availability guarantee) | +700 days |
 | `ContractFixtures::REF_CONTRACT_EXPIRING_7_DAYS` | TENANT | D3 | Active, signed | +7 days |
 | `ContractFixtures::REF_CONTRACT_TERMINATED` | TENANT | E1 | Terminated | -30 days |
 

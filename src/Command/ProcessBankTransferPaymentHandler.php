@@ -92,7 +92,7 @@ final readonly class ProcessBankTransferPaymentHandler
         $nextBillingDate = $billingPeriodStart->modify($contract->getBillingCadenceStep());
         $paidThroughDate = $nextBillingDate;
 
-        if (null !== $effectiveEndDate && $nextBillingDate >= $effectiveEndDate) {
+        if ($nextBillingDate >= $effectiveEndDate) {
             $nextBillingDate = null;
             $paidThroughDate = $effectiveEndDate;
         }

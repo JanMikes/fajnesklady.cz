@@ -55,7 +55,7 @@ class PlaceDetailControllerTest extends WebTestCase
 
     public function testAdminSeesPoSplatnostiBannerWhenDebtorAtPlace(): void
     {
-        // Fixture contract REF_CONTRACT_UNLIMITED is overdue and lives at storage C1 in Praha Centrum.
+        // Fixture contract REF_CONTRACT_RECURRING is overdue and lives at storage C1 in Praha Centrum.
         $this->loginAs('admin@example.com');
         $place = $this->getPlaceByName('Sklad Praha - Centrum');
 

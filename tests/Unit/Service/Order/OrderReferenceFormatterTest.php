@@ -9,7 +9,7 @@ use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
-use App\Enum\RentalType;
+use App\Enum\PaymentFrequency;
 use App\Service\Order\OrderReferenceFormatter;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
@@ -76,10 +76,9 @@ class OrderReferenceFormatterTest extends TestCase
             id: $id,
             user: $user,
             storage: $storage,
-            rentalType: RentalType::UNLIMITED,
-            paymentFrequency: null,
+            paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: $createdAt,
-            endDate: null,
+            endDate: $createdAt->modify('+12 months'),
             firstPaymentPrice: 35000,
             expiresAt: $createdAt->modify('+7 days'),
             createdAt: $createdAt,

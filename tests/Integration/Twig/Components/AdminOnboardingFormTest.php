@@ -43,8 +43,7 @@ final class AdminOnboardingFormTest extends KernelTestCase
         $component->selectStorage($a2->id->toRfc4122());
 
         self::assertNull($component->storageId);
-        self::assertNotNull($component->storageError);
-        self::assertStringContainsString('Nejdříve zvolte', $component->storageError);
+        self::assertSame('Nejdříve zvolte termín pronájmu (datum začátku i konce).', $component->storageError);
     }
 
     public function testSelectStorageRejectsStorageOfDifferentType(): void
@@ -54,7 +53,7 @@ final class AdminOnboardingFormTest extends KernelTestCase
         $b1 = $this->findStorageByNumber('B1');
 
         $component = $this->makeComponent($place, $storageType);
-        $component->formValues = $this->limitedWindowValues();
+        $component->formValues = $this->windowValues();
         $component->selectStorage($b1->id->toRfc4122());
 
         self::assertNull($component->storageId);
@@ -66,7 +65,7 @@ final class AdminOnboardingFormTest extends KernelTestCase
         $a2 = $this->findStorageByNumber('A2');
 
         $component = $this->makeComponent($place, $storageType);
-        $component->formValues = $this->limitedWindowValues();
+        $component->formValues = $this->windowValues();
         $component->selectStorage($a2->id->toRfc4122());
 
         self::assertSame($a2->id->toRfc4122(), $component->storageId);
@@ -80,7 +79,7 @@ final class AdminOnboardingFormTest extends KernelTestCase
         $a4 = $this->findStorageByNumber('A4');
 
         $component = $this->makeComponent($place, $storageType);
-        $component->formValues = $this->limitedWindowValues();
+        $component->formValues = $this->windowValues();
         $component->selectStorage($a4->id->toRfc4122());
 
         self::assertNull($component->storageId);
@@ -110,7 +109,7 @@ final class AdminOnboardingFormTest extends KernelTestCase
         [$place, $storageType] = $this->loadCentrumSmallContext();
 
         $component = $this->makeComponent($place, $storageType);
-        $component->formValues = $this->limitedWindowValues();
+        $component->formValues = $this->windowValues();
 
         /** @var array<int, array<string, mixed>> $payload */
         $payload = json_decode($component->getStoragesJson(), true, flags: JSON_THROW_ON_ERROR);
@@ -169,10 +168,9 @@ final class AdminOnboardingFormTest extends KernelTestCase
     /**
      * @return array<string, string>
      */
-    private function limitedWindowValues(): array
+    private function windowValues(): array
     {
         return [
-            'rentalType' => 'limited',
             'startDate' => (new \DateTimeImmutable('+10 days'))->format('Y-m-d'),
             'endDate' => (new \DateTimeImmutable('+40 days'))->format('Y-m-d'),
         ];

@@ -6,7 +6,7 @@ namespace App\Controller\Public;
 
 use App\Entity\User;
 use App\Enum\OrderStatus;
-use App\Enum\RentalType;
+use App\Enum\PaymentMethod;
 use App\Form\OrderFormData;
 use App\Repository\OrderRepository;
 use Psr\Clock\ClockInterface;
@@ -88,21 +88,19 @@ final class OrderRenewController extends AbstractController
 
         $formData = OrderFormData::fromUser($previous->user);
         $formData->billingMode = $previous->billingMode;
-
-        if (RentalType::UNLIMITED === $previous->rentalType) {
-            $formData->rentalType = RentalType::UNLIMITED;
-            $formData->startDate = $newStart;
-        } else {
-            $previousDays = (int) $previous->startDate->diff($previous->endDate ?? $tomorrow)->days;
-            if ($previousDays < 1) {
-                $previousDays = 30;
-            }
-            $newEnd = $newStart->modify(sprintf('+%d days', $previousDays));
-
-            $formData->rentalType = RentalType::LIMITED;
-            $formData->startDate = $newStart;
-            $formData->endDate = $newEnd;
+        // Prefill only publicly payable methods — an admin-onboarded EXTERNAL
+        // order must not leak EXTERNAL into the public checkout.
+        if (PaymentMethod::GOPAY === $previous->paymentMethod || PaymentMethod::BANK_TRANSFER === $previous->paymentMethod) {
+            $formData->paymentMethod = $previous->paymentMethod;
         }
+
+        $previousDays = (int) $previous->startDate->diff($previous->endDate ?? $tomorrow)->days;
+        if ($previousDays < 1) {
+            $previousDays = 30;
+        }
+
+        $formData->startDate = $newStart;
+        $formData->endDate = $newStart->modify(sprintf('+%d days', $previousDays));
 
         $this->requestStack->getSession()->set('order_form_data', $formData->toSessionArray());
 

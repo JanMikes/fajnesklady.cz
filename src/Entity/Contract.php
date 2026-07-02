@@ -6,9 +6,9 @@ namespace App\Entity;
 
 use App\Enum\BillingMode;
 use App\Enum\PaymentFrequency;
-use App\Enum\RentalType;
 use App\Enum\TerminationReason;
 use App\Event\ContractPriceChanged;
+use App\Event\ContractProlonged;
 use App\Service\PriceCalculator;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -59,6 +59,15 @@ class Contract implements EntityWithEvents
      */
     #[ORM\Column(nullable: true)]
     public private(set) ?string $pendingRecurringPaymentId = null;
+
+    /**
+     * GoPay payment ID of an in-flight bank→card switch during prolongation
+     * (spec 077). The customer initiated an ON_DEMAND setup charge; the
+     * webhook flips the contract to AUTO_RECURRING once it is PAID and clears
+     * this again (also cleared on a terminal CANCELED/TIMEOUTED status).
+     */
+    #[ORM\Column(nullable: true)]
+    public private(set) ?string $pendingCardSetupPaymentId = null;
 
     #[ORM\Column(nullable: true)]
     public private(set) ?\DateTimeImmutable $terminationNoticedAt = null;
@@ -127,12 +136,10 @@ class Contract implements EntityWithEvents
         #[ORM\ManyToOne(targetEntity: Storage::class)]
         #[ORM\JoinColumn(nullable: false)]
         private(set) Storage $storage,
-        #[ORM\Column(length: 20, enumType: RentalType::class)]
-        private(set) RentalType $rentalType,
         #[ORM\Column(type: Types::DATE_IMMUTABLE)]
         private(set) \DateTimeImmutable $startDate,
-        #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
-        private(set) ?\DateTimeImmutable $endDate,
+        #[ORM\Column(type: Types::DATE_IMMUTABLE)]
+        private(set) \DateTimeImmutable $endDate,
         #[ORM\Column]
         private(set) \DateTimeImmutable $createdAt,
     ) {
@@ -179,7 +186,7 @@ class Contract implements EntityWithEvents
             return false;
         }
 
-        if (null !== $this->endDate && $now > $this->endDate) {
+        if ($now > $this->endDate) {
             // VOP §IV grace: recurring contracts stay active past endDate
             // while the billing/retry cycle is in progress
             return $this->isInBillingGrace();
@@ -198,9 +205,17 @@ class Contract implements EntityWithEvents
         return null !== $this->terminatedAt;
     }
 
-    public function isUnlimited(): bool
+    /**
+     * The spec-076 availability guarantee: a live-token card-recurring contract
+     * blocks its storage open-endedly, so the customer can always prolong.
+     * Cancelling the recurring payment (or a pending termination) forfeits it.
+     */
+    public function hasAvailabilityGuarantee(): bool
     {
-        return RentalType::UNLIMITED === $this->rentalType;
+        return BillingMode::AUTO_RECURRING === $this->billingMode
+            && null !== $this->goPayParentPaymentId
+            && !$this->isTerminated()
+            && !$this->hasPendingTermination();
     }
 
     public function hasDocument(): bool
@@ -224,12 +239,6 @@ class Contract implements EntityWithEvents
         $this->lastBillingFailedAt = null;
         $this->pendingRecurringPaymentId = null;
         $this->paymentDemandSentAt = null;
-
-        // VOP §IV: successful charge extends the contract period (UNLIMITED only;
-        // LIMITED recurring auto-extension is a separate spec)
-        if ($this->billingMode->isRecurring() && RentalType::UNLIMITED === $this->rentalType) {
-            $this->endDate = $paidThroughDate;
-        }
     }
 
     public function recordFailedBillingAttempt(\DateTimeImmutable $failedAt): void
@@ -296,6 +305,80 @@ class Contract implements EntityWithEvents
         };
     }
 
+    /**
+     * Spec 077: prolongation is the ONLY way a contract continues past its
+     * end date (no auto-extension exists). Moves the end date and resumes the
+     * billing schedule when the final cycle had already closed it.
+     */
+    public function prolong(\DateTimeImmutable $newEndDate, ?User $prolongedBy, \DateTimeImmutable $now): void
+    {
+        if ($this->isTerminated()) {
+            throw new \DomainException('Cannot prolong a terminated contract.');
+        }
+
+        if ($this->hasPendingTermination()) {
+            throw new \DomainException('Cannot prolong a contract with a pending termination.');
+        }
+
+        if ($newEndDate <= $this->endDate) {
+            throw new \DomainException('New end date must be after the current end date.');
+        }
+
+        $previousEndDate = $this->endDate;
+        $this->endDate = $newEndDate;
+
+        // Resume billing when the final (prorated) cycle already closed the
+        // schedule; mid-term prolongations keep their running cadence and the
+        // amount calculator prorates against the new end automatically.
+        if ($this->billingMode->isRecurring() && null === $this->nextBillingDate && !$this->isFree()) {
+            $this->nextBillingDate = $this->paidThroughDate ?? $previousEndDate;
+        }
+
+        $this->recordThat(new ContractProlonged(
+            contractId: $this->id,
+            previousEndDate: $previousEndDate,
+            newEndDate: $newEndDate,
+            prolongedBy: $prolongedBy,
+            occurredOn: $now,
+        ));
+    }
+
+    /**
+     * Re-anchor the billing schedule without recording a charge — used by
+     * prolongation when a contract joins or continues the manual track
+     * (spec 077). {@see self::recordBillingCharge()} stays reserved for
+     * actual payments.
+     */
+    public function scheduleNextBilling(\DateTimeImmutable $nextBillingDate, ?\DateTimeImmutable $paidThroughDate): void
+    {
+        $this->nextBillingDate = $nextBillingDate;
+        if (null !== $paidThroughDate) {
+            $this->paidThroughDate = $paidThroughDate;
+        }
+    }
+
+    /**
+     * Track the in-flight bank→card switch payment (spec 077); resolved by
+     * the GoPay webhook via {@see self::completeCardSetup()} or cleared on a
+     * terminal non-paid status.
+     */
+    public function startCardSetup(string $paymentId): void
+    {
+        $this->pendingCardSetupPaymentId = $paymentId;
+    }
+
+    public function completeCardSetup(string $parentPaymentId, ?\DateTimeImmutable $nextBillingDate, \DateTimeImmutable $paidThroughDate): void
+    {
+        $this->billingMode = BillingMode::AUTO_RECURRING;
+        $this->pendingCardSetupPaymentId = null;
+        $this->setRecurringPayment($parentPaymentId, $nextBillingDate, $paidThroughDate);
+    }
+
+    public function clearCardSetup(): void
+    {
+        $this->pendingCardSetupPaymentId = null;
+    }
+
     public function requestTermination(\DateTimeImmutable $noticedAt, \DateTimeImmutable $terminatesAt): void
     {
         if ($this->isTerminated()) {
@@ -320,7 +403,7 @@ class Contract implements EntityWithEvents
         return $this->hasPendingTermination() && $now >= $this->terminatesAt;
     }
 
-    public function getEffectiveEndDate(): ?\DateTimeImmutable
+    public function getEffectiveEndDate(): \DateTimeImmutable
     {
         return $this->terminatesAt ?? $this->endDate;
     }
@@ -388,14 +471,6 @@ class Contract implements EntityWithEvents
 
     private function isLongTermMonthly(): bool
     {
-        if (RentalType::UNLIMITED === $this->rentalType) {
-            return true;
-        }
-
-        if (null === $this->endDate) {
-            return true;
-        }
-
         return (int) $this->startDate->diff($this->endDate)->days >= PriceCalculator::SHORT_TERM_THRESHOLD_DAYS;
     }
 

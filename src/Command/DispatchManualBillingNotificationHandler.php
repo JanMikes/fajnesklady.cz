@@ -6,7 +6,6 @@ namespace App\Command;
 
 use App\Entity\Contract;
 use App\Entity\ManualPaymentRequest;
-use App\Enum\PaymentMethod;
 use App\Event\ManualBillingPaymentOverdue;
 use App\Event\ManualBillingPaymentRequested;
 use App\Repository\ContractRepository;
@@ -14,16 +13,12 @@ use App\Repository\ManualPaymentRequestRepository;
 use App\Service\AuditLogger;
 use App\Service\Billing\ManualBillingReminderSchedule;
 use App\Service\Billing\RecurringAmountCalculator;
-use App\Service\GoPay\GoPayClient;
-use App\Service\GoPay\GoPayException;
 use App\Service\Identity\ProvideIdentity;
-use App\Service\OrderStatusUrlGenerator;
+use App\Service\Payment\VariableSymbolGenerator;
 use Psr\Clock\ClockInterface;
-use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Messenger\MessageBusInterface;
-use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 /**
  * Per-stage idempotent dispatcher for MANUAL_RECURRING reminders. Runs inside
@@ -39,6 +34,10 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
  * commits (DomainEventsMiddleware semantics), so an SMTP failure does not
  * roll back sentStages — we deliberately prefer "miss one reminder" over
  * "double-send".
+ *
+ * Spec 076: every manual cycle is paid by bank transfer (QR + variable
+ * symbol) — cards are recurring-only, so the former per-cycle one-shot GoPay
+ * link no longer exists.
  */
 #[AsMessageHandler]
 final readonly class DispatchManualBillingNotificationHandler
@@ -46,16 +45,13 @@ final readonly class DispatchManualBillingNotificationHandler
     public function __construct(
         private ContractRepository $contractRepository,
         private ManualPaymentRequestRepository $manualPaymentRequestRepository,
-        private GoPayClient $goPayClient,
         private RecurringAmountCalculator $amountCalculator,
-        private OrderStatusUrlGenerator $statusUrlGenerator,
-        private UrlGeneratorInterface $urlGenerator,
+        private VariableSymbolGenerator $variableSymbolGenerator,
         #[Autowire(service: 'event.bus')]
         private MessageBusInterface $eventBus,
         private AuditLogger $auditLogger,
         private ClockInterface $clock,
         private ProvideIdentity $identityProvider,
-        private LoggerInterface $logger,
     ) {
     }
 
@@ -87,89 +83,29 @@ final readonly class DispatchManualBillingNotificationHandler
             return;
         }
 
-        $isBankTransfer = PaymentMethod::BANK_TRANSFER === $contract->order->paymentMethod;
-
-        if ($isBankTransfer) {
-            $request->recordStageSent($command->stage, $now);
-
-            $this->auditLogger->log(
-                entityType: 'manual_payment_request',
-                entityId: $request->id->toRfc4122(),
-                eventType: 'bank_transfer_reminder_sent',
-                payload: [
-                    'contract_id' => $contract->id->toRfc4122(),
-                    'period_start' => $request->periodStart->format('Y-m-d'),
-                    'stage' => $command->stage,
-                    'amount' => $request->amount,
-                    'variable_symbol' => $contract->order->variableSymbol,
-                ],
-                orderId: $contract->order->id,
-                userIdContext: $contract->user->id,
-            );
-
-            $isOverdueStage = in_array($command->stage, [
-                ManualBillingReminderSchedule::STAGE_OVERDUE_FIRST,
-                ManualBillingReminderSchedule::STAGE_OVERDUE_FINAL,
-            ], true);
-
-            if ($isOverdueStage) {
-                $contract->recordFailedBillingAttempt($now);
-            }
-
-            $event = $isOverdueStage
-                ? new ManualBillingPaymentOverdue(
-                    contractId: $contract->id,
-                    manualPaymentRequestId: $request->id,
-                    stage: $command->stage,
-                    occurredOn: $now,
-                )
-                : new ManualBillingPaymentRequested(
-                    contractId: $contract->id,
-                    manualPaymentRequestId: $request->id,
-                    stage: $command->stage,
-                    occurredOn: $now,
-                );
-
-            $this->eventBus->dispatch($event);
-
-            return;
-        }
-
-        if (null === $request->goPayPaymentId || $this->isGoPayPaymentTerminal($request->goPayPaymentId)) {
-            try {
-                $payment = $this->goPayClient->createOneTimeCharge(
-                    amount: $request->amount,
-                    orderNumber: sprintf('MNL-%s-%s', $contract->id->toRfc4122(), $request->periodStart->format('Ymd')),
-                    orderDescription: sprintf(
-                        'Pronájem skladu %s - %s (%s)',
-                        $contract->storage->number,
-                        $contract->storage->storageType->name,
-                        $request->periodStart->format('m/Y'),
-                    ),
-                    payerEmail: $contract->user->email,
-                    returnUrl: $this->statusUrlGenerator->generate($contract->order),
-                    notificationUrl: $this->urlGenerator->generate(
-                        'public_payment_notification',
-                        [],
-                        UrlGeneratorInterface::ABSOLUTE_URL,
-                    ),
-                );
-                $request->attachGoPayPayment($payment->id, $payment->gwUrl);
-            } catch (GoPayException $e) {
-                $this->logger->error('Failed to create GoPay payment for manual billing reminder', [
-                    'contract_id' => $contract->id->toRfc4122(),
-                    'period_start' => $request->periodStart->format('Y-m-d'),
-                    'stage' => $command->stage,
-                    'exception' => $e,
-                ]);
-
-                throw $e;
-            }
+        // Belt-and-braces after the spec-076 data migration: every manual cycle
+        // is paid by bank transfer, so the reminder e-mail must always be able
+        // to render a variable symbol.
+        if (null === $contract->order->variableSymbol) {
+            $contract->order->assignVariableSymbol($this->variableSymbolGenerator->generate($contract->order->id));
         }
 
         $request->recordStageSent($command->stage, $now);
 
-        $this->auditLogger->logManualPaymentRequested($request, $command->stage);
+        $this->auditLogger->log(
+            entityType: 'manual_payment_request',
+            entityId: $request->id->toRfc4122(),
+            eventType: 'bank_transfer_reminder_sent',
+            payload: [
+                'contract_id' => $contract->id->toRfc4122(),
+                'period_start' => $request->periodStart->format('Y-m-d'),
+                'stage' => $command->stage,
+                'amount' => $request->amount,
+                'variable_symbol' => $contract->order->variableSymbol,
+            ],
+            orderId: $contract->order->id,
+            userIdContext: $contract->user->id,
+        );
 
         $isOverdueStage = in_array($command->stage, [
             ManualBillingReminderSchedule::STAGE_OVERDUE_FIRST,
@@ -209,32 +145,10 @@ final readonly class DispatchManualBillingNotificationHandler
         $nextFullPeriodEnd = $periodStart->modify($contract->getBillingCadenceStep());
         $effectiveEndDate = $contract->getEffectiveEndDate();
 
-        if (null !== $effectiveEndDate && $nextFullPeriodEnd > $effectiveEndDate) {
+        if ($nextFullPeriodEnd > $effectiveEndDate) {
             return $effectiveEndDate;
         }
 
         return $nextFullPeriodEnd;
-    }
-
-    /**
-     * GoPay reports a CANCELED or TIMEOUTED payment as terminal; for those we
-     * must create a fresh payment for the next reminder. PAID would have
-     * already routed via the webhook reconcileManualPayment branch and
-     * flipped status to 'paid', short-circuiting this handler earlier.
-     */
-    private function isGoPayPaymentTerminal(string $paymentId): bool
-    {
-        try {
-            $status = $this->goPayClient->getStatus($paymentId);
-        } catch (GoPayException $e) {
-            $this->logger->warning('Failed to check GoPay payment status; will create a new payment', [
-                'gopay_payment_id' => $paymentId,
-                'exception' => $e,
-            ]);
-
-            return true;
-        }
-
-        return in_array($status->state, ['CANCELED', 'TIMEOUTED'], true);
     }
 }

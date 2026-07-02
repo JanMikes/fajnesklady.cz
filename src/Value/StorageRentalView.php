@@ -42,9 +42,10 @@ final class StorageRentalView
         get => !$this->isOccupied && !$this->isBlocked;
     }
 
-    public bool $isUnlimited {
-        get => (null !== $this->currentContract && $this->currentContract->isUnlimited())
-            || (null !== $this->currentOrder && \App\Enum\RentalType::UNLIMITED === $this->currentOrder->rentalType);
+    /** Spec 076: card-recurring rentals carry the availability guarantee (open-ended block). */
+    public bool $hasAvailabilityGuarantee {
+        get => (null !== $this->currentContract && $this->currentContract->hasAvailabilityGuarantee())
+            || (null !== $this->currentOrder && \App\Enum\BillingMode::AUTO_RECURRING === $this->currentOrder->billingMode);
     }
 
     public bool $isTerminating {

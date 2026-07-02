@@ -11,7 +11,6 @@ use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\BillingMode;
 use App\Enum\PaymentFrequency;
-use App\Enum\RentalType;
 use App\Repository\ContractRepository;
 use App\Service\OrderService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -86,7 +85,6 @@ final class ContractRepositoryRecurringPredicateTest extends KernelTestCase
             $tenant,
             $storageType,
             $place,
-            RentalType::LIMITED,
             $now->modify('+1 day'),
             $now->modify('+6 months'),
             $now,

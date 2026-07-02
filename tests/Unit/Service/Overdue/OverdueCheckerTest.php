@@ -11,7 +11,6 @@ use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\PaymentFrequency;
-use App\Enum\RentalType;
 use App\Enum\TerminationReason;
 use App\Repository\ContractRepository;
 use App\Service\Overdue\OverdueChecker;
@@ -213,10 +212,9 @@ class OverdueCheckerTest extends TestCase
             Uuid::v7(),
             $user,
             $storage,
-            RentalType::UNLIMITED,
             PaymentFrequency::MONTHLY,
             $createdAt,
-            null,
+            $createdAt->modify('+12 months'),
             self::MONTHLY_RATE,
             $createdAt->modify('+7 days'),
             $createdAt,
@@ -227,9 +225,8 @@ class OverdueCheckerTest extends TestCase
             $order,
             $user,
             $storage,
-            RentalType::UNLIMITED,
             $createdAt,
-            null,
+            $createdAt->modify('+12 months'),
             $createdAt,
         );
         $contract->setRecurringPayment('gopay-parent-id-'.bin2hex(random_bytes(2)), $nextBillingDate, $nextBillingDate);
@@ -266,10 +263,9 @@ class OverdueCheckerTest extends TestCase
             Uuid::v7(),
             $user,
             $storage,
-            RentalType::UNLIMITED,
             PaymentFrequency::MONTHLY,
             $createdAt,
-            null,
+            $createdAt->modify('+12 months'),
             self::MONTHLY_RATE,
             $createdAt->modify('+7 days'),
             $createdAt,
@@ -280,9 +276,8 @@ class OverdueCheckerTest extends TestCase
             $order,
             $user,
             $storage,
-            RentalType::UNLIMITED,
             $createdAt,
-            null,
+            $createdAt->modify('+12 months'),
             $createdAt,
         );
         $contract->setRecurringPayment('gopay-parent-id', $nextBillingDate, $nextBillingDate);

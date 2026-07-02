@@ -70,7 +70,7 @@ final class ContractTerminateController extends AbstractController
 
         $this->addFlash('success', sprintf(
             'Opakované platby byly zrušeny. Smlouva skončí %s.',
-            $contract->endDate?->format('d.m.Y') ?? '',
+            $contract->endDate->format('d.m.Y'),
         ));
 
         return $this->redirectToRoute('portal_user_order_detail', ['id' => $contract->order->id]);

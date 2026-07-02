@@ -11,7 +11,6 @@ use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\PaymentFrequency;
-use App\Enum\RentalType;
 use App\Enum\TerminationReason;
 use App\Exception\ContractNotFound;
 use App\Repository\ContractRepository;
@@ -99,14 +98,13 @@ class ContractRepositoryTest extends KernelTestCase
         User $user,
         Storage $storage,
         \DateTimeImmutable $startDate,
-        ?\DateTimeImmutable $endDate,
+        \DateTimeImmutable $endDate,
         int $firstPaymentPrice = 10000,
     ): Order {
         $order = new Order(
             id: Uuid::v7(),
             user: $user,
             storage: $storage,
-            rentalType: null === $endDate ? RentalType::UNLIMITED : RentalType::LIMITED,
             paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: $startDate,
             endDate: $endDate,
@@ -124,14 +122,13 @@ class ContractRepositoryTest extends KernelTestCase
         User $user,
         Storage $storage,
         \DateTimeImmutable $startDate,
-        ?\DateTimeImmutable $endDate,
+        \DateTimeImmutable $endDate,
     ): Contract {
         $contract = new Contract(
             id: Uuid::v7(),
             order: $order,
             user: $user,
             storage: $storage,
-            rentalType: null === $endDate ? RentalType::UNLIMITED : RentalType::LIMITED,
             startDate: $startDate,
             endDate: $endDate,
             createdAt: new \DateTimeImmutable(),
@@ -180,30 +177,36 @@ class ContractRepositoryTest extends KernelTestCase
         $this->assertEquals($existingContract->id, $overlapping[0]->id);
     }
 
-    public function testFindOverlappingHandlesIndefinitePeriod(): void
+    public function testFindOverlappingTreatsGuaranteedContractAsBlockingAnyFutureWindow(): void
     {
-        $tenant = $this->createUser('tenant-c-unlimited@test.com');
+        $tenant = $this->createUser('tenant-c-guarantee@test.com');
         $place = $this->createPlace();
         $storageType = $this->createStorageType();
-        $storage = $this->createStorage($storageType, $place, 'CUNL');
+        $storage = $this->createStorage($storageType, $place, 'CGRT');
 
-        $order = $this->createOrder($tenant, $storage, new \DateTimeImmutable('2024-01-01'), null);
+        $order = $this->createOrder($tenant, $storage, new \DateTimeImmutable('2024-01-01'), new \DateTimeImmutable('2025-01-01'));
 
-        // Existing unlimited contract starting Jan 1
+        // AUTO_RECURRING contract with a live GoPay token and no pending
+        // termination — availability guarantee: blocks the storage open-endedly.
         $existingContract = $this->createContract(
             $order,
             $tenant,
             $storage,
             new \DateTimeImmutable('2024-01-01'),
-            null,
+            new \DateTimeImmutable('2025-01-01'),
+        );
+        $existingContract->setRecurringPayment(
+            'gp-parent-guarantee',
+            new \DateTimeImmutable('2024-02-01'),
+            new \DateTimeImmutable('2024-02-01'),
         );
         $this->entityManager->flush();
 
-        // Check overlap: Feb 1-28 (should overlap with unlimited contract)
+        // Check overlap: Feb 2025 — past the contract's endDate, still blocked.
         $overlapping = $this->repository->findOverlappingByStorage(
             $storage,
-            new \DateTimeImmutable('2024-02-01'),
-            new \DateTimeImmutable('2024-02-28'),
+            new \DateTimeImmutable('2025-02-01'),
+            new \DateTimeImmutable('2025-02-28'),
         );
 
         $this->assertCount(1, $overlapping);
@@ -270,14 +273,14 @@ class ContractRepositoryTest extends KernelTestCase
             new \DateTimeImmutable('2024-07-15'),
         );
 
-        // Unlimited contract (should NOT be found)
-        $order3 = $this->createOrder($tenant, $storage3, new \DateTimeImmutable('2024-05-01'), null);
-        $unlimitedContract = $this->createContract(
+        // Contract ending far in the future (should NOT be found)
+        $order3 = $this->createOrder($tenant, $storage3, new \DateTimeImmutable('2024-05-01'), new \DateTimeImmutable('2025-05-01'));
+        $farFutureContract = $this->createContract(
             $order3,
             $tenant,
             $storage3,
             new \DateTimeImmutable('2024-05-01'),
-            null,
+            new \DateTimeImmutable('2025-05-01'),
         );
 
         $this->entityManager->flush();
@@ -287,7 +290,7 @@ class ContractRepositoryTest extends KernelTestCase
 
         $this->assertContains($expiringContract->id->toRfc4122(), $contractIds);
         $this->assertNotContains($farContract->id->toRfc4122(), $contractIds);
-        $this->assertNotContains($unlimitedContract->id->toRfc4122(), $contractIds);
+        $this->assertNotContains($farFutureContract->id->toRfc4122(), $contractIds);
     }
 
     public function testFindActiveAtPlaceMirrorsCountPredicate(): void
@@ -425,8 +428,10 @@ class ContractRepositoryTest extends KernelTestCase
         $place = $this->createPlace();
         $storageType = $this->createStorageType();
         $storage = $this->createStorage($storageType, $place, strtoupper(substr($emailSeed, 0, 4)));
-        $order = $this->createOrder($tenant, $storage, $lastBilledAt->modify('-1 month'), null);
-        $contract = $this->createContract($order, $tenant, $storage, $order->startDate, null);
+        $startDate = $lastBilledAt->modify('-1 month');
+        $endDate = $startDate->modify('+12 months');
+        $order = $this->createOrder($tenant, $storage, $startDate, $endDate);
+        $contract = $this->createContract($order, $tenant, $storage, $startDate, $endDate);
 
         if ($hasParentPaymentId) {
             $contract->setRecurringPayment(
@@ -576,8 +581,8 @@ class ContractRepositoryTest extends KernelTestCase
         $storage4 = $this->createStorage($storageType, $place, 'OD4');
 
         // Active failing contract — counts.
-        $orderFail = $this->createOrder($tenant, $storage1, $now->modify('-30 days'), null);
-        $contractFail = $this->createContract($orderFail, $tenant, $storage1, $now->modify('-30 days'), null);
+        $orderFail = $this->createOrder($tenant, $storage1, $now->modify('-30 days'), $now->modify('+335 days'));
+        $contractFail = $this->createContract($orderFail, $tenant, $storage1, $now->modify('-30 days'), $now->modify('+335 days'));
         $contractFail->setRecurringPayment('parent-fail', $now->modify('-5 days'), $now->modify('-5 days'));
         $contractFail->recordFailedBillingAttempt($now->modify('-3 days'));
 
@@ -588,15 +593,15 @@ class ContractRepositoryTest extends KernelTestCase
         $contractDebt->terminate($now->modify('-15 days'), TerminationReason::PAYMENT_FAILURE);
 
         // Healthy active recurring — does NOT count.
-        $orderHealthy = $this->createOrder($tenant, $storage3, $now->modify('-10 days'), null);
-        $this->createContract($orderHealthy, $tenant, $storage3, $now->modify('-10 days'), null)
+        $orderHealthy = $this->createOrder($tenant, $storage3, $now->modify('-10 days'), $now->modify('+355 days'));
+        $this->createContract($orderHealthy, $tenant, $storage3, $now->modify('-10 days'), $now->modify('+355 days'))
             ->setRecurringPayment('parent-healthy', $now->modify('+5 days'), $now->modify('+5 days'));
 
         // Free contract whose recurring window has lapsed — should NOT count or contribute to the sum.
         // Free contracts skip charging entirely; mirroring OverdueChecker's isFree() filter keeps
         // the badge count and the page row count consistent.
-        $orderFree = $this->createOrder($tenant, $storage4, $now->modify('-30 days'), null);
-        $contractFree = $this->createContract($orderFree, $tenant, $storage4, $now->modify('-30 days'), null);
+        $orderFree = $this->createOrder($tenant, $storage4, $now->modify('-30 days'), $now->modify('+335 days'));
+        $contractFree = $this->createContract($orderFree, $tenant, $storage4, $now->modify('-30 days'), $now->modify('+335 days'));
         $contractFree->applyIndividualMonthlyAmount(0, null, null, $now);
         $contractFree->setRecurringPayment('parent-free', $now->modify('-5 days'), $now->modify('-5 days'));
         $contractFree->recordFailedBillingAttempt($now->modify('-3 days'));
@@ -624,8 +629,8 @@ class ContractRepositoryTest extends KernelTestCase
         $storageType = $this->createStorageType();
         $storage = $this->createStorage($storageType, $place, 'ODR1');
 
-        $order = $this->createOrder($debtor, $storage, $now->modify('-30 days'), null);
-        $contract = $this->createContract($order, $debtor, $storage, $now->modify('-30 days'), null);
+        $order = $this->createOrder($debtor, $storage, $now->modify('-30 days'), $now->modify('+335 days'));
+        $contract = $this->createContract($order, $debtor, $storage, $now->modify('-30 days'), $now->modify('+335 days'));
         $contract->setRecurringPayment('parent-restrict', $now->modify('-5 days'), $now->modify('-5 days'));
         $contract->recordFailedBillingAttempt($now->modify('-3 days'));
 
@@ -656,8 +661,8 @@ class ContractRepositoryTest extends KernelTestCase
         $contractDebt->setOutstandingDebt(120000);
 
         // Healthy contract — must not appear.
-        $orderClean = $this->createOrder($user, $storageB, $now->modify('-30 days'), null);
-        $this->createContract($orderClean, $user, $storageB, $now->modify('-30 days'), null);
+        $orderClean = $this->createOrder($user, $storageB, $now->modify('-30 days'), $now->modify('+335 days'));
+        $this->createContract($orderClean, $user, $storageB, $now->modify('-30 days'), $now->modify('+335 days'));
 
         $this->entityManager->flush();
 
@@ -681,14 +686,14 @@ class ContractRepositoryTest extends KernelTestCase
         $storageA = $this->createStorage($st, $place, 'RPA', $landlordA);
         $storageB = $this->createStorage($st, $place, 'RPB', $landlordB);
 
-        $orderA = $this->createOrder($tenant, $storageA, new \DateTimeImmutable('-30 days'), null);
+        $orderA = $this->createOrder($tenant, $storageA, new \DateTimeImmutable('-30 days'), new \DateTimeImmutable('+335 days'));
         $orderA->markPaid(new \DateTimeImmutable('-29 days'));
-        $contractA = $this->createContract($orderA, $tenant, $storageA, new \DateTimeImmutable('-30 days'), null);
+        $contractA = $this->createContract($orderA, $tenant, $storageA, new \DateTimeImmutable('-30 days'), new \DateTimeImmutable('+335 days'));
         $contractA->setRecurringPayment('parent-A', new \DateTimeImmutable('+5 days'), new \DateTimeImmutable('-1 day'));
 
-        $orderB = $this->createOrder($tenant, $storageB, new \DateTimeImmutable('-30 days'), null);
+        $orderB = $this->createOrder($tenant, $storageB, new \DateTimeImmutable('-30 days'), new \DateTimeImmutable('+335 days'));
         $orderB->markPaid(new \DateTimeImmutable('-29 days'));
-        $contractB = $this->createContract($orderB, $tenant, $storageB, new \DateTimeImmutable('-30 days'), null);
+        $contractB = $this->createContract($orderB, $tenant, $storageB, new \DateTimeImmutable('-30 days'), new \DateTimeImmutable('+335 days'));
         $contractB->setRecurringPayment('parent-B', new \DateTimeImmutable('+5 days'), new \DateTimeImmutable('-1 day'));
 
         $this->entityManager->flush();
@@ -714,19 +719,19 @@ class ContractRepositoryTest extends KernelTestCase
         $now = new \DateTimeImmutable('2025-06-15 12:00:00');
 
         // Standard contract — order monthly = 150 000 halere (1 500 Kč), no override → contributes 150 000.
-        $standardOrder = $this->createOrder($tenant, $standardStorage, $now->modify('-30 days'), null, 150000);
-        $standardContract = $this->createContract($standardOrder, $tenant, $standardStorage, $now->modify('-30 days'), null);
+        $standardOrder = $this->createOrder($tenant, $standardStorage, $now->modify('-30 days'), $now->modify('+335 days'), 150000);
+        $standardContract = $this->createContract($standardOrder, $tenant, $standardStorage, $now->modify('-30 days'), $now->modify('+335 days'));
         $standardContract->setRecurringPayment('parent-std', $now->modify('+5 days'), $now->modify('-1 day'));
 
         // Override contract — order monthly = 150 000 (storage default), override = 50 000 → contributes 50 000.
-        $overrideOrder = $this->createOrder($tenant, $overrideStorage, $now->modify('-30 days'), null, 150000);
-        $overrideContract = $this->createContract($overrideOrder, $tenant, $overrideStorage, $now->modify('-30 days'), null);
+        $overrideOrder = $this->createOrder($tenant, $overrideStorage, $now->modify('-30 days'), $now->modify('+335 days'), 150000);
+        $overrideContract = $this->createContract($overrideOrder, $tenant, $overrideStorage, $now->modify('-30 days'), $now->modify('+335 days'));
         $overrideContract->applyIndividualMonthlyAmount(50000, null, null, $now);
         $overrideContract->setRecurringPayment('parent-ovr', $now->modify('+5 days'), $now->modify('-1 day'));
 
         // Free contract — override = 0 → contributes 0 to the sum (auto-excluded by zero contribution).
-        $freeOrder = $this->createOrder($tenant, $freeStorage, $now->modify('-30 days'), null, 150000);
-        $freeContract = $this->createContract($freeOrder, $tenant, $freeStorage, $now->modify('-30 days'), null);
+        $freeOrder = $this->createOrder($tenant, $freeStorage, $now->modify('-30 days'), $now->modify('+335 days'), 150000);
+        $freeContract = $this->createContract($freeOrder, $tenant, $freeStorage, $now->modify('-30 days'), $now->modify('+335 days'));
         $freeContract->applyIndividualMonthlyAmount(0, null, null, $now);
         $freeContract->setRecurringPayment('parent-free', $now->modify('+5 days'), $now->modify('-1 day'));
 
@@ -750,17 +755,17 @@ class ContractRepositoryTest extends KernelTestCase
         $freeStorage = $this->createStorage($st, $place, 'CSO3');
 
         // Standard contract — order = 150 000, no override → contributes 150 000 to MRR.
-        $standardOrder = $this->createOrder($tenant, $standardStorage, $now->modify('-30 days'), null, 150000);
-        $this->createContract($standardOrder, $tenant, $standardStorage, $now->modify('-30 days'), null);
+        $standardOrder = $this->createOrder($tenant, $standardStorage, $now->modify('-30 days'), $now->modify('+335 days'), 150000);
+        $this->createContract($standardOrder, $tenant, $standardStorage, $now->modify('-30 days'), $now->modify('+335 days'));
 
         // Override contract — order = 150 000 (storage default), override = 80 000 → contributes 80 000.
-        $overrideOrder = $this->createOrder($tenant, $overrideStorage, $now->modify('-30 days'), null, 150000);
-        $overrideContract = $this->createContract($overrideOrder, $tenant, $overrideStorage, $now->modify('-30 days'), null);
+        $overrideOrder = $this->createOrder($tenant, $overrideStorage, $now->modify('-30 days'), $now->modify('+335 days'), 150000);
+        $overrideContract = $this->createContract($overrideOrder, $tenant, $overrideStorage, $now->modify('-30 days'), $now->modify('+335 days'));
         $overrideContract->applyIndividualMonthlyAmount(80000, null, null, $now);
 
         // Free contract — order = 150 000, override = 0 → contributes 0.
-        $freeOrder = $this->createOrder($tenant, $freeStorage, $now->modify('-30 days'), null, 150000);
-        $freeContract = $this->createContract($freeOrder, $tenant, $freeStorage, $now->modify('-30 days'), null);
+        $freeOrder = $this->createOrder($tenant, $freeStorage, $now->modify('-30 days'), $now->modify('+335 days'), 150000);
+        $freeContract = $this->createContract($freeOrder, $tenant, $freeStorage, $now->modify('-30 days'), $now->modify('+335 days'));
         $freeContract->applyIndividualMonthlyAmount(0, null, null, $now);
 
         $this->entityManager->flush();
@@ -782,26 +787,26 @@ class ContractRepositoryTest extends KernelTestCase
         $tenant = $this->createUser('cstats-tenant@test.com');
         $place = $this->createPlace();
         $storageType = $this->createStorageType();
-        $unlimited = $this->createStorage($storageType, $place, 'CSU');
-        $longLimited = $this->createStorage($storageType, $place, 'CSL');
-        $shortLimited = $this->createStorage($storageType, $place, 'CSS');
+        $yearLong = $this->createStorage($storageType, $place, 'CSU');
+        $longFixed = $this->createStorage($storageType, $place, 'CSL');
+        $shortFixed = $this->createStorage($storageType, $place, 'CSS');
         $terminated = $this->createStorage($storageType, $place, 'CST');
 
-        // Active UNLIMITED contract @ 1500 Kč → counts toward MRR
-        $orderUnlimited = $this->createOrder($tenant, $unlimited, $now->modify('-30 days'), null, 150000);
-        $this->createContract($orderUnlimited, $tenant, $unlimited, $now->modify('-30 days'), null);
+        // Active 12-month contract @ 1500 Kč → counts toward MRR
+        $orderYearLong = $this->createOrder($tenant, $yearLong, $now->modify('-30 days'), $now->modify('+335 days'), 150000);
+        $this->createContract($orderYearLong, $tenant, $yearLong, $now->modify('-30 days'), $now->modify('+335 days'));
 
-        // Active LIMITED ≥28d contract @ 800 Kč → counts toward MRR
-        $orderLong = $this->createOrder($tenant, $longLimited, $now->modify('-10 days'), $now->modify('+50 days'), 80000);
-        $this->createContract($orderLong, $tenant, $longLimited, $now->modify('-10 days'), $now->modify('+50 days'));
+        // Active fixed-term ≥28d contract @ 800 Kč → counts toward MRR
+        $orderLong = $this->createOrder($tenant, $longFixed, $now->modify('-10 days'), $now->modify('+50 days'), 80000);
+        $this->createContract($orderLong, $tenant, $longFixed, $now->modify('-10 days'), $now->modify('+50 days'));
 
-        // Active short LIMITED <28d @ 1200 Kč → NOT in MRR
-        $orderShort = $this->createOrder($tenant, $shortLimited, $now->modify('-3 days'), $now->modify('+10 days'), 120000);
-        $this->createContract($orderShort, $tenant, $shortLimited, $now->modify('-3 days'), $now->modify('+10 days'));
+        // Active short fixed-term <28d @ 1200 Kč → NOT in MRR
+        $orderShort = $this->createOrder($tenant, $shortFixed, $now->modify('-3 days'), $now->modify('+10 days'), 120000);
+        $this->createContract($orderShort, $tenant, $shortFixed, $now->modify('-3 days'), $now->modify('+10 days'));
 
         // Terminated contract → in totalCount, not in activeCount or MRR
-        $orderTerminated = $this->createOrder($tenant, $terminated, $now->modify('-90 days'), null, 200000);
-        $contractTerminated = $this->createContract($orderTerminated, $tenant, $terminated, $now->modify('-90 days'), null);
+        $orderTerminated = $this->createOrder($tenant, $terminated, $now->modify('-90 days'), $now->modify('+275 days'), 200000);
+        $contractTerminated = $this->createContract($orderTerminated, $tenant, $terminated, $now->modify('-90 days'), $now->modify('+275 days'));
         $contractTerminated->terminate($now->modify('-1 day'));
 
         $this->entityManager->flush();
@@ -844,8 +849,8 @@ class ContractRepositoryTest extends KernelTestCase
         $storageType = $this->createStorageType();
         $storage = $this->createStorage($storageType, $place, 'CFR');
 
-        $order = $this->createOrder($tenant, $storage, $now->modify('-30 days'), null, 0);
-        $this->createContract($order, $tenant, $storage, $now->modify('-30 days'), null);
+        $order = $this->createOrder($tenant, $storage, $now->modify('-30 days'), $now->modify('+335 days'), 0);
+        $this->createContract($order, $tenant, $storage, $now->modify('-30 days'), $now->modify('+335 days'));
 
         $this->entityManager->flush();
 
@@ -884,7 +889,7 @@ class ContractRepositoryTest extends KernelTestCase
 
     public function testLoadCustomerStatsByUserIdsExcludesLimitedContractAt27DaysFromMrr(): void
     {
-        // One day below the 28-day boundary — short LIMITED, must NOT contribute to MRR
+        // One day below the 28-day boundary — short fixed-term, must NOT contribute to MRR
         // (still counts toward activeCount and totalCount).
         $now = new \DateTimeImmutable('2025-06-15 12:00:00');
 
@@ -930,8 +935,8 @@ class ContractRepositoryTest extends KernelTestCase
         $storageType = $this->createStorageType();
         $storage = $this->createStorage($storageType, $place, 'CAS');
 
-        $order = $this->createOrder($tenant, $storage, $now->modify('-10 days'), null);
-        $this->createContract($order, $tenant, $storage, $now->modify('-10 days'), null);
+        $order = $this->createOrder($tenant, $storage, $now->modify('-10 days'), $now->modify('+355 days'));
+        $this->createContract($order, $tenant, $storage, $now->modify('-10 days'), $now->modify('+355 days'));
 
         $this->entityManager->flush();
 
@@ -1042,9 +1047,15 @@ class ContractRepositoryTest extends KernelTestCase
         $beforeOrder = $this->createOrder($tenant, $storage, new \DateTimeImmutable('2025-04-01'), new \DateTimeImmutable('2025-05-01'));
         $this->createContract($beforeOrder, $tenant, $storage, new \DateTimeImmutable('2025-04-01'), new \DateTimeImmutable('2025-05-01'));
 
-        // Unlimited contract starting before range — overlaps
-        $unlimitedOrder = $this->createOrder($tenant, $storage, new \DateTimeImmutable('2025-05-15'), null);
-        $unlimited = $this->createContract($unlimitedOrder, $tenant, $storage, new \DateTimeImmutable('2025-05-15'), null);
+        // Guaranteed contract (live token, no pending termination) ending before
+        // the range — availability guarantee blocks any future window, so it overlaps.
+        $guaranteedOrder = $this->createOrder($tenant, $storage, new \DateTimeImmutable('2025-03-01'), new \DateTimeImmutable('2025-05-15'));
+        $guaranteed = $this->createContract($guaranteedOrder, $tenant, $storage, new \DateTimeImmutable('2025-03-01'), new \DateTimeImmutable('2025-05-15'));
+        $guaranteed->setRecurringPayment(
+            'gp-parent-bulk-guarantee',
+            new \DateTimeImmutable('2025-05-15'),
+            new \DateTimeImmutable('2025-05-15'),
+        );
 
         $this->entityManager->flush();
 
@@ -1052,7 +1063,7 @@ class ContractRepositoryTest extends KernelTestCase
         $ids = array_map(fn (Contract $c) => $c->id->toRfc4122(), $found);
 
         $this->assertContains($inside->id->toRfc4122(), $ids);
-        $this->assertContains($unlimited->id->toRfc4122(), $ids);
+        $this->assertContains($guaranteed->id->toRfc4122(), $ids);
         $this->assertCount(2, $ids);
     }
 
@@ -1102,19 +1113,19 @@ class ContractRepositoryTest extends KernelTestCase
         $now = new \DateTimeImmutable('2025-06-15 12:00:00');
 
         // Standard contract — order monthly = 150 000 halere, no override → contributes 150 000.
-        $standardOrder = $this->createOrder($tenant, $standardStorage, $now->modify('-30 days'), null, 150000);
-        $standardContract = $this->createContract($standardOrder, $tenant, $standardStorage, $now->modify('-30 days'), null);
+        $standardOrder = $this->createOrder($tenant, $standardStorage, $now->modify('-30 days'), $now->modify('+335 days'), 150000);
+        $standardContract = $this->createContract($standardOrder, $tenant, $standardStorage, $now->modify('-30 days'), $now->modify('+335 days'));
         $standardContract->setRecurringPayment('parent-byll-std', $now->modify('+5 days'), $now->modify('-1 day'));
 
         // Override contract — order = 150 000, override = 50 000 → contributes 50 000.
-        $overrideOrder = $this->createOrder($tenant, $overrideStorage, $now->modify('-30 days'), null, 150000);
-        $overrideContract = $this->createContract($overrideOrder, $tenant, $overrideStorage, $now->modify('-30 days'), null);
+        $overrideOrder = $this->createOrder($tenant, $overrideStorage, $now->modify('-30 days'), $now->modify('+335 days'), 150000);
+        $overrideContract = $this->createContract($overrideOrder, $tenant, $overrideStorage, $now->modify('-30 days'), $now->modify('+335 days'));
         $overrideContract->applyIndividualMonthlyAmount(50000, null, null, $now);
         $overrideContract->setRecurringPayment('parent-byll-ovr', $now->modify('+5 days'), $now->modify('-1 day'));
 
         // Free contract — override = 0 → contributes 0 to the sum (auto-excluded by zero contribution).
-        $freeOrder = $this->createOrder($tenant, $freeStorage, $now->modify('-30 days'), null, 150000);
-        $freeContract = $this->createContract($freeOrder, $tenant, $freeStorage, $now->modify('-30 days'), null);
+        $freeOrder = $this->createOrder($tenant, $freeStorage, $now->modify('-30 days'), $now->modify('+335 days'), 150000);
+        $freeContract = $this->createContract($freeOrder, $tenant, $freeStorage, $now->modify('-30 days'), $now->modify('+335 days'));
         $freeContract->applyIndividualMonthlyAmount(0, null, null, $now);
         $freeContract->setRecurringPayment('parent-byll-free', $now->modify('+5 days'), $now->modify('-1 day'));
 
@@ -1144,19 +1155,19 @@ class ContractRepositoryTest extends KernelTestCase
         $now = new \DateTimeImmutable('2025-06-15 12:00:00');
 
         // Standard contract — order = 150 000, no override → contributes 150 000.
-        $standardOrder = $this->createOrder($tenant, $standardStorage, $now->modify('-30 days'), null, 150000);
-        $standardContract = $this->createContract($standardOrder, $tenant, $standardStorage, $now->modify('-30 days'), null);
+        $standardOrder = $this->createOrder($tenant, $standardStorage, $now->modify('-30 days'), $now->modify('+335 days'), 150000);
+        $standardContract = $this->createContract($standardOrder, $tenant, $standardStorage, $now->modify('-30 days'), $now->modify('+335 days'));
         $standardContract->setRecurringPayment('parent-all-std', $now->modify('+5 days'), $now->modify('-1 day'));
 
         // Override contract — order = 150 000, override = 80 000 → contributes 80 000.
-        $overrideOrder = $this->createOrder($tenant, $overrideStorage, $now->modify('-30 days'), null, 150000);
-        $overrideContract = $this->createContract($overrideOrder, $tenant, $overrideStorage, $now->modify('-30 days'), null);
+        $overrideOrder = $this->createOrder($tenant, $overrideStorage, $now->modify('-30 days'), $now->modify('+335 days'), 150000);
+        $overrideContract = $this->createContract($overrideOrder, $tenant, $overrideStorage, $now->modify('-30 days'), $now->modify('+335 days'));
         $overrideContract->applyIndividualMonthlyAmount(80000, null, null, $now);
         $overrideContract->setRecurringPayment('parent-all-ovr', $now->modify('+5 days'), $now->modify('-1 day'));
 
         // Free contract — override = 0 → contributes 0.
-        $freeOrder = $this->createOrder($tenant, $freeStorage, $now->modify('-30 days'), null, 150000);
-        $freeContract = $this->createContract($freeOrder, $tenant, $freeStorage, $now->modify('-30 days'), null);
+        $freeOrder = $this->createOrder($tenant, $freeStorage, $now->modify('-30 days'), $now->modify('+335 days'), 150000);
+        $freeContract = $this->createContract($freeOrder, $tenant, $freeStorage, $now->modify('-30 days'), $now->modify('+335 days'));
         $freeContract->applyIndividualMonthlyAmount(0, null, null, $now);
         $freeContract->setRecurringPayment('parent-all-free', $now->modify('+5 days'), $now->modify('-1 day'));
 

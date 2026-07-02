@@ -1,0 +1,202 @@
+{% extends 'user/layout.html.twig' %}
+
+{% block title %}Prodloužení smlouvy - Fajnesklady.cz{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="card">
+        <div class="card-body">
+            {% if state == 'ended' %}
+                <div class="text-center">
+                    <div class="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <h1 class="text-2xl font-bold text-gray-900 mb-2">Smlouvu již nelze prodloužit</h1>
+                    <p class="text-gray-600 mb-6">
+                        Smlouva skončila nebo se právě ukončuje. Pokračovat můžete novou objednávkou —
+                        všechny údaje za Vás předvyplníme.
+                    </p>
+                    <a href="{{ newOrderUrl }}" class="btn btn-primary">Vytvořit novou objednávku</a>
+                    <p class="mt-4"><a href="{{ statusUrl }}" class="text-sm text-accent hover:underline">Zobrazit stav objednávky</a></p>
+                </div>
+
+            {% elseif state == 'place_inactive' %}
+                <div class="text-center">
+                    <div class="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <h1 class="text-2xl font-bold text-gray-900 mb-2">Pobočka již není v provozu</h1>
+                    <p class="text-gray-600 mb-6">
+                        Smlouvu na této pobočce nelze prodloužit. Ohledně dalšího postupu nás prosím kontaktujte na
+                        <a href="mailto:skladmistr@fajnesklady.cz" class="text-accent hover:underline">skladmistr@fajnesklady.cz</a>
+                        nebo telefonicky na <a href="tel:+420605522566" class="text-accent hover:underline">+420 605 522 566</a>.
+                    </p>
+                    <a href="{{ statusUrl }}" class="btn btn-primary">Zobrazit stav objednávky</a>
+                </div>
+
+            {% elseif state == 'arrears' %}
+                <div class="text-center">
+                    <div class="inline-flex items-center justify-center w-16 h-16 bg-amber-100 rounded-full mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    </div>
+                    <h1 class="text-2xl font-bold text-gray-900 mb-2">Prodloužení zatím není možné</h1>
+                    <p class="text-gray-600 mb-6">
+                        Prodloužení je možné až po uhrazení dlužných plateb. Stav plateb najdete na stránce objednávky,
+                        případně nás kontaktujte na <a href="mailto:simek@fajnesklady.cz" class="text-accent hover:underline">simek@fajnesklady.cz</a>.
+                    </p>
+                    <a href="{{ statusUrl }}" class="btn btn-primary">Zobrazit stav objednávky</a>
+                </div>
+
+            {% elseif state == 'blocked' %}
+                <div class="text-center">
+                    <div class="inline-flex items-center justify-center w-16 h-16 bg-amber-100 rounded-full mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                        </svg>
+                    </div>
+                    <h1 class="text-2xl font-bold text-gray-900 mb-2">Skladovou jednotku má po Vás rezervovanou někdo jiný</h1>
+                    <p class="text-gray-600 mb-6">
+                        Skladovou jednotku č. {{ storage.number }} si na období po konci Vaší smlouvy již někdo rezervoval.
+                        Můžete si ale vytvořit novou objednávku na jinou jednotku — údaje za Vás předvyplníme.
+                    </p>
+                    <a href="{{ newOrderUrl }}" class="btn btn-primary">Vytvořit novou objednávku</a>
+                    <p class="mt-4"><a href="{{ statusUrl }}" class="text-sm text-accent hover:underline">Zobrazit stav objednávky</a></p>
+                </div>
+
+            {% elseif state == 'success' %}
+                <div class="text-center">
+                    <div class="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                    </div>
+                    <h1 class="text-2xl font-bold text-gray-900 mb-2">Smlouva prodloužena</h1>
+                    <p class="text-gray-600 mb-6">
+                        Vaše smlouva na skladovou jednotku č. {{ storage.number }} ({{ place.name }})
+                        nyní platí do <strong>{{ newEndDate|date('d.m.Y') }}</strong>.
+                        Potvrzení jsme Vám poslali e-mailem.
+                    </p>
+                    {% if cardSetupUrl %}
+                        <div class="mb-6 rounded-lg border border-green-200 bg-green-50 p-4 text-left">
+                            <p class="text-sm text-green-900">
+                                <strong>Zbývá poslední krok:</strong> nastavení automatické platby kartou.
+                                Po jejím dokončení získáte garanci dostupnosti Vaší skladovací jednotky
+                                v případě dalšího prodloužení.
+                            </p>
+                        </div>
+                        <a href="{{ cardSetupUrl }}" class="btn btn-primary">Nastavit platbu kartou</a>
+                        <p class="mt-4"><a href="{{ statusUrl }}" class="text-sm text-accent hover:underline">Přeskočit — zůstat u bankovního převodu</a></p>
+                    {% else %}
+                        <a href="{{ statusUrl }}" class="btn btn-primary">Zobrazit stav objednávky</a>
+                    {% endif %}
+                </div>
+
+            {% else %}
+                <h1 class="text-2xl font-bold text-gray-900 mb-2">Prodloužení smlouvy</h1>
+                <p class="text-sm text-gray-600 mb-6">
+                    Skladová jednotka č. <strong>{{ storage.number }}</strong> ({{ storage.storageType.name }}),
+                    {{ place.name }} — smlouva nyní platí do <strong>{{ contract.endDate|date('d.m.Y') }}</strong>.
+                </p>
+
+                {% if error is defined %}
+                    <div class="mb-4 rounded-lg border border-red-300 bg-red-50 p-4 text-sm text-red-800" role="alert">
+                        {{ error }}
+                    </div>
+                {% endif %}
+
+                {% if hasLiveCardRecurring %}
+                    <div class="mb-4 rounded-lg border border-green-200 bg-green-50 p-4">
+                        <p class="text-sm text-green-900">
+                            Platíte automaticky kartou, proto máme Vaši skladovací jednotku garantovanou —
+                            prodloužit můžete na libovolně dlouhou dobu a stávající platba kartou pokračuje beze změny.
+                        </p>
+                    </div>
+                {% endif %}
+
+                <form method="post" class="space-y-6">
+                    <div>
+                        <label for="new-end-date" class="form-label form-label-required">Nové datum konce</label>
+                        <input type="date" id="new-end-date" name="new_end_date"
+                               class="form-input"
+                               value="{{ submitted.newEndDate|default('') }}"
+                               min="{{ minEndDate|date('Y-m-d') }}"
+                               {% if maxEndDate %}max="{{ maxEndDate|date('Y-m-d') }}"{% endif %}
+                               data-datepicker-min-date-value="{{ minEndDate|date('Y-m-d') }}"
+                               {% if maxEndDate %}data-datepicker-max-date-value="{{ maxEndDate|date('Y-m-d') }}"{% endif %}
+                               data-controller="datepicker"
+                               required>
+                        <p class="text-xs text-gray-500 mt-1">
+                            Nejdříve {{ minEndDate|date('d.m.Y') }}{% if maxEndDate %}, nejpozději {{ maxEndDate|date('d.m.Y') }} (poté má jednotku rezervovanou někdo jiný){% endif %}.
+                        </p>
+                    </div>
+
+                    <fieldset>
+                        <legend class="form-label">Způsob platby</legend>
+                        <div class="space-y-3 mt-2">
+                            <label class="flex items-start gap-3 cursor-pointer">
+                                <input type="radio" name="payment_choice" value="keep" class="form-radio mt-0.5"
+                                       {{ submitted.paymentChoice|default('keep') == 'keep' ? 'checked' }}>
+                                <span class="text-sm text-gray-800">
+                                    <strong>Ponechat současný způsob platby</strong>
+                                    <span class="block text-xs text-gray-500">
+                                        {% if hasLiveCardRecurring %}
+                                            Automatická platba kartou — platby pokračují beze změny.
+                                        {% else %}
+                                            Bankovní převod — před každou platbou Vám pošleme e-mail s platebními údaji a QR kódem.
+                                        {% endif %}
+                                    </span>
+                                </span>
+                            </label>
+
+                            {% if hasLiveCardRecurring %}
+                                <label class="flex items-start gap-3 cursor-pointer">
+                                    <input type="radio" name="payment_choice" value="bank" class="form-radio mt-0.5"
+                                           {{ submitted.paymentChoice|default('') == 'bank' ? 'checked' }}>
+                                    <span class="text-sm text-gray-800">
+                                        <strong>Přejít na bankovní převod</strong>
+                                        <span class="block text-xs text-gray-500">
+                                            Uložená karta se zruší. Při platbě bankovním převodem je účtován příplatek
+                                            {{ bankTransferSurchargeInCzk|number_format(0, ',', ' ') }} Kč za každé fakturační období.
+                                            Negarantujeme dostupnost vaší skladovací jednotky v případě potřeby prodloužení pronájmu.
+                                        </span>
+                                    </span>
+                                </label>
+                            {% endif %}
+
+                            {% if canSwitchToCard %}
+                                <label class="flex items-start gap-3 cursor-pointer">
+                                    <input type="radio" name="payment_choice" value="gopay" class="form-radio mt-0.5"
+                                           {{ submitted.paymentChoice|default('') == 'gopay' ? 'checked' }}>
+                                    <span class="text-sm text-gray-800">
+                                        <strong>Přejít na automatickou platbu kartou</strong>
+                                        <span class="block text-xs text-gray-500">
+                                            Při volbě automatické platby kartou garantujeme dostupnost Vaší skladovací jednotky
+                                            v případě potřeby prodloužení pronájmu. Nastavení karty dokončíte v dalším kroku.
+                                        </span>
+                                    </span>
+                                </label>
+                            {% endif %}
+                        </div>
+                    </fieldset>
+
+                    <div class="flex items-center justify-between pt-2 border-t border-gray-200">
+                        <a href="{{ statusUrl }}" class="inline-flex items-center text-gray-600 hover:text-gray-900">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                            </svg>
+                            Zpět
+                        </a>
+                        <button type="submit" class="btn btn-primary btn-lg">Prodloužit smlouvu</button>
+                    </div>
+                </form>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

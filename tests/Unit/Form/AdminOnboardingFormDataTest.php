@@ -5,10 +5,8 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Form;
 
 use App\Enum\BillingMode;
-use App\Enum\ExpectedDuration;
 use App\Enum\PaymentFrequency;
 use App\Enum\PaymentMethod;
-use App\Enum\RentalType;
 use App\Form\AdminOnboardingFormData;
 use App\Tests\Mock\MockAddressValidator;
 use App\Validator\AddressExistsValidator;
@@ -62,58 +60,125 @@ final class AdminOnboardingFormDataTest extends TestCase
         self::assertNotEmpty($violations);
     }
 
-    public function testLimitedRequiresEndDate(): void
+    public function testEndDateRequired(): void
     {
         $data = $this->validData();
-        $data->rentalType = RentalType::LIMITED;
         $data->endDate = null;
 
         $violations = $this->violationsAt('endDate', $data);
         self::assertNotEmpty($violations);
+        self::assertSame('Zadejte datum konce.', (string) $violations[0]->getMessage());
     }
 
-    public function testLimitedMinimum7Days(): void
+    public function testMinimumRentalIs7Days(): void
     {
         $data = $this->validData();
-        $data->rentalType = RentalType::LIMITED;
         $data->startDate = new \DateTimeImmutable('today');
         $data->endDate = new \DateTimeImmutable('today +3 days');
 
         $violations = $this->violationsAt('endDate', $data);
         self::assertNotEmpty($violations);
+        self::assertSame('Minimální doba pronájmu je 7 dní.', (string) $violations[0]->getMessage());
     }
 
-    public function testBankTransferForcesManualRecurring(): void
+    public function testBankTransferDerivesManualRecurring(): void
     {
         $data = $this->validData();
         $data->paymentMethod = PaymentMethod::BANK_TRANSFER;
-        $data->billingMode = BillingMode::AUTO_RECURRING;
+        $data->billingMode = null;
 
         $this->validator()->validate($data);
 
         self::assertSame(BillingMode::MANUAL_RECURRING, $data->billingMode);
     }
 
-    public function testUnlimitedRequiresAutoRecurring(): void
+    public function testBankTransferShortRentalDerivesOneTime(): void
     {
         $data = $this->validData();
-        $data->rentalType = RentalType::UNLIMITED;
+        $data->paymentMethod = PaymentMethod::BANK_TRANSFER;
+        $data->startDate = new \DateTimeImmutable('today');
+        $data->endDate = new \DateTimeImmutable('today +14 days');
+        $data->billingMode = null;
+
+        $violations = $this->validator()->validate($data);
+
+        self::assertCount(0, $violations);
+        self::assertSame(BillingMode::ONE_TIME, $data->billingMode);
+    }
+
+    public function testGoPayDerivesAutoRecurring(): void
+    {
+        $data = $this->validData();
         $data->paymentMethod = PaymentMethod::GOPAY;
-        $data->billingMode = BillingMode::MANUAL_RECURRING;
+        $data->billingMode = null;
 
-        $violations = $this->violationsAt('billingMode', $data);
-        self::assertNotEmpty($violations);
+        $this->validator()->validate($data);
+
+        self::assertSame(BillingMode::AUTO_RECURRING, $data->billingMode);
     }
 
-    public function testYearlyForcesManualRecurring(): void
+    public function testExternalDerivesManualRecurring(): void
     {
         $data = $this->validData();
-        $data->paymentFrequency = PaymentFrequency::YEARLY;
-        $data->billingMode = BillingMode::AUTO_RECURRING;
+        $data->paymentMethod = PaymentMethod::EXTERNAL;
+        $data->monthlyPriceMode = 'free';
+        $data->billingMode = null;
 
         $this->validator()->validate($data);
 
         self::assertSame(BillingMode::MANUAL_RECURRING, $data->billingMode);
+    }
+
+    public function testYearlyDerivesManualRecurring(): void
+    {
+        $data = $this->validData();
+        $data->paymentMethod = PaymentMethod::BANK_TRANSFER;
+        $data->paymentFrequency = PaymentFrequency::YEARLY;
+        $data->startDate = new \DateTimeImmutable('today');
+        $data->endDate = new \DateTimeImmutable('today +400 days');
+        $data->billingMode = null;
+
+        $this->validator()->validate($data);
+
+        self::assertSame(BillingMode::MANUAL_RECURRING, $data->billingMode);
+    }
+
+    public function testGoPayWithYearlyFrequencyIsRejected(): void
+    {
+        $data = $this->validData();
+        $data->paymentMethod = PaymentMethod::GOPAY;
+        $data->paymentFrequency = PaymentFrequency::YEARLY;
+        $data->startDate = new \DateTimeImmutable('today');
+        $data->endDate = new \DateTimeImmutable('today +400 days');
+
+        $violations = $this->violationsAt('paymentFrequency', $data);
+        self::assertNotEmpty($violations);
+        self::assertSame('Roční platbu lze platit pouze bankovním převodem.', (string) $violations[0]->getMessage());
+    }
+
+    public function testGoPayShortRentalIsRejected(): void
+    {
+        $data = $this->validData();
+        $data->paymentMethod = PaymentMethod::GOPAY;
+        $data->startDate = new \DateTimeImmutable('today');
+        $data->endDate = new \DateTimeImmutable('today +14 days');
+
+        $violations = $this->violationsAt('paymentMethod', $data);
+        self::assertNotEmpty($violations);
+        self::assertSame('Platba kartou je dostupná pro pronájmy od 31 dnů. Kratší pronájem se platí bankovním převodem.', (string) $violations[0]->getMessage());
+    }
+
+    public function testYearlyShortRentalIsRejected(): void
+    {
+        $data = $this->validData();
+        $data->paymentMethod = PaymentMethod::BANK_TRANSFER;
+        $data->paymentFrequency = PaymentFrequency::YEARLY;
+        $data->startDate = new \DateTimeImmutable('today');
+        $data->endDate = new \DateTimeImmutable('today +200 days');
+
+        $violations = $this->violationsAt('paymentFrequency', $data);
+        self::assertNotEmpty($violations);
+        self::assertSame('Roční platba je dostupná pouze pro pronájem na 12 měsíců a déle.', (string) $violations[0]->getMessage());
     }
 
     public function testYearlyWithCustomPriceIsRejected(): void
@@ -122,7 +187,7 @@ final class AdminOnboardingFormDataTest extends TestCase
         // it would undercharge the first payment and be ignored on every
         // recurring yearly charge. The form must block the combination.
         $data = $this->validData();
-        $data->rentalType = RentalType::LIMITED;
+        $data->paymentMethod = PaymentMethod::BANK_TRANSFER;
         $data->startDate = new \DateTimeImmutable('today');
         $data->endDate = new \DateTimeImmutable('today +400 days');
         $data->paymentFrequency = PaymentFrequency::YEARLY;
@@ -136,7 +201,7 @@ final class AdminOnboardingFormDataTest extends TestCase
     public function testYearlyWithStandardPricePasses(): void
     {
         $data = $this->validData();
-        $data->rentalType = RentalType::LIMITED;
+        $data->paymentMethod = PaymentMethod::BANK_TRANSFER;
         $data->startDate = new \DateTimeImmutable('today');
         $data->endDate = new \DateTimeImmutable('today +400 days');
         $data->paymentFrequency = PaymentFrequency::YEARLY;
@@ -177,16 +242,6 @@ final class AdminOnboardingFormDataTest extends TestCase
         $data->customMonthlyPriceInCzk = null;
 
         $violations = $this->violationsAt('customMonthlyPriceInCzk', $data);
-        self::assertNotEmpty($violations);
-    }
-
-    public function testExpectedDurationRequiredForUnlimited(): void
-    {
-        $data = $this->validData();
-        $data->rentalType = RentalType::UNLIMITED;
-        $data->expectedDuration = null;
-
-        $violations = $this->violationsAt('expectedDuration', $data);
         self::assertNotEmpty($violations);
     }
 
@@ -235,7 +290,6 @@ final class AdminOnboardingFormDataTest extends TestCase
         $data = $this->validData();
         $data->debtAmountInCzk = 500.0;
         $data->paymentMethod = PaymentMethod::BANK_TRANSFER;
-        $data->billingMode = BillingMode::MANUAL_RECURRING;
 
         $violations = $this->violationsAt('paymentMethod', $data);
         self::assertEmpty($violations);
@@ -290,6 +344,19 @@ final class AdminOnboardingFormDataTest extends TestCase
 
         $violations = $this->violationsAt('paidThroughDate', $data);
         self::assertEmpty($violations);
+    }
+
+    public function testPaidThroughDateAfterContractEndIsRejected(): void
+    {
+        $data = $this->validData();
+        $data->isExternallyPrepaid = true;
+        $data->startDate = new \DateTimeImmutable('today');
+        $data->endDate = new \DateTimeImmutable('today +30 days');
+        $data->paidThroughDate = new \DateTimeImmutable('today +60 days');
+
+        $violations = $this->violationsAt('paidThroughDate', $data);
+        self::assertNotEmpty($violations);
+        self::assertSame('Datum předplatby nemůže být po datu konce smlouvy.', (string) $violations[0]->getMessage());
     }
 
     public function testBackdatedNonFreeStartRequiresPrepaidDate(): void
@@ -376,11 +443,9 @@ final class AdminOnboardingFormDataTest extends TestCase
         $data->billingCity = 'Praha';
         $data->billingPostalCode = '110 00';
         $data->addressOverride = true;
-        $data->rentalType = RentalType::UNLIMITED;
-        $data->expectedDuration = ExpectedDuration::MEDIUM;
         $data->startDate = new \DateTimeImmutable('today');
+        $data->endDate = new \DateTimeImmutable('today +12 months');
         $data->paymentMethod = PaymentMethod::GOPAY;
-        $data->billingMode = BillingMode::AUTO_RECURRING;
         $data->paymentFrequency = PaymentFrequency::MONTHLY;
         $data->monthlyPriceMode = 'standard';
         $data->invoiceToCompany = false;

@@ -10,8 +10,8 @@ use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
+use App\Enum\BillingMode;
 use App\Enum\PaymentFrequency;
-use App\Enum\RentalType;
 use App\Service\AtRiskContractChecker;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ManagerRegistry;
@@ -96,21 +96,23 @@ class AtRiskContractCheckerTest extends KernelTestCase
         User $user,
         Storage $storage,
         \DateTimeImmutable $startDate,
-        ?\DateTimeImmutable $endDate,
-        RentalType $rentalType = RentalType::LIMITED,
+        \DateTimeImmutable $endDate,
+        BillingMode $billingMode = BillingMode::MANUAL_RECURRING,
     ): Order {
         $order = new Order(
             id: Uuid::v7(),
             user: $user,
             storage: $storage,
-            rentalType: $rentalType,
-            paymentFrequency: RentalType::UNLIMITED === $rentalType ? PaymentFrequency::MONTHLY : null,
+            paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: $startDate,
             endDate: $endDate,
             firstPaymentPrice: 50000,
             expiresAt: (new \DateTimeImmutable())->modify('+7 days'),
             createdAt: new \DateTimeImmutable(),
         );
+        // Bank-transfer fixed-term by default so the order blocks only its own
+        // window — AUTO_RECURRING orders block open-endedly (availability guarantee).
+        $order->setBillingMode($billingMode);
         $this->entityManager->persist($order);
 
         return $order;
@@ -121,15 +123,13 @@ class AtRiskContractCheckerTest extends KernelTestCase
         User $user,
         Storage $storage,
         \DateTimeImmutable $startDate,
-        ?\DateTimeImmutable $endDate,
-        RentalType $rentalType = RentalType::LIMITED,
+        \DateTimeImmutable $endDate,
     ): Contract {
         $contract = new Contract(
             id: Uuid::v7(),
             order: $order,
             user: $user,
             storage: $storage,
-            rentalType: $rentalType,
             startDate: $startDate,
             endDate: $endDate,
             createdAt: new \DateTimeImmutable(),
@@ -165,7 +165,7 @@ class AtRiskContractCheckerTest extends KernelTestCase
         $this->createStorage($storageType, $place, 'A2');
         $this->createStorage($storageType, $place, 'A3');
 
-        // Create LIMITED contract for storage1 ending in 30 days
+        // Create fixed-term contract for storage1 ending in 30 days
         $endDate = (new \DateTimeImmutable())->modify('+30 days');
         $order = $this->createOrder($tenant, $storage1, new \DateTimeImmutable(), $endDate);
         $this->createContract($order, $tenant, $storage1, new \DateTimeImmutable(), $endDate);
@@ -193,14 +193,15 @@ class AtRiskContractCheckerTest extends KernelTestCase
         $storage1 = $this->createStorage($storageType, $place, 'A1');
         $storage2 = $this->createStorage($storageType, $place, 'A2');
 
-        // Create LIMITED contract for storage1 ending in 30 days
+        // Create fixed-term contract for storage1 ending in 30 days
         $endDate1 = (new \DateTimeImmutable())->modify('+30 days');
         $order1 = $this->createOrder($tenant1, $storage1, new \DateTimeImmutable(), $endDate1);
         $this->createContract($order1, $tenant1, $storage1, new \DateTimeImmutable(), $endDate1);
 
-        // Create UNLIMITED contract for storage2 (blocks it forever)
-        $order2 = $this->createOrder($tenant2, $storage2, new \DateTimeImmutable(), null, RentalType::UNLIMITED);
-        $this->createContract($order2, $tenant2, $storage2, new \DateTimeImmutable(), null, RentalType::UNLIMITED);
+        // Create long fixed-term contract for storage2 (blocks it far beyond tenant1's end date)
+        $endDate2 = (new \DateTimeImmutable())->modify('+2 years');
+        $order2 = $this->createOrder($tenant2, $storage2, new \DateTimeImmutable(), $endDate2);
+        $this->createContract($order2, $tenant2, $storage2, new \DateTimeImmutable(), $endDate2);
 
         $this->entityManager->flush();
 
@@ -215,7 +216,7 @@ class AtRiskContractCheckerTest extends KernelTestCase
         $this->assertTrue($result[0]->user->id->equals($tenant1->id));
     }
 
-    public function testUnlimitedContractsNotConsideredAtRisk(): void
+    public function testGuaranteedRecurringContractNotConsideredAtRisk(): void
     {
         $tenant = $this->createUser('tenant@test.com');
         $place = $this->createPlace();
@@ -223,13 +224,16 @@ class AtRiskContractCheckerTest extends KernelTestCase
 
         $storage = $this->createStorage($storageType, $place, 'A1');
 
-        // Create UNLIMITED contract (no end date)
-        $order = $this->createOrder($tenant, $storage, new \DateTimeImmutable(), null, RentalType::UNLIMITED);
-        $this->createContract($order, $tenant, $storage, new \DateTimeImmutable(), null, RentalType::UNLIMITED);
+        // Card-recurring contract with a live token: the availability guarantee
+        // blocks its storage open-endedly, so it never frees up for others and
+        // its holder is never at risk.
+        $endDate = (new \DateTimeImmutable())->modify('+12 months');
+        $order = $this->createOrder($tenant, $storage, new \DateTimeImmutable(), $endDate, BillingMode::AUTO_RECURRING);
+        $contract = $this->createContract($order, $tenant, $storage, new \DateTimeImmutable(), $endDate);
+        $contract->setRecurringPayment('gopay-parent-at-risk', null, $endDate);
 
         $this->entityManager->flush();
 
-        // Unlimited contracts don't have end dates, so they're never at risk
         $result = $this->atRiskContractChecker->findAtRiskContracts(
             $storageType,
             new \DateTimeImmutable()
@@ -251,7 +255,7 @@ class AtRiskContractCheckerTest extends KernelTestCase
         $storage2 = $this->createStorage($storageType, $place, 'A2');
         $storage3 = $this->createStorage($storageType, $place, 'A3');
 
-        // Create LIMITED contracts for all storages with different end dates
+        // Create fixed-term contracts for all storages with different end dates
         $endDate1 = (new \DateTimeImmutable())->modify('+30 days');
         $endDate2 = (new \DateTimeImmutable())->modify('+60 days');
         $endDate3 = (new \DateTimeImmutable())->modify('+90 days');

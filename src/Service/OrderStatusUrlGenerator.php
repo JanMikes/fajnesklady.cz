@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Entity\Contract;
 use App\Entity\Invoice;
 use App\Entity\Order;
 use Symfony\Component\HttpFoundation\UriSigner;
@@ -49,6 +50,39 @@ final readonly class OrderStatusUrlGenerator
         $url = $this->urlGenerator->generate(
             'public_order_renew',
             ['previousOrderId' => $order->id->toRfc4122()],
+            UrlGeneratorInterface::ABSOLUTE_URL,
+        );
+
+        return $this->uriSigner->sign($url);
+    }
+
+    /**
+     * Signed link to the prolongation page (spec 077) — mailed in the
+     * expiration reminder and surfaced on /stav. Signed for the same reason
+     * as the renewal link: the page exposes contract details, so a guessed
+     * contract id must not open it. The controller also accepts the
+     * authenticated owner (portal button links unsigned).
+     */
+    public function generateProlongation(Contract $contract): string
+    {
+        $url = $this->urlGenerator->generate(
+            'public_contract_prolong',
+            ['contractId' => $contract->id->toRfc4122()],
+            UrlGeneratorInterface::ABSOLUTE_URL,
+        );
+
+        return $this->uriSigner->sign($url);
+    }
+
+    /**
+     * Signed link to the bank→card switch page reached after a prolongation
+     * (spec 077).
+     */
+    public function generateCardSetup(Contract $contract): string
+    {
+        $url = $this->urlGenerator->generate(
+            'public_contract_card_setup',
+            ['contractId' => $contract->id->toRfc4122()],
             UrlGeneratorInterface::ABSOLUTE_URL,
         );
 

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Form;
 
 use App\Enum\BillingMode;
-use App\Enum\RentalType;
+use App\Enum\PaymentMethod;
 use App\Form\OrderFormData;
 use App\Tests\Mock\MockAddressValidator;
 use App\Validator\AddressExistsValidator;
@@ -15,91 +15,81 @@ use Symfony\Component\Validator\Validation;
 
 final class OrderFormDataBillingModeValidationTest extends TestCase
 {
-    public function testUnlimitedWithManualFails(): void
+    public function testGopayDerivesAutoRecurring(): void
     {
+        // Billing mode is never a user choice (spec 076): a stale MANUAL value
+        // (e.g. restored from session) gets overwritten by the derivation.
         $data = $this->validData();
-        $data->rentalType = RentalType::UNLIMITED;
-        $data->endDate = null;
+        $data->paymentMethod = PaymentMethod::GOPAY;
+        $data->startDate = new \DateTimeImmutable('+1 day');
+        $data->endDate = new \DateTimeImmutable('+46 days'); // 45 days
         $data->billingMode = BillingMode::MANUAL_RECURRING;
 
         $violations = $this->validator()->validate($data);
-        $messages = array_map(static fn ($v): string => (string) $v->getMessage(), iterator_to_array($violations));
 
-        self::assertContains('Pro pronájem na dobu neurčitou je dostupná pouze automatická platba kartou.', $messages);
+        self::assertCount(0, $violations);
+        self::assertSame(BillingMode::AUTO_RECURRING, $data->billingMode);
     }
 
-    public function testUnlimitedWithAutoPasses(): void
+    public function testGopayAtThresholdPasses(): void
     {
         $data = $this->validData();
-        $data->rentalType = RentalType::UNLIMITED;
-        $data->endDate = null;
+        $data->paymentMethod = PaymentMethod::GOPAY;
+        $data->startDate = new \DateTimeImmutable('+1 day');
+        $data->endDate = new \DateTimeImmutable('+32 days'); // 31 days exactly
+
+        $violations = $this->validator()->validate($data);
+
+        self::assertCount(0, $violations);
+        self::assertSame(BillingMode::AUTO_RECURRING, $data->billingMode);
+    }
+
+    public function testShortBankTransferDerivesOneTime(): void
+    {
+        // Rentals shorter than 31 days paid by bank transfer are a single
+        // one-shot payment — the FormData default AUTO_RECURRING never survives
+        // the derivation callback.
+        $data = $this->validData();
+        $data->paymentMethod = PaymentMethod::BANK_TRANSFER;
+        $data->startDate = new \DateTimeImmutable('+1 day');
+        $data->endDate = new \DateTimeImmutable('+8 days'); // 7 days
         $data->billingMode = BillingMode::AUTO_RECURRING;
 
         $violations = $this->validator()->validate($data);
-        $billingModeViolations = array_filter(
-            iterator_to_array($violations),
-            static fn ($v): bool => 'billingMode' === $v->getPropertyPath(),
-        );
 
-        self::assertCount(0, $billingModeViolations);
+        self::assertCount(0, $violations);
+        self::assertSame(BillingMode::ONE_TIME, $data->billingMode);
     }
 
-    public function testShortLimitedSilentlyPinsToOneTime(): void
+    public function testShortGopayFailsOnPaymentMethod(): void
     {
-        // Short LIMITED hides the billingMode radio (only LIMITED ≥ 28 days
-        // surfaces the choice), so the FormData default AUTO_RECURRING reaches
-        // validation unchanged. Auto-correct silently — raising a violation on
-        // a hidden field would stall the form with no visible error and a
-        // generic 422 in the console.
         $data = $this->validData();
-        $data->rentalType = RentalType::LIMITED;
-        $data->startDate = new \DateTimeImmutable('2025-06-16');
-        $data->endDate = new \DateTimeImmutable('2025-06-23'); // 7 days
+        $data->paymentMethod = PaymentMethod::GOPAY;
+        $data->startDate = new \DateTimeImmutable('+1 day');
+        $data->endDate = new \DateTimeImmutable('+8 days'); // 7 days
+
+        $violations = $this->validator()->validate($data);
+        $paymentMethodViolations = array_filter(
+            iterator_to_array($violations),
+            static fn ($v): bool => 'paymentMethod' === $v->getPropertyPath(),
+        );
+        $messages = array_map(static fn ($v): string => (string) $v->getMessage(), $paymentMethodViolations);
+
+        self::assertContains('Platba kartou je dostupná pro pronájmy od 31 dnů. Kratší pronájem zaplatíte bankovním převodem.', $messages);
+    }
+
+    public function testLongBankTransferDerivesManualRecurring(): void
+    {
+        $data = $this->validData();
+        $data->paymentMethod = PaymentMethod::BANK_TRANSFER;
+        $data->startDate = new \DateTimeImmutable('+1 day');
+        $data->endDate = new \DateTimeImmutable('+46 days'); // 45 days
         $data->billingMode = BillingMode::AUTO_RECURRING;
 
         $violations = $this->validator()->validate($data);
-        $billingModeViolations = array_filter(
-            iterator_to_array($violations),
-            static fn ($v): bool => 'billingMode' === $v->getPropertyPath(),
-        );
 
-        self::assertCount(0, $billingModeViolations);
-        self::assertSame(BillingMode::ONE_TIME, $data->billingMode);
-    }
-
-    public function testShortLimitedAutoCorrectsManualToOneTime(): void
-    {
-        $data = $this->validData();
-        $data->rentalType = RentalType::LIMITED;
-        $data->startDate = new \DateTimeImmutable('2025-06-16');
-        $data->endDate = new \DateTimeImmutable('2025-06-23'); // 7 days
-        $data->billingMode = BillingMode::MANUAL_RECURRING;
-
-        $violations = $this->validator()->validate($data);
-        $billingModeViolations = array_filter(
-            iterator_to_array($violations),
-            static fn ($v): bool => 'billingMode' === $v->getPropertyPath(),
-        );
-
-        self::assertCount(0, $billingModeViolations);
-        self::assertSame(BillingMode::ONE_TIME, $data->billingMode);
-    }
-
-    public function testLongLimitedWithManualPasses(): void
-    {
-        $data = $this->validData();
-        $data->rentalType = RentalType::LIMITED;
-        $data->startDate = new \DateTimeImmutable('2025-06-16');
-        $data->endDate = new \DateTimeImmutable('2025-07-31'); // 45 days
-        $data->billingMode = BillingMode::MANUAL_RECURRING;
-
-        $violations = $this->validator()->validate($data);
-        $billingModeViolations = array_filter(
-            iterator_to_array($violations),
-            static fn ($v): bool => 'billingMode' === $v->getPropertyPath(),
-        );
-
-        self::assertCount(0, $billingModeViolations);
+        self::assertCount(0, $violations);
+        self::assertSame(BillingMode::MANUAL_RECURRING, $data->billingMode);
     }
 
     private function validData(): OrderFormData

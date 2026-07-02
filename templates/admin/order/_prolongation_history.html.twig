@@ -1,0 +1,25 @@
+{% if prolongations|length > 0 %}
+    <div class="mb-6 bg-white shadow overflow-hidden sm:rounded-lg">
+        <div class="px-4 py-5 sm:p-6">
+            <h3 class="text-base font-semibold text-gray-900 mb-4">Historie prodloužení</h3>
+            <ul class="divide-y divide-gray-200 text-sm">
+                {% for prolongation in prolongations %}
+                    <li class="py-2 flex flex-wrap items-center gap-2">
+                        <span class="text-gray-500">{{ prolongation.prolongedAt|date('d.m.Y H:i') }}</span>
+                        <span class="text-gray-300">·</span>
+                        <span>{{ prolongation.prolongedBy ? prolongation.prolongedBy.email : 'zákazník (podepsaný odkaz)' }}</span>
+                        <span class="text-gray-300">·</span>
+                        <span>
+                            {{ prolongation.previousEndDate|date('d.m.Y') }}
+                            <span class="mx-1">→</span>
+                            <strong>{{ prolongation.newEndDate|date('d.m.Y') }}</strong>
+                        </span>
+                        <span class="text-gray-500">
+                            ({{ prolongation.billingModeAfter == 'auto_recurring' ? 'automatická platba kartou' : (prolongation.billingModeAfter == 'manual_recurring' ? 'bankovní převod' : prolongation.billingModeAfter) }})
+                        </span>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+{% endif %}

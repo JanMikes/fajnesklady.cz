@@ -6,7 +6,6 @@ namespace App\Service;
 
 use App\Entity\Contract;
 use App\Entity\Order;
-use App\Enum\BillingMode;
 use App\Enum\TerminationReason;
 use App\Repository\ContractRepository;
 use App\Repository\HandoverProtocolRepository;
@@ -56,7 +55,7 @@ final readonly class ContractService
     }
 
     /**
-     * Terminate a contract (for unlimited rentals or early termination).
+     * Terminate a contract (natural end of term, notice, or early termination).
      */
     public function terminateContract(Contract $contract, \DateTimeImmutable $now, TerminationReason $reason = TerminationReason::EXPIRED): void
     {
@@ -140,26 +139,12 @@ final readonly class ContractService
 
         $contracts = $this->contractRepository->findExpiringWithinDays($daysFromNow, $now);
 
+        // Spec 076: no contract auto-extends, so EVERY contract hitting the
+        // reminder offset gets the expiration e-mail (with the continuation CTA).
         return array_filter($contracts, function (Contract $contract) use ($targetDate, $nextDay) {
-            if (null === $contract->endDate) {
-                return false;
-            }
             $endDate = $contract->endDate->setTime(0, 0, 0);
-            if ($endDate < $targetDate || $endDate >= $nextDay) {
-                return false;
-            }
 
-            // Skip contracts that will auto-extend (recurring with active billing)
-            if ($contract->billingMode->isRecurring() && !$contract->hasPendingTermination()) {
-                if (BillingMode::AUTO_RECURRING === $contract->billingMode && null !== $contract->goPayParentPaymentId) {
-                    return false;
-                }
-                if (BillingMode::MANUAL_RECURRING === $contract->billingMode && null !== $contract->nextBillingDate) {
-                    return false;
-                }
-            }
-
-            return true;
+            return $endDate >= $targetDate && $endDate < $nextDay;
         });
     }
 
@@ -176,10 +161,6 @@ final readonly class ContractService
      */
     public function getDaysRemaining(Contract $contract, \DateTimeImmutable $now): ?int
     {
-        if (null === $contract->endDate) {
-            return null; // Unlimited contract
-        }
-
         if ($contract->isTerminated()) {
             return null;
         }

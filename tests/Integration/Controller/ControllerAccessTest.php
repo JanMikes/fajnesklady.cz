@@ -15,7 +15,6 @@ use App\Entity\StorageUnavailability;
 use App\Entity\User;
 use App\Enum\OrderStatus;
 use App\Enum\PaymentFrequency;
-use App\Enum\RentalType;
 use App\Enum\UserRole;
 use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -1998,7 +1997,6 @@ class ControllerAccessTest extends WebTestCase
             id: Uuid::v7(),
             user: $user,
             storage: $storage,
-            rentalType: RentalType::LIMITED,
             paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: $now,
             endDate: $now->modify('+1 month'),

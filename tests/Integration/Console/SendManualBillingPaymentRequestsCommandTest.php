@@ -13,7 +13,6 @@ use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\BillingMode;
 use App\Enum\PaymentFrequency;
-use App\Enum\RentalType;
 use App\Service\Billing\ManualBillingReminderSchedule;
 use App\Service\OrderService;
 use App\Tests\Mock\MockGoPayClient;
@@ -60,9 +59,14 @@ final class SendManualBillingPaymentRequestsCommandTest extends KernelTestCase
         $request = $this->loadRequestForContract($contract);
         self::assertNotNull($request);
         self::assertArrayHasKey(ManualBillingReminderSchedule::STAGE_INITIAL, $request->sentStages);
-        self::assertNotNull($request->goPayPaymentId);
-        self::assertNotNull($request->goPayGatewayUrl);
         self::assertSame('pending', $request->status);
+
+        // Spec 076: manual cycles are bank-transfer only — no per-cycle GoPay
+        // link is created; the reminder carries a variable symbol instead.
+        self::assertNull($request->goPayPaymentId);
+        self::assertNull($request->goPayGatewayUrl);
+        self::assertNotNull($request->contract->order->variableSymbol);
+        self::assertSame([], $this->goPayClient->getCreatedPayments());
     }
 
     public function testRunningCronTwiceTheSameDayDoesNotResendTheStage(): void
@@ -190,7 +194,6 @@ final class SendManualBillingPaymentRequestsCommandTest extends KernelTestCase
             $tenant,
             $storageType,
             $place,
-            RentalType::LIMITED,
             $now->modify('+1 day'),
             $now->modify('+6 months'),
             $now,

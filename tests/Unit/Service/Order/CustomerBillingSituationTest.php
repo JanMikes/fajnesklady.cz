@@ -10,8 +10,8 @@ use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
+use App\Enum\PaymentFrequency;
 use App\Enum\PaymentMethod;
-use App\Enum\RentalType;
 use App\Service\Order\CustomerBillingSituation;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
@@ -155,14 +155,15 @@ class CustomerBillingSituationTest extends TestCase
             owner: $owner,
         );
 
+        $startDate = new \DateTimeImmutable('+1 day');
+
         $order = new Order(
             id: Uuid::v7(),
             user: $user,
             storage: $storage,
-            rentalType: RentalType::UNLIMITED,
-            paymentFrequency: null,
-            startDate: new \DateTimeImmutable('+1 day'),
-            endDate: null,
+            paymentFrequency: PaymentFrequency::MONTHLY,
+            startDate: $startDate,
+            endDate: $startDate->modify('+12 months'),
             firstPaymentPrice: 35000,
             expiresAt: new \DateTimeImmutable('+7 days'),
             createdAt: new \DateTimeImmutable(),
@@ -182,9 +183,8 @@ class CustomerBillingSituationTest extends TestCase
             order: $order,
             user: $order->user,
             storage: $order->storage,
-            rentalType: RentalType::UNLIMITED,
             startDate: $order->startDate,
-            endDate: null,
+            endDate: $order->startDate->modify('+12 months'),
             createdAt: $now,
         );
     }

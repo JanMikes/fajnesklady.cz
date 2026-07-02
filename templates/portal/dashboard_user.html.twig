@@ -98,9 +98,6 @@
                                             <p class="text-sm text-gray-900">
                                                 {% if contract.endDate %}
                                                     do {{ contract.endDate|date('d.m.Y') }}
-                                                    {% if contract.isUnlimited %}
-                                                        <span class="text-xs text-gray-500">(automat.)</span>
-                                                    {% endif %}
                                                 {% else %}
                                                     od {{ contract.startDate|date('d.m.Y') }}
                                                 {% endif %}

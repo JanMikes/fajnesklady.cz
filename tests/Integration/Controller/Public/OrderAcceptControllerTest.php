@@ -6,8 +6,8 @@ namespace App\Tests\Integration\Controller\Public;
 
 use App\Entity\Order;
 use App\Entity\Storage;
+use App\Enum\BillingMode;
 use App\Enum\PaymentMethod;
-use App\Enum\RentalType;
 use App\Form\OrderFormData;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -141,12 +141,13 @@ class OrderAcceptControllerTest extends WebTestCase
         $formData->billingStreet = 'Testovací 1';
         $formData->billingCity = 'Praha';
         $formData->billingPostalCode = '11000';
-        $formData->rentalType = RentalType::LIMITED;
-        // 14-day rental (< weekly threshold) → one-shot, non-recurring: keeps the POST body minimal.
+        // 14-day rental (< 31-day card threshold) paid by bank transfer derives ONE_TIME,
+        // non-recurring: keeps the POST body minimal (no recurring-payment consent needed).
         // Start well beyond the 14-day withdrawal window so no early-start waiver is required.
         $formData->startDate = new \DateTimeImmutable('2025-07-15');
         $formData->endDate = new \DateTimeImmutable('2025-07-29');
-        $formData->paymentMethod = PaymentMethod::GOPAY;
+        $formData->paymentMethod = PaymentMethod::BANK_TRANSFER;
+        $formData->billingMode = BillingMode::ONE_TIME;
         $formData->selectionMode = 'auto';
 
         $session = static::getContainer()->get('session.factory')->createSession();

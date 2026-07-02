@@ -8,7 +8,6 @@ use App\Entity\Order;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Enum\PaymentFrequency;
-use App\Enum\RentalType;
 use App\Value\PaymentSchedule;
 use App\Value\PaymentScheduleEntry;
 
@@ -196,17 +195,14 @@ final readonly class PriceCalculator
     }
 
     /**
-     * Whether a rental is eligible for the YEARLY frequency choice — UNLIMITED
-     * or LIMITED with at least {@see self::YEARLY_THRESHOLD_DAYS}.
+     * Whether a rental is eligible for the YEARLY frequency choice — at least
+     * {@see self::YEARLY_THRESHOLD_DAYS} long. Null end (legacy open-ended
+     * orders) counts as eligible.
      */
-    public function isEligibleForYearly(RentalType $rentalType, \DateTimeImmutable $startDate, ?\DateTimeImmutable $endDate): bool
+    public function isEligibleForYearly(\DateTimeImmutable $startDate, ?\DateTimeImmutable $endDate): bool
     {
-        if (RentalType::UNLIMITED === $rentalType) {
-            return true;
-        }
-
         if (null === $endDate) {
-            return false;
+            return true;
         }
 
         return $this->calculateDays($startDate, $endDate) >= self::YEARLY_THRESHOLD_DAYS;
@@ -326,7 +322,7 @@ final readonly class PriceCalculator
         if ($isYearly) {
             $yearlyRate = $order->firstPaymentPrice;
 
-            if ($order->isUnlimited()) {
+            if ($order->isOpenEnded()) {
                 return new PaymentSchedule(
                     entries: [new PaymentScheduleEntry($order->startDate, $yearlyRate)],
                     isRecurring: true,
@@ -348,7 +344,7 @@ final readonly class PriceCalculator
             );
         }
 
-        if ($order->isUnlimited()) {
+        if ($order->isOpenEnded()) {
             return new PaymentSchedule(
                 entries: [new PaymentScheduleEntry($order->startDate, $order->firstPaymentPrice)],
                 isRecurring: true,

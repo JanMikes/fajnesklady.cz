@@ -179,10 +179,10 @@ final readonly class ChargeRecurringPaymentHandler
         $nextBillingDate = $billingPeriodStart->modify($contract->getBillingCadenceStep());
         $paidThroughDate = $nextBillingDate;
 
-        // If this was the last billing cycle, stop future charges.
-        // UNLIMITED contracts auto-extend (endDate advances on each charge),
-        // so they never reach a "last cycle".
-        if (null !== $effectiveEndDate && $nextBillingDate >= $effectiveEndDate && !$contract->isUnlimited()) {
+        // If this was the last billing cycle, stop future charges — every
+        // contract hard-stops at its end date (spec 076); continuation is an
+        // explicit prolongation, never an auto-extension.
+        if ($nextBillingDate >= $effectiveEndDate) {
             $nextBillingDate = null;
             $paidThroughDate = $effectiveEndDate;
         }

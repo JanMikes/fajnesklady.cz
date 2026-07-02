@@ -11,7 +11,6 @@ use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\PaymentFrequency;
-use App\Enum\RentalType;
 use App\Repository\ContractRepository;
 use App\Repository\OrderRepository;
 use App\Repository\PlaceRepository;
@@ -77,7 +76,6 @@ final class PlaceOccupancyMapTest extends TestCase
         $storage = $this->makeStorage('M1');
         $contract = $this->makeContract(
             $storage,
-            RentalType::LIMITED,
             new \DateTimeImmutable('2025-06-01'),
             new \DateTimeImmutable('2025-06-15'),
         );
@@ -99,7 +97,7 @@ final class PlaceOccupancyMapTest extends TestCase
         $this->assertSame('2025-06-15', $entry['rentedUntil']);
         $this->assertTrue($entry['endsOnViewDate']);
         $this->assertFalse($entry['startsOnViewDate']);
-        $this->assertFalse($entry['isUnlimited']);
+        $this->assertFalse($entry['hasGuarantee']);
         $this->assertStringContainsString('/admin/orders/', $entry['orderUrl']);
     }
 
@@ -200,15 +198,13 @@ final class PlaceOccupancyMapTest extends TestCase
 
     private function makeContract(
         Storage $storage,
-        RentalType $rentalType,
         \DateTimeImmutable $start,
-        ?\DateTimeImmutable $end,
+        \DateTimeImmutable $end,
     ): Contract {
         $order = new Order(
             id: Uuid::v7(),
             user: $this->tenant,
             storage: $storage,
-            rentalType: $rentalType,
             paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: $start,
             endDate: $end,
@@ -230,7 +226,6 @@ final class PlaceOccupancyMapTest extends TestCase
             order: $order,
             user: $this->tenant,
             storage: $storage,
-            rentalType: $rentalType,
             startDate: $start,
             endDate: $end,
             createdAt: $start,

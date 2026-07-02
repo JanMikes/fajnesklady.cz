@@ -9,7 +9,7 @@ use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
-use App\Enum\RentalType;
+use App\Enum\PaymentFrequency;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Uid\Uuid;
 use Twig\Environment;
@@ -116,10 +116,9 @@ final class OnboardingBannerRenderingTest extends KernelTestCase
             id: Uuid::v7(),
             user: $user,
             storage: $storage,
-            rentalType: RentalType::UNLIMITED,
-            paymentFrequency: null,
+            paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: $now->modify('+1 day'),
-            endDate: null,
+            endDate: $now->modify('+1 day')->modify('+12 months'),
             firstPaymentPrice: 35_000,
             expiresAt: $now->modify('+7 days'),
             createdAt: $now,

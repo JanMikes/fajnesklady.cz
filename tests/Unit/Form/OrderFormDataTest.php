@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Form;
 
-use App\Enum\ExpectedDuration;
-use App\Enum\RentalType;
+use App\Enum\BillingMode;
+use App\Enum\PaymentFrequency;
+use App\Enum\PaymentMethod;
 use App\Form\OrderFormData;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Validator\Context\ExecutionContextInterface;
@@ -17,7 +18,6 @@ class OrderFormDataTest extends TestCase
     {
         $formData = new OrderFormData();
         $formData->startDate = new \DateTimeImmutable('-1 day');
-        $formData->rentalType = RentalType::LIMITED;
         $formData->endDate = new \DateTimeImmutable('+7 days');
 
         $violationBuilder = $this->createMock(ConstraintViolationBuilderInterface::class);
@@ -37,11 +37,10 @@ class OrderFormDataTest extends TestCase
         $formData->validateDates($context);
     }
 
-    public function testValidatesEndDateRequiredForLimitedRental(): void
+    public function testValidatesEndDateRequired(): void
     {
         $formData = new OrderFormData();
         $formData->startDate = new \DateTimeImmutable('+1 day');
-        $formData->rentalType = RentalType::LIMITED;
         $formData->endDate = null;
 
         $violationBuilder = $this->createMock(ConstraintViolationBuilderInterface::class);
@@ -55,7 +54,7 @@ class OrderFormDataTest extends TestCase
         $context = $this->createMock(ExecutionContextInterface::class);
         $context->expects($this->once())
             ->method('buildViolation')
-            ->with('Pro omezený pronájem je vyžadováno datum konce.')
+            ->with('Vyberte datum konce pronájmu.')
             ->willReturn($violationBuilder);
 
         $formData->validateDates($context);
@@ -65,7 +64,6 @@ class OrderFormDataTest extends TestCase
     {
         $formData = new OrderFormData();
         $formData->startDate = new \DateTimeImmutable('+7 days');
-        $formData->rentalType = RentalType::LIMITED;
         $formData->endDate = new \DateTimeImmutable('+1 day');
 
         $violationBuilder = $this->createMock(ConstraintViolationBuilderInterface::class);
@@ -90,7 +88,6 @@ class OrderFormDataTest extends TestCase
         $sameDate = new \DateTimeImmutable('+5 days');
         $formData = new OrderFormData();
         $formData->startDate = $sameDate;
-        $formData->rentalType = RentalType::LIMITED;
         $formData->endDate = $sameDate;
 
         $violationBuilder = $this->createMock(ConstraintViolationBuilderInterface::class);
@@ -110,11 +107,10 @@ class OrderFormDataTest extends TestCase
         $formData->validateDates($context);
     }
 
-    public function testValidatesLimitedRentalShorterThanSevenDaysIsInvalid(): void
+    public function testValidatesRentalShorterThanSevenDaysIsInvalid(): void
     {
         $formData = new OrderFormData();
         $formData->startDate = new \DateTimeImmutable('+1 day');
-        $formData->rentalType = RentalType::LIMITED;
         $formData->endDate = new \DateTimeImmutable('+6 days');
 
         $violationBuilder = $this->createMock(ConstraintViolationBuilderInterface::class);
@@ -134,12 +130,11 @@ class OrderFormDataTest extends TestCase
         $formData->validateDates($context);
     }
 
-    public function testUnlimitedRentalAllowsNullEndDate(): void
+    public function testRentalLongerThanOneYearIsValid(): void
     {
         $formData = new OrderFormData();
         $formData->startDate = new \DateTimeImmutable('+1 day');
-        $formData->rentalType = RentalType::UNLIMITED;
-        $formData->endDate = null;
+        $formData->endDate = new \DateTimeImmutable('+3 years');
 
         $context = $this->createMock(ExecutionContextInterface::class);
         $context->expects($this->never())
@@ -152,7 +147,6 @@ class OrderFormDataTest extends TestCase
     {
         $formData = new OrderFormData();
         $formData->startDate = new \DateTimeImmutable('+1 day');
-        $formData->rentalType = RentalType::LIMITED;
         $formData->endDate = new \DateTimeImmutable('+30 days');
 
         $context = $this->createMock(ExecutionContextInterface::class);
@@ -166,7 +160,6 @@ class OrderFormDataTest extends TestCase
     {
         $formData = new OrderFormData();
         $formData->startDate = null;
-        $formData->rentalType = RentalType::LIMITED;
         $formData->endDate = null;
 
         $context = $this->createMock(ExecutionContextInterface::class);
@@ -320,16 +313,16 @@ class OrderFormDataTest extends TestCase
         self::assertSame('Asdfghj 999', $restored->billingStreet);
     }
 
-    public function testValidatesExpectedDurationRequiredForUnlimitedRental(): void
+    public function testValidatesGopayWithYearlyFrequencyIsRejected(): void
     {
         $formData = new OrderFormData();
-        $formData->rentalType = RentalType::UNLIMITED;
-        $formData->expectedDuration = null;
+        $formData->paymentMethod = PaymentMethod::GOPAY;
+        $formData->paymentFrequency = PaymentFrequency::YEARLY;
 
         $violationBuilder = $this->createMock(ConstraintViolationBuilderInterface::class);
         $violationBuilder->expects($this->once())
             ->method('atPath')
-            ->with('expectedDuration')
+            ->with('paymentFrequency')
             ->willReturnSelf();
         $violationBuilder->expects($this->once())
             ->method('addViolation');
@@ -337,46 +330,116 @@ class OrderFormDataTest extends TestCase
         $context = $this->createMock(ExecutionContextInterface::class);
         $context->expects($this->once())
             ->method('buildViolation')
-            ->with('Vyberte předpokládanou dobu pronájmu.')
+            ->with('Roční platbu lze platit pouze bankovním převodem.')
             ->willReturn($violationBuilder);
 
-        $formData->validateExpectedDuration($context);
+        $formData->validatePaymentMethod($context);
     }
 
-    public function testValidatesExpectedDurationAcceptsValueForUnlimitedRental(): void
+    public function testValidatesGopayShortRentalIsRejected(): void
     {
         $formData = new OrderFormData();
-        $formData->rentalType = RentalType::UNLIMITED;
-        $formData->expectedDuration = ExpectedDuration::SHORT;
+        $formData->paymentMethod = PaymentMethod::GOPAY;
+        $formData->paymentFrequency = PaymentFrequency::MONTHLY;
+        $formData->startDate = new \DateTimeImmutable('+1 day');
+        $formData->endDate = new \DateTimeImmutable('+11 days');
+
+        $violationBuilder = $this->createMock(ConstraintViolationBuilderInterface::class);
+        $violationBuilder->expects($this->once())
+            ->method('atPath')
+            ->with('paymentMethod')
+            ->willReturnSelf();
+        $violationBuilder->expects($this->once())
+            ->method('addViolation');
+
+        $context = $this->createMock(ExecutionContextInterface::class);
+        $context->expects($this->once())
+            ->method('buildViolation')
+            ->with('Platba kartou je dostupná pro pronájmy od 31 dnů. Kratší pronájem zaplatíte bankovním převodem.')
+            ->willReturn($violationBuilder);
+
+        $formData->validatePaymentMethod($context);
+    }
+
+    public function testValidatesBankTransferShortRentalIsAllowed(): void
+    {
+        $formData = new OrderFormData();
+        $formData->paymentMethod = PaymentMethod::BANK_TRANSFER;
+        $formData->paymentFrequency = PaymentFrequency::MONTHLY;
+        $formData->startDate = new \DateTimeImmutable('+1 day');
+        $formData->endDate = new \DateTimeImmutable('+11 days');
 
         $context = $this->createMock(ExecutionContextInterface::class);
         $context->expects($this->never())
             ->method('buildViolation');
 
-        $formData->validateExpectedDuration($context);
+        $formData->validatePaymentMethod($context);
     }
 
-    public function testValidatesExpectedDurationSkippedForLimitedRental(): void
+    public function testValidatesYearlyFrequencyBelowThresholdIsRejected(): void
     {
         $formData = new OrderFormData();
-        $formData->rentalType = RentalType::LIMITED;
-        $formData->expectedDuration = null;
+        $formData->paymentMethod = PaymentMethod::BANK_TRANSFER;
+        $formData->paymentFrequency = PaymentFrequency::YEARLY;
+        $formData->startDate = new \DateTimeImmutable('+1 day');
+        $formData->endDate = new \DateTimeImmutable('+90 days');
+
+        $violationBuilder = $this->createMock(ConstraintViolationBuilderInterface::class);
+        $violationBuilder->expects($this->once())
+            ->method('atPath')
+            ->with('paymentFrequency')
+            ->willReturnSelf();
+        $violationBuilder->expects($this->once())
+            ->method('addViolation');
 
         $context = $this->createMock(ExecutionContextInterface::class);
-        $context->expects($this->never())
-            ->method('buildViolation');
+        $context->expects($this->once())
+            ->method('buildViolation')
+            ->with('Roční platba je dostupná pouze pro pronájem na 12 měsíců a déle.')
+            ->willReturn($violationBuilder);
 
-        $formData->validateExpectedDuration($context);
+        $formData->validatePaymentFrequency($context);
     }
 
-    public function testSessionRoundTripPersistsExpectedDuration(): void
+    public function testDeriveBillingModeSetsAutoRecurringForGopay(): void
     {
         $formData = new OrderFormData();
-        $formData->rentalType = RentalType::UNLIMITED;
-        $formData->expectedDuration = ExpectedDuration::LONG;
+        $formData->paymentMethod = PaymentMethod::GOPAY;
+        $formData->paymentFrequency = PaymentFrequency::MONTHLY;
+        $formData->startDate = new \DateTimeImmutable('+1 day');
+        $formData->endDate = new \DateTimeImmutable('+90 days');
+        $formData->billingMode = null;
+
+        $formData->deriveBillingMode($this->createStub(ExecutionContextInterface::class));
+
+        self::assertSame(BillingMode::AUTO_RECURRING, $formData->billingMode);
+    }
+
+    public function testDeriveBillingModeSetsOneTimeForShortBankTransfer(): void
+    {
+        $formData = new OrderFormData();
+        $formData->paymentMethod = PaymentMethod::BANK_TRANSFER;
+        $formData->paymentFrequency = PaymentFrequency::MONTHLY;
+        $formData->startDate = new \DateTimeImmutable('+1 day');
+        $formData->endDate = new \DateTimeImmutable('+11 days');
+        $formData->billingMode = null;
+
+        $formData->deriveBillingMode($this->createStub(ExecutionContextInterface::class));
+
+        self::assertSame(BillingMode::ONE_TIME, $formData->billingMode);
+    }
+
+    public function testSessionRoundTripPersistsPaymentSelection(): void
+    {
+        $formData = new OrderFormData();
+        $formData->paymentMethod = PaymentMethod::BANK_TRANSFER;
+        $formData->paymentFrequency = PaymentFrequency::YEARLY;
+        $formData->billingMode = BillingMode::MANUAL_RECURRING;
 
         $restored = OrderFormData::fromSessionArray($formData->toSessionArray());
 
-        self::assertSame(ExpectedDuration::LONG, $restored->expectedDuration);
+        self::assertSame(PaymentMethod::BANK_TRANSFER, $restored->paymentMethod);
+        self::assertSame(PaymentFrequency::YEARLY, $restored->paymentFrequency);
+        self::assertSame(BillingMode::MANUAL_RECURRING, $restored->billingMode);
     }
 }

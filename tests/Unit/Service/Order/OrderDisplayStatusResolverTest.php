@@ -11,7 +11,6 @@ use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\PaymentFrequency;
-use App\Enum\RentalType;
 use App\Enum\TerminationReason;
 use App\Service\Order\OrderDisplayStatusCase;
 use App\Service\Order\OrderDisplayStatusResolver;
@@ -161,14 +160,15 @@ class OrderDisplayStatusResolverTest extends TestCase
         $storageType = new StorageType(Uuid::v7(), $place, 'Box', 100, 100, 100, 10000, 35000, 35000, 35000 * 12, new \DateTimeImmutable());
         $storage = new Storage(Uuid::v7(), 'A1', ['x' => 0, 'y' => 0, 'width' => 100, 'height' => 100, 'rotation' => 0, 'normalized' => true], $storageType, $place, new \DateTimeImmutable());
 
+        $startDate = new \DateTimeImmutable();
+
         return new Order(
             id: Uuid::v7(),
             user: $user,
             storage: $storage,
-            rentalType: RentalType::UNLIMITED,
             paymentFrequency: PaymentFrequency::MONTHLY,
-            startDate: new \DateTimeImmutable(),
-            endDate: null,
+            startDate: $startDate,
+            endDate: $startDate->modify('+12 months'),
             firstPaymentPrice: 35000,
             expiresAt: new \DateTimeImmutable('+7 days'),
             createdAt: new \DateTimeImmutable(),
@@ -187,9 +187,8 @@ class OrderDisplayStatusResolverTest extends TestCase
             order: $order,
             user: $order->user,
             storage: $order->storage,
-            rentalType: $order->rentalType,
             startDate: $order->startDate,
-            endDate: $order->endDate,
+            endDate: $order->startDate->modify('+12 months'),
             createdAt: new \DateTimeImmutable(),
         );
         $contract->setRecurringPayment('parent-123', new \DateTimeImmutable('+30 days'), new \DateTimeImmutable('+30 days'));

@@ -39,10 +39,6 @@ readonly class AtRiskContractChecker
         foreach ($limitedContracts as $contract) {
             $endDate = $contract->endDate;
 
-            if (null === $endDate) {
-                continue;
-            }
-
             // Get the place from the contract's storage
             $place = $contract->storage->place;
 

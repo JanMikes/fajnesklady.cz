@@ -11,7 +11,6 @@ use App\Entity\SelfBillingInvoice;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
-use App\Enum\RentalType;
 use App\Service\Fakturoid\FakturoidApiClient;
 use App\Service\Fakturoid\StaleFakturoidSubjectException;
 use Fakturoid\DispatcherInterface;
@@ -244,7 +243,6 @@ class FakturoidApiClientTest extends TestCase
             id: Uuid::v7(),
             user: $user,
             storage: $storage,
-            rentalType: RentalType::LIMITED,
             paymentFrequency: null,
             startDate: new \DateTimeImmutable('2025-06-20'),
             endDate: new \DateTimeImmutable('2025-07-20'),
@@ -263,9 +261,8 @@ class FakturoidApiClientTest extends TestCase
             order: $order,
             user: $user,
             storage: $order->storage,
-            rentalType: RentalType::UNLIMITED,
             startDate: new \DateTimeImmutable('2025-06-20'),
-            endDate: null,
+            endDate: new \DateTimeImmutable('2026-06-20'),
             createdAt: new \DateTimeImmutable('2025-06-15 12:00:00'),
         );
     }

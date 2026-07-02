@@ -42,7 +42,7 @@ final readonly class SendHandoverRequestToTenantHandler
                 'name' => $user->fullName,
                 'placeName' => $place->name,
                 'storageNumber' => $storage->number,
-                'endDate' => $contract->getEffectiveEndDate()?->format('d.m.Y'),
+                'endDate' => $contract->getEffectiveEndDate()->format('d.m.Y'),
                 'handoverUrl' => $handoverUrl,
             ]);
 

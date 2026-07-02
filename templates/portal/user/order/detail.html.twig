@@ -35,7 +35,7 @@
                 {{ statusLabel[order.status.value] ?? order.status.value }}
             </span>
             {% if contract %}
-                {% set isContractActive = contract.terminatedAt is null and (contract.endDate is null or contract.endDate >= now) %}
+                {% set isContractActive = contract.terminatedAt is null and contract.endDate >= now %}
                 {% if contract.terminatedAt %}
                     <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
                         Smlouva ukončena
@@ -49,36 +49,47 @@
         </div>
     </div>
 
-    {# Renewal CTA — visible whenever there's a finished limited rental.
-       Wording adapts to remaining days / past expiry. #}
+    {# Continuation CTA — an ACTIVE contract prolongs in place (spec 077); an
+       ended one falls back to the new-order renew flow (spec 014). #}
+    {% set contractIsProlongable = contract is not null
+        and contract.terminatedAt is null
+        and not contract.hasPendingTermination()
+        and contract.endDate|date('Y-m-d') >= now|date('Y-m-d')
+        and order.status.value == 'completed' %}
     {% set canRenew = order.status.value in ['paid', 'completed']
-        and order.rentalType.value == 'limited'
-        and order.endDate is not null %}
+        and order.endDate is not null
+        and not contractIsProlongable %}
 
-    {% if canRenew %}
-        {% set isExpiringSoon = daysRemaining is not null and daysRemaining <= 14 and daysRemaining > 0 and contract is not null and contract.terminatedAt is null %}
-        {% set hasExpired = daysRemaining is not null and daysRemaining <= 0 %}
-
-        <div class="mb-6 rounded-lg border p-4
-                    {% if isExpiringSoon or hasExpired %}bg-yellow-50 border-yellow-200{% else %}bg-green-50 border-green-200{% endif %}">
+    {% if contractIsProlongable %}
+        {% set isExpiringSoon = daysRemaining is not null and daysRemaining <= 14 %}
+        <div class="mb-6 rounded-lg border p-4 {{ isExpiringSoon ? 'bg-yellow-50 border-yellow-200' : 'bg-green-50 border-green-200' }}">
             <div class="flex items-start justify-between gap-4 flex-wrap">
                 <div>
-                    <h3 class="text-sm font-semibold {% if isExpiringSoon or hasExpired %}text-yellow-800{% else %}text-green-800{% endif %}">
-                        {% if hasExpired %}
-                            Smlouva skončila
-                        {% elseif isExpiringSoon %}
-                            Smlouva brzy končí
-                        {% else %}
-                            Pokračovat v pronájmu?
-                        {% endif %}
+                    <h3 class="text-sm font-semibold {{ isExpiringSoon ? 'text-yellow-800' : 'text-green-800' }}">
+                        {{ isExpiringSoon ? 'Smlouva brzy končí' : 'Pokračovat v pronájmu?' }}
                     </h3>
-                    <p class="mt-1 text-sm {% if isExpiringSoon or hasExpired %}text-yellow-700{% else %}text-green-700{% endif %}">
+                    <p class="mt-1 text-sm {{ isExpiringSoon ? 'text-yellow-700' : 'text-green-700' }}">
+                        Stačí jeden klik — smlouva se prodlouží, stejná skladovací jednotka, stejné podmínky. Jen si zvolíte nové datum konce.
+                    </p>
+                </div>
+                <a href="{{ path('public_contract_prolong', {contractId: contract.id}) }}"
+                   class="btn btn-primary whitespace-nowrap">
+                    Prodloužit smlouvu
+                </a>
+            </div>
+        </div>
+    {% elseif canRenew %}
+        <div class="mb-6 rounded-lg border p-4 bg-yellow-50 border-yellow-200">
+            <div class="flex items-start justify-between gap-4 flex-wrap">
+                <div>
+                    <h3 class="text-sm font-semibold text-yellow-800">Smlouva skončila</h3>
+                    <p class="mt-1 text-sm text-yellow-700">
                         Stačí jeden klik — všechny údaje doplníme za Vás. Stejný sklad (pokud bude volný), stejné období, stejné fakturační údaje.
                     </p>
                 </div>
                 <a href="{{ path('public_order_renew', {previousOrderId: order.id}) }}"
                    class="btn btn-primary whitespace-nowrap">
-                    Prodloužit pronájem
+                    Objednat znovu
                 </a>
             </div>
         </div>
@@ -115,7 +126,8 @@
     {% include 'components/customer_billing_status.html.twig' with {
         contract: contract,
         now: now,
-        manualNowUrl: manualNowUrl,
+        manualNowVariableSymbol: manualNowVariableSymbol,
+        manualNowBankAccount: manualNowBankAccount,
         manualNowAmount: manualNowAmount,
         manualNowPeriodStart: manualNowPeriodStart,
         nextManualDate: nextManualDate,
@@ -142,20 +154,9 @@
                         <dd class="mt-1 text-sm text-gray-900 font-mono">{{ order.id|slice(0, 8)|upper }}</dd>
                     </div>
                     <div>
-                        <dt class="text-sm font-medium text-gray-500">Typ pronájmu</dt>
-                        <dd class="mt-1 text-sm text-gray-900">
-                            Na dobu určitou
-                            {% if order.rentalType.value == 'unlimited' %}
-                                <span class="text-sm text-gray-500">(s automatickým prodlužováním)</span>
-                            {% endif %}
-                        </dd>
+                        <dt class="text-sm font-medium text-gray-500">Způsob platby</dt>
+                        <dd class="mt-1 text-sm text-gray-900">{{ order.billingMode.label() }}</dd>
                     </div>
-                    {% if order.expectedDuration %}
-                        <div>
-                            <dt class="text-sm font-medium text-gray-500">Předpokládaná doba pronájmu</dt>
-                            <dd class="mt-1 text-sm text-gray-900">{{ order.expectedDuration.label }}</dd>
-                        </div>
-                    {% endif %}
                     <div>
                         <dt class="text-sm font-medium text-gray-500">Datum začátku</dt>
                         <dd class="mt-1 text-sm text-gray-900">{{ order.startDate|date('d.m.Y') }}</dd>
@@ -166,9 +167,7 @@
                             {% set displayEndDate = contract ? contract.endDate : order.endDate %}
                             {% if displayEndDate %}
                                 {{ displayEndDate|date('d.m.Y') }}
-                                {% if order.rentalType.value == 'unlimited' %}
-                                    <span class="text-xs text-gray-500">(prodlužuje se automaticky)</span>
-                                {% elseif contract and daysRemaining is not null and contract.terminatedAt is null %}
+                                {% if contract and daysRemaining is not null and contract.terminatedAt is null %}
                                     <span class="text-gray-500">({{ daysRemaining }} {{ daysRemaining == 1 ? 'den' : (daysRemaining < 5 ? 'dny' : 'dni') }})</span>
                                 {% endif %}
                             {% else %}
@@ -324,7 +323,7 @@
         <div class="px-4 py-5 sm:p-6">
             <h3 class="text-lg font-medium text-red-900">Zrušit opakované platby</h3>
             <p class="mt-1 text-sm text-gray-600">
-                Opakované platby můžete kdykoliv zrušit. Smlouva skončí na konci aktuálně zaplaceného období{% if contract.endDate %} ({{ contract.endDate|date('d.m.Y') }}){% endif %}. Po skončení bude skladová jednotka uvolněna.
+                Opakované platby můžete kdykoliv zrušit. Smlouva skončí {{ contract.endDate|date('d.m.Y') }}. Po skončení bude skladová jednotka uvolněna.
             </p>
             <div class="mt-4">
                 <form action="{{ path('portal_user_contract_terminate', {id: contract.id}) }}" method="post" onsubmit="return confirm('Opravdu chcete zrušit opakované platby? Smlouva skončí na konci aktuálně zaplaceného období.');">

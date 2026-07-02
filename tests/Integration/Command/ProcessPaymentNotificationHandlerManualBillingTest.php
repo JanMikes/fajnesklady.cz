@@ -14,7 +14,6 @@ use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\BillingMode;
 use App\Enum\PaymentFrequency;
-use App\Enum\RentalType;
 use App\Service\Identity\ProvideIdentity;
 use App\Service\OrderService;
 use App\Tests\Mock\MockGoPayClient;
@@ -110,7 +109,6 @@ final class ProcessPaymentNotificationHandlerManualBillingTest extends KernelTes
             $tenant,
             $storageType,
             $place,
-            RentalType::LIMITED,
             $now->modify('+1 day'),
             $now->modify('+6 months'),
             $now,

@@ -54,14 +54,12 @@ final readonly class AdminOnboardingHandler
             user: $user,
             storageType: $command->storageType,
             place: $command->place,
-            rentalType: $command->rentalType,
             startDate: $command->startDate,
             endDate: $command->endDate,
             now: $now,
             paymentFrequency: $command->paymentFrequency,
             preSelectedStorage: $command->storage,
             monthlyPriceOverride: $command->individualMonthlyAmount,
-            expectedDuration: $command->expectedDuration,
         );
 
         $order->setBillingMode($command->billingMode);

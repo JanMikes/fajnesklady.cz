@@ -11,7 +11,6 @@ use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\PaymentFrequency;
-use App\Enum\RentalType;
 use App\Enum\TerminationReason;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
@@ -101,16 +100,16 @@ class ContractServiceDebtTest extends TestCase
         $this->assertFalse($contract->isTerminatedDueToPaymentFailure());
     }
 
-    private function createContract(?\DateTimeImmutable $endDate = null): Contract
+    private function createContract(\DateTimeImmutable $endDate): Contract
     {
         $user = new User(Uuid::v7(), 'test@example.com', 'password', 'Test', 'User', new \DateTimeImmutable());
         $place = new Place(Uuid::v7(), 'Place', 'Address', 'City', '00000', null, new \DateTimeImmutable());
         $storageType = new StorageType(Uuid::v7(), $place, 'Box', 100, 100, 100, 10000, 35000, 35000, 35000 * 12, new \DateTimeImmutable());
         $storage = new Storage(Uuid::v7(), '1', ['x' => 0, 'y' => 0, 'width' => 100, 'height' => 100, 'rotation' => 0], $storageType, $place, new \DateTimeImmutable());
-        $rentalType = null === $endDate ? RentalType::UNLIMITED : RentalType::LIMITED;
-        $order = new Order(Uuid::v7(), $user, $storage, $rentalType, PaymentFrequency::MONTHLY, new \DateTimeImmutable(), $endDate, 35000, new \DateTimeImmutable('+7 days'), new \DateTimeImmutable());
+        $startDate = new \DateTimeImmutable('2024-01-01');
+        $order = new Order(Uuid::v7(), $user, $storage, PaymentFrequency::MONTHLY, $startDate, $endDate, 35000, new \DateTimeImmutable('+7 days'), new \DateTimeImmutable());
 
-        return new Contract(Uuid::v7(), $order, $user, $storage, $rentalType, new \DateTimeImmutable(), $endDate, new \DateTimeImmutable());
+        return new Contract(Uuid::v7(), $order, $user, $storage, $startDate, $endDate, new \DateTimeImmutable());
     }
 
     private function createContractWithPaidThrough(\DateTimeImmutable $paidThrough, int $monthlyPrice): Contract
@@ -119,9 +118,11 @@ class ContractServiceDebtTest extends TestCase
         $place = new Place(Uuid::v7(), 'Place', 'Address', 'City', '00000', null, new \DateTimeImmutable());
         $storageType = new StorageType(Uuid::v7(), $place, 'Box', 100, 100, 100, 10000, $monthlyPrice, $monthlyPrice, $monthlyPrice * 12, new \DateTimeImmutable());
         $storage = new Storage(Uuid::v7(), '1', ['x' => 0, 'y' => 0, 'width' => 100, 'height' => 100, 'rotation' => 0], $storageType, $place, new \DateTimeImmutable());
-        $order = new Order(Uuid::v7(), $user, $storage, RentalType::UNLIMITED, PaymentFrequency::MONTHLY, new \DateTimeImmutable(), null, $monthlyPrice, new \DateTimeImmutable('+7 days'), new \DateTimeImmutable());
+        $startDate = new \DateTimeImmutable('2024-01-01');
+        $endDate = new \DateTimeImmutable('2025-01-01');
+        $order = new Order(Uuid::v7(), $user, $storage, PaymentFrequency::MONTHLY, $startDate, $endDate, $monthlyPrice, new \DateTimeImmutable('+7 days'), new \DateTimeImmutable());
 
-        $contract = new Contract(Uuid::v7(), $order, $user, $storage, RentalType::UNLIMITED, new \DateTimeImmutable(), null, new \DateTimeImmutable());
+        $contract = new Contract(Uuid::v7(), $order, $user, $storage, $startDate, $endDate, new \DateTimeImmutable());
         $contract->setRecurringPayment('parent-123', $paidThrough, $paidThrough);
 
         return $contract;

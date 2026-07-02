@@ -129,7 +129,7 @@ final class PlaceOccupancyMap
                 'tenantName' => $tenantName,
                 'rentedFrom' => $rentedFromStr,
                 'rentedUntil' => $rentedUntilStr,
-                'isUnlimited' => null !== $contract && $contract->isUnlimited() && null === $contract->terminatesAt,
+                'hasGuarantee' => null !== $contract && $contract->hasAvailabilityGuarantee(),
                 'isTerminating' => null !== $contract && null !== $contract->terminatesAt,
                 'startsOnViewDate' => null !== $rentedFromStr && $rentedFromStr === $viewDateStr,
                 'endsOnViewDate' => null !== $rentedUntilStr && $rentedUntilStr === $viewDateStr,

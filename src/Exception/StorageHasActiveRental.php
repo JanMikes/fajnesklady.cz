@@ -17,4 +17,12 @@ final class StorageHasActiveRental extends \DomainException
             $storage->number,
         ));
     }
+
+    public static function cannotProlong(Storage $storage): self
+    {
+        return new self(sprintf(
+            'Skladovou jednotku "%s" má po konci vaší smlouvy rezervovanou někdo jiný.',
+            $storage->number,
+        ));
+    }
 }

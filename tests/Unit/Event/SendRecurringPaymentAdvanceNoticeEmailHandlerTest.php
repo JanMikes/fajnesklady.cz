@@ -11,7 +11,7 @@ use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\AdvanceNoticeReason;
-use App\Enum\RentalType;
+use App\Enum\PaymentFrequency;
 use App\Event\RecurringPaymentAdvanceNoticeNeeded;
 use App\Event\SendRecurringPaymentAdvanceNoticeEmailHandler;
 use App\Repository\ContractRepository;
@@ -171,10 +171,9 @@ class SendRecurringPaymentAdvanceNoticeEmailHandlerTest extends TestCase
             id: Uuid::v7(),
             user: $user,
             storage: $storage,
-            rentalType: RentalType::UNLIMITED,
-            paymentFrequency: null,
+            paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: new \DateTimeImmutable('2025-06-15'),
-            endDate: null,
+            endDate: new \DateTimeImmutable('2026-06-15'),
             firstPaymentPrice: 350000,
             expiresAt: new \DateTimeImmutable('+7 days'),
             createdAt: new \DateTimeImmutable('2025-06-10'),
@@ -185,9 +184,8 @@ class SendRecurringPaymentAdvanceNoticeEmailHandlerTest extends TestCase
             order: $order,
             user: $user,
             storage: $storage,
-            rentalType: RentalType::UNLIMITED,
             startDate: new \DateTimeImmutable('2025-06-15'),
-            endDate: null,
+            endDate: new \DateTimeImmutable('2026-06-15'),
             createdAt: new \DateTimeImmutable('2025-06-15'),
         );
 

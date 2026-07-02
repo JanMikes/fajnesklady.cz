@@ -11,7 +11,6 @@ use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\PaymentFrequency;
-use App\Enum\RentalType;
 use App\Enum\TerminationReason;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Clock\ClockInterface;
@@ -231,10 +230,9 @@ class AdminContractTerminateControllerTest extends WebTestCase
             id: Uuid::v7(),
             user: $tenant,
             storage: $storage,
-            rentalType: RentalType::UNLIMITED,
             paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: $now->modify('-2 months'),
-            endDate: null,
+            endDate: $now->modify('-2 months')->modify('+12 months'),
             firstPaymentPrice: 35000,
             expiresAt: $now->modify('+7 days'),
             createdAt: $now->modify('-2 months'),
@@ -246,9 +244,8 @@ class AdminContractTerminateControllerTest extends WebTestCase
             order: $order,
             user: $tenant,
             storage: $storage,
-            rentalType: RentalType::UNLIMITED,
             startDate: $now->modify('-2 months'),
-            endDate: null,
+            endDate: $now->modify('-2 months')->modify('+12 months'),
             createdAt: $now->modify('-2 months'),
         );
         $this->entityManager->persist($contract);

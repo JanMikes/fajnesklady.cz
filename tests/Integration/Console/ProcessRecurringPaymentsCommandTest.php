@@ -12,7 +12,6 @@ use App\Entity\Place;
 use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\PaymentFrequency;
-use App\Enum\RentalType;
 use App\Service\OrderService;
 use App\Tests\Mock\MockGoPayClient;
 use Doctrine\ORM\EntityManagerInterface;
@@ -108,14 +107,14 @@ class ProcessRecurringPaymentsCommandTest extends KernelTestCase
 
         $now = $this->clock->now();
         $startDate = $now->modify('+1 day');
+        $endDate = $startDate->modify('+12 months');
 
         $order = $this->orderService->createOrder(
             $tenant,
             $storageType,
             $place,
-            RentalType::UNLIMITED,
             $startDate,
-            null,
+            $endDate,
             $now,
             PaymentFrequency::MONTHLY,
         );

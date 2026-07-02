@@ -160,6 +160,40 @@ final readonly class StorageAvailabilityChecker
     }
 
     /**
+     * Earliest start of anything blocking $storage from $from onward,
+     * excluding the given contract and its order (spec 077: computes the
+     * latest possible prolongation end — the day before this date). Null
+     * means the horizon is free. A result ≤ $from means the unit is already
+     * taken right after the current contract (prolongation impossible).
+     */
+    public function earliestConflictStart(
+        Storage $storage,
+        \DateTimeImmutable $from,
+        ?Contract $excludeContract = null,
+        ?Order $excludeOrder = null,
+    ): ?\DateTimeImmutable {
+        $starts = [];
+
+        foreach ($this->unavailabilityRepository->findOverlappingByStorage($storage, $from, null) as $block) {
+            $starts[] = $block->startDate;
+        }
+
+        foreach ($this->orderRepository->findOverlappingByStorage($storage, $from, null, $excludeOrder) as $order) {
+            $starts[] = $order->startDate;
+        }
+
+        foreach ($this->contractRepository->findOverlappingByStorage($storage, $from, null, $excludeContract) as $contract) {
+            $starts[] = $contract->startDate;
+        }
+
+        if ([] === $starts) {
+            return null;
+        }
+
+        return min($starts);
+    }
+
+    /**
      * Get blocking reasons for a storage in a given period.
      *
      * @return array<string, array<object>>

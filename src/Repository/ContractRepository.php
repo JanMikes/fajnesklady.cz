@@ -13,6 +13,7 @@ use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\BillingMode;
 use App\Exception\ContractNotFound;
+use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -40,6 +41,17 @@ class ContractRepository
     public function get(Uuid $id): Contract
     {
         return $this->entityManager->find(Contract::class, $id)
+            ?? throw ContractNotFound::withId($id);
+    }
+
+    /**
+     * SELECT ... FOR UPDATE variant — serialises contract-lifecycle mutations
+     * (prolongation vs the termination cron racing at the endDate boundary).
+     * Requires an active transaction (the command-bus middleware provides one).
+     */
+    public function getForUpdate(Uuid $id): Contract
+    {
+        return $this->entityManager->find(Contract::class, $id, LockMode::PESSIMISTIC_WRITE)
             ?? throw ContractNotFound::withId($id);
     }
 
@@ -209,9 +221,13 @@ class ContractRepository
             ->from(Contract::class, 'c')
             ->where('c.storage IN (:storages)')
             ->andWhere('c.terminatedAt IS NULL')
-            ->andWhere('c.endDate IS NULL OR c.endDate >= :from')
+            // Spec 076 availability guarantee: a live-token card contract without a
+            // pending termination blocks every future window; everything else blocks
+            // only up to its effective end (terminatesAt wins over endDate).
+            ->andWhere('(c.billingMode = :autoRecurring AND c.goPayParentPaymentId IS NOT NULL AND c.terminatesAt IS NULL) OR COALESCE(c.terminatesAt, c.endDate) >= :from')
             ->setParameter('storages', $storages)
             ->setParameter('from', $from)
+            ->setParameter('autoRecurring', BillingMode::AUTO_RECURRING)
             ->orderBy('c.startDate', 'ASC');
 
         if (null !== $to) {
@@ -364,16 +380,23 @@ class ContractRepository
                 ->setParameter('excludeId', $excludeContract->id);
         }
 
+        // Spec 076 availability guarantee — mirrors findOverlappingByStorages():
+        // live-token card contracts (no pending termination) block open-endedly;
+        // everything else blocks up to COALESCE(terminatesAt, endDate).
+        $guaranteeOrEffectiveEnd = '(c.billingMode = :autoRecurring AND c.goPayParentPaymentId IS NOT NULL AND c.terminatesAt IS NULL) OR COALESCE(c.terminatesAt, c.endDate) >= :startDate';
+
         if (null === $endDate) {
             // Requested period is indefinite - any active contract overlaps
-            $qb->andWhere('c.endDate IS NULL OR c.endDate >= :startDate')
-                ->setParameter('startDate', $startDate);
+            $qb->andWhere($guaranteeOrEffectiveEnd)
+                ->setParameter('startDate', $startDate)
+                ->setParameter('autoRecurring', BillingMode::AUTO_RECURRING);
         } else {
             // Standard overlap: startA <= endB AND startB <= endA
             $qb->andWhere('c.startDate <= :endDate')
-                ->andWhere('c.endDate IS NULL OR c.endDate >= :startDate')
+                ->andWhere($guaranteeOrEffectiveEnd)
                 ->setParameter('startDate', $startDate)
-                ->setParameter('endDate', $endDate);
+                ->setParameter('endDate', $endDate)
+                ->setParameter('autoRecurring', BillingMode::AUTO_RECURRING);
         }
 
         return $qb->getQuery()->getResult();
@@ -501,8 +524,13 @@ class ContractRepository
      * Find contracts due for termination:
      * - Pending termination notice due (terminatesAt <= now)
      * - ONE_TIME contracts past endDate
-     * - AUTO_RECURRING past endDate with no active GoPay token (recurring revoked)
+     * - AUTO_RECURRING past endDate, fully settled (no retries / in-flight charge)
+     *   — spec 076: the token no longer keeps a contract alive past its end;
+     *   ContractService::terminateContract() voids it during termination
      * - MANUAL_RECURRING past endDate with no pending billing and no retries
+     *
+     * Contracts mid-retry (failedBillingAttempts > 0) are owned by
+     * app:retry-failed-payments, which terminates for payment default itself.
      *
      * @return Contract[]
      */
@@ -514,9 +542,9 @@ class ContractRepository
             ->where('c.terminatedAt IS NULL')
             ->andWhere(
                 '(c.terminatesAt IS NOT NULL AND c.terminatesAt <= :now) OR '
-                .'(c.endDate IS NOT NULL AND c.endDate <= :now AND c.billingMode = :oneTime) OR '
-                .'(c.endDate IS NOT NULL AND c.endDate <= :now AND c.billingMode = :autoRecurring AND c.goPayParentPaymentId IS NULL) OR '
-                .'(c.endDate IS NOT NULL AND c.endDate <= :now AND c.billingMode = :manualRecurring AND c.nextBillingDate IS NULL AND c.failedBillingAttempts = 0)'
+                .'(c.endDate <= :now AND c.billingMode = :oneTime) OR '
+                .'(c.endDate <= :now AND c.billingMode = :autoRecurring AND c.failedBillingAttempts = 0 AND c.pendingRecurringPaymentId IS NULL AND c.nextBillingDate IS NULL) OR '
+                .'(c.endDate <= :now AND c.billingMode = :manualRecurring AND c.nextBillingDate IS NULL AND c.failedBillingAttempts = 0)'
             )
             ->setParameter('now', $now)
             ->setParameter('oneTime', BillingMode::ONE_TIME->value)
@@ -943,6 +971,23 @@ class ContractRepository
             ->where('c.goPayParentPaymentId = :paymentId')
             ->setParameter('paymentId', $parentPaymentId)
             ->getQuery()
+            ->getOneOrNullResult();
+    }
+
+    /**
+     * Webhook lookup for the spec-077 bank→card switch setup payment.
+     * SELECT ... FOR UPDATE mirrors the order first-payment branch: duplicate
+     * webhook deliveries serialise on the row instead of double-completing.
+     */
+    public function findByPendingCardSetupPaymentIdForUpdate(string $paymentId): ?Contract
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('c')
+            ->from(Contract::class, 'c')
+            ->where('c.pendingCardSetupPaymentId = :paymentId')
+            ->setParameter('paymentId', $paymentId)
+            ->getQuery()
+            ->setLockMode(LockMode::PESSIMISTIC_WRITE)
             ->getOneOrNullResult();
     }
 

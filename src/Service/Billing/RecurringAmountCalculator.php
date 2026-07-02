@@ -24,9 +24,8 @@ final readonly class RecurringAmountCalculator
      * Expected amount in halere for the recurring charge happening at $now
      * against $contract.
      *
-     *  - Open-ended contract → full cadence-period rate.
-     *  - Fixed-end contract, last cycle → prorated by remaining days.
-     *  - Fixed-end contract, regular cycle → full cadence-period rate.
+     *  - Last cycle → prorated by remaining days.
+     *  - Regular cycle → full cadence-period rate.
      *
      * The "billing period start" is the contract's `nextBillingDate` if set,
      * otherwise $now — matches the deterministic anchor used by the cron.
@@ -39,12 +38,6 @@ final readonly class RecurringAmountCalculator
         $periodAmount = $contract->getEffectiveRecurringAmount();
         $periodDays = $contract->getBillingPeriodDays();
         $effectiveEndDate = $contract->getEffectiveEndDate();
-
-        // UNLIMITED contracts auto-extend on each charge (endDate advances),
-        // so they always pay the full cadence-period rate.
-        if (null === $effectiveEndDate || $contract->isUnlimited()) {
-            return $periodAmount;
-        }
 
         $billingPeriodStart = $contract->nextBillingDate ?? $now;
         $nextFullPeriodEnd = $billingPeriodStart->modify($contract->getBillingCadenceStep());

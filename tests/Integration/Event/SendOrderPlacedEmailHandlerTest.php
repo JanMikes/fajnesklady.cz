@@ -7,7 +7,6 @@ namespace App\Tests\Integration\Event;
 use App\Entity\Order;
 use App\Enum\OrderStatus;
 use App\Enum\PaymentFrequency;
-use App\Enum\RentalType;
 use App\Event\OrderPlaced;
 use App\Event\SendOrderPlacedEmailHandler;
 use Doctrine\ORM\EntityManagerInterface;
@@ -61,8 +60,9 @@ class SendOrderPlacedEmailHandlerTest extends KernelTestCase
         $this->assertStringNotContainsString('Měsíční platba', $body);
     }
 
-    public function testEmailShowsMonthlyLabelForUnlimited(): void
+    public function testEmailShowsMonthlyLabelForFixedTermRecurring(): void
     {
+        // 12-month card-recurring rental → monthly billing.
         $order = $this->findOrderByStorageNumber('C1');
 
         ($this->handler)(new OrderPlaced($order->id, $this->clock->now()));
@@ -165,7 +165,6 @@ class SendOrderPlacedEmailHandlerTest extends KernelTestCase
             id: Uuid::v7(),
             user: $sourceOrder->user,
             storage: $sourceOrder->storage,
-            rentalType: RentalType::LIMITED,
             paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: $start,
             endDate: $end,

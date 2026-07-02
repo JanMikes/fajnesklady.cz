@@ -10,7 +10,6 @@ use App\Entity\Place;
 use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\OrderStatus;
-use App\Enum\RentalType;
 use App\Enum\StorageStatus;
 use App\Service\OrderService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -62,7 +61,6 @@ class ExpireOrdersCommandTest extends KernelTestCase
             $tenant,
             $storageType,
             $place,
-            RentalType::LIMITED,
             $startDate,
             $endDate,
             $pastDate,
@@ -72,7 +70,6 @@ class ExpireOrdersCommandTest extends KernelTestCase
             $tenant,
             $storageType,
             $place,
-            RentalType::LIMITED,
             $startDate,
             $endDate,
             $pastDate,

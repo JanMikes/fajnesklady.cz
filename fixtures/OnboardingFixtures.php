@@ -11,7 +11,6 @@ use App\Entity\Storage;
 use App\Entity\User;
 use App\Enum\PaymentFrequency;
 use App\Enum\PaymentMethod;
-use App\Enum\RentalType;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
@@ -146,10 +145,9 @@ final class OnboardingFixtures extends Fixture implements DependentFixtureInterf
             id: Uuid::v7(),
             user: $user,
             storage: $storage,
-            rentalType: RentalType::UNLIMITED,
             paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: $startDate,
-            endDate: null,
+            endDate: $startDate->modify('+24 months'),
             firstPaymentPrice: $monthly,
             expiresAt: $startDate->modify('+30 days'),
             createdAt: $startDate->modify('-1 day'),
@@ -169,9 +167,8 @@ final class OnboardingFixtures extends Fixture implements DependentFixtureInterf
             order: $order,
             user: $user,
             storage: $storage,
-            rentalType: RentalType::UNLIMITED,
             startDate: $startDate,
-            endDate: null,
+            endDate: $startDate->modify('+24 months'),
             createdAt: $startDate,
         );
 

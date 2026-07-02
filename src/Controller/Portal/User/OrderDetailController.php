@@ -16,6 +16,7 @@ use App\Repository\OrderRepository;
 use App\Service\Billing\ManualBillingReminderSchedule;
 use App\Service\ContractService;
 use App\Service\Fine\FinePaymentUrlGenerator;
+use App\Service\Payment\QrPaymentGenerator;
 use App\Service\PriceCalculator;
 use App\Service\Security\ContractVoter;
 use Psr\Clock\ClockInterface;
@@ -42,6 +43,7 @@ final class OrderDetailController extends AbstractController
         private readonly ContractService $contractService,
         private readonly FinePaymentUrlGenerator $finePaymentUrlGenerator,
         private readonly PriceCalculator $priceCalculator,
+        private readonly QrPaymentGenerator $qrPaymentGenerator,
         private readonly ClockInterface $clock,
     ) {
     }
@@ -82,14 +84,17 @@ final class OrderDetailController extends AbstractController
 
         $paymentSchedule = $this->priceCalculator->buildScheduleFromOrder($order);
 
-        $manualNowUrl = null;
+        $manualNowVariableSymbol = null;
+        $manualNowBankAccount = null;
         $manualNowAmount = null;
         $manualNowPeriodStart = null;
         $nextManualDate = null;
         if (null !== $contract && BillingMode::MANUAL_RECURRING === $contract->billingMode) {
             $pending = $this->manualPaymentRequestRepository->findPendingForCurrentCycle($contract, $now);
-            if (null !== $pending && null !== $pending->goPayGatewayUrl) {
-                $manualNowUrl = $pending->goPayGatewayUrl;
+            // Spec 076: manual cycles are paid by bank transfer — surface VS + QR.
+            if (null !== $pending && null !== $order->variableSymbol) {
+                $manualNowVariableSymbol = $order->variableSymbol;
+                $manualNowBankAccount = $this->qrPaymentGenerator->getBankAccountFormatted();
                 $manualNowAmount = $pending->amount;
                 $manualNowPeriodStart = $pending->periodStart;
             }
@@ -125,7 +130,8 @@ final class OrderDetailController extends AbstractController
             'canTerminate' => $canTerminate,
             'paymentSchedule' => $paymentSchedule,
             'now' => $now,
-            'manualNowUrl' => $manualNowUrl,
+            'manualNowVariableSymbol' => $manualNowVariableSymbol,
+            'manualNowBankAccount' => $manualNowBankAccount,
             'manualNowAmount' => $manualNowAmount,
             'manualNowPeriodStart' => $manualNowPeriodStart,
             'nextManualDate' => $nextManualDate,

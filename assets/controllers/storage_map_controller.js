@@ -601,8 +601,8 @@ export default class extends Controller {
             const statusText = this.getStatusText(storage.status, storage);
             const statusClass = this.getStatusClass(storage.status, storage);
             const untilLine = storage.rentedUntil
-                ? `<div class="flex justify-between"><span class="text-gray-500">Pronajato do:</span><span class="font-medium">${this.formatCzDate(storage.rentedUntil)}${storage.isTerminating ? ' (výpověď)' : ''}</span></div>`
-                : (storage.isUnlimited ? `<div class="flex justify-between"><span class="text-gray-500">Pronajato:</span><span class="font-medium">neomezeně</span></div>` : '');
+                ? `<div class="flex justify-between"><span class="text-gray-500">Pronajato do:</span><span class="font-medium">${this.formatCzDate(storage.rentedUntil)}${storage.isTerminating ? ' (výpověď)' : (storage.hasGuarantee ? ' (garance prodloužení)' : '')}</span></div>`
+                : '';
             const fromLine = storage.rentedFrom
                 ? `<div class="flex justify-between"><span class="text-gray-500">Pronajato od:</span><span class="font-medium">${this.formatCzDate(storage.rentedFrom)}</span></div>`
                 : '';
@@ -686,8 +686,8 @@ export default class extends Controller {
                 ? `<div class="text-gray-600">Nájemce: <span class="font-medium">${this.escapeHtml(storage.tenantName)}</span></div>`
                 : '';
             const untilLine = storage.rentedUntil
-                ? `<div class="text-gray-600">Pronajato do: ${this.formatCzDate(storage.rentedUntil)}${storage.isTerminating ? ' (výpověď)' : ''}</div>`
-                : (storage.isUnlimited ? `<div class="text-gray-600">Pronajato: neomezeně</div>` : '');
+                ? `<div class="text-gray-600">Pronajato do: ${this.formatCzDate(storage.rentedUntil)}${storage.isTerminating ? ' (výpověď)' : (storage.hasGuarantee ? ' (garance prodloužení)' : '')}</div>`
+                : '';
             const badge = storage.endsOnViewDate
                 ? `<span class="badge badge-warning text-xs ml-1">Končí dnes</span>`
                 : (storage.startsOnViewDate ? `<span class="badge badge-info text-xs ml-1">Začíná dnes</span>` : '');

@@ -9,10 +9,10 @@ use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
+use App\Enum\BillingMode;
 use App\Enum\OrderStatus;
 use App\Enum\PaymentFrequency;
 use App\Enum\PaymentMethod;
-use App\Enum\RentalType;
 use App\Repository\OrderRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ManagerRegistry;
@@ -98,15 +98,14 @@ class OrderRepositoryTest extends KernelTestCase
         User $user,
         Storage $storage,
         \DateTimeImmutable $startDate,
-        ?\DateTimeImmutable $endDate = null,
-        RentalType $rentalType = RentalType::LIMITED,
+        \DateTimeImmutable $endDate,
         int $price = 10000,
+        BillingMode $billingMode = BillingMode::ONE_TIME,
     ): Order {
         $order = new Order(
             id: Uuid::v7(),
             user: $user,
             storage: $storage,
-            rentalType: $rentalType,
             paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: $startDate,
             endDate: $endDate,
@@ -114,6 +113,9 @@ class OrderRepositoryTest extends KernelTestCase
             expiresAt: new \DateTimeImmutable('+7 days'),
             createdAt: new \DateTimeImmutable(),
         );
+        // AUTO_RECURRING orders block their storage open-endedly (spec 076),
+        // so bounded fixtures default to ONE_TIME to keep date windows honest.
+        $order->setBillingMode($billingMode);
         $this->entityManager->persist($order);
 
         return $order;
@@ -174,42 +176,43 @@ class OrderRepositoryTest extends KernelTestCase
         $this->assertCount(0, $overlapping);
     }
 
-    public function testFindOverlappingHandlesUnlimitedExistingPeriod(): void
+    public function testFindOverlappingTreatsAutoRecurringOrderAsBlockingAnyFutureWindow(): void
     {
-        $tenant = $this->createUser('tenant-unlimited1@test.com');
+        $tenant = $this->createUser('tenant-auto-recurring@test.com');
         $place = $this->createPlace();
         $storageType = $this->createStorageType();
         $storage = $this->createStorage($storageType, $place, 'UNL1');
 
-        // Existing unlimited order starting Jan 1
+        // Card-recurring (AUTO_RECURRING) order Jan 1 - Feb 1 — blocks the
+        // storage open-endedly while alive (spec 076 availability guarantee).
         $existingOrder = $this->createOrder(
             $tenant,
             $storage,
             new \DateTimeImmutable('2024-01-01'),
-            null,
-            RentalType::UNLIMITED,
+            new \DateTimeImmutable('2024-02-01'),
+            billingMode: BillingMode::AUTO_RECURRING,
         );
         $existingOrder->reserve(new \DateTimeImmutable());
         $this->entityManager->flush();
 
-        // Check overlap: Feb 1-28 (any date after Jan 1 overlaps with unlimited)
+        // Check overlap: Mar 1-31 — past the order's endDate, still blocked.
         $overlapping = $this->repository->findOverlappingByStorage(
             $storage,
-            new \DateTimeImmutable('2024-02-01'),
-            new \DateTimeImmutable('2024-02-28'),
+            new \DateTimeImmutable('2024-03-01'),
+            new \DateTimeImmutable('2024-03-31'),
         );
 
         $this->assertCount(1, $overlapping);
     }
 
-    public function testFindOverlappingHandlesUnlimitedRequestedPeriod(): void
+    public function testFindOverlappingHandlesOpenEndedRequestedPeriod(): void
     {
-        $tenant = $this->createUser('tenant-unlimited2@test.com');
+        $tenant = $this->createUser('tenant-open-request@test.com');
         $place = $this->createPlace();
         $storageType = $this->createStorageType();
         $storage = $this->createStorage($storageType, $place, 'UNL2');
 
-        // Existing limited order: Feb 1-28
+        // Existing fixed-term order: Feb 1-28
         $existingOrder = $this->createOrder(
             $tenant,
             $storage,
@@ -219,7 +222,7 @@ class OrderRepositoryTest extends KernelTestCase
         $existingOrder->reserve(new \DateTimeImmutable());
         $this->entityManager->flush();
 
-        // Request unlimited period starting Jan 15 (should overlap with Feb order)
+        // Request an open-ended window starting Jan 15 (should overlap with Feb order)
         $overlapping = $this->repository->findOverlappingByStorage(
             $storage,
             new \DateTimeImmutable('2024-01-15'),
@@ -315,7 +318,6 @@ class OrderRepositoryTest extends KernelTestCase
             id: Uuid::v7(),
             user: $tenant,
             storage: $storage,
-            rentalType: RentalType::LIMITED,
             paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: new \DateTimeImmutable('+30 days'),
             endDate: new \DateTimeImmutable('+60 days'),
@@ -346,7 +348,6 @@ class OrderRepositoryTest extends KernelTestCase
             id: Uuid::v7(),
             user: $tenant,
             storage: $storage,
-            rentalType: RentalType::LIMITED,
             paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: new \DateTimeImmutable('+30 days'),
             endDate: new \DateTimeImmutable('+60 days'),
@@ -377,7 +378,6 @@ class OrderRepositoryTest extends KernelTestCase
             id: Uuid::v7(),
             user: $tenant,
             storage: $storage,
-            rentalType: RentalType::LIMITED,
             paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: new \DateTimeImmutable('+30 days'),
             endDate: new \DateTimeImmutable('+60 days'),
@@ -412,11 +412,11 @@ class OrderRepositoryTest extends KernelTestCase
         $storage2 = $this->createStorage($storageType, $place, 'REV2', $landlord);
 
         // Paid order - 150 CZK
-        $paidOrder = $this->createOrder($tenant, $storage1, new \DateTimeImmutable('+1 day'), new \DateTimeImmutable('+30 days'), RentalType::LIMITED, 15000);
+        $paidOrder = $this->createOrder($tenant, $storage1, new \DateTimeImmutable('+1 day'), new \DateTimeImmutable('+30 days'), 15000);
         $this->setOrderStatus($paidOrder, OrderStatus::PAID);
 
         // Completed order - 200 CZK (use reflection to avoid event handlers)
-        $completedOrder = $this->createOrder($tenant, $storage2, new \DateTimeImmutable('+1 day'), new \DateTimeImmutable('+60 days'), RentalType::LIMITED, 20000);
+        $completedOrder = $this->createOrder($tenant, $storage2, new \DateTimeImmutable('+1 day'), new \DateTimeImmutable('+60 days'), 20000);
         $this->setOrderStatus($completedOrder, OrderStatus::COMPLETED);
 
         $this->entityManager->flush();
@@ -610,26 +610,26 @@ class OrderRepositoryTest extends KernelTestCase
         $matching->extendExpiration($now->modify('+30 days'));
 
         // Non-matching variants
-        $notAdmin = $this->createOrder($tenant, $this->createStorage($storageType, $place, 'SU2'), $now->modify('-2 days'));
+        $notAdmin = $this->createOrder($tenant, $this->createStorage($storageType, $place, 'SU2'), $now->modify('-2 days'), $now->modify('+30 days'));
         $notAdmin->setPaymentMethod(PaymentMethod::GOPAY);
         $notAdmin->reserve($now->modify('-2 days'));
         $notAdmin->attachSignature('/tmp/sig.png', \App\Enum\SigningMethod::DRAW, null, null, 'Praha', $now->modify('-2 days'));
         $notAdmin->extendExpiration($now->modify('+30 days'));
 
-        $notGoPay = $this->createOrder($tenant, $this->createStorage($storageType, $place, 'SU3'), $now->modify('-2 days'));
+        $notGoPay = $this->createOrder($tenant, $this->createStorage($storageType, $place, 'SU3'), $now->modify('-2 days'), $now->modify('+30 days'));
         $notGoPay->markAsAdminCreated();
         $notGoPay->setPaymentMethod(PaymentMethod::EXTERNAL);
         $notGoPay->reserve($now->modify('-2 days'));
         $notGoPay->attachSignature('/tmp/sig.png', \App\Enum\SigningMethod::DRAW, null, null, 'Praha', $now->modify('-2 days'));
         $notGoPay->extendExpiration($now->modify('+30 days'));
 
-        $notSigned = $this->createOrder($tenant, $this->createStorage($storageType, $place, 'SU4'), $now->modify('-2 days'));
+        $notSigned = $this->createOrder($tenant, $this->createStorage($storageType, $place, 'SU4'), $now->modify('-2 days'), $now->modify('+30 days'));
         $notSigned->markAsAdminCreated();
         $notSigned->setPaymentMethod(PaymentMethod::GOPAY);
         $notSigned->reserve($now->modify('-2 days'));
         $notSigned->extendExpiration($now->modify('+30 days'));
 
-        $expired = $this->createOrder($tenant, $this->createStorage($storageType, $place, 'SU5'), $now->modify('-2 days'));
+        $expired = $this->createOrder($tenant, $this->createStorage($storageType, $place, 'SU5'), $now->modify('-2 days'), $now->modify('+30 days'));
         $expired->markAsAdminCreated();
         $expired->setPaymentMethod(PaymentMethod::GOPAY);
         $expired->reserve($now->modify('-2 days'));

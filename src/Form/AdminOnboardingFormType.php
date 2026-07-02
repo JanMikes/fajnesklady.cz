@@ -4,11 +4,8 @@ declare(strict_types=1);
 
 namespace App\Form;
 
-use App\Enum\BillingMode;
-use App\Enum\ExpectedDuration;
 use App\Enum\PaymentFrequency;
 use App\Enum\PaymentMethod;
-use App\Enum\RentalType;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
@@ -98,31 +95,14 @@ final class AdminOnboardingFormType extends AbstractType
                 'label' => 'Adresa je správná, pokračovat',
                 'required' => false,
             ])
-            ->add('rentalType', EnumType::class, [
-                'class' => RentalType::class,
-                'label' => 'Typ pronájmu',
-                'expanded' => true,
-                'placeholder' => false,
-                'choice_label' => static fn (RentalType $type): string => match ($type) {
-                    RentalType::LIMITED => 'Doba určitá',
-                    RentalType::UNLIMITED => 'Automatické prodlužování',
-                },
-            ])
-            ->add('expectedDuration', EnumType::class, [
-                'class' => ExpectedDuration::class,
-                'label' => 'Předpokládaná doba pronájmu',
-                'expanded' => true,
-                'required' => false,
-                'placeholder' => false,
-                'choice_label' => static fn (ExpectedDuration $d): string => $d->label(),
-                'help' => 'Jen pro pronájem na dobu neurčitou. Informativní údaj pro provozovatele.',
-            ])
             ->add('startDate', DateType::class, [
                 'label' => 'Datum začátku',
                 'widget' => 'single_text',
             ])
             ->add('endDate', DateType::class, [
                 'label' => 'Datum konce',
+                // required: false keeps live per-field validation happy on partial
+                // submits; AdminOnboardingFormData's NotNull is the source of truth.
                 'required' => false,
                 'widget' => 'single_text',
             ])
@@ -137,17 +117,6 @@ final class AdminOnboardingFormType extends AbstractType
                     PaymentMethod::BANK_TRANSFER => 'Bankovní převod (zákazník platí převodem)',
                 },
             ])
-            ->add('billingMode', EnumType::class, [
-                'class' => BillingMode::class,
-                'label' => 'Způsob následných plateb',
-                'expanded' => true,
-                'placeholder' => false,
-                'choices' => [
-                    'Automatická (uloží se karta, strhává se sama)' => BillingMode::AUTO_RECURRING,
-                    'Ručně (každý měsíc dostane e-mail s platebním odkazem)' => BillingMode::MANUAL_RECURRING,
-                ],
-                'help' => 'Pro pronájem na dobu neurčitou je dostupná pouze automatická. Roční platba je vždy ruční.',
-            ])
             ->add('paymentFrequency', EnumType::class, [
                 'class' => PaymentFrequency::class,
                 'label' => 'Frekvence platby',
@@ -157,7 +126,7 @@ final class AdminOnboardingFormType extends AbstractType
                     PaymentFrequency::MONTHLY->label() => PaymentFrequency::MONTHLY,
                     PaymentFrequency::YEARLY->label() => PaymentFrequency::YEARLY,
                 ],
-                'help' => 'Roční platba je dostupná, pokud má typ skladu nastavenou roční sazbu a doba pronájmu je 12+ měsíců (nebo neurčitá). Vždy se účtuje ručně.',
+                'help' => 'Roční platba (−10 %) je dostupná pro pronájem na 12+ měsíců a platí se pouze bankovním převodem nebo externě. Vždy se účtuje ručně.',
             ])
             ->add('monthlyPriceMode', ChoiceType::class, [
                 'label' => 'Cenový model',

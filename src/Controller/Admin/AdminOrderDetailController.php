@@ -7,6 +7,7 @@ namespace App\Controller\Admin;
 use App\Repository\AuditLogRepository;
 use App\Repository\BankTransactionRepository;
 use App\Repository\ContractPriceChangeRepository;
+use App\Repository\ContractProlongationRepository;
 use App\Repository\ContractRepository;
 use App\Repository\EmailLogRepository;
 use App\Repository\FineRepository;
@@ -34,6 +35,7 @@ final class AdminOrderDetailController extends AbstractController
         private readonly OrderRepository $orderRepository,
         private readonly ContractRepository $contractRepository,
         private readonly ContractPriceChangeRepository $priceChangeRepository,
+        private readonly ContractProlongationRepository $prolongationRepository,
         private readonly AuditLogRepository $auditLogRepository,
         private readonly BankTransactionRepository $bankTransactionRepository,
         private readonly EmailLogRepository $emailLogRepository,
@@ -84,6 +86,10 @@ final class AdminOrderDetailController extends AbstractController
             ? $this->priceChangeRepository->findByContractOrderedByDate($contract)
             : [];
 
+        $prolongations = null !== $contract
+            ? $this->prolongationRepository->findByContractOrderedByDate($contract)
+            : [];
+
         $fines = null !== $contract
             ? $this->fineRepository->findByContract($contract)
             : [];
@@ -112,6 +118,7 @@ final class AdminOrderDetailController extends AbstractController
             'totalPaid' => $totalPaid,
             'isUserOverdue' => $isUserOverdue,
             'priceChanges' => $priceChanges,
+            'prolongations' => $prolongations,
             'now' => $now,
             'handoverProtocol' => $handoverProtocol,
             'fines' => $fines,

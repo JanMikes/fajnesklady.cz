@@ -9,7 +9,7 @@ use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
-use App\Enum\RentalType;
+use App\Enum\PaymentFrequency;
 use App\Event\RecurringPaymentEstablished;
 use App\Event\SendRecurringPaymentEstablishedEmailHandler;
 use App\Repository\OrderRepository;
@@ -145,10 +145,9 @@ class SendRecurringPaymentEstablishedEmailHandlerTest extends TestCase
             id: Uuid::v7(),
             user: $user,
             storage: $storage,
-            rentalType: RentalType::UNLIMITED,
-            paymentFrequency: null,
+            paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: new \DateTimeImmutable('2026-05-12'),
-            endDate: null,
+            endDate: new \DateTimeImmutable('2027-05-12'),
             firstPaymentPrice: 350000,
             expiresAt: new \DateTimeImmutable('+7 days'),
             createdAt: new \DateTimeImmutable('2026-05-05'),

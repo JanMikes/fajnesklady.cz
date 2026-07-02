@@ -13,7 +13,6 @@ use App\Entity\StorageUnavailability;
 use App\Entity\User;
 use App\Enum\OrderStatus;
 use App\Enum\PaymentFrequency;
-use App\Enum\RentalType;
 use App\Repository\ContractRepository;
 use App\Repository\OrderRepository;
 use App\Repository\StorageUnavailabilityRepository;
@@ -90,7 +89,7 @@ final class StorageOccupancyServiceTest extends TestCase
         $storage = $this->makeStorage('A2');
         $start = new \DateTimeImmutable('2025-06-01');
         $end = new \DateTimeImmutable('2025-08-01');
-        $contract = $this->makeContract($storage, RentalType::LIMITED, $start, $end);
+        $contract = $this->makeContract($storage, $start, $end);
 
         $service = $this->buildService(contracts: [$contract]);
         $views = $service->currentViews([$storage], $this->now);
@@ -101,26 +100,23 @@ final class StorageOccupancyServiceTest extends TestCase
         $this->assertEquals($start, $view->rentedFrom);
         $this->assertEquals($end, $view->rentedUntil);
         $this->assertEquals($end->modify('+1 day'), $view->availableFrom);
-        $this->assertFalse($view->isUnlimited);
+        $this->assertFalse($view->hasAvailabilityGuarantee);
     }
 
-    public function testUnlimitedContractMarksUnlimited(): void
+    public function testRecurringContractWithLiveTokenHasAvailabilityGuarantee(): void
     {
         $storage = $this->makeStorage('A3');
-        $contract = $this->makeContract(
-            $storage,
-            RentalType::UNLIMITED,
-            new \DateTimeImmutable('2025-01-01'),
-            null,
-        );
+        $start = new \DateTimeImmutable('2025-01-01');
+        $end = new \DateTimeImmutable('2026-01-01');
+        $contract = $this->makeContract($storage, $start, $end);
+        $contract->setRecurringPayment('gopay-parent-1', $start->modify('+1 month'), $start->modify('+1 month'));
 
         $service = $this->buildService(contracts: [$contract]);
         $views = $service->currentViews([$storage], $this->now);
 
         $view = $views[$storage->id->toRfc4122()];
-        $this->assertTrue($view->isUnlimited);
-        $this->assertNull($view->rentedUntil);
-        $this->assertNull($view->availableFrom);
+        $this->assertTrue($view->hasAvailabilityGuarantee);
+        $this->assertEquals($end, $view->rentedUntil);
     }
 
     public function testTerminatesAtOverridesEndDate(): void
@@ -128,7 +124,6 @@ final class StorageOccupancyServiceTest extends TestCase
         $storage = $this->makeStorage('A4');
         $contract = $this->makeContract(
             $storage,
-            RentalType::LIMITED,
             new \DateTimeImmutable('2025-01-01'),
             new \DateTimeImmutable('2025-12-31'),
         );
@@ -208,14 +203,12 @@ final class StorageOccupancyServiceTest extends TestCase
         // Currently occupied by a contract ending Aug 1
         $current = $this->makeContract(
             $storage,
-            RentalType::LIMITED,
             new \DateTimeImmutable('2025-05-01'),
             new \DateTimeImmutable('2025-08-01'),
         );
         // Future contract starting Sep 1, future order starting Aug 15
         $futureContract = $this->makeContract(
             $storage,
-            RentalType::LIMITED,
             new \DateTimeImmutable('2025-09-01'),
             new \DateTimeImmutable('2025-10-01'),
         );
@@ -249,7 +242,6 @@ final class StorageOccupancyServiceTest extends TestCase
 
         $futureContract = $this->makeContract(
             $storage,
-            RentalType::LIMITED,
             new \DateTimeImmutable('2025-07-15'),
             new \DateTimeImmutable('2025-08-15'),
         );
@@ -271,9 +263,8 @@ final class StorageOccupancyServiceTest extends TestCase
         $storage = $this->makeStorage('A9');
         $contract = $this->makeContract(
             $storage,
-            RentalType::UNLIMITED,
             new \DateTimeImmutable('2025-05-01'),
-            null,
+            new \DateTimeImmutable('2026-05-01'),
         );
         $block = $this->makeBlock(
             $storage,
@@ -296,7 +287,7 @@ final class StorageOccupancyServiceTest extends TestCase
         $this->assertCount(2, $spans[$key]);
         $contractSpan = $spans[$key][0];
         $this->assertSame(RentalSpanKind::CONTRACT, $contractSpan->kind);
-        $this->assertNull($contractSpan->endDate);
+        $this->assertEquals(new \DateTimeImmutable('2026-05-01'), $contractSpan->endDate);
         $blockSpan = $spans[$key][1];
         $this->assertSame(RentalSpanKind::BLOCK, $blockSpan->kind);
     }
@@ -315,9 +306,8 @@ final class StorageOccupancyServiceTest extends TestCase
 
     private function makeContract(
         Storage $storage,
-        RentalType $rentalType,
         \DateTimeImmutable $start,
-        ?\DateTimeImmutable $end,
+        \DateTimeImmutable $end,
     ): Contract {
         $order = $this->makeOrder($storage, $start, $end, OrderStatus::COMPLETED);
 
@@ -326,7 +316,6 @@ final class StorageOccupancyServiceTest extends TestCase
             order: $order,
             user: $this->tenant,
             storage: $storage,
-            rentalType: $rentalType,
             startDate: $start,
             endDate: $end,
             createdAt: $start,
@@ -343,7 +332,6 @@ final class StorageOccupancyServiceTest extends TestCase
             id: Uuid::v7(),
             user: $this->tenant,
             storage: $storage,
-            rentalType: null === $end ? RentalType::UNLIMITED : RentalType::LIMITED,
             paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: $start,
             endDate: $end,

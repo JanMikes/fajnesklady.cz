@@ -14,7 +14,6 @@ use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\PaymentFrequency;
-use App\Enum\RentalType;
 use App\Enum\UserRole;
 use App\Event\RecurringPaymentCharged;
 use App\Service\OrderService;
@@ -79,7 +78,6 @@ class PaymentRecordingTest extends KernelTestCase
             $tenant,
             $storageType,
             $place,
-            RentalType::LIMITED,
             $startDate,
             $endDate,
             $now,
@@ -293,14 +291,13 @@ class PaymentRecordingTest extends KernelTestCase
         $now = $this->clock->now();
         $startDate = $now->modify('+1 day');
 
-        // Create unlimited order
+        // Create card-recurring fixed-term order (12 months)
         $order = $this->orderService->createOrder(
             $tenant,
             $storageType,
             $place,
-            RentalType::UNLIMITED,
             $startDate,
-            null,
+            $startDate->modify('+12 months'),
             $now,
             PaymentFrequency::MONTHLY,
         );

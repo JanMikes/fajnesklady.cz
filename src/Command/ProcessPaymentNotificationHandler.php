@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Command;
 
+use App\Entity\Contract;
 use App\Entity\ManualPaymentRequest;
 use App\Entity\Order;
 use App\Enum\BillingMode;
+use App\Enum\PaymentMethod;
 use App\Event\PaymentAmountMismatch;
 use App\Event\RecurringPaymentCharged;
 use App\Event\RecurringPaymentEstablished;
@@ -159,6 +161,33 @@ final readonly class ProcessPaymentNotificationHandler
             return;
         }
 
+        // Prolongation bank→card switch (spec 077): the setup charge carries
+        // the ON_DEMAND recurrence — once PAID, the contract flips to
+        // AUTO_RECURRING with this payment as its parent token and the charge
+        // covers the next cycle.
+        $cardSetupContract = $this->contractRepository->findByPendingCardSetupPaymentIdForUpdate($command->goPayPaymentId);
+        if (null !== $cardSetupContract) {
+            if ($status->isPaid() && $cardSetupContract->isTerminated()) {
+                // The contract died between initiation and payment — do NOT
+                // resurrect it as AUTO_RECURRING. The customer's money needs a
+                // manual refund; alert loudly instead of swallowing it.
+                $cardSetupContract->clearCardSetup();
+                $this->logger->error('Card setup charge PAID for a terminated contract — manual refund needed', [
+                    'contract_id' => $cardSetupContract->id->toRfc4122(),
+                    'gopay_payment_id' => $status->id,
+                    'amount' => $status->amount,
+                ]);
+            } elseif ($status->isPaid()) {
+                $this->completeCardSetup($cardSetupContract, $status, $now);
+            } elseif ($status->isCanceled()) {
+                // Abandoned/failed setup — the contract simply stays on the
+                // manual bank track; nothing was charged.
+                $cardSetupContract->clearCardSetup();
+            }
+
+            return;
+        }
+
         // Could be a recurring charge notification — reconcile via parent payment ID
         if (null !== $status->parentId && '' !== $status->parentId && $status->isPaid()) {
             $this->reconcileRecurringPayment($status->parentId, $status, $now);
@@ -196,7 +225,8 @@ final readonly class ProcessPaymentNotificationHandler
         $nextBillingDate = $billingPeriodStart->modify($contract->getBillingCadenceStep());
         $paidThroughDate = $nextBillingDate;
 
-        if (null !== $effectiveEndDate && $nextBillingDate >= $effectiveEndDate && !$contract->isUnlimited()) {
+        // Last cycle → stop future charges; contracts hard-stop at end (spec 076).
+        if ($nextBillingDate >= $effectiveEndDate) {
             $nextBillingDate = null;
             $paidThroughDate = $effectiveEndDate;
         }
@@ -277,7 +307,8 @@ final readonly class ProcessPaymentNotificationHandler
         $nextBillingDate = $billingPeriodStart->modify($contract->getBillingCadenceStep());
         $paidThroughDate = $nextBillingDate;
 
-        if (null !== $effectiveEndDate && $nextBillingDate >= $effectiveEndDate && !$contract->isUnlimited()) {
+        // Last cycle → stop future charges; contracts hard-stop at end (spec 076).
+        if ($nextBillingDate >= $effectiveEndDate) {
             $nextBillingDate = null;
             $paidThroughDate = $effectiveEndDate;
         }
@@ -330,6 +361,85 @@ final readonly class ProcessPaymentNotificationHandler
             'contract_id' => $contract->id->toRfc4122(),
             'gopay_payment_id' => $status->id,
             'amount' => $receivedAmount,
+        ]);
+    }
+
+    /**
+     * Complete the prolongation bank→card switch (spec 077): the PAID setup
+     * charge becomes the contract's ON_DEMAND parent token AND pays the next
+     * cycle. Mirrors {@see self::reconcileManualPayment()}'s billing math and
+     * fan-out (invoice + Payment row), plus the čl. IV establishment e-mail.
+     */
+    private function completeCardSetup(Contract $contract, GoPayPaymentStatus $status, \DateTimeImmutable $now): void
+    {
+        $billingPeriodStart = $contract->nextBillingDate ?? $now;
+        $effectiveEndDate = $contract->getEffectiveEndDate();
+        $nextBillingDate = $billingPeriodStart->modify($contract->getBillingCadenceStep());
+        $paidThroughDate = $nextBillingDate;
+
+        if ($nextBillingDate >= $effectiveEndDate) {
+            $nextBillingDate = null;
+            $paidThroughDate = $effectiveEndDate;
+        }
+
+        $contract->completeCardSetup($status->id, $nextBillingDate, $paidThroughDate);
+        $contract->recordBillingCharge($now, $nextBillingDate, $paidThroughDate);
+        $contract->order->setPaymentMethod(PaymentMethod::GOPAY);
+
+        // The setup charge settles the cycle any outstanding manual request
+        // covers — mark it paid so the reminder cron stops chasing a bank
+        // transfer for a period the card just paid (double-charge guard).
+        $outstandingRequest = $this->manualPaymentRequestRepository->findPendingForCurrentCycle($contract, $now);
+        if (null !== $outstandingRequest) {
+            $outstandingRequest->markPaid($now);
+        }
+
+        $this->auditLogger->log(
+            entityType: 'contract',
+            entityId: $contract->id->toRfc4122(),
+            eventType: 'recurring_established_on_prolong',
+            payload: [
+                'gopay_parent_payment_id' => $status->id,
+                'amount' => $status->amount,
+                'next_billing_date' => $nextBillingDate?->format('Y-m-d'),
+                'paid_through_date' => $paidThroughDate->format('Y-m-d'),
+            ],
+            orderId: $contract->order->id,
+            userIdContext: $contract->user->id,
+        );
+
+        // Podmínky čl. IV: confirmation e-mail within 2 working days of the
+        // recurring-payment consent taking effect.
+        $this->eventBus->dispatch(new RecurringPaymentEstablished(
+            orderId: $contract->order->id,
+            goPayParentPaymentId: $status->id,
+            amount: $contract->getEffectiveRecurringAmount(),
+            occurredOn: $now,
+        ));
+
+        try {
+            $this->eventBus->dispatch(new RecurringPaymentCharged(
+                contractId: $contract->id,
+                paymentId: $status->id,
+                amount: $status->amount ?? $contract->getEffectiveRecurringAmount(),
+                occurredOn: $now,
+            ));
+        } catch (HandlerFailedException $e) {
+            if ($this->isUniqueViolation($e)) {
+                $this->logger->warning('Duplicate webhook lost the race for card-setup Payment insert', [
+                    'gopay_payment_id' => $status->id,
+                    'contract_id' => $contract->id->toRfc4122(),
+                ]);
+
+                return;
+            }
+
+            throw $e;
+        }
+
+        $this->logger->info('Prolongation card setup completed via webhook', [
+            'contract_id' => $contract->id->toRfc4122(),
+            'gopay_parent_payment_id' => $status->id,
         ]);
     }
 

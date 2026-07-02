@@ -8,7 +8,6 @@ use App\Entity\Contract;
 use App\Entity\Order;
 use App\Entity\Storage;
 use App\Entity\User;
-use App\Enum\RentalType;
 use App\Enum\TerminationReason;
 use App\Service\ContractDocumentGenerator;
 use Doctrine\Bundle\FixturesBundle\Fixture;
@@ -22,8 +21,9 @@ final class ContractFixtures extends Fixture implements DependentFixtureInterfac
     // Active contract (limited, signed)
     public const REF_CONTRACT_ACTIVE = 'contract-active';
 
-    // Active unlimited contract (signed)
-    public const REF_CONTRACT_UNLIMITED = 'contract-unlimited';
+    // Active card-recurring contract with a live token (signed) — carries the
+    // spec-076 availability guarantee (blocks its storage open-endedly)
+    public const REF_CONTRACT_RECURRING = 'contract-recurring';
 
     // Contract expiring in 7 days
     public const REF_CONTRACT_EXPIRING_7_DAYS = 'contract-expiring-7-days';
@@ -31,7 +31,7 @@ final class ContractFixtures extends Fixture implements DependentFixtureInterfac
     // Terminated contract
     public const REF_CONTRACT_TERMINATED = 'contract-terminated';
 
-    // Active unlimited contract with a pending termination notice
+    // Active recurring contract with a pending termination notice
     // (terminatesAt set ~30 days out) — drives the "ukončuje se" warning
     // across planning surfaces.
     public const REF_CONTRACT_TERMINATING = 'contract-terminating';
@@ -56,8 +56,8 @@ final class ContractFixtures extends Fixture implements DependentFixtureInterfac
         /** @var Order $orderCompleted */
         $orderCompleted = $this->getReference(OrderFixtures::REF_ORDER_COMPLETED, Order::class);
 
-        /** @var Order $orderUnlimited */
-        $orderUnlimited = $this->getReference(OrderFixtures::REF_ORDER_COMPLETED_UNLIMITED, Order::class);
+        /** @var Order $orderRecurring */
+        $orderRecurring = $this->getReference(OrderFixtures::REF_ORDER_COMPLETED_RECURRING, Order::class);
 
         /** @var Order $orderExpiringSoon */
         $orderExpiringSoon = $this->getReference(OrderFixtures::REF_ORDER_EXPIRING_SOON, Order::class);
@@ -84,7 +84,6 @@ final class ContractFixtures extends Fixture implements DependentFixtureInterfac
             order: $orderCompleted,
             user: $user,
             storage: $storageB3,
-            rentalType: RentalType::LIMITED,
             startDate: $orderCompleted->startDate,
             endDate: $orderCompleted->endDate,
             createdAt: $now->modify('-5 days'),
@@ -96,33 +95,32 @@ final class ContractFixtures extends Fixture implements DependentFixtureInterfac
         $manager->persist($contractActive);
         $this->addReference(self::REF_CONTRACT_ACTIVE, $contractActive);
 
-        // Contract for unlimited order
-        $contractUnlimitedId = Uuid::v7();
-        $contractUnlimited = new Contract(
-            id: $contractUnlimitedId,
-            order: $orderUnlimited,
+        // Contract for the card-recurring order (live GoPay token)
+        $contractRecurringId = Uuid::v7();
+        $contractRecurring = new Contract(
+            id: $contractRecurringId,
+            order: $orderRecurring,
             user: $user,
             storage: $storageC1,
-            rentalType: RentalType::UNLIMITED,
-            startDate: $orderUnlimited->startDate,
-            endDate: null, // Unlimited
+            startDate: $orderRecurring->startDate,
+            endDate: $orderRecurring->endDate ?? $orderRecurring->startDate->modify('+12 months'),
             createdAt: $now->modify('-34 days'),
         );
-        $contractUnlimited->sign($now->modify('-34 days'));
-        $this->generateDocument($contractUnlimited);
-        $orderUnlimited->complete($contractUnlimitedId, $now->modify('-34 days'));
-        $orderUnlimited->popEvents();
+        $contractRecurring->sign($now->modify('-34 days'));
+        $this->generateDocument($contractRecurring);
+        $orderRecurring->complete($contractRecurringId, $now->modify('-34 days'));
+        $orderRecurring->popEvents();
         // Recurring payment with two failed attempts — surfaces as ERROR severity on the
         // Po splatnosti page so admins have a non-empty list to look at in dev.
-        $contractUnlimited->setRecurringPayment(
-            'gopay-parent-debug-unlimited',
+        $contractRecurring->setRecurringPayment(
+            'gopay-parent-debug-recurring',
             $now->modify('-5 days'),
             $now->modify('-5 days'),
         );
-        $contractUnlimited->recordFailedBillingAttempt($now->modify('-3 days'));
-        $contractUnlimited->recordFailedBillingAttempt($now->modify('-3 days'));
-        $manager->persist($contractUnlimited);
-        $this->addReference(self::REF_CONTRACT_UNLIMITED, $contractUnlimited);
+        $contractRecurring->recordFailedBillingAttempt($now->modify('-3 days'));
+        $contractRecurring->recordFailedBillingAttempt($now->modify('-3 days'));
+        $manager->persist($contractRecurring);
+        $this->addReference(self::REF_CONTRACT_RECURRING, $contractRecurring);
 
         // Contract expiring in 7 days
         $contractExpiring7DaysId = Uuid::v7();
@@ -131,7 +129,6 @@ final class ContractFixtures extends Fixture implements DependentFixtureInterfac
             order: $orderExpiringSoon,
             user: $tenant,
             storage: $storageD3,
-            rentalType: RentalType::LIMITED,
             startDate: $orderExpiringSoon->startDate,
             endDate: $orderExpiringSoon->endDate, // 7 days from now
             createdAt: $now->modify('-27 days'),
@@ -149,7 +146,6 @@ final class ContractFixtures extends Fixture implements DependentFixtureInterfac
             id: Uuid::v7(),
             user: $tenant,
             storage: $storageE1,
-            rentalType: RentalType::LIMITED,
             paymentFrequency: null,
             startDate: $now->modify('-60 days'),
             endDate: $now->modify('-30 days'),
@@ -169,7 +165,6 @@ final class ContractFixtures extends Fixture implements DependentFixtureInterfac
             order: $terminatedOrder,
             user: $tenant,
             storage: $storageE1,
-            rentalType: RentalType::LIMITED,
             startDate: $now->modify('-60 days'),
             endDate: $now->modify('-30 days'),
             createdAt: $now->modify('-64 days'),
@@ -185,7 +180,7 @@ final class ContractFixtures extends Fixture implements DependentFixtureInterfac
         $manager->persist($contractTerminated);
         $this->addReference(self::REF_CONTRACT_TERMINATED, $contractTerminated);
 
-        // Active unlimited contract on storage E1 with a pending termination
+        // Active recurring contract on storage E1 with a pending termination
         // notice — surfaces the "ukončuje se" warning + terminatesAt date on
         // every planning view. (E1 is reused: the previous terminated contract
         // released the storage long before this one starts.)
@@ -195,9 +190,8 @@ final class ContractFixtures extends Fixture implements DependentFixtureInterfac
             order: $orderTerminating,
             user: $user,
             storage: $orderTerminating->storage,
-            rentalType: RentalType::UNLIMITED,
             startDate: $orderTerminating->startDate,
-            endDate: null,
+            endDate: $orderTerminating->endDate ?? $orderTerminating->startDate->modify('+12 months'),
             createdAt: $now->modify('-60 days'),
         );
         $contractTerminating->sign($now->modify('-60 days'));

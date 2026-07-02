@@ -11,7 +11,6 @@ use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\PaymentFrequency;
-use App\Enum\RentalType;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ManagerRegistry;
 use Psr\Clock\ClockInterface;
@@ -135,17 +134,19 @@ class SendRecurringPaymentAdvanceNoticeCommandTest extends KernelTestCase
         );
         $this->entityManager->persist($storage);
 
+        $startDate = $lastBilledAt->modify('-1 month');
+        $endDate = $startDate->modify('+12 months');
+
         $order = new Order(
             id: Uuid::v7(),
             user: $user,
             storage: $storage,
-            rentalType: RentalType::UNLIMITED,
             paymentFrequency: PaymentFrequency::MONTHLY,
-            startDate: $lastBilledAt->modify('-1 month'),
-            endDate: null,
+            startDate: $startDate,
+            endDate: $endDate,
             firstPaymentPrice: 35000,
             expiresAt: $now->modify('+7 days'),
-            createdAt: $lastBilledAt->modify('-1 month'),
+            createdAt: $startDate,
         );
         $this->entityManager->persist($order);
 
@@ -154,10 +155,9 @@ class SendRecurringPaymentAdvanceNoticeCommandTest extends KernelTestCase
             order: $order,
             user: $user,
             storage: $storage,
-            rentalType: RentalType::UNLIMITED,
-            startDate: $lastBilledAt->modify('-1 month'),
-            endDate: null,
-            createdAt: $lastBilledAt->modify('-1 month'),
+            startDate: $startDate,
+            endDate: $endDate,
+            createdAt: $startDate,
         );
         $contract->setRecurringPayment(
             'gp-parent-'.$emailSeed,

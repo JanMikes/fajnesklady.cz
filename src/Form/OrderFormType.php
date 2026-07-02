@@ -4,11 +4,8 @@ declare(strict_types=1);
 
 namespace App\Form;
 
-use App\Enum\BillingMode;
-use App\Enum\ExpectedDuration;
 use App\Enum\PaymentFrequency;
 use App\Enum\PaymentMethod;
-use App\Enum\RentalType;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\Extension\Core\Type\DateType;
@@ -152,28 +149,6 @@ final class OrderFormType extends AbstractType
                 'label' => 'Adresa je správná, pokračovat',
                 'required' => false,
             ])
-            ->add('rentalType', EnumType::class, [
-                'class' => RentalType::class,
-                'label' => 'Typ pronájmu',
-                'expanded' => true,
-                'choice_label' => fn (RentalType $type) => match ($type) {
-                    RentalType::LIMITED => 'Na dobu určitou',
-                    RentalType::UNLIMITED => 'Na dobu neurčitou (automaticky prodlužováno)',
-                },
-            ])
-            ->add('expectedDuration', EnumType::class, [
-                'class' => ExpectedDuration::class,
-                'label' => 'Předpokládaná doba pronájmu',
-                'label_attr' => ['class' => 'required'],
-                'expanded' => true,
-                // Live UX re-submits the form on every per-field blur with the
-                // radio potentially empty; server-side validateExpectedDuration
-                // is the source of truth when UNLIMITED is selected.
-                'required' => false,
-                'placeholder' => false,
-                'choice_label' => fn (ExpectedDuration $d) => $d->label(),
-                'help' => 'Informativní údaj pro provozovatele, nemá vliv na cenu ani podmínky pronájmu.',
-            ])
             ->add('startDate', DateType::class, [
                 'label' => 'Datum začátku',
                 'widget' => 'single_text',
@@ -191,21 +166,6 @@ final class OrderFormType extends AbstractType
                     'data-datepicker-min-date-value' => (new \DateTimeImmutable('today'))->modify('+7 days')->format('Y-m-d'),
                 ],
             ])
-            ->add('billingMode', EnumType::class, [
-                'class' => BillingMode::class,
-                'label' => 'Způsob platby',
-                'expanded' => true,
-                'required' => false,
-                // required: false is needed so live per-field validation doesn't fail when
-                // the form is re-submitted with an empty radio; without placeholder: false
-                // Symfony would render a stray empty "None" radio above the real choices.
-                'placeholder' => false,
-                'choices' => [
-                    'Automatická platba kartou' => BillingMode::AUTO_RECURRING,
-                    'Ručně schvalovaná platba (výzva e-mailem)' => BillingMode::MANUAL_RECURRING,
-                ],
-                'help' => 'Při ručně schvalované platbě Vám 7 dní před každou platbou pošleme e-mail s odkazem k zaplacení. Údaje o platební kartě se neukládají.',
-            ])
             ->add('paymentFrequency', EnumType::class, [
                 'class' => PaymentFrequency::class,
                 'label' => 'Frekvence platby',
@@ -216,7 +176,7 @@ final class OrderFormType extends AbstractType
                     PaymentFrequency::MONTHLY->label() => PaymentFrequency::MONTHLY,
                     PaymentFrequency::YEARLY->label() => PaymentFrequency::YEARLY,
                 ],
-                'help' => 'Roční platba znamená jednu platbu předem na celý rok. Karta se neukládá — další platbu obdržíte e-mailem před vypršením roku.',
+                'help' => 'Roční platba znamená jednu platbu předem na celý rok se slevou 10 %. Lze ji platit pouze bankovním převodem — výzvu k další platbě obdržíte e-mailem před vypršením roku.',
             ])
             ->add('paymentMethod', EnumType::class, [
                 'class' => PaymentMethod::class,

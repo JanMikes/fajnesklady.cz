@@ -21,7 +21,7 @@ use Symfony\UX\LiveComponent\Test\TestLiveComponent;
  * form binding, validation, storage selection, and the command handler.
  *
  * Covers the reported production bugs:
- *  - admins "unable to submit" with date errors (limited/backdated windows,
+ *  - admins "unable to submit" with date errors (backdated windows,
  *    paidThroughDate = today must be accepted end-to-end);
  *  - a 422 whose only violations sat on the hidden billing-address fields, so
  *    the submit failed with no visible feedback (spec: silent-422 regression).
@@ -41,10 +41,10 @@ final class AdminOnboardingFormSubmitTest extends KernelTestCase
         $this->entityManager = static::getContainer()->get('doctrine')->getManager();
     }
 
-    public function testLimitedRentalHappyPathCreatesOrderWithExactDates(): void
+    public function testFixedTermHappyPathCreatesOrderWithExactDates(): void
     {
         $start = (new \DateTimeImmutable('+10 days'))->format('Y-m-d');
-        $end = (new \DateTimeImmutable('+40 days'))->format('Y-m-d');
+        $end = (new \DateTimeImmutable('+55 days'))->format('Y-m-d');
 
         $component = $this->makeComponentWithPlaceAndType();
         $component->submitForm(['admin_onboarding_form' => $this->payload([
@@ -96,7 +96,7 @@ final class AdminOnboardingFormSubmitTest extends KernelTestCase
         self::assertSame($today, $order->paidThroughDate->format('Y-m-d'));
     }
 
-    public function testLimitedRentalWithoutEndDateShowsError(): void
+    public function testMissingEndDateShowsError(): void
     {
         $component = $this->makeComponentWithPlaceAndType();
         $component->submitForm(['admin_onboarding_form' => $this->payload([
@@ -104,10 +104,10 @@ final class AdminOnboardingFormSubmitTest extends KernelTestCase
         ])], 'submit');
 
         $html = $component->render()->toString();
-        self::assertStringContainsString('Pro omezený pronájem je vyžadováno datum konce.', $html);
+        self::assertStringContainsString('Zadejte datum konce.', $html);
     }
 
-    public function testLimitedRentalShorterThanSevenDaysShowsError(): void
+    public function testRentalShorterThanSevenDaysShowsError(): void
     {
         $component = $this->makeComponentWithPlaceAndType();
         $component->submitForm(['admin_onboarding_form' => $this->payload([
@@ -218,11 +218,11 @@ final class AdminOnboardingFormSubmitTest extends KernelTestCase
             'billingPostalCode' => '110 00',
             // Skip the Photon registry lookup (network) — override asserts the address.
             'addressOverride' => '1',
-            'rentalType' => 'limited',
             'startDate' => (new \DateTimeImmutable('+10 days'))->format('Y-m-d'),
-            'endDate' => (new \DateTimeImmutable('+40 days'))->format('Y-m-d'),
+            // Card payments (GoPay) require a rental of at least 31 days — keep
+            // the default window comfortably above that threshold.
+            'endDate' => (new \DateTimeImmutable('+55 days'))->format('Y-m-d'),
             'paymentMethod' => 'gopay',
-            'billingMode' => 'auto_recurring',
             'paymentFrequency' => 'monthly',
             'monthlyPriceMode' => 'standard',
             'customMonthlyPriceInCzk' => '',

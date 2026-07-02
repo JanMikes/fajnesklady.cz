@@ -11,7 +11,6 @@ use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\PaymentFrequency;
-use App\Enum\RentalType;
 use App\Event\OrderCreated;
 use App\Event\SendStorageAvailabilityWarningHandler;
 use App\Repository\OrderRepository;
@@ -302,7 +301,6 @@ class SendStorageAvailabilityWarningHandlerTest extends TestCase
             id: Uuid::v7(),
             user: $newTenant,
             storage: $storage,
-            rentalType: RentalType::LIMITED,
             paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: new \DateTimeImmutable('2025-08-01'),
             endDate: new \DateTimeImmutable('2025-09-01'),
@@ -346,7 +344,6 @@ class SendStorageAvailabilityWarningHandlerTest extends TestCase
             id: Uuid::v7(),
             user: $tenant,
             storage: $storage,
-            rentalType: RentalType::LIMITED,
             paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: new \DateTimeImmutable('2025-06-01'),
             endDate: new \DateTimeImmutable('2025-07-31'),
@@ -360,7 +357,6 @@ class SendStorageAvailabilityWarningHandlerTest extends TestCase
             order: $order,
             user: $tenant,
             storage: $storage,
-            rentalType: RentalType::LIMITED,
             startDate: new \DateTimeImmutable('2025-06-01'),
             endDate: new \DateTimeImmutable('2025-07-31'),
             createdAt: new \DateTimeImmutable(),

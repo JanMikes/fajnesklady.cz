@@ -11,8 +11,8 @@ use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\StorageUnavailability;
 use App\Entity\User;
+use App\Enum\BillingMode;
 use App\Enum\PaymentFrequency;
-use App\Enum\RentalType;
 use App\Exception\NoStorageAvailable;
 use App\Service\StorageAssignment;
 use Doctrine\ORM\EntityManagerInterface;
@@ -98,21 +98,23 @@ class StorageAssignmentTest extends KernelTestCase
         User $user,
         Storage $storage,
         \DateTimeImmutable $startDate,
-        ?\DateTimeImmutable $endDate,
-        RentalType $rentalType = RentalType::LIMITED,
+        \DateTimeImmutable $endDate,
+        BillingMode $billingMode = BillingMode::ONE_TIME,
     ): Order {
         $order = new Order(
             id: Uuid::v7(),
             user: $user,
             storage: $storage,
-            rentalType: $rentalType,
-            paymentFrequency: RentalType::UNLIMITED === $rentalType ? PaymentFrequency::MONTHLY : null,
+            paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: $startDate,
             endDate: $endDate,
             firstPaymentPrice: 50000,
             expiresAt: (new \DateTimeImmutable())->modify('+7 days'),
             createdAt: new \DateTimeImmutable(),
         );
+        // ONE_TIME (bank-transfer style) blocks only [startDate, endDate];
+        // AUTO_RECURRING blocks the storage open-endedly (spec 076 guarantee).
+        $order->setBillingMode($billingMode);
         $this->entityManager->persist($order);
 
         return $order;
@@ -123,15 +125,13 @@ class StorageAssignmentTest extends KernelTestCase
         User $user,
         Storage $storage,
         \DateTimeImmutable $startDate,
-        ?\DateTimeImmutable $endDate,
-        RentalType $rentalType = RentalType::LIMITED,
+        \DateTimeImmutable $endDate,
     ): Contract {
         $contract = new Contract(
             id: Uuid::v7(),
             order: $order,
             user: $user,
             storage: $storage,
-            rentalType: $rentalType,
             startDate: $startDate,
             endDate: $endDate,
             createdAt: new \DateTimeImmutable(),
@@ -266,7 +266,7 @@ class StorageAssignmentTest extends KernelTestCase
         $this->assertTrue($assigned->id->equals($storage2->id));
     }
 
-    public function testHandlesUnlimitedRentalsWithNullEndDate(): void
+    public function testNeverAssignsStorageGuaranteedByLiveTokenRecurringContract(): void
     {
         $tenant = $this->createUser('tenant@test.com');
         $place = $this->createPlace();
@@ -274,29 +274,30 @@ class StorageAssignmentTest extends KernelTestCase
         $storage1 = $this->createStorage($storageType, $place, 'A1');
         $storage2 = $this->createStorage($storageType, $place, 'A2');
 
-        // Create unlimited contract for storage1
+        // Card-recurring contract with a live token blocks storage1 open-endedly
+        // (spec 076 availability guarantee) — even past its end date.
         $order = $this->createOrder(
             $tenant,
             $storage1,
             new \DateTimeImmutable('+5 days'),
-            null,
-            RentalType::UNLIMITED,
+            new \DateTimeImmutable('+35 days'),
         );
-        $this->createContract(
+        $contract = $this->createContract(
             $order,
             $tenant,
             $storage1,
             new \DateTimeImmutable('+5 days'),
-            null,
-            RentalType::UNLIMITED,
+            new \DateTimeImmutable('+35 days'),
         );
+        $contract->setRecurringPayment('gopay-parent-guarantee', new \DateTimeImmutable('+35 days'), new \DateTimeImmutable('+35 days'));
 
         $this->entityManager->flush();
 
-        // Try to get a storage for unlimited rental
-        $startDate = new \DateTimeImmutable('+10 days');
+        // Requested window lies entirely AFTER the contract's end date.
+        $startDate = new \DateTimeImmutable('+40 days');
+        $endDate = new \DateTimeImmutable('+70 days');
 
-        $assigned = $this->storageAssignment->assignStorage($storageType, $place, $startDate, null);
+        $assigned = $this->storageAssignment->assignStorage($storageType, $place, $startDate, $endDate);
 
         // Should get storage2, not storage1
         $this->assertTrue($assigned->id->equals($storage2->id));

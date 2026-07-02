@@ -10,7 +10,6 @@ use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
-use App\Enum\RentalType;
 use App\Event\InvoiceCreated;
 use App\Event\SendInvoiceEmailHandler;
 use App\Repository\InvoiceRepository;
@@ -256,7 +255,6 @@ class SendInvoiceEmailHandlerTest extends TestCase
             id: Uuid::v7(),
             user: $tenant,
             storage: $storage,
-            rentalType: RentalType::LIMITED,
             paymentFrequency: null,
             startDate: new \DateTimeImmutable('2025-06-20'),
             endDate: new \DateTimeImmutable('2025-07-20'),

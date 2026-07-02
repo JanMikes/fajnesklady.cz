@@ -1,6 +1,6 @@
 import { Controller } from '@hotwired/stimulus';
 
-const PRESETS = [1, 3, 6];
+const PRESETS = [3, 6, 12];
 
 export default class extends Controller {
     static targets = ['button', 'hint'];

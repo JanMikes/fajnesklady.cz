@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller\Public;
 
 use App\Command\InitiatePaymentCommand;
+use App\Enum\BillingMode;
 use App\Repository\OrderRepository;
 use App\Service\GoPay\GoPayException;
 use App\Service\Messenger\HandlerFailureUnwrap;
@@ -45,6 +46,12 @@ final class PaymentInitiateController extends AbstractController
 
         if (!$order->canBePaid()) {
             return new JsonResponse(['error' => 'Tuto objednávku nelze zaplatit.'], Response::HTTP_BAD_REQUEST);
+        }
+
+        // Spec 076: cards only establish recurring payments — everything else
+        // is paid by bank transfer (the payment page renders a QR, no GoPay JS).
+        if (BillingMode::AUTO_RECURRING !== $order->billingMode) {
+            return new JsonResponse(['error' => 'Tato objednávka se platí bankovním převodem.'], Response::HTTP_BAD_REQUEST);
         }
 
         $returnUrl = $this->urlGenerator->generate(

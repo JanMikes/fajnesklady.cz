@@ -9,7 +9,6 @@ use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
-use App\Enum\RentalType;
 use App\Repository\InvoiceRepository;
 use App\Repository\UserRepository;
 use App\Service\Fakturoid\FakturoidClient;
@@ -396,7 +395,6 @@ class InvoicingServiceTest extends TestCase
             id: Uuid::v7(),
             user: $user,
             storage: $storage,
-            rentalType: RentalType::LIMITED,
             paymentFrequency: null,
             startDate: new \DateTimeImmutable('2025-06-20'),
             endDate: new \DateTimeImmutable('2025-07-20'),

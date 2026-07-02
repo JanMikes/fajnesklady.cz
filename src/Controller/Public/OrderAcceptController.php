@@ -7,6 +7,7 @@ namespace App\Controller\Public;
 use App\Command\AcceptOrderTermsCommand;
 use App\Command\CreateOrderCommand;
 use App\Command\GetOrCreateUserByEmailCommand;
+use App\Command\SetOrderPaymentPreferencesCommand;
 use App\Command\SignOrderCommand;
 use App\Entity\Order;
 use App\Entity\User;
@@ -16,7 +17,6 @@ use App\Repository\PlaceRepository;
 use App\Repository\StorageRepository;
 use App\Repository\StorageTypeRepository;
 use App\Service\Messenger\HandlerFailureUnwrap;
-use App\Service\Payment\VariableSymbolGenerator;
 use App\Service\PriceCalculator;
 use App\Service\StorageAssignment;
 use App\Service\StorageAvailabilityChecker;
@@ -52,7 +52,6 @@ final class OrderAcceptController extends AbstractController
         private readonly StorageAssignment $storageAssignment,
         private readonly LoggerInterface $logger,
         private readonly ClockInterface $clock,
-        private readonly VariableSymbolGenerator $variableSymbolGenerator,
     ) {
     }
 
@@ -359,7 +358,7 @@ final class OrderAcceptController extends AbstractController
                 throw new \RuntimeException('Failed to create user.');
             }
 
-            if (null === $formData->rentalType) {
+            if (null === $formData->endDate) {
                 throw new \RuntimeException('Invalid form data.');
             }
 
@@ -368,12 +367,10 @@ final class OrderAcceptController extends AbstractController
                 user: $user,
                 storageType: $storageType,
                 place: $place,
-                rentalType: $formData->rentalType,
                 startDate: $startDate,
                 endDate: $formData->endDate,
                 paymentFrequency: $formData->resolvedPaymentFrequency(),
                 preSelectedStorage: $storage,
-                expectedDuration: $formData->expectedDuration,
             ));
 
             $orderHandledStamp = $orderEnvelope->last(HandledStamp::class);
@@ -383,24 +380,16 @@ final class OrderAcceptController extends AbstractController
                 throw new \RuntimeException('Failed to create order.');
             }
 
-            // Lock the customer's billing-mode choice onto the order. AUTO is
-            // the default; only MANUAL needs an explicit set. The form layer
-            // already enforced eligibility (UNLIMITED forced AUTO, short
-            // LIMITED forced ONE_TIME) via OrderFormData::validateBillingMode.
-            $billingMode = $formData->resolvedBillingMode();
-            if (\App\Enum\BillingMode::AUTO_RECURRING !== $billingMode) {
-                $order->setBillingMode($billingMode);
-            }
-
-            if (null !== $formData->paymentMethod) {
-                $order->setPaymentMethod($formData->paymentMethod);
-            }
-
-            if (\App\Enum\PaymentMethod::BANK_TRANSFER === $formData->paymentMethod) {
-                $order->assignVariableSymbol(
-                    $this->variableSymbolGenerator->generate($order->id),
-                );
-            }
+            // Lock the derived billing mode / payment method onto the order
+            // (the form layer derived the mode via BillingMode::derive(),
+            // spec 076). Goes through the command bus so these writes get
+            // their own flush instead of riding along on the SignOrderCommand
+            // dispatch below by accident.
+            $this->commandBus->dispatch(new SetOrderPaymentPreferencesCommand(
+                order: $order,
+                billingMode: $formData->resolvedBillingMode(),
+                paymentMethod: $formData->paymentMethod,
+            ));
 
             // 3. Sign order
             /** @var SigningMethod $signingMethod */

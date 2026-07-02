@@ -8,6 +8,7 @@ use App\Entity\Order;
 use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\User;
+use App\Enum\BillingMode;
 use App\Enum\OrderStatus;
 use App\Enum\PaymentMethod;
 use App\Exception\OrderNotFound;
@@ -266,16 +267,22 @@ class OrderRepository
                 ->setParameter('excludeId', $excludeOrder->id);
         }
 
+        // Spec 076 availability guarantee: a card-recurring (AUTO_RECURRING)
+        // order blocks its storage open-endedly while alive — nobody may
+        // pre-book any future window of a guaranteed unit. Legacy NULL-end
+        // rows block open-endedly too.
         if (null === $endDate) {
             // Requested period is indefinite - any order overlaps if it starts before or ends after requested start
-            $qb->andWhere('o.endDate IS NULL OR o.endDate >= :startDate')
-                ->setParameter('startDate', $startDate);
+            $qb->andWhere('o.billingMode = :autoRecurring OR o.endDate IS NULL OR o.endDate >= :startDate')
+                ->setParameter('startDate', $startDate)
+                ->setParameter('autoRecurring', BillingMode::AUTO_RECURRING);
         } else {
             // Standard overlap: startA <= endB AND startB <= endA
             $qb->andWhere('o.startDate <= :endDate')
-                ->andWhere('o.endDate IS NULL OR o.endDate >= :startDate')
+                ->andWhere('o.billingMode = :autoRecurring OR o.endDate IS NULL OR o.endDate >= :startDate')
                 ->setParameter('startDate', $startDate)
-                ->setParameter('endDate', $endDate);
+                ->setParameter('endDate', $endDate)
+                ->setParameter('autoRecurring', BillingMode::AUTO_RECURRING);
         }
 
         return $qb->getQuery()->getResult();
@@ -309,14 +316,17 @@ class OrderRepository
             ->setParameter('storages', $storages)
             ->setParameter('statuses', self::BLOCKING_STATUSES);
 
+        // Spec 076: AUTO_RECURRING orders block open-endedly (see the single-storage twin).
         if (null === $endDate) {
-            $qb->andWhere('o.endDate IS NULL OR o.endDate >= :startDate')
-                ->setParameter('startDate', $startDate);
+            $qb->andWhere('o.billingMode = :autoRecurring OR o.endDate IS NULL OR o.endDate >= :startDate')
+                ->setParameter('startDate', $startDate)
+                ->setParameter('autoRecurring', BillingMode::AUTO_RECURRING);
         } else {
             $qb->andWhere('o.startDate <= :endDate')
-                ->andWhere('o.endDate IS NULL OR o.endDate >= :startDate')
+                ->andWhere('o.billingMode = :autoRecurring OR o.endDate IS NULL OR o.endDate >= :startDate')
                 ->setParameter('startDate', $startDate)
-                ->setParameter('endDate', $endDate);
+                ->setParameter('endDate', $endDate)
+                ->setParameter('autoRecurring', BillingMode::AUTO_RECURRING);
         }
 
         return $qb->getQuery()->getResult();

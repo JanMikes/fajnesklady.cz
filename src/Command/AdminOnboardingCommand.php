@@ -8,10 +8,8 @@ use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Enum\BillingMode;
-use App\Enum\ExpectedDuration;
 use App\Enum\PaymentFrequency;
 use App\Enum\PaymentMethod;
-use App\Enum\RentalType;
 use Symfony\Component\Uid\Uuid;
 
 final readonly class AdminOnboardingCommand
@@ -36,15 +34,13 @@ final readonly class AdminOnboardingCommand
         public Storage $storage,
         public StorageType $storageType,
         public Place $place,
-        public RentalType $rentalType,
         public \DateTimeImmutable $startDate,
-        public ?\DateTimeImmutable $endDate,
+        public \DateTimeImmutable $endDate,
         public PaymentMethod $paymentMethod,
         public ?int $individualMonthlyAmount,
         public ?\DateTimeImmutable $paidThroughDate,
         public Uuid $createdByAdminId,
         public BillingMode $billingMode,
-        public ?ExpectedDuration $expectedDuration,
         public PaymentFrequency $paymentFrequency,
         public ?string $variableSymbolOverride = null,
         public ?string $uploadedContractPath = null,

@@ -5,11 +5,9 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Enum\BillingMode;
-use App\Enum\ExpectedDuration;
 use App\Enum\OrderStatus;
 use App\Enum\PaymentFrequency;
 use App\Enum\PaymentMethod;
-use App\Enum\RentalType;
 use App\Enum\SigningMethod;
 use App\Event\OnboardingDebtPaid;
 use App\Event\OrderCancelled;
@@ -150,15 +148,6 @@ class Order implements EntityWithEvents
     #[ORM\JoinColumn(nullable: true)]
     public private(set) ?User $createdByAdmin = null;
 
-    /**
-     * Customer's self-reported expected stay length, asked only when they pick
-     * UNLIMITED. Research signal for admins/landlords — never read by billing,
-     * pricing, or any business rule. NULL for LIMITED orders and for legacy
-     * UNLIMITED orders placed before this column existed.
-     */
-    #[ORM\Column(length: 10, nullable: true, enumType: ExpectedDuration::class)]
-    public private(set) ?ExpectedDuration $expectedDuration = null;
-
     #[ORM\Column(length: 500, nullable: true)]
     public private(set) ?string $uploadedContractDocumentPath = null;
 
@@ -181,8 +170,6 @@ class Order implements EntityWithEvents
         #[ORM\ManyToOne(targetEntity: Storage::class)]
         #[ORM\JoinColumn(nullable: false)]
         private(set) Storage $storage,
-        #[ORM\Column(length: 20, enumType: RentalType::class)]
-        private(set) RentalType $rentalType,
         #[ORM\Column(length: 20, enumType: PaymentFrequency::class, nullable: true)]
         private(set) ?PaymentFrequency $paymentFrequency,
         #[ORM\Column(type: Types::DATE_IMMUTABLE)]
@@ -329,16 +316,22 @@ class Order implements EntityWithEvents
         return OrderStatus::PAID === $this->status;
     }
 
-    public function isUnlimited(): bool
+    /**
+     * Legacy-only: orders placed before spec 076 as "doba neurčitá" carry a
+     * NULL endDate. Every order created since always has a concrete endDate,
+     * so this can only return true for those historical rows. Kept so status
+     * pages, e-mails and schedules of legacy orders keep rendering correctly.
+     */
+    public function isOpenEnded(): bool
     {
-        return RentalType::UNLIMITED === $this->rentalType;
+        return null === $this->endDate;
     }
 
     /**
      * Whether this order is billed on a monthly recurring cadence.
      *
      * Mirrors {@see PriceCalculator::needsRecurringBilling()}.
-     * Three pricing modes total: isOneTime() | isFixedTermRecurring() | isUnlimited().
+     * Three pricing modes total: isOneTime() | isFixedTermRecurring() | isOpenEnded().
      *
      * The 28-day threshold is duplicated rather than imported from
      * PriceCalculator so the entity stays free of service deps. A unit test
@@ -459,11 +452,6 @@ class Order implements EntityWithEvents
     public function extendExpiration(\DateTimeImmutable $newExpiresAt): void
     {
         $this->expiresAt = $newExpiresAt;
-    }
-
-    public function setExpectedDuration(?ExpectedDuration $duration): void
-    {
-        $this->expectedDuration = $duration;
     }
 
     public function setUploadedContractDocumentPath(string $path): void

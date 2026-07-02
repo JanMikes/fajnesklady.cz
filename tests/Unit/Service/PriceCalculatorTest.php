@@ -10,7 +10,6 @@ use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\PaymentFrequency;
-use App\Enum\RentalType;
 use App\Service\PriceCalculator;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
@@ -484,7 +483,6 @@ class PriceCalculatorTest extends TestCase
     public function testBuildScheduleFromOrderOneTime(): void
     {
         $order = $this->createOrder(
-            rentalType: RentalType::LIMITED,
             startDate: new \DateTimeImmutable('2025-06-15'),
             endDate: new \DateTimeImmutable('2025-06-29'), // 14 days
             firstPaymentPrice: 180000,
@@ -503,7 +501,6 @@ class PriceCalculatorTest extends TestCase
     {
         // 90 days @ 5 000 Kč/měsíc = 3 entries (full + full + prorated tail)
         $order = $this->createOrder(
-            rentalType: RentalType::LIMITED,
             startDate: new \DateTimeImmutable('2025-06-15'),
             endDate: new \DateTimeImmutable('2025-09-13'),
             firstPaymentPrice: 500000,
@@ -518,10 +515,11 @@ class PriceCalculatorTest extends TestCase
         $this->assertSame(500000, $schedule->firstPayment()->amount);
     }
 
-    public function testBuildScheduleFromOrderUnlimited(): void
+    public function testBuildScheduleFromOrderLegacyOpenEnded(): void
     {
+        // Legacy DB rows may still carry endDate = null; buildScheduleFromOrder
+        // keys its open-ended branch on Order::isOpenEnded().
         $order = $this->createOrder(
-            rentalType: RentalType::UNLIMITED,
             startDate: new \DateTimeImmutable('2025-06-15'),
             endDate: null,
             firstPaymentPrice: 500000,
@@ -549,9 +547,8 @@ class PriceCalculatorTest extends TestCase
 
         $order = $this->createOrderWithStorage(
             $storage,
-            rentalType: RentalType::UNLIMITED,
             startDate: new \DateTimeImmutable('2025-06-15'),
-            endDate: null,
+            endDate: new \DateTimeImmutable('2026-06-15'),
             firstPaymentPrice: 500000,
         );
 
@@ -577,7 +574,6 @@ class PriceCalculatorTest extends TestCase
     }
 
     private function createOrder(
-        RentalType $rentalType,
         \DateTimeImmutable $startDate,
         ?\DateTimeImmutable $endDate,
         int $firstPaymentPrice,
@@ -586,12 +582,11 @@ class PriceCalculatorTest extends TestCase
         $place = $this->createPlace();
         $storage = $this->createStorage($storageType, $place);
 
-        return $this->createOrderWithStorage($storage, $rentalType, $startDate, $endDate, $firstPaymentPrice);
+        return $this->createOrderWithStorage($storage, $startDate, $endDate, $firstPaymentPrice);
     }
 
     private function createOrderWithStorage(
         Storage $storage,
-        RentalType $rentalType,
         \DateTimeImmutable $startDate,
         ?\DateTimeImmutable $endDate,
         int $firstPaymentPrice,
@@ -603,7 +598,6 @@ class PriceCalculatorTest extends TestCase
             id: Uuid::v7(),
             user: $this->createUser(),
             storage: $storage,
-            rentalType: $rentalType,
             paymentFrequency: $paymentFrequency,
             startDate: $startDate,
             endDate: $endDate,
@@ -667,9 +661,10 @@ class PriceCalculatorTest extends TestCase
     {
         $start = new \DateTimeImmutable('2026-06-01');
 
-        $this->assertTrue($this->calculator->isEligibleForYearly(RentalType::UNLIMITED, $start, null));
-        $this->assertFalse($this->calculator->isEligibleForYearly(RentalType::LIMITED, $start, $start->modify('+359 days')));
-        $this->assertTrue($this->calculator->isEligibleForYearly(RentalType::LIMITED, $start, $start->modify('+360 days')));
+        // Null end (legacy open-ended orders) counts as eligible.
+        $this->assertTrue($this->calculator->isEligibleForYearly($start, null));
+        $this->assertFalse($this->calculator->isEligibleForYearly($start, $start->modify('+359 days')));
+        $this->assertTrue($this->calculator->isEligibleForYearly($start, $start->modify('+360 days')));
     }
 
     public function testBuildPaymentScheduleUnlimitedYearlyEmitsOneEntry(): void
@@ -731,9 +726,8 @@ class PriceCalculatorTest extends TestCase
 
         $order = $this->createOrderWithStorage(
             $storage,
-            rentalType: RentalType::UNLIMITED,
             startDate: new \DateTimeImmutable('2026-06-01'),
-            endDate: null,
+            endDate: new \DateTimeImmutable('2027-06-01'),
             firstPaymentPrice: 510000,
             paymentFrequency: PaymentFrequency::YEARLY,
         );

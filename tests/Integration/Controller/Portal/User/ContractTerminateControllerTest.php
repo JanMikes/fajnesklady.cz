@@ -31,7 +31,7 @@ class ContractTerminateControllerTest extends WebTestCase
 
     public function testRequiresAuthentication(): void
     {
-        $contract = $this->findUnlimitedContract();
+        $contract = $this->findRecurringContract();
 
         $this->client->request('POST', $this->url($contract));
 
@@ -40,7 +40,7 @@ class ContractTerminateControllerTest extends WebTestCase
 
     public function testDeniedForNonOwner(): void
     {
-        $contract = $this->findUnlimitedContract();
+        $contract = $this->findRecurringContract();
         $this->client->loginUser($this->findUserByEmail('tenant@example.com'), 'main');
 
         $this->client->request('POST', $this->url($contract));
@@ -50,7 +50,7 @@ class ContractTerminateControllerTest extends WebTestCase
 
     public function testTerminatePersistsRecurringCancelledAuditRow(): void
     {
-        $contract = $this->findUnlimitedContract();
+        $contract = $this->findRecurringContract();
         $contractId = $contract->id->toRfc4122();
         $this->client->loginUser($this->findUserByEmail('user@example.com'), 'main');
 
@@ -84,10 +84,10 @@ class ContractTerminateControllerTest extends WebTestCase
         return '/portal/smlouvy/'.$contract->id->toRfc4122().'/ukoncit';
     }
 
-    private function findUnlimitedContract(): Contract
+    private function findRecurringContract(): Contract
     {
-        // REF_CONTRACT_UNLIMITED — owned by user@example.com, has an active
-        // recurring payment (gopay-parent-debug-unlimited), occupies C1.
+        // REF_CONTRACT_RECURRING — owned by user@example.com, has an active
+        // recurring payment (gopay-parent-debug-recurring), occupies C1.
         $contract = $this->entityManager->createQueryBuilder()
             ->select('c')
             ->from(Contract::class, 'c')

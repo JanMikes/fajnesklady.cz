@@ -9,7 +9,6 @@ use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\PaymentFrequency;
-use App\Enum\RentalType;
 use App\Form\OrderFormData;
 use App\Form\OrderFormType;
 use App\Repository\PlatformSettingsRepository;
@@ -114,10 +113,9 @@ final class OrderForm extends AbstractController
 
     /**
      * The rental window the customer has currently chosen, or null when it is
-     * not yet usable (no start date, or LIMITED without a valid end). UNLIMITED
-     * resolves to an open-ended window (null end). This is the SAME window the
-     * availability map, the select guard, and order-acceptance enforcement all
-     * key on.
+     * not yet usable (no start date, or no valid end after it). This is the
+     * SAME window the availability map, the select guard, and order-acceptance
+     * enforcement all key on.
      *
      * Read from the live {@see $formValues} (the client's current field values),
      * NOT getForm()->getData(): a LiveAction such as selectStorage runs BEFORE
@@ -125,21 +123,12 @@ final class OrderForm extends AbstractController
      * session-hydrated model, not the dates the customer just typed. Mirrors the
      * existing formValues access in {@see self::validateField()}.
      *
-     * @return array{\DateTimeImmutable, ?\DateTimeImmutable}|null
+     * @return array{\DateTimeImmutable, \DateTimeImmutable}|null
      */
     private function resolveWindow(): ?array
     {
         $start = $this->parseFormDate($this->formValues['startDate'] ?? null);
         if (null === $start) {
-            return null;
-        }
-
-        $rentalType = (string) ($this->formValues['rentalType'] ?? '');
-        if (RentalType::UNLIMITED->value === $rentalType) {
-            return [$start, null];
-        }
-
-        if (RentalType::LIMITED->value !== $rentalType) {
             return null;
         }
 
@@ -216,24 +205,22 @@ final class OrderForm extends AbstractController
     }
 
     /**
-     * Whether the customer is currently eligible to choose between AUTO and
-     * MANUAL recurring billing. Only fixed-term LIMITED rentals of ≥ 28 days
-     * surface the radio — short LIMITED is forced ONE_TIME, UNLIMITED is
-     * forced AUTO. Re-evaluated reactively on every date change.
+     * Whether the card option is available for the chosen window: spec 076
+     * allows cards only for recurring monthly billing, which needs a rental of
+     * at least {@see PriceCalculator::WEEKLY_THRESHOLD_DAYS} days. Returns true
+     * while the dates are missing/invalid (nothing to judge yet — the payment
+     * section shouldn't flash a warning before the customer picked a window);
+     * server-side {@see OrderFormData::validatePaymentMethod()} is the backstop.
      */
-    public function isEligibleForBillingModeChoice(): bool
+    public function isCardEligible(): bool
     {
         $data = $this->getForm()->getData();
         if (!$data instanceof OrderFormData) {
-            return false;
+            return true;
         }
 
-        if (RentalType::LIMITED !== $data->rentalType) {
-            return false;
-        }
-
-        if (null === $data->startDate || null === $data->endDate) {
-            return false;
+        if (null === $data->startDate || null === $data->endDate || $data->endDate <= $data->startDate) {
+            return true;
         }
 
         return (int) $data->startDate->diff($data->endDate)->days >= PriceCalculator::WEEKLY_THRESHOLD_DAYS;
@@ -241,18 +228,14 @@ final class OrderForm extends AbstractController
 
     /**
      * Whether the customer is currently eligible for the YEARLY frequency
-     * choice — UNLIMITED is always eligible; LIMITED needs at least
-     * {@see PriceCalculator::YEARLY_THRESHOLD_DAYS} days (spec 045).
+     * choice — needs at least {@see PriceCalculator::YEARLY_THRESHOLD_DAYS}
+     * days (spec 045).
      */
     public function isEligibleForFrequencyChoice(): bool
     {
         $data = $this->getForm()->getData();
         if (!$data instanceof OrderFormData) {
             return false;
-        }
-
-        if (RentalType::UNLIMITED === $data->rentalType) {
-            return true;
         }
 
         if (null === $data->startDate || null === $data->endDate) {
@@ -274,10 +257,6 @@ final class OrderForm extends AbstractController
 
         if (PaymentFrequency::YEARLY === $data->paymentFrequency && $this->isEligibleForFrequencyChoice()) {
             return 'yearly';
-        }
-
-        if (RentalType::UNLIMITED === $data->rentalType) {
-            return 'monthly_long';
         }
 
         if (null === $data->startDate || null === $data->endDate) {
@@ -325,12 +304,6 @@ final class OrderForm extends AbstractController
         $frequency = (PaymentFrequency::YEARLY === $data->paymentFrequency && $this->isEligibleForFrequencyChoice())
             ? PaymentFrequency::YEARLY
             : PaymentFrequency::MONTHLY;
-
-        if (RentalType::UNLIMITED === $data->rentalType) {
-            $startDate = $data->startDate ?? new \DateTimeImmutable('today');
-
-            return $this->priceCalculator->buildPaymentSchedule($storage, $startDate, null, $frequency);
-        }
 
         if (null === $data->startDate || null === $data->endDate) {
             return null;
@@ -398,10 +371,6 @@ final class OrderForm extends AbstractController
 
         /** @var OrderFormData $data */
         $data = $this->getForm()->getData();
-
-        if (RentalType::UNLIMITED === $data->rentalType) {
-            $data->endDate = null;
-        }
 
         if ($this->emailExistsInSystem) {
             $data->plainPassword = null;

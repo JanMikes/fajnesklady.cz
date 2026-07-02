@@ -11,7 +11,6 @@ use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\OrderStatus;
-use App\Enum\RentalType;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ManagerRegistry;
 use Psr\Clock\ClockInterface;
@@ -108,7 +107,6 @@ class SendExpirationRemindersCommandTest extends KernelTestCase
             id: Uuid::v7(),
             user: $user,
             storage: $storage,
-            rentalType: RentalType::LIMITED,
             paymentFrequency: null,
             startDate: $now->modify('-30 days'),
             endDate: $endDate,
@@ -138,9 +136,8 @@ class SendExpirationRemindersCommandTest extends KernelTestCase
             order: $order,
             user: $order->user,
             storage: $order->storage,
-            rentalType: $order->rentalType,
             startDate: $order->startDate,
-            endDate: $order->endDate,
+            endDate: $order->endDate ?? $order->startDate->modify('+12 months'),
             createdAt: $this->clock->now(),
         );
         $this->entityManager->persist($contract);
@@ -214,74 +211,6 @@ class SendExpirationRemindersCommandTest extends KernelTestCase
         $commandTester->execute([]);
 
         $commandTester->assertCommandIsSuccessful();
-        $this->assertStringContainsString('No contracts expiring soon', $commandTester->getDisplay());
-    }
-
-    public function testSkipsUnlimitedContracts(): void
-    {
-        $now = $this->clock->now();
-
-        // Remove fixture contracts that would interfere with this test
-        $this->entityManager->createQueryBuilder()
-            ->delete(Contract::class, 'c')
-            ->where('c.endDate IS NOT NULL')
-            ->andWhere('c.endDate > :now')
-            ->andWhere('c.endDate <= :maxDate')
-            ->setParameter('now', $now)
-            ->setParameter('maxDate', $now->modify('+30 days'))
-            ->getQuery()
-            ->execute();
-
-        $tenant = $this->createUser('tenant-unlimited@test.com');
-        $place = $this->createPlace();
-        $storageType = $this->createStorageType();
-        $storage = $this->createStorage($storageType, $place, 'UNLIM1');
-
-        // Create order with no end date (unlimited)
-        $order = new Order(
-            id: Uuid::v7(),
-            user: $tenant,
-            storage: $storage,
-            rentalType: RentalType::UNLIMITED,
-            paymentFrequency: null,
-            startDate: $now->modify('-30 days'),
-            endDate: null, // Unlimited
-            firstPaymentPrice: 35000,
-            expiresAt: $now->modify('+7 days'),
-            createdAt: $now->modify('-30 days'),
-        );
-        $order->reserve($now);
-
-        // Set status and paidAt directly via reflection to avoid triggering OrderPaid event
-        $reflection = new \ReflectionClass($order);
-        $statusProperty = $reflection->getProperty('status');
-        $statusProperty->setValue($order, OrderStatus::COMPLETED);
-        $paidAtProperty = $reflection->getProperty('paidAt');
-        $paidAtProperty->setValue($order, $now);
-
-        $this->entityManager->persist($order);
-
-        // Create unlimited contract
-        $contract = new Contract(
-            id: Uuid::v7(),
-            order: $order,
-            user: $order->user,
-            storage: $order->storage,
-            rentalType: $order->rentalType,
-            startDate: $order->startDate,
-            endDate: null, // Unlimited
-            createdAt: $now,
-        );
-        $this->entityManager->persist($contract);
-        $this->entityManager->flush();
-
-        // Run the command
-        $command = $this->application->find('app:send-expiration-reminders');
-        $commandTester = new CommandTester($command);
-        $commandTester->execute([]);
-
-        $commandTester->assertCommandIsSuccessful();
-        // Unlimited contracts should not generate reminders
         $this->assertStringContainsString('No contracts expiring soon', $commandTester->getDisplay());
     }
 }

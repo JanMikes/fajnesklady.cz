@@ -10,9 +10,7 @@ use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
-use App\Enum\ExpectedDuration;
 use App\Enum\PaymentFrequency;
-use App\Enum\RentalType;
 use App\Exception\NoStorageAvailable;
 use App\Repository\ContractRepository;
 use App\Repository\OrderRepository;
@@ -48,15 +46,19 @@ final readonly class OrderService
         User $user,
         StorageType $storageType,
         Place $place,
-        RentalType $rentalType,
         \DateTimeImmutable $startDate,
         ?\DateTimeImmutable $endDate,
         \DateTimeImmutable $now,
         PaymentFrequency $paymentFrequency = PaymentFrequency::MONTHLY,
         ?Storage $preSelectedStorage = null,
         ?int $monthlyPriceOverride = null,
-        ?ExpectedDuration $expectedDuration = null,
     ): Order {
+        // Spec 076: every new order is fixed-term. The nullable signature only
+        // survives so form-layer callers can pass through without asserting.
+        if (null === $endDate) {
+            throw new \InvalidArgumentException('Every order must have an end date; open-ended rentals no longer exist.');
+        }
+
         // A per-customer monthly price override is a *monthly* figure and is not
         // supported for yearly billing: accepting a positive override would
         // charge a single month as the "first payment" and then silently ignore
@@ -117,7 +119,6 @@ final readonly class OrderService
             id: $this->identityProvider->next(),
             user: $user,
             storage: $storage,
-            rentalType: $rentalType,
             paymentFrequency: $paymentFrequency,
             startDate: $startDate,
             endDate: $endDate,
@@ -137,12 +138,6 @@ final readonly class OrderService
             $place->manualBillingOffsetOverdueFirst,
             $place->manualBillingOffsetOverdueFinal,
         );
-
-        // Drop a non-null expectedDuration on the floor when the rental is LIMITED —
-        // the field only applies to UNLIMITED orders and must never poison the column.
-        if (RentalType::UNLIMITED === $rentalType) {
-            $order->setExpectedDuration($expectedDuration);
-        }
 
         $this->orderRepository->save($order);
         $this->auditLogger->logOrderCreated($order);
@@ -190,19 +185,17 @@ final readonly class OrderService
             throw new \DomainException('Order must be paid before it can be completed.');
         }
 
-        // VOP §IV: every contract is "doba určitá". UNLIMITED orders have null
-        // endDate (customer intent = indefinite), but the contract gets a concrete
-        // period that advances on each successful recurring charge.
-        $paymentFrequency = $order->paymentFrequency ?? PaymentFrequency::MONTHLY;
-        $cadenceStep = PaymentFrequency::YEARLY === $paymentFrequency ? '+1 year' : '+1 month';
-        $endDate = $order->endDate ?? $order->startDate->modify($cadenceStep);
+        // Spec 076: orders always carry an endDate, so the contract period is
+        // exactly the ordered one. Legacy open-ended orders were all completed
+        // long before this path can run for them again.
+        $endDate = $order->endDate;
+        \assert(null !== $endDate);
 
         $contract = new Contract(
             id: $this->identityProvider->next(),
             order: $order,
             user: $order->user,
             storage: $order->storage,
-            rentalType: $order->rentalType,
             startDate: $order->startDate,
             endDate: $endDate,
             createdAt: $now,

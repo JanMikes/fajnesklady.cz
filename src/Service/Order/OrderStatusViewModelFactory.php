@@ -130,14 +130,28 @@ final readonly class OrderStatusViewModelFactory
             $newOrderUrl = $this->urlGenerator->generate('app_home', [], UrlGeneratorInterface::ABSOLUTE_URL);
         }
 
-        $payManualNowUrl = null;
+        // Spec 077: an active contract can be prolonged in place — surface the
+        // signed CTA so passwordless customers can act straight from /stav.
+        $prolongUrl = null;
+        if (null !== $contract
+            && OrderStatus::COMPLETED === $order->status
+            && !$contract->isTerminated()
+            && !$contract->hasPendingTermination()
+            && $contract->endDate >= $now->setTime(0, 0)) {
+            $prolongUrl = $this->statusUrlGenerator->generateProlongation($contract);
+        }
+
+        $manualNowVariableSymbol = null;
+        $manualNowBankAccount = null;
         $manualNowAmountInHaler = null;
         $manualNowPeriodStart = null;
         $nextManualPaymentRequestDate = null;
         if (null !== $contract && BillingMode::MANUAL_RECURRING === $contract->billingMode) {
             $pendingRequest = $this->manualPaymentRequestRepository->findPendingForCurrentCycle($contract, $now);
-            if (null !== $pendingRequest && null !== $pendingRequest->goPayGatewayUrl) {
-                $payManualNowUrl = $pendingRequest->goPayGatewayUrl;
+            // Spec 076: manual cycles are paid by bank transfer — surface VS + QR.
+            if (null !== $pendingRequest && null !== $order->variableSymbol) {
+                $manualNowVariableSymbol = $order->variableSymbol;
+                $manualNowBankAccount = $this->qrPaymentGenerator->getBankAccountFormatted();
                 $manualNowAmountInHaler = $pendingRequest->amount;
                 $manualNowPeriodStart = $pendingRequest->periodStart;
             }
@@ -247,7 +261,9 @@ final readonly class OrderStatusViewModelFactory
             invoiceDownloads: $invoiceDownloads,
             newOrderUrl: $newOrderUrl,
             now: $now,
-            payManualNowUrl: $payManualNowUrl,
+            prolongUrl: $prolongUrl,
+            manualNowVariableSymbol: $manualNowVariableSymbol,
+            manualNowBankAccount: $manualNowBankAccount,
             nextManualPaymentRequestDate: $nextManualPaymentRequestDate,
             manualNowAmountInHaler: $manualNowAmountInHaler,
             manualNowPeriodStart: $manualNowPeriodStart,

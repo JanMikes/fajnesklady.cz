@@ -11,7 +11,6 @@ use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\PaymentFrequency;
-use App\Enum\RentalType;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ManagerRegistry;
 use Psr\Clock\ClockInterface;
@@ -156,17 +155,19 @@ class SendExternalPrepaymentEndingSoonCommandTest extends KernelTestCase
         );
         $this->entityManager->persist($storage);
 
+        $startDate = $now->modify('-90 days');
+        $endDate = $startDate->modify('+12 months');
+
         $order = new Order(
             id: Uuid::v7(),
             user: $user,
             storage: $storage,
-            rentalType: RentalType::UNLIMITED,
             paymentFrequency: PaymentFrequency::MONTHLY,
-            startDate: $now->modify('-90 days'),
-            endDate: null,
+            startDate: $startDate,
+            endDate: $endDate,
             firstPaymentPrice: 35000,
             expiresAt: $now->modify('-83 days'),
-            createdAt: $now->modify('-90 days'),
+            createdAt: $startDate,
         );
         $this->entityManager->persist($order);
 
@@ -175,10 +176,9 @@ class SendExternalPrepaymentEndingSoonCommandTest extends KernelTestCase
             order: $order,
             user: $user,
             storage: $storage,
-            rentalType: RentalType::UNLIMITED,
-            startDate: $now->modify('-90 days'),
-            endDate: null,
-            createdAt: $now->modify('-90 days'),
+            startDate: $startDate,
+            endDate: $endDate,
+            createdAt: $startDate,
         );
         $contract->markExternallyPrepaid($paidThroughDate);
         $this->entityManager->persist($contract);
