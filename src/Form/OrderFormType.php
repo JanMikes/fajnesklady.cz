@@ -125,23 +125,24 @@ final class OrderFormType extends AbstractType
                     'autocomplete' => 'off',
                 ],
             ])
+            // The three address fields are mandatory for every order (enforced by
+            // OrderFormData::validateAddress). They stay `required` (the default) so
+            // the shared _address_override macro marks the "Adresa" search label as
+            // required — the form is novalidate, so no browser validation kicks in.
             ->add('billingStreet', TextType::class, [
                 'label' => 'Ulice a číslo popisné',
-                'required' => false,
                 'attr' => [
                     'placeholder' => 'Hlavní 123',
                 ],
             ])
             ->add('billingCity', TextType::class, [
                 'label' => 'Město',
-                'required' => false,
                 'attr' => [
                     'placeholder' => 'Praha',
                 ],
             ])
             ->add('billingPostalCode', TextType::class, [
                 'label' => 'PSČ',
-                'required' => false,
                 'attr' => [
                     'placeholder' => '110 00',
                     'maxlength' => 10,

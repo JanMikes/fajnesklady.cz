@@ -1,4 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
+import { getComponent } from '@symfony/ux-live-component';
 
 const DEBOUNCE_MS = 250;
 const BLUR_HIDE_MS = 150;
@@ -24,8 +25,8 @@ const MIN_QUERY_LENGTH = 3;
  * 'manual'/'search' choice overrides that without touching the field values. The
  * server renders the same value/violation-derived ('auto') condition and passes the
  * violation state via the `hasViolation` value, so `applyMode()` re-asserts after
- * every morph (live:render:finished) for the cases where an explicit choice
- * disagrees with the field values.
+ * every morph (the component's 'render:finished' hook) for the cases where an
+ * explicit choice disagrees with the field values.
  */
 export default class extends Controller {
     static values = { hasViolation: { type: Boolean, default: false } };
@@ -63,7 +64,15 @@ export default class extends Controller {
         this.boundOnSearchFocus = () => this.onSearchFocus();
         this.boundOnAddressEdit = (event) => this.onAddressEdit(event);
         this.boundOnDocumentClick = (event) => this.onDocumentClick(event);
-        this.boundOnLiveRender = () => this.applyMode();
+        this.boundOnLiveRender = () => {
+            // A failed submit with empty fields may leave a filled-looking address
+            // stranded in the search box (extension autofill never blurs) — claim
+            // it now so the reveal shows the text instead of empty fields.
+            if (this.hasViolationValue && !this.hasAnyAddressValue()) {
+                this.commitAbandonedSearchText();
+            }
+            this.applyMode();
+        };
 
         if (this.hasSearchInputTarget) {
             this.searchInputTarget.addEventListener('input', this.boundOnSearchInput);
@@ -77,12 +86,35 @@ export default class extends Controller {
         }
 
         document.addEventListener('click', this.boundOnDocumentClick);
+
+        this.applyMode();
+
         // Live Components re-render the macro from server (value-derived) state on
         // every morph; it can't know about an explicit search/manual choice that
         // disagrees with the field values, so re-assert the mode after each render.
-        document.addEventListener('live:render:finished', this.boundOnLiveRender);
+        // 'render:finished' is a component HOOK, not a DOM event — it is reachable
+        // only via getComponent() on the live component's root element.
+        this.liveComponent = null;
+        this.liveHookCancelled = false;
+        this.hookIntoLiveComponent();
+    }
 
-        this.applyMode();
+    async hookIntoLiveComponent() {
+        const liveRoot = this.element.closest('[data-controller~="live"]');
+        if (!liveRoot) {
+            return; // plain (non-live) form — nothing re-renders client-side
+        }
+        try {
+            const component = await getComponent(liveRoot);
+            // disconnect() may have fired while getComponent was still resolving.
+            if (this.liveHookCancelled) {
+                return;
+            }
+            this.liveComponent = component;
+            this.liveComponent.on('render:finished', this.boundOnLiveRender);
+        } catch {
+            this.liveComponent = null;
+        }
     }
 
     disconnect() {
@@ -96,7 +128,8 @@ export default class extends Controller {
             input.removeEventListener('input', this.boundOnAddressEdit);
         }
         document.removeEventListener('click', this.boundOnDocumentClick);
-        document.removeEventListener('live:render:finished', this.boundOnLiveRender);
+        this.liveHookCancelled = true;
+        this.liveComponent?.off('render:finished', this.boundOnLiveRender);
 
         if (this.debounceHandle) clearTimeout(this.debounceHandle);
         if (this.blurHandle) clearTimeout(this.blurHandle);
@@ -374,6 +407,30 @@ export default class extends Controller {
     onSearchBlur() {
         if (this.blurHandle) clearTimeout(this.blurHandle);
         this.blurHandle = setTimeout(() => this.removeDropdown(), BLUR_HIDE_MS);
+        // Run synchronously (not in the timeout): when this blur was caused by a
+        // mousedown on the submit button, the street value must be in the Live
+        // model BEFORE the click's submit action serializes it.
+        this.commitAbandonedSearchText();
+    }
+
+    // Text sitting in the search box while the three real fields are empty is a
+    // filled-looking address the form never receives — browser/extension autofill
+    // targets the visible box, and users type a full address without picking a
+    // suggestion. Claim it: move the text into the street field (the dispatched
+    // events sync the Live model), reveal the fields, and let validation ask for
+    // whatever is still missing. Suggestion clicks are safe: their mousedown is
+    // preventDefault-ed, so no blur fires, and applySuggestion() empties the box.
+    commitAbandonedSearchText() {
+        if (!this.hasSearchInputTarget || !this.hasStreetInputTarget) return;
+        const text = (this.searchInputTarget.value ?? '').trim();
+        if (text === '' || this.hasAnyAddressValue()) return;
+
+        this.cancelSearch();
+        this.setFieldValue(this.streetInputTarget, text);
+        this.searchInputTarget.value = '';
+        this.mode = 'manual';
+        this.applyMode();
+        this.setStatus('Adresu jsme převzali z vyhledávání — zkontrolujte ulici a doplňte město a PSČ.');
     }
 
     cancelHide() {
