@@ -47,7 +47,7 @@ final class StorageFormData
     #[Assert\PositiveOrZero(message: 'Cena za měsíc musí být nula nebo kladná')]
     public ?float $pricePerMonth = null;
 
-    #[Assert\PositiveOrZero(message: 'Dlouhodobá měsíční cena musí být nula nebo kladná')]
+    #[Assert\PositiveOrZero(message: 'Sazba na 6+ měs. musí být nula nebo kladná')]
     public ?float $pricePerMonthLongTerm = null;
 
     #[Assert\PositiveOrZero(message: 'Cena za rok musí být nula nebo kladná')]

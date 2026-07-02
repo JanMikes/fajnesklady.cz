@@ -77,7 +77,7 @@ class StorageTypeFormType extends AbstractType
         ]);
 
         $builder->add('defaultPricePerWeek', NumberType::class, [
-            'label' => 'Výchozí cena za týden (CZK)',
+            'label' => 'Týdenní sazba (Kč za týden)',
             'scale' => 2,
             'attr' => [
                 'placeholder' => '500.00',
@@ -87,7 +87,7 @@ class StorageTypeFormType extends AbstractType
         ]);
 
         $builder->add('defaultPricePerMonth', NumberType::class, [
-            'label' => 'Krátkodobá měsíční sazba (Kč)',
+            'label' => 'Sazba na 1–6 měs. (Kč za měsíc)',
             'scale' => 2,
             'attr' => [
                 'placeholder' => '1500.00',
@@ -97,7 +97,7 @@ class StorageTypeFormType extends AbstractType
         ]);
 
         $builder->add('defaultPricePerMonthLongTerm', NumberType::class, [
-            'label' => 'Dlouhodobá měsíční sazba (Kč)',
+            'label' => 'Sazba na 6+ měs. (Kč za měsíc)',
             'scale' => 2,
             'attr' => [
                 'placeholder' => '1200.00',
@@ -107,7 +107,7 @@ class StorageTypeFormType extends AbstractType
         ]);
 
         $builder->add('defaultPricePerYear', NumberType::class, [
-            'label' => 'Roční sazba (Kč)',
+            'label' => 'Sazba roční předem (Kč za rok)',
             'scale' => 2,
             'attr' => [
                 'placeholder' => '12000.00',

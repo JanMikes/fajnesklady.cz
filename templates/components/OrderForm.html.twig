@@ -584,7 +584,7 @@
                         {% if not isUnlimited and (applicableRate is null or applicableRate == 'monthly_short') %}
                             <div class="flex justify-between text-sm">
                                 <span class="text-gray-600">
-                                    Krátkodobá měsíční sazba (1–6 měs.)
+                                    Sazba na 1–6 měs.
                                     {% if applicableRate == 'monthly_short' %}
                                         <span class="ml-1 text-xs font-medium text-accent">(platí pro vás)</span>
                                     {% endif %}
@@ -599,7 +599,7 @@
                         {% if applicableRate is null or applicableRate == 'monthly_long' %}
                             <div class="flex justify-between text-sm">
                                 <span class="text-gray-600">
-                                    Dlouhodobá měsíční sazba (6+ měs.)
+                                    Sazba na 6+ měs.
                                     {% if applicableRate == 'monthly_long' %}
                                         <span class="ml-1 text-xs font-medium text-accent">(platí pro vás)</span>
                                     {% endif %}
@@ -614,7 +614,7 @@
                         {% if yearlyEligible and (applicableRate is null or applicableRate == 'yearly') %}
                             <div class="flex justify-between text-sm">
                                 <span class="text-gray-600">
-                                    Roční sazba
+                                    Sazba roční předem
                                     <span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">Zvýhodněná cena</span>
                                     {% if applicableRate == 'yearly' %}
                                         <span class="ml-1 text-xs font-medium text-accent">(platí pro vás)</span>
@@ -630,7 +630,7 @@
 
                         {% if applicableRate is null %}
                             <p class="text-xs text-gray-500 mt-2 bg-gray-50 p-2 rounded">
-                                Pronájem do 30 dnů se účtuje týdenní sazbou. 1–6 měsíců krátkodobou měsíční sazbou, 6 měsíců a déle dlouhodobou měsíční sazbou (výhodnější). Pronájem lze platit i ročně předem za zvýhodněnou cenu.
+                                Pronájem do 30 dnů se účtuje týdenní sazbou. Delší pronájem se účtuje měsíčně — sazbou na 1–6 měs., od 6 měsíců výhodnější sazbou na 6+ měs. Pronájem lze platit i ročně předem za zvýhodněnou cenu.
                             </p>
                         {% endif %}
                     </div>

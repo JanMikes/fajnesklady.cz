@@ -57,8 +57,8 @@
                             <th scope="col">Sklad</th>
                             <th scope="col">Rozměry</th>
                             <th scope="col" class="text-right">Týdenní sazba</th>
-                            <th scope="col" class="text-right">Krátkodobá (1–6 měs.)</th>
-                            <th scope="col" class="text-right">Dlouhodobá (6+ měs.)</th>
+                            <th scope="col" class="text-right">Sazba na 1–6 měs.</th>
+                            <th scope="col" class="text-right">Sazba na 6+ měs.</th>
                             <th scope="col" class="text-center">Dostupnost</th>
                             <th scope="col" class="text-right">Akce</th>
                         </tr>
@@ -228,7 +228,7 @@
                                 <div class="text-xs text-gray-500">za týden</div>
                             </div>
                             <div>
-                                <div class="text-xs text-gray-500 uppercase tracking-wide">Krátkodobá (1–6 měs.)</div>
+                                <div class="text-xs text-gray-500 uppercase tracking-wide">Sazba na 1–6 měs.</div>
                                 <div class="font-semibold text-primary-600">
                                     {% if priceRange and priceRange.min != priceRange.max %}
                                         {{ (priceRange.min / 100)|number_format(0, ',', ' ') }} – {{ (priceRange.max / 100)|number_format(0, ',', ' ') }} Kč
@@ -241,7 +241,7 @@
                                 <div class="text-xs text-gray-500">za měsíc</div>
                             </div>
                             <div class="col-span-2">
-                                <div class="text-xs text-gray-500 uppercase tracking-wide">Dlouhodobá (6+ měs.)</div>
+                                <div class="text-xs text-gray-500 uppercase tracking-wide">Sazba na 6+ měs.</div>
                                 <div class="font-semibold text-primary-600">
                                     {% if priceRangeLongTerm and priceRangeLongTerm.min != priceRangeLongTerm.max %}
                                         {{ (priceRangeLongTerm.min / 100)|number_format(0, ',', ' ') }} – {{ (priceRangeLongTerm.max / 100)|number_format(0, ',', ' ') }} Kč

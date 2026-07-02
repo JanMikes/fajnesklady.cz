@@ -123,7 +123,7 @@
                             </span>
                         </div>
                         <div class="flex justify-between items-baseline mb-2">
-                            <span class="text-gray-600">Krátkodobá (1–6 měs.)</span>
+                            <span class="text-gray-600">Sazba na 1–6 měs.</span>
                             <span class="text-right">
                                 {% if priceRange and priceRange.min != priceRange.max %}
                                     <span class="font-semibold text-primary-600">{{ (priceRange.min / 100)|number_format(0, ',', ' ') }} – {{ (priceRange.max / 100)|number_format(0, ',', ' ') }} Kč</span>
@@ -136,7 +136,7 @@
                             </span>
                         </div>
                         <div class="flex justify-between items-baseline mb-4">
-                            <span class="text-gray-600">Dlouhodobá (6+ měs.)</span>
+                            <span class="text-gray-600">Sazba na 6+ měs.</span>
                             <span class="text-right">
                                 {% if priceRangeLongTerm and priceRangeLongTerm.min != priceRangeLongTerm.max %}
                                     <span class="font-semibold text-primary-600">{{ (priceRangeLongTerm.min / 100)|number_format(0, ',', ' ') }} – {{ (priceRangeLongTerm.max / 100)|number_format(0, ',', ' ') }} Kč</span>

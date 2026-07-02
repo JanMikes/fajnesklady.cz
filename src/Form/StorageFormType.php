@@ -105,7 +105,7 @@ class StorageFormType extends AbstractType
         $storageType = $options['storage_type'];
         if (null !== $storageType && !$storageType->uniformStorages) {
             $builder->add('pricePerWeek', NumberType::class, [
-                'label' => 'Vlastní cena za týden (CZK)',
+                'label' => 'Vlastní týdenní sazba (Kč za týden)',
                 'required' => false,
                 'scale' => 2,
                 'attr' => [
@@ -116,7 +116,7 @@ class StorageFormType extends AbstractType
             ]);
 
             $builder->add('pricePerMonth', NumberType::class, [
-                'label' => 'Vlastní krátkodobá měsíční cena (Kč)',
+                'label' => 'Vlastní sazba na 1–6 měs. (Kč za měsíc)',
                 'required' => false,
                 'scale' => 2,
                 'attr' => [
@@ -127,7 +127,7 @@ class StorageFormType extends AbstractType
             ]);
 
             $builder->add('pricePerMonthLongTerm', NumberType::class, [
-                'label' => 'Vlastní dlouhodobá měsíční cena (Kč)',
+                'label' => 'Vlastní sazba na 6+ měs. (Kč za měsíc)',
                 'required' => false,
                 'scale' => 2,
                 'attr' => [
@@ -138,7 +138,7 @@ class StorageFormType extends AbstractType
             ]);
 
             $builder->add('pricePerYear', NumberType::class, [
-                'label' => 'Vlastní roční cena (Kč)',
+                'label' => 'Vlastní sazba roční předem (Kč za rok)',
                 'required' => false,
                 'scale' => 2,
                 'attr' => [

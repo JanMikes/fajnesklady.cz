@@ -47,11 +47,11 @@ final class StorageTypeFormData
     public ?float $defaultPricePerWeek = null;
 
     #[Assert\NotNull(message: 'Zadejte krátkodobou měsíční cenu')]
-    #[Assert\PositiveOrZero(message: 'Krátkodobá měsíční cena musí být nula nebo kladná')]
+    #[Assert\PositiveOrZero(message: 'Sazba na 1–6 měs. musí být nula nebo kladná')]
     public ?float $defaultPricePerMonth = null;
 
     #[Assert\NotNull(message: 'Zadejte dlouhodobou měsíční cenu')]
-    #[Assert\PositiveOrZero(message: 'Dlouhodobá měsíční cena musí být nula nebo kladná')]
+    #[Assert\PositiveOrZero(message: 'Sazba na 6+ měs. musí být nula nebo kladná')]
     public ?float $defaultPricePerMonthLongTerm = null;
 
     #[Assert\NotNull(message: 'Zadejte roční cenu')]
