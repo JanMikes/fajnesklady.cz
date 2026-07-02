@@ -51,7 +51,9 @@ class AdminOrderResendSigningLinkControllerTest extends WebTestCase
     public function testResendPersistsAuditRow(): void
     {
         $order = $this->findOrderByStorageNumber('B1');
-        $order->setSigningToken('resend-test-token');
+        // Must match the public_customer_signing route requirement [a-f0-9]{64}
+        // — the e-mail handler generates the signing URL from it.
+        $order->setSigningToken(str_repeat('ab', 32));
         $this->entityManager->flush();
 
         $this->client->loginUser($this->findUserByEmail('admin@example.com'), 'main');
