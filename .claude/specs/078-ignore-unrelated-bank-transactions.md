@@ -1,6 +1,6 @@
 # 078 — Mark unmatched bank transactions as non-related (ignore / unignore)
 
-**Status:** ready
+**Status:** done
 **Type:** feature (admin UX — wiring up dormant domain code)
 **Scope:** small (~9 files: entity tweak, 2 commands + 2 handlers, repo, 2 new controllers, 1 controller touch, template, tests)
 **Depends on:** none (spec 049 already shipped the domain layer)

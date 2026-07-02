@@ -48,7 +48,10 @@ class BankTransactionRepository
             ->from(BankTransaction::class, 'bt')
             ->orderBy('bt.transactionDate', 'DESC');
 
-        if ('all' !== $statusFilter) {
+        if ('all' === $statusFilter) {
+            $qb->where('bt.status != :ignored')
+                ->setParameter('ignored', 'ignored');
+        } else {
             $qb->where('bt.status = :status')
                 ->setParameter('status', $statusFilter);
         }
@@ -63,6 +66,17 @@ class BankTransactionRepository
             ->from(BankTransaction::class, 'bt')
             ->where('bt.status = :status')
             ->setParameter('status', 'unmatched')
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    public function countIgnored(): int
+    {
+        return (int) $this->entityManager->createQueryBuilder()
+            ->select('COUNT(bt.id)')
+            ->from(BankTransaction::class, 'bt')
+            ->where('bt.status = :status')
+            ->setParameter('status', 'ignored')
             ->getQuery()
             ->getSingleScalarResult();
     }

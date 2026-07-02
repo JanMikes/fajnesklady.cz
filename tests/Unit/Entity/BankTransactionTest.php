@@ -63,6 +63,19 @@ class BankTransactionTest extends TestCase
         self::assertSame($admin, $this->bankTransaction->pairedBy);
     }
 
+    public function testMarkIgnoredWithNullReason(): void
+    {
+        $admin = $this->createStub(User::class);
+        $now = new \DateTimeImmutable('2025-06-15 12:00:00');
+
+        $this->bankTransaction->markIgnored($admin, null, $now);
+
+        self::assertTrue($this->bankTransaction->isIgnored());
+        self::assertNull($this->bankTransaction->ignoreReason);
+        self::assertSame($admin, $this->bankTransaction->pairedBy);
+        self::assertSame($now, $this->bankTransaction->pairedAt);
+    }
+
     public function testUnignore(): void
     {
         $admin = $this->createStub(User::class);

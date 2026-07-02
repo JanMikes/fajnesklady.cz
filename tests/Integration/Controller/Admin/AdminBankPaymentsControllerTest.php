@@ -93,7 +93,44 @@ class AdminBankPaymentsControllerTest extends WebTestCase
         $this->assertResponseIsSuccessful();
     }
 
-    private function createBankTransaction(string $status, ?Order $pairedOrder = null): BankTransaction
+    public function testDefaultListDoesNotShowIgnoredTransaction(): void
+    {
+        $admin = $this->findUserByEmail('admin@example.com');
+        $this->client->loginUser($admin, 'main');
+
+        $this->createIgnoredBankTransaction($admin, 'Ignorovaný odesílatel s.r.o.');
+
+        $this->client->request('GET', '/portal/admin/bankovni-platby');
+
+        $this->assertResponseIsSuccessful();
+        self::assertStringNotContainsString('Ignorovaný odesílatel s.r.o.', (string) $this->client->getResponse()->getContent());
+    }
+
+    public function testIgnoredFilterShowsIgnoredTransactionWithNote(): void
+    {
+        $admin = $this->findUserByEmail('admin@example.com');
+        $this->client->loginUser($admin, 'main');
+
+        $this->createIgnoredBankTransaction($admin, 'Ignorovaný odesílatel s.r.o.');
+
+        $this->client->request('GET', '/portal/admin/bankovni-platby?filter=ignored');
+
+        $this->assertResponseIsSuccessful();
+        $this->assertSelectorTextContains('body', 'Ignorovaný odesílatel s.r.o.');
+        $this->assertSelectorTextContains('body', 'Ignorováno');
+        $this->assertSelectorTextContains('body', 'Provozní platba');
+    }
+
+    private function createIgnoredBankTransaction(User $admin, string $senderName): BankTransaction
+    {
+        $tx = $this->createBankTransaction('unmatched', senderName: $senderName);
+        $tx->markIgnored($admin, 'Provozní platba', $this->clock->now());
+        $this->entityManager->flush();
+
+        return $tx;
+    }
+
+    private function createBankTransaction(string $status, ?Order $pairedOrder = null, string $senderName = 'Test Sender'): BankTransaction
     {
         $tx = new BankTransaction(
             id: Uuid::v7(),
@@ -102,7 +139,7 @@ class AdminBankPaymentsControllerTest extends WebTestCase
             currency: 'CZK',
             variableSymbol: '1234567890',
             senderAccountNumber: '1234567890/0100',
-            senderName: 'Test Sender',
+            senderName: $senderName,
             transactionDate: $this->clock->now(),
             comment: null,
             createdAt: $this->clock->now(),

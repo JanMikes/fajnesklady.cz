@@ -112,7 +112,7 @@ class BankTransaction
         $this->pairedAt = $now;
     }
 
-    public function markIgnored(User $admin, string $reason, \DateTimeImmutable $now): void
+    public function markIgnored(User $admin, ?string $reason, \DateTimeImmutable $now): void
     {
         $this->pairedBy = $admin;
         $this->pairedAt = $now;

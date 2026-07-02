@@ -30,6 +30,7 @@ final class AdminBankPaymentsController extends AbstractController
             'transactions' => $transactions,
             'filter' => $filter,
             'unmatchedCount' => $unmatchedCount,
+            'ignoredCount' => $this->bankTransactionRepository->countIgnored(),
         ]);
     }
 }
