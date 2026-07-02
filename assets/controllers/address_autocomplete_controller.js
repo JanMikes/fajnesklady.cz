@@ -87,6 +87,25 @@ export default class extends Controller {
 
         document.addEventListener('click', this.boundOnDocumentClick);
 
+        // Some extensions autofill the search box with NO events at all (no focus,
+        // no input, no blur), so the blur-commit path never runs. Catch the user's
+        // next interaction instead: any click/submit outside the search UI claims
+        // the stranded text — in the CAPTURE phase, so when that interaction is the
+        // submit button itself, the street value is in the Live model before the
+        // (bubble-phase) Stimulus live#action serializes it. Interactions inside
+        // the search section are engagement with the search, not abandonment.
+        this.boundOnFormInteraction = (event) => {
+            if (this.hasSearchSectionTarget && this.searchSectionTarget.contains(event.target)) {
+                return;
+            }
+            this.commitAbandonedSearchText();
+        };
+        this.interactionRoot = this.element.closest('[data-controller~="live"]')
+            ?? this.element.closest('form')
+            ?? this.element;
+        this.interactionRoot.addEventListener('click', this.boundOnFormInteraction, true);
+        this.interactionRoot.addEventListener('submit', this.boundOnFormInteraction, true);
+
         this.applyMode();
 
         // Live Components re-render the macro from server (value-derived) state on
@@ -128,6 +147,8 @@ export default class extends Controller {
             input.removeEventListener('input', this.boundOnAddressEdit);
         }
         document.removeEventListener('click', this.boundOnDocumentClick);
+        this.interactionRoot?.removeEventListener('click', this.boundOnFormInteraction, true);
+        this.interactionRoot?.removeEventListener('submit', this.boundOnFormInteraction, true);
         this.liveHookCancelled = true;
         this.liveComponent?.off('render:finished', this.boundOnLiveRender);
 
