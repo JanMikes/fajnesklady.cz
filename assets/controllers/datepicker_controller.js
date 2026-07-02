@@ -1,4 +1,5 @@
 import { Controller } from '@hotwired/stimulus';
+import { getComponent } from '@symfony/ux-live-component';
 import flatpickr from 'flatpickr';
 import 'flatpickr/dist/flatpickr.min.css';
 import { Czech } from 'flatpickr/dist/l10n/cs.js';
@@ -12,11 +13,91 @@ export default class extends Controller {
 
     connect() {
         this.initializeDatepicker();
+        this.hookIntoLiveComponent();
     }
 
     disconnect() {
+        this.liveHookCancelled = true;
+        this.liveComponent?.off('render:finished', this.boundResyncModel);
         if (this.picker) {
             this.picker.destroy();
+        }
+    }
+
+    // The whole picker sits inside a data-live-ignore wrapper, so a Live morph can
+    // never change what the user SEES — the input's DOM value is the single source
+    // of truth. But the Live MODEL can still diverge from it (a commit whose
+    // change event raced a morph/in-flight request), and then validation runs
+    // against a stale/empty value: the field visibly holds "6. 6. 1992" while the
+    // server insists it is required. Re-assert the DOM value into the model after
+    // every morph; the triggered re-render then re-validates and clears the
+    // phantom error. One re-dispatch per DOM value — if the server still disagrees
+    // after a round-trip (it rejected the value), don't ping-pong.
+    async hookIntoLiveComponent() {
+        this.liveComponent = null;
+        this.liveHookCancelled = false;
+        this.lastResyncedValue = null;
+        this.boundResyncModel = () => this.resyncModel();
+
+        const liveRoot = this.element.closest('[data-controller~="live"]');
+        if (!liveRoot) {
+            return; // plain (non-live) form — no morphs, nothing to diverge
+        }
+        try {
+            const component = await getComponent(liveRoot);
+            if (this.liveHookCancelled) {
+                return;
+            }
+            this.liveComponent = component;
+            this.liveComponent.on('render:finished', this.boundResyncModel);
+        } catch {
+            this.liveComponent = null;
+        }
+    }
+
+    resyncModel() {
+        if (!this.liveComponent) {
+            return;
+        }
+        const modelValue = this.readModelValue();
+        const domValue = this.element.value;
+        if (modelValue === null || modelValue === domValue) {
+            this.lastResyncedValue = null;
+            return;
+        }
+        if (this.lastResyncedValue === domValue) {
+            return; // the server already refused this exact value once — don't ping-pong
+        }
+        this.lastResyncedValue = domValue;
+
+        // name "form[field]" → model path "form.field"
+        const model = (this.element.getAttribute('name') ?? '').replace(/\[([^\]]+)\]/g, '.$1');
+        // Deferred out of the render:finished callback: a model update pushed
+        // synchronously from inside the hook is swallowed by the response
+        // processing that is still unwinding. component.set() (not DOM events)
+        // marks the model dirty deterministically and re-renders.
+        setTimeout(() => {
+            if (this.element.value === domValue) {
+                this.liveComponent.set(model, domValue, true);
+            }
+        }, 0);
+    }
+
+    // The server-side model value for this input, read from the live props the
+    // morph just rendered (name "form[field]" → props.form.field).
+    readModelValue() {
+        const propsHolder = this.element.closest('[data-live-props-value]');
+        const name = this.element.getAttribute('name') ?? '';
+        const match = name.match(/^([^\[]+)\[([^\]]+)\]$/);
+        if (!propsHolder || !match) {
+            return null;
+        }
+        try {
+            const props = JSON.parse(propsHolder.getAttribute('data-live-props-value'));
+            const value = props[match[1]]?.[match[2]];
+            return typeof value === 'string' ? value : null;
+        } catch {
+            return null;
         }
     }
 
