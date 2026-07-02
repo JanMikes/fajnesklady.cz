@@ -79,4 +79,7 @@ return [
     '@orchidjs/unicode-variants' => [
         'version' => '1.1.2',
     ],
+    'sortablejs' => [
+        'version' => '1.15.7',
+    ],
 ];

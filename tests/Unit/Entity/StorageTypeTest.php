@@ -315,6 +315,33 @@ class StorageTypeTest extends TestCase
         $this->assertTrue($storageType->isActive);
     }
 
+    public function testUpdatePosition(): void
+    {
+        $createdAt = new \DateTimeImmutable('2024-01-01 10:00:00');
+
+        $storageType = new StorageType(
+            id: Uuid::v7(),
+            place: $this->createPlace(),
+            name: 'Test',
+            innerWidth: 100,
+            innerHeight: 100,
+            innerLength: 100,
+            defaultPricePerWeek: 10000,
+            defaultPricePerMonth: 30000,
+            defaultPricePerMonthLongTerm: 30000,
+            defaultPricePerYear: 30000 * 12,
+            createdAt: $createdAt,
+        );
+
+        $this->assertSame(0, $storageType->position);
+
+        $updatedAt = new \DateTimeImmutable('2024-01-01 11:00:00');
+        $storageType->updatePosition(3, $updatedAt);
+
+        $this->assertSame(3, $storageType->position);
+        $this->assertSame($updatedAt, $storageType->updatedAt);
+    }
+
     public function testUniformStoragesDefaultsToTrue(): void
     {
         $storageType = new StorageType(

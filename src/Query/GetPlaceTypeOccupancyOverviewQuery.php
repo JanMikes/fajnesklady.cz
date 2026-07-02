@@ -98,7 +98,8 @@ final readonly class GetPlaceTypeOccupancyOverviewQuery
 
         usort(
             $rows,
-            static fn (GetPlaceTypeOccupancyRow $a, GetPlaceTypeOccupancyRow $b): int => strnatcmp($a->storageType->name, $b->storageType->name)
+            static fn (GetPlaceTypeOccupancyRow $a, GetPlaceTypeOccupancyRow $b): int => $a->storageType->position <=> $b->storageType->position
+                ?: strnatcmp($a->storageType->name, $b->storageType->name)
         );
 
         return new GetPlaceTypeOccupancyOverviewResult(rows: $rows);

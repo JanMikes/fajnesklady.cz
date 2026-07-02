@@ -46,6 +46,9 @@ final readonly class CreateStorageTypeHandler
             adminOnly: $command->adminOnly,
         );
 
+        // New types append at the end of the admin-curated display order
+        $storageType->updatePosition($this->storageTypeRepository->getNextPosition($place), $now);
+
         if (null !== $command->description) {
             $storageType->updateDetails(
                 name: $command->name,

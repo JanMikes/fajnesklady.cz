@@ -79,7 +79,8 @@ class StorageTypeRepository
             ->where('st.place = :place')
             ->andWhere('st.deletedAt IS NULL')
             ->setParameter('place', $place)
-            ->orderBy('st.name', 'ASC')
+            ->orderBy('st.position', 'ASC')
+            ->addOrderBy('st.name', 'ASC')
             ->getQuery()
             ->getResult();
     }
@@ -97,7 +98,8 @@ class StorageTypeRepository
             ->andWhere('st.deletedAt IS NULL')
             ->setParameter('place', $place)
             ->setParameter('active', true)
-            ->orderBy('st.name', 'ASC')
+            ->orderBy('st.position', 'ASC')
+            ->addOrderBy('st.name', 'ASC')
             ->getQuery()
             ->getResult();
     }
@@ -120,7 +122,8 @@ class StorageTypeRepository
             ->andWhere('st.adminOnly = false')
             ->setParameter('place', $place)
             ->setParameter('active', true)
-            ->orderBy('st.name', 'ASC')
+            ->orderBy('st.position', 'ASC')
+            ->addOrderBy('st.name', 'ASC')
             ->getQuery()
             ->getResult();
     }
@@ -138,12 +141,30 @@ class StorageTypeRepository
             ->where('st.place = :place')
             ->andWhere('st.deletedAt IS NULL')
             ->setParameter('place', $place)
-            ->orderBy('st.createdAt', 'DESC')
-            ->addOrderBy('st.id', 'DESC')
+            ->orderBy('st.position', 'ASC')
+            ->addOrderBy('st.name', 'ASC')
+            ->addOrderBy('st.id', 'ASC')
             ->setFirstResult($offset)
             ->setMaxResults($limit)
             ->getQuery()
             ->getResult();
+    }
+
+    /**
+     * Position for a newly created type so it appends after all existing
+     * (even soft-deleted) types of the place.
+     */
+    public function getNextPosition(Place $place): int
+    {
+        $maxPosition = $this->entityManager->createQueryBuilder()
+            ->select('MAX(st.position)')
+            ->from(StorageType::class, 'st')
+            ->where('st.place = :place')
+            ->setParameter('place', $place)
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return null === $maxPosition ? 0 : ((int) $maxPosition) + 1;
     }
 
     public function countByPlace(Place $place): int

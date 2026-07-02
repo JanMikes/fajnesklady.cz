@@ -24,11 +24,22 @@
         </a>
     </div>
 
+    {% set sortable = totalPages <= 1 and storageTypes|length > 1 %}
+
+    {% if sortable %}
+        <p class="text-sm text-gray-500 mb-4">
+            Pořadí typů skladů změníte přetažením řádku za úchyt. Ve stejném pořadí se typy nabízejí i zákazníkům — na detailu pobočky, v ceníku a v objednávce.
+        </p>
+    {% endif %}
+
     <div class="card">
         <div class="overflow-x-auto">
             <table class="table table-zebra">
                 <thead>
                     <tr>
+                        {% if sortable %}
+                            <th class="w-8"><span class="sr-only">Pořadí</span></th>
+                        {% endif %}
                         <th>Název</th>
                         <th>Vnitřní rozměry (m)</th>
                         <th>Cena/měsíc</th>
@@ -40,10 +51,19 @@
                         <th>Akce</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody {% if sortable %}data-controller="sortable-list" data-sortable-list-url-value="{{ path('portal_storage_types_reorder', {placeId: place.id}) }}"{% endif %}>
                     {% for storageType in storageTypes %}
                         {% set occupancyRow = occupancyByTypeId[storageType.id.toRfc4122] ?? null %}
-                        <tr>
+                        <tr {% if sortable %}data-sortable-id="{{ storageType.id }}"{% endif %}>
+                            {% if sortable %}
+                                <td class="w-8">
+                                    <span data-sortable-handle class="inline-flex cursor-grab text-gray-400 hover:text-gray-600" title="Přetažením změníte pořadí">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16" />
+                                        </svg>
+                                    </span>
+                                </td>
+                            {% endif %}
                             <td class="font-medium text-gray-900">
                                 {{ storageType.name }}
                                 {% if storageType.adminOnly %}
@@ -111,7 +131,7 @@
                         </tr>
                     {% else %}
                         <tr>
-                            <td colspan="9" class="text-center text-gray-500 py-8">Žádné typy skladů nebyly nalezeny</td>
+                            <td colspan="{{ sortable ? 10 : 9 }}" class="text-center text-gray-500 py-8">Žádné typy skladů nebyly nalezeny</td>
                         </tr>
                     {% endfor %}
                 </tbody>

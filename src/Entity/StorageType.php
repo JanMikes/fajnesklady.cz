@@ -30,6 +30,14 @@ class StorageType
     public private(set) bool $uniformStorages = true;
 
     /**
+     * Admin-curated display order within the place. Drives the ordering of
+     * storage types everywhere they are listed (place detail, price list,
+     * order flow, portal). Lower comes first; ties fall back to name.
+     */
+    #[ORM\Column(options: ['default' => 0])]
+    public private(set) int $position = 0;
+
+    /**
      * When true the type is never offered to customers: it is hidden from the
      * public homepage, place detail, price list and tenant browse, and the
      * public order routes reject it. Only an admin can place a customer into it
@@ -213,6 +221,12 @@ class StorageType
         $this->outerWidth = $outerWidth;
         $this->outerHeight = $outerHeight;
         $this->outerLength = $outerLength;
+        $this->updatedAt = $now;
+    }
+
+    public function updatePosition(int $position, \DateTimeImmutable $now): void
+    {
+        $this->position = $position;
         $this->updatedAt = $now;
     }
 
