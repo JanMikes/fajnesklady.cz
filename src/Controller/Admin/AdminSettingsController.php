@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace App\Controller\Admin;
 
+use App\Command\UpdatePlatformSettingsCommand;
 use App\Form\PlatformSettingsFormData;
 use App\Form\PlatformSettingsFormType;
 use App\Repository\PlatformSettingsRepository;
-use App\Service\AuditLogger;
-use Psr\Clock\ClockInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
@@ -21,8 +21,7 @@ final class AdminSettingsController extends AbstractController
 {
     public function __construct(
         private readonly PlatformSettingsRepository $settingsRepository,
-        private readonly AuditLogger $auditLogger,
-        private readonly ClockInterface $clock,
+        private readonly MessageBusInterface $commandBus,
     ) {
     }
 
@@ -35,24 +34,7 @@ final class AdminSettingsController extends AbstractController
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            $oldValue = $settings->bankTransferSurchargeInHaler;
-            $newValue = $formData->toHaler();
-
-            $settings->updateSurcharge($newValue, $this->clock->now());
-            $this->settingsRepository->save($settings);
-
-            $user = $this->getUser();
-            $this->auditLogger->log(
-                entityType: 'platform_settings',
-                entityId: $settings->id->toRfc4122(),
-                eventType: 'surcharge_changed',
-                payload: [
-                    'old_value_haler' => $oldValue,
-                    'new_value_haler' => $newValue,
-                    'admin_id' => $user?->getUserIdentifier(),
-                    'admin_email' => $user?->getUserIdentifier(),
-                ],
-            );
+            $this->commandBus->dispatch(new UpdatePlatformSettingsCommand($formData->toHaler()));
 
             $this->addFlash('success', 'Nastavení bylo uloženo.');
 
