@@ -24,52 +24,7 @@
         </div>
 
         {{ form_start(form, {attr: {class: 'space-y-6', 'data-controller': 'fine-form'}}) }}
-            <div>
-                {{ form_label(form.type) }}
-                {{ form_widget(form.type, {attr: {class: 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring-accent text-sm', 'data-fine-form-target': 'type', 'data-action': 'change->fine-form#typeChanged'}}) }}
-                {{ form_errors(form.type) }}
-            </div>
-
-            <div data-fine-form-target="nonReturnDaysWrapper" class="hidden">
-                {{ form_label(form.nonReturnDays) }}
-                {{ form_widget(form.nonReturnDays, {attr: {class: 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring-accent text-sm', 'data-action': 'input->fine-form#calculateAmount'}}) }}
-                <p class="mt-1 text-xs text-gray-500">2 000 Kč za každý den nevrácení</p>
-                {{ form_errors(form.nonReturnDays) }}
-            </div>
-
-            <div data-fine-form-target="latePaymentWrapper" class="hidden">
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        {{ form_label(form.latePaymentBaseInCzk) }}
-                        {{ form_widget(form.latePaymentBaseInCzk, {attr: {class: 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring-accent text-sm', 'data-action': 'input->fine-form#calculateAmount'}}) }}
-                        <p class="mt-1 text-xs text-gray-500">Dlužná částka v Kč</p>
-                        {{ form_errors(form.latePaymentBaseInCzk) }}
-                    </div>
-                    <div>
-                        {{ form_label(form.latePaymentDays) }}
-                        {{ form_widget(form.latePaymentDays, {attr: {class: 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring-accent text-sm', 'data-action': 'input->fine-form#calculateAmount'}}) }}
-                        <p class="mt-1 text-xs text-gray-500">Počet dní prodlení</p>
-                        {{ form_errors(form.latePaymentDays) }}
-                    </div>
-                </div>
-                <p class="mt-2 text-xs text-gray-500">Výpočet: max(základ × 0,25 % × dny, 250 Kč × dny)</p>
-            </div>
-
-            <div>
-                {{ form_label(form.amountInCzk) }}
-                {{ form_widget(form.amountInCzk, {attr: {class: 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring-accent text-sm'}}) }}
-                <p class="mt-1 text-xs text-gray-500">
-                    Částka v Kč.
-                    <span data-fine-form-target="amountDisplay" class="font-medium"></span>
-                </p>
-                {{ form_errors(form.amountInCzk) }}
-            </div>
-
-            <div>
-                {{ form_label(form.description) }}
-                {{ form_widget(form.description, {attr: {class: 'mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-accent focus:ring-accent text-sm'}}) }}
-                {{ form_errors(form.description) }}
-            </div>
+            {% include 'admin/fine/_fine_fields.html.twig' with {type: form.type, nonReturnDays: form.nonReturnDays, latePaymentBase: form.latePaymentBaseInCzk, latePaymentDays: form.latePaymentDays, amount: form.amountInCzk, description: form.description} only %}
 
             <div class="flex justify-end space-x-3">
                 <a href="{{ path('admin_order_detail', {id: order.id}) }}" class="btn btn-secondary">Zrušit</a>

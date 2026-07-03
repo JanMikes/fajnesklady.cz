@@ -6,8 +6,10 @@ namespace App\Tests\Integration\Controller\Portal;
 
 use App\DataFixtures\ContractFixtures;
 use App\Entity\Contract;
+use App\Entity\Fine;
 use App\Entity\HandoverProtocol;
 use App\Entity\User;
+use App\Enum\FineType;
 use App\Repository\HandoverProtocolRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Clock\ClockInterface;
@@ -144,6 +146,126 @@ class LandlordHandoverViewControllerTest extends WebTestCase
             '/login',
             (string) $this->client->getResponse()->headers->get('Location'),
         );
+    }
+
+    public function testSubmitWithFineCompletesProtocolAndIssuesFine(): void
+    {
+        $protocol = $this->createPendingHandoverForRecurringContract();
+        $contractId = $protocol->contract->id;
+
+        $landlord = $this->findUserByEmail('landlord@example.com');
+        $landlordId = $landlord->id;
+        $this->client->loginUser($landlord, 'main');
+
+        $this->client->request(
+            'POST',
+            '/portal/pronajimatel/predavaci-protokol/'.$protocol->id->toRfc4122(),
+            [
+                'landlord_handover_form' => [
+                    'comment' => 'Sklad znečištěn, vystavuji pokutu.',
+                    'newLockCode' => '',
+                    'issueFine' => '1',
+                    'fineType' => FineType::DIRTY_STORAGE->value,
+                    'fineAmountInCzk' => '6000',
+                    'fineDescription' => 'Znečištěná skladovací jednotka dle protokolu.',
+                ],
+            ],
+        );
+
+        $this->assertResponseRedirects('/portal/pronajimatel/predavaci-protokol/'.$protocol->id->toRfc4122());
+
+        $this->entityManager->clear();
+        $reloaded = $this->entityManager->find(HandoverProtocol::class, $protocol->id);
+        \assert($reloaded instanceof HandoverProtocol);
+        $this->assertFalse($reloaded->needsLandlordCompletion(), 'Protocol landlord side must be completed.');
+
+        $fines = $this->findFinesForContract($contractId);
+        $this->assertCount(1, $fines);
+        $fine = $fines[0];
+        $this->assertSame(FineType::DIRTY_STORAGE, $fine->type);
+        $this->assertSame(600000, $fine->amountInHaler, 'Koruny must be converted to haléře.');
+        $this->assertSame('Znečištěná skladovací jednotka dle protokolu.', $fine->description);
+        $this->assertTrue($fine->issuedBy->id->equals($landlordId), 'Fine must record the landlord as issuer.');
+        $this->assertNotNull($fine->variableSymbol);
+    }
+
+    public function testSubmitWithFineMissingFieldsRerendersAndIssuesNothing(): void
+    {
+        $protocol = $this->createPendingHandoverForRecurringContract();
+        $contractId = $protocol->contract->id;
+
+        $landlord = $this->findUserByEmail('landlord@example.com');
+        $this->client->loginUser($landlord, 'main');
+
+        $this->client->request(
+            'POST',
+            '/portal/pronajimatel/predavaci-protokol/'.$protocol->id->toRfc4122(),
+            [
+                'landlord_handover_form' => [
+                    'comment' => 'Sklad znečištěn, vystavuji pokutu.',
+                    'newLockCode' => '',
+                    'issueFine' => '1',
+                    // type, amount and description intentionally missing
+                ],
+            ],
+        );
+
+        $this->assertResponseStatusCodeSame(422);
+        $body = (string) $this->client->getResponse()->getContent();
+        $this->assertStringContainsString('Vyberte typ pokuty.', $body);
+        $this->assertStringContainsString('Zadejte kladnou částku pokuty.', $body);
+        $this->assertStringContainsString('Zadejte popis pokuty.', $body);
+        // The fine section stays expanded on re-render (vars.checked fallback).
+        $this->assertStringContainsString('checked="checked"', $body);
+        $this->assertStringNotContainsString('space-y-6 hidden', $body);
+
+        $this->entityManager->clear();
+        $reloaded = $this->entityManager->find(HandoverProtocol::class, $protocol->id);
+        \assert($reloaded instanceof HandoverProtocol);
+        $this->assertTrue($reloaded->needsLandlordCompletion(), 'Protocol must stay pending on fine validation failure.');
+        $this->assertCount(0, $this->findFinesForContract($contractId));
+    }
+
+    public function testSubmitWithoutFineCompletesProtocolWithoutFine(): void
+    {
+        $protocol = $this->createPendingHandoverForRecurringContract();
+        $contractId = $protocol->contract->id;
+
+        $landlord = $this->findUserByEmail('landlord@example.com');
+        $this->client->loginUser($landlord, 'main');
+
+        $this->client->request(
+            'POST',
+            '/portal/pronajimatel/predavaci-protokol/'.$protocol->id->toRfc4122(),
+            [
+                'landlord_handover_form' => [
+                    'comment' => 'Předáno bez závad.',
+                    'newLockCode' => '',
+                ],
+            ],
+        );
+
+        $this->assertResponseRedirects('/portal/pronajimatel/predavaci-protokol/'.$protocol->id->toRfc4122());
+
+        $this->entityManager->clear();
+        $reloaded = $this->entityManager->find(HandoverProtocol::class, $protocol->id);
+        \assert($reloaded instanceof HandoverProtocol);
+        $this->assertFalse($reloaded->needsLandlordCompletion());
+        $this->assertCount(0, $this->findFinesForContract($contractId));
+    }
+
+    /**
+     * @return Fine[]
+     */
+    private function findFinesForContract(Uuid $contractId): array
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('f')
+            ->from(Fine::class, 'f')
+            ->where('f.contract = :contract')
+            ->setParameter('contract', $contractId->toRfc4122())
+            ->getQuery()
+            ->getResult();
     }
 
     private function createPendingHandoverForRecurringContract(): HandoverProtocol

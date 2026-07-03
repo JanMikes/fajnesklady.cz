@@ -72,6 +72,9 @@ class AdminHandoverViewControllerTest extends WebTestCase
         $this->assertStringContainsString('Časová osa', $body);
         $this->assertStringContainsString('Nájemce', $body);
         $this->assertStringContainsString('Pronajímatel', $body);
+        // Spec 080: one-click shortcut to the classic fine form.
+        $this->assertStringContainsString('Vystavit pokutu', $body);
+        $this->assertStringContainsString('/portal/admin/pokuty/vytvorit/', $body);
         // Read-only — no form / submit elements anywhere on the admin view.
         $this->assertStringNotContainsString('<form', $body);
         $this->assertStringNotContainsString('type="submit"', $body);

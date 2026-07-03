@@ -35,9 +35,9 @@ final readonly class IssueFineHandler
             throw new \DomainException('Contract not found.');
         }
 
-        $admin = $this->entityManager->find(User::class, $command->issuedById);
-        if (null === $admin) {
-            throw new \DomainException('Admin user not found.');
+        $issuedBy = $this->entityManager->find(User::class, $command->issuedById);
+        if (null === $issuedBy) {
+            throw new \DomainException('Issuing user not found.');
         }
 
         $user = $contract->user;
@@ -48,7 +48,7 @@ final readonly class IssueFineHandler
             id: $fineId,
             contract: $contract,
             user: $user,
-            issuedBy: $admin,
+            issuedBy: $issuedBy,
             type: $command->type,
             amountInHaler: $command->amountInHaler,
             description: $command->description,
@@ -69,7 +69,7 @@ final readonly class IssueFineHandler
                 'contract_id' => $contract->id->toRfc4122(),
                 'type' => $command->type->value,
                 'amount' => $command->amountInHaler,
-                'issued_by' => $admin->id->toRfc4122(),
+                'issued_by' => $issuedBy->id->toRfc4122(),
             ],
             orderId: $contract->order->id,
             userIdContext: $user->id,

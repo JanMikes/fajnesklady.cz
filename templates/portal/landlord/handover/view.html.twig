@@ -131,6 +131,18 @@
                         <p class="mt-1 text-xs text-gray-500">Tento kód bude automaticky použit pro dalšího nájemce.</p>
                     </div>
 
+                    <div class="border-t border-gray-200 pt-6" data-controller="fine-form">
+                        <label class="flex items-center gap-2">
+                            {{ form_widget(form.issueFine, {attr: {'data-fine-form-target': 'toggle', 'data-action': 'change->fine-form#toggleSection'}}) }}
+                            <span class="text-sm font-medium text-gray-900">Vystavit smluvní pokutu</span>
+                        </label>
+                        <p class="mt-1 text-xs text-gray-500">Pokuta bude zákazníkovi vystavena společně s potvrzením převzetí a e-mailem mu přijde výzva k úhradě.</p>
+
+                        <div data-fine-form-target="section" class="mt-4 space-y-6 {{ form.issueFine.vars.checked ? '' : 'hidden' }}">
+                            {% include 'admin/fine/_fine_fields.html.twig' with {type: form.fineType, nonReturnDays: form.fineNonReturnDays, latePaymentBase: form.fineLatePaymentBaseInCzk, latePaymentDays: form.fineLatePaymentDays, amount: form.fineAmountInCzk, description: form.fineDescription} only %}
+                        </div>
+                    </div>
+
                     <div>
                         <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500">
                             Potvrdit převzetí skladu

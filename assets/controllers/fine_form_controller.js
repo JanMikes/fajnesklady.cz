@@ -10,7 +10,17 @@ export default class extends Controller {
         'latePaymentDays',
         'latePaymentWrapper',
         'amountDisplay',
+        'toggle',
+        'section',
     ];
+
+    // Optional collapse of the whole fine block (landlord handover form). The
+    // admin create page has no toggle/section targets, hence the guard.
+    toggleSection() {
+        if (this.hasSectionTarget) {
+            this.sectionTarget.classList.toggle('hidden', !this.toggleTarget.checked);
+        }
+    }
 
     typeChanged() {
         const type = this.typeTarget.value;

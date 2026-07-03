@@ -6,6 +6,7 @@ namespace App\Controller\Portal;
 
 use App\Command\AddHandoverPhotoCommand;
 use App\Command\CompleteLandlordHandoverCommand;
+use App\Command\IssueFineCommand;
 use App\Exception\InvalidStorageCode;
 use App\Exception\StorageCodeRangeExhausted;
 use App\Form\LandlordHandoverFormData;
@@ -95,6 +96,24 @@ final class LandlordHandoverViewController extends AbstractController
             }
 
             $this->addFlash('success', 'Předávací protokol byl úspěšně vyplněn.');
+
+            // Completion-first ordering: if InvalidStorageCode threw above, no
+            // fine is issued and the re-rendered form preserves the fine values.
+            if ($formData->issueFine) {
+                /** @var \App\Entity\User $user */
+                $user = $this->getUser();
+                assert(null !== $formData->fineType);
+                assert(null !== $formData->fineAmountInCzk);
+
+                $this->commandBus->dispatch(new IssueFineCommand(
+                    contractId: $contract->id,
+                    type: $formData->fineType,
+                    amountInHaler: (int) round($formData->fineAmountInCzk * 100),
+                    description: $formData->fineDescription,
+                    issuedById: $user->id,
+                ));
+                $this->addFlash('success', 'Pokuta vystavena');
+            }
 
             return $this->redirectToRoute('portal_landlord_handover_view', ['id' => $id]);
         }

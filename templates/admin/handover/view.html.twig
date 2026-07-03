@@ -17,7 +17,10 @@
                 <h1 class="text-3xl font-bold text-gray-900">Předávací protokol</h1>
                 <p class="mt-2 text-gray-600">{{ place.name }} — Sklad č. {{ storage.number }}</p>
             </div>
-            <span class="badge {{ protocol.status.badgeClass }}">{{ protocol.status.label }}</span>
+            <div class="flex items-center gap-3">
+                <a href="{{ path('admin_fine_create', {contractId: contract.id}) }}" class="btn btn-secondary btn-sm">Vystavit pokutu</a>
+                <span class="badge {{ protocol.status.badgeClass }}">{{ protocol.status.label }}</span>
+            </div>
         </div>
     </div>
 

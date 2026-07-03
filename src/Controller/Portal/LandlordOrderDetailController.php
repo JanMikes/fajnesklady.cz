@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller\Portal;
 
 use App\Repository\ContractRepository;
+use App\Repository\FineRepository;
 use App\Repository\HandoverProtocolRepository;
 use App\Repository\InvoiceRepository;
 use App\Repository\OrderRepository;
@@ -29,6 +30,7 @@ final class LandlordOrderDetailController extends AbstractController
         private readonly ContractRepository $contractRepository,
         private readonly HandoverProtocolRepository $handoverProtocolRepository,
         private readonly InvoiceRepository $invoiceRepository,
+        private readonly FineRepository $fineRepository,
         private readonly PaymentRepository $paymentRepository,
         private readonly ContractService $contractService,
         private readonly PriceCalculator $priceCalculator,
@@ -75,6 +77,7 @@ final class LandlordOrderDetailController extends AbstractController
             'totalPaid' => $totalPaid,
             'now' => $now,
             'handoverProtocol' => $handoverProtocol,
+            'fines' => null !== $contract ? $this->fineRepository->findByContract($contract) : [],
         ]);
     }
 }

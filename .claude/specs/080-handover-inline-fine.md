@@ -1,6 +1,6 @@
 # 080 — Issue a fine inline from the handover protocol (landlord + admin)
 
-**Status:** ready
+**Status:** done
 **Type:** UX / feature
 **Scope:** medium (~11 files: form data + type, controller, 3 templates + 1 new partial, Stimulus controller, landlord order detail controller + template, handler message tweak, tests)
 **Depends on:** none (builds on shipped specs 053 fines + 046 handover visibility)
