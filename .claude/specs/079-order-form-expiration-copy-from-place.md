@@ -1,6 +1,6 @@
 # 079 — Order form: payment-deadline copy reads `place.orderExpirationDays` instead of hardcoded "7 dní"
 
-**Status:** ready
+**Status:** done
 **Type:** UX / copy fix
 **Scope:** tiny (1 template + 1 test file)
 **Depends on:** none (leftover from spec 017)

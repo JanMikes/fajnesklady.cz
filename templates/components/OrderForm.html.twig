@@ -628,7 +628,7 @@
                             </svg>
                             <span>
                                 Skladová jednotka bude přiřazena automaticky po vytvoření objednávky.
-                                Máte <strong>7 dní</strong> na dokončení platby.
+                                Máte <strong>{{ place.orderExpirationDays }} {{ place.orderExpirationDays == 1 ? 'den' : (place.orderExpirationDays <= 4 ? 'dny' : 'dní') }}</strong> na dokončení platby.
                             </span>
                         </p>
                     </div>

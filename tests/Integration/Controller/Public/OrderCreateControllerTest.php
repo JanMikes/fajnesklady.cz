@@ -47,6 +47,11 @@ final class OrderCreateControllerTest extends WebTestCase
         self::assertStringContainsString('Vytvořit objednávku', (string) $this->client->getResponse()->getContent());
         // The map is owned by the component now — its controller mount must be present.
         self::assertSelectorExists('[data-controller~="storage-map"]');
+
+        // Spec 079: the payment-deadline notice renders the place's configured
+        // window (fixture default 3), not the pre-017 hardcoded "7 dní".
+        self::assertStringContainsString('3 dny', (string) $this->client->getResponse()->getContent());
+        self::assertStringNotContainsString('7 dní na dokončení platby', (string) $this->client->getResponse()->getContent());
     }
 
     public function testAuthenticatedUserCanLoadOrderPage(): void
