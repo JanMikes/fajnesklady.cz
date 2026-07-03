@@ -9,7 +9,7 @@ overview so we don't have to grep on every change.
 
 | # | Document | Generator / Source | Storage location | Customer access |
 |---|---|---|---|---|
-| 1 | Faktura (PDF) | Fakturoid → `InvoicingService` (`issueInvoiceForOrder` / `issueInvoiceForRecurringPayment` / `issueInvoiceForDebt` — incl. the onboarding-debt invoice) | absolute path on disk via `Invoice.pdfPath` | `InvoicePdfController` (auth, per-invoice) + `OrderInvoiceDownloadController` (public, UUID-gated, primary invoice only) |
+| 1 | Faktura (PDF) | Fakturoid → `InvoicingService` (`issueInvoiceForOrder` / `issueInvoiceForRecurringPayment` / `issueInvoiceForDebt` — incl. the onboarding-debt invoice) | absolute path on disk via `Invoice.pdfPath` | `InvoicePdfController` (auth, per-invoice) + `OrderInvoiceDownloadController` (public, signed URL via `UriSigner`, per-invoice at `/objednavka/{id}/dokumenty/faktura/{invoiceId}.pdf`, COMPLETED orders only) |
 | 2 | Smlouva (DOCX) | `ContractDocumentGenerator` | `var/contracts/contract_{uuid}_{date}.docx` via `Contract.documentPath` | `ContractDownloadController` (auth) |
 | 3 | Smlouva (PDF) | `DocumentPdfConverter` (on-the-fly from DOCX) | not persisted | `ContractPdfController` (auth) + `OrderContractDownloadController` (public, UUID-gated) |
 | 4 | Mapa skladu (PNG, vyznačená jednotka) | `StorageMapImageGenerator::generate(Storage)` | not persisted (regenerated on every fetch) | `OrderMapDownloadController` at `/objednavka/{id}/dokumenty/mapa.png` (public, UUID-gated, COMPLETED only) |
@@ -85,8 +85,6 @@ form annexes (withdrawal, complaint) intentionally remain unsigned.
 
 ## Future improvements
 
-- **Per-invoice public download route**: today `OrderInvoiceDownloadController`
-  serves only the order's primary invoice (oldest by `issuedAt`). For
-  anonymous viewing of multi-invoice recurring orders, add an
-  `{orderId}/{invoiceId}` route. Logged-in users hit the portal route which
-  already supports this.
+- None currently. (The per-invoice public download route previously listed
+  here shipped: `OrderInvoiceDownloadController` takes `{invoiceId}` and is
+  what makes the public fine-invoice links from spec 081 work.)
