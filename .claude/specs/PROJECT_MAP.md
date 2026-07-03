@@ -1,13 +1,13 @@
 # Project Map — Fajnesklady.cz
 
-Reference for spec writing & implementation. Regenerate if structure drifts significantly. Generated 2026-06-01.
+Reference for spec writing & implementation. Regenerate if structure drifts significantly. Generated 2026-07-03.
 
 Stack: PHP 8.5 (Docker image `ghcr.io/thedevs-cz/php:8.5-fajnesklady`) · Symfony · Postgres 17 · FrankenPHP · Tailwind · Stimulus.
 
 ## Routes
 
 ### Public (unauthenticated)
-- `/` → `HomeController` — landing
+- `/` → `HomeController` — landing (places overview via `GetHomepagePlaces`)
 - `/register` → `RegisterController` — customer signup
 - `/login` → `LoginController`
 - `/logout` → `LogoutController`
@@ -24,7 +24,7 @@ Stack: PHP 8.5 (Docker image `ghcr.io/thedevs-cz/php:8.5-fajnesklady`) · Symfon
 - `/pobocka/{id}/cenik` → `PlacePricelistController` — placeholder rendered by the `${PRICELIST_URL}` token in VOP
 - `/objednavka/{placeId}/{storageTypeId}/{storageId?}` → `OrderCreateController`
 - `/objednavka/{placeId}/{storageTypeId}/{storageId}/prijmout` → `OrderAcceptController`
-- `/objednavka/prodlouzit/{previousOrderId}` → `OrderRenewController` — one-click renew from finished/expiring order
+- `/objednavka/prodlouzit/{previousOrderId}` → `OrderRenewController` (UriSigner-protected) — one-click renew from finished/expiring order
 - `/objednavka/{id}/platba` → `OrderPaymentController`
 - `/objednavka/{id}/platba/iniciovat` → `PaymentInitiateController`
 - `/objednavka/{id}/platba/navrat` → `PaymentReturnController`
@@ -36,6 +36,10 @@ Stack: PHP 8.5 (Docker image `ghcr.io/thedevs-cz/php:8.5-fajnesklady`) · Symfon
 - `/objednavka/{id}/dokumenty/faktura/{invoiceId}.pdf` → `OrderInvoiceDownloadController` (UriSigner-protected)
 - `/objednavka/{id}/dokumenty/mapa.png` → `OrderMapDownloadController` (UriSigner-protected)
 - `/objednavka/{id}/dokumenty/vop.pdf` → `OrderVopDownloadController` (UriSigner-protected)
+- `/smlouva/{contractId}/prodlouzit` → `ContractProlongController` (UriSigner-protected) — prolongation page, spec 077
+- `/smlouva/{contractId}/prodlouzit/karta` → `ContractCardSetupController` (UriSigner-protected) — bank→card switch during prolongation
+- `/smlouva/{contractId}/prodlouzit/karta/iniciovat` → `ContractCardSetupInitiateController` (UriSigner-protected, POST)
+- `/smlouva/{contractId}/prodlouzit/karta/navrat` → `ContractCardSetupReturnController` — GoPay return from card setup
 - `/pokuta/{id}/platba` → `FinePaymentController` — fine payment page (GoPay / bank transfer QR)
 - `/pokuta/{id}/platba/iniciovat` → `FinePaymentInitiateController`
 - `/pokuta/{id}/platba/navrat` → `FinePaymentReturnController`
@@ -45,7 +49,7 @@ Stack: PHP 8.5 (Docker image `ghcr.io/thedevs-cz/php:8.5-fajnesklady`) · Symfon
 - `/podpis/dokonceno/{id}` → `CustomerSigningCompleteController`
 - `/opakovana-platba/{contractId}/zrusit` → `CancelRecurringPaymentController` (UriSigner-protected)
 - `/vzor-smlouvy` → `ContractSampleController` — sample contract PDF
-- `/qr-platba/{variableSymbol}/{amountInHaler}` → `QrPaymentImageController` — SPD bank-transfer QR PNG (VS + amount in haléře)
+- `/qr-platba/{variableSymbol}/{amountInHaler}` → `QrPaymentImageController` (UriSigner-protected) — SPD bank-transfer QR PNG (VS + amount in haléře)
 - `/pouceni-spotrebitele` → `ConsumerNoticeController`
 - `/ochrana-osobnich-udaju` → `PrivacyPolicyController`
 - `/obchodni-podminky` → `TermsAndConditionsController`
@@ -86,12 +90,15 @@ Stack: PHP 8.5 (Docker image `ghcr.io/thedevs-cz/php:8.5-fajnesklady`) · Symfon
 - `/portal/places/{placeId}/smlouvy` → `PlaceContractsController` — chip-filtered contracts list (active/expiring/upcoming/recent)
 - `/portal/places/{placeId}/canvas` → `StorageCanvasController`
 - `/portal/places/{placeId}/access-codes` → `PlaceAccessCodesController`
-- `/portal/places/{placeId}/access-codes/bulk-generate` → `PlaceAccessCodesBulkGenerateController`
-- `/portal/places/{placeId}/access-codes/reset` → `PlaceAccessCodesResetController`
+- `/portal/places/{placeId}/access-codes/bulk-generate` → `PlaceAccessCodesBulkGenerateController` (POST)
+- `/portal/places/{placeId}/access-codes/reset` → `PlaceAccessCodesResetController` (POST)
+- `/portal/places/{placeId}/access-codes/exclude` → `PlaceAccessCodesExcludeController` (POST) — manual lock-code exclusion, spec 082
+- `/portal/places/{placeId}/access-codes/exclusions/{usageId}/remove` → `PlaceAccessCodesUnexcludeController` (POST)
 - `/portal/places/{placeId}/storages` → `StorageListController`
 - `/portal/places/{placeId}/storages/export` → `StorageExportController`
 - `/portal/places/{placeId}/storage-types` → `StorageTypeListController`
 - `/portal/places/{placeId}/storage-types/create` → `StorageTypeCreateController`
+- `/portal/places/{placeId}/storage-types/reorder` → `StorageTypeReorderController` (POST) — drag-and-drop ordering
 - `/portal/places/{placeId}/storage-types/{id}/edit` → `StorageTypeEditController`
 - `/portal/places/{placeId}/storage-types/{id}/delete` → `StorageTypeDeleteController`
 - `/portal/places/{placeId}/storage-types/{id}/obsazenost` → `StorageTypeOccupancyController`
@@ -111,7 +118,7 @@ Stack: PHP 8.5 (Docker image `ghcr.io/thedevs-cz/php:8.5-fajnesklady`) · Symfon
 - `/portal/landlord/self-billing/{id}/pdf` → `SelfBillingInvoicePdfController`
 - `/portal/landlord/self-billing/export` → `LandlordSelfBillingExportController`
 - `/portal/pronajimatel/predavaci-protokol/{id}` → `LandlordHandoverViewController`
-- `/portal/pronajimatel/predavaci-protokol/{id}/generate-code` → `LandlordHandoverGenerateCodeController`
+- `/portal/pronajimatel/predavaci-protokol/{id}/generate-code` → `LandlordHandoverGenerateCodeController` (POST)
 - `/portal/users` → `UserListController`
 - `/portal/users/export` → `UserExportController`
 - `/portal/users/{id}` → `UserViewController`
@@ -141,15 +148,18 @@ Stack: PHP 8.5 (Docker image `ghcr.io/thedevs-cz/php:8.5-fajnesklady`) · Symfon
 - `/portal/admin/po-splatnosti` → `AdminOverdueController` — overdue contracts dashboard
 - `/portal/admin/po-splatnosti/export` → `AdminOverdueExportController`
 - `/portal/admin/bankovni-platby` → `AdminBankPaymentsController` — FIO bank transaction reconciliation
+- `/portal/admin/bankovni-platby/{id}/ignorovat` → `AdminBankTransactionIgnoreController` (POST) — mark non-related transaction ignored
+- `/portal/admin/bankovni-platby/{id}/obnovit` → `AdminBankTransactionUnignoreController` (POST)
 - `/portal/admin/email-log` → `AdminEmailLogController`
 - `/portal/admin/email-log/{id}` → `AdminEmailLogDetailController`
 - `/portal/admin/email-log/export` → `AdminEmailLogExportController`
 - `/portal/admin/audit-log` → `AdminAuditLogController`
 - `/portal/admin/audit-log/export` → `AdminAuditLogExportController`
 - `/portal/admin/operace` → `AdminOperationsController` — operations hub (handovers, expiring contracts, onboarding, prepayment)
-- `/portal/admin/nastaveni` → `AdminSettingsController` — platform settings (bank transfer surcharge)
+- `/portal/admin/nastaveni` → `AdminSettingsController` — platform settings (bank transfer surcharge, overdue termination days)
 - `/portal/admin/onboarding` → `AdminOnboardingController` — unified dynamic Live Component form (spec 050; replaces former separate digital/migrate controllers)
-- `/portal/admin/predavaci-protokol/{id}` → `AdminHandoverViewController` — read-only handover protocol view
+- `/portal/admin/predavaci-protokol/{id}` → `AdminHandoverViewController` — read-only handover protocol view + fill-as CTAs
+- `/portal/admin/predavaci-protokol/{id}/preskocit-najemce` → `AdminHandoverSkipTenantController` (POST) — skip unreachable tenant, spec 083
 - `/portal/admin/place-access-requests` → `PlaceAccessRequestListController`
 - `/portal/admin/place-access-requests/{id}/approve` → `PlaceAccessRequestApproveController`
 - `/portal/admin/place-access-requests/{id}/deny` → `PlaceAccessRequestDenyController`
@@ -172,28 +182,29 @@ Stack: PHP 8.5 (Docker image `ghcr.io/thedevs-cz/php:8.5-fajnesklady`) · Symfon
 |---|---|---|
 | `User` (records events) | Platform user (tenant/landlord/admin); records events via `HasEvents` | billing info; orders, places, contracts, audit logs |
 | `Place` | Physical storage location | owner:User; storages, storage types; carries storage-code config; latitude/longitude used by `PlaceAddressFormatter` for navigation links |
-| `Storage` | Unit inside a place | user, storageType, place; photos, unavailability; nullable `storageCode` |
-| `StorageType` | Template/category for storage | place; storages, photos |
+| `Storage` | Unit inside a place | user, storageType, place; photos, unavailability; nullable `storageCode`; `status` column is display-only and reconciled by `StorageStatusReconciler` — never gate a booking on it |
+| `StorageType` | Template/category for storage | place; storages, photos; `adminOnly` flag hides it from public ordering; `position` drives drag-and-drop ordering |
 | `StoragePhoto` / `StorageTypePhoto` | Images | parent |
 | `StorageUnavailability` | Blackout period | storage, user |
-| `Order` (records events) | Rental request/booking; carries `individualMonthlyAmount`, `paidThroughDate`, `billingMode` from admin onboarding | user, storage; contract; invoices |
-| `Contract` (records events) | Legal rental agreement; `individualMonthlyAmount` override survives storage-price changes; every change records a `ContractPriceChanged` event; `billingMode` (`BillingMode` enum) is locked at order completion and drives recurring vs manual billing; `daysUntilExternalPrepaymentEnds()` reports remaining external-prepayment days for customer banners; `paymentDemandSentAt` tracks VOP XI compliance demand timing | order(1:1), user, storage; tracks signing, termination, recurring/manual payment |
+| `Order` (records events) | Rental request/booking; carries `individualMonthlyAmount`, `paidThroughDate`, `billingMode` from admin onboarding; open-ended rentals are legacy-only (`isUnlimited()` = `endDate === null`; every new order has a concrete endDate — spec 076) | user, storage; contract; invoices |
+| `Contract` (records events) | Legal rental agreement; `individualMonthlyAmount` override survives storage-price changes; every change records a `ContractPriceChanged` event; `billingMode` (`BillingMode` enum) is locked at order completion and drives recurring vs manual billing; `prolong()` is the ONLY way a contract continues past its endDate (spec 077 — records `ContractProlonged`; blocks its storage open-endedly so the customer can always prolong); `pendingCardSetupPaymentId` tracks an in-flight bank→card switch; `daysUntilExternalPrepaymentEnds()` reports remaining external-prepayment days for customer banners; `paymentDemandSentAt` tracks VOP XI compliance demand timing | order(1:1), user, storage; tracks signing, termination, recurring/manual payment |
 | `ContractPriceChange` | Append-only audit row per `applyIndividualMonthlyAmount` call (previous → new amount, actor, reason); persisted by `PersistContractPriceChangeHandler` on `ContractPriceChanged` | contract, changedBy:User? |
-| `Fine` (records events) | Contractual penalty per VOP Section IV; `FineType` enum (DIRTY_STORAGE / NON_RETURN / LATE_PAYMENT / CUSTOM); unique `variableSymbol` for bank transfer matching; GoPay one-off or bank transfer payment; `isPayable()` guard | contract, user; `FineIssued`/`FinePaid` events |
-| `ManualPaymentRequest` | One row per (Contract, billing cycle) for `MANUAL_RECURRING` contracts. Tracks per-stage reminder dispatch (`initial`, `d_minus_2`, `d_zero`, `d_plus_3`, `d_plus_7`) and the GoPay/bank transfer payment for that cycle. Unique on `(contract_id, period_start)` | contract |
-| `Invoice` (records events) | Customer bill | order, user |
+| `ContractProlongation` | Append-only audit row per `prolong()` call (previous → new end date, actor, billing snapshot after); persisted by `PersistContractProlongationHandler` on `ContractProlonged` (spec 077) | contract, prolongedBy:User? |
+| `Fine` (records events) | Contractual penalty per VOP Section IV; `FineType` enum (DIRTY_STORAGE / NON_RETURN / LATE_PAYMENT / CUSTOM); unique `variableSymbol` for bank transfer matching; GoPay one-off or bank transfer payment; `isPayable()` guard; Fakturoid invoice issued on payment (spec 081, via `InvoicingService::issueInvoiceForFine` in `SendFinePaidEmailHandler`) | contract, user; `FineIssued`/`FinePaid` events |
+| `ManualPaymentRequest` | One row per (Contract, billing cycle) for `MANUAL_RECURRING` contracts and upfront tranches. Tracks per-stage reminder dispatch (`initial`, `d_minus_2`, `d_zero`, `d_plus_3`, `d_plus_7`) and the GoPay/bank transfer payment for that cycle. Unique on `(contract_id, period_start)` | contract |
+| `Invoice` (records events) | Customer bill; nullable `fine` relation for fine invoices (spec 081) | order, user, fine? |
 | `SelfBillingInvoice` | Landlord revenue invoice | landlord; payments |
 | `Payment` | Payment tx | selfBillingInvoice, order, contract, storage; GoPay status |
 | `BankAccountMapping` | Maps sender bank account → order/user for FIO reconciliation; unique on `(accountNumber, order)` | user, order, createdBy:User |
-| `BankTransaction` | FIO bank transaction record; auto/manual pairing to order/contract; unique on `fioTransactionId`; status: unmatched/matched/ignored | pairedOrder, pairedContract, pairedBy:User |
+| `BankTransaction` | FIO bank transaction record; auto/manual pairing to order/contract; unique on `fioTransactionId`; status: unmatched/matched/ignored (admin ignore/unignore actions) | pairedOrder, pairedContract, pairedBy:User |
 | `PlatformSettings` | Singleton admin-configurable settings; `bankTransferSurchargeInHaler` (default 10 000 = 100 CZK), `overdueTerminationDays` (default 7, min 7 = VOP čl. XI floor — drives `app:terminate-overdue-contracts`) | — |
-| `HandoverProtocol` (records events) | Check-in/out doc | contract(1:1); photos |
+| `HandoverProtocol` (records events) | Check-in/out doc; `tenantSkippedAt`/`tenantSkippedBy` + `skipTenantSide()` let an admin waive an unreachable tenant (spec 083 — completes immediately when landlord side done) | contract(1:1); photos |
 | `HandoverPhoto` | Image in handover | handoverProtocol |
 | `PlaceAccessRequest` (records events) | Request manager access | requester, place, approver |
 | `PlaceAccess` | Granted access | place, user |
 | `PlaceChangeRequest` | Update place request | user, place, processor |
 | `CreatePlaceRequest` | Application to create place | requester, place |
-| `PlaceStorageCodeUsage` | Tracks which storage codes have been issued at a place | place; supports bulk + on-demand allocation |
+| `PlaceStorageCodeUsage` | Tracks issued lock codes at a place; `type` (`StorageCodeUsageType` USED/EXCLUDED) supports manual exclusions + guaranteed retirement (spec 082) | place; supports bulk + on-demand allocation |
 | `EmailLog` | Persistent record of every outbound email (status, recipient, template, payload) | user (nullable); written out-of-band so survives rollback |
 | `OverdueDigestSent` | Audit row marking a daily overdue digest e-mail was sent to one admin (unique per admin per day) | admin:User |
 | `OnboardingReminderSent` | Idempotency row for `app:send-onboarding-payment-reminders` (D+2 / D+5 stages). Unique on `(order_id, stage)` | order |
@@ -207,23 +218,25 @@ Stack: PHP 8.5 (Docker image `ghcr.io/thedevs-cz/php:8.5-fajnesklady`) · Symfon
 
 User / auth: RegisterUser, RegisterLandlord, VerifyEmail, ResendVerificationEmail, RequestPasswordReset, ResetPassword, ChangePassword, SetUserPassword, UpdateProfile, UpdateBillingInfo, ActivateUser, DeactivateUser, VerifyUserByAdmin, ChangeUserRole, AdminUpdateUser, GetOrCreateUserByEmail.
 
-Place / storage: CreatePlace, UpdatePlace, DeletePlace, UpdatePlaceStorageCodeConfig, CreateStorage, UpdateStorage, DeleteStorage, AddStoragePhoto, DeleteStoragePhoto, CreateStorageType, UpdateStorageType, DeleteStorageType, AddStorageTypePhoto, DeleteStorageTypePhoto, CreateStorageUnavailability, DeleteStorageUnavailability, BulkGenerateStorageCodes, ReleaseUnusedStorageCodes.
+Place / storage: CreatePlace, UpdatePlace, DeletePlace, UpdatePlaceStorageCodeConfig, CreateStorage, UpdateStorage, DeleteStorage, AddStoragePhoto, DeleteStoragePhoto, CreateStorageType, UpdateStorageType, DeleteStorageType, ReorderStorageTypes, AddStorageTypePhoto, DeleteStorageTypePhoto, CreateStorageUnavailability, DeleteStorageUnavailability, BulkGenerateStorageCodes, ReleaseUnusedStorageCodes, ExcludeStorageCodes, RemoveStorageCodeExclusion.
 
-Order / payment / contract: CreateOrder, CancelOrder, CompleteOrder, AcceptOrderTerms, SignOrder, ConfirmOrderPayment, InitiatePayment, InitiateDebtPayment, ProcessPaymentNotification, ProcessBankTransferPayment, ProcessBankTransferDebtPayment, ProcessIncomingBankTransaction, ChargeRecurringPayment, CancelRecurringPayment, RequestTerminationNotice, AdminTerminateContract, DispatchManualBillingNotification, DispatchOnboardingReminder.
+Order / payment / contract: CreateOrder, CancelOrder, CompleteOrder, ExpireOrder, AcceptOrderTerms, SignOrder, SetOrderPaymentPreferences, ConfirmOrderPayment, InitiatePayment, InitiateDebtPayment, IssueInvoiceForOrder, ProcessPaymentNotification, ProcessBankTransferPayment, ProcessBankTransferDebtPayment, ProcessIncomingBankTransaction, IgnoreBankTransaction, UnignoreBankTransaction, ChargeRecurringPayment, CancelRecurringPayment, ProlongContract, InitiateCardSetup, RequestTerminationNotice, AdminTerminateContract, DispatchManualBillingNotification, DispatchOnboardingReminder.
 
 Fines: IssueFine, CancelFine, InitiateFinePayment.
 
 Onboarding (admin-driven): AdminOnboarding, CustomerSignOnboarding.
 
-Place access / handover: RequestPlaceAccess, ApprovePlaceAccessRequest, DenyPlaceAccessRequest, CreateHandoverProtocol, CompleteLandlordHandover, CompleteTenantHandover, AddHandoverPhoto, RemoveHandoverPhoto.
+Place access / handover: RequestPlaceAccess, ApprovePlaceAccessRequest, DenyPlaceAccessRequest, CreateHandoverProtocol, CompleteLandlordHandover, CompleteTenantHandover, SkipTenantHandover, AddHandoverPhoto, RemoveHandoverPhoto.
 
 Self-billing: GenerateSelfBillingInvoice.
+
+Settings: UpdatePlatformSettings.
 
 ## Queries
 
 `QueryBus` (typed via `QueryMessage<TResult>`) + `Get*Query` handlers. Each has matching `Get*Result` DTO.
 
-GetDashboardStats, GetLandlordDashboardStats, GetPlaceDashboardStats, GetAdminRevenueChart, GetLandlordRevenueChart, GetPlaceRevenueChart, GetPlaceTypeOccupancyOverview (rows: `GetPlaceTypeOccupancyRow`), GetStorageTypeOccupancy.
+GetDashboardStats, GetLandlordDashboardStats, GetPlaceDashboardStats, GetAdminRevenueChart, GetLandlordRevenueChart, GetPlaceRevenueChart, GetHomepagePlaces (rows: `GetHomepagePlaceRow` + `GetHomepagePlaceTypeRow` — public homepage overview, 30-day availability, lowest price), GetPlaceTypeOccupancyOverview (rows: `GetPlaceTypeOccupancyRow`), GetStorageTypeOccupancy.
 
 ## Domain Events
 
@@ -233,20 +246,22 @@ Order: OrderCreated, OrderPlaced, OrderPaid, OrderCompleted, OrderCancelled, Ord
 
 Place / handover: PlaceProposed, PlaceAccessRequested, PlaceAccessRequestApproved, PlaceAccessRequestDenied, HandoverProtocolCreated, HandoverCompleted, HandoverExpired, HandoverReminderDue.
 
-Contracts / billing: ContractExpiringSoon, ContractPriceChanged, ContractTerminated, ContractTerminatedDueToPaymentFailure, InvoiceCreated, RecurringPaymentEstablished, RecurringPaymentCharged, RecurringPaymentFailed, RecurringPaymentCancelled, RecurringPaymentAdvanceNoticeNeeded, TerminationNoticeRequested, PaymentDemandSent, ExternalPrepaymentEndingSoon, PaymentAmountMismatch, BankTransferAmountMismatch (FIO transfer paid wrong amount; carries bankTransactionId + order/contract + expected/received), ManualBillingPaymentRequested, ManualBillingPaymentOverdue, OnboardingPaymentReminderRequested, OnboardingDebtPaymentRequested, OnboardingDebtPaid (recorded by `Order::markDebtPaid()` when an onboarding debt clears via GoPay webhook or FIO cron → customer receipt + admin heads-up + Fakturoid debt invoice).
+Contracts / billing: ContractExpiringSoon, ContractPriceChanged, ContractProlonged (spec 077 — audit row + customer e-mail), ContractTerminated, ContractTerminatedDueToPaymentFailure, InvoiceCreated, RecurringPaymentEstablished, RecurringPaymentCharged, RecurringPaymentFailed, RecurringPaymentCancelled, RecurringPaymentAdvanceNoticeNeeded, TerminationNoticeRequested, PaymentDemandSent, ExternalPrepaymentEndingSoon, PaymentAmountMismatch, BankTransferAmountMismatch (FIO transfer paid wrong amount; carries bankTransactionId + order/contract + expected/received), ManualBillingPaymentRequested, ManualBillingPaymentOverdue, OnboardingPaymentReminderRequested, OnboardingDebtPaymentRequested, OnboardingDebtPaid (recorded by `Order::markDebtPaid()` when an onboarding debt clears via GoPay webhook or FIO cron → customer receipt + admin heads-up + Fakturoid debt invoice).
 
 Fines: FineIssued, FinePaid, FinePaymentReminderRequested.
 
 Admin notifications: OverdueDigestRequested.
 
 Handlers (in `src/Event/`):
-- Email side-effects: `Send*EmailHandler` (welcome, verification, password reset, order confirmation, signing link, contract ready/expiring/terminated, handover request/reminder/completed, invoice, recurring-payment established/cancelled/failed/advance-notice + admin variants, manual-billing payment-requested / payment-overdue + admin variant, place access approved/denied/requested, place proposed, payment default, amount mismatch alert (`SendAmountMismatchAlertEmailHandler`), bank-transfer amount mismatch customer + admin (`SendBankTransferMismatch{Customer,Admin}EmailHandler` on `BankTransferAmountMismatch`), external-prepayment ending soon, termination notice + admin, payment demand + admin, overdue digest, onboarding payment reminder, debt payment request, debt paid receipt customer + admin (`SendOnboardingDebtPaid{,Admin}EmailHandler` on `OnboardingDebtPaid` — customer one issues + bundles the debt invoice via `InvoicingService::issueInvoiceForDebt`, marks it emailed to suppress the standalone invoice mail), fine issued/paid/reminder).
-- Bookkeeping: `PersistContractPriceChangeHandler` (persists `ContractPriceChange` audit row on `ContractPriceChanged`), `IssueInvoiceOnRecurringChargeHandler`, `RecordPaymentOnOrderPaidHandler`, `RecordPaymentOnRecurringChargeHandler`, `ReleaseStorageOnHandoverCompletedHandler`, `ForceReleaseStorageOnHandoverExpiredHandler`, `SendStorageAvailabilityWarningHandler`. First-payment invoice is issued synchronously by `SendRentalActivatedEmailHandler` so the PDF can be bundled into the post-payment e-mail; the standalone `SendInvoiceEmailHandler` is the fallback (also used by every recurring charge).
+- Email side-effects: `Send*EmailHandler` (welcome, verification, password reset, order confirmation, signing link, contract ready/expiring/terminated/prolonged, handover request/reminder/completed, invoice, recurring-payment established/cancelled/failed/advance-notice + admin variants, manual-billing payment-requested / payment-overdue + admin variant, place access approved/denied/requested, place proposed, payment default, amount mismatch alert (`SendAmountMismatchAlertEmailHandler`), bank-transfer amount mismatch customer + admin (`SendBankTransferMismatch{Customer,Admin}EmailHandler` on `BankTransferAmountMismatch`), external-prepayment ending soon, termination notice + admin, payment demand + admin, overdue digest, onboarding payment reminder, debt payment request, debt paid receipt customer + admin (`SendOnboardingDebtPaid{,Admin}EmailHandler` on `OnboardingDebtPaid` — customer one issues + bundles the debt invoice via `InvoicingService::issueInvoiceForDebt`, marks it emailed to suppress the standalone invoice mail), fine issued/paid/reminder — `SendFinePaidEmailHandler` also issues + attaches the Fakturoid fine invoice, spec 081).
+- Bookkeeping: `PersistContractPriceChangeHandler` (persists `ContractPriceChange` audit row on `ContractPriceChanged`), `PersistContractProlongationHandler` (persists `ContractProlongation` on `ContractProlonged`), `IssueInvoiceOnRecurringChargeHandler`, `RecordPaymentOnOrderPaidHandler`, `RecordPaymentOnRecurringChargeHandler`, `ReleaseStorageOnHandoverCompletedHandler`, `ForceReleaseStorageOnHandoverExpiredHandler`, `SendStorageAvailabilityWarningHandler`. First-payment invoice is issued synchronously by `SendRentalActivatedEmailHandler` so the PDF can be bundled into the post-payment e-mail; the standalone `SendInvoiceEmailHandler` is the fallback (also used by every recurring charge).
 - Framework subscribers (not domain events): `DomainEventsSubscriber` (flushes recorded entity events via the messenger middleware), `SentryScopeResetSubscriber` (resets Sentry scope on kernel `REQUEST`).
 
 ## Enums
 
-`UserRole`, `OrderStatus`, `StorageStatus`, `HandoverStatus`, `PlaceAccessRequestStatus`, `PlaceType`, `RentalType` (UNLIMITED/FIXED_TERM), `RequestStatus`, `TerminationReason`, `PaymentMethod` (incl. BANK_TRANSFER), `PaymentFrequency` (MONTHLY/YEARLY — locked at order completion, copied to Contract; YEARLY always implies MANUAL_RECURRING), `SigningMethod` (DIGITAL/PHYSICAL), `AdvanceNoticeReason`, `EmailLogStatus`, `BillingMode` (ONE_TIME/AUTO_RECURRING/MANUAL_RECURRING — locked at order completion, copied to Contract), `ExpectedDuration` (SHORT/MEDIUM/LONG — research-only; populated only for UNLIMITED orders), `FineType` (DIRTY_STORAGE/NON_RETURN/LATE_PAYMENT/CUSTOM — VOP Section IV contractual penalties with predefined amounts).
+`UserRole`, `OrderStatus`, `StorageStatus`, `HandoverStatus`, `PlaceAccessRequestStatus`, `PlaceType`, `RequestStatus`, `TerminationReason`, `PaymentMethod` (incl. BANK_TRANSFER), `PaymentFrequency` (MONTHLY/YEARLY/ONE_TIME — locked at order completion, copied to Contract; YEARLY always implies MANUAL_RECURRING; ONE_TIME = whole rental paid upfront by bank transfer, spec 078), `SigningMethod` (DIGITAL/PHYSICAL), `AdvanceNoticeReason`, `EmailLogStatus`, `BillingMode` (ONE_TIME/AUTO_RECURRING/MANUAL_RECURRING — locked at order completion, copied to Contract), `StorageCodeUsageType` (USED/EXCLUDED — spec 082 lock-code exclusions), `FineType` (DIRTY_STORAGE/NON_RETURN/LATE_PAYMENT/CUSTOM — VOP Section IV contractual penalties with predefined amounts).
+
+Removed (spec 076/078): `RentalType` — open-ended rentals are legacy-only, expressed as `Order.endDate === null`; `ExpectedDuration` — dropped with it.
 
 ## Forms (FormData + FormType pairs)
 
@@ -258,7 +273,7 @@ Address helper interface: `Form\Address\HasBillingAddress` — implemented by ev
 
 Compose `EntityManagerInterface` only — never extend `ServiceEntityRepository`, never call `flush()` (exception: `EmailLogRepository`, audit-log writers commit out-of-band so the row survives a parent rollback).
 
-User, Place, PlaceAccess, PlaceAccessRequest, PlaceChangeRequest, PlaceStorageCodeUsage, CreatePlaceRequest, Storage, StorageType, StoragePhoto, StorageTypePhoto, StorageUnavailability, Order (incl. `findUnpaidSignedOnboarding` for the spec 043 reminder cron), Contract, ContractPriceChange, ManualPaymentRequest, Fine, Invoice, SelfBillingInvoice, LandlordInvoiceSequence, Payment, BankAccountMapping, BankTransaction, PlatformSettings, HandoverProtocol, HandoverPhoto, AuditLog, EmailLog (+ `EmailLogFilter` value-object), OverdueDigestSent, OnboardingReminderSent, ResetPasswordRequest.
+User, Place, PlaceAccess, PlaceAccessRequest, PlaceChangeRequest, PlaceStorageCodeUsage, CreatePlaceRequest, Storage, StorageType, StoragePhoto, StorageTypePhoto, StorageUnavailability, Order (incl. `findUnpaidSignedOnboarding` for the spec 043 reminder cron), Contract, ContractPriceChange, ContractProlongation, ManualPaymentRequest, Fine, Invoice, SelfBillingInvoice, LandlordInvoiceSequence, Payment, BankAccountMapping, BankTransaction, PlatformSettings, HandoverProtocol, HandoverPhoto, AuditLog, EmailLog (+ `EmailLogFilter` value-object), OverdueDigestSent, OnboardingReminderSent, ResetPasswordRequest.
 
 ## Services (`src/Service/`)
 
@@ -267,7 +282,7 @@ User, Place, PlaceAccess, PlaceAccessRequest, PlaceChangeRequest, PlaceStorageCo
 - **Order display**: `Order\OrderDisplayStatus`, `Order\OrderDisplayStatusCase`, `Order\OrderDisplayStatusResolver`, `Order\OrderStatusViewModel`, `Order\OrderStatusViewModelFactory`. `Order\OrderReferenceFormatter` — single source of truth for the canonical customer-facing order reference (`Y-md-UUID8`, equals the contract's `${CONTRACT_NUMBER}`); surfaced via `Twig\OrderReferenceExtension`. `OrderService` orchestrates higher-level order operations. `OrderEmailAttachments` + `OrderEmailAttachmentsService` bundle contract/invoice/map/VOP PDFs into outbound mail (falls back to `Contract.documentPath` paper PDF when `Order.hasSignature()` is false — migrate flow).
 - **Customer billing situation (spec 043)**: `Order\CustomerBillingSituation` (the enum spine: GOPAY_FIRST_CHARGE / EXTERNALLY_PREPAID / FREE; `fromOrder(Order)` + `fromContract(Contract)` factories — free wins over prepaid). Feeds four content VOs read by signing/onboarding surfaces: `Order\SigningPriceViewModel` (signing page), `Order\SigningEmailContent` (signing-link email), `Order\CompletionPageViewModel` (signing complete page), `Order\RentalActivatedEmailContent` (rental activated email).
 - **Onboarding**: `Onboarding\OnboardingReminderSchedule` (D+2 / D+5 calendar-day stage matcher for `app:send-onboarding-payment-reminders`), `Onboarding\DebtPaymentService` (onboarding debt GoPay/bank-transfer payment orchestration).
-- **Invoicing / billing**: `Fakturoid\FakturoidClient`, `Fakturoid\FakturoidApiClient`, `Fakturoid\StaleFakturoidSubjectException`, `InvoicingService` (`issueInvoiceForOrder` / `issueInvoiceForRecurringPayment` / `issueInvoiceForDebt` — the latter via `FakturoidClient::createDebtInvoice`, gross/`from_total_with_vat`), `SelfBillingService`, `Billing\RecurringAmountCalculator` (frequency-aware; reads `Contract::getEffectiveRecurringAmount()` + cadence-aware proration), `Billing\ManualBillingReminderSchedule` (per-stage cron offsets for `MANUAL_RECURRING` contracts).
+- **Invoicing / billing**: `Fakturoid\FakturoidClient`, `Fakturoid\FakturoidApiClient`, `Fakturoid\StaleFakturoidSubjectException`, `InvoicingService` (`issueInvoiceForOrder` / `issueInvoiceForRecurringPayment` / `issueInvoiceForDebt` / `issueInvoiceForFine` — debt via `FakturoidClient::createDebtInvoice`, fine via `createFineInvoice`, gross/`from_total_with_vat`), `SelfBillingService`, `Billing\RecurringAmountCalculator` (frequency-aware; reads `Contract::getEffectiveRecurringAmount()` + cadence-aware proration), `Billing\ManualBillingReminderSchedule` (per-stage cron offsets for `MANUAL_RECURRING` contracts).
 - **Fines**: `Fine\FinePaymentUrlGenerator` (generates GoPay gateway + `/stav` return URLs for fine payment).
 - **VOP generation**: `Vop\VopDocumentGenerator` (fills `${PRICELIST_URL}` / `${OPERATING_RULES_URL}` into `vop_template.docx` per order), `Vop\VopPdfStamper` (overlays customer signature; `$skipLastPages` excludes annex pages).
 - **Overdue & contract risk**: `Overdue\OverdueChecker`, `AtRiskContractChecker`.
@@ -275,29 +290,27 @@ User, Place, PlaceAccess, PlaceAccessRequest, PlaceChangeRequest, PlaceStorageCo
 - **Address validation / autocomplete**: `Address\AddressValidator` (interface) + `Address\PhotonAddressValidator` (Photon Komoot impl with HTTP cache + 3 s timeout; powers `/api/address/suggest` and `BillingInfoForm` validation). Result VOs in `Value\Address\` (`AddressSuggestion`, `AddressValidationResult`).
 - **Handover signed links**: `Handover\HandoverUrlGenerator` (HMAC-signs `public_handover_view` URLs — mirrors `OrderStatusUrlGenerator`).
 - **Place address rendering**: `Place\PlaceAddressFormatter` (single-line address, Google Maps navigation URL, fallback when no GPS); surfaced via `Twig\PlaceAddressExtension`.
-- **Security voters / subscribers / listeners**: `Security\ContractVoter`, `Security\OrderVoter`, `Security\PlaceVoter`, `Security\StorageVoter`, `Security\StorageTypeVoter`, `Security\HandoverProtocolVoter`, `Security\DeactivatedUserChecker`, `Security\LoginSubscriber`, `Security\RecordLoginSubscriber`, `Security\HandoverAccessDeniedListener` (kernel exception listener: turns `AccessDeniedException` on the three portal handover routes into a logout + redirect to `/login?_target_path=…`, so a wrong-account user re-authenticates instead of being bounced to home).
+- **Security voters / subscribers / listeners**: `Security\ContractVoter`, `Security\OrderVoter`, `Security\PlaceVoter`, `Security\StorageVoter`, `Security\StorageTypeVoter`, `Security\HandoverProtocolVoter`, `Security\DeactivatedUserChecker`, `Security\LoginSubscriber`, `Security\RecordLoginSubscriber`, `Security\PasswordConfirmation` (re-entered password check for "Nebezpečná zóna" destructive actions — used at the controller boundary next to voter checks), `Security\HandoverAccessDeniedListener` (kernel exception listener: turns `AccessDeniedException` on the three portal handover routes into a logout + redirect to `/login?_target_path=…`, so a wrong-account user re-authenticates instead of being bounced to home).
 - **Identity**: `Identity\ProvideIdentity` (UUID v7), `Identity\RandomIdentityProvider` (prod), `tests/.../PredictableIdentityProvider`.
 - **ARES lookup**: `AresService`, `AresLookup` (+ `Value\AresResult`, `Value\AresSubject`, `Value\AresAddress`).
 - **Uploads / files**: `PlaceFileUploader`, `StoragePhotoUploader`, `StorageTypePhotoUploader`, `HandoverPhotoUploader`, `PublicFilesystem`, `SignatureStorage`.
-- **Domain utilities**: `PriceCalculator`, `CommissionCalculator`, `ContractService`, `ContractDocumentGenerator`, `DocumentPdfConverter`, `StorageMapImageGenerator`, `StorageAssignment`, `StorageAvailabilityChecker` (single source of truth for window-aware availability — `isAvailable()` single + `availabilityForStorages()` bulk share one `decide()` overlap predicate over orders/contracts/manual blocks; the `Storage.status` column is display-only and must never gate a booking — spec 071), `StorageCodeGenerator`, `Storage\StorageOccupancyService`, `AuditLogger`, `AuditLogDescriptionRenderer`, `EmailLogger`.
+- **Domain utilities**: `PriceCalculator`, `CommissionCalculator`, `ContractService`, `ContractDocumentGenerator`, `DocumentPdfConverter`, `StorageMapImageGenerator`, `StorageAssignment` (auto-assign prefers unengaged units — free in [today, ∞) — over engaged-but-free-in-window ones, spec 084), `StorageAvailabilityChecker` (single source of truth for window-aware availability — `isAvailable()` single + `availabilityForStorages()` bulk share one `decide()` overlap predicate over orders/contracts/manual blocks; the `Storage.status` column is display-only and must never gate a booking — spec 071), `StorageCodeGenerator`, `Storage\StorageOccupancyService`, `Storage\StorageStatusReconciler` (heals `storage.status` drift from live booking state; reuses `StorageOccupancyService::currentViews()`; run by `app:reconcile-storage-status`), `AuditLogger`, `AuditLogDescriptionRenderer`, `EmailLogger`.
 - **Excel export**: `Excel\ExcelExporter`, `Excel\ExcelSheet`, `Excel\ExcelColumn`, `Excel\ExcelColumnType`. Drives every `*Export*Controller`.
 - **Form helpers**: `Form\StorageChoiceBuilder`, `Form\EmailLogFilterFactory`.
 - **Messenger**: `Messenger\HandlerFailureUnwrap` (mandatory at every dispatch site that catches handler exceptions — see `.claude/MESSENGER.md`).
 
-## Yearly pricing tier (spec 045)
+## Payment frequency & pricing tiers (specs 045, 076, 077, 078)
 
-- `StorageType.defaultPricePerYear` (nullable, halere) + `Storage.pricePerYear` override.
-- `Storage::getEffectivePricePerYear()` — falls back to monthly × 12 when both unset; `hasExplicitYearlyRate()` flags whether an explicit rate exists (admin UI uses this to decide whether to surface the YEARLY radio).
-- `Contract.paymentFrequency` (`MONTHLY` | `YEARLY`) mirrors `Order.paymentFrequency`; locked at completion.
-- `Contract::getBillingCadenceStep()` → `+1 month` or `+1 year`; consumed by both billing crons (`ChargeRecurringPaymentHandler`, `DispatchManualBillingNotificationHandler`) and webhook reconciliation (`ProcessPaymentNotificationHandler`). `Contract::getBillingPeriodDays()` returns 30 vs 365 for proration.
-- `Contract::getEffectiveRecurringAmount()` returns the cadence-appropriate amount (monthly individual / storage monthly / storage yearly).
-- YEARLY is always `BillingMode::MANUAL_RECURRING` (form-layer constraint + entity-level defence in `OrderFormData::validatePaymentFrequency` + admin equivalents).
-- `PriceCalculator::YEARLY_THRESHOLD_DAYS = 360` (LIMITED eligibility); `resolveRateType()` + `isEligibleForYearly()` are the public eligibility helpers.
+- `PaymentFrequency` = MONTHLY | YEARLY | ONE_TIME; locked at order completion, copied to Contract.
+- **Fixed-term only (spec 076)**: new orders always have a concrete endDate; card payment = AUTO_RECURRING monthly; an active contract blocks its storage open-endedly (availability guarantee) so the customer can always prolong. `Order::isUnlimited()` (`endDate === null`) survives only for legacy contracts.
+- **Prolongation (spec 077)**: `Contract::prolong()` is the only way past endDate — records `ContractProlonged` (→ `ContractProlongation` audit row + customer e-mail). Customer CTA is the signed `/smlouva/{id}/prodlouzit` page; bank→card switch runs through `InitiateCardSetup` (ON_DEMAND setup charge, `pendingCardSetupPaymentId`, webhook completes the switch). `ProlongContractCommand.switchTo` handles card→bank inline; GoPay switch is the separate async flow.
+- **Upfront ONE_TIME (spec 078)**: whole rental paid upfront by bank transfer, any duration ≥ 31 days (`WEEKLY_THRESHOLD_DAYS = 31`; `SHORT_TERM_THRESHOLD_DAYS = 180` picks the rate). Rentals > 12 months pay in yearly tranches (`PriceCalculator::MONTHS_PER_UPFRONT_TRANCHE = 12`); `paidThroughDate` tracks paid tranches and a billing anchor keeps tranche contracts inside `app:send-manual-billing-payment-requests`; fully-paid / ≤12-month upfront contracts (anchor NULL) sit outside every billing cron.
+- Yearly tier (spec 045): `StorageType.defaultPricePerYear` (nullable, halere) + `Storage.pricePerYear` override; `Storage::getEffectivePricePerYear()` falls back to monthly × 12; `hasExplicitYearlyRate()` gates the YEARLY radio in admin UI. `PriceCalculator::YEARLY_THRESHOLD_DAYS = 360`; `resolveRateType()` + `isEligibleForYearly()` are the eligibility helpers. YEARLY always implies `BillingMode::MANUAL_RECURRING` (`OrderFormData::validatePaymentFrequency` + admin equivalents). GoPay 15 000 Kč ON_DEMAND cap (`MAX_RECURRING_PAYMENT_AMOUNT_IN_HALER`) does not apply — yearly is a one-shot charge per period, no token saved.
+- `Contract::getBillingCadenceStep()` → `+1 month` or `+1 year`; consumed by billing crons and webhook reconciliation. `Contract::getBillingPeriodDays()` returns 30 vs 365 for proration. `Contract::getEffectiveRecurringAmount()` returns the cadence-appropriate amount.
+- `daysUntilExternalPrepaymentEnds()` returns `null` for yearly and upfront-tranche contracts (their `paidThroughDate` isn't an external prepayment) so they don't trip the "Předplaceno externě" banner; `customer_billing_status.html.twig` has a dedicated "Platíte ročně" variant.
+- MRR: yearly contracts are excluded from `mrrInHaler` (would inflate 12×); sibling `yrrInHaler` / `expectedYrrInHaler` tally yearly amounts (user list, admin places export, per-place "Očekávané YRR" tile).
 - `PaymentSchedule.yearlyAmount` + `isYearly()` + `getYearlyMonthlyEquivalentInCzk()` power customer-facing "X Kč / měsíc (účtováno jednou ročně, Y Kč)" display.
-- GoPay 15 000 Kč ON_DEMAND cap does not apply — yearly is a one-shot charge per period, no token saved. Recurring-payment consent checkbox on `/prijmout` is suppressed for YEARLY (already gated on `billingMode = AUTO_RECURRING`).
-- `daysUntilExternalPrepaymentEnds()` returns `null` for yearly contracts so they don't trip the "Předplaceno externě" customer banner; `customer_billing_status.html.twig` has a dedicated teal "Platíte ročně" variant.
-- MRR: yearly contracts are excluded from `mrrInHaler` (would inflate 12×). Sibling `yrrInHaler` / `expectedYrrInHaler` tally yearly amounts; surfaced on the user list and admin places export, plus a per-place "Očekávané YRR" tile when non-zero.
-- `CompleteOrderHandler` seeds the initial `nextBillingDate` for MANUAL_RECURRING contracts (cadence-aware) — previously the cron was blind to any MANUAL contract without external prepayment, so this fix is both yearly-required and an incidental monthly-MANUAL bugfix.
+- `CompleteOrderHandler` seeds the initial `nextBillingDate` for MANUAL_RECURRING contracts (cadence-aware).
 
 ## Middleware
 
@@ -305,7 +318,7 @@ User, Place, PlaceAccess, PlaceAccessRequest, PlaceChangeRequest, PlaceStorageCo
 
 ## Twig (`src/Twig/`)
 
-- Components: `AdminOnboardingForm` (Live Component — unified onboarding, spec 050; window-aware storage selection gated by the date-range `StorageAvailabilityChecker`, spec 071), `BillingInfoForm`, `OrderForm` (Live Component — hosts the reactive order map that repaints on date/type change; storage availability is window-derived via `StorageAvailabilityChecker`, spec 071), `PlaceOccupancyMap` (Live Component — date-shifting occupancy canvas, spec 047), `RevenueChart`.
+- Components: `AdminOnboardingForm` (Live Component — unified onboarding, spec 050; window-aware storage selection gated by the date-range `StorageAvailabilityChecker`, spec 071), `BillingInfoForm`, `OrderForm` (Live Component — hosts the reactive order map that repaints on date/type change; storage availability is window-derived via `StorageAvailabilityChecker`, spec 071; manual pick limited to unengaged units, spec 084), `PlaceOccupancyMap` (Live Component — date-shifting occupancy canvas, spec 047), `RevenueChart`.
 - Extensions: `BankTransactionExtension`, `FineExtension` (fine type labels, amount formatting), `OperationsExtension` (sidebar badge count for admin operations hub), `OrderReferenceExtension` (canonical order reference filter — see `Order\OrderReferenceFormatter`), `OverdueExtension` (severity badges / labels), `RoleLabelExtension`, `UploadExtension`, `PlaceAddressExtension` (`place_address`, `place_navigation_url`, `place_has_navigation`).
 
 ## Value objects (`src/Value/`)
@@ -327,7 +340,7 @@ Domain exceptions, most carrying `#[WithHttpStatus]`:
 | `app:process-recurring-payments` | Charge `AUTO_RECURRING` contracts due today via GoPay (records `RecurringPaymentCharged` / `RecurringPaymentFailed`) |
 | `app:retry-failed-payments` | Retry recurring charges that previously failed (day 3 and day 7); termination is handled by `app:terminate-overdue-contracts` |
 | `app:send-recurring-payment-advance-notice` | Email customer N days before next charge (≥6-month gap rule, Podmínky čl. V) |
-| `app:send-manual-billing-payment-requests` | Per-cycle payment-request & overdue reminders for `MANUAL_RECURRING` contracts; idempotent via `ManualPaymentRequest.sentStages` |
+| `app:send-manual-billing-payment-requests` | Per-cycle payment-request & overdue reminders for `MANUAL_RECURRING` contracts and outstanding upfront tranches (spec 078); idempotent via `ManualPaymentRequest.sentStages` |
 | `app:send-external-prepayment-ending-soon` | Email customer when external-prepayment runway nearly used up |
 | `app:send-overdue-digest-email` | Daily 08:00 Europe/Prague — one e-mail per admin when ≥1 overdue contract; idempotent via `OverdueDigestSent` |
 | `app:send-onboarding-payment-reminders` | Daily — D+2 / D+5 payment-reminder e-mails to admin-onboarded GoPay customers who signed but never paid; idempotent via `OnboardingReminderSent` |
@@ -336,13 +349,14 @@ Domain exceptions, most carrying `#[WithHttpStatus]`:
 | `app:process-contract-terminations` | Apply scheduled terminations + emit `ContractTerminated` |
 | `app:terminate-overdue-contracts` | Daily 12:30 Prague — terminate every active non-free contract with `nextBillingDate` ≥ `PlatformSettings.overdueTerminationDays` in the past (VOP čl. XI, all payment tracks) → `ContractTerminatedDueToPaymentFailure` |
 | `app:process-handover-protocols` | Send handover requests/reminders, expire stale protocols |
+| `app:reconcile-storage-status` | Hourly — recompute the denormalized `storage.status` from live bookings via `StorageStatusReconciler`, healing any drift |
 | `app:generate-self-billing-invoices` | Issue monthly landlord self-billing invoices |
 | `app:process-fio-transactions` | Poll FIO banka API and auto-match incoming bank transfer payments to orders/contracts |
 | `app:generate-fixture-photos` | Dev-only: regenerate fixture image set |
 
 ## Templates
 
-`templates/{base.html.twig, user/, portal/, admin/, public/, email/, form/, components/, partials/, documents/, bundles/}`.
+`templates/{base.html.twig, user/, portal/, admin/, public/, email/, form/, components/, macros/, partials/, documents/, bundles/}`.
 
 ## Fixtures (`fixtures/`)
 
@@ -361,10 +375,11 @@ Reference constants and golden IDs: `.claude/FIXTURES.md`.
 
 ## Conventions reminder
 - `declare(strict_types=1);` everywhere; `final readonly` for commands/events/DTOs.
-- Repositories use `EntityManager` composition, never extend `ServiceEntityRepository`, never call `flush()` (audit-log writers are the documented exception).
+- Repositories use `EntityManager` composition, never extend `ServiceEntityRepository`, never call `flush()` (audit-log writers are the documented exception; every manual `flush()` needs an inline justification comment — see CLAUDE.md).
+- Writes are silently LOST outside the messenger envelope — never persist/mutate after a `dispatch()` returns; route mutations through the command bus (CLAUDE.md + `.claude/MESSENGER.md` §5).
 - Single-action controllers (`__invoke()`); route at class level.
 - Entities use property hooks (PHP 8.4+ syntax); `private(set)` for ctor params, `public private(set)` for updatable; UUIDs come from `ProvideIdentity`.
-- Tests: MockClock fixed at `2025-06-15 12:00:00 UTC`. Prefer fixtures over fabricated data.
+- Tests: MockClock fixed at `2025-06-15 12:00:00 UTC`. Prefer fixtures over fabricated data. `composer quality` does NOT run integration tests — run full `composer test` for controller/template/form changes.
 - Czech UI text requires full diacritics.
 - Turbo is disabled globally; opt-in with `data-turbo="true"`.
 - Logging exceptions: `['exception' => $e]`, never `$e->getMessage()`.
