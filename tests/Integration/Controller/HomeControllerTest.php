@@ -109,6 +109,27 @@ final class HomeControllerTest extends WebTestCase
         }
     }
 
+    public function testQueryCountIsBoundedRegardlessOfDataSize(): void
+    {
+        $client = static::createClient();
+        $client->enableProfiler();
+        $client->request('GET', '/');
+
+        $this->assertResponseIsSuccessful();
+
+        $profile = $client->getProfile();
+        self::assertNotFalse($profile);
+        $collector = $profile->getCollector('db');
+        self::assertInstanceOf(\Doctrine\Bundle\DoctrineBundle\DataCollector\DoctrineDataCollector::class, $collector);
+
+        // Old impl fired 1 + place + place×type + 3×storage queries (73 on
+        // fixture data). GetHomepagePlacesQuery runs a constant 6: places,
+        // types (bulk), storages (bulk) + 3 bulk overlap checks. Small head-
+        // room for framework queries (session etc.), but a reintroduced N+1
+        // (~20+ on fixtures) must fail here.
+        self::assertLessThan(10, $collector->getQueryCount(), sprintf('Homepage musí běžet na konstantním počtu dotazů (očekáváno ~6), naměřeno %d — pravděpodobně regrese N+1.', $collector->getQueryCount()));
+    }
+
     public function testPlacesJsonDoesNotLeakAvailableCount(): void
     {
         $client = static::createClient();

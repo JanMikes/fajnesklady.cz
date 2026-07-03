@@ -129,6 +129,36 @@ class StorageTypeRepository
     }
 
     /**
+     * Bulk variant of {@see self::findPubliclyOrderableByPlace()} — one query
+     * for any number of places (homepage N+1 fix). Same ordering, so per-place
+     * groups keep the position/name order; grouping by place is the caller's job.
+     *
+     * @param Place[] $places
+     *
+     * @return StorageType[]
+     */
+    public function findPubliclyOrderableByPlaces(array $places): array
+    {
+        if ([] === $places) {
+            return [];
+        }
+
+        return $this->entityManager->createQueryBuilder()
+            ->select('st')
+            ->from(StorageType::class, 'st')
+            ->where('st.place IN (:places)')
+            ->andWhere('st.isActive = :active')
+            ->andWhere('st.deletedAt IS NULL')
+            ->andWhere('st.adminOnly = false')
+            ->setParameter('places', $places)
+            ->setParameter('active', true)
+            ->orderBy('st.position', 'ASC')
+            ->addOrderBy('st.name', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
      * @return StorageType[]
      */
     public function findByPlacePaginated(Place $place, int $page, int $limit): array

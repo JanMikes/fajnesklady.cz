@@ -160,6 +160,31 @@ class StorageRepository
     }
 
     /**
+     * All non-deleted storages of the given types in one query — bulk variant
+     * of {@see self::findByStorageTypeAndPlace()} used by the homepage to avoid
+     * one query per (place, type) pair. Unsorted; callers group and count.
+     *
+     * @param StorageType[] $storageTypes
+     *
+     * @return Storage[]
+     */
+    public function findByStorageTypes(array $storageTypes): array
+    {
+        if ([] === $storageTypes) {
+            return [];
+        }
+
+        return $this->entityManager->createQueryBuilder()
+            ->select('s')
+            ->from(Storage::class, 's')
+            ->where('s.storageType IN (:storageTypes)')
+            ->andWhere('s.deletedAt IS NULL')
+            ->setParameter('storageTypes', $storageTypes)
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
      * @return Storage[]
      */
     public function findByPlace(Place $place): array
