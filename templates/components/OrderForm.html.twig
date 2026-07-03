@@ -245,36 +245,12 @@
                             </div>
                         </div>
 
-                        {% if this.isEligibleForFrequencyChoice() or this.isEligibleForUpfrontChoice() %}
-                            <div class="bg-gray-50 rounded-lg p-6">
-                                <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                    Frekvence platby
-                                    {% if this.isEligibleForFrequencyChoice() %}
-                                        <span class="ml-2 badge badge-success">−10 %</span>
-                                    {% endif %}
-                                </h2>
-                                {{ form_row(form.paymentFrequency, {attr: {
-                                    'data-action': 'change->live#action',
-                                    'data-live-action-param': 'validateField',
-                                    'data-live-field-param': 'paymentFrequency',
-                                }}) }}
-                                {% if this.isEligibleForFrequencyChoice() %}
-                                    <p class="text-xs text-gray-500 mt-2">
-                                        Roční platba předem se slevou <strong>−10 %</strong>. Lze ji platit pouze bankovním převodem.
-                                    </p>
-                                {% endif %}
-                                <p class="text-xs text-gray-500 mt-2">
-                                    Jednorázovou platbu předem lze provést pouze bankovním převodem.
-                                </p>
-                            </div>
-                        {% else %}
-                            {% do form.paymentFrequency.setRendered %}
-                        {% endif %}
-
+                        {# Payment method comes FIRST — the frequency card below adapts to it
+                           (server-rendered visibility: the Live Component re-renders on every
+                           field change via the form's data-model="on(change)|*"). #}
+                        {% set isGopay = form.vars.data.paymentMethod is not null and form.vars.data.paymentMethod.value == 'gopay' %}
                         {% set isBankTransfer = form.vars.data.paymentMethod is not null and form.vars.data.paymentMethod.value == 'bank_transfer' %}
+                        {% set bankTransferSurchargeInCzk = this.getBankTransferSurchargeInCzk() %}
                         <div class="bg-gray-50 rounded-lg p-6">
                             <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -303,47 +279,116 @@
                                 </div>
                             {% endif %}
 
+                            {% if isGopay %}
+                                {# Card = always automatic monthly recurring (spec 076) — explains why no frequency choice appears. #}
+                                <div class="mt-3 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                    <p class="text-sm text-blue-900">
+                                        Platba kartou probíhá automaticky jednou měsíčně — frekvenci platby není potřeba volit.
+                                    </p>
+                                </div>
+                            {% endif %}
+
                             {% if isBankTransfer %}
                                 <div class="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg space-y-1">
-                                    <p class="text-sm text-amber-800">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                        Při platbě bankovním převodem je účtován příplatek {{ this.getBankTransferSurchargeInCzk()|number_format(0, ',', ' ') }} Kč za každé fakturační období.
-                                    </p>
+                                    {% if bankTransferSurchargeInCzk > 0 %}
+                                        <p class="text-sm text-amber-800">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            Při platbě bankovním převodem je účtován příplatek {{ bankTransferSurchargeInCzk|number_format(0, ',', ' ') }} Kč za každé fakturační období.
+                                        </p>
+                                    {% endif %}
                                     <p class="text-sm text-amber-800">
                                         Negarantujeme dostupnost vaší skladovací jednotky v případě potřeby prodloužení pronájmu.
                                     </p>
                                 </div>
                             {% endif %}
-
-                            {% if isYearly %}
-                                <div class="mt-3 bg-blue-50 border border-blue-200 rounded-lg p-4">
-                                    <p class="text-sm text-blue-900">
-                                        <strong>Roční platba se vždy odbavuje ručně.</strong>
-                                        Kartu si neukládáme — výzvu k další platbě obdržíte e-mailem před vypršením roku.
-                                    </p>
-                                </div>
-                            {% endif %}
-
-                            {% if isOneTimeUpfront %}
-                                {% set upfrontPreview = this.getPaymentSchedule(selectedStorage) %}
-                                <div class="mt-3 bg-blue-50 border border-blue-200 rounded-lg p-4">
-                                    {% if upfrontPreview and upfrontPreview.entryCount > 1 %}
-                                        {# Spec 078 tranches: > 12 months → one payment per started 12 months. #}
-                                        <p class="text-sm text-blue-900">
-                                            <strong>Pronájem delší než 12 měsíců zaplatíte předem ve {{ upfrontPreview.entryCount }} platbách</strong>
-                                            — nyní prvních 12 měsíců, další vždy na začátku dalších 12 měsíců bankovním převodem. Rozpis plateb najdete níže.
-                                        </p>
-                                    {% else %}
-                                        <p class="text-sm text-blue-900">
-                                            <strong>Celý pronájem zaplatíte předem jedním bankovním převodem.</strong>
-                                            Žádné další platby v průběhu pronájmu.
-                                        </p>
-                                    {% endif %}
-                                </div>
-                            {% endif %}
                         </div>
+
+                        {# Frekvence platby — for card payments there is nothing to choose
+                           (always automatic monthly, spec 076), so the whole card is hidden.
+                           A GoPay submit is normalized to MONTHLY in OrderFormType::PRE_SUBMIT,
+                           so no stale hidden value can trip the GOPAY violations. #}
+                        {% if isGopay %}
+                            {% do form.paymentFrequency.setRendered %}
+                        {% else %}
+                            <div class="bg-gray-50 rounded-lg p-6">
+                                <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    Frekvence platby
+                                    {% if this.isEligibleForFrequencyChoice() %}
+                                        <span class="ml-2 badge badge-success">−10 %</span>
+                                    {% endif %}
+                                </h2>
+
+                                {# Manual radio loop: each option carries its own description and
+                                   renders ONLY when the option is actually offered (the form type
+                                   rebuilds the choices from the chosen rental window). #}
+                                {% set upfrontTranched = this.isUpfrontSplitIntoTranches() %}
+                                <div class="space-y-3">
+                                    {% for child in form.paymentFrequency %}
+                                        <div class="flex items-start">
+                                            {{ form_widget(child, {attr: {
+                                                'class': 'mt-0.5',
+                                                'data-action': 'change->live#action',
+                                                'data-live-action-param': 'validateField',
+                                                'data-live-field-param': 'paymentFrequency',
+                                            }}) }}
+                                            <label for="{{ child.vars.id }}" class="ml-3 text-sm text-gray-700 cursor-pointer">
+                                                {{ child.vars.label }}
+                                                <span class="block text-xs text-gray-500 mt-0.5">
+                                                    {% if child.vars.value == 'monthly' %}
+                                                        Platba převodem každý měsíc na základě e-mailové výzvy.
+                                                    {% elseif child.vars.value == 'yearly' %}
+                                                        Jedna platba předem na každý rok pronájmu se slevou 10 %.
+                                                    {% elseif upfrontTranched %}
+                                                        Celý pronájem předem — první platba pokryje prvních 12 měsíců, zbytek zaplatíte po roce na základě e-mailové výzvy.
+                                                    {% else %}
+                                                        Celý pronájem předem jedním bankovním převodem.
+                                                    {% endif %}
+                                                </span>
+                                            </label>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                                {{ form_errors(form.paymentFrequency) }}
+
+                                {% if form.paymentFrequency|length == 1 %}
+                                    <p class="text-xs text-gray-500 mt-3">
+                                        Další možnosti frekvence platby se zobrazí podle zvolené délky pronájmu.
+                                    </p>
+                                {% endif %}
+
+                                {% if isYearly %}
+                                    <div class="mt-3 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                        <p class="text-sm text-blue-900">
+                                            <strong>Roční platba se vždy odbavuje ručně.</strong>
+                                            Kartu si neukládáme — výzvu k další platbě obdržíte e-mailem před vypršením roku.
+                                        </p>
+                                    </div>
+                                {% endif %}
+
+                                {% if isOneTimeUpfront %}
+                                    {% set upfrontPreview = this.getPaymentSchedule(selectedStorage) %}
+                                    <div class="mt-3 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                        {% if upfrontPreview and upfrontPreview.entryCount > 1 %}
+                                            {# Spec 078 tranches: > 12 months → one payment per started 12 months. #}
+                                            <p class="text-sm text-blue-900">
+                                                <strong>Pronájem delší než 12 měsíců zaplatíte předem ve {{ upfrontPreview.entryCount }} platbách</strong>
+                                                — nyní prvních 12 měsíců, další vždy na začátku dalších 12 měsíců bankovním převodem. Rozpis plateb najdete níže.
+                                            </p>
+                                        {% else %}
+                                            <p class="text-sm text-blue-900">
+                                                <strong>Celý pronájem zaplatíte předem jedním bankovním převodem.</strong>
+                                                Žádné další platby v průběhu pronájmu.
+                                            </p>
+                                        {% endif %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% endif %}
 
                         {# Dynamic Pricing — server-rendered via PriceCalculator (same schedule the
                            order acceptance flow + recurring-billing cron use). data-model="on(change)|*"

@@ -126,12 +126,15 @@ final class OrderCreateControllerTest extends WebTestCase
     }
 
     /**
-     * Spec 078 frequency-radio matrix: hidden < 31 dní, Měsíčně + Jednorázově
-     * at 31–359 dní, all three (incl. Ročně −10 %) at ≥ 360 dní. The section
-     * is rendered by the OrderForm Live Component from the session-hydrated
+     * Frequency card matrix for bank transfer (spec 078 + payment-UX pass):
+     * the card always renders for bank transfer, method card first. Options:
+     * only Měsíčně (+ discoverability hint) < 31 dní, Měsíčně + Jednorázově at
+     * 31–359 dní, all three (incl. Ročně −10 %) at ≥ 360 dní. For GoPay the
+     * card is hidden entirely (card = always automatic monthly, spec 076).
+     * Rendered by the OrderForm Live Component from the session-hydrated
      * dates (the PRE_SET_DATA dynamic choices in OrderFormType).
      */
-    public function testFrequencySectionHiddenForShortRental(): void
+    public function testFrequencySectionShowsMonthlyOnlyWithHintForShortRental(): void
     {
         [$place, $storageType, $a1] = $this->centrumSmall('A1');
         $this->seedOrderFormSession(20);
@@ -140,8 +143,27 @@ final class OrderCreateControllerTest extends WebTestCase
 
         $this->assertResponseIsSuccessful();
         $html = (string) $this->client->getResponse()->getContent();
+        $this->assertStringContainsString('Frekvence platby', $html);
+        $this->assertStringContainsString('Měsíční platba', $html);
+        $this->assertStringNotContainsString('Jednorázová platba předem (celá částka)', $html);
+        $this->assertStringNotContainsString('Roční platba (jednou ročně)', $html);
+        $this->assertStringContainsString('Další možnosti frekvence platby se zobrazí podle zvolené délky pronájmu.', $html);
+    }
+
+    public function testFrequencySectionHiddenEntirelyForGopay(): void
+    {
+        [$place, $storageType, $a1] = $this->centrumSmall('A1');
+        $this->seedOrderFormSession(400, PaymentMethod::GOPAY);
+
+        $this->client->request('GET', $this->orderUrl($place, $storageType, $a1));
+
+        $this->assertResponseIsSuccessful();
+        $html = (string) $this->client->getResponse()->getContent();
+        // Card = always automatic monthly recurring — nothing to choose, even at 400 days.
         $this->assertStringNotContainsString('Frekvence platby', $html);
         $this->assertStringNotContainsString('Jednorázová platba předem (celá částka)', $html);
+        $this->assertStringNotContainsString('Roční platba (jednou ročně)', $html);
+        $this->assertStringContainsString('Platba kartou probíhá automaticky jednou měsíčně', $html);
     }
 
     public function testFrequencySectionShowsMonthlyAndUpfrontAtFortyFiveDays(): void
@@ -156,6 +178,17 @@ final class OrderCreateControllerTest extends WebTestCase
         $this->assertStringContainsString('Frekvence platby', $html);
         $this->assertStringContainsString('Jednorázová platba předem (celá částka)', $html);
         $this->assertStringNotContainsString('Roční platba (jednou ročně)', $html);
+        // ≤ 12 months: single-transfer description, no tranche wording, no discoverability hint.
+        $this->assertStringContainsString('Celý pronájem předem jedním bankovním převodem.', $html);
+        $this->assertStringNotContainsString('první platba pokryje prvních 12 měsíců', $html);
+        $this->assertStringNotContainsString('Další možnosti frekvence platby se zobrazí', $html);
+
+        // Payment method card must come BEFORE the frequency card.
+        $methodPos = strpos($html, 'Způsob platby');
+        $frequencyPos = strpos($html, 'Frekvence platby');
+        self::assertNotFalse($methodPos);
+        self::assertNotFalse($frequencyPos);
+        self::assertLessThan($frequencyPos, $methodPos, 'The "Způsob platby" card must render before "Frekvence platby".');
     }
 
     public function testFrequencySectionShowsAllThreeOptionsAtFourHundredDays(): void
@@ -171,14 +204,16 @@ final class OrderCreateControllerTest extends WebTestCase
         $this->assertStringContainsString('Měsíční platba', $html);
         $this->assertStringContainsString('Jednorázová platba předem (celá částka)', $html);
         $this->assertStringContainsString('Roční platba (jednou ročně)', $html);
+        // > 12 months: the upfront option's description must reflect the yearly tranches (bff888e).
+        $this->assertStringContainsString('první platba pokryje prvních 12 měsíců', $html);
     }
 
-    private function seedOrderFormSession(int $rentalDays): void
+    private function seedOrderFormSession(int $rentalDays, PaymentMethod $paymentMethod = PaymentMethod::BANK_TRANSFER): void
     {
         $formData = new OrderFormData();
         $formData->startDate = new \DateTimeImmutable('2025-07-15');
         $formData->endDate = $formData->startDate->modify(sprintf('+%d days', $rentalDays));
-        $formData->paymentMethod = PaymentMethod::BANK_TRANSFER;
+        $formData->paymentMethod = $paymentMethod;
 
         $session = static::getContainer()->get('session.factory')->createSession();
         $session->set('order_form_data', $formData->toSessionArray());

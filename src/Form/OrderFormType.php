@@ -168,9 +168,11 @@ final class OrderFormType extends AbstractType
                     'data-datepicker-min-date-value' => (new \DateTimeImmutable('today'))->modify('+7 days')->format('Y-m-d'),
                 ],
             ])
+            // Initial state matches the no-dates rule: only MONTHLY until a valid
+            // rental window unlocks YEARLY (≥ 360 dní) / ONE_TIME (≥ 31 dní) via
+            // the PRE_SET_DATA / PRE_SUBMIT listeners below.
             ->add('paymentFrequency', EnumType::class, self::paymentFrequencyOptions([
                 PaymentFrequency::MONTHLY->label() => PaymentFrequency::MONTHLY,
-                PaymentFrequency::YEARLY->label() => PaymentFrequency::YEARLY,
             ]))
             ->add('paymentMethod', EnumType::class, self::paymentMethodOptions(cardDisabled: false));
 
@@ -211,6 +213,16 @@ final class OrderFormType extends AbstractType
             $raw = $event->getData();
             if (!is_array($raw)) {
                 return;
+            }
+
+            // Card = always automatic monthly recurring (spec 076): the frequency
+            // card is hidden for GoPay, so a stale 'one_time'/'yearly' left over
+            // from a previous bank-transfer selection would submit invisibly and
+            // trip the GOPAY violations on a field the user cannot see.
+            if (PaymentMethod::GOPAY->value === ($raw['paymentMethod'] ?? null)
+                && PaymentFrequency::MONTHLY->value !== ($raw['paymentFrequency'] ?? null)) {
+                $raw['paymentFrequency'] = PaymentFrequency::MONTHLY->value;
+                $event->setData($raw);
             }
 
             $startDate = self::parseSubmittedDate($raw['startDate'] ?? null);
@@ -274,7 +286,8 @@ final class OrderFormType extends AbstractType
             'required' => false,
             'placeholder' => false,
             'choices' => $choices,
-            'help' => 'Roční platba = jedna platba předem na celý rok se slevou 10 %. Jednorázová platba = celý pronájem předem jedním převodem. Obě lze platit pouze bankovním převodem.',
+            // No group-level 'help': each offered option carries its own
+            // description in the template's manual radio loop.
         ];
     }
 

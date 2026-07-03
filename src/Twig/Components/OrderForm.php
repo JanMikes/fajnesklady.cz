@@ -266,6 +266,25 @@ final class OrderForm extends AbstractController
     }
 
     /**
+     * Whether the currently chosen window would split an upfront (ONE_TIME)
+     * payment into yearly tranches (spec 078) — drives the per-option hint
+     * under the "Jednorázová platba předem" radio.
+     */
+    public function isUpfrontSplitIntoTranches(): bool
+    {
+        $data = $this->getForm()->getData();
+        if (!$data instanceof OrderFormData) {
+            return false;
+        }
+
+        if (null === $data->startDate || null === $data->endDate || $data->endDate <= $data->startDate) {
+            return false;
+        }
+
+        return $this->priceCalculator->isUpfrontSplitIntoTranches($data->startDate, $data->endDate);
+    }
+
+    /**
      * @return 'weekly'|'monthly_short'|'monthly_long'|'yearly'|null
      */
     public function getApplicableRate(): ?string

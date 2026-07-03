@@ -13,6 +13,7 @@ use App\Enum\BillingMode;
 use App\Enum\OrderStatus;
 use App\Enum\PaymentFrequency;
 use App\Enum\PaymentMethod;
+use App\Repository\PlatformSettingsRepository;
 use App\Service\OrderStatusUrlGenerator;
 use App\Tests\Mock\MockGoPayClient;
 use Doctrine\ORM\EntityManagerInterface;
@@ -195,6 +196,42 @@ class ContractProlongControllerTest extends WebTestCase
         $this->assertNotNull($refreshed->order->variableSymbol);
         $this->assertSame(PaymentMethod::BANK_TRANSFER, $refreshed->order->paymentMethod);
         $this->assertTrue($this->goPayClient->wasRecurrenceVoided('gp_prolong_switch'));
+    }
+
+    public function testBankSwitchSurchargeNoticeShownWhenConfigured(): void
+    {
+        $settings = static::getContainer()->get(PlatformSettingsRepository::class)->getSettings();
+        $settings->updateSurcharge(10_000, $this->clock->now());
+        $this->entityManager->flush();
+
+        $contract = $this->createActiveContract(BillingMode::AUTO_RECURRING, PaymentMethod::GOPAY, tokenId: 'gp_surcharge_shown');
+        $this->client->loginUser($contract->user, 'main');
+
+        $this->client->request('GET', '/smlouva/'.$contract->id->toRfc4122().'/prodlouzit');
+
+        $this->assertResponseIsSuccessful();
+        $body = (string) $this->client->getResponse()->getContent();
+        $this->assertStringContainsString('Přejít na bankovní převod', $body);
+        $this->assertStringContainsString('je účtován příplatek', $body);
+        $this->assertStringContainsString('100 Kč za každé fakturační období', $body);
+    }
+
+    public function testBankSwitchSurchargeNoticeHiddenWhenZero(): void
+    {
+        $settings = static::getContainer()->get(PlatformSettingsRepository::class)->getSettings();
+        $settings->updateSurcharge(0, $this->clock->now());
+        $this->entityManager->flush();
+
+        $contract = $this->createActiveContract(BillingMode::AUTO_RECURRING, PaymentMethod::GOPAY, tokenId: 'gp_surcharge_zero');
+        $this->client->loginUser($contract->user, 'main');
+
+        $this->client->request('GET', '/smlouva/'.$contract->id->toRfc4122().'/prodlouzit');
+
+        $this->assertResponseIsSuccessful();
+        $body = (string) $this->client->getResponse()->getContent();
+        $this->assertStringContainsString('Přejít na bankovní převod', $body);
+        $this->assertStringNotContainsString('příplatek', $body);
+        $this->assertStringContainsString('Negarantujeme dostupnost', $body);
     }
 
     public function testOneTimeContractConvertsToManualOnProlong(): void

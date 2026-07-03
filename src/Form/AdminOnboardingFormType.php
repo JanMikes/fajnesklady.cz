@@ -121,9 +121,11 @@ final class AdminOnboardingFormType extends AbstractType
                     PaymentMethod::BANK_TRANSFER => 'Bankovní převod (zákazník platí převodem)',
                 },
             ])
+            // Initial state matches the no-dates rule: only MONTHLY until a valid
+            // rental window unlocks YEARLY (≥ 360 dní) / ONE_TIME (≥ 31 dní) via
+            // the PRE_SET_DATA / PRE_SUBMIT listeners below.
             ->add('paymentFrequency', EnumType::class, self::paymentFrequencyOptions([
                 PaymentFrequency::MONTHLY->label() => PaymentFrequency::MONTHLY,
-                PaymentFrequency::YEARLY->label() => PaymentFrequency::YEARLY,
             ]))
             ->add('monthlyPriceMode', ChoiceType::class, [
                 'label' => 'Cenový model',
@@ -195,6 +197,16 @@ final class AdminOnboardingFormType extends AbstractType
                 return;
             }
 
+            // Card = always automatic monthly recurring (spec 076): the frequency
+            // card is hidden for GoPay, so a stale 'one_time'/'yearly' left over
+            // from a previous bank-transfer selection would submit invisibly and
+            // trip the GOPAY violations on a field the admin cannot see.
+            if (PaymentMethod::GOPAY->value === ($raw['paymentMethod'] ?? null)
+                && PaymentFrequency::MONTHLY->value !== ($raw['paymentFrequency'] ?? null)) {
+                $raw['paymentFrequency'] = PaymentFrequency::MONTHLY->value;
+                $event->setData($raw);
+            }
+
             $startDate = self::parseSubmittedDate($raw['startDate'] ?? null);
             if (null === $startDate) {
                 return;
@@ -242,7 +254,8 @@ final class AdminOnboardingFormType extends AbstractType
             'expanded' => true,
             'placeholder' => false,
             'choices' => $choices,
-            'help' => 'Roční platba (−10 %) je dostupná pro pronájem na 12+ měsíců a platí se pouze bankovním převodem nebo externě; účtuje se ručně. Jednorázová platba předem (od 31 dnů) = celý pronájem jedním bankovním převodem.',
+            // No group-level 'help': each offered option carries its own
+            // description in the template's manual radio loop.
         ];
     }
 
