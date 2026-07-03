@@ -6,7 +6,11 @@ namespace App\Tests\Integration\Controller\Public;
 
 use App\DataFixtures\OrderFixtures;
 use App\Entity\Contract;
+use App\Entity\Fine;
+use App\Entity\Invoice;
 use App\Entity\Order;
+use App\Entity\User;
+use App\Enum\FineType;
 use App\Enum\OrderStatus;
 use App\Repository\ContractRepository;
 use App\Service\OrderStatusUrlGenerator;
@@ -320,6 +324,98 @@ class OrderStatusControllerTest extends WebTestCase
         $crawler = $this->client->getCrawler();
         $handoverLinks = $crawler->filter('a[href*="/predavaci-protokol/"]');
         self::assertSame(0, $handoverLinks->count(), 'Expected no handover link when there is no protocol.');
+    }
+
+    public function testPaidFineWithInvoiceShowsSignedInvoiceDownloadLink(): void
+    {
+        $order = $this->findOrderByReference(OrderFixtures::REF_ORDER_COMPLETED);
+        $fine = $this->createPaidFine($order);
+        $invoice = $this->createFineInvoice($fine);
+
+        $this->requestSigned($this->urlGenerator->generate($order));
+
+        $this->assertResponseIsSuccessful();
+        $body = (string) $this->client->getResponse()->getContent();
+        $this->assertStringContainsString('Zaplacené pokuty (1)', $body);
+        $this->assertStringContainsString('Faktura (PDF)', $body);
+        // UriSigner sorts query params, so assert both independently.
+        $this->assertMatchesRegularExpression(
+            '~/dokumenty/faktura/'.preg_quote($invoice->id->toRfc4122(), '~').'\.pdf\?[^"]*_hash=~',
+            $body,
+            'Fine invoice download href must be the signed public route.',
+        );
+        $this->assertMatchesRegularExpression(
+            '~/dokumenty/faktura/'.preg_quote($invoice->id->toRfc4122(), '~').'\.pdf\?[^"]*download=1~',
+            $body,
+            'Fine invoice link must force download.',
+        );
+    }
+
+    public function testPaidFineWithoutInvoiceShowsNoInvoiceLink(): void
+    {
+        // Pre-feature fines have no invoice — the paid row renders without a link.
+        $order = $this->findOrderByReference(OrderFixtures::REF_ORDER_COMPLETED);
+        $this->createPaidFine($order);
+
+        $this->requestSigned($this->urlGenerator->generate($order));
+
+        $this->assertResponseIsSuccessful();
+        $body = (string) $this->client->getResponse()->getContent();
+        $this->assertStringContainsString('Zaplacené pokuty (1)', $body);
+        $this->assertStringNotContainsString('Faktura (PDF)', $body);
+    }
+
+    private function createPaidFine(Order $order): Fine
+    {
+        $contract = $this->contractRepository->findByOrder($order);
+        \assert($contract instanceof Contract, 'Fixture order must have a contract.');
+
+        $admin = $this->entityManager->getRepository(User::class)->findOneBy(['email' => 'admin@example.com']);
+        \assert($admin instanceof User);
+
+        $now = new \DateTimeImmutable('2025-06-15 12:00:00');
+        $fine = new Fine(
+            id: Uuid::v7(),
+            contract: $contract,
+            user: $contract->user,
+            issuedBy: $admin,
+            type: FineType::DIRTY_STORAGE,
+            amountInHaler: 600_000,
+            description: 'Znečištěná skladovací jednotka.',
+            issuedAt: $now->modify('-1 day'),
+            createdAt: $now->modify('-1 day'),
+        );
+        $fine->markPaid($now);
+        $fine->popEvents();
+        $this->entityManager->persist($fine);
+        $this->entityManager->flush();
+
+        return $fine;
+    }
+
+    private function createFineInvoice(Fine $fine): Invoice
+    {
+        $now = new \DateTimeImmutable('2025-06-15 12:00:00');
+        $invoice = new Invoice(
+            id: Uuid::v7(),
+            order: $fine->contract->order,
+            user: $fine->user,
+            fakturoidInvoiceId: 987655,
+            invoiceNumber: 'FV-2025-FINE-2',
+            amount: $fine->amountInHaler,
+            issuedAt: $now,
+            createdAt: $now,
+            fine: $fine,
+        );
+        $path = tempnam(sys_get_temp_dir(), 'fine_invoice_');
+        \assert(is_string($path));
+        file_put_contents($path, '%PDF-1.4 fine invoice bytes');
+        $invoice->attachPdf($path);
+        $invoice->popEvents();
+        $this->entityManager->persist($invoice);
+        $this->entityManager->flush();
+
+        return $invoice;
     }
 
     /**

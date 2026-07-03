@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service\Fakturoid;
 
 use App\Entity\Contract;
+use App\Entity\Fine;
 use App\Entity\Order;
 use App\Entity\SelfBillingInvoice;
 use App\Entity\User;
@@ -213,6 +214,63 @@ final readonly class FakturoidApiClient implements FakturoidClient
             }
 
             $this->logger->error('Fakturoid debt invoice creation failed', $context);
+
+            throw $e;
+        }
+
+        /** @var \stdClass $body */
+        $body = $response->getBody();
+
+        return new FakturoidInvoice(
+            id: (int) $body->id,
+            number: (string) $body->number,
+            total: (int) round((float) $body->total * 100),
+        );
+    }
+
+    public function createFineInvoice(int $subjectId, Fine $fine): FakturoidInvoice
+    {
+        $place = $fine->contract->storage->getPlace();
+
+        try {
+            $response = $this->manager->getInvoicesProvider()->create([
+                'subject_id' => $subjectId,
+                // Kept for symmetry with the other invoices: were the rate ever
+                // flipped to a non-zero one, the gross amount must stay gross.
+                'vat_price_mode' => 'from_total_with_vat',
+                'lines' => [
+                    [
+                        'name' => sprintf('Smluvní pokuta — %s (%s)', $fine->type->label(), $place->name),
+                        'quantity' => 1,
+                        'unit_price' => $fine->getAmountInCzk(),
+                        // Smluvní pokuta není předmětem DPH (není úplatou za plnění) — 0 %, ne $this->vatRate.
+                        'vat_rate' => 0,
+                    ],
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            $context = [
+                'subject_id' => $subjectId,
+                'fine_id' => $fine->id->toRfc4122(),
+                'exception' => $e,
+            ];
+
+            if ($e instanceof RequestException) {
+                $body = $e->getResponse()->getBody();
+                $body->rewind();
+                $context['status'] = $e->getResponse()->getStatusCode();
+                $context['body'] = $body->getContents();
+            }
+
+            if ($this->isStaleSubjectError($context)) {
+                // Caller (InvoicingService) recreates the subject and retries —
+                // log at info so the recovery doesn't pollute the error stream.
+                $this->logger->info('Fakturoid subject no longer exists; caller will recreate', $context);
+
+                throw new StaleFakturoidSubjectException($subjectId, $e);
+            }
+
+            $this->logger->error('Fakturoid fine invoice creation failed', $context);
 
             throw $e;
         }

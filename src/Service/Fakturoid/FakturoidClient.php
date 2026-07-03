@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service\Fakturoid;
 
 use App\Entity\Contract;
+use App\Entity\Fine;
 use App\Entity\Order;
 use App\Entity\SelfBillingInvoice;
 use App\Entity\User;
@@ -24,6 +25,12 @@ interface FakturoidClient
      * The amount is gross (vč. DPH), taxed like rent — see createInvoice.
      */
     public function createDebtInvoice(int $subjectId, Order $order): FakturoidInvoice;
+
+    /**
+     * Invoice for a paid smluvní pokuta. Unlike rent/debt, a contractual
+     * penalty is not consideration for a taxable supply — vat_rate is 0 %.
+     */
+    public function createFineInvoice(int $subjectId, Fine $fine): FakturoidInvoice;
 
     public function createRecurringInvoice(int $subjectId, Contract $contract, int $amount, \DateTimeImmutable $billingDate): FakturoidInvoice;
 

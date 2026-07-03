@@ -276,6 +276,10 @@
                                         {% else %}
                                             Převodem (VS {{ fine.variableSymbol }})
                                         {% endif %}
+                                        {% if fineInvoices[fine.id|raw] is defined and fineInvoices[fine.id|raw].hasPdf() %}
+                                            · <a href="{{ path('portal_user_invoice_pdf', {id: fineInvoices[fine.id|raw].id, download: 1}) }}" download
+                                                 class="text-accent underline hover:text-accent-hover">Faktura</a>
+                                        {% endif %}
                                     {% endif %}
                                 </td>
                                 <td class="px-3 py-2 text-sm text-gray-500 max-w-[200px] truncate" title="{{ fine.description }}">

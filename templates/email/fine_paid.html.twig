@@ -46,6 +46,16 @@
             color: #6b7280;
             width: 45%;
         }
+        .button {
+            display: inline-block;
+            background-color: #16a34a;
+            color: white !important;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 20px 0;
+            font-weight: bold;
+        }
         .footer {
             text-align: center;
             padding: 20px;
@@ -80,10 +90,21 @@
                     <td>{{ paidAt|date('d.m.Y H:i') }}</td>
                 </tr>
                 {% endif %}
+                {% if invoiceNumber %}
+                <tr>
+                    <td class="label">Faktura č.:</td>
+                    <td>{{ invoiceNumber }} (v příloze)</td>
+                </tr>
+                {% endif %}
             </table>
         </div>
 
         <p>Děkujeme za úhradu.</p>
+
+        <p>Potvrzení i fakturu najdete kdykoliv také v detailu vaší objednávky:</p>
+        <div style="text-align: center;">
+            <a href="{{ statusUrl }}" class="button">Zobrazit detail objednávky</a>
+        </div>
 
         <p style="font-size: 13px; color: #666;">
             Pokud potřebujete pomoc, kontaktujte nás na

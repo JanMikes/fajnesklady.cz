@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Mock;
 
 use App\Entity\Contract;
+use App\Entity\Fine;
 use App\Entity\Order;
 use App\Entity\SelfBillingInvoice;
 use App\Entity\User;
@@ -63,6 +64,20 @@ final class MockFakturoidClient implements FakturoidClient
             id: $invoiceId,
             number: 'FV-'.date('Y').'-'.str_pad((string) $invoiceId, 4, '0', STR_PAD_LEFT),
             total: $order->onboardingDebtInHaler ?? 0,
+        );
+
+        $this->createdInvoices[$invoice->id] = $invoice;
+
+        return $invoice;
+    }
+
+    public function createFineInvoice(int $subjectId, Fine $fine): FakturoidInvoice
+    {
+        $invoiceId = $this->nextInvoiceId++;
+        $invoice = new FakturoidInvoice(
+            id: $invoiceId,
+            number: 'FV-'.date('Y').'-'.str_pad((string) $invoiceId, 4, '0', STR_PAD_LEFT),
+            total: $fine->amountInHaler,
         );
 
         $this->createdInvoices[$invoice->id] = $invoice;

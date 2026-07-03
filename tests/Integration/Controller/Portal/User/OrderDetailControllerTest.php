@@ -5,12 +5,17 @@ declare(strict_types=1);
 namespace App\Tests\Integration\Controller\Portal\User;
 
 use App\DataFixtures\UserFixtures;
+use App\Entity\Contract;
+use App\Entity\Fine;
+use App\Entity\Invoice;
 use App\Entity\Order;
 use App\Entity\User;
+use App\Enum\FineType;
 use App\Enum\OrderStatus;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+use Symfony\Component\Uid\Uuid;
 
 class OrderDetailControllerTest extends WebTestCase
 {
@@ -133,6 +138,97 @@ class OrderDetailControllerTest extends WebTestCase
         $this->assertStringNotContainsString('Pronájem zdarma', $body);
         $this->assertStringNotContainsString('Předplaceno externě', $body);
         $this->assertStringNotContainsString('Externí předplatné brzy končí', $body);
+    }
+
+    public function testPaidFineWithInvoiceShowsInvoiceDownloadLink(): void
+    {
+        $order = $this->findCompletedOrder();
+        $fine = $this->createPaidFine($order);
+        $invoice = $this->createFineInvoice($fine, withPdf: true);
+        $this->client->loginUser($order->user, 'main');
+
+        $this->client->request('GET', $this->buildUrl($order));
+
+        $this->assertResponseIsSuccessful();
+        $body = (string) $this->client->getResponse()->getContent();
+        // Fines panel link → portal invoice PDF download.
+        $this->assertStringContainsString('/portal/faktury/'.$invoice->id->toRfc4122().'/pdf?download=1', $body);
+        // Docs panel labels the fine invoice distinctly.
+        $this->assertStringContainsString('(smluvní pokuta)', $body);
+        $this->assertStringContainsString('Doklad o zaplacení smluvní pokuty', $body);
+    }
+
+    public function testPaidFineWithoutInvoiceRendersWithoutInvoiceLink(): void
+    {
+        // Pre-feature fines have no invoice — the row must render without a link.
+        $order = $this->findCompletedOrder();
+        $this->createPaidFine($order);
+        $this->client->loginUser($order->user, 'main');
+
+        $this->client->request('GET', $this->buildUrl($order));
+
+        $this->assertResponseIsSuccessful();
+        $body = (string) $this->client->getResponse()->getContent();
+        $this->assertStringContainsString('Zaplaceno', $body);
+        $this->assertStringNotContainsString('(smluvní pokuta)', $body);
+    }
+
+    private function createPaidFine(Order $order): Fine
+    {
+        $contract = $this->entityManager->createQueryBuilder()
+            ->select('c')
+            ->from(Contract::class, 'c')
+            ->where('c.order = :order')
+            ->setParameter('order', $order)
+            ->getQuery()
+            ->getOneOrNullResult();
+        \assert($contract instanceof Contract, 'Fixture order must have a contract.');
+
+        $now = new \DateTimeImmutable('2025-06-15 12:00:00');
+        $fine = new Fine(
+            id: Uuid::v7(),
+            contract: $contract,
+            user: $contract->user,
+            issuedBy: $this->findUserByEmail(UserFixtures::ADMIN_EMAIL),
+            type: FineType::DIRTY_STORAGE,
+            amountInHaler: 600_000,
+            description: 'Znečištěná skladovací jednotka.',
+            issuedAt: $now->modify('-1 day'),
+            createdAt: $now->modify('-1 day'),
+        );
+        $fine->markPaid($now);
+        $fine->popEvents();
+        $this->entityManager->persist($fine);
+        $this->entityManager->flush();
+
+        return $fine;
+    }
+
+    private function createFineInvoice(Fine $fine, bool $withPdf): Invoice
+    {
+        $now = new \DateTimeImmutable('2025-06-15 12:00:00');
+        $invoice = new Invoice(
+            id: Uuid::v7(),
+            order: $fine->contract->order,
+            user: $fine->user,
+            fakturoidInvoiceId: 987654,
+            invoiceNumber: 'FV-2025-FINE-1',
+            amount: $fine->amountInHaler,
+            issuedAt: $now,
+            createdAt: $now,
+            fine: $fine,
+        );
+        if ($withPdf) {
+            $path = tempnam(sys_get_temp_dir(), 'fine_invoice_');
+            \assert(is_string($path));
+            file_put_contents($path, '%PDF-1.4 fine invoice bytes');
+            $invoice->attachPdf($path);
+        }
+        $invoice->popEvents();
+        $this->entityManager->persist($invoice);
+        $this->entityManager->flush();
+
+        return $invoice;
     }
 
     private function buildUrl(Order $order): string

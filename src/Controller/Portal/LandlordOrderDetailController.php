@@ -64,6 +64,8 @@ final class LandlordOrderDetailController extends AbstractController
         $paymentSchedule = $this->priceCalculator->buildScheduleFromOrder($order);
         $totalPaid = $this->paymentRepository->sumPaidForOrder($order, $contract);
 
+        $fines = null !== $contract ? $this->fineRepository->findByContract($contract) : [];
+
         return $this->render('portal/landlord/order/detail.html.twig', [
             'order' => $order,
             'storage' => $storage,
@@ -77,7 +79,8 @@ final class LandlordOrderDetailController extends AbstractController
             'totalPaid' => $totalPaid,
             'now' => $now,
             'handoverProtocol' => $handoverProtocol,
-            'fines' => null !== $contract ? $this->fineRepository->findByContract($contract) : [],
+            'fines' => $fines,
+            'fineInvoices' => $this->invoiceRepository->findByFines($fines),
         ]);
     }
 }

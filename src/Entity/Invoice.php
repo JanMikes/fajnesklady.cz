@@ -40,6 +40,11 @@ class Invoice implements EntityWithEvents
         private(set) \DateTimeImmutable $issuedAt,
         #[ORM\Column]
         private(set) \DateTimeImmutable $createdAt,
+        // Set only for smluvní-pokuta invoices (spec 081); placed last so the
+        // default keeps the pre-existing named-argument construction sites intact.
+        #[ORM\ManyToOne(targetEntity: Fine::class)]
+        #[ORM\JoinColumn(nullable: true)]
+        private(set) ?Fine $fine = null,
     ) {
         $this->recordThat(new InvoiceCreated(
             invoiceId: $this->id,

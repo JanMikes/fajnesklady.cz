@@ -58,6 +58,8 @@ final readonly class OrderStatusViewModel
         public array $paidFines = [],
         /** @var array<string, string> Fine ID → payment URL */
         public array $finePaymentUrls = [],
+        /** @var array<string, string> Fine ID → signed invoice download URL */
+        public array $fineInvoiceUrls = [],
         public ?string $bankAccount = null,
         public ?string $qrCodeDataUri = null,
         public ?int $remainingPaymentAmount = null,

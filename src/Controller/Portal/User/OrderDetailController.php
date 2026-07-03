@@ -116,6 +116,8 @@ final class OrderDetailController extends AbstractController
             }
         }
 
+        $fineInvoices = $this->invoiceRepository->findByFines($fines);
+
         $mismatchTransactions = $this->bankTransactionRepository->findAmountMismatchByOrder($order);
 
         return $this->render('portal/user/order/detail.html.twig', [
@@ -137,6 +139,7 @@ final class OrderDetailController extends AbstractController
             'handoverProtocol' => $handoverProtocol,
             'fines' => $fines,
             'finePaymentUrls' => $finePaymentUrls,
+            'fineInvoices' => $fineInvoices,
             'mismatchTransactions' => $mismatchTransactions,
         ]);
     }

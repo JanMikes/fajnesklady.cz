@@ -111,7 +111,7 @@ final readonly class OrderStatusViewModelFactory
         if ($isCompleted) {
             foreach ($invoices as $invoice) {
                 $invoiceDownloads[] = [
-                    'name' => 'Faktura č. '.$invoice->invoiceNumber,
+                    'name' => 'Faktura č. '.$invoice->invoiceNumber.(null !== $invoice->fine ? ' (smluvní pokuta)' : ''),
                     'viewUrl' => $invoice->hasPdf()
                         ? $this->statusUrlGenerator->generateInvoiceDownload($order, $invoice)
                         : '',
@@ -193,6 +193,16 @@ final readonly class OrderStatusViewModelFactory
             $finePaymentUrls[$fine->id->toRfc4122()] = $this->finePaymentUrlGenerator->generatePaymentUrl($fine);
         }
 
+        // Spec 081: paid fines with an issued invoice get a signed download link.
+        $fineInvoiceUrls = [];
+        $fineInvoices = $this->invoiceRepository->findByFines($paidFines);
+        foreach ($paidFines as $fine) {
+            $invoice = $fineInvoices[$fine->id->toRfc4122()] ?? null;
+            if (null !== $invoice && $invoice->hasPdf()) {
+                $fineInvoiceUrls[$fine->id->toRfc4122()] = $this->statusUrlGenerator->generateInvoiceDownload($order, $invoice, forDownload: true);
+            }
+        }
+
         $timeline = $this->buildTimeline($order, $contract);
 
         // Add fine timeline entries
@@ -272,6 +282,7 @@ final readonly class OrderStatusViewModelFactory
             unpaidFines: $unpaidFines,
             paidFines: $paidFines,
             finePaymentUrls: $finePaymentUrls,
+            fineInvoiceUrls: $fineInvoiceUrls,
             bankAccount: $bankAccount,
             qrCodeDataUri: $qrCodeDataUri,
             remainingPaymentAmount: $partiallyPaid > 0 ? $effectivePaymentAmount : null,

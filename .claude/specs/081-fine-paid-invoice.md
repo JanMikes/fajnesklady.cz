@@ -1,6 +1,6 @@
 # 081 — Issue a Fakturoid invoice when a fine is paid; e-mail it and surface it on order details
 
-**Status:** ready
+**Status:** done
 **Type:** feature
 **Scope:** medium (~13 files: Invoice entity + migration, Fakturoid client interface + impl + mock, InvoicingService, FinePaid e-mail handler + template, invoice repo, VM factory + VM, 3 templates, 2 controllers, CUSTOMER_DOCUMENTS.md, tests)
 **Depends on:** none (mirrors shipped spec 073's debt-invoice pattern; touches the same fines lists as 053/080 but is independent)

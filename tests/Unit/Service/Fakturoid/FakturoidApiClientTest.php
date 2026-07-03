@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Service\Fakturoid;
 
 use App\Entity\Contract;
+use App\Entity\Fine;
 use App\Entity\Order;
 use App\Entity\Place;
 use App\Entity\SelfBillingInvoice;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
+use App\Enum\FineType;
 use App\Service\Fakturoid\FakturoidApiClient;
 use App\Service\Fakturoid\StaleFakturoidSubjectException;
 use Fakturoid\DispatcherInterface;
@@ -70,6 +72,21 @@ class FakturoidApiClientTest extends TestCase
         $this->assertSame('from_total_with_vat', $captured['vat_price_mode']);
         $this->assertEquals(600, $captured['lines'][0]['unit_price']);
         $this->assertSame(21, $captured['lines'][0]['vat_rate']);
+    }
+
+    public function testCreateFineInvoiceUsesZeroVatRate(): void
+    {
+        $user = $this->createUser();
+        $fine = $this->createFine($user);
+
+        $captured = $this->captureCreatePayload(static fn (FakturoidApiClient $client): mixed => $client->createFineInvoice(123, $fine));
+
+        // Smluvní pokuta není předmětem DPH — the rate is the 0 literal, NOT the configured 21 %.
+        $this->assertSame(0, $captured['lines'][0]['vat_rate']);
+        $this->assertSame('from_total_with_vat', $captured['vat_price_mode']);
+        $this->assertEquals(6000, $captured['lines'][0]['unit_price']);
+        $this->assertStringContainsString('Smluvní pokuta', (string) $captured['lines'][0]['name']);
+        $this->assertStringContainsString(FineType::DIRTY_STORAGE->label(), (string) $captured['lines'][0]['name']);
     }
 
     public function testCreateInvoiceTranslatesStaleSubject422IntoTypedException(): void
@@ -263,6 +280,22 @@ class FakturoidApiClientTest extends TestCase
             storage: $order->storage,
             startDate: new \DateTimeImmutable('2025-06-20'),
             endDate: new \DateTimeImmutable('2026-06-20'),
+            createdAt: new \DateTimeImmutable('2025-06-15 12:00:00'),
+        );
+    }
+
+    private function createFine(User $user): Fine
+    {
+        // 600 000 haléře = 6 000 Kč — the default DIRTY_STORAGE penalty.
+        return new Fine(
+            id: Uuid::v7(),
+            contract: $this->createContract($user),
+            user: $user,
+            issuedBy: $user,
+            type: FineType::DIRTY_STORAGE,
+            amountInHaler: 600_000,
+            description: 'Znečištěná skladovací jednotka.',
+            issuedAt: new \DateTimeImmutable('2025-06-15 12:00:00'),
             createdAt: new \DateTimeImmutable('2025-06-15 12:00:00'),
         );
     }

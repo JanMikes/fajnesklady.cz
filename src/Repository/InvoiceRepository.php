@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Repository;
 
+use App\Entity\Fine;
 use App\Entity\Invoice;
 use App\Entity\Order;
 use App\Entity\User;
@@ -59,6 +60,36 @@ class InvoiceRepository
             ->orderBy('i.issuedAt', 'DESC')
             ->getQuery()
             ->getResult();
+    }
+
+    /**
+     * @param array<Fine> $fines
+     *
+     * @return array<string, Invoice> keyed by fine id (RFC 4122)
+     */
+    public function findByFines(array $fines): array
+    {
+        if ([] === $fines) {
+            return [];
+        }
+
+        /** @var list<Invoice> $invoices */
+        $invoices = $this->entityManager->createQueryBuilder()
+            ->select('i')
+            ->from(Invoice::class, 'i')
+            ->where('i.fine IN (:fines)')
+            ->setParameter('fines', $fines)
+            ->getQuery()
+            ->getResult();
+
+        $byFineId = [];
+        foreach ($invoices as $invoice) {
+            if (null !== $invoice->fine) {
+                $byFineId[$invoice->fine->id->toRfc4122()] = $invoice;
+            }
+        }
+
+        return $byFineId;
     }
 
     /**

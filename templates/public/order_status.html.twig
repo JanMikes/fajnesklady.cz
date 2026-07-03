@@ -133,8 +133,16 @@
                                 <span class="text-green-700">
                                     {{ fine.type.label() }} — {{ (fine.amountInHaler / 100)|number_format(0, ',', ' ') }} Kč
                                 </span>
-                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                    Zaplaceno {{ fine.paidAt|date('d.m.Y') }}
+                                <span class="inline-flex items-center gap-2">
+                                    {% if vm.fineInvoiceUrls[fine.id|raw] is defined %}
+                                        <a href="{{ vm.fineInvoiceUrls[fine.id|raw] }}" download
+                                           class="text-xs font-medium text-green-800 underline hover:text-green-900">
+                                            Faktura (PDF)
+                                        </a>
+                                    {% endif %}
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                        Zaplaceno {{ fine.paidAt|date('d.m.Y') }}
+                                    </span>
                                 </span>
                             </div>
                         {% endfor %}

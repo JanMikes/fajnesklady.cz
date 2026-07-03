@@ -6,6 +6,7 @@ namespace App\Tests\Integration\Controller\Portal;
 
 use App\Entity\Contract;
 use App\Entity\Fine;
+use App\Entity\Invoice;
 use App\Entity\User;
 use App\Enum\FineType;
 use Doctrine\ORM\EntityManagerInterface;
@@ -84,6 +85,53 @@ class LandlordOrderDetailControllerTest extends WebTestCase
         // Read-only: no cancel action and no create button for landlords.
         $this->assertStringNotContainsString('Zrušit pokutu', $body);
         $this->assertStringNotContainsString('/portal/admin/pokuty/vytvorit/', $body);
+    }
+
+    public function testPaidFineWithInvoiceShowsInvoiceLink(): void
+    {
+        $contract = $this->findRecurringContract();
+        $now = $this->clock->now();
+
+        $fine = new Fine(
+            id: Uuid::v7(),
+            contract: $contract,
+            user: $contract->user,
+            issuedBy: $this->findUserByEmail('admin@example.com'),
+            type: FineType::DIRTY_STORAGE,
+            amountInHaler: 600000,
+            description: 'Znečištěná skladovací jednotka.',
+            issuedAt: $now->modify('-1 day'),
+            createdAt: $now->modify('-1 day'),
+        );
+        $fine->markPaid($now);
+        $fine->popEvents();
+        $this->entityManager->persist($fine);
+
+        $invoice = new Invoice(
+            id: Uuid::v7(),
+            order: $contract->order,
+            user: $contract->user,
+            fakturoidInvoiceId: 987657,
+            invoiceNumber: 'FV-2025-FINE-4',
+            amount: $fine->amountInHaler,
+            issuedAt: $now,
+            createdAt: $now,
+            fine: $fine,
+        );
+        $path = tempnam(sys_get_temp_dir(), 'fine_invoice_');
+        \assert(is_string($path));
+        file_put_contents($path, '%PDF-1.4 fine invoice bytes');
+        $invoice->attachPdf($path);
+        $invoice->popEvents();
+        $this->entityManager->persist($invoice);
+        $this->entityManager->flush();
+
+        $this->client->loginUser($this->findUserByEmail('landlord@example.com'), 'main');
+        $this->client->request('GET', '/portal/landlord/orders/'.$contract->order->id->toRfc4122());
+
+        $this->assertResponseIsSuccessful();
+        $body = (string) $this->client->getResponse()->getContent();
+        $this->assertStringContainsString('/portal/faktury/'.$invoice->id->toRfc4122().'/pdf?download=1', $body);
     }
 
     private function findRecurringContract(): Contract

@@ -93,6 +93,7 @@ final class AdminOrderDetailController extends AbstractController
         $fines = null !== $contract
             ? $this->fineRepository->findByContract($contract)
             : [];
+        $fineInvoices = $this->invoiceRepository->findByFines($fines);
 
         $emailLogs = $this->emailLogRepository->findByOrderId($order->id);
         $auditLogs = $this->auditLogRepository->findForOrderTimeline($order->id);
@@ -122,6 +123,7 @@ final class AdminOrderDetailController extends AbstractController
             'now' => $now,
             'handoverProtocol' => $handoverProtocol,
             'fines' => $fines,
+            'fineInvoices' => $fineInvoices,
             'emailLogs' => $emailLogs,
             'auditLogs' => $auditLogs,
             'hasPendingManualPayment' => $hasPendingManualPayment,
