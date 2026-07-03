@@ -242,10 +242,11 @@ label:has(~ input[required], ~ select[required], ~ textarea[required])::after {
 }
 
 /* Modal component — native <dialog> based (opened via showModal()).
-   The browser handles centering and ::backdrop; these classes provide the
-   card chrome and action-row layout. */
+   The UA stylesheet centers a modal dialog via inset: 0 + margin: auto, but
+   Tailwind's preflight resets margin on all elements — m-auto restores it,
+   otherwise the dialog pins to the top-left corner. */
 .modal {
-    @apply rounded-lg border-0 p-0 shadow-xl bg-transparent;
+    @apply m-auto rounded-lg border-0 p-0 shadow-xl bg-transparent;
 }
 
 .modal::backdrop {
