@@ -8,6 +8,7 @@ use App\Entity\Place;
 use App\Entity\PlaceStorageCodeUsage;
 use App\Entity\Storage;
 use App\Entity\User;
+use App\Enum\StorageCodeUsageType;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -119,13 +120,7 @@ class PlaceAccessCodesControllerTest extends WebTestCase
         $place = $this->getPrahaCentrum();
 
         // Add an extra historical row that is NOT currently a lockCode on any storage.
-        $this->entityManager->persist(new PlaceStorageCodeUsage(
-            id: \Symfony\Component\Uid\Uuid::v7(),
-            place: $place,
-            code: '9876',
-            usedAt: new \DateTimeImmutable(),
-        ));
-        $this->entityManager->flush();
+        $this->persistUsage($place, '9876');
 
         $countBefore = $this->countUsage($place);
 
@@ -152,13 +147,7 @@ class PlaceAccessCodesControllerTest extends WebTestCase
         $this->loginAsAdmin();
         $place = $this->getPrahaCentrum();
 
-        $this->entityManager->persist(new PlaceStorageCodeUsage(
-            id: \Symfony\Component\Uid\Uuid::v7(),
-            place: $place,
-            code: '9876',
-            usedAt: new \DateTimeImmutable(),
-        ));
-        $this->entityManager->flush();
+        $this->persistUsage($place, '9876');
 
         $countBefore = $this->countUsage($place);
 
@@ -182,11 +171,242 @@ class PlaceAccessCodesControllerTest extends WebTestCase
         $this->assertResponseStatusCodeSame(400);
     }
 
+    public function testExcludeCreatesExcludedRows(): void
+    {
+        $this->loginAsAdmin();
+        $place = $this->getPrahaCentrum();
+
+        $this->client->request('POST', '/portal/places/'.$place->id->toRfc4122().'/access-codes/exclude', [
+            'codes' => '0000, 1234',
+            'note' => 'Servisní kód',
+        ]);
+
+        $this->assertResponseRedirects();
+        $this->client->followRedirect();
+        $body = (string) $this->client->getResponse()->getContent();
+        $this->assertStringContainsString('Vyloučeno 2 kódů.', $body);
+
+        $this->entityManager->clear();
+        $reloaded = $this->entityManager->find(Place::class, $place->id);
+        \assert($reloaded instanceof Place);
+        foreach (['0000', '1234'] as $code) {
+            $usage = $this->findUsage($reloaded, $code);
+            $this->assertNotNull($usage, sprintf('Usage row for "%s" must exist.', $code));
+            $this->assertSame(StorageCodeUsageType::EXCLUDED, $usage->type);
+            $this->assertSame('Servisní kód', $usage->note);
+        }
+    }
+
+    public function testExcludeFlipsExistingUsedCodeAndSurvivesReset(): void
+    {
+        $this->loginAsAdmin();
+        $place = $this->getPrahaCentrum();
+
+        // A USED row that is NOT an active lockCode — plain Reset would delete it.
+        $this->persistUsage($place, '7654');
+
+        $this->client->request('POST', '/portal/places/'.$place->id->toRfc4122().'/access-codes/exclude', [
+            'codes' => '7654',
+        ]);
+        $this->assertResponseRedirects();
+
+        $this->entityManager->clear();
+        $reloaded = $this->entityManager->find(Place::class, $place->id);
+        \assert($reloaded instanceof Place);
+        $usage = $this->findUsage($reloaded, '7654');
+        $this->assertNotNull($usage);
+        $this->assertSame(StorageCodeUsageType::EXCLUDED, $usage->type);
+
+        $this->client->request('POST', '/portal/places/'.$place->id->toRfc4122().'/access-codes/reset', ['password' => 'password']);
+        $this->assertResponseRedirects();
+
+        $this->entityManager->clear();
+        $reloaded = $this->entityManager->find(Place::class, $place->id);
+        \assert($reloaded instanceof Place);
+        $this->assertNotNull(
+            $this->findUsage($reloaded, '7654'),
+            'The excluded code must survive "Resetovat použité kódy".',
+        );
+    }
+
+    public function testExcludeInvalidCodePersistsNothing(): void
+    {
+        $this->loginAsAdmin();
+        $place = $this->getPrahaCentrum();
+
+        $countBefore = $this->countUsage($place);
+
+        $this->client->request('POST', '/portal/places/'.$place->id->toRfc4122().'/access-codes/exclude', [
+            'codes' => '12',
+        ]);
+
+        $this->assertResponseRedirects();
+        $this->client->followRedirect();
+        $body = (string) $this->client->getResponse()->getContent();
+        $this->assertStringContainsString('Kód musí mít přesně 4 číslic.', $body);
+
+        $this->entityManager->clear();
+        $countAfter = $this->countUsage($this->entityManager->find(Place::class, $place->id));
+        $this->assertSame($countBefore, $countAfter, 'Nothing may persist when a code fails validation.');
+    }
+
+    public function testExcludeActiveCodeWarnsButSucceeds(): void
+    {
+        $this->loginAsAdmin();
+        $place = $this->getPrahaCentrum();
+
+        // "0042" is the active lockCode on storage A1 (fixtures).
+        $this->client->request('POST', '/portal/places/'.$place->id->toRfc4122().'/access-codes/exclude', [
+            'codes' => '0042',
+        ]);
+
+        $this->assertResponseRedirects();
+        $this->client->followRedirect();
+        $body = (string) $this->client->getResponse()->getContent();
+        $this->assertStringContainsString('aktuálně přiřazené skladům', $body);
+
+        $this->entityManager->clear();
+        $reloaded = $this->entityManager->find(Place::class, $place->id);
+        \assert($reloaded instanceof Place);
+        $usage = $this->findUsage($reloaded, '0042');
+        $this->assertNotNull($usage);
+        $this->assertSame(StorageCodeUsageType::EXCLUDED, $usage->type);
+    }
+
+    public function testExcludeDeniedForLandlordWithoutManageCodes(): void
+    {
+        // landlord@ has no PlaceAccess to Ostrava and owns no storage there
+        // (landlord2 co-owns storage Z1 at Praha Centrum, so Praha Centrum
+        // grants MANAGE_CODES to both fixture landlords). The voter check runs
+        // before the codes-enabled guard, so Ostrava still exercises the 403.
+        $landlord = $this->entityManager->getRepository(User::class)->findOneBy(['email' => 'landlord@example.com']);
+        \assert($landlord instanceof User);
+        $this->client->loginUser($landlord, 'main');
+
+        $place = $this->getOstrava();
+        $this->client->request('POST', '/portal/places/'.$place->id->toRfc4122().'/access-codes/exclude', [
+            'codes' => '0000',
+        ]);
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    public function testUnexcludeRemovesExclusion(): void
+    {
+        $this->loginAsAdmin();
+        $place = $this->getPrahaCentrum();
+
+        // "9999" is the EXCLUDED fixture row (note "Servisní kód zámku").
+        $usage = $this->findUsage($place, '9999');
+        $this->assertNotNull($usage);
+        $this->assertSame(StorageCodeUsageType::EXCLUDED, $usage->type);
+
+        $this->client->request(
+            'POST',
+            '/portal/places/'.$place->id->toRfc4122().'/access-codes/exclusions/'.$usage->id->toRfc4122().'/remove',
+        );
+
+        $this->assertResponseRedirects();
+        $this->client->followRedirect();
+        $body = (string) $this->client->getResponse()->getContent();
+        $this->assertStringContainsString('Vyloučení kódu bylo zrušeno.', $body);
+
+        $this->entityManager->clear();
+        $reloaded = $this->entityManager->find(Place::class, $place->id);
+        \assert($reloaded instanceof Place);
+        $this->assertNull($this->findUsage($reloaded, '9999'));
+    }
+
+    public function testUnexcludeDeniedForLandlordWithoutManageCodes(): void
+    {
+        $prahaCentrum = $this->getPrahaCentrum();
+        $usage = $this->findUsage($prahaCentrum, '9999');
+        $this->assertNotNull($usage);
+
+        // See testExcludeDeniedForLandlordWithoutManageCodes for why Ostrava.
+        $landlord = $this->entityManager->getRepository(User::class)->findOneBy(['email' => 'landlord@example.com']);
+        \assert($landlord instanceof User);
+        $this->client->loginUser($landlord, 'main');
+
+        $place = $this->getOstrava();
+        $this->client->request(
+            'POST',
+            '/portal/places/'.$place->id->toRfc4122().'/access-codes/exclusions/'.$usage->id->toRfc4122().'/remove',
+        );
+
+        $this->assertResponseStatusCodeSame(403);
+    }
+
+    public function testUnexcludeReturns404ForUsageOfAnotherPlace(): void
+    {
+        $this->loginAsAdmin();
+        $prahaCentrum = $this->getPrahaCentrum();
+        $usage = $this->findUsage($prahaCentrum, '9999');
+        $this->assertNotNull($usage);
+
+        // Enable codes on a second place so the request reaches the
+        // place-ownership check instead of the codes-enabled 400 guard.
+        $prahaJih = $this->entityManager->getRepository(Place::class)->findOneBy(['name' => 'Sklad Praha - Jiznimesto']);
+        \assert($prahaJih instanceof Place);
+        $prahaJih->updateStorageCodeConfig(true, 4, 0, 9999, new \DateTimeImmutable());
+        $this->entityManager->flush();
+
+        $this->client->request(
+            'POST',
+            '/portal/places/'.$prahaJih->id->toRfc4122().'/access-codes/exclusions/'.$usage->id->toRfc4122().'/remove',
+        );
+
+        $this->assertResponseStatusCodeSame(404);
+    }
+
+    public function testHistoryTableRendersBothBadges(): void
+    {
+        $this->loginAsAdmin();
+        $place = $this->getPrahaCentrum();
+
+        $this->client->request('GET', '/portal/places/'.$place->id->toRfc4122().'/access-codes');
+
+        $this->assertResponseIsSuccessful();
+        $body = (string) $this->client->getResponse()->getContent();
+        $this->assertStringContainsString('Historie kódů', $body);
+        $this->assertStringContainsString('Vyloučené kódy', $body);
+        $this->assertStringContainsString('Použitý', $body);
+        $this->assertStringContainsString('Vyloučený', $body);
+        $this->assertStringContainsString('Servisní kód zámku', $body);
+        $this->assertStringContainsString('Zrušit vyloučení', $body);
+    }
+
     private function loginAsAdmin(): void
     {
         $admin = $this->entityManager->getRepository(User::class)->findOneBy(['email' => 'admin@example.com']);
         \assert($admin instanceof User);
         $this->client->loginUser($admin, 'main');
+    }
+
+    private function persistUsage(Place $place, string $code): void
+    {
+        $this->entityManager->persist(new PlaceStorageCodeUsage(
+            id: \Symfony\Component\Uid\Uuid::v7(),
+            place: $place,
+            code: $code,
+            type: StorageCodeUsageType::USED,
+            note: null,
+            usedAt: new \DateTimeImmutable(),
+        ));
+        $this->entityManager->flush();
+    }
+
+    private function findUsage(Place $place, string $code): ?PlaceStorageCodeUsage
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('u')
+            ->from(PlaceStorageCodeUsage::class, 'u')
+            ->where('u.place = :place')
+            ->andWhere('u.code = :code')
+            ->setParameter('place', $place)
+            ->setParameter('code', $code)
+            ->getQuery()
+            ->getOneOrNullResult();
     }
 
     private function countUsage(Place $place): int
@@ -211,6 +431,14 @@ class PlaceAccessCodesControllerTest extends WebTestCase
     private function getBrno(): Place
     {
         $place = $this->entityManager->getRepository(Place::class)->findOneBy(['name' => 'Sklad Brno']);
+        \assert($place instanceof Place);
+
+        return $place;
+    }
+
+    private function getOstrava(): Place
+    {
+        $place = $this->entityManager->getRepository(Place::class)->findOneBy(['name' => 'Sklad Ostrava']);
         \assert($place instanceof Place);
 
         return $place;

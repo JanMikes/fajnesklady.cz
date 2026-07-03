@@ -6,6 +6,7 @@ namespace App\DataFixtures;
 
 use App\Entity\Place;
 use App\Entity\PlaceStorageCodeUsage;
+use App\Enum\StorageCodeUsageType;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
@@ -31,9 +32,20 @@ final class PlaceStorageCodeUsageFixtures extends Fixture implements DependentFi
                 id: Uuid::v7(),
                 place: $placePrahaCentrum,
                 code: $code,
+                type: StorageCodeUsageType::USED,
+                note: null,
                 usedAt: $now,
             ));
         }
+
+        $manager->persist(new PlaceStorageCodeUsage(
+            id: Uuid::v7(),
+            place: $placePrahaCentrum,
+            code: '9999',
+            type: StorageCodeUsageType::EXCLUDED,
+            note: 'Servisní kód zámku',
+            usedAt: $now,
+        ));
 
         $manager->flush();
     }

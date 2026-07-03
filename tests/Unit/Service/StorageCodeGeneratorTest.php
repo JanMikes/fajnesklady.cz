@@ -8,6 +8,7 @@ use App\Entity\Place;
 use App\Entity\PlaceStorageCodeUsage;
 use App\Entity\Storage;
 use App\Entity\StorageType;
+use App\Enum\StorageCodeUsageType;
 use App\Exception\InvalidStorageCode;
 use App\Exception\StorageCodeRangeExhausted;
 use App\Repository\PlaceStorageCodeUsageRepository;
@@ -22,7 +23,7 @@ class StorageCodeGeneratorTest extends TestCase
 {
     private MockClock $clock;
     private PredictableIdentityProvider $identity;
-    /** @var array<string, true> map of (place_id . ':' . code) => true */
+    /** @var array<string, PlaceStorageCodeUsage> map of (place_id . ':' . code) => usage row */
     private array $usageStore = [];
     /** @var array<int, string> codes returned for findActiveLockCodesByPlace */
     private array $activeCodesStore = [];
@@ -68,7 +69,7 @@ class StorageCodeGeneratorTest extends TestCase
     public function testProposeAvoidsCodesInUsage(): void
     {
         $place = $this->createPlace(digits: 1, from: 0, to: 1);
-        $this->usageStore[$place->id->toRfc4122().':0'] = true;
+        $this->seedUsage($place, '0');
         $generator = $this->createGenerator();
 
         // Only "1" is available
@@ -170,7 +171,7 @@ class StorageCodeGeneratorTest extends TestCase
     {
         $place = $this->createPlace();
         $storage = $this->createStorage($place, lockCode: null);
-        $this->usageStore[$place->id->toRfc4122().':0042'] = true;
+        $this->seedUsage($place, '0042');
         $generator = $this->createGenerator();
 
         $this->expectException(InvalidStorageCode::class);
@@ -179,11 +180,38 @@ class StorageCodeGeneratorTest extends TestCase
         $generator->validateForStorage($place, $storage, '0042');
     }
 
+    public function testValidateRejectsExcludedCodeWithDistinctMessage(): void
+    {
+        $place = $this->createPlace();
+        $storage = $this->createStorage($place, lockCode: null);
+        $this->seedUsage($place, '0042', StorageCodeUsageType::EXCLUDED);
+        $generator = $this->createGenerator();
+
+        $this->expectException(InvalidStorageCode::class);
+        $this->expectExceptionMessage('vyloučen (systémový kód)');
+
+        $generator->validateForStorage($place, $storage, '0042');
+    }
+
     public function testValidateAcceptsStorageOwnCurrentCodeEvenIfInHistory(): void
     {
         $place = $this->createPlace();
         $storage = $this->createStorage($place, lockCode: '0042');
-        $this->usageStore[$place->id->toRfc4122().':0042'] = true;
+        $this->seedUsage($place, '0042');
+        $generator = $this->createGenerator();
+
+        $generator->validateForStorage($place, $storage, '0042');
+
+        $this->assertSame('0042', $storage->lockCode);
+    }
+
+    public function testValidateAcceptsStorageOwnCurrentCodeEvenWhenExcluded(): void
+    {
+        // Exclusion prevents NEW assignments; the physical lock still has the
+        // old code until actively changed.
+        $place = $this->createPlace();
+        $storage = $this->createStorage($place, lockCode: '0042');
+        $this->seedUsage($place, '0042', StorageCodeUsageType::EXCLUDED);
         $generator = $this->createGenerator();
 
         $generator->validateForStorage($place, $storage, '0042');
@@ -212,6 +240,99 @@ class StorageCodeGeneratorTest extends TestCase
         $generator->markUsed($place, '0042');
 
         $this->assertCount(1, array_keys($this->usageStore));
+    }
+
+    public function testApplyCodeRetiresPreviousCodeThatWasNeverInHistory(): void
+    {
+        // The legacy gap: a code assigned pre-022 (or while codes were off)
+        // exists only as the active lockCode — replacing it must still retire
+        // it into the history.
+        $place = $this->createPlace();
+        $storage = $this->createStorage($place, lockCode: '1111');
+        $generator = $this->createGenerator();
+
+        $generator->applyCode($storage, '2222', $this->clock->now());
+
+        $this->assertSame('2222', $storage->lockCode);
+        $this->assertArrayHasKey($place->id->toRfc4122().':1111', $this->usageStore);
+        $this->assertArrayHasKey($place->id->toRfc4122().':2222', $this->usageStore);
+    }
+
+    public function testApplyCodeWithNullNewCodeStillRetiresPrevious(): void
+    {
+        $place = $this->createPlace();
+        $storage = $this->createStorage($place, lockCode: '1111');
+        $generator = $this->createGenerator();
+
+        $generator->applyCode($storage, null, $this->clock->now());
+
+        $this->assertNull($storage->lockCode);
+        $this->assertArrayHasKey($place->id->toRfc4122().':1111', $this->usageStore);
+        $this->assertCount(1, $this->usageStore);
+    }
+
+    public function testApplyCodeWithSameCodeDoesNotDuplicateHistory(): void
+    {
+        $place = $this->createPlace();
+        $storage = $this->createStorage($place, lockCode: '1111');
+        $this->seedUsage($place, '1111');
+        $generator = $this->createGenerator();
+
+        $generator->applyCode($storage, '1111', $this->clock->now());
+
+        $this->assertSame('1111', $storage->lockCode);
+        $this->assertCount(1, $this->usageStore);
+    }
+
+    public function testApplyCodeSkipsHistoryWhenCodesDisabled(): void
+    {
+        $place = $this->createPlace();
+        $place->updateStorageCodeConfig(false, 4, 0, 9999, $this->clock->now());
+        $storage = $this->createStorage($place, lockCode: '1111');
+        $generator = $this->createGenerator();
+
+        $generator->applyCode($storage, '2222', $this->clock->now());
+
+        $this->assertSame('2222', $storage->lockCode);
+        $this->assertCount(0, $this->usageStore);
+    }
+
+    public function testProposeNeverReturnsExcludedCode(): void
+    {
+        $place = $this->createPlace(digits: 1, from: 0, to: 1);
+        $this->seedUsage($place, '0', StorageCodeUsageType::EXCLUDED);
+        $generator = $this->createGenerator();
+
+        for ($i = 0; $i < 20; ++$i) {
+            $this->assertSame('1', $generator->propose($place));
+        }
+    }
+
+    public function testProposeThrowsWhenAllCodesExcluded(): void
+    {
+        $place = $this->createPlace(digits: 1, from: 0, to: 1);
+        $this->seedUsage($place, '0', StorageCodeUsageType::EXCLUDED);
+        $this->seedUsage($place, '1', StorageCodeUsageType::EXCLUDED);
+        $generator = $this->createGenerator();
+
+        $this->expectException(StorageCodeRangeExhausted::class);
+        $generator->propose($place);
+    }
+
+    public function testAvailableCountDropsPerInRangeExclusionOnly(): void
+    {
+        $place = $this->createPlace(digits: 1, from: 0, to: 3);
+        $generator = $this->createGenerator();
+
+        $this->assertSame(4, $generator->availableCount($place));
+
+        $this->seedUsage($place, '2', StorageCodeUsageType::EXCLUDED);
+        $this->assertSame(3, $generator->availableCount($place));
+
+        // Out-of-range exclusion (protects a future range widening) must not
+        // reduce today's pool.
+        $this->seedUsage($place, '9', StorageCodeUsageType::EXCLUDED);
+        $this->assertSame(3, $generator->availableCount($place));
     }
 
     public function testBulkGenerateForEmptyFillsOnlyNullLockCodeStoragesAndReturnsTuples(): void
@@ -287,7 +408,7 @@ class StorageCodeGeneratorTest extends TestCase
         $emptyStorages = &$this->emptyStorages;
 
         $usageRepository = new class ($usageStore) extends PlaceStorageCodeUsageRepository {
-            /** @param array<string, true> $store */
+            /** @param array<string, PlaceStorageCodeUsage> $store */
             public function __construct(private array &$store)
             {
             }
@@ -295,12 +416,17 @@ class StorageCodeGeneratorTest extends TestCase
             public function save(PlaceStorageCodeUsage $usage): void
             {
                 $key = $usage->place->id->toRfc4122().':'.$usage->code;
-                $this->store[$key] = true;
+                $this->store[$key] = $usage;
             }
 
             public function existsForPlace(Place $place, string $code): bool
             {
                 return isset($this->store[$place->id->toRfc4122().':'.$code]);
+            }
+
+            public function findOneByPlaceAndCode(Place $place, string $code): ?PlaceStorageCodeUsage
+            {
+                return $this->store[$place->id->toRfc4122().':'.$code] ?? null;
             }
 
             public function findCodesForPlace(Place $place): array
@@ -360,6 +486,21 @@ class StorageCodeGeneratorTest extends TestCase
             $usageRepository,
             $this->identity,
             $this->clock,
+        );
+    }
+
+    private function seedUsage(
+        Place $place,
+        string $code,
+        StorageCodeUsageType $type = StorageCodeUsageType::USED,
+    ): void {
+        $this->usageStore[$place->id->toRfc4122().':'.$code] = new PlaceStorageCodeUsage(
+            id: Uuid::v7(),
+            place: $place,
+            code: $code,
+            type: $type,
+            note: null,
+            usedAt: $this->clock->now(),
         );
     }
 

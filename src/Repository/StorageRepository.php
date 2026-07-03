@@ -208,6 +208,39 @@ class StorageRepository
         return array_map(static fn (array $r): string => (string) $r['lockCode'], $rows);
     }
 
+    /**
+     * Storage numbers of non-deleted storages at the place whose active
+     * lockCode is among $codes, keyed by that lockCode.
+     *
+     * @param list<string> $codes
+     *
+     * @return array<string, string> map of lockCode => storage number
+     */
+    public function findNumbersByPlaceAndLockCodes(Place $place, array $codes): array
+    {
+        if ([] === $codes) {
+            return [];
+        }
+
+        $rows = $this->entityManager->createQueryBuilder()
+            ->select('s.lockCode', 's.number')
+            ->from(Storage::class, 's')
+            ->where('s.place = :place')
+            ->andWhere('s.lockCode IN (:codes)')
+            ->andWhere('s.deletedAt IS NULL')
+            ->setParameter('place', $place)
+            ->setParameter('codes', $codes)
+            ->getQuery()
+            ->getArrayResult();
+
+        $numbers = [];
+        foreach ($rows as $row) {
+            $numbers[(string) $row['lockCode']] = (string) $row['number'];
+        }
+
+        return $numbers;
+    }
+
     public function countByPlaceWithCodeExcludingStorage(Place $place, string $lockCode, Storage $storage): int
     {
         return (int) $this->entityManager->createQueryBuilder()

@@ -28,11 +28,7 @@ final readonly class ReleaseStorageOnHandoverCompletedHandler
         $now = $this->clock->now();
 
         if (null !== $event->newLockCode) {
-            $storage->updateLockCode($event->newLockCode, $now);
-
-            if ($storage->getPlace()->storageCodesEnabled) {
-                $this->codeGenerator->markUsed($storage->getPlace(), $event->newLockCode);
-            }
+            $this->codeGenerator->applyCode($storage, $event->newLockCode, $now);
         }
 
         if ($contract->isTerminated() && $storage->isOccupied()) {

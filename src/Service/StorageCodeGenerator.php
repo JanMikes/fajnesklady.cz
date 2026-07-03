@@ -7,6 +7,7 @@ namespace App\Service;
 use App\Entity\Place;
 use App\Entity\PlaceStorageCodeUsage;
 use App\Entity\Storage;
+use App\Enum\StorageCodeUsageType;
 use App\Exception\InvalidStorageCode;
 use App\Exception\StorageCodeRangeExhausted;
 use App\Repository\PlaceStorageCodeUsageRepository;
@@ -79,8 +80,9 @@ final readonly class StorageCodeGenerator
             throw InvalidStorageCode::alreadyUsedByAnotherStorage($code);
         }
 
-        if ($storage->lockCode !== $code && $this->usageRepository->existsForPlace($place, $code)) {
-            throw InvalidStorageCode::inHistory($code);
+        $usage = $this->usageRepository->findOneByPlaceAndCode($place, $code);
+        if ($storage->lockCode !== $code && null !== $usage) {
+            throw StorageCodeUsageType::EXCLUDED === $usage->type ? InvalidStorageCode::excluded($code) : InvalidStorageCode::inHistory($code);
         }
     }
 
@@ -94,9 +96,32 @@ final readonly class StorageCodeGenerator
             id: $this->identityProvider->next(),
             place: $place,
             code: $code,
+            type: StorageCodeUsageType::USED,
+            note: null,
             usedAt: $this->clock->now(),
         );
         $this->usageRepository->save($usage);
+    }
+
+    /**
+     * Assigns $newCode to the storage and guarantees the code history stays
+     * airtight: the PREVIOUS code is retired into the used history (even when
+     * it predates the history table), and the new code is recorded as used.
+     */
+    public function applyCode(Storage $storage, ?string $newCode, \DateTimeImmutable $now): void
+    {
+        $place = $storage->getPlace();
+        $previous = $storage->lockCode;
+
+        if ($place->storageCodesEnabled && null !== $previous && $previous !== $newCode) {
+            $this->markUsed($place, $previous);
+        }
+
+        $storage->updateLockCode($newCode, $now);
+
+        if ($place->storageCodesEnabled && null !== $newCode) {
+            $this->markUsed($place, $newCode);
+        }
     }
 
     /**
@@ -117,9 +142,8 @@ final readonly class StorageCodeGenerator
             $code = $this->propose($place, $reserved);
             $reserved[$code] = true;
 
-            $storage->updateLockCode($code, $now);
+            $this->applyCode($storage, $code, $now);
             $this->storageRepository->save($storage);
-            $this->markUsed($place, $code);
             $filled[] = ['storage' => $storage, 'code' => $code];
         }
 

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Controller\Portal;
 
 use App\Command\UpdatePlaceStorageCodeConfigCommand;
+use App\Entity\PlaceStorageCodeUsage;
+use App\Enum\StorageCodeUsageType;
 use App\Form\PlaceStorageCodeConfigFormData;
 use App\Form\PlaceStorageCodeConfigFormType;
 use App\Repository\PlaceRepository;
@@ -57,7 +59,12 @@ final class PlaceAccessCodesController extends AbstractController
         }
 
         $storages = $this->storageRepository->findByPlace($place);
-        $usedCodesCount = count($this->usageRepository->findCodesForPlace($place));
+        $usages = $this->usageRepository->findForPlace($place);
+        $usedCodesCount = count(array_filter(
+            $usages,
+            static fn (PlaceStorageCodeUsage $usage): bool => StorageCodeUsageType::USED === $usage->type,
+        ));
+        $excludedCodesCount = count($usages) - $usedCodesCount;
         $availableCount = $place->storageCodesEnabled ? $this->codeGenerator->availableCount($place) : null;
         $emptyCount = 0;
         foreach ($storages as $storage) {
@@ -70,7 +77,9 @@ final class PlaceAccessCodesController extends AbstractController
             'place' => $place,
             'form' => $form,
             'storages' => $storages,
+            'usages' => $usages,
             'usedCodesCount' => $usedCodesCount,
+            'excludedCodesCount' => $excludedCodesCount,
             'availableCount' => $availableCount,
             'emptyCount' => $emptyCount,
         ]);

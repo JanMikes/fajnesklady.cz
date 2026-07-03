@@ -7,7 +7,9 @@ namespace App\Repository;
 use App\Entity\Place;
 use App\Entity\PlaceStorageCodeUsage;
 use App\Entity\Storage;
+use App\Enum\StorageCodeUsageType;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\Uid\Uuid;
 
 class PlaceStorageCodeUsageRepository
 {
@@ -19,6 +21,16 @@ class PlaceStorageCodeUsageRepository
     public function save(PlaceStorageCodeUsage $usage): void
     {
         $this->entityManager->persist($usage);
+    }
+
+    public function remove(PlaceStorageCodeUsage $usage): void
+    {
+        $this->entityManager->remove($usage);
+    }
+
+    public function find(Uuid $id): ?PlaceStorageCodeUsage
+    {
+        return $this->entityManager->find(PlaceStorageCodeUsage::class, $id);
     }
 
     public function existsForPlace(Place $place, string $code): bool
@@ -35,6 +47,37 @@ class PlaceStorageCodeUsageRepository
             ->getOneOrNullResult();
 
         return null !== $result;
+    }
+
+    public function findOneByPlaceAndCode(Place $place, string $code): ?PlaceStorageCodeUsage
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('u')
+            ->from(PlaceStorageCodeUsage::class, 'u')
+            ->where('u.place = :place')
+            ->andWhere('u.code = :code')
+            ->setParameter('place', $place)
+            ->setParameter('code', $code)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
+    /**
+     * Codes are zero-padded to a fixed length, so string order equals numeric order.
+     *
+     * @return list<PlaceStorageCodeUsage>
+     */
+    public function findForPlace(Place $place): array
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('u')
+            ->from(PlaceStorageCodeUsage::class, 'u')
+            ->where('u.place = :place')
+            ->orderBy('u.code', 'ASC')
+            ->setParameter('place', $place)
+            ->getQuery()
+            ->getResult();
     }
 
     /**
@@ -54,8 +97,10 @@ class PlaceStorageCodeUsageRepository
     }
 
     /**
-     * Delete usage rows whose code is NOT currently the lockCode of any
-     * non-deleted Storage at the place. Returns the number of rows deleted.
+     * Delete USED usage rows whose code is NOT currently the lockCode of any
+     * non-deleted Storage at the place. EXCLUDED rows (system codes) are never
+     * touched — un-excluding is an explicit per-row action, not part of Reset.
+     * Returns the number of rows deleted.
      */
     public function releaseUnusedForPlace(Place $place): int
     {
@@ -70,8 +115,10 @@ class PlaceStorageCodeUsageRepository
         return (int) $this->entityManager->createQueryBuilder()
             ->delete(PlaceStorageCodeUsage::class, 'u')
             ->where('u.place = :place')
+            ->andWhere('u.type = :used')
             ->andWhere(sprintf('NOT EXISTS (%s)', $subQuery))
             ->setParameter('place', $place)
+            ->setParameter('used', StorageCodeUsageType::USED)
             ->getQuery()
             ->execute();
     }

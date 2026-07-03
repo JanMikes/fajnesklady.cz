@@ -56,14 +56,7 @@ final readonly class UpdateStorageHandler
         }
 
         if ($command->updateLockCode) {
-            $storage->updateLockCode(
-                lockCode: $command->lockCode,
-                now: $now,
-            );
-
-            if (null !== $command->lockCode && $storage->getPlace()->storageCodesEnabled) {
-                $this->codeGenerator->markUsed($storage->getPlace(), $command->lockCode);
-            }
+            $this->codeGenerator->applyCode($storage, $command->lockCode, $now);
         }
 
         $this->storageRepository->save($storage);

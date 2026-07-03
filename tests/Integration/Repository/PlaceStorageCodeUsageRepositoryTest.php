@@ -9,6 +9,7 @@ use App\Entity\PlaceStorageCodeUsage;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Enum\PlaceType;
+use App\Enum\StorageCodeUsageType;
 use App\Repository\PlaceStorageCodeUsageRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -72,6 +73,59 @@ class PlaceStorageCodeUsageRepositoryTest extends KernelTestCase
             $this->entityManager->find(Place::class, $place->id),
         );
         $this->assertSame(['0042'], $remaining);
+    }
+
+    public function testReleaseUnusedKeepsExcludedRows(): void
+    {
+        $place = $this->createPlace('Test Release Excluded');
+
+        $this->repository->save($this->createUsage($place, '0011'));
+        $this->repository->save($this->createUsage($place, '0022', StorageCodeUsageType::EXCLUDED, 'Servisní kód'));
+        $this->entityManager->flush();
+
+        $deleted = $this->repository->releaseUnusedForPlace($place);
+        $this->entityManager->clear();
+
+        $this->assertSame(1, $deleted, 'Only the inactive USED row must be released.');
+
+        $reloadedPlace = $this->entityManager->find(Place::class, $place->id);
+        \assert($reloadedPlace instanceof Place);
+        $remaining = $this->repository->findForPlace($reloadedPlace);
+        $this->assertCount(1, $remaining);
+        $this->assertSame('0022', $remaining[0]->code);
+        $this->assertSame(StorageCodeUsageType::EXCLUDED, $remaining[0]->type);
+        $this->assertSame('Servisní kód', $remaining[0]->note);
+    }
+
+    public function testFindForPlaceOrdersByCode(): void
+    {
+        $place = $this->createPlace('Test Find Ordered');
+
+        $this->repository->save($this->createUsage($place, '0500'));
+        $this->repository->save($this->createUsage($place, '0001', StorageCodeUsageType::EXCLUDED));
+        $this->repository->save($this->createUsage($place, '0042'));
+        $this->entityManager->flush();
+
+        $codes = array_map(
+            static fn (PlaceStorageCodeUsage $usage): string => $usage->code,
+            $this->repository->findForPlace($place),
+        );
+        $this->assertSame(['0001', '0042', '0500'], $codes);
+    }
+
+    public function testFindOneByPlaceAndCode(): void
+    {
+        $place = $this->createPlace('Test Find One');
+
+        $this->repository->save($this->createUsage($place, '0042', StorageCodeUsageType::EXCLUDED, 'Master'));
+        $this->entityManager->flush();
+
+        $found = $this->repository->findOneByPlaceAndCode($place, '0042');
+        $this->assertNotNull($found);
+        $this->assertSame(StorageCodeUsageType::EXCLUDED, $found->type);
+        $this->assertSame('Master', $found->note);
+
+        $this->assertNull($this->repository->findOneByPlaceAndCode($place, '0043'));
     }
 
     public function testReleaseUnusedIsScopedPerPlace(): void
@@ -146,12 +200,18 @@ class PlaceStorageCodeUsageRepositoryTest extends KernelTestCase
         );
     }
 
-    private function createUsage(Place $place, string $code): PlaceStorageCodeUsage
-    {
+    private function createUsage(
+        Place $place,
+        string $code,
+        StorageCodeUsageType $type = StorageCodeUsageType::USED,
+        ?string $note = null,
+    ): PlaceStorageCodeUsage {
         return new PlaceStorageCodeUsage(
             id: Uuid::v7(),
             place: $place,
             code: $code,
+            type: $type,
+            note: $note,
             usedAt: new \DateTimeImmutable(),
         );
     }

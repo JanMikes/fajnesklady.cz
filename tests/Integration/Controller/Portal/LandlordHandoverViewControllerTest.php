@@ -254,6 +254,52 @@ class LandlordHandoverViewControllerTest extends WebTestCase
         $this->assertCount(0, $this->findFinesForContract($contractId));
     }
 
+    public function testCompletingHandoverWithNewCodeRetiresOldCodeIntoHistory(): void
+    {
+        $protocol = $this->createPendingHandoverForRecurringContract();
+        $storage = $protocol->contract->storage;
+        $place = $storage->getPlace();
+
+        // HandoverCompleted (which rotates the code) fires only once BOTH
+        // sides are complete — finish the tenant side up front.
+        if ($protocol->needsTenantCompletion()) {
+            $protocol->completeTenantSide('Převzato bez závad.', $this->clock->now());
+        }
+
+        // Simulate a code assigned before spec 022 (or while codes were off):
+        // active on the storage but absent from the usage history.
+        $storage->updateLockCode('0611', $this->clock->now());
+        $this->entityManager->flush();
+
+        $landlord = $this->findUserByEmail('landlord@example.com');
+        $this->client->loginUser($landlord, 'main');
+
+        $this->client->request(
+            'POST',
+            '/portal/pronajimatel/predavaci-protokol/'.$protocol->id->toRfc4122(),
+            [
+                'landlord_handover_form' => [
+                    'comment' => 'Předáno bez závad, kód vyměněn.',
+                    'newLockCode' => '0822',
+                ],
+            ],
+        );
+
+        $this->assertResponseRedirects('/portal/pronajimatel/predavaci-protokol/'.$protocol->id->toRfc4122());
+
+        $this->entityManager->clear();
+        $codes = $this->entityManager->createQueryBuilder()
+            ->select('u.code')
+            ->from(\App\Entity\PlaceStorageCodeUsage::class, 'u')
+            ->where('u.place = :place')
+            ->setParameter('place', $place->id->toRfc4122())
+            ->getQuery()
+            ->getSingleColumnResult();
+
+        $this->assertContains('0611', $codes, 'The replaced code must be retired into history even without a prior row.');
+        $this->assertContains('0822', $codes, 'The new code must be recorded as used.');
+    }
+
     /**
      * @return Fine[]
      */

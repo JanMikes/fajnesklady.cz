@@ -1,6 +1,6 @@
 # 082 — Lock codes: manual exclusions (system codes), visible history, and guaranteed previous-code retirement
 
-**Status:** ready
+**Status:** done
 **Type:** feature + bugfix
 **Scope:** medium (~15 files: enum, entity + migration, repository, generator, 2 existing handlers, 2 new commands + handlers, 2 new controllers, exception, template, fixtures, tests)
 **Depends on:** none (extends shipped spec 022)

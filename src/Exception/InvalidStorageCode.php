@@ -33,4 +33,9 @@ final class InvalidStorageCode extends \DomainException
     {
         return new self(sprintf('Kód "%s" byl v minulosti použit. Vyberte jiný.', $code));
     }
+
+    public static function excluded(string $code): self
+    {
+        return new self(sprintf('Kód "%s" je vyloučen (systémový kód) a nelze jej přiřadit.', $code));
+    }
 }
