@@ -6,7 +6,7 @@ namespace App\Query;
 
 use App\Entity\StorageType;
 
-final readonly class GetHomepagePlaceTypeRow
+final readonly class GetPlacesOverviewTypeRow
 {
     public function __construct(
         public StorageType $storageType,

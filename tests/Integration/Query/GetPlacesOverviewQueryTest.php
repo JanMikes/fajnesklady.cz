@@ -6,10 +6,10 @@ namespace App\Tests\Integration\Query;
 
 use App\Entity\Place;
 use App\Entity\StorageType;
-use App\Query\GetHomepagePlaceRow;
-use App\Query\GetHomepagePlaces;
-use App\Query\GetHomepagePlacesQuery;
-use App\Query\GetHomepagePlacesResult;
+use App\Query\GetPlacesOverviewRow;
+use App\Query\GetPlacesOverview;
+use App\Query\GetPlacesOverviewQuery;
+use App\Query\GetPlacesOverviewResult;
 use App\Repository\PlaceRepository;
 use App\Repository\StorageRepository;
 use App\Repository\StorageTypeRepository;
@@ -24,9 +24,9 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
  * ({@see StorageAvailabilityChecker::isAvailable()}), so the bulk rewrite can
  * never silently disagree with order-acceptance enforcement.
  */
-final class GetHomepagePlacesQueryTest extends KernelTestCase
+final class GetPlacesOverviewQueryTest extends KernelTestCase
 {
-    private GetHomepagePlacesQuery $handler;
+    private GetPlacesOverviewQuery $handler;
     private PlaceRepository $placeRepository;
     private StorageTypeRepository $storageTypeRepository;
     private StorageRepository $storageRepository;
@@ -39,7 +39,7 @@ final class GetHomepagePlacesQueryTest extends KernelTestCase
         self::bootKernel();
         $container = static::getContainer();
 
-        $this->handler = $container->get(GetHomepagePlacesQuery::class);
+        $this->handler = $container->get(GetPlacesOverviewQuery::class);
         $this->placeRepository = $container->get(PlaceRepository::class);
         $this->storageTypeRepository = $container->get(StorageTypeRepository::class);
         $this->storageRepository = $container->get(StorageRepository::class);
@@ -53,14 +53,14 @@ final class GetHomepagePlacesQueryTest extends KernelTestCase
 
     public function testIncludesEveryActivePlaceExactlyOnce(): void
     {
-        $result = ($this->handler)(new GetHomepagePlaces());
+        $result = ($this->handler)(new GetPlacesOverview());
 
         $expectedIds = array_map(
             static fn (Place $place): string => $place->id->toRfc4122(),
             $this->placeRepository->findAllActive(),
         );
         $actualIds = array_map(
-            static fn (GetHomepagePlaceRow $row): string => $row->place->id->toRfc4122(),
+            static fn (GetPlacesOverviewRow $row): string => $row->place->id->toRfc4122(),
             $result->places,
         );
 
@@ -72,7 +72,7 @@ final class GetHomepagePlacesQueryTest extends KernelTestCase
 
     public function testTypesMatchPubliclyOrderableTypesPerPlaceInOrder(): void
     {
-        $result = ($this->handler)(new GetHomepagePlaces());
+        $result = ($this->handler)(new GetPlacesOverview());
         self::assertNotEmpty($result->places);
 
         foreach ($result->places as $row) {
@@ -95,7 +95,7 @@ final class GetHomepagePlacesQueryTest extends KernelTestCase
 
     public function testAvailabilityMatchesPerStorageChecker(): void
     {
-        $result = ($this->handler)(new GetHomepagePlaces());
+        $result = ($this->handler)(new GetPlacesOverview());
         self::assertNotEmpty($result->places);
 
         $sawAvailableType = false;
@@ -136,7 +136,7 @@ final class GetHomepagePlacesQueryTest extends KernelTestCase
 
     public function testLowestPriceAndAreaAreMinimaAcrossTypes(): void
     {
-        $result = ($this->handler)(new GetHomepagePlaces());
+        $result = ($this->handler)(new GetPlacesOverview());
 
         foreach ($result->places as $row) {
             if ([] === $row->storageTypes) {
@@ -159,7 +159,7 @@ final class GetHomepagePlacesQueryTest extends KernelTestCase
 
     public function testPlaceWithoutOrderableTypesHasNoPriceAndIsUnavailable(): void
     {
-        $result = ($this->handler)(new GetHomepagePlaces());
+        $result = ($this->handler)(new GetPlacesOverview());
 
         $plzen = $this->findRowByName($result, 'Sklad Plzen');
 
@@ -171,7 +171,7 @@ final class GetHomepagePlacesQueryTest extends KernelTestCase
 
     public function testRowsSortedByAvailabilityRatioThenTotalThenName(): void
     {
-        $result = ($this->handler)(new GetHomepagePlaces());
+        $result = ($this->handler)(new GetPlacesOverview());
         self::assertGreaterThan(1, \count($result->places), 'Fixtures musí obsahovat aspoň dvě aktivní pobočky.');
 
         $sortKeys = [];
@@ -203,7 +203,7 @@ final class GetHomepagePlacesQueryTest extends KernelTestCase
         }
     }
 
-    private function findRowByName(GetHomepagePlacesResult $result, string $name): GetHomepagePlaceRow
+    private function findRowByName(GetPlacesOverviewResult $result, string $name): GetPlacesOverviewRow
     {
         foreach ($result->places as $row) {
             if ($row->place->name === $name) {

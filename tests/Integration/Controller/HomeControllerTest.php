@@ -123,7 +123,7 @@ final class HomeControllerTest extends WebTestCase
         self::assertInstanceOf(\Doctrine\Bundle\DoctrineBundle\DataCollector\DoctrineDataCollector::class, $collector);
 
         // Old impl fired 1 + place + place×type + 3×storage queries (73 on
-        // fixture data). GetHomepagePlacesQuery runs a constant 6: places,
+        // fixture data). GetPlacesOverviewQuery runs a constant 6: places,
         // types (bulk), storages (bulk) + 3 bulk overlap checks. Small head-
         // room for framework queries (session etc.), but a reintroduced N+1
         // (~20+ on fixtures) must fail here.

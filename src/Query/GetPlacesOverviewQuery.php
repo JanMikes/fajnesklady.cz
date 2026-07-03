@@ -19,7 +19,7 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
  * data alone.
  */
 #[AsMessageHandler]
-final readonly class GetHomepagePlacesQuery
+final readonly class GetPlacesOverviewQuery
 {
     public function __construct(
         private PlaceRepository $placeRepository,
@@ -30,11 +30,11 @@ final readonly class GetHomepagePlacesQuery
     ) {
     }
 
-    public function __invoke(GetHomepagePlaces $query): GetHomepagePlacesResult
+    public function __invoke(GetPlacesOverview $query): GetPlacesOverviewResult
     {
         $places = $this->placeRepository->findAllActive();
         if ([] === $places) {
-            return new GetHomepagePlacesResult(places: []);
+            return new GetPlacesOverviewResult(places: []);
         }
 
         $startDate = $this->clock->now()->modify('tomorrow');
@@ -89,13 +89,13 @@ final readonly class GetHomepagePlacesQuery
                 $lowestPrice = null === $lowestPrice ? $priceCzk : min($lowestPrice, $priceCzk);
                 $lowestAreaM2 = null === $lowestAreaM2 ? $areaM2 : min($lowestAreaM2, $areaM2);
 
-                $typeRows[] = new GetHomepagePlaceTypeRow(
+                $typeRows[] = new GetPlacesOverviewTypeRow(
                     storageType: $type,
                     isAvailable: $availableOfType > 0,
                 );
             }
 
-            $rows[] = new GetHomepagePlaceRow(
+            $rows[] = new GetPlacesOverviewRow(
                 place: $place,
                 storageTypes: $typeRows,
                 lowestPrice: $lowestPrice,
@@ -108,7 +108,7 @@ final readonly class GetHomepagePlacesQuery
         // Availability ratio DESC, storage count DESC, name ASC.
         usort(
             $rows,
-            static function (GetHomepagePlaceRow $a, GetHomepagePlaceRow $b) use ($sortKeyByPlace): int {
+            static function (GetPlacesOverviewRow $a, GetPlacesOverviewRow $b) use ($sortKeyByPlace): int {
                 [$ratioA, $totalA] = $sortKeyByPlace[$a->place->id->toRfc4122()];
                 [$ratioB, $totalB] = $sortKeyByPlace[$b->place->id->toRfc4122()];
 
@@ -116,6 +116,6 @@ final readonly class GetHomepagePlacesQuery
             },
         );
 
-        return new GetHomepagePlacesResult(places: $rows);
+        return new GetPlacesOverviewResult(places: $rows);
     }
 }

@@ -26,8 +26,8 @@
                     <td class="px-6 py-5">
                         {% if item.storageTypes|length > 0 %}
                             <div class="flex flex-wrap gap-1">
-                                {% for type in item.storageTypes %}
-                                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">{{ type.name }}</span>
+                                {% for typeRow in item.storageTypes %}
+                                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">{{ typeRow.storageType.name }}</span>
                                 {% endfor %}
                             </div>
                         {% else %}
