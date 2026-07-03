@@ -38,6 +38,11 @@ use Symfony\Component\Messenger\MessageBusInterface;
  * Spec 076: every manual cycle is paid by bank transfer (QR + variable
  * symbol) — cards are recurring-only, so the former per-cycle one-shot GoPay
  * link no longer exists.
+ *
+ * Spec 078 tranches: upfront (ONE_TIME) contracts longer than 12 months keep
+ * a billing anchor for their outstanding yearly tranches and flow through
+ * this same handler — the amount calculator returns the current tranche
+ * (12 months of the monthly walk, or the prorated remainder).
  */
 #[AsMessageHandler]
 final readonly class DispatchManualBillingNotificationHandler

@@ -179,6 +179,75 @@ final class SendManualBillingPaymentRequestsCommandTest extends KernelTestCase
         return $tester->execute([]);
     }
 
+    public function testUpfrontTrancheContractGetsPaymentRequestWithTrancheAmount(): void
+    {
+        // Spec 078 tranches: a > 12-month upfront contract with an outstanding
+        // yearly tranche is picked up by the same cron; the request bills the
+        // TRANCHE amount (next up-to-12 months of the monthly walk), not a
+        // flat monthly or yearly rate.
+        $contract = $this->createUpfrontTrancheContractDueOn('2025-06-22');
+
+        $exitCode = $this->runCron();
+
+        self::assertSame(0, $exitCode);
+        $request = $this->loadRequestForContract($contract);
+        self::assertNotNull($request);
+        self::assertArrayHasKey(ManualBillingReminderSchedule::STAGE_INITIAL, $request->sentStages);
+        self::assertSame('pending', $request->status);
+        // > 12 months remain past the anchor → full tranche = 12 × monthly rate.
+        self::assertSame(12 * $contract->getEffectiveMonthlyAmount(), $request->amount);
+        // Tranche period = one +1 year cadence step from the anchor.
+        self::assertSame('2026-06-22', $request->periodEnd->format('Y-m-d'));
+        // Bank-transfer request: VS present, no GoPay link.
+        self::assertNotNull($request->contract->order->variableSymbol);
+        self::assertNull($request->goPayPaymentId);
+    }
+
+    private function createUpfrontTrancheContractDueOn(string $nextBillingDate): Contract
+    {
+        /** @var User $tenant */
+        $tenant = $this->entityManager->getRepository(User::class)->findOneBy(['email' => UserFixtures::TENANT_EMAIL]);
+        /** @var StorageType $storageType */
+        $storageType = $this->entityManager->getRepository(StorageType::class)->findOneBy(['name' => 'Maly box']);
+        /** @var Place $place */
+        $place = $this->entityManager->getRepository(Place::class)->findOneBy(['name' => 'Sklad Praha - Centrum']);
+
+        $now = $this->clock->now();
+
+        $order = $this->orderService->createOrder(
+            $tenant,
+            $storageType,
+            $place,
+            $now->modify('+1 day'),
+            $now->modify('+1 day')->modify('+15 months'),
+            $now,
+            PaymentFrequency::ONE_TIME,
+        );
+        $order->setBillingMode(BillingMode::ONE_TIME);
+        $order->markPaid($now);
+        $contract = $this->orderService->completeOrder($order, $now);
+
+        $this->entityManager->flush();
+
+        // Pin the outstanding-tranche anchor to the requested calendar day so
+        // the test can target a specific schedule stage relative to MockClock.
+        $this->entityManager->createQueryBuilder()
+            ->update(Contract::class, 'c')
+            ->set('c.nextBillingDate', ':next')
+            ->set('c.paidThroughDate', ':next')
+            ->where('c.id = :id')
+            ->setParameter('next', new \DateTimeImmutable($nextBillingDate))
+            ->setParameter('id', $contract->id)
+            ->getQuery()
+            ->execute();
+        $this->entityManager->clear();
+
+        $refetched = $this->entityManager->find(Contract::class, $contract->id);
+        \assert($refetched instanceof Contract);
+
+        return $refetched;
+    }
+
     private function createManualContractDueOn(string $nextBillingDate): Contract
     {
         /** @var User $tenant */

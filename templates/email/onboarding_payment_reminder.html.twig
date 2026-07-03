@@ -109,7 +109,7 @@
                     <td>{{ endDate }}</td>
                 </tr>
                 <tr>
-                    <td class="label">{{ isRecurring ? 'Měsíční platba:' : 'Celková cena:' }}</td>
+                    <td class="label">{{ isRecurring ? 'Měsíční platba:' : (isUpfrontTranches is defined and isUpfrontTranches ? 'První platba:' : 'Celková cena:') }}</td>
                     <td><strong>{{ amountInCzk }} Kč{% if isRecurring %} / měsíc{% endif %}</strong></td>
                 </tr>
             </table>

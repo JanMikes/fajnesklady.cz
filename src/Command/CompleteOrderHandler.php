@@ -8,6 +8,7 @@ use App\Entity\Contract;
 use App\Enum\BillingMode;
 use App\Service\ContractService;
 use App\Service\OrderService;
+use App\Service\PriceCalculator;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
@@ -17,6 +18,7 @@ final readonly class CompleteOrderHandler
     public function __construct(
         private OrderService $orderService,
         private ContractService $contractService,
+        private PriceCalculator $priceCalculator,
         private ClockInterface $clock,
     ) {
     }
@@ -67,6 +69,18 @@ final readonly class CompleteOrderHandler
             }
 
             $contract->recordBillingCharge($now, $nextBillingDate, $paidThroughDate);
+        } elseif (BillingMode::ONE_TIME === $contract->billingMode && null === $contract->nextBillingDate) {
+            // Spec 078 tranches: an upfront rental longer than 12 months is
+            // paid in yearly tranches. The first tranche was just paid — anchor
+            // the second tranche on the canonical partition date so the
+            // manual-billing cron requests it (bank details + QR + VS) per the
+            // e-mail rules. A ≤ 12-month upfront rental yields a single tranche
+            // and keeps NO anchor: it stays outside every billing cron.
+            $tranches = $this->priceCalculator->buildScheduleFromOrder($order)->entries;
+            if (count($tranches) > 1) {
+                $secondTrancheDate = $tranches[1]->chargeDate;
+                $contract->recordBillingCharge($now, $secondTrancheDate, $secondTrancheDate);
+            }
         }
 
         // Generate contract document and sign

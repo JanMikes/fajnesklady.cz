@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Controller\Admin;
 
-use App\Enum\BillingMode;
 use App\Event\ManualBillingPaymentRequested;
 use App\Repository\ContractRepository;
 use App\Repository\ManualPaymentRequestRepository;
@@ -39,7 +38,7 @@ final class AdminOrderSendBillingReminderController extends AbstractController
         $order = $this->orderRepository->get(Uuid::fromString($id));
 
         $contract = $this->contractRepository->findByOrder($order);
-        if (null === $contract || BillingMode::MANUAL_RECURRING !== $contract->billingMode) {
+        if (null === $contract || !$contract->usesManualBillingTrack()) {
             $this->addFlash('error', 'Nelze odeslat — smlouva nemá manuální opakované platby.');
 
             return $this->redirectToRoute('admin_order_detail', ['id' => $id]);

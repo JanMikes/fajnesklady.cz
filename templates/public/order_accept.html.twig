@@ -95,15 +95,31 @@
                            any recurring schedule and "Celková cena: X Kč" for one-shot.
                            The "Parametry opakované platby" block further down still spells
                            out cadence, max amount and stop conditions for compliance. #}
+                        {% set isUpfrontTranches = not paymentSchedule.isRecurring and paymentSchedule.entryCount > 1 %}
                         <div class="flex justify-between">
                             {% include '_price_label.html.twig' with {
                                 isRecurring: paymentSchedule.isRecurring,
+                                isUpfrontTranches: isUpfrontTranches,
                                 priceCzk: paymentSchedule.firstPayment.amountInCzk,
                                 labelClass: 'text-gray-600',
                                 valueClass: 'font-medium text-accent',
                             } only %}
                         </div>
                         <p class="text-xs text-gray-500 text-right">vč. DPH</p>
+                        {% if isUpfrontTranches %}
+                            {# Spec 078 tranches: upfront rental > 12 months — the amount due now
+                               is the first tranche; list the full tranche schedule so the page
+                               never implies "celá částka" covers everything. #}
+                            <ul class="mt-2 space-y-1 text-xs text-gray-600">
+                                {% for entry in paymentSchedule.entries %}
+                                    <li class="flex justify-between">
+                                        <span>{{ loop.index }}. platba ({{ entry.chargeDate|date('d.m.Y') }}){% if loop.first %} — nyní{% endif %}</span>
+                                        <span class="font-medium">{{ entry.amountInCzk|number_format(0, ',', ' ') }} Kč</span>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                            <p class="text-xs text-gray-500 mt-1">Před každou další platbou Vám pošleme e-mail s platebními údaji a QR kódem.</p>
+                        {% endif %}
                     </div>
 
                     {% if storage.hasPhotos %}

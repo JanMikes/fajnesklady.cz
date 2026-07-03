@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Controller\Portal\User;
 
 use App\Entity\User;
-use App\Enum\BillingMode;
 use App\Repository\BankTransactionRepository;
 use App\Repository\ContractRepository;
 use App\Repository\FineRepository;
@@ -89,7 +88,7 @@ final class OrderDetailController extends AbstractController
         $manualNowAmount = null;
         $manualNowPeriodStart = null;
         $nextManualDate = null;
-        if (null !== $contract && BillingMode::MANUAL_RECURRING === $contract->billingMode) {
+        if (null !== $contract && $contract->usesManualBillingTrack()) {
             $pending = $this->manualPaymentRequestRepository->findPendingForCurrentCycle($contract, $now);
             // Spec 076: manual cycles are paid by bank transfer — surface VS + QR.
             if (null !== $pending && null !== $order->variableSymbol) {

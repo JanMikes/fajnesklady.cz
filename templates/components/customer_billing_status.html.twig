@@ -36,7 +36,10 @@
                 </div>
             </div>
         </div>
-    {% elseif contract.billingMode.value == 'manual_recurring' and not contract.isFree() %}
+    {% elseif contract.usesManualBillingTrack() and not contract.isFree() %}
+        {# Covers MANUAL_RECURRING cycles and outstanding upfront tranches
+           (spec 078: ONE_TIME with a billing anchor) — both are paid by bank
+           transfer against a payment-request e-mail. #}
         {% if manualNowVariableSymbol is defined and manualNowVariableSymbol is not null and manualNowAmount is defined and manualNowAmount is not null %}
             <div class="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-4">
                 <div class="flex items-start gap-3">

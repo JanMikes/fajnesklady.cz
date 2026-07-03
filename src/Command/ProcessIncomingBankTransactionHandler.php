@@ -7,7 +7,6 @@ namespace App\Command;
 use App\Entity\BankTransaction;
 use App\Entity\Contract;
 use App\Entity\Order;
-use App\Enum\BillingMode;
 use App\Enum\PaymentMethod;
 use App\Event\BankTransferAmountMismatch;
 use App\Repository\BankAccountMappingRepository;
@@ -164,7 +163,9 @@ final readonly class ProcessIncomingBankTransactionHandler
                 $order = $mapping->order;
                 $contract = $this->contractRepository->findByOrder($order);
 
-                if (null !== $contract && BillingMode::MANUAL_RECURRING === $contract->billingMode) {
+                // Manual cycles + outstanding upfront tranches (spec 078) —
+                // the calculator returns the current-cycle / current-tranche amount.
+                if (null !== $contract && $contract->usesManualBillingTrack()) {
                     $expectedAmount = $this->amountCalculator->calculate($contract, $now);
 
                     if ($bankTx->amount !== $expectedAmount) {
@@ -240,7 +241,7 @@ final readonly class ProcessIncomingBankTransactionHandler
     ): void {
         $contract = $this->contractRepository->findByOrder($order);
 
-        if (null !== $contract && BillingMode::MANUAL_RECURRING === $contract->billingMode
+        if (null !== $contract && $contract->usesManualBillingTrack()
             && PaymentMethod::BANK_TRANSFER === $order->paymentMethod) {
             $expectedAmount = $this->amountCalculator->calculate($contract, $now);
 

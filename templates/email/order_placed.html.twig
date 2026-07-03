@@ -121,7 +121,7 @@
                     <td>{{ endDate }}</td>
                 </tr>
                 <tr>
-                    {% include 'email/_price_label.html.twig' with { isRecurring: isRecurring, priceCzk: priceCzk } only %}
+                    {% include 'email/_price_label.html.twig' with { isRecurring: isRecurring, priceCzk: priceCzk, isUpfrontTranches: isUpfrontTranches|default(false) } only %}
                 </tr>
             </table>
         </div>

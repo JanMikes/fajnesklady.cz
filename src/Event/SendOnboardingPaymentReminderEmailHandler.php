@@ -76,6 +76,7 @@ final readonly class SendOnboardingPaymentReminderEmailHandler
                 'endDate' => $order->endDate?->format('d.m.Y') ?? 'Na dobu neurčitou',
                 'amountInCzk' => number_format($order->getFirstPaymentPriceInCzk(), 0, ',', ' '),
                 'isRecurring' => $order->isRecurring(),
+                'isUpfrontTranches' => $order->isPaidInUpfrontTranches(),
                 'statusUrl' => $statusUrl,
                 'hasUnpaidDebt' => $order->hasUnpaidDebt(),
                 'debtAmountCzk' => null !== $order->getDebtAmountInCzk()

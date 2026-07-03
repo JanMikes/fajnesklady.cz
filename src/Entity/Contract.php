@@ -459,15 +459,31 @@ class Contract implements EntityWithEvents
 
     public function isInBillingGrace(): bool
     {
-        if (!$this->billingMode->isRecurring()) {
-            return false;
-        }
-
         return match ($this->billingMode) {
             BillingMode::AUTO_RECURRING => null !== $this->goPayParentPaymentId,
             BillingMode::MANUAL_RECURRING => null !== $this->nextBillingDate || $this->failedBillingAttempts > 0,
-            default => false,
+            // Spec 078 tranches: an upfront contract with an unpaid tranche
+            // (live anchor / overdue chase) gets the same grace as MANUAL.
+            // ≤ 12-month upfront contracts never have an anchor → no grace.
+            BillingMode::ONE_TIME => null !== $this->nextBillingDate || $this->failedBillingAttempts > 0,
         };
+    }
+
+    /**
+     * Whether this contract's outstanding payments are collected by the manual
+     * bank-transfer machinery (spec 036: payment-request e-mails + QR + FIO
+     * reconciliation): every MANUAL_RECURRING contract, plus upfront ONE_TIME
+     * contracts longer than 12 months whose remaining yearly tranches keep a
+     * billing anchor (spec 078 tranches). Fully-paid upfront contracts and
+     * ≤ 12-month upfront rentals (anchor NULL) are outside every billing cron.
+     */
+    public function usesManualBillingTrack(): bool
+    {
+        if (BillingMode::MANUAL_RECURRING === $this->billingMode) {
+            return true;
+        }
+
+        return BillingMode::ONE_TIME === $this->billingMode && null !== $this->nextBillingDate;
     }
 
     private function isLongTermMonthly(): bool
@@ -493,6 +509,14 @@ class Contract implements EntityWithEvents
      */
     public function getBillingCadenceStep(): string
     {
+        // Spec 078 tranches: an upfront (ONE_TIME) contract with a billing
+        // anchor pays the rest of the rental in yearly tranches. Prolongation
+        // flips billingMode to MANUAL_RECURRING (spec 077), so extension
+        // cycles fall back to the monthly cadence below.
+        if (BillingMode::ONE_TIME === $this->billingMode) {
+            return '+1 year';
+        }
+
         return PaymentFrequency::YEARLY === $this->paymentFrequency ? '+1 year' : '+1 month';
     }
 
@@ -573,7 +597,9 @@ class Contract implements EntityWithEvents
         // YEARLY contracts also have paidThroughDate populated (set after each
         // yearly charge) but they're not "externally prepaid" — they're billed
         // annually via the manual cron. Don't surface the prepayment banner.
-        if (PaymentFrequency::YEARLY === $this->paymentFrequency) {
+        // Same for upfront ONE_TIME contracts (spec 078 tranches): their
+        // paidThroughDate tracks paid tranches, not an external prepayment.
+        if (in_array($this->paymentFrequency, [PaymentFrequency::YEARLY, PaymentFrequency::ONE_TIME], true)) {
             return null;
         }
 

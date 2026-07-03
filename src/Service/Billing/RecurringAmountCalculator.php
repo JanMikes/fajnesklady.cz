@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service\Billing;
 
 use App\Entity\Contract;
+use App\Enum\BillingMode;
 use App\Service\PriceCalculator;
 
 /**
@@ -20,6 +21,11 @@ use App\Service\PriceCalculator;
  */
 final readonly class RecurringAmountCalculator
 {
+    public function __construct(
+        private PriceCalculator $priceCalculator,
+    ) {
+    }
+
     /**
      * Expected amount in halere for the recurring charge happening at $now
      * against $contract.
@@ -35,6 +41,27 @@ final readonly class RecurringAmountCalculator
      */
     public function calculate(Contract $contract, \DateTimeImmutable $now): int
     {
+        // Spec 078 tranches: an upfront contract with a billing anchor bills
+        // the remaining rental in yearly tranches. Each tranche is the next
+        // up-to-12 months of the SAME monthly walk the upfront schedule was
+        // built from (full tranche = 12 × monthly rate, final tranche =
+        // remaining months + prorated tail) — never a flat monthly/yearly rate.
+        // The rate is the LOCKED order rate (firstPaymentPrice / 12), not the
+        // live storage price: the customer prepays exactly what was quoted,
+        // and later admin price-list edits must not shift the tranches.
+        if (BillingMode::ONE_TIME === $contract->billingMode) {
+            $order = $contract->order;
+            $monthlyRate = $order->isPaidInUpfrontTranches()
+                ? $order->getUpfrontLockedMonthlyRate()
+                : $contract->getEffectiveMonthlyAmount(); // defensive: unreachable for ≤ 12-month upfront (no anchor)
+
+            return $this->priceCalculator->calculateUpfrontTrancheAmount(
+                $monthlyRate,
+                $contract->nextBillingDate ?? $now,
+                $contract->getEffectiveEndDate(),
+            );
+        }
+
         $periodAmount = $contract->getEffectiveRecurringAmount();
         $periodDays = $contract->getBillingPeriodDays();
         $effectiveEndDate = $contract->getEffectiveEndDate();

@@ -7,7 +7,6 @@ namespace App\Service\Order;
 use App\Entity\AuditLog;
 use App\Entity\Contract;
 use App\Entity\Order;
-use App\Enum\BillingMode;
 use App\Enum\OrderStatus;
 use App\Enum\PaymentMethod;
 use App\Repository\AuditLogRepository;
@@ -146,7 +145,7 @@ final readonly class OrderStatusViewModelFactory
         $manualNowAmountInHaler = null;
         $manualNowPeriodStart = null;
         $nextManualPaymentRequestDate = null;
-        if (null !== $contract && BillingMode::MANUAL_RECURRING === $contract->billingMode) {
+        if (null !== $contract && $contract->usesManualBillingTrack()) {
             $pendingRequest = $this->manualPaymentRequestRepository->findPendingForCurrentCycle($contract, $now);
             // Spec 076: manual cycles are paid by bank transfer — surface VS + QR.
             if (null !== $pendingRequest && null !== $order->variableSymbol) {

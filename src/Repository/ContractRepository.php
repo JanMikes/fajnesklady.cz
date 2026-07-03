@@ -523,7 +523,9 @@ class ContractRepository
     /**
      * Find contracts due for termination:
      * - Pending termination notice due (terminatesAt <= now)
-     * - ONE_TIME contracts past endDate
+     * - ONE_TIME contracts past endDate with no unpaid upfront tranche
+     *   (spec 078 tranches: a live anchor means an outstanding tranche —
+     *   grace, then the overdue sweep)
      * - AUTO_RECURRING past endDate, fully settled (no retries / in-flight charge)
      *   — spec 076: the token no longer keeps a contract alive past its end;
      *   ContractService::terminateContract() voids it during termination
@@ -543,7 +545,10 @@ class ContractRepository
             ->where('c.terminatedAt IS NULL')
             ->andWhere(
                 '(c.terminatesAt IS NOT NULL AND c.terminatesAt <= :now) OR '
-                .'(c.endDate <= :now AND c.billingMode = :oneTime) OR '
+                // Spec 078 tranches: an upfront contract with an unpaid tranche
+                // (anchor set / overdue chase running) stays in billing grace —
+                // payment-default termination is owned by the overdue sweep.
+                .'(c.endDate <= :now AND c.billingMode = :oneTime AND c.nextBillingDate IS NULL AND c.failedBillingAttempts = 0) OR '
                 .'(c.endDate <= :now AND c.billingMode = :autoRecurring AND c.failedBillingAttempts = 0 AND c.pendingRecurringPaymentId IS NULL AND c.nextBillingDate IS NULL) OR '
                 .'(c.endDate <= :now AND c.billingMode = :manualRecurring AND c.nextBillingDate IS NULL AND c.failedBillingAttempts = 0)'
             )
@@ -912,11 +917,13 @@ class ContractRepository
             ->andWhere('c.lastAdvanceNoticeSentAt IS NULL OR c.lastAdvanceNoticeSentAt < :rangeStart')
             // MANUAL_RECURRING contracts get their own per-cycle payment-request
             // e-mails (spec 036). Sending the "set up auto" notice in parallel
-            // would confuse the customer.
-            ->andWhere('c.billingMode != :manual')
+            // would confuse the customer. Upfront ONE_TIME contracts (spec 078
+            // tranches) also carry paidThroughDate but are not externally
+            // prepaid — exclude them the same way.
+            ->andWhere('c.billingMode NOT IN (:nonExternalModes)')
             ->setParameter('rangeStart', $rangeStart)
             ->setParameter('rangeEnd', $rangeEnd)
-            ->setParameter('manual', BillingMode::MANUAL_RECURRING->value)
+            ->setParameter('nonExternalModes', [BillingMode::MANUAL_RECURRING->value, BillingMode::ONE_TIME->value])
             ->getQuery()
             ->getResult();
     }
@@ -940,10 +947,11 @@ class ContractRepository
             ->andWhere('c.goPayParentPaymentId IS NULL')
             ->andWhere('c.terminatedAt IS NULL')
             ->andWhere('c.paidThroughDate BETWEEN :now AND :threshold')
-            ->andWhere('c.billingMode != :manual')
+            // Manual-track + upfront-tranche contracts are not externally prepaid.
+            ->andWhere('c.billingMode NOT IN (:nonExternalModes)')
             ->setParameter('now', $now)
             ->setParameter('threshold', $threshold)
-            ->setParameter('manual', BillingMode::MANUAL_RECURRING->value)
+            ->setParameter('nonExternalModes', [BillingMode::MANUAL_RECURRING->value, BillingMode::ONE_TIME->value])
             ->orderBy('c.paidThroughDate', 'ASC')
             ->getQuery()
             ->getResult();
@@ -960,10 +968,11 @@ class ContractRepository
             ->andWhere('c.goPayParentPaymentId IS NULL')
             ->andWhere('c.terminatedAt IS NULL')
             ->andWhere('c.paidThroughDate BETWEEN :now AND :threshold')
-            ->andWhere('c.billingMode != :manual')
+            // Manual-track + upfront-tranche contracts are not externally prepaid.
+            ->andWhere('c.billingMode NOT IN (:nonExternalModes)')
             ->setParameter('now', $now)
             ->setParameter('threshold', $threshold)
-            ->setParameter('manual', BillingMode::MANUAL_RECURRING->value)
+            ->setParameter('nonExternalModes', [BillingMode::MANUAL_RECURRING->value, BillingMode::ONE_TIME->value])
             ->getQuery()
             ->getSingleScalarResult();
     }
@@ -984,13 +993,18 @@ class ContractRepository
         return $this->entityManager->createQueryBuilder()
             ->select('c')
             ->from(Contract::class, 'c')
-            ->where('c.billingMode = :manual')
+            // Spec 078 tranches: upfront (ONE_TIME) contracts longer than
+            // 12 months keep a billing anchor for their outstanding yearly
+            // tranches and are requested/chased by the same machinery. The
+            // nextBillingDate IS NOT NULL predicate keeps fully-paid and
+            // ≤ 12-month upfront contracts out.
+            ->where('c.billingMode IN (:manualTrackModes)')
             ->andWhere('c.terminatedAt IS NULL')
             ->andWhere('c.nextBillingDate IS NOT NULL')
             ->andWhere('c.endDate IS NULL OR c.endDate >= :now')
             ->andWhere('c.terminatesAt IS NULL OR c.terminatesAt >= :now')
             ->andWhere('c.nextBillingDate BETWEEN :windowStart AND :windowEnd')
-            ->setParameter('manual', BillingMode::MANUAL_RECURRING->value)
+            ->setParameter('manualTrackModes', [BillingMode::MANUAL_RECURRING->value, BillingMode::ONE_TIME->value])
             ->setParameter('now', $now)
             ->setParameter('windowStart', $windowStart)
             ->setParameter('windowEnd', $windowEnd)

@@ -21,7 +21,7 @@ use Symfony\Component\Messenger\MessageBusInterface;
 
 #[AsCommand(
     name: 'app:send-manual-billing-payment-requests',
-    description: 'Send per-cycle payment-request and overdue reminder e-mails for MANUAL_RECURRING contracts',
+    description: 'Send per-cycle payment-request and overdue reminder e-mails for MANUAL_RECURRING contracts and outstanding upfront tranches (spec 078)',
 )]
 final class SendManualBillingPaymentRequestsCommand extends Command
 {
@@ -43,12 +43,12 @@ final class SendManualBillingPaymentRequestsCommand extends Command
         $contracts = $this->contractRepository->findManualBillingCandidates($now);
 
         if (0 === count($contracts)) {
-            $io->info('No MANUAL_RECURRING contracts to process.');
+            $io->info('No manual-billing contracts to process.');
 
             return Command::SUCCESS;
         }
 
-        $io->info(sprintf('Inspecting %d MANUAL_RECURRING contracts.', count($contracts)));
+        $io->info(sprintf('Inspecting %d manual-billing contracts.', count($contracts)));
 
         $dispatched = 0;
         $failures = 0;

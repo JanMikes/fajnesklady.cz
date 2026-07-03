@@ -158,6 +158,64 @@ class OrderAcceptControllerTest extends WebTestCase
         self::assertStringContainsString(number_format($expectedTotal / 100, 0, ',', ' '), $paymentHtml);
     }
 
+    public function testUpfrontFlowLongerThanTwelveMonthsShowsFirstTrancheOnly(): void
+    {
+        // Spec 078 tranches: 15-month upfront rental → 2 payments. /prijmout and
+        // the payment page must present the FIRST tranche as the amount due now
+        // (label "První platba", never "Celková cena") plus the tranche schedule.
+        $storage = $this->findAvailableStorage('A1');
+        $url = $this->acceptUrl($storage);
+        $startDate = new \DateTimeImmutable('2025-07-15');
+        $endDate = new \DateTimeImmutable('2026-10-15');
+        $this->seedOrderFormSession(
+            $storage,
+            startDate: $startDate,
+            endDate: $endDate,
+            paymentFrequency: PaymentFrequency::ONE_TIME,
+            billingMode: BillingMode::ONE_TIME,
+        );
+
+        $priceCalculator = static::getContainer()->get(PriceCalculator::class);
+        \assert($priceCalculator instanceof PriceCalculator);
+        $upfrontSchedule = $priceCalculator->buildPaymentSchedule($storage, $startDate, $endDate, PaymentFrequency::ONE_TIME);
+        self::assertCount(2, $upfrontSchedule->entries);
+        $firstTranche = $upfrontSchedule->entries[0]->amount;
+
+        $crawler = $this->client->request('GET', $url);
+        self::assertResponseIsSuccessful();
+        $html = (string) $this->client->getResponse()->getContent();
+        self::assertStringContainsString('První platba', $html);
+        self::assertStringNotContainsString('Celková cena', $html);
+        self::assertStringContainsString('2. platba', $html, 'tranche schedule must be listed');
+        self::assertStringNotContainsString('Parametry opakované platby', $html);
+        self::assertStringNotContainsString('accept_recurring_payments', $html);
+        self::assertStringContainsString(number_format($firstTranche / 100, 0, ',', ' '), $html);
+
+        $token = $crawler->filter('input[name="submit_token"]')->attr('value');
+        self::assertNotEmpty($token);
+
+        $this->client->request('POST', $url, $this->validPostBody($token));
+        self::assertResponseRedirects();
+        $paymentUrl = (string) $this->client->getResponse()->headers->get('Location');
+        self::assertStringContainsString('/platba', $paymentUrl);
+
+        $order = $this->findSingleOrderForStorage($storage);
+        self::assertSame(PaymentFrequency::ONE_TIME, $order->paymentFrequency);
+        self::assertSame(BillingMode::ONE_TIME, $order->billingMode);
+        self::assertSame($firstTranche, $order->firstPaymentPrice, 'firstPaymentPrice must be the FIRST tranche, not the whole rental');
+        self::assertTrue($order->isPaidInUpfrontTranches());
+
+        // Payment page: QR bills the first tranche, tranche schedule shown.
+        $this->client->request('GET', $paymentUrl);
+        self::assertResponseIsSuccessful();
+        $paymentHtml = (string) $this->client->getResponse()->getContent();
+        self::assertStringContainsString('První platba', $paymentHtml);
+        self::assertStringNotContainsString('Celková cena', $paymentHtml);
+        self::assertStringContainsString('2. platba', $paymentHtml);
+        self::assertStringContainsString('data:image/png;base64', $paymentHtml);
+        self::assertStringContainsString(number_format($firstTranche / 100, 0, ',', ' '), $paymentHtml);
+    }
+
     /**
      * @return array<string, string>
      */

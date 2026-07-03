@@ -218,6 +218,41 @@ class ContractProlongControllerTest extends WebTestCase
         $this->assertNotNull($refreshed->order->variableSymbol);
     }
 
+    public function testUpfrontContractWithOutstandingTrancheKeepsAnchorOnProlong(): void
+    {
+        // Spec 078 tranches: a > 12-month upfront contract mid-tranche has a
+        // live nextBillingDate + paidThroughDate. Prolongation converts it to
+        // the manual track WITHOUT resetting the anchor — otherwise the unpaid
+        // remainder of the rental would be silently marked as paid.
+        $contract = $this->createActiveContract(
+            BillingMode::ONE_TIME,
+            PaymentMethod::BANK_TRANSFER,
+            startDate: $this->clock->now()->modify('-5 days'),
+            endDate: $this->clock->now()->modify('+15 months'),
+        );
+        $trancheAnchor = $this->clock->now()->modify('-5 days')->modify('+12 months')->setTime(0, 0);
+        $contract->scheduleNextBilling($trancheAnchor, $trancheAnchor);
+        $this->entityManager->flush();
+        $this->client->loginUser($contract->user, 'main');
+
+        $this->submitProlong($contract, $contract->endDate->modify('+2 months'), 'keep');
+
+        $this->assertResponseIsSuccessful();
+        $this->entityManager->clear();
+        $refreshed = $this->entityManager->find(Contract::class, $contract->id);
+        $this->assertSame(BillingMode::MANUAL_RECURRING, $refreshed->billingMode);
+        $this->assertSame(
+            $trancheAnchor->format('Y-m-d'),
+            $refreshed->nextBillingDate?->format('Y-m-d'),
+            'Outstanding-tranche anchor must survive the prolongation conversion.',
+        );
+        $this->assertSame(
+            $trancheAnchor->format('Y-m-d'),
+            $refreshed->paidThroughDate?->format('Y-m-d'),
+            'paidThroughDate must keep reflecting what the customer actually paid.',
+        );
+    }
+
     public function testTerminatedContractShowsEndedStateWithRenewCta(): void
     {
         $contract = $this->createActiveContract(BillingMode::MANUAL_RECURRING, PaymentMethod::BANK_TRANSFER);

@@ -363,6 +363,45 @@ class Order implements EntityWithEvents
         return !$this->isRecurring();
     }
 
+    /**
+     * Spec 078 tranches: an upfront (ONE_TIME frequency) rental longer than
+     * 12 monthly billing periods is paid in yearly tranches — firstPaymentPrice
+     * is then only the FIRST tranche (12 months), not the whole rental, and
+     * display surfaces must not call it "Celková cena".
+     *
+     * Mirrors the split in PriceCalculator::buildUpfrontSchedule(): a 13th
+     * monthly walk entry exists iff 12 iterative '+1 month' steps from
+     * startDate still land strictly before endDate (iterative, because the
+     * walk advances month by month and PHP month-end overflow makes that
+     * differ from a single '+12 months' jump).
+     */
+    public function isPaidInUpfrontTranches(): bool
+    {
+        if (PaymentFrequency::ONE_TIME !== $this->paymentFrequency || null === $this->endDate) {
+            return false;
+        }
+
+        $cursor = $this->startDate;
+        for ($i = 0; $i < PriceCalculator::MONTHS_PER_UPFRONT_TRANCHE; ++$i) {
+            $cursor = $cursor->modify('+1 month');
+        }
+
+        return $cursor < $this->endDate;
+    }
+
+    /**
+     * Locked monthly rate of a > 12-month upfront order (spec 078 tranches).
+     * The first tranche is always 12 FULL months — the prorated tail can only
+     * sit in the last tranche — so firstPaymentPrice / 12 recovers the rate
+     * the customer signed EXACTLY. Every tranche billed later must use this
+     * locked rate, never the live storage price (which admins may edit during
+     * the rental). Only meaningful when {@see self::isPaidInUpfrontTranches()}.
+     */
+    public function getUpfrontLockedMonthlyRate(): int
+    {
+        return intdiv($this->firstPaymentPrice, PriceCalculator::MONTHS_PER_UPFRONT_TRANCHE);
+    }
+
     public function getFirstPaymentPriceInCzk(): float
     {
         return $this->firstPaymentPrice / 100;

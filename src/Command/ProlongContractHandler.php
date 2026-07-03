@@ -71,11 +71,16 @@ final readonly class ProlongContractHandler
         $contract->prolong($command->newEndDate, $actor, $now);
 
         if (BillingMode::ONE_TIME === $contract->billingMode) {
-            // A short one-shot rental being prolonged joins the manual bank
-            // track: the already-paid one-shot covered up to the previous end,
-            // so the first extension cycle is due right there.
+            // A one-shot / upfront rental being prolonged joins the manual bank
+            // track. Fully paid (no anchor): the paid amount covered up to the
+            // previous end, so the first extension cycle is due right there.
+            // With outstanding upfront tranches (spec 078, anchor set) the
+            // existing anchor + paidThroughDate stay untouched — the manual
+            // track resumes monthly cycles from the date actually paid through.
             $contract->applyBillingMode(BillingMode::MANUAL_RECURRING);
-            $contract->scheduleNextBilling($previousEndDate, $previousEndDate);
+            if (null === $contract->nextBillingDate) {
+                $contract->scheduleNextBilling($previousEndDate, $previousEndDate);
+            }
         }
 
         if (PaymentMethod::BANK_TRANSFER === $command->switchTo && null !== $contract->goPayParentPaymentId) {

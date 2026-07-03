@@ -17,6 +17,14 @@ final readonly class PriceCalculator
     public const int SHORT_TERM_THRESHOLD_DAYS = 180;
     public const int YEARLY_THRESHOLD_DAYS = 360;
 
+    /**
+     * Spec 078 tranches: an upfront (ONE_TIME frequency) rental is paid in
+     * consecutive groups of this many monthly billing periods — ≤ 12 monthly
+     * entries collapse into a single whole-rental payment, longer rentals
+     * split into yearly tranches (12 + 12 + … + rest).
+     */
+    public const int MONTHS_PER_UPFRONT_TRANCHE = 12;
+
     private const int DAYS_PER_WEEK = 7;
     private const int DAYS_PER_MONTH = 30;
     private const int DAYS_PER_YEAR = 365;
@@ -298,20 +306,12 @@ final readonly class PriceCalculator
             ? $storage->getEffectivePricePerMonth()
             : $storage->getEffectivePricePerMonthLongTerm();
 
-        // Spec 078: whole rental paid upfront in one bank transfer. The single
-        // entry is the EXACT sum the MANUAL monthly track would collect (same
+        // Spec 078: rental paid upfront by bank transfer. The tranche amounts
+        // are the EXACT sums the MANUAL monthly track would collect (same
         // duration tier, same prorated tail) — no discount. Short rentals
         // (< 31 days) never reach this branch: they keep weekly pricing above.
         if (PaymentFrequency::ONE_TIME === $frequency) {
-            $entries = $this->walkMonthsFromAnchor($monthlyRate, $startDate, $endDate);
-            $total = array_sum(array_map(static fn (PaymentScheduleEntry $e) => $e->amount, $entries));
-
-            return new PaymentSchedule(
-                entries: [new PaymentScheduleEntry($startDate, $total)],
-                isRecurring: false,
-                isOpenEnded: false,
-                monthlyAmount: $monthlyRate, // kept for the "X Kč / měsíc" equivalence note
-            );
+            return $this->buildUpfrontSchedule($monthlyRate, $startDate, $endDate);
         }
 
         return new PaymentSchedule(
@@ -360,9 +360,23 @@ final readonly class PriceCalculator
             );
         }
 
-        // Spec 078 upfront orders: firstPaymentPrice is the WHOLE rental total,
-        // not a monthly rate — the monthly-walk branch below would corrupt it.
+        // Spec 078 upfront orders: for ≤ 12 monthly periods firstPaymentPrice
+        // is the WHOLE rental total (single payment) — the monthly-walk branch
+        // below would corrupt it. Longer rentals pay in yearly tranches: the
+        // first tranche is always 12 FULL months (the prorated tail can only
+        // sit in the last tranche), so the locked monthly rate is recoverable
+        // exactly as firstPaymentPrice / 12 and the partition rebuilds 1:1.
         if (PaymentFrequency::ONE_TIME === $order->paymentFrequency) {
+            $endDate = $order->endDate;
+
+            if (null !== $endDate && $this->countMonthlyWalkEntries($order->startDate, $endDate) > self::MONTHS_PER_UPFRONT_TRANCHE) {
+                return $this->buildUpfrontSchedule(
+                    $order->getUpfrontLockedMonthlyRate(),
+                    $order->startDate,
+                    $endDate,
+                );
+            }
+
             return new PaymentSchedule(
                 entries: [new PaymentScheduleEntry($order->startDate, $order->firstPaymentPrice)],
                 isRecurring: false,
@@ -465,6 +479,74 @@ final readonly class PriceCalculator
         }
 
         return $entries;
+    }
+
+    /**
+     * Upfront (ONE_TIME) schedule — the monthly walk partitioned into
+     * consecutive groups of {@see self::MONTHS_PER_UPFRONT_TRANCHE} entries;
+     * each group becomes ONE payment (sum of its entries) dated at the group's
+     * first entry. ≤ 12 monthly periods therefore stay a single whole-rental
+     * payment. Reusing the monthly walk means duration tier and prorated tail
+     * are inherited by construction — never re-derive proration here.
+     *
+     * monthlyAmount carries the equivalence rate the totals were built from
+     * (drives the "odpovídá X Kč / měsíc" note).
+     */
+    private function buildUpfrontSchedule(int $monthlyRate, \DateTimeImmutable $startDate, \DateTimeImmutable $endDate): PaymentSchedule
+    {
+        $tranches = [];
+        foreach (array_chunk($this->walkMonthsFromAnchor($monthlyRate, $startDate, $endDate), self::MONTHS_PER_UPFRONT_TRANCHE) as $group) {
+            $tranches[] = new PaymentScheduleEntry(
+                $group[0]->chargeDate,
+                array_sum(array_map(static fn (PaymentScheduleEntry $e): int => $e->amount, $group)),
+            );
+        }
+
+        return new PaymentSchedule(
+            entries: $tranches,
+            isRecurring: false,
+            isOpenEnded: false,
+            monthlyAmount: $monthlyRate,
+        );
+    }
+
+    /**
+     * Amount in halere of the single upfront tranche starting at $trancheStart:
+     * the next up-to-12 entries of the monthly walk towards $endDate (full
+     * months at the monthly rate, prorated tail included). Billing counterpart
+     * of {@see self::buildUpfrontSchedule()} — RecurringAmountCalculator uses
+     * it for ONE_TIME contracts with a billing anchor (spec 078 tranches).
+     */
+    public function calculateUpfrontTrancheAmount(int $monthlyRate, \DateTimeImmutable $trancheStart, \DateTimeImmutable $endDate): int
+    {
+        $entries = array_slice(
+            $this->walkMonthsFromAnchor($monthlyRate, $trancheStart, $endDate),
+            0,
+            self::MONTHS_PER_UPFRONT_TRANCHE,
+        );
+
+        return max(100, array_sum(array_map(static fn (PaymentScheduleEntry $e): int => $e->amount, $entries)));
+    }
+
+    /**
+     * Number of entries {@see self::walkMonthsFromAnchor()} would produce for
+     * the window — full months plus one prorated tail. Depends only on the
+     * dates, so callers can decide on the tranche split before knowing a rate.
+     */
+    private function countMonthlyWalkEntries(\DateTimeImmutable $startDate, \DateTimeImmutable $endDate): int
+    {
+        $count = 0;
+        $billingDate = $startDate;
+        while ($billingDate < $endDate) {
+            ++$count;
+            $nextBillingDate = $billingDate->modify('+1 month');
+            if ($nextBillingDate > $endDate) {
+                break;
+            }
+            $billingDate = $nextBillingDate;
+        }
+
+        return $count;
     }
 
     /**

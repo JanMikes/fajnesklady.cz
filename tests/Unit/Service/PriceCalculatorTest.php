@@ -815,6 +815,133 @@ class PriceCalculatorTest extends TestCase
         $this->assertNull($schedule->monthlyAmount);
     }
 
+    // -- Spec 078 tranches: upfront rentals > 12 months pay in yearly tranches --
+
+    public function testBuildPaymentScheduleUpfrontFifteenMonthsSplitsIntoTwoTranches(): void
+    {
+        // Distinct short (1 800 Kč) vs long-term (1 500 Kč) monthly rates.
+        $storageType = $this->createStorageType(50000, 180000, null, 150000);
+        $storage = $this->createStorage($storageType, $this->createPlace());
+        $startDate = new \DateTimeImmutable('2026-01-10');
+        $endDate = new \DateTimeImmutable('2027-04-10'); // exactly 15 calendar months
+
+        $upfront = $this->calculator->buildPaymentSchedule($storage, $startDate, $endDate, PaymentFrequency::ONE_TIME);
+        $monthly = $this->calculator->buildPaymentSchedule($storage, $startDate, $endDate, PaymentFrequency::MONTHLY);
+
+        $this->assertFalse($upfront->isRecurring);
+        $this->assertCount(2, $upfront->entries);
+        // Tranche 1: months 1-12 at start; tranche 2: months 13-15 at month 12.
+        $this->assertEquals($startDate, $upfront->entries[0]->chargeDate);
+        $this->assertSame(12 * 150000, $upfront->entries[0]->amount);
+        $this->assertEquals(new \DateTimeImmutable('2027-01-10'), $upfront->entries[1]->chargeDate);
+        $this->assertSame(3 * 150000, $upfront->entries[1]->amount);
+        // The tranches are an exact partition of the monthly walk — no discount.
+        $this->assertSame($monthly->totalKnownAmount(), $upfront->totalKnownAmount());
+        $this->assertSame(150000, $upfront->monthlyAmount);
+    }
+
+    public function testBuildPaymentScheduleUpfrontTwentySixMonthsSplitsIntoThreeTranches(): void
+    {
+        $storageType = $this->createStorageType(50000, 180000, null, 150000);
+        $storage = $this->createStorage($storageType, $this->createPlace());
+        $startDate = new \DateTimeImmutable('2026-01-10');
+        $endDate = new \DateTimeImmutable('2028-03-10'); // exactly 26 calendar months
+
+        $upfront = $this->calculator->buildPaymentSchedule($storage, $startDate, $endDate, PaymentFrequency::ONE_TIME);
+
+        $this->assertCount(3, $upfront->entries);
+        $this->assertSame(12 * 150000, $upfront->entries[0]->amount);
+        $this->assertEquals(new \DateTimeImmutable('2027-01-10'), $upfront->entries[1]->chargeDate);
+        $this->assertSame(12 * 150000, $upfront->entries[1]->amount);
+        $this->assertEquals(new \DateTimeImmutable('2028-01-10'), $upfront->entries[2]->chargeDate);
+        $this->assertSame(2 * 150000, $upfront->entries[2]->amount);
+    }
+
+    public function testBuildPaymentScheduleUpfrontProratedTailLandsInLastTranche(): void
+    {
+        $storageType = $this->createStorageType(50000, 180000, null, 150000);
+        $storage = $this->createStorage($storageType, $this->createPlace());
+        $startDate = new \DateTimeImmutable('2026-01-10');
+        $endDate = new \DateTimeImmutable('2027-01-20'); // 12 months + 10 days
+
+        $upfront = $this->calculator->buildPaymentSchedule($storage, $startDate, $endDate, PaymentFrequency::ONE_TIME);
+
+        $this->assertCount(2, $upfront->entries);
+        $this->assertSame(12 * 150000, $upfront->entries[0]->amount);
+        // Tail tranche: 10 days × (150 000 / 30) = 50 000 — same proration as the monthly walk.
+        $this->assertEquals(new \DateTimeImmutable('2027-01-10'), $upfront->entries[1]->chargeDate);
+        $this->assertSame(50000, $upfront->entries[1]->amount);
+    }
+
+    public function testBuildPaymentScheduleUpfrontExactlyTwelveMonthsStaysSinglePayment(): void
+    {
+        $storageType = $this->createStorageType(50000, 180000, null, 150000);
+        $storage = $this->createStorage($storageType, $this->createPlace());
+        $startDate = new \DateTimeImmutable('2026-01-10');
+        $endDate = new \DateTimeImmutable('2027-01-10'); // exactly 12 calendar months
+
+        $upfront = $this->calculator->buildPaymentSchedule($storage, $startDate, $endDate, PaymentFrequency::ONE_TIME);
+
+        $this->assertCount(1, $upfront->entries);
+        $this->assertSame(12 * 150000, $upfront->firstPayment()->amount);
+    }
+
+    public function testCalculateFirstPaymentPriceUpfrontLongerThanTwelveMonthsIsFirstTranche(): void
+    {
+        $storageType = $this->createStorageType(50000, 180000, null, 150000);
+        $storage = $this->createStorage($storageType, $this->createPlace());
+        $startDate = new \DateTimeImmutable('2026-01-10');
+        $endDate = new \DateTimeImmutable('2027-04-10'); // 15 months
+
+        $first = $this->calculator->calculateFirstPaymentPrice($storage, $startDate, $endDate, PaymentFrequency::ONE_TIME);
+
+        $this->assertSame(12 * 150000, $first, 'firstPaymentPrice is the FIRST tranche, not the whole rental');
+    }
+
+    public function testCalculateUpfrontTrancheAmount(): void
+    {
+        $end = new \DateTimeImmutable('2028-03-10');
+
+        // Full tranche: 12 whole months fit before the end.
+        $this->assertSame(
+            12 * 150000,
+            $this->calculator->calculateUpfrontTrancheAmount(150000, new \DateTimeImmutable('2026-01-10'), $end),
+        );
+        // Final tranche: only 2 months remain.
+        $this->assertSame(
+            2 * 150000,
+            $this->calculator->calculateUpfrontTrancheAmount(150000, new \DateTimeImmutable('2028-01-10'), $end),
+        );
+        // Final tranche with prorated tail: 1 month + 10 days.
+        $this->assertSame(
+            150000 + 50000,
+            $this->calculator->calculateUpfrontTrancheAmount(150000, new \DateTimeImmutable('2028-01-31'), new \DateTimeImmutable('2028-03-12')),
+        );
+    }
+
+    public function testBuildScheduleFromOrderUpfrontTranchesRebuildFromFirstPaymentPrice(): void
+    {
+        // For a > 12-month upfront order firstPaymentPrice is the first tranche
+        // (always 12 FULL months), so the locked monthly rate is recoverable
+        // exactly and the display schedule re-partitions identically.
+        $order = $this->createOrder(
+            startDate: new \DateTimeImmutable('2025-06-15'),
+            endDate: new \DateTimeImmutable('2026-09-15'), // 15 months
+            firstPaymentPrice: 12 * 180000,
+            paymentFrequency: PaymentFrequency::ONE_TIME,
+        );
+
+        $schedule = $this->calculator->buildScheduleFromOrder($order);
+
+        $this->assertFalse($schedule->isRecurring);
+        $this->assertCount(2, $schedule->entries);
+        $this->assertEquals($order->startDate, $schedule->entries[0]->chargeDate);
+        $this->assertSame(12 * 180000, $schedule->entries[0]->amount);
+        $this->assertEquals(new \DateTimeImmutable('2026-06-15'), $schedule->entries[1]->chargeDate);
+        $this->assertSame(3 * 180000, $schedule->entries[1]->amount);
+        $this->assertSame(180000, $schedule->monthlyAmount);
+    }
+
     public function testBuildScheduleFromOrderHonoursYearlyFrequency(): void
     {
         $storageType = $this->createStorageType(20000, 50000, 510000);

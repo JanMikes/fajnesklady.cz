@@ -293,6 +293,7 @@
                                 <div class="flex justify-between items-baseline">
                                     {% include '_price_label.html.twig' with {
                                         isRecurring: order.isRecurring,
+                                        isUpfrontTranches: order.isPaidInUpfrontTranches,
                                         priceCzk: order.firstPaymentPriceInCzk,
                                         labelClass: 'text-gray-500',
                                         valueClass: 'font-bold text-lg text-green-600',

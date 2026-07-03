@@ -98,7 +98,7 @@ final class AdminOrderDetailController extends AbstractController
         $auditLogs = $this->auditLogRepository->findForOrderTimeline($order->id);
 
         $hasPendingManualPayment = false;
-        if (null !== $contract && \App\Enum\BillingMode::MANUAL_RECURRING === $contract->billingMode) {
+        if (null !== $contract && $contract->usesManualBillingTrack()) {
             $hasPendingManualPayment = null !== $this->manualPaymentRequestRepository->findPendingForCurrentCycle($contract, $now);
         }
 

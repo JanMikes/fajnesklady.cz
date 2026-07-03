@@ -971,6 +971,90 @@ class ContractTest extends TestCase
         $this->assertTrue($contract->isActive(new \DateTimeImmutable('2025-02-15')));
     }
 
+    // -- Spec 078 tranches: upfront rentals > 12 months -----------------------
+
+    public function testCadenceStepIsOneYearForUpfrontContract(): void
+    {
+        $contract = $this->createContract();
+        $contract->applyBillingMode(BillingMode::ONE_TIME);
+        $contract->applyPaymentFrequency(PaymentFrequency::ONE_TIME);
+
+        $this->assertSame('+1 year', $contract->getBillingCadenceStep());
+    }
+
+    public function testCadenceStepFallsBackToMonthlyAfterProlongationConversion(): void
+    {
+        // Spec 077: prolongation converts ONE_TIME → MANUAL_RECURRING; extension
+        // cycles are monthly even though the frequency stays locked at ONE_TIME.
+        $contract = $this->createContract();
+        $contract->applyBillingMode(BillingMode::MANUAL_RECURRING);
+        $contract->applyPaymentFrequency(PaymentFrequency::ONE_TIME);
+
+        $this->assertSame('+1 month', $contract->getBillingCadenceStep());
+    }
+
+    public function testUsesManualBillingTrack(): void
+    {
+        $contract = $this->createContract(
+            startDate: new \DateTimeImmutable('2025-01-01'),
+            endDate: new \DateTimeImmutable('2026-04-01'),
+        );
+
+        $contract->applyBillingMode(BillingMode::MANUAL_RECURRING);
+        $this->assertTrue($contract->usesManualBillingTrack());
+
+        $contract->applyBillingMode(BillingMode::AUTO_RECURRING);
+        $this->assertFalse($contract->usesManualBillingTrack());
+
+        // Upfront with no anchor (≤ 12 months or fully paid): outside the track.
+        $contract->applyBillingMode(BillingMode::ONE_TIME);
+        $this->assertFalse($contract->usesManualBillingTrack());
+
+        // Upfront with an outstanding tranche (anchor set): inside the track.
+        $contract->recordBillingCharge(
+            new \DateTimeImmutable('2025-01-01'),
+            new \DateTimeImmutable('2026-01-01'),
+            new \DateTimeImmutable('2026-01-01'),
+        );
+        $this->assertTrue($contract->usesManualBillingTrack());
+    }
+
+    public function testUpfrontContractWithUnpaidTrancheStaysInGrace(): void
+    {
+        $contract = $this->createContract(
+            startDate: new \DateTimeImmutable('2025-01-01'),
+            endDate: new \DateTimeImmutable('2026-01-10'),
+        );
+        $contract->applyBillingMode(BillingMode::ONE_TIME);
+        $contract->applyPaymentFrequency(PaymentFrequency::ONE_TIME);
+        // Anchor on the final (tail) tranche, still unpaid past endDate.
+        $contract->recordBillingCharge(
+            new \DateTimeImmutable('2025-01-01'),
+            new \DateTimeImmutable('2026-01-01'),
+            new \DateTimeImmutable('2026-01-01'),
+        );
+
+        $this->assertTrue($contract->isInBillingGrace());
+        $this->assertTrue($contract->isActive(new \DateTimeImmutable('2026-01-15')));
+    }
+
+    public function testUpfrontContractSuppressesExternalPrepaymentBanner(): void
+    {
+        $contract = $this->createContract();
+        $contract->applyBillingMode(BillingMode::ONE_TIME);
+        $contract->applyPaymentFrequency(PaymentFrequency::ONE_TIME);
+        // paidThroughDate tracks paid tranches, not an external prepayment.
+        $contract->recordBillingCharge(
+            new \DateTimeImmutable('2025-06-15'),
+            new \DateTimeImmutable('2026-06-15'),
+            new \DateTimeImmutable('2026-06-15'),
+        );
+
+        $this->assertNull(
+            $contract->daysUntilExternalPrepaymentEnds(new \DateTimeImmutable('2026-06-10')),
+        );
+    }
+
     public function testEffectiveMonthlyAmountUsesLongTermRateFromThreshold(): void
     {
         $storageType = new StorageType(

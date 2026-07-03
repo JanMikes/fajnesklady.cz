@@ -249,8 +249,13 @@
                         {% if schedule.isYearly and schedule.yearlyAmount %}
                             Roční platba: {{ (schedule.yearlyAmount / 100)|number_format(0, ',', ' ') }} Kč / rok
                         {% elseif not schedule.isRecurring and schedule.monthlyAmount %}
-                            {# Spec 078 upfront: single whole-rental payment; monthlyAmount is only the equivalence rate. #}
-                            Jednorázová platba předem: {{ schedule.firstPayment.amountInCzk|number_format(0, ',', ' ') }} Kč (odpovídá {{ (schedule.monthlyAmount / 100)|number_format(0, ',', ' ') }} Kč / měsíc)
+                            {# Spec 078 upfront: whole-rental prepay; > 12 months splits into
+                               yearly tranches (rozpis níže). monthlyAmount is only the equivalence rate. #}
+                            {% if schedule.entryCount > 1 %}
+                                Platba předem ve {{ schedule.entryCount }} platbách (po 12 měsících): první {{ schedule.firstPayment.amountInCzk|number_format(0, ',', ' ') }} Kč (odpovídá {{ (schedule.monthlyAmount / 100)|number_format(0, ',', ' ') }} Kč / měsíc)
+                            {% else %}
+                                Jednorázová platba předem: {{ schedule.firstPayment.amountInCzk|number_format(0, ',', ' ') }} Kč (odpovídá {{ (schedule.monthlyAmount / 100)|number_format(0, ',', ' ') }} Kč / měsíc)
+                            {% endif %}
                         {% elseif schedule.monthlyAmount %}
                             Měsíční platba: {{ (schedule.monthlyAmount / 100)|number_format(0, ',', ' ') }} Kč / měsíc
                         {% endif %}

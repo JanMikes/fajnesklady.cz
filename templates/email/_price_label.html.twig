@@ -4,6 +4,10 @@
      yearlyAmountCzk float|null  optional — when present we lead with monthly
                                   equivalent + small "(účtováno jednou ročně, X Kč)"
                                   annotation. Spec 045.
+     isUpfrontTranches bool      optional — spec 078 tranches: upfront rental
+                                  > 12 months paid in yearly tranches; priceCzk
+                                  is only the FIRST tranche, label must not
+                                  claim "Celková cena".
    Used by order_confirmation, order_cancelled. Renders a <td>/<td> row body. #}
 {% set isYearly = yearlyAmountCzk is defined and yearlyAmountCzk is not null and yearlyAmountCzk > 0 %}
 {% set displayMonthlyCzk = isYearly ? yearlyAmountCzk / 12 : priceCzk %}
@@ -18,6 +22,6 @@
         {% endif %}
     </td>
 {% else %}
-    <td>Celková cena:</td>
+    <td>{{ isUpfrontTranches is defined and isUpfrontTranches ? 'První platba:' : 'Celková cena:' }}</td>
     <td><strong>{{ formattedPrice }}</strong></td>
 {% endif %}

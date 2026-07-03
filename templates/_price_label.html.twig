@@ -8,15 +8,21 @@
                               We still lead with the monthly equivalent (spec 045
                               user brief) and append a small "(účtováno jednou
                               ročně, X Kč)" annotation.
+     isUpfrontTranches bool  optional — spec 078 tranches: the order is an
+                              upfront rental > 12 months paid in yearly tranches,
+                              so priceCzk is only the FIRST tranche. The label
+                              switches to "První platba" (never claim "Celková
+                              cena" for a partial amount).
    Never renders a lifetime total. For recurring it always appends "/ měsíc".
    Whole-CZK output: PriceCalculator rounds up to whole CZK so the value
    shown here matches step 1 of the order flow and the GoPay charge.
 #}
 {% set isYearly = yearlyAmountCzk is defined and yearlyAmountCzk is not null and yearlyAmountCzk > 0 %}
+{% set isUpfrontTranches = isUpfrontTranches is defined and isUpfrontTranches %}
 {% set displayMonthlyCzk = isYearly ? yearlyAmountCzk / 12 : priceCzk %}
 {% set formattedMonthly = displayMonthlyCzk|number_format(0, ',', ' ') ~ ' Kč' %}
 <span class="{{ labelClass|default('text-sm font-medium text-gray-500') }}">
-    {{ isRecurring ? 'Měsíční platba' : 'Celková cena' }}
+    {{ isRecurring ? 'Měsíční platba' : (isUpfrontTranches ? 'První platba' : 'Celková cena') }}
 </span>
 <span class="{{ valueClass|default('text-sm text-gray-900 font-semibold') }}">
     {{ formattedMonthly }}{% if isRecurring %} / měsíc{% endif %}

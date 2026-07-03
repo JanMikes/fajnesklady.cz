@@ -72,6 +72,7 @@ final readonly class SendOrderPlacedEmailHandler
                 'endDate' => $order->endDate?->format('d.m.Y') ?? 'Na dobu neurčitou',
                 'priceCzk' => $order->getFirstPaymentPriceInCzk(),
                 'isRecurring' => $order->isRecurring(),
+                'isUpfrontTranches' => $order->isPaidInUpfrontTranches(),
                 'expiresAt' => $order->expiresAt->format('d.m.Y H:i'),
                 'statusUrl' => $statusUrl,
                 'isBankTransfer' => $isBankTransfer,

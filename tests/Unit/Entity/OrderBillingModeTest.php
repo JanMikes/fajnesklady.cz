@@ -46,6 +46,25 @@ final class OrderBillingModeTest extends TestCase
         self::assertTrue($yearLongFixedTerm->isRecurring());
     }
 
+    public function testIsPaidInUpfrontTranches(): void
+    {
+        // Spec 078 tranches: only upfront (ONE_TIME) rentals longer than
+        // 12 monthly billing periods split into yearly tranches.
+        self::assertTrue($this->createOrder(456, PaymentFrequency::ONE_TIME)->isPaidInUpfrontTranches()); // ~15 months
+        self::assertFalse($this->createOrder(92, PaymentFrequency::ONE_TIME)->isPaidInUpfrontTranches()); // ~3 months
+        self::assertFalse($this->createOrder(456, PaymentFrequency::MONTHLY)->isPaidInUpfrontTranches());
+        self::assertFalse($this->createOrder(456, PaymentFrequency::YEARLY)->isPaidInUpfrontTranches());
+    }
+
+    public function testIsPaidInUpfrontTranchesFalseForExactlyTwelveMonths(): void
+    {
+        // createOrder() anchors startDate at 2025-06-16; +365 days lands exactly
+        // on 2026-06-16 = startDate + 12 calendar months → single tranche.
+        self::assertFalse($this->createOrder(365, PaymentFrequency::ONE_TIME)->isPaidInUpfrontTranches());
+        // One day longer → a 13th monthly period exists → tranches.
+        self::assertTrue($this->createOrder(366, PaymentFrequency::ONE_TIME)->isPaidInUpfrontTranches());
+    }
+
     public function testDefaultManualBillingScheduleMatchesPlaceDefaults(): void
     {
         $order = $this->createOrder(30);
@@ -70,7 +89,7 @@ final class OrderBillingModeTest extends TestCase
         self::assertSame(14, $order->manualBillingOffsetOverdueFinal);
     }
 
-    private function createOrder(int $durationDays): Order
+    private function createOrder(int $durationDays, PaymentFrequency $paymentFrequency = PaymentFrequency::MONTHLY): Order
     {
         $now = new \DateTimeImmutable('2025-06-15 12:00:00');
         $user = new User(Uuid::v7(), 'user@example.com', 'password', 'Test', 'User', $now);
@@ -112,7 +131,7 @@ final class OrderBillingModeTest extends TestCase
             id: Uuid::v7(),
             user: $user,
             storage: $storage,
-            paymentFrequency: PaymentFrequency::MONTHLY,
+            paymentFrequency: $paymentFrequency,
             startDate: $startDate,
             endDate: $endDate,
             firstPaymentPrice: 35000,

@@ -293,7 +293,7 @@
                         </dd>
                     </div>
                     <div>
-                        <dt class="text-sm font-medium text-gray-500">{{ order.isRecurring ? 'Měsíční platba' : 'Celková cena' }}</dt>
+                        <dt class="text-sm font-medium text-gray-500">{{ order.isRecurring ? 'Měsíční platba' : (order.isPaidInUpfrontTranches ? 'První platba' : 'Celková cena') }}</dt>
                         <dd class="mt-1 text-sm text-gray-900 font-semibold">{{ (order.firstPaymentPrice / 100)|number_format(2, ',', ' ') }} Kč{% if order.isRecurring %} / měsíc{% endif %}</dd>
                     </div>
                     {% include '_price_aggregate.html.twig' with { order: order, paymentSchedule: paymentSchedule, totalPaid: totalPaid, bankTransferReceivedTotal: bankTransferReceivedTotal } only %}
@@ -542,7 +542,7 @@
     {# Manual actions #}
     {% set hasSigningAction = order.signingToken is not null and order.signedAt is null %}
     {% set hasOnboardingAction = order.createdByAdmin is not null and order.signedAt is not null and order.paidAt is null %}
-    {% set hasBillingAction = contract is not null and contract.billingMode.value == 'manual_recurring' and hasPendingManualPayment %}
+    {% set hasBillingAction = contract is not null and contract.usesManualBillingTrack() and hasPendingManualPayment %}
     {% set payableFines = fines|filter(fine => fine.payable) %}
     {% if hasSigningAction or hasOnboardingAction or hasBillingAction or payableFines|length > 0 %}
     <div class="mt-6 bg-white shadow overflow-hidden sm:rounded-lg border-l-4 border-blue-400">

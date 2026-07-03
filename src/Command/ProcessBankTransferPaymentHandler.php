@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Command;
 
-use App\Enum\BillingMode;
 use App\Event\RecurringPaymentCharged;
 use App\Repository\ContractRepository;
 use App\Repository\ManualPaymentRequestRepository;
@@ -41,7 +40,10 @@ final readonly class ProcessBankTransferPaymentHandler
 
         $contract = $this->contractRepository->findByOrder($order);
 
-        if (null !== $contract && BillingMode::MANUAL_RECURRING === $contract->billingMode) {
+        // MANUAL_RECURRING cycles and outstanding upfront tranches (spec 078,
+        // ONE_TIME with a billing anchor) reconcile the same way: advance the
+        // anchor one cadence step and mark the pending request paid.
+        if (null !== $contract && $contract->usesManualBillingTrack()) {
             $this->reconcileBankTransferRecurring($transaction, $contract, $effectiveAmount, $now);
 
             return;

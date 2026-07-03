@@ -140,7 +140,7 @@
                 {% endif %}
                 {% if content.situation.value == 'gopay_first_charge' %}
                 <tr>
-                    <td class="label">{{ order.isRecurring() ? 'Měsíční platba:' : 'Celková cena:' }}</td>
+                    <td class="label">{{ order.isRecurring() ? 'Měsíční platba:' : (order.isPaidInUpfrontTranches() ? 'První platba:' : 'Celková cena:') }}</td>
                     <td><strong>{{ (content.monthlyPriceInHaler / 100)|number_format(0, ',', ' ') }} Kč{% if order.isRecurring() %} / měsíc{% endif %}</strong></td>
                 </tr>
                 {% endif %}

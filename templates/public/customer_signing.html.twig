@@ -93,7 +93,7 @@
                         {% if priceViewModel.situation.value == 'gopay_first_charge' %}
                             <hr class="border-gray-200 my-2">
                             <div class="flex justify-between font-semibold">
-                                <span>{{ priceViewModel.isRecurring ? 'Měsíční platba:' : 'Celková cena:' }}</span>
+                                <span>{{ priceViewModel.isRecurring ? 'Měsíční platba:' : (order.isPaidInUpfrontTranches ? 'První platba:' : 'Celková cena:') }}</span>
                                 <span>{{ (priceViewModel.monthlyPriceInHaler / 100)|number_format(0, ',', ' ') }} Kč{% if priceViewModel.isRecurring %} / měsíc{% endif %}</span>
                             </div>
                         {% endif %}
@@ -338,6 +338,24 @@
                         </h2>
                         <p class="text-sm text-gray-700">
                             První platbu zaplatíte hned po podpisu. Před každou další platbou Vám 7 dní předem pošleme e-mail s platebními údaji a QR kódem pro bankovní převod.
+                            <strong>Žádné údaje o platební kartě se neukládají.</strong>
+                        </p>
+                    </div>
+                    {% endif %}
+
+                    {# Spec 078 tranches: upfront rental > 12 months — the payment after
+                       signing covers only the first 12 months; further tranches arrive
+                       as payment-request e-mails. Keep the customer informed before signing. #}
+                    {% if showUpfrontTrancheInfo|default(false) %}
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                        <h2 class="font-semibold text-gray-900 mb-2 flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                            Platba předem ve více platbách
+                        </h2>
+                        <p class="text-sm text-gray-700">
+                            Nyní zaplatíte prvních 12 měsíců pronájmu. Před každou další platbou (vždy na dalších 12 měsíců) Vám pošleme e-mail s platebními údaji a QR kódem pro bankovní převod.
                             <strong>Žádné údaje o platební kartě se neukládají.</strong>
                         </p>
                     </div>

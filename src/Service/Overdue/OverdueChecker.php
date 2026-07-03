@@ -6,7 +6,6 @@ namespace App\Service\Overdue;
 
 use App\Entity\Contract;
 use App\Entity\Place;
-use App\Enum\BillingMode;
 use App\Repository\ContractRepository;
 use App\Value\OverdueContractView;
 use App\Value\OverdueSeverity;
@@ -131,7 +130,9 @@ final readonly class OverdueChecker
         $anchor = $contract->nextBillingDate ?? $now;
         $monthlyRate = $contract->order->firstPaymentPrice;
         $attempts = $contract->failedBillingAttempts;
-        $isManual = BillingMode::MANUAL_RECURRING === $contract->billingMode;
+        // Upfront tranche contracts (spec 078, ONE_TIME with anchor) are chased
+        // by the same bank-transfer payment requests as MANUAL — same labels.
+        $isManual = $contract->usesManualBillingTrack();
 
         if ($attempts >= 1) {
             return new OverdueContractView(

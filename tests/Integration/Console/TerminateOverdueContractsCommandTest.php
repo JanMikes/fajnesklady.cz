@@ -180,6 +180,26 @@ class TerminateOverdueContractsCommandTest extends KernelTestCase
         self::assertFalse($reloaded->isTerminated());
     }
 
+    public function testUpfrontContractWithUnpaidTrancheIsSwept(): void
+    {
+        // Spec 078 tranches: a > 12-month upfront contract with an unpaid
+        // yearly tranche keeps a live nextBillingDate — N days po splatnosti
+        // it is legitimately terminated, unlike ≤ 12-month upfront contracts
+        // (anchor NULL, see testOneTimeContractWithoutBillingAnchorIsNeverACandidate).
+        $contract = $this->createOverdueContract('sweep-upfront', dueDaysAgo: 8);
+        $contract->applyBillingMode(BillingMode::ONE_TIME);
+        $contract->applyPaymentFrequency(PaymentFrequency::ONE_TIME);
+        $this->entityManager->flush();
+
+        $this->runSweep();
+
+        $this->entityManager->clear();
+        $reloaded = $this->entityManager->find(Contract::class, $contract->id);
+        self::assertNotNull($reloaded);
+        self::assertTrue($reloaded->isTerminated());
+        self::assertSame(TerminationReason::PAYMENT_FAILURE, $reloaded->terminationReason);
+    }
+
     public function testCardContractIsTerminatedAndRecurrenceVoided(): void
     {
         $now = $this->clock->now();

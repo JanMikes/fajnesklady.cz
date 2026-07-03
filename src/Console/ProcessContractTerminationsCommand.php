@@ -135,7 +135,10 @@ final class ProcessContractTerminationsCommand extends Command
         }
 
         return match ($contract->billingMode) {
-            BillingMode::ONE_TIME => true,
+            // Spec 078 tranches: a live anchor means an unpaid upfront tranche
+            // — billing grace, payment-default handled by the overdue sweep.
+            BillingMode::ONE_TIME => null === $contract->nextBillingDate
+                && 0 === $contract->failedBillingAttempts,
             BillingMode::AUTO_RECURRING => 0 === $contract->failedBillingAttempts
                 && null === $contract->pendingRecurringPaymentId
                 && null === $contract->nextBillingDate,

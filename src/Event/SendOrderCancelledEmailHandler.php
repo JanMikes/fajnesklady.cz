@@ -48,6 +48,7 @@ final readonly class SendOrderCancelledEmailHandler
                 'endDate' => $order->endDate?->format('d.m.Y') ?? 'Na dobu neurčitou',
                 'priceCzk' => $order->getFirstPaymentPriceInCzk(),
                 'isRecurring' => $order->isRecurring(),
+                'isUpfrontTranches' => $order->isPaidInUpfrontTranches(),
                 'statusUrl' => $this->statusUrlGenerator->generate($order),
             ]);
 

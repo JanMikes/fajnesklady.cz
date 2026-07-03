@@ -6,6 +6,7 @@ namespace App\Service;
 
 use App\Entity\Contract;
 use App\Entity\Order;
+use App\Enum\BillingMode;
 use App\Enum\TerminationReason;
 use App\Repository\ContractRepository;
 use App\Repository\HandoverProtocolRepository;
@@ -103,7 +104,12 @@ final readonly class ContractService
             return 0;
         }
 
-        $monthlyRate = $contract->getEffectiveMonthlyAmount();
+        // Spec 078 tranches: upfront contracts owe at the LOCKED order rate
+        // (firstPaymentPrice / 12), not the live storage price — the debt must
+        // match the tranche the customer failed to pay.
+        $monthlyRate = BillingMode::ONE_TIME === $contract->billingMode && $contract->order->isPaidInUpfrontTranches()
+            ? $contract->order->getUpfrontLockedMonthlyRate()
+            : $contract->getEffectiveMonthlyAmount();
         $dailyRate = $monthlyRate / 30;
 
         return (int) round($unpaidDays * $dailyRate);

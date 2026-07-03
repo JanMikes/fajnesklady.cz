@@ -178,6 +178,7 @@ final class CustomerSigningController extends AbstractController
             'isRecurring' => $context['isRecurring'],
             'showRecurringConsent' => $context['showRecurringConsent'],
             'showManualInfo' => $context['showManualInfo'],
+            'showUpfrontTrancheInfo' => $context['showUpfrontTrancheInfo'],
             'showPaymentLogos' => $context['showPaymentLogos'],
             'requiresOperatingRules' => $context['requiresOperatingRules'],
             'requiresEarlyStartWaiver' => $context['requiresEarlyStartWaiver'],
@@ -195,6 +196,7 @@ final class CustomerSigningController extends AbstractController
      *     isRecurring: bool,
      *     showRecurringConsent: bool,
      *     showManualInfo: bool,
+     *     showUpfrontTrancheInfo: bool,
      *     showPaymentLogos: bool,
      *     requiresOperatingRules: bool,
      *     requiresEarlyStartWaiver: bool,
@@ -213,6 +215,9 @@ final class CustomerSigningController extends AbstractController
             'isRecurring' => $isRecurring,
             'showRecurringConsent' => $isPayFlow && $isRecurring && BillingMode::AUTO_RECURRING === $order->billingMode,
             'showManualInfo' => $isPayFlow && $isRecurring && BillingMode::MANUAL_RECURRING === $order->billingMode,
+            // Spec 078 tranches: > 12-month upfront — first payment now, further
+            // tranches via payment-request e-mails; tell the customer pre-signature.
+            'showUpfrontTrancheInfo' => $isPayFlow && $order->isPaidInUpfrontTranches(),
             'showPaymentLogos' => $isPayFlow && PaymentMethod::GOPAY === $order->paymentMethod,
             'requiresOperatingRules' => null !== $order->storage->getPlace()->operatingRulesPath,
             'requiresEarlyStartWaiver' => !$order->hasUploadedContract()
