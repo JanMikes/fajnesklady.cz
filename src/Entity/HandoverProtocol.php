@@ -27,6 +27,13 @@ class HandoverProtocol implements EntityWithEvents
     #[ORM\Column(nullable: true)]
     public private(set) ?\DateTimeImmutable $tenantCompletedAt = null;
 
+    #[ORM\Column(nullable: true)]
+    public private(set) ?\DateTimeImmutable $tenantSkippedAt = null;
+
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(nullable: true)]
+    public private(set) ?User $tenantSkippedBy = null;
+
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     public private(set) ?string $landlordComment = null;
 
@@ -69,6 +76,9 @@ class HandoverProtocol implements EntityWithEvents
         if (null !== $this->tenantCompletedAt) {
             throw new \DomainException('Nájemce již předávací protokol vyplnil.');
         }
+        if (null !== $this->tenantSkippedAt) {
+            throw new \DomainException('Strana nájemce byla přeskočena administrátorem.');
+        }
 
         $this->tenantComment = $comment;
         $this->tenantCompletedAt = $now;
@@ -90,10 +100,31 @@ class HandoverProtocol implements EntityWithEvents
         $this->landlordCompletedAt = $now;
         $this->newLockCode = $newLockCode;
 
-        if (null !== $this->tenantCompletedAt) {
+        if (null !== $this->tenantCompletedAt || null !== $this->tenantSkippedAt) {
             $this->markCompleted($now);
         } else {
             $this->status = HandoverStatus::LANDLORD_COMPLETED;
+        }
+    }
+
+    public function skipTenantSide(User $skippedBy, \DateTimeImmutable $now): void
+    {
+        if (null !== $this->tenantCompletedAt) {
+            throw new \DomainException('Nájemce již předávací protokol vyplnil.');
+        }
+        if (null !== $this->tenantSkippedAt) {
+            throw new \DomainException('Strana nájemce již byla přeskočena.');
+        }
+
+        $this->tenantSkippedAt = $now;
+        $this->tenantSkippedBy = $skippedBy;
+
+        if (null !== $this->landlordCompletedAt) {
+            $this->markCompleted($now);
+        } else {
+            // TENANT_COMPLETED models "waiting on landlord only" — its label
+            // ("Čeká na pronajímatele") stays accurate for a skipped tenant side.
+            $this->status = HandoverStatus::TENANT_COMPLETED;
         }
     }
 
@@ -104,7 +135,7 @@ class HandoverProtocol implements EntityWithEvents
 
     public function needsTenantCompletion(): bool
     {
-        return null === $this->tenantCompletedAt;
+        return null === $this->tenantCompletedAt && null === $this->tenantSkippedAt;
     }
 
     public function needsLandlordCompletion(): bool

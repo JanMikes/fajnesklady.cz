@@ -85,6 +85,10 @@
                     </div>
                 {% endif %}
             </div>
+        {% elseif protocol.tenantSkippedAt %}
+            <div class="bg-gray-50 border border-gray-200 rounded-lg p-6 mb-6">
+                <p class="text-sm text-gray-600">Vyplnění vaší strany protokolu nebylo vyžadováno.</p>
+            </div>
         {% elseif canComplete %}
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
                 <h2 class="text-lg font-semibold text-gray-900 mb-4">Vaše část předávacího protokolu</h2>

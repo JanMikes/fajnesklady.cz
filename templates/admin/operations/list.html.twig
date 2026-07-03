@@ -98,6 +98,9 @@
                                         <div class="text-xs text-gray-500">od {{ protocol.createdAt|date('d.m.Y') }}</div>
                                     </td>
                                     <td>
+                                        {% if protocol.needsLandlordCompletion %}
+                                            <a href="{{ path('portal_landlord_handover_view', {id: protocol.id}) }}" class="link text-sm font-semibold">Vyplnit</a>
+                                        {% endif %}
                                         <a href="{{ path('admin_handover_view', {id: protocol.id}) }}" class="link text-sm">Zobrazit protokol</a>
                                     </td>
                                 </tr>

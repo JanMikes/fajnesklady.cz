@@ -6,6 +6,7 @@ namespace App\Tests\Integration\Controller\Public;
 
 use App\Entity\Contract;
 use App\Entity\HandoverProtocol;
+use App\Entity\User;
 use App\Service\Handover\HandoverUrlGenerator;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Clock\ClockInterface;
@@ -120,6 +121,41 @@ class HandoverViewControllerTest extends WebTestCase
         $body = (string) $this->client->getResponse()->getContent();
         self::assertStringContainsString('Vyplněno dříve.', $body);
         self::assertStringContainsString('Vaše část', $body);
+    }
+
+    public function testSkippedTenantSideShowsNotRequiredNoteWithoutForm(): void
+    {
+        $protocol = $this->createPendingHandoverForRecurringContract();
+        $admin = $this->findAdmin();
+        $protocol->skipTenantSide($admin, $this->clock->now());
+        $this->entityManager->flush();
+
+        $this->requestSigned($this->urlGenerator->generateTenantView($protocol));
+
+        $this->assertResponseIsSuccessful();
+        $crawler = $this->client->getCrawler();
+        self::assertSame(
+            0,
+            $crawler->filter('button:contains("Odeslat předávací protokol")')->count(),
+            'Tenant form must NOT render after an admin skip.',
+        );
+        $body = (string) $this->client->getResponse()->getContent();
+        self::assertStringContainsString('Vyplnění vaší strany protokolu nebylo vyžadováno.', $body);
+        self::assertStringNotContainsString('Čeká se na vyplnění Vaší části', $body);
+    }
+
+    private function findAdmin(): User
+    {
+        $admin = $this->entityManager->createQueryBuilder()
+            ->select('u')
+            ->from(User::class, 'u')
+            ->where('u.email = :email')
+            ->setParameter('email', 'admin@example.com')
+            ->getQuery()
+            ->getOneOrNullResult();
+        \assert($admin instanceof User, 'Admin fixture user must exist');
+
+        return $admin;
     }
 
     private function createPendingHandoverForRecurringContract(): HandoverProtocol

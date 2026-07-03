@@ -18,6 +18,9 @@
                 <p class="mt-2 text-gray-600">{{ place.name }} — Sklad č. {{ storage.number }}</p>
             </div>
             <div class="flex items-center gap-3">
+                {% if protocol.needsLandlordCompletion %}
+                    <a href="{{ path('portal_landlord_handover_view', {id: protocol.id}) }}" class="btn btn-primary btn-sm">Vyplnit protokol</a>
+                {% endif %}
                 <a href="{{ path('admin_fine_create', {contractId: contract.id}) }}" class="btn btn-secondary btn-sm">Vystavit pokutu</a>
                 <span class="badge {{ protocol.status.badgeClass }}">{{ protocol.status.label }}</span>
             </div>
@@ -61,11 +64,13 @@
                     </div>
                 </li>
                 <li class="flex items-start gap-3">
-                    <span class="mt-1 inline-flex h-2 w-2 rounded-full {{ protocol.tenantCompletedAt ? 'bg-green-500' : 'bg-gray-300' }}"></span>
+                    <span class="mt-1 inline-flex h-2 w-2 rounded-full {{ protocol.tenantCompletedAt ? 'bg-green-500' : (protocol.tenantSkippedAt ? 'bg-amber-400' : 'bg-gray-300') }}"></span>
                     <div>
                         <p class="text-sm font-medium text-gray-900">Nájemce vyplnil</p>
                         {% if protocol.tenantCompletedAt %}
                             <p class="text-sm text-gray-500">{{ protocol.tenantCompletedAt|date('d.m.Y H:i') }}</p>
+                        {% elseif protocol.tenantSkippedAt %}
+                            <p class="text-sm text-gray-500">Přeskočeno {{ protocol.tenantSkippedAt|date('d.m.Y H:i') }}</p>
                         {% else %}
                             {% set days = (now.timestamp - protocol.createdAt.timestamp) // 86400 %}
                             <p class="text-sm text-amber-700">Čeká {{ days }} {{ days == 1 ? 'den' : (days < 5 ? 'dny' : 'dní') }}</p>
@@ -125,11 +130,25 @@
                         {% endfor %}
                     </div>
                 {% endif %}
+            {% elseif protocol.tenantSkippedAt %}
+                <p class="text-sm text-gray-500">
+                    Strana nájemce byla přeskočena administrátorem {{ protocol.tenantSkippedBy.fullName }} dne {{ protocol.tenantSkippedAt|date('d.m.Y H:i') }}.
+                    Protokol nevyžaduje vyjádření nájemce.
+                </p>
             {% else %}
                 <p class="text-sm text-gray-500 mb-4">Nájemce zatím protokol nevyplnil.</p>
-                <a href="{{ path('portal_user_handover_view', {id: protocol.id}) }}" class="btn btn-primary btn-sm">
-                    Vyplnit za nájemce
-                </a>
+                <div class="flex flex-wrap items-center gap-3">
+                    <a href="{{ path('portal_user_handover_view', {id: protocol.id}) }}" class="btn btn-primary btn-sm">
+                        Vyplnit za nájemce
+                    </a>
+                    <form method="post" action="{{ path('admin_handover_skip_tenant', {id: protocol.id}) }}" class="inline">
+                        <button type="submit" class="btn btn-secondary btn-sm"
+                                onclick="return confirm('Opravdu přeskočit stranu nájemce? Protokol bude dokončen bez jeho vyjádření. Tuto akci nelze vzít zpět.');">
+                            Přeskočit stranu nájemce
+                        </button>
+                    </form>
+                </div>
+                <p class="mt-2 text-xs text-gray-500">Použijte, když je zákazník nedostupný — protokol se dokončí pouze se stranou pronajímatele.</p>
             {% endif %}
         </div>
     </div>

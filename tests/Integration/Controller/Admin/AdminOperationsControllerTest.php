@@ -81,6 +81,20 @@ class AdminOperationsControllerTest extends WebTestCase
         self::assertGreaterThan(0, $links->count(), 'Expected at least one admin_handover_view link in the operations hub.');
     }
 
+    public function testHandoverRowsWaitingOnLandlordShowDirectFillLink(): void
+    {
+        $this->client->loginUser($this->findUserByEmail('admin@example.com'), 'main');
+
+        $this->client->request('GET', '/portal/admin/operace');
+
+        $this->assertResponseIsSuccessful();
+        // Spec 083: every fixture protocol still needs the landlord side → each
+        // row deep-links straight to the landlord fill form.
+        $crawler = $this->client->getCrawler();
+        $fillLinks = $crawler->filter('a[href*="/portal/pronajimatel/predavaci-protokol/"]:contains("Vyplnit")');
+        self::assertGreaterThan(0, $fillLinks->count(), 'Expected a direct "Vyplnit" link for protocols waiting on the landlord.');
+    }
+
     private function findUserByEmail(string $email): User
     {
         $user = $this->entityManager->getRepository(User::class)->findOneBy(['email' => $email]);

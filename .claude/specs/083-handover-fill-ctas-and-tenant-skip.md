@@ -1,6 +1,6 @@
 # 083 — Handover protocol: admin skip of the tenant side + fill-CTA polish
 
-**Status:** ready
+**Status:** done
 **Type:** feature + UX
 **Scope:** medium (~12 files: entity + migration, command + handler, controller, 6 templates, repository untouched, tests)
 **Depends on:** none (coordinates with spec 080 — both edit `templates/admin/handover/view.html.twig` and `templates/portal/landlord/handover/view.html.twig`; implement in numeric order to avoid conflicts)
