@@ -68,15 +68,14 @@ class StorageRepository
      */
     public function findByStorageType(StorageType $storageType): array
     {
-        return $this->entityManager->createQueryBuilder()
+        return $this->sortByNumber($this->entityManager->createQueryBuilder()
             ->select('s')
             ->from(Storage::class, 's')
             ->where('s.storageType = :storageType')
             ->andWhere('s.deletedAt IS NULL')
             ->setParameter('storageType', $storageType)
-            ->orderBy('s.number', 'ASC')
             ->getQuery()
-            ->getResult();
+            ->getResult());
     }
 
     /**
@@ -148,7 +147,7 @@ class StorageRepository
      */
     public function findByStorageTypeAndPlace(StorageType $storageType, Place $place): array
     {
-        return $this->entityManager->createQueryBuilder()
+        return $this->sortByNumber($this->entityManager->createQueryBuilder()
             ->select('s')
             ->from(Storage::class, 's')
             ->where('s.storageType = :storageType')
@@ -156,9 +155,8 @@ class StorageRepository
             ->andWhere('s.deletedAt IS NULL')
             ->setParameter('storageType', $storageType)
             ->setParameter('place', $place)
-            ->orderBy('s.number', 'ASC')
             ->getQuery()
-            ->getResult();
+            ->getResult());
     }
 
     /**
@@ -166,15 +164,14 @@ class StorageRepository
      */
     public function findByPlace(Place $place): array
     {
-        return $this->entityManager->createQueryBuilder()
+        return $this->sortByNumber($this->entityManager->createQueryBuilder()
             ->select('s')
             ->from(Storage::class, 's')
             ->where('s.place = :place')
             ->andWhere('s.deletedAt IS NULL')
             ->setParameter('place', $place)
-            ->orderBy('s.number', 'ASC')
             ->getQuery()
-            ->getResult();
+            ->getResult());
     }
 
     /**
@@ -182,16 +179,15 @@ class StorageRepository
      */
     public function findByPlaceWithoutLockCode(Place $place): array
     {
-        return $this->entityManager->createQueryBuilder()
+        return $this->sortByNumber($this->entityManager->createQueryBuilder()
             ->select('s')
             ->from(Storage::class, 's')
             ->where('s.place = :place')
             ->andWhere('s.deletedAt IS NULL')
             ->andWhere('s.lockCode IS NULL')
             ->setParameter('place', $place)
-            ->orderBy('s.number', 'ASC')
             ->getQuery()
-            ->getResult();
+            ->getResult());
     }
 
     /**
@@ -233,15 +229,14 @@ class StorageRepository
      */
     public function findByOwner(User $owner): array
     {
-        return $this->entityManager->createQueryBuilder()
+        return $this->sortByNumber($this->entityManager->createQueryBuilder()
             ->select('s')
             ->from(Storage::class, 's')
             ->where('s.owner = :owner')
             ->andWhere('s.deletedAt IS NULL')
             ->setParameter('owner', $owner)
-            ->orderBy('s.number', 'ASC')
             ->getQuery()
-            ->getResult();
+            ->getResult());
     }
 
     /**
@@ -249,7 +244,7 @@ class StorageRepository
      */
     public function findByOwnerAndPlace(User $owner, Place $place): array
     {
-        return $this->entityManager->createQueryBuilder()
+        return $this->sortByNumber($this->entityManager->createQueryBuilder()
             ->select('s')
             ->from(Storage::class, 's')
             ->where('s.owner = :owner')
@@ -257,9 +252,8 @@ class StorageRepository
             ->andWhere('s.deletedAt IS NULL')
             ->setParameter('owner', $owner)
             ->setParameter('place', $place)
-            ->orderBy('s.number', 'ASC')
             ->getQuery()
-            ->getResult();
+            ->getResult());
     }
 
     /**
@@ -267,15 +261,14 @@ class StorageRepository
      */
     public function findAllAvailable(): array
     {
-        return $this->entityManager->createQueryBuilder()
+        return $this->sortByNumber($this->entityManager->createQueryBuilder()
             ->select('s')
             ->from(Storage::class, 's')
             ->where('s.status = :status')
             ->andWhere('s.deletedAt IS NULL')
             ->setParameter('status', StorageStatus::AVAILABLE)
-            ->orderBy('s.number', 'ASC')
             ->getQuery()
-            ->getResult();
+            ->getResult());
     }
 
     /**
@@ -283,7 +276,7 @@ class StorageRepository
      */
     public function findAvailableByStorageType(StorageType $storageType): array
     {
-        return $this->entityManager->createQueryBuilder()
+        return $this->sortByNumber($this->entityManager->createQueryBuilder()
             ->select('s')
             ->from(Storage::class, 's')
             ->where('s.storageType = :storageType')
@@ -291,9 +284,8 @@ class StorageRepository
             ->andWhere('s.deletedAt IS NULL')
             ->setParameter('storageType', $storageType)
             ->setParameter('status', StorageStatus::AVAILABLE)
-            ->orderBy('s.number', 'ASC')
             ->getQuery()
-            ->getResult();
+            ->getResult());
     }
 
     public function countByStorageType(StorageType $storageType): int
@@ -506,13 +498,12 @@ class StorageRepository
      */
     public function findAll(): array
     {
-        return $this->entityManager->createQueryBuilder()
+        return $this->sortByNumber($this->entityManager->createQueryBuilder()
             ->select('s')
             ->from(Storage::class, 's')
             ->where('s.deletedAt IS NULL')
-            ->orderBy('s.number', 'ASC')
             ->getQuery()
-            ->getResult();
+            ->getResult());
     }
 
     /**
@@ -687,8 +678,22 @@ class StorageRepository
                 ->setParameter('storageType', $storageType);
         }
 
-        return $qb->orderBy('s.number', 'ASC')
-            ->getQuery()
-            ->getResult();
+        return $this->sortByNumber($qb->getQuery()->getResult());
+    }
+
+    /**
+     * Storage numbers are free-form strings ("1", "12", "A3"), so a SQL
+     * ORDER BY sorts them lexicographically (1, 11, 12, 2). Natural sort
+     * in PHP gives the human-expected 1, 2, 11, 12.
+     *
+     * @param Storage[] $storages
+     *
+     * @return Storage[]
+     */
+    private function sortByNumber(array $storages): array
+    {
+        usort($storages, static fn (Storage $a, Storage $b): int => strnatcasecmp($a->number, $b->number));
+
+        return $storages;
     }
 }

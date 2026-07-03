@@ -94,6 +94,24 @@ class StorageRepositoryTest extends KernelTestCase
         $this->assertTrue($this->repository->hasCoOwners($place, $me));
     }
 
+    public function testFindByPlaceSortsNumbersNaturally(): void
+    {
+        $place = $this->createPlace();
+        $st = $this->createStorageType($place);
+
+        foreach (['11', '2', '1', '12', 'A2', 'A10'] as $number) {
+            $this->createStorage($st, $place, $number, null);
+        }
+        $this->entityManager->flush();
+
+        $numbers = array_map(
+            static fn (Storage $storage): string => $storage->number,
+            $this->repository->findByPlace($place),
+        );
+
+        $this->assertSame(['1', '2', '11', '12', 'A2', 'A10'], $numbers);
+    }
+
     public function testHasCoOwnersIsFalseWhenOnlyMineOrUnownedStoragesExist(): void
     {
         $place = $this->createPlace();
