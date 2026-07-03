@@ -7,8 +7,10 @@ namespace App\Tests\Integration\Controller\Public;
 use App\Entity\Order;
 use App\Entity\Storage;
 use App\Enum\BillingMode;
+use App\Enum\PaymentFrequency;
 use App\Enum\PaymentMethod;
 use App\Form\OrderFormData;
+use App\Service\PriceCalculator;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -94,6 +96,68 @@ class OrderAcceptControllerTest extends WebTestCase
         self::assertResponseStatusCodeSame(404);
     }
 
+    public function testUpfrontBankTransferFlowCreatesOneTimeOrderWithWholeTotal(): void
+    {
+        // Spec 078 golden path (web half): 3-month rental paid whole upfront by
+        // bank transfer — /prijmout shows one total and no recurring consent,
+        // the payment page QRs the whole amount. The FIO completion half lives
+        // in ProcessIncomingBankTransactionUpfrontTest (single-kernel test —
+        // the PredictableIdentityProvider resets per request, so a post-request
+        // in-test dispatch would reuse already-inserted UUIDs).
+        $storage = $this->findAvailableStorage('A5');
+        $url = $this->acceptUrl($storage);
+        $startDate = new \DateTimeImmutable('2025-07-15');
+        $endDate = new \DateTimeImmutable('2025-10-15');
+        $this->seedOrderFormSession(
+            $storage,
+            startDate: $startDate,
+            endDate: $endDate,
+            paymentFrequency: PaymentFrequency::ONE_TIME,
+            billingMode: BillingMode::ONE_TIME,
+        );
+
+        $priceCalculator = static::getContainer()->get(PriceCalculator::class);
+        \assert($priceCalculator instanceof PriceCalculator);
+        $expectedTotal = $priceCalculator
+            ->buildPaymentSchedule($storage, $startDate, $endDate, PaymentFrequency::MONTHLY)
+            ->totalKnownAmount();
+
+        // Accept page: single whole total, no recurring-payment consent card.
+        $crawler = $this->client->request('GET', $url);
+        self::assertResponseIsSuccessful();
+        $html = (string) $this->client->getResponse()->getContent();
+        self::assertStringContainsString('Celková cena', $html);
+        self::assertStringNotContainsString('/ měsíc', $html);
+        self::assertStringNotContainsString('Parametry opakované platby', $html);
+        self::assertStringNotContainsString('accept_recurring_payments', $html);
+        self::assertStringContainsString(number_format($expectedTotal / 100, 0, ',', ' '), $html);
+
+        $token = $crawler->filter('input[name="submit_token"]')->attr('value');
+        self::assertNotEmpty($token);
+
+        $this->client->request('POST', $url, $this->validPostBody($token));
+        self::assertResponseRedirects();
+        $paymentUrl = (string) $this->client->getResponse()->headers->get('Location');
+        self::assertStringContainsString('/platba', $paymentUrl);
+
+        $order = $this->findSingleOrderForStorage($storage);
+        self::assertSame(PaymentFrequency::ONE_TIME, $order->paymentFrequency);
+        self::assertSame(BillingMode::ONE_TIME, $order->billingMode);
+        self::assertSame(PaymentMethod::BANK_TRANSFER, $order->paymentMethod);
+        self::assertSame($expectedTotal, $order->firstPaymentPrice, 'firstPaymentPrice must be the whole rental total (sum of the monthly walk)');
+        $variableSymbol = $order->variableSymbol;
+        self::assertNotNull($variableSymbol);
+
+        // Payment page: bank-transfer QR over the whole total, no monthly framing.
+        $this->client->request('GET', $paymentUrl);
+        self::assertResponseIsSuccessful();
+        $paymentHtml = (string) $this->client->getResponse()->getContent();
+        self::assertStringContainsString('Celková cena', $paymentHtml);
+        self::assertStringNotContainsString('/ měsíc', $paymentHtml);
+        self::assertStringContainsString('data:image/png;base64', $paymentHtml);
+        self::assertStringContainsString(number_format($expectedTotal / 100, 0, ',', ' '), $paymentHtml);
+    }
+
     /**
      * @return array<string, string>
      */
@@ -130,8 +194,16 @@ class OrderAcceptControllerTest extends WebTestCase
         return 'data:image/png;base64,'.base64_encode($bytes);
     }
 
-    private function seedOrderFormSession(Storage $storage): void
-    {
+    private function seedOrderFormSession(
+        Storage $storage,
+        // 14-day rental (< 31-day card threshold) paid by bank transfer derives ONE_TIME,
+        // non-recurring: keeps the POST body minimal (no recurring-payment consent needed).
+        // Start well beyond the 14-day withdrawal window so no early-start waiver is required.
+        ?\DateTimeImmutable $startDate = null,
+        ?\DateTimeImmutable $endDate = null,
+        PaymentFrequency $paymentFrequency = PaymentFrequency::MONTHLY,
+        BillingMode $billingMode = BillingMode::ONE_TIME,
+    ): void {
         $formData = new OrderFormData();
         $formData->email = 'order-accept-test-'.$storage->number.'@example.com';
         $formData->firstName = 'Jan';
@@ -141,13 +213,11 @@ class OrderAcceptControllerTest extends WebTestCase
         $formData->billingStreet = 'Testovací 1';
         $formData->billingCity = 'Praha';
         $formData->billingPostalCode = '11000';
-        // 14-day rental (< 31-day card threshold) paid by bank transfer derives ONE_TIME,
-        // non-recurring: keeps the POST body minimal (no recurring-payment consent needed).
-        // Start well beyond the 14-day withdrawal window so no early-start waiver is required.
-        $formData->startDate = new \DateTimeImmutable('2025-07-15');
-        $formData->endDate = new \DateTimeImmutable('2025-07-29');
+        $formData->startDate = $startDate ?? new \DateTimeImmutable('2025-07-15');
+        $formData->endDate = $endDate ?? new \DateTimeImmutable('2025-07-29');
         $formData->paymentMethod = PaymentMethod::BANK_TRANSFER;
-        $formData->billingMode = BillingMode::ONE_TIME;
+        $formData->paymentFrequency = $paymentFrequency;
+        $formData->billingMode = $billingMode;
         $formData->selectionMode = 'auto';
 
         $session = static::getContainer()->get('session.factory')->createSession();
@@ -183,6 +253,24 @@ class OrderAcceptControllerTest extends WebTestCase
         \assert($storage instanceof Storage, sprintf('Fixture storage %s not found', $number));
 
         return $storage;
+    }
+
+    private function findSingleOrderForStorage(Storage $storage): Order
+    {
+        $em = static::getContainer()->get('doctrine')->getManager();
+        \assert($em instanceof EntityManagerInterface);
+
+        $order = $em->createQueryBuilder()
+            ->select('o')
+            ->from(Order::class, 'o')
+            ->where('o.storage = :storage')
+            ->setParameter('storage', $storage)
+            ->getQuery()
+            ->getOneOrNullResult();
+
+        \assert($order instanceof Order);
+
+        return $order;
     }
 
     private function countOrdersForStorage(Storage $storage): int

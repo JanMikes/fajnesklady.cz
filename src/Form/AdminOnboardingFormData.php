@@ -193,17 +193,17 @@ final class AdminOnboardingFormData implements HasBillingAddress
     }
 
     #[Assert\Callback]
-    public function validateYearlyHasNoCustomPrice(ExecutionContextInterface $context): void
+    public function validateNonMonthlyHasNoCustomPrice(ExecutionContextInterface $context): void
     {
         // A custom monthly price is a *monthly* figure; yearly contracts bill
         // off the storage's yearly rate (Contract::getEffectiveRecurringAmount)
-        // and ignore individualMonthlyAmount entirely. Allowing both would
-        // undercharge the first payment AND silently drop the override on every
-        // recurring yearly charge. Reject the combination outright — there is no
-        // per-customer yearly override today (mirrored by a hard guard in
+        // and ignore individualMonthlyAmount entirely, and an upfront order
+        // (spec 078) stores the WHOLE rental total as firstPaymentPrice — a
+        // monthly override would silently replace that total. Reject both
+        // combinations outright (mirrored by a hard guard in
         // OrderService::createOrder).
-        if (PaymentFrequency::YEARLY === $this->paymentFrequency && 'custom' === $this->monthlyPriceMode) {
-            $context->buildViolation('Individuální cena není u roční platby podporována — cena se řídí ročním ceníkem skladu. Zvolte standardní cenu, nebo přepněte na měsíční platbu.')
+        if (in_array($this->paymentFrequency, [PaymentFrequency::YEARLY, PaymentFrequency::ONE_TIME], true) && 'custom' === $this->monthlyPriceMode) {
+            $context->buildViolation('Individuální cena není u roční ani jednorázové platby podporována — cena se řídí ceníkem skladu. Zvolte standardní cenu, nebo přepněte na měsíční platbu.')
                 ->atPath('customMonthlyPriceInCzk')
                 ->addViolation();
         }
@@ -215,6 +215,21 @@ final class AdminOnboardingFormData implements HasBillingAddress
         // Spec 076: cards only establish recurring monthly payments.
         if (PaymentMethod::GOPAY === $this->paymentMethod && PaymentFrequency::YEARLY === $this->paymentFrequency) {
             $context->buildViolation('Roční platbu lze platit pouze bankovním převodem.')
+                ->atPath('paymentFrequency')
+                ->addViolation();
+        }
+
+        // Spec 078: the whole-rental upfront payment is bank-transfer only.
+        if (PaymentMethod::GOPAY === $this->paymentMethod && PaymentFrequency::ONE_TIME === $this->paymentFrequency) {
+            $context->buildViolation('Jednorázovou platbu celé částky lze provést pouze bankovním převodem.')
+                ->atPath('paymentFrequency')
+                ->addViolation();
+        }
+
+        // Spec 078: payments handled outside the system are recorded via
+        // "Externí předplatné / Předplaceno do", never as an upfront order.
+        if (PaymentMethod::EXTERNAL === $this->paymentMethod && PaymentFrequency::ONE_TIME === $this->paymentFrequency) {
+            $context->buildViolation('Pro pronájem uhrazený mimo systém použijte „Externí předplatné" s datem „Předplaceno do". Jednorázová platba předem je určena pro bankovní převod.')
                 ->atPath('paymentFrequency')
                 ->addViolation();
         }

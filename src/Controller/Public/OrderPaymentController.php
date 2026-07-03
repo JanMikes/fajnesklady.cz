@@ -6,6 +6,7 @@ namespace App\Controller\Public;
 
 use App\Command\CancelOrderCommand;
 use App\Enum\OrderStatus;
+use App\Enum\PaymentFrequency;
 use App\Enum\PaymentMethod;
 use App\Repository\BankTransactionRepository;
 use App\Repository\OrderRepository;
@@ -108,7 +109,7 @@ final class OrderPaymentController extends AbstractController
         $storageType = $storage->storageType;
         $place = $storage->getPlace();
 
-        $paymentSchedule = $this->priceCalculator->buildPaymentSchedule($storage, $order->startDate, $order->endDate);
+        $paymentSchedule = $this->priceCalculator->buildPaymentSchedule($storage, $order->startDate, $order->endDate, $order->paymentFrequency ?? PaymentFrequency::MONTHLY);
 
         $isBankTransfer = PaymentMethod::BANK_TRANSFER === $order->paymentMethod;
 

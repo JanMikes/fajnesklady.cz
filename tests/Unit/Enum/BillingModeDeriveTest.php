@@ -56,6 +56,21 @@ final class BillingModeDeriveTest extends TestCase
         yield 'external short is still manual (never one-time)' => [
             PaymentMethod::EXTERNAL, PaymentFrequency::MONTHLY, 10, BillingMode::MANUAL_RECURRING,
         ];
+        yield 'upfront frequency short bank rental is one-time (spec 078)' => [
+            PaymentMethod::BANK_TRANSFER, PaymentFrequency::ONE_TIME, 20, BillingMode::ONE_TIME,
+        ];
+        yield 'upfront frequency mid-length bank rental is one-time' => [
+            PaymentMethod::BANK_TRANSFER, PaymentFrequency::ONE_TIME, 45, BillingMode::ONE_TIME,
+        ];
+        yield 'upfront frequency long bank rental is one-time' => [
+            PaymentMethod::BANK_TRANSFER, PaymentFrequency::ONE_TIME, 400, BillingMode::ONE_TIME,
+        ];
+        yield 'upfront frequency derives one-time even for card (validation rejects the combination separately)' => [
+            PaymentMethod::GOPAY, PaymentFrequency::ONE_TIME, 45, BillingMode::ONE_TIME,
+        ];
+        yield 'upfront frequency derives one-time even for external (validation rejects the combination separately)' => [
+            PaymentMethod::EXTERNAL, PaymentFrequency::ONE_TIME, 45, BillingMode::ONE_TIME,
+        ];
     }
 
     #[DataProvider('matrix')]

@@ -21,6 +21,10 @@ enum BillingMode: string
      */
     public static function derive(PaymentMethod $paymentMethod, PaymentFrequency $frequency, int $rentalDays): self
     {
+        if (PaymentFrequency::ONE_TIME === $frequency) {
+            return self::ONE_TIME; // whole amount upfront; bank-only, enforced by form validation (spec 078)
+        }
+
         if (PaymentFrequency::YEARLY === $frequency) {
             return self::MANUAL_RECURRING;
         }

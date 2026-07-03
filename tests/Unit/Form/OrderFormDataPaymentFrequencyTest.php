@@ -84,6 +84,57 @@ final class OrderFormDataPaymentFrequencyTest extends TestCase
         self::assertContains('Roční platbu lze platit pouze bankovním převodem.', $messages);
     }
 
+    public function testGopayUpfrontFails(): void
+    {
+        // Spec 078: the whole-rental upfront payment is bank-transfer only.
+        $data = $this->validData();
+        $data->paymentMethod = PaymentMethod::GOPAY;
+        $data->startDate = new \DateTimeImmutable('+1 day');
+        $data->endDate = new \DateTimeImmutable('+46 days'); // 45 days
+        $data->paymentFrequency = PaymentFrequency::ONE_TIME;
+
+        $violations = $this->validator()->validate($data);
+        $frequencyViolations = array_filter(
+            iterator_to_array($violations),
+            static fn ($v): bool => 'paymentFrequency' === $v->getPropertyPath(),
+        );
+        $messages = array_map(static fn ($v): string => (string) $v->getMessage(), $frequencyViolations);
+
+        self::assertContains('Jednorázovou platbu celé částky lze provést pouze bankovním převodem.', $messages);
+    }
+
+    public function testBankUpfrontDerivesOneTimeBillingMode(): void
+    {
+        $data = $this->validData();
+        $data->paymentMethod = PaymentMethod::BANK_TRANSFER;
+        $data->startDate = new \DateTimeImmutable('+1 day');
+        $data->endDate = new \DateTimeImmutable('+46 days'); // 45 days
+        $data->paymentFrequency = PaymentFrequency::ONE_TIME;
+        $data->billingMode = BillingMode::AUTO_RECURRING; // stale session value gets overwritten
+
+        $violations = $this->validator()->validate($data);
+
+        self::assertCount(0, $violations);
+        self::assertSame(BillingMode::ONE_TIME, $data->billingMode);
+    }
+
+    public function testBankUpfrontShortRentalHasNoFrequencyViolation(): void
+    {
+        // < 31 days + ONE_TIME is semantically what already happens for short
+        // bank rentals — derive returns ONE_TIME regardless, so a stale session
+        // value can never produce a wrong order (spec 078).
+        $data = $this->validData();
+        $data->paymentMethod = PaymentMethod::BANK_TRANSFER;
+        $data->startDate = new \DateTimeImmutable('+1 day');
+        $data->endDate = new \DateTimeImmutable('+15 days'); // 14 days
+        $data->paymentFrequency = PaymentFrequency::ONE_TIME;
+
+        $violations = $this->validator()->validate($data);
+
+        self::assertCount(0, $violations);
+        self::assertSame(BillingMode::ONE_TIME, $data->billingMode);
+    }
+
     private function validData(): OrderFormData
     {
         $data = new OrderFormData();

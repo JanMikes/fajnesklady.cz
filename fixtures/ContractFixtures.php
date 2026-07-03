@@ -8,6 +8,8 @@ use App\Entity\Contract;
 use App\Entity\Order;
 use App\Entity\Storage;
 use App\Entity\User;
+use App\Enum\BillingMode;
+use App\Enum\PaymentFrequency;
 use App\Enum\TerminationReason;
 use App\Service\ContractDocumentGenerator;
 use Doctrine\Bundle\FixturesBundle\Fixture;
@@ -35,6 +37,11 @@ final class ContractFixtures extends Fixture implements DependentFixtureInterfac
     // (terminatesAt set ~30 days out) — drives the "ukončuje se" warning
     // across planning surfaces.
     public const REF_CONTRACT_TERMINATING = 'contract-terminating';
+
+    // Whole-rental-upfront bank transfer contract (spec 078): billingMode
+    // ONE_TIME, no nextBillingDate, no paidThroughDate — blocks its unit
+    // only for [start, endDate].
+    public const REF_CONTRACT_UPFRONT = 'contract-upfront';
 
     public function __construct(
         private ClockInterface $clock,
@@ -201,6 +208,32 @@ final class ContractFixtures extends Fixture implements DependentFixtureInterfac
         $contractTerminating->requestTermination($now->modify('-2 days'), $now->modify('+30 days'));
         $manager->persist($contractTerminating);
         $this->addReference(self::REF_CONTRACT_TERMINATING, $contractTerminating);
+
+        // Whole-rental-upfront contract (spec 078) — everything was paid in one
+        // bank transfer, so there is no billing anchor: nextBillingDate and
+        // paidThroughDate both stay null and no billing cron ever touches it.
+        /** @var Order $orderUpfront */
+        $orderUpfront = $this->getReference(OrderFixtures::REF_ORDER_COMPLETED_UPFRONT, Order::class);
+        $upfrontEndDate = $orderUpfront->endDate;
+        \assert(null !== $upfrontEndDate);
+        $contractUpfrontId = Uuid::v7();
+        $contractUpfront = new Contract(
+            id: $contractUpfrontId,
+            order: $orderUpfront,
+            user: $tenant,
+            storage: $orderUpfront->storage,
+            startDate: $orderUpfront->startDate,
+            endDate: $upfrontEndDate,
+            createdAt: $now->modify('-34 days'),
+        );
+        $contractUpfront->applyBillingMode(BillingMode::ONE_TIME);
+        $contractUpfront->applyPaymentFrequency(PaymentFrequency::ONE_TIME);
+        $contractUpfront->sign($now->modify('-34 days'));
+        $this->generateDocument($contractUpfront);
+        $orderUpfront->complete($contractUpfrontId, $now->modify('-34 days'));
+        $orderUpfront->popEvents();
+        $manager->persist($contractUpfront);
+        $this->addReference(self::REF_CONTRACT_UPFRONT, $contractUpfront);
 
         $manager->flush();
     }

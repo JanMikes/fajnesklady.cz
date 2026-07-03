@@ -211,6 +211,68 @@ final class AdminOnboardingFormDataTest extends TestCase
         self::assertEmpty($violations);
     }
 
+    public function testGoPayWithUpfrontFrequencyIsRejected(): void
+    {
+        // Spec 078: the whole-rental upfront payment is bank-transfer only.
+        $data = $this->validData();
+        $data->paymentMethod = PaymentMethod::GOPAY;
+        $data->paymentFrequency = PaymentFrequency::ONE_TIME;
+        $data->startDate = new \DateTimeImmutable('today');
+        $data->endDate = new \DateTimeImmutable('today +90 days');
+
+        $violations = $this->violationsAt('paymentFrequency', $data);
+        self::assertNotEmpty($violations);
+        self::assertSame('Jednorázovou platbu celé částky lze provést pouze bankovním převodem.', (string) $violations[0]->getMessage());
+    }
+
+    public function testExternalWithUpfrontFrequencyIsRejected(): void
+    {
+        // Outside payments are recorded via "Externí předplatné / Předplaceno do",
+        // never as an upfront order (spec 078).
+        $data = $this->validData();
+        $data->paymentMethod = PaymentMethod::EXTERNAL;
+        $data->paymentFrequency = PaymentFrequency::ONE_TIME;
+        $data->isExternallyPrepaid = true;
+        $data->paidThroughDate = new \DateTimeImmutable('today +30 days');
+        $data->startDate = new \DateTimeImmutable('today');
+        $data->endDate = new \DateTimeImmutable('today +90 days');
+
+        $violations = $this->violationsAt('paymentFrequency', $data);
+        self::assertNotEmpty($violations);
+        self::assertSame('Pro pronájem uhrazený mimo systém použijte „Externí předplatné" s datem „Předplaceno do". Jednorázová platba předem je určena pro bankovní převod.', (string) $violations[0]->getMessage());
+    }
+
+    public function testUpfrontWithCustomPriceIsRejected(): void
+    {
+        // A monthly override would replace the whole-rental total stored in
+        // firstPaymentPrice (spec 078) — blocked like the yearly combination.
+        $data = $this->validData();
+        $data->paymentMethod = PaymentMethod::BANK_TRANSFER;
+        $data->paymentFrequency = PaymentFrequency::ONE_TIME;
+        $data->startDate = new \DateTimeImmutable('today');
+        $data->endDate = new \DateTimeImmutable('today +90 days');
+        $data->monthlyPriceMode = 'custom';
+        $data->customMonthlyPriceInCzk = 1500.0;
+
+        $violations = $this->violationsAt('customMonthlyPriceInCzk', $data);
+        self::assertNotEmpty($violations);
+    }
+
+    public function testBankTransferUpfrontDerivesOneTime(): void
+    {
+        $data = $this->validData();
+        $data->paymentMethod = PaymentMethod::BANK_TRANSFER;
+        $data->paymentFrequency = PaymentFrequency::ONE_TIME;
+        $data->startDate = new \DateTimeImmutable('today');
+        $data->endDate = new \DateTimeImmutable('today +90 days');
+        $data->billingMode = null;
+
+        $violations = $this->validator()->validate($data);
+
+        self::assertCount(0, $violations);
+        self::assertSame(BillingMode::ONE_TIME, $data->billingMode);
+    }
+
     public function testExternalNonFreeRequiresPrepaidDate(): void
     {
         $data = $this->validData();

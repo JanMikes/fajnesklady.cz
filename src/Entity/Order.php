@@ -328,17 +328,24 @@ class Order implements EntityWithEvents
     }
 
     /**
-     * Whether this order is billed on a monthly recurring cadence.
+     * Whether this order is billed on a recurring cadence.
      *
-     * Mirrors {@see PriceCalculator::needsRecurringBilling()}.
+     * Mirrors {@see PriceCalculator::needsRecurringBilling()} for MONTHLY /
+     * YEARLY frequencies; a ONE_TIME frequency (whole rental prepaid upfront,
+     * spec 078) is never recurring regardless of duration. Frequency is locked
+     * at creation, so this is correct pre- and post-acceptance — unlike
+     * billingMode, which stays at its default until the order is accepted.
      * Three pricing modes total: isOneTime() | isFixedTermRecurring() | isOpenEnded().
      *
-     * The 28-day threshold is duplicated rather than imported from
-     * PriceCalculator so the entity stays free of service deps. A unit test
-     * pins the two values together.
+     * The 31-day threshold comes from PriceCalculator; a unit test pins the
+     * two predicates together for non-ONE_TIME orders.
      */
     public function isRecurring(): bool
     {
+        if (PaymentFrequency::ONE_TIME === $this->paymentFrequency) {
+            return false; // whole amount paid upfront (spec 078)
+        }
+
         if (null === $this->endDate) {
             return true;
         }

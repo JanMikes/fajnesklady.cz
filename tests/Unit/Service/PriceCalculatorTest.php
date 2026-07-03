@@ -577,12 +577,13 @@ class PriceCalculatorTest extends TestCase
         \DateTimeImmutable $startDate,
         ?\DateTimeImmutable $endDate,
         int $firstPaymentPrice,
+        PaymentFrequency $paymentFrequency = PaymentFrequency::MONTHLY,
     ): Order {
         $storageType = $this->createStorageType(50000, 180000);
         $place = $this->createPlace();
         $storage = $this->createStorage($storageType, $place);
 
-        return $this->createOrderWithStorage($storage, $startDate, $endDate, $firstPaymentPrice);
+        return $this->createOrderWithStorage($storage, $startDate, $endDate, $firstPaymentPrice, $paymentFrequency);
     }
 
     private function createOrderWithStorage(
@@ -717,6 +718,101 @@ class PriceCalculatorTest extends TestCase
 
         // monthly × 12 = 600 000 halere when no explicit yearly rate.
         $this->assertSame(600000, $storage->getEffectivePricePerYear());
+    }
+
+    // -- Spec 078: whole rental paid upfront (ONE_TIME frequency) --------------
+
+    public function testBuildPaymentScheduleUpfrontCollapsesMonthlyWalkToSingleTotal(): void
+    {
+        $storageType = $this->createStorageType(50000, 180000);
+        $storage = $this->createStorage($storageType, $this->createPlace());
+        $startDate = new \DateTimeImmutable('2026-05-09');
+        $endDate = new \DateTimeImmutable('2026-06-23'); // 45 days → short monthly tier
+
+        $upfront = $this->calculator->buildPaymentSchedule($storage, $startDate, $endDate, PaymentFrequency::ONE_TIME);
+        $monthly = $this->calculator->buildPaymentSchedule($storage, $startDate, $endDate, PaymentFrequency::MONTHLY);
+
+        $this->assertFalse($upfront->isRecurring);
+        $this->assertFalse($upfront->isOpenEnded);
+        $this->assertCount(1, $upfront->entries);
+        $this->assertEquals($startDate, $upfront->firstPayment()->chargeDate);
+        // The single upfront charge is the EXACT sum the monthly track would collect — no discount.
+        $this->assertSame($monthly->totalKnownAmount(), $upfront->firstPayment()->amount);
+        // Full month (180 000) + 14-day prorated tail (14 × 6 000) = 264 000.
+        $this->assertSame(264000, $upfront->firstPayment()->amount);
+        // Equivalence rate kept for the "odpovídá X Kč / měsíc" display note.
+        $this->assertSame(180000, $upfront->monthlyAmount);
+    }
+
+    public function testBuildPaymentScheduleUpfrontUsesLongTermTierBeyondSixMonths(): void
+    {
+        // Distinct short (1 800 Kč) vs long-term (1 500 Kč) monthly rates.
+        $storageType = $this->createStorageType(50000, 180000, null, 150000);
+        $storage = $this->createStorage($storageType, $this->createPlace());
+        $startDate = new \DateTimeImmutable('2026-01-10');
+        $endDate = new \DateTimeImmutable('2026-07-29'); // 200 days → long-term tier
+
+        $upfront = $this->calculator->buildPaymentSchedule($storage, $startDate, $endDate, PaymentFrequency::ONE_TIME);
+        $monthly = $this->calculator->buildPaymentSchedule($storage, $startDate, $endDate, PaymentFrequency::MONTHLY);
+
+        $this->assertCount(1, $upfront->entries);
+        $this->assertSame($monthly->totalKnownAmount(), $upfront->firstPayment()->amount);
+        $this->assertSame(150000, $upfront->monthlyAmount, 'upfront total was built from the long-term tier');
+        // 6 full months (900 000) + 19-day tail (19 × 5 000 = 95 000) = 995 000.
+        $this->assertSame(995000, $upfront->firstPayment()->amount);
+    }
+
+    public function testBuildPaymentScheduleUpfrontShortRentalKeepsWeeklyPricing(): void
+    {
+        // < 31 days: ONE_TIME frequency falls through to the weekly one-shot
+        // branch — identical to what a MONTHLY-frequency short rental produces.
+        $storageType = $this->createStorageType(50000, 180000);
+        $storage = $this->createStorage($storageType, $this->createPlace());
+        $startDate = new \DateTimeImmutable('2026-05-09');
+        $endDate = new \DateTimeImmutable('2026-05-29'); // 20 days
+
+        $upfront = $this->calculator->buildPaymentSchedule($storage, $startDate, $endDate, PaymentFrequency::ONE_TIME);
+        $monthly = $this->calculator->buildPaymentSchedule($storage, $startDate, $endDate, PaymentFrequency::MONTHLY);
+
+        $this->assertFalse($upfront->isRecurring);
+        $this->assertCount(1, $upfront->entries);
+        $this->assertSame($monthly->firstPayment()->amount, $upfront->firstPayment()->amount);
+        $this->assertNull($upfront->monthlyAmount, 'weekly one-shot carries no monthly equivalence rate');
+    }
+
+    public function testCalculateFirstPaymentPriceUpfrontIsWholeRentalTotal(): void
+    {
+        $storageType = $this->createStorageType(50000, 180000);
+        $storage = $this->createStorage($storageType, $this->createPlace());
+        $startDate = new \DateTimeImmutable('2026-05-09');
+        $endDate = new \DateTimeImmutable('2026-08-09'); // 3 calendar months
+
+        $first = $this->calculator->calculateFirstPaymentPrice($storage, $startDate, $endDate, PaymentFrequency::ONE_TIME);
+        $monthly = $this->calculator->buildPaymentSchedule($storage, $startDate, $endDate, PaymentFrequency::MONTHLY);
+
+        $this->assertSame($monthly->totalKnownAmount(), $first);
+        $this->assertSame(540000, $first); // 3 × 180 000
+    }
+
+    public function testBuildScheduleFromOrderUpfrontNeverTreatsTotalAsMonthlyRate(): void
+    {
+        // firstPaymentPrice on an upfront order is the WHOLE total; the display
+        // schedule must render it as one payment, not walk it monthly.
+        $order = $this->createOrder(
+            startDate: new \DateTimeImmutable('2025-06-15'),
+            endDate: new \DateTimeImmutable('2025-09-13'), // 90 days
+            firstPaymentPrice: 540000,
+            paymentFrequency: PaymentFrequency::ONE_TIME,
+        );
+
+        $schedule = $this->calculator->buildScheduleFromOrder($order);
+
+        $this->assertCount(1, $schedule->entries);
+        $this->assertSame(540000, $schedule->firstPayment()->amount);
+        $this->assertEquals($order->startDate, $schedule->firstPayment()->chargeDate);
+        $this->assertFalse($schedule->isRecurring);
+        $this->assertFalse($schedule->isOpenEnded);
+        $this->assertNull($schedule->monthlyAmount);
     }
 
     public function testBuildScheduleFromOrderHonoursYearlyFrequency(): void

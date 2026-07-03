@@ -138,6 +138,7 @@ Storage types belong to a specific Place.
 | `OrderFixtures::REF_ORDER_CANCELLED` | TENANT | D1 | CANCELLED | +7 → +37 days |
 | `OrderFixtures::REF_ORDER_EXPIRED` | TENANT | D2 | EXPIRED | +7 → +37 days |
 | `OrderFixtures::REF_ORDER_EXPIRING_SOON` | TENANT | D3 | COMPLETED | -23 → +7 days |
+| `OrderFixtures::REF_ORDER_COMPLETED_UPFRONT` | TENANT | X2 (Custom box, Centrum) | COMPLETED | -30 → +92 days (bank transfer, `paymentFrequency = ONE_TIME`, `billingMode = ONE_TIME`, VS `7800000001`, `firstPaymentPrice` = whole rental total; spec 078) |
 
 ## Contracts
 
@@ -147,6 +148,7 @@ Storage types belong to a specific Place.
 | `ContractFixtures::REF_CONTRACT_RECURRING` | USER | C1 | Active, signed, live GoPay token (availability guarantee) | +700 days |
 | `ContractFixtures::REF_CONTRACT_EXPIRING_7_DAYS` | TENANT | D3 | Active, signed | +7 days |
 | `ContractFixtures::REF_CONTRACT_TERMINATED` | TENANT | E1 | Terminated | -30 days |
+| `ContractFixtures::REF_CONTRACT_UPFRONT` | TENANT | X2 | Active, signed, whole rental prepaid upfront (`billingMode = ONE_TIME`, no `nextBillingDate`, no `paidThroughDate`; spec 078) | +92 days |
 
 ## Storage Unavailabilities
 

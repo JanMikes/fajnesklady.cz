@@ -8,6 +8,7 @@ enum PaymentFrequency: string
 {
     case MONTHLY = 'monthly';
     case YEARLY = 'yearly';
+    case ONE_TIME = 'one_time'; // whole rental paid upfront in a single bank transfer (spec 078)
 
     /**
      * @return array<string>
@@ -22,6 +23,7 @@ enum PaymentFrequency: string
         return match ($this) {
             self::MONTHLY => 'Měsíční platba',
             self::YEARLY => 'Roční platba (jednou ročně)',
+            self::ONE_TIME => 'Jednorázová platba předem (celá částka)',
         };
     }
 }

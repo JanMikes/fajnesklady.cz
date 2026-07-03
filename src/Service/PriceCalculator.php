@@ -298,6 +298,22 @@ final readonly class PriceCalculator
             ? $storage->getEffectivePricePerMonth()
             : $storage->getEffectivePricePerMonthLongTerm();
 
+        // Spec 078: whole rental paid upfront in one bank transfer. The single
+        // entry is the EXACT sum the MANUAL monthly track would collect (same
+        // duration tier, same prorated tail) — no discount. Short rentals
+        // (< 31 days) never reach this branch: they keep weekly pricing above.
+        if (PaymentFrequency::ONE_TIME === $frequency) {
+            $entries = $this->walkMonthsFromAnchor($monthlyRate, $startDate, $endDate);
+            $total = array_sum(array_map(static fn (PaymentScheduleEntry $e) => $e->amount, $entries));
+
+            return new PaymentSchedule(
+                entries: [new PaymentScheduleEntry($startDate, $total)],
+                isRecurring: false,
+                isOpenEnded: false,
+                monthlyAmount: $monthlyRate, // kept for the "X Kč / měsíc" equivalence note
+            );
+        }
+
         return new PaymentSchedule(
             entries: $this->walkMonthsFromAnchor($monthlyRate, $startDate, $endDate),
             isRecurring: true,
@@ -341,6 +357,17 @@ final readonly class PriceCalculator
                 isOpenEnded: false,
                 monthlyAmount: null,
                 yearlyAmount: $yearlyRate,
+            );
+        }
+
+        // Spec 078 upfront orders: firstPaymentPrice is the WHOLE rental total,
+        // not a monthly rate — the monthly-walk branch below would corrupt it.
+        if (PaymentFrequency::ONE_TIME === $order->paymentFrequency) {
+            return new PaymentSchedule(
+                entries: [new PaymentScheduleEntry($order->startDate, $order->firstPaymentPrice)],
+                isRecurring: false,
+                isOpenEnded: false,
+                monthlyAmount: null,
             );
         }
 

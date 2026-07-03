@@ -246,6 +246,26 @@ final class OrderForm extends AbstractController
     }
 
     /**
+     * Whether the customer is currently eligible for the ONE_TIME (whole
+     * rental upfront) frequency choice — needs at least
+     * {@see PriceCalculator::WEEKLY_THRESHOLD_DAYS} days (spec 078); shorter
+     * rentals are whole-amount one-shots by construction already.
+     */
+    public function isEligibleForUpfrontChoice(): bool
+    {
+        $data = $this->getForm()->getData();
+        if (!$data instanceof OrderFormData) {
+            return false;
+        }
+
+        if (null === $data->startDate || null === $data->endDate) {
+            return false;
+        }
+
+        return (int) $data->startDate->diff($data->endDate)->days >= PriceCalculator::WEEKLY_THRESHOLD_DAYS;
+    }
+
+    /**
      * @return 'weekly'|'monthly_short'|'monthly_long'|'yearly'|null
      */
     public function getApplicableRate(): ?string
@@ -301,9 +321,12 @@ final class OrderForm extends AbstractController
             return null;
         }
 
-        $frequency = (PaymentFrequency::YEARLY === $data->paymentFrequency && $this->isEligibleForFrequencyChoice())
-            ? PaymentFrequency::YEARLY
-            : PaymentFrequency::MONTHLY;
+        $frequency = PaymentFrequency::MONTHLY;
+        if (PaymentFrequency::YEARLY === $data->paymentFrequency && $this->isEligibleForFrequencyChoice()) {
+            $frequency = PaymentFrequency::YEARLY;
+        } elseif (PaymentFrequency::ONE_TIME === $data->paymentFrequency && $this->isEligibleForUpfrontChoice()) {
+            $frequency = PaymentFrequency::ONE_TIME;
+        }
 
         if (null === $data->startDate || null === $data->endDate) {
             return null;

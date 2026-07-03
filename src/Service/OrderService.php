@@ -63,12 +63,15 @@ final readonly class OrderService
         // supported for yearly billing: accepting a positive override would
         // charge a single month as the "first payment" and then silently ignore
         // it on every recurring yearly charge (Contract::getEffectiveRecurringAmount
-        // reads the storage yearly rate). The admin onboarding form blocks the
-        // 'custom' price mode for YEARLY — this is the defence-in-depth backstop.
+        // reads the storage yearly rate). For an upfront order (spec 078) the
+        // override would replace the whole-rental total in firstPaymentPrice
+        // with a single monthly figure. The admin onboarding form blocks the
+        // 'custom' price mode for both — this is the defence-in-depth backstop.
         // 0 is the "free" sentinel and is explicitly allowed: a free yearly
         // contract issues no recurring charge at all, so there is nothing to drop.
-        if (null !== $monthlyPriceOverride && 0 !== $monthlyPriceOverride && PaymentFrequency::YEARLY === $paymentFrequency) {
-            throw new \InvalidArgumentException('Per-customer monthly price override is not supported for yearly billing.');
+        if (null !== $monthlyPriceOverride && 0 !== $monthlyPriceOverride
+            && in_array($paymentFrequency, [PaymentFrequency::YEARLY, PaymentFrequency::ONE_TIME], true)) {
+            throw new \InvalidArgumentException('Per-customer monthly price override is not supported for yearly or upfront billing.');
         }
 
         if (null !== $preSelectedStorage) {

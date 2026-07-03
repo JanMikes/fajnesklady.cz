@@ -553,10 +553,29 @@ class OrderTest extends TestCase
         $this->assertTrue($order->isOpenEnded());
     }
 
+    public function testPricingModePredicatesUpfrontOneTimeFrequency(): void
+    {
+        // Spec 078: ONE_TIME frequency (whole rental prepaid upfront) is never
+        // recurring, regardless of duration — a 6-month upfront order must not
+        // render "X Kč / měsíc" anywhere.
+        $order = $this->createOrder(
+            paymentFrequency: PaymentFrequency::ONE_TIME,
+            startDate: new \DateTimeImmutable('2025-06-15'),
+            endDate: new \DateTimeImmutable('2025-12-15'),
+        );
+
+        $this->assertFalse($order->isRecurring());
+        $this->assertFalse($order->isFixedTermRecurring());
+        $this->assertTrue($order->isOneTime());
+        $this->assertFalse($order->isOpenEnded());
+    }
+
     /**
-     * Pin the entity-side 28-day threshold against PriceCalculator.
-     * Order::isRecurring() duplicates the constant rather than imports it
-     * (entities stay free of service deps); this test catches drift.
+     * Pin the entity-side 31-day threshold against PriceCalculator for the
+     * recurring frequencies (Order::isRecurring() imports the constant; this
+     * test catches a divergence in the predicate logic). ONE_TIME frequency
+     * deliberately diverges — it is always non-recurring (spec 078), covered
+     * by {@see self::testPricingModePredicatesUpfrontOneTimeFrequency()}.
      */
     public function testIsRecurringAgreesWithPriceCalculatorAroundThreshold(): void
     {

@@ -8,9 +8,12 @@ use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
+use App\Enum\PaymentMethod;
+use App\Form\OrderFormData;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+use Symfony\Component\BrowserKit\Cookie;
 
 /**
  * The order page is public and now renders the storage map from inside the
@@ -115,6 +118,68 @@ final class OrderCreateControllerTest extends WebTestCase
         ));
 
         $this->assertResponseRedirects();
+    }
+
+    /**
+     * Spec 078 frequency-radio matrix: hidden < 31 dní, Měsíčně + Jednorázově
+     * at 31–359 dní, all three (incl. Ročně −10 %) at ≥ 360 dní. The section
+     * is rendered by the OrderForm Live Component from the session-hydrated
+     * dates (the PRE_SET_DATA dynamic choices in OrderFormType).
+     */
+    public function testFrequencySectionHiddenForShortRental(): void
+    {
+        [$place, $storageType, $a1] = $this->centrumSmall('A1');
+        $this->seedOrderFormSession(20);
+
+        $this->client->request('GET', $this->orderUrl($place, $storageType, $a1));
+
+        $this->assertResponseIsSuccessful();
+        $html = (string) $this->client->getResponse()->getContent();
+        $this->assertStringNotContainsString('Frekvence platby', $html);
+        $this->assertStringNotContainsString('Jednorázová platba předem (celá částka)', $html);
+    }
+
+    public function testFrequencySectionShowsMonthlyAndUpfrontAtFortyFiveDays(): void
+    {
+        [$place, $storageType, $a1] = $this->centrumSmall('A1');
+        $this->seedOrderFormSession(45);
+
+        $this->client->request('GET', $this->orderUrl($place, $storageType, $a1));
+
+        $this->assertResponseIsSuccessful();
+        $html = (string) $this->client->getResponse()->getContent();
+        $this->assertStringContainsString('Frekvence platby', $html);
+        $this->assertStringContainsString('Jednorázová platba předem (celá částka)', $html);
+        $this->assertStringNotContainsString('Roční platba (jednou ročně)', $html);
+    }
+
+    public function testFrequencySectionShowsAllThreeOptionsAtFourHundredDays(): void
+    {
+        [$place, $storageType, $a1] = $this->centrumSmall('A1');
+        $this->seedOrderFormSession(400);
+
+        $this->client->request('GET', $this->orderUrl($place, $storageType, $a1));
+
+        $this->assertResponseIsSuccessful();
+        $html = (string) $this->client->getResponse()->getContent();
+        $this->assertStringContainsString('Frekvence platby', $html);
+        $this->assertStringContainsString('Měsíční platba', $html);
+        $this->assertStringContainsString('Jednorázová platba předem (celá částka)', $html);
+        $this->assertStringContainsString('Roční platba (jednou ročně)', $html);
+    }
+
+    private function seedOrderFormSession(int $rentalDays): void
+    {
+        $formData = new OrderFormData();
+        $formData->startDate = new \DateTimeImmutable('2025-07-15');
+        $formData->endDate = $formData->startDate->modify(sprintf('+%d days', $rentalDays));
+        $formData->paymentMethod = PaymentMethod::BANK_TRANSFER;
+
+        $session = static::getContainer()->get('session.factory')->createSession();
+        $session->set('order_form_data', $formData->toSessionArray());
+        $session->save();
+
+        $this->client->getCookieJar()->set(new Cookie($session->getName(), $session->getId()));
     }
 
     private function orderUrl(Place $place, StorageType $storageType, Storage $storage): string

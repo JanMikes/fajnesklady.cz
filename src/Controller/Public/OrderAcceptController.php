@@ -118,7 +118,7 @@ final class OrderAcceptController extends AbstractController
         }
 
         $now = $this->clock->now();
-        $paymentSchedule = $this->priceCalculator->buildPaymentSchedule($storage, $formData->startDate, $formData->endDate);
+        $paymentSchedule = $this->priceCalculator->buildPaymentSchedule($storage, $formData->startDate, $formData->endDate, $formData->resolvedPaymentFrequency());
         $requiresEarlyStartWaiver = $formData->startDate < $now->setTime(0, 0, 0)->modify('+14 days');
 
         if ($request->isMethod('POST')) {
@@ -306,7 +306,7 @@ final class OrderAcceptController extends AbstractController
                 $this->addFlash('error', $error);
             }
 
-            $paymentSchedule = $this->priceCalculator->buildPaymentSchedule($storage, $startDate, $formData->endDate);
+            $paymentSchedule = $this->priceCalculator->buildPaymentSchedule($storage, $startDate, $formData->endDate, $formData->resolvedPaymentFrequency());
 
             return $this->render('public/order_accept.html.twig', [
                 'formData' => $formData,
@@ -440,7 +440,7 @@ final class OrderAcceptController extends AbstractController
             ]);
             $this->addFlash('error', 'Při vytváření objednávky došlo k chybě. Zkuste to prosím znovu.');
 
-            $paymentSchedule = $this->priceCalculator->buildPaymentSchedule($storage, $startDate, $formData->endDate);
+            $paymentSchedule = $this->priceCalculator->buildPaymentSchedule($storage, $startDate, $formData->endDate, $formData->resolvedPaymentFrequency());
 
             return $this->render('public/order_accept.html.twig', [
                 'formData' => $formData,

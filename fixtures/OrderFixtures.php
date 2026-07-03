@@ -7,7 +7,10 @@ namespace App\DataFixtures;
 use App\Entity\Order;
 use App\Entity\Storage;
 use App\Entity\User;
+use App\Enum\BillingMode;
 use App\Enum\PaymentFrequency;
+use App\Enum\PaymentMethod;
+use App\Service\PriceCalculator;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
@@ -42,8 +45,13 @@ final class OrderFixtures extends Fixture implements DependentFixtureInterface
     // notice — surfaces "ukončuje se" warnings on planning surfaces.
     public const REF_ORDER_TERMINATING = 'order-terminating';
 
+    // Whole-rental-upfront bank transfer order (spec 078): paymentFrequency
+    // ONE_TIME, billingMode ONE_TIME, firstPaymentPrice = summed monthly walk.
+    public const REF_ORDER_COMPLETED_UPFRONT = 'order-completed-upfront';
+
     public function __construct(
         private ClockInterface $clock,
+        private PriceCalculator $priceCalculator,
     ) {
     }
 
@@ -248,6 +256,41 @@ final class OrderFixtures extends Fixture implements DependentFixtureInterface
         $orderTerminating->popEvents();
         $manager->persist($orderTerminating);
         $this->addReference(self::REF_ORDER_TERMINATING, $orderTerminating);
+
+        // Whole-rental-upfront bank transfer order (spec 078) on storage X2
+        // (Custom box, Praha Centrum) — ~4-month span around the MockClock date,
+        // paid in one bank transfer: firstPaymentPrice = whole rental total.
+        $storageX2 = $this->getReference(StorageFixtures::REF_CUSTOM_X2, Storage::class);
+        \assert($storageX2 instanceof Storage);
+        $upfrontStart = $now->modify('-30 days');
+        $upfrontEnd = $now->modify('+92 days');
+        $orderUpfront = new Order(
+            id: Uuid::v7(),
+            user: $tenant,
+            storage: $storageX2,
+            paymentFrequency: PaymentFrequency::ONE_TIME,
+            startDate: $upfrontStart,
+            endDate: $upfrontEnd,
+            firstPaymentPrice: $this->priceCalculator->calculateFirstPaymentPrice(
+                $storageX2,
+                $upfrontStart,
+                $upfrontEnd,
+                PaymentFrequency::ONE_TIME,
+            ),
+            expiresAt: $now->modify('-30 days'),
+            createdAt: $now->modify('-37 days'),
+        );
+        $orderUpfront->setPaymentMethod(PaymentMethod::BANK_TRANSFER);
+        $orderUpfront->setBillingMode(BillingMode::ONE_TIME);
+        $orderUpfront->assignVariableSymbol('7800000001');
+        $orderUpfront->reserve($now->modify('-37 days'));
+        $orderUpfront->acceptTerms($now->modify('-37 days'));
+        $orderUpfront->markAwaitingPayment($now->modify('-36 days'));
+        $orderUpfront->markPaid($now->modify('-35 days'));
+        // complete() will be called from ContractFixtures after contract is created
+        $orderUpfront->popEvents();
+        $manager->persist($orderUpfront);
+        $this->addReference(self::REF_ORDER_COMPLETED_UPFRONT, $orderUpfront);
 
         $manager->flush();
     }

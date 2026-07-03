@@ -6,6 +6,7 @@ namespace App\Form;
 
 use App\Enum\PaymentFrequency;
 use App\Enum\PaymentMethod;
+use App\Service\PriceCalculator;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\Extension\Core\Type\DateType;
@@ -17,6 +18,7 @@ use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\Form\FormEvent;
 use Symfony\Component\Form\FormEvents;
+use Symfony\Component\Form\FormInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
 /**
@@ -166,28 +168,11 @@ final class OrderFormType extends AbstractType
                     'data-datepicker-min-date-value' => (new \DateTimeImmutable('today'))->modify('+7 days')->format('Y-m-d'),
                 ],
             ])
-            ->add('paymentFrequency', EnumType::class, [
-                'class' => PaymentFrequency::class,
-                'label' => 'Frekvence platby',
-                'expanded' => true,
-                'required' => false,
-                'placeholder' => false,
-                'choices' => [
-                    PaymentFrequency::MONTHLY->label() => PaymentFrequency::MONTHLY,
-                    PaymentFrequency::YEARLY->label() => PaymentFrequency::YEARLY,
-                ],
-                'help' => 'Roční platba znamená jednu platbu předem na celý rok se slevou 10 %. Lze ji platit pouze bankovním převodem — výzvu k další platbě obdržíte e-mailem před vypršením roku.',
-            ])
-            ->add('paymentMethod', EnumType::class, [
-                'class' => PaymentMethod::class,
-                'label' => 'Způsob platby',
-                'expanded' => true,
-                'placeholder' => false,
-                'choices' => [
-                    'Platba kartou (GoPay)' => PaymentMethod::GOPAY,
-                    'Bankovní převod' => PaymentMethod::BANK_TRANSFER,
-                ],
-            ]);
+            ->add('paymentFrequency', EnumType::class, self::paymentFrequencyOptions([
+                PaymentFrequency::MONTHLY->label() => PaymentFrequency::MONTHLY,
+                PaymentFrequency::YEARLY->label() => PaymentFrequency::YEARLY,
+            ]))
+            ->add('paymentMethod', EnumType::class, self::paymentMethodOptions(cardDisabled: false));
 
         // Live-component re-instantiates the form on every interaction, so PRE_SET_DATA
         // sees the latest startDate. Re-adding endDate bumps its datepicker min to
@@ -207,7 +192,124 @@ final class OrderFormType extends AbstractType
                     'data-datepicker-min-date-value' => $data->startDate->modify('+7 days')->format('Y-m-d'),
                 ],
             ]);
+
+            self::reconfigurePaymentFields(
+                $event->getForm(),
+                $data->startDate,
+                $data->endDate,
+                PaymentFrequency::ONE_TIME === $data->paymentFrequency,
+            );
         });
+
+        // The Live Component hydrates the form model from session data (stale
+        // during live editing) and then submits the client's current formValues,
+        // so the date-dependent frequency choices must ALSO be rebuilt from the
+        // raw submit — otherwise the radios would never react to date changes
+        // and a legitimate 'one_time'/'yearly' submit would be rejected as an
+        // unknown choice.
+        $builder->addEventListener(FormEvents::PRE_SUBMIT, function (FormEvent $event): void {
+            $raw = $event->getData();
+            if (!is_array($raw)) {
+                return;
+            }
+
+            $startDate = self::parseSubmittedDate($raw['startDate'] ?? null);
+            if (null === $startDate) {
+                return;
+            }
+
+            self::reconfigurePaymentFields(
+                $event->getForm(),
+                $startDate,
+                self::parseSubmittedDate($raw['endDate'] ?? null),
+                PaymentFrequency::ONE_TIME->value === ($raw['paymentFrequency'] ?? null),
+            );
+        });
+    }
+
+    /**
+     * Rebuild the two payment fields for the chosen rental window (spec 078):
+     * the frequency radios grow the Jednorázová option at ≥ 31 days and the
+     * Roční option at ≥ 360 days, and while the upfront option is selected the
+     * card radio renders disabled (bank-transfer only; the server-side
+     * violation in OrderFormData::validatePaymentMethod is the backstop).
+     *
+     * @param FormInterface<mixed> $form
+     */
+    private static function reconfigurePaymentFields(
+        FormInterface $form,
+        \DateTimeImmutable $startDate,
+        ?\DateTimeImmutable $endDate,
+        bool $upfrontSelected,
+    ): void {
+        if (null === $endDate || $endDate <= $startDate) {
+            return;
+        }
+
+        $days = (int) $startDate->diff($endDate)->days;
+
+        $choices = [PaymentFrequency::MONTHLY->label() => PaymentFrequency::MONTHLY];
+        if ($days >= PriceCalculator::YEARLY_THRESHOLD_DAYS) {
+            $choices[PaymentFrequency::YEARLY->label()] = PaymentFrequency::YEARLY;
+        }
+        if ($days >= PriceCalculator::WEEKLY_THRESHOLD_DAYS) {
+            $choices[PaymentFrequency::ONE_TIME->label()] = PaymentFrequency::ONE_TIME;
+        }
+
+        $form->add('paymentFrequency', EnumType::class, self::paymentFrequencyOptions($choices));
+        $form->add('paymentMethod', EnumType::class, self::paymentMethodOptions(cardDisabled: $upfrontSelected));
+    }
+
+    /**
+     * @param array<string, PaymentFrequency> $choices
+     *
+     * @return array<string, mixed>
+     */
+    private static function paymentFrequencyOptions(array $choices): array
+    {
+        return [
+            'class' => PaymentFrequency::class,
+            'label' => 'Frekvence platby',
+            'expanded' => true,
+            'required' => false,
+            'placeholder' => false,
+            'choices' => $choices,
+            'help' => 'Roční platba = jedna platba předem na celý rok se slevou 10 %. Jednorázová platba = celý pronájem předem jedním převodem. Obě lze platit pouze bankovním převodem.',
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function paymentMethodOptions(bool $cardDisabled): array
+    {
+        return [
+            'class' => PaymentMethod::class,
+            'label' => 'Způsob platby',
+            'expanded' => true,
+            'placeholder' => false,
+            'choices' => [
+                'Platba kartou (GoPay)' => PaymentMethod::GOPAY,
+                'Bankovní převod' => PaymentMethod::BANK_TRANSFER,
+            ],
+            // Progressive enhancement only — the Live Component keeps previously
+            // synced values, so the GOPAY+ONE_TIME server violation stays the gate.
+            'choice_attr' => static fn (PaymentMethod $method): array => $cardDisabled && PaymentMethod::GOPAY === $method
+                ? ['disabled' => 'disabled']
+                : [],
+        ];
+    }
+
+    private static function parseSubmittedDate(mixed $value): ?\DateTimeImmutable
+    {
+        if (!is_string($value) || '' === trim($value)) {
+            return null;
+        }
+
+        // DateType single_text (HTML5 date) submits 'Y-m-d'.
+        $date = \DateTimeImmutable::createFromFormat('!Y-m-d', trim($value));
+
+        return false === $date ? null : $date;
     }
 
     public function configureOptions(OptionsResolver $resolver): void

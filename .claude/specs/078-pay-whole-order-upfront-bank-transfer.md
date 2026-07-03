@@ -1,6 +1,6 @@
 # 078 — Pay the whole order upfront by bank transfer, for any duration
 
-**Status:** ready
+**Status:** done
 **Type:** feature
 **Scope:** medium (~16 src/template files + tests, no migration)
 **Depends on:** spec 076 (must land first — this spec is written against the post-076 payment matrix)

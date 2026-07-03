@@ -243,6 +243,13 @@ final class OrderFormData implements HasBillingAddress
                 ->addViolation();
         }
 
+        // Spec 078: the whole-rental upfront payment is bank-transfer only.
+        if (PaymentMethod::GOPAY === $this->paymentMethod && PaymentFrequency::ONE_TIME === $this->paymentFrequency) {
+            $context->buildViolation('Jednorázovou platbu celé částky lze provést pouze bankovním převodem.')
+                ->atPath('paymentFrequency')
+                ->addViolation();
+        }
+
         $rentalDays = $this->rentalDays();
         if (null === $rentalDays) {
             return;

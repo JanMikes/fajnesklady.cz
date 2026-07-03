@@ -45,15 +45,18 @@ These are the **website-canonical** values. The PDFs may say something else — 
 | Recurring-payment changes / cancellation | e-mail | **simek@fajnesklady.cz** (per Podmínky VI; this is intentional — kept distinct so recurring-payment ops route to the right person) |
 | Hlavní pobočka (provoz) | adresa | Collo Louky 1557, 738 01 Frýdek-Místek |
 
-## Billing modes (the three shapes of a rental — spec 076)
+## Billing modes (the shapes of a rental — spec 076 + 078)
 
-Every rental is **fixed-term** (`endDate` is always required; "doba neurčitá" no longer exists) and falls into exactly one of three modes. Billing mode is never a user choice — it is derived by `BillingMode::derive()` from the payment method + frequency + rental length. **Cards may ONLY establish recurring monthly payments** — no one-shot card charge exists anywhere in the rental flow (fines and onboarding-debt payments are a separate legal surface and keep one-shot GoPay).
+Every rental is **fixed-term** (`endDate` is always required; "doba neurčitá" no longer exists) and falls into exactly one of three billing modes. Billing mode is never a user choice — it is derived by `BillingMode::derive()` from the payment method + frequency + rental length. **Cards may ONLY establish recurring monthly payments** — no one-shot card charge exists anywhere in the rental flow (fines and onboarding-debt payments are a separate legal surface and keep one-shot GoPay).
 
 | Mode | When it applies | First charge | Subsequent charges | Payment shape |
 |---|---|---|---|---|
 | **One-shot (krátkodobý)** | Bankovní převod, < 31 dní | Full prorated total (weekly rate × weeks + daily tail) | None | Bank transfer (QR + variabilní symbol) — karta není dostupná |
+| **One-shot upfront (jednorázová platba předem — spec 078)** | Bankovní převod, libovolná délka ≥ 31 dní, zákazník zvolí frekvenci "Jednorázová platba předem (celá částka)" | Whole rental total = **součet měsíčních plateb** (duration tier + prorated tail), **bez slevy** | None — žádné opakované platby | Bank transfer (QR + variabilní symbol) — karta není dostupná; **bez garance dostupnosti** (card-only perk); kontrakt bez `nextBillingDate` |
 | **Recurring card (AUTO_RECURRING)** | Platba kartou, ≥ 31 dní, VŽDY měsíční | Full month at start | Cron runs monthly via `createRecurrence` until `endDate`. **Last charge is prorated** (`remainingDays × monthlyRate / 30`) | First charge: GoPay `recurrence_cycle = ON_DEMAND`. Subsequent: `createRecurrence($parentPaymentId, …)` |
 | **Manual bank (MANUAL_RECURRING)** | Bankovní převod ≥ 31 dní (měsíčně), roční platba (≥ 360 dní, −10 %), EXTERNAL (admin onboarding) | Bank transfer | Per-cycle reminder e-mails with bank details + QR (žádný GoPay odkaz) | Bank transfer only |
+
+Yearly (−10 %) remains the **only discounted prepay** — the spec-078 upfront payment is the plain sum of the monthly schedule. The upfront option shows no recurring-payment consent (derives `ONE_TIME` — no token, no cycles) and the contract is excluded from MRR/YRR by construction.
 
 Hard rules:
 

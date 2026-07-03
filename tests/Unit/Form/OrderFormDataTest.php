@@ -442,4 +442,20 @@ class OrderFormDataTest extends TestCase
         self::assertSame(PaymentFrequency::YEARLY, $restored->paymentFrequency);
         self::assertSame(BillingMode::MANUAL_RECURRING, $restored->billingMode);
     }
+
+    public function testSessionRoundTripPersistsUpfrontSelection(): void
+    {
+        // Spec 078: the new ONE_TIME frequency must survive the session hop to
+        // OrderAcceptController unchanged.
+        $formData = new OrderFormData();
+        $formData->paymentMethod = PaymentMethod::BANK_TRANSFER;
+        $formData->paymentFrequency = PaymentFrequency::ONE_TIME;
+        $formData->billingMode = BillingMode::ONE_TIME;
+
+        $restored = OrderFormData::fromSessionArray($formData->toSessionArray());
+
+        self::assertSame(PaymentMethod::BANK_TRANSFER, $restored->paymentMethod);
+        self::assertSame(PaymentFrequency::ONE_TIME, $restored->paymentFrequency);
+        self::assertSame(BillingMode::ONE_TIME, $restored->billingMode);
+    }
 }

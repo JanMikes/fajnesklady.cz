@@ -4,6 +4,7 @@
 {% set paymentMethod = formData.paymentMethod %}
 {% set paymentFrequency = formData.paymentFrequency %}
 {% set isYearly = paymentFrequency is not null and paymentFrequency.value == 'yearly' %}
+{% set isOneTimeUpfront = paymentFrequency is not null and paymentFrequency.value == 'one_time' %}
 {% set monthlyPriceMode = formData.monthlyPriceMode %}
 {% set isExternallyPrepaid = formData.isExternallyPrepaid ?? false %}
 {% set isBankTransfer = paymentMethod is not null and paymentMethod.value == 'bank_transfer' %}
@@ -247,6 +248,9 @@
                     <p class="text-sm font-semibold text-green-700 mb-3">
                         {% if schedule.isYearly and schedule.yearlyAmount %}
                             Roční platba: {{ (schedule.yearlyAmount / 100)|number_format(0, ',', ' ') }} Kč / rok
+                        {% elseif not schedule.isRecurring and schedule.monthlyAmount %}
+                            {# Spec 078 upfront: single whole-rental payment; monthlyAmount is only the equivalence rate. #}
+                            Jednorázová platba předem: {{ schedule.firstPayment.amountInCzk|number_format(0, ',', ' ') }} Kč (odpovídá {{ (schedule.monthlyAmount / 100)|number_format(0, ',', ' ') }} Kč / měsíc)
                         {% elseif schedule.monthlyAmount %}
                             Měsíční platba: {{ (schedule.monthlyAmount / 100)|number_format(0, ',', ' ') }} Kč / měsíc
                         {% endif %}
@@ -309,6 +313,13 @@
                         <p class="text-sm text-blue-900">
                             <strong>Roční platba se vždy odbavuje ručně a platí se převodem nebo externě.</strong>
                             Karta se neukládá — výzvu k další platbě obdrží zákazník e-mailem před vypršením roku.
+                        </p>
+                    </div>
+                {% elseif isOneTimeUpfront %}
+                    <div class="mt-3 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <p class="text-sm text-blue-900">
+                            <strong>Celou částku za pronájem zákazník zaplatí předem jedním bankovním převodem.</strong>
+                            Žádné další platby v průběhu pronájmu.
                         </p>
                     </div>
                 {% elseif isBankTransfer %}
