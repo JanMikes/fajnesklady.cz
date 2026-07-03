@@ -4,16 +4,19 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Controller\Public;
 
+use App\Entity\Order;
 use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
+use App\Enum\PaymentFrequency;
 use App\Enum\PaymentMethod;
 use App\Form\OrderFormData;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\BrowserKit\Cookie;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * The order page is public and now renders the storage map from inside the
@@ -123,6 +126,39 @@ final class OrderCreateControllerTest extends WebTestCase
         ));
 
         $this->assertResponseRedirects();
+    }
+
+    // Spec 084: a deep link onto a unit that is free for the default window but
+    // engaged later (future order) must fall through to a clean alternative.
+    public function testDeepLinkToEngagedButFreeUnitRedirectsToCleanAlternative(): void
+    {
+        [$place, $storageType, $a1] = $this->centrumSmall('A1');
+        $a2 = $this->findStorageByNumber('A2');
+        // Future order on A1, safely after the controller's default window (tomorrow +30 days).
+        $this->reserveOrderFor($a1, new \DateTimeImmutable('+50 days'), new \DateTimeImmutable('+80 days'));
+
+        $this->client->request('GET', $this->orderUrl($place, $storageType, $a1));
+
+        // A2 is the first clean unit in natural order — never a 200 with A1 preselected.
+        $this->assertResponseRedirects($this->orderUrl($place, $storageType, $a2));
+    }
+
+    public function testDeepLinkToEngagedUnitRendersWhenNoCleanAlternativeExists(): void
+    {
+        [$place, $storageType, $a1] = $this->centrumSmall('A1');
+        // Engage A1 with a future-only order (free for the default window)…
+        $this->reserveOrderFor($a1, new \DateTimeImmutable('+50 days'), new \DateTimeImmutable('+80 days'));
+        // …and block every other Small unit for the window itself (A4 is already
+        // manually unavailable in fixtures; Z1 is the landlord2-owned Small unit).
+        foreach (['A2', 'A3', 'A5', 'Z1'] as $number) {
+            $this->reserveOrderFor($this->findStorageByNumber($number), new \DateTimeImmutable('now'), new \DateTimeImmutable('+90 days'));
+        }
+
+        $this->client->request('GET', $this->orderUrl($place, $storageType, $a1));
+
+        // A1 is the only window-available unit left; the last-resort fallback must
+        // render it (no redirect loop, capacity never shrinks).
+        $this->assertResponseIsSuccessful();
     }
 
     /**
@@ -263,5 +299,23 @@ final class OrderCreateControllerTest extends WebTestCase
         \assert($user instanceof User, sprintf('User with email "%s" not found in fixtures', $email));
 
         return $user;
+    }
+
+    private function reserveOrderFor(Storage $storage, \DateTimeImmutable $startDate, \DateTimeImmutable $endDate): void
+    {
+        $order = new Order(
+            id: Uuid::v7(),
+            user: $this->findUserByEmail('tenant@example.com'),
+            storage: $storage,
+            paymentFrequency: PaymentFrequency::MONTHLY,
+            startDate: $startDate,
+            endDate: $endDate,
+            firstPaymentPrice: 50000,
+            expiresAt: new \DateTimeImmutable('+7 days'),
+            createdAt: new \DateTimeImmutable(),
+        );
+        $order->reserve(new \DateTimeImmutable());
+        $this->entityManager->persist($order);
+        $this->entityManager->flush();
     }
 }

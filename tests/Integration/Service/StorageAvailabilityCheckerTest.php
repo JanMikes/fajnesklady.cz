@@ -294,6 +294,62 @@ final class StorageAvailabilityCheckerTest extends KernelTestCase
         self::assertSame([], $this->checker->availabilityForStorages([], new \DateTimeImmutable('+10 days'), new \DateTimeImmutable('+40 days')));
     }
 
+    // Spec 084: "clean" = available for [today, ∞) — no engagement of any kind.
+    public function testFutureOnlyOrderMakesStorageUncleanButStillAvailableForEarlierWindow(): void
+    {
+        $tenant = $this->createUser('tenant-clean-future@test.com');
+        [$place, $storageType] = $this->createPlaceAndType();
+        $storage = $this->createStorage($storageType, $place, 'A1');
+
+        $order = $this->createOrder($tenant, $storage, new \DateTimeImmutable('+50 days'), new \DateTimeImmutable('+80 days'));
+        $order->reserve(new \DateTimeImmutable());
+        $this->entityManager->flush();
+
+        self::assertTrue(
+            $this->checker->isAvailable($storage, new \DateTimeImmutable('+10 days'), new \DateTimeImmutable('+40 days')),
+            'A future-only order must not block an earlier window.',
+        );
+        self::assertFalse(
+            $this->checker->isClean($storage, new \DateTimeImmutable()),
+            'A future order is an engagement in [today, ∞) — the unit is not clean.',
+        );
+    }
+
+    public function testStorageWithOnlyPastEngagementsIsClean(): void
+    {
+        $tenant = $this->createUser('tenant-clean-past@test.com');
+        [$place, $storageType] = $this->createPlaceAndType();
+        $storage = $this->createStorage($storageType, $place, 'A1');
+
+        // Wholly past order + contract: nothing overlaps [today, ∞).
+        $order = $this->createOrder($tenant, $storage, new \DateTimeImmutable('-40 days'), new \DateTimeImmutable('-5 days'));
+        $order->reserve(new \DateTimeImmutable());
+        $this->createContract($order, $tenant, $storage, new \DateTimeImmutable('-40 days'), new \DateTimeImmutable('-5 days'));
+        $this->entityManager->flush();
+
+        self::assertTrue($this->checker->isClean($storage, new \DateTimeImmutable()));
+    }
+
+    public function testCleanForStoragesAgreesWithPerUnitIsClean(): void
+    {
+        $tenant = $this->createUser('tenant-clean-bulk@test.com');
+        [$place, $storageType] = $this->createPlaceAndType();
+        $engaged = $this->createStorage($storageType, $place, 'A1');
+        $clean = $this->createStorage($storageType, $place, 'A2');
+
+        $order = $this->createOrder($tenant, $engaged, new \DateTimeImmutable('+50 days'), new \DateTimeImmutable('+80 days'));
+        $order->reserve(new \DateTimeImmutable());
+        $this->entityManager->flush();
+
+        $from = new \DateTimeImmutable();
+        $bulk = $this->checker->cleanForStorages([$engaged, $clean], $from);
+
+        self::assertFalse($bulk[$engaged->id->toRfc4122()]);
+        self::assertTrue($bulk[$clean->id->toRfc4122()]);
+        self::assertSame($this->checker->isClean($engaged, $from), $bulk[$engaged->id->toRfc4122()]);
+        self::assertSame($this->checker->isClean($clean, $from), $bulk[$clean->id->toRfc4122()]);
+    }
+
     private function assertSingleAgreesWithBulk(Storage $storage, \DateTimeImmutable $start, ?\DateTimeImmutable $end): void
     {
         $single = $this->checker->isAvailable($storage, $start, $end);

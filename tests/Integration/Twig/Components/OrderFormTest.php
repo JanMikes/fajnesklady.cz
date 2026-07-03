@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Twig\Components;
 
+use App\Entity\Order;
 use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
+use App\Entity\User;
+use App\Enum\PaymentFrequency;
 use App\Repository\PlatformSettingsRepository;
 use App\Repository\StorageRepository;
 use App\Repository\UserRepository;
@@ -16,8 +19,10 @@ use App\Twig\Components\OrderForm;
 use App\Value\PaymentSchedule;
 use App\Value\PaymentScheduleEntry;
 use Doctrine\ORM\EntityManagerInterface;
+use Psr\Clock\ClockInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\Uid\Uuid;
 use Twig\Environment;
 
 final class OrderFormTest extends KernelTestCase
@@ -149,6 +154,47 @@ final class OrderFormTest extends KernelTestCase
         }
     }
 
+    // Spec 084: units free in the window but engaged later (any future order /
+    // contract / block) must not be manually pickable — auto-assign only.
+    public function testGetStoragesJsonMarksEngagedButFreeUnitAsNotSelectable(): void
+    {
+        [$place, $storageType, $a1] = $this->loadCentrumSmallContext('A1');
+        $this->createFutureOrderFor($this->findStorageByNumber('A2'));
+
+        $component = $this->makeComponent($place, $storageType, $a1);
+        /** @var array<int, array<string, mixed>> $payload */
+        $payload = json_decode($component->getStoragesJson(), true, flags: JSON_THROW_ON_ERROR);
+
+        $byNumber = [];
+        foreach ($payload as $entry) {
+            $byNumber[$entry['number']] = $entry;
+        }
+
+        // A2 is free in the chosen window but holds a future order → auto-assign only.
+        self::assertTrue($byNumber['A2']['available']);
+        self::assertFalse($byNumber['A2']['selectable']);
+        // A3 has no engagement anywhere in [today, ∞) → manually pickable.
+        self::assertTrue($byNumber['A3']['available']);
+        self::assertTrue($byNumber['A3']['selectable']);
+        // A4 is manually blocked → neither available nor selectable.
+        self::assertFalse($byNumber['A4']['available']);
+        self::assertFalse($byNumber['A4']['selectable']);
+    }
+
+    public function testSelectStorageRejectsEngagedButFreeUnit(): void
+    {
+        [$place, $storageType, $a1] = $this->loadCentrumSmallContext('A1');
+        $a2 = $this->findStorageByNumber('A2');
+        $this->createFutureOrderFor($a2);
+
+        $component = $this->makeComponent($place, $storageType, $a1);
+        $component->selectStorage($a2->id->toRfc4122());
+
+        // A2 is available for the window, but its future order makes it unclean —
+        // the manual pick must be silently refused (selection stays on A1).
+        self::assertSame($a1->id->toRfc4122(), $component->storageId);
+    }
+
     public function testHasValidWindowReflectsTheChosenDates(): void
     {
         [$place, $storageType, $a1] = $this->loadCentrumSmallContext('A1');
@@ -229,6 +275,7 @@ final class OrderFormTest extends KernelTestCase
             $container->get(PriceCalculator::class),
             $container->get(PlatformSettingsRepository::class),
             $container->get(StorageAvailabilityChecker::class),
+            $container->get(ClockInterface::class),
         );
 
         $component->place = $place;
@@ -275,5 +322,32 @@ final class OrderFormTest extends KernelTestCase
         \assert($storage instanceof Storage);
 
         return $storage;
+    }
+
+    /**
+     * Blocking order safely AFTER the test window from {@see validWindowValues()}
+     * (+10 → +40 days): the unit stays available for the window but is engaged
+     * in [today, ∞) — exactly the spec 084 "nelze vybrat ručně" state.
+     */
+    private function createFutureOrderFor(Storage $storage): void
+    {
+        $tenant = $this->entityManager->getRepository(User::class)
+            ->findOneBy(['email' => 'tenant@example.com']);
+        \assert($tenant instanceof User);
+
+        $order = new Order(
+            id: Uuid::v7(),
+            user: $tenant,
+            storage: $storage,
+            paymentFrequency: PaymentFrequency::MONTHLY,
+            startDate: new \DateTimeImmutable('+50 days'),
+            endDate: new \DateTimeImmutable('+80 days'),
+            firstPaymentPrice: 50000,
+            expiresAt: new \DateTimeImmutable('+7 days'),
+            createdAt: new \DateTimeImmutable(),
+        );
+        $order->reserve(new \DateTimeImmutable());
+        $this->entityManager->persist($order);
+        $this->entityManager->flush();
     }
 }

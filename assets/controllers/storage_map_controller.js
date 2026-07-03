@@ -521,10 +521,10 @@ export default class extends Controller {
         group.add(text);
 
         // Determine if this storage is clickable. In select mode (order +
-        // onboarding) availability is the date-range-derived `available` flag —
-        // never the mutable status enum, which drifts vs. enforcement.
+        // onboarding) eligibility is the date-range-derived flags — never the
+        // mutable status enum, which drifts vs. enforcement.
         const isClickable = this.selectModeValue
-            ? storage.available === true
+            ? this.isPickable(storage)
                 && storage.storageTypeId === this.currentStorageTypeIdValue
                 && storage.id !== this.highlightStorageValue
             : storage.status === 'available';
@@ -704,6 +704,13 @@ export default class extends Controller {
                 </div>
             `;
         } else {
+            // Available-but-not-pickable (order mode, spec 084): explain why the
+            // unit cannot be clicked — the auto-assign path can still hand it out.
+            const autoOnlyLine = storage.storageTypeId === this.currentStorageTypeIdValue
+                && storage.available === true
+                && !this.isPickable(storage)
+                ? `<div class="text-amber-700 text-xs">Jednotku nelze vybrat ručně — systém ji může přidělit automaticky.</div>`
+                : '';
             this.tooltipTarget.innerHTML = `
                 <div class="space-y-1">
                     <div class="flex items-center gap-2">
@@ -712,6 +719,7 @@ export default class extends Controller {
                     </div>
                     <div class="text-gray-600">${storage.storageTypeName}</div>
                     <div class="text-gray-500 text-xs">${storage.dimensions}</div>
+                    ${autoOnlyLine}
                     <div class="font-semibold text-blue-600 pt-1">${storage.pricePerMonth.toLocaleString('cs-CZ')} Kč/měsíc</div>
                 </div>
             `;
@@ -756,12 +764,20 @@ export default class extends Controller {
         this.tooltipTarget.classList.add('hidden');
     }
 
+    // Manual pick eligibility: order mode payload carries `selectable`
+    // (available AND no future engagement — spec 084); onboarding payload
+    // doesn't, so admins keep picking any window-available unit.
+    isPickable(storage) {
+        return storage.selectable ?? storage.available === true;
+    }
+
     getStatusText(status, storage) {
         // Simplified labels in booking (order/onboarding) mode — keyed on the
-        // date-range-derived `available` flag, not the stale status enum.
+        // date-range-derived flags, not the stale status enum. Available but
+        // not pickable (order mode only) = auto-assign only, spec 084.
         if (this.hasCurrentStorageTypeIdValue && this.currentStorageTypeIdValue) {
             if (storage && storage.storageTypeId === this.currentStorageTypeIdValue && storage.available === true) {
-                return 'Volný';
+                return this.isPickable(storage) ? 'Volný' : 'Pouze automaticky';
             }
             return 'Nedostupný';
         }
@@ -777,10 +793,10 @@ export default class extends Controller {
 
     getStatusClass(status, storage) {
         // Simplified classes in booking (order/onboarding) mode — keyed on the
-        // date-range-derived `available` flag, not the stale status enum.
+        // date-range-derived flags, not the stale status enum.
         if (this.hasCurrentStorageTypeIdValue && this.currentStorageTypeIdValue) {
             if (storage && storage.storageTypeId === this.currentStorageTypeIdValue && storage.available === true) {
-                return 'badge-success';
+                return this.isPickable(storage) ? 'badge-success' : 'badge-warning';
             }
             return 'badge-ghost';
         }
@@ -796,10 +812,11 @@ export default class extends Controller {
 
     getStorageColor(storage) {
         // In booking (order/onboarding) mode: only date-range-available storages
-        // of the current type are green; everything else is greyed.
+        // of the current type are green; available-but-not-pickable units (order
+        // mode only, spec 084) are amber; everything else is greyed.
         if (this.hasCurrentStorageTypeIdValue && this.currentStorageTypeIdValue) {
             if (storage.storageTypeId === this.currentStorageTypeIdValue && storage.available === true) {
-                return '#22c55e';
+                return this.isPickable(storage) ? '#22c55e' : '#fbbf24';
             }
             return '#9ca3af';
         }

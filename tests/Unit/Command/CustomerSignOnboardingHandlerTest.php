@@ -82,6 +82,7 @@ class CustomerSignOnboardingHandlerTest extends TestCase
             $storageRepository,
             $contractRepository,
             $availabilityChecker,
+            $this->clock,
         );
 
         $priceCalculator = new PriceCalculator();

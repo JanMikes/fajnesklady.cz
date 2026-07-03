@@ -383,6 +383,105 @@ class StorageAssignmentTest extends KernelTestCase
         $this->assertTrue($assigned->id->equals($storage2->id));
     }
 
+    // Spec 084: auto-assign prefers "clean" units (no engagement in [today, ∞))
+    // and hands out engaged-but-free-in-window units only as a last resort.
+    public function testAutoAssignPrefersCleanStorageOverEngagedButFree(): void
+    {
+        $tenant = $this->createUser('tenant@test.com');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        // A1 sorts FIRST — a plain first-available pick would return it.
+        $engaged = $this->createStorage($storageType, $place, 'A1');
+        $clean = $this->createStorage($storageType, $place, 'A2');
+
+        // Future-only order on A1: free for the requested window, engaged later.
+        $order = $this->createOrder(
+            $tenant,
+            $engaged,
+            new \DateTimeImmutable('+50 days'),
+            new \DateTimeImmutable('+80 days'),
+        );
+        $order->reserve(new \DateTimeImmutable());
+
+        $this->entityManager->flush();
+
+        $assigned = $this->storageAssignment->assignStorage(
+            $storageType,
+            $place,
+            new \DateTimeImmutable('+1 day'),
+            new \DateTimeImmutable('+30 days'),
+        );
+
+        $this->assertTrue($assigned->id->equals($clean->id));
+    }
+
+    public function testAutoAssignFallsBackToEngagedStorageWhenNoCleanExists(): void
+    {
+        $tenant = $this->createUser('tenant@test.com');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $engaged = $this->createStorage($storageType, $place, 'A1');
+
+        $order = $this->createOrder(
+            $tenant,
+            $engaged,
+            new \DateTimeImmutable('+50 days'),
+            new \DateTimeImmutable('+80 days'),
+        );
+        $order->reserve(new \DateTimeImmutable());
+
+        $this->entityManager->flush();
+
+        $assigned = $this->storageAssignment->assignStorage(
+            $storageType,
+            $place,
+            new \DateTimeImmutable('+1 day'),
+            new \DateTimeImmutable('+30 days'),
+        );
+
+        // Engaged-but-free must still be assignable — capacity never shrinks.
+        $this->assertTrue($assigned->id->equals($engaged->id));
+    }
+
+    public function testExtendingUserKeepsOwnUnitAboveCleanliness(): void
+    {
+        $tenant = $this->createUser('tenant@test.com');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $own = $this->createStorage($storageType, $place, 'A1');
+        $this->createStorage($storageType, $place, 'A2');
+
+        // The tenant's own contract makes A1 unclean in [today, ∞).
+        $order = $this->createOrder(
+            $tenant,
+            $own,
+            new \DateTimeImmutable('-10 days'),
+            new \DateTimeImmutable('+20 days'),
+        );
+        $this->createContract(
+            $order,
+            $tenant,
+            $own,
+            new \DateTimeImmutable('-10 days'),
+            new \DateTimeImmutable('+20 days'),
+        );
+
+        $this->entityManager->flush();
+
+        // Extension right after the current contract, with a clean A2 on offer.
+        $assigned = $this->storageAssignment->assignStorage(
+            $storageType,
+            $place,
+            new \DateTimeImmutable('+21 days'),
+            new \DateTimeImmutable('+51 days'),
+            $tenant,
+        );
+
+        // Priority 1 (keep the extending user's own unit) wins over cleanliness —
+        // that user IS the prolongation the clean rule protects.
+        $this->assertTrue($assigned->id->equals($own->id));
+    }
+
     public function testThrowsExceptionWhenNoStorageAvailable(): void
     {
         $tenant = $this->createUser('tenant@test.com');

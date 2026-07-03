@@ -119,17 +119,19 @@ class DebtPaymentServiceTest extends TestCase
             $contractRepository,
         );
 
+        $clock = $this->createStub(\Psr\Clock\ClockInterface::class);
+        $clock->method('now')->willReturn(new \DateTimeImmutable('2025-06-15 12:00:00'));
+
         $storageRepository = $this->createStub(StorageRepository::class);
         $storageAssignment = new StorageAssignment(
             $storageRepository,
             $contractRepository,
             $availabilityChecker,
+            $clock,
         );
 
         $auditLogRepository = $this->createStub(AuditLogRepository::class);
         $security = $this->createStub(Security::class);
-        $clock = $this->createStub(\Psr\Clock\ClockInterface::class);
-        $clock->method('now')->willReturn(new \DateTimeImmutable('2025-06-15 12:00:00'));
 
         $auditLogger = new AuditLogger(
             $auditLogRepository,

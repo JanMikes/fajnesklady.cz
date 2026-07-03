@@ -17,6 +17,7 @@ use App\Repository\UserRepository;
 use App\Service\PriceCalculator;
 use App\Service\StorageAvailabilityChecker;
 use App\Value\PaymentSchedule;
+use Psr\Clock\ClockInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\RedirectResponse;
@@ -69,6 +70,7 @@ final class OrderForm extends AbstractController
         private readonly PriceCalculator $priceCalculator,
         private readonly PlatformSettingsRepository $platformSettingsRepository,
         private readonly StorageAvailabilityChecker $availabilityChecker,
+        private readonly ClockInterface $clock,
     ) {
     }
 
@@ -175,6 +177,12 @@ final class OrderForm extends AbstractController
         $availability = null === $window
             ? []
             : $this->availabilityChecker->availabilityForStorages($storages, $window[0], $window[1]);
+        // Spec 084: manual map picks are limited to "clean" units — nothing
+        // booked anywhere in [today, ∞) — so engaged-but-free units stay
+        // reachable only through auto-assignment.
+        $clean = null === $window
+            ? []
+            : $this->availabilityChecker->cleanForStorages($storages, $this->clock->now());
 
         $payload = [];
         foreach ($storages as $storage) {
@@ -189,6 +197,7 @@ final class OrderForm extends AbstractController
                 'dimensions' => $storage->storageType->getDimensionsInMeters(),
                 'status' => null !== $available ? $available->derivedStatus->value : $storage->status->value,
                 'available' => null !== $available && $available->isAvailable,
+                'selectable' => null !== $available && $available->isAvailable && ($clean[$key] ?? false),
                 'pricePerWeek' => $storage->getEffectivePricePerWeekInCzk(),
                 'pricePerMonth' => $storage->getEffectivePricePerMonthInCzk(),
                 'isUniform' => $storage->storageType->uniformStorages,
@@ -385,6 +394,13 @@ final class OrderForm extends AbstractController
         }
 
         if (!$this->availabilityChecker->isAvailable($candidate, $window[0], $window[1])) {
+            return;
+        }
+
+        // Spec 084: manual picks require a clean unit (no engagement in
+        // [today, ∞)) so a stranger can't hijack a sitting tenant's likely
+        // prolongation. Engaged-but-free units remain auto-assign only.
+        if (!$this->availabilityChecker->isClean($candidate, $this->clock->now())) {
             return;
         }
 

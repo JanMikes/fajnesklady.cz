@@ -11,6 +11,7 @@ use App\Entity\User;
 use App\Exception\NoStorageAvailable;
 use App\Repository\ContractRepository;
 use App\Repository\StorageRepository;
+use Psr\Clock\ClockInterface;
 
 /**
  * Service for assigning storages to rentals.
@@ -28,6 +29,7 @@ final readonly class StorageAssignment
         private StorageRepository $storageRepository,
         private ContractRepository $contractRepository,
         private StorageAvailabilityChecker $availabilityChecker,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -72,8 +74,14 @@ final readonly class StorageAssignment
         \DateTimeImmutable $startDate,
         ?\DateTimeImmutable $endDate,
     ): ?Storage {
-        // Find user's active contracts for this storage type
-        $activeContracts = $this->contractRepository->findActiveByUser($user, $startDate);
+        // Find the user's active contracts for this storage type. Evaluated at
+        // the EARLIER of today / the new window's start: a back-to-back
+        // extension starts the day AFTER the current contract ends, so
+        // evaluating at $startDate alone would miss the contract — and the
+        // clean-preferred pick below (spec 084) would then move the extending
+        // tenant to another unit instead of keeping them in their own.
+        $now = $this->clock->now();
+        $activeContracts = $this->contractRepository->findActiveByUser($user, $startDate < $now ? $startDate : $now);
 
         foreach ($activeContracts as $contract) {
             $storage = $contract->storage;
@@ -98,6 +106,11 @@ final readonly class StorageAssignment
 
     /**
      * Find the first available storage of the given type at the given place.
+     *
+     * Two-tier pick (spec 084): prefer a "clean" unit — no engagement of any
+     * kind in [today, ∞) — so engaged-but-free-in-window units (e.g. a sitting
+     * tenant's likely prolongation slot) are handed out only as a last resort.
+     * Capacity never shrinks: some available unit (or null) is still returned.
      */
     public function findFirstAvailableStorage(
         StorageType $storageType,
@@ -105,16 +118,23 @@ final readonly class StorageAssignment
         \DateTimeImmutable $startDate,
         ?\DateTimeImmutable $endDate,
     ): ?Storage {
-        // Get all storages of this type at this place
         $storages = $this->storageRepository->findByStorageTypeAndPlace($storageType, $place);
+        $availability = $this->availabilityChecker->availabilityForStorages($storages, $startDate, $endDate);
+        $clean = $this->availabilityChecker->cleanForStorages($storages, $this->clock->now());
 
+        $lastResort = null;
         foreach ($storages as $storage) {
-            if ($this->availabilityChecker->isAvailable($storage, $startDate, $endDate)) {
-                return $storage;
+            $key = $storage->id->toRfc4122();
+            if (!($availability[$key]->isAvailable ?? false)) {
+                continue;
             }
+            if ($clean[$key] ?? false) {
+                return $storage;              // clean & available — preferred
+            }
+            $lastResort ??= $storage;         // engaged elsewhere but free in window
         }
 
-        return null;
+        return $lastResort;
     }
 
     /**

@@ -84,6 +84,33 @@ final readonly class StorageAvailabilityChecker
     }
 
     /**
+     * "Clean" = no engagement of any kind overlapping [$from, ∞): no live or
+     * future contract, no blocking order, no manual block. Spec 084: manual map
+     * picks require clean units so a stranger can't grab a unit whose sitting
+     * tenant may still prolong; engaged-but-free units remain auto-assignable.
+     */
+    public function isClean(Storage $storage, \DateTimeImmutable $from): bool
+    {
+        return $this->isAvailable($storage, $from, null);
+    }
+
+    /**
+     * Bulk variant of {@see self::isClean()} — same three-query shape as
+     * availabilityForStorages().
+     *
+     * @param Storage[] $storages
+     *
+     * @return array<string, bool> keyed by Storage->id->toRfc4122()
+     */
+    public function cleanForStorages(array $storages, \DateTimeImmutable $from): array
+    {
+        return array_map(
+            static fn (StorageAvailability $a): bool => $a->isAvailable,
+            $this->availabilityForStorages($storages, $from, null),
+        );
+    }
+
+    /**
      * Bulk, date-range availability for a set of storages over ONE window.
      * Reuses the EXACT predicates of {@see self::isAvailable()} — manual block
      * status + overlapping unavailability records + overlapping orders +

@@ -1,6 +1,6 @@
 # 084 — Order map: manual pick only "clean" units; auto-assign prefers them
 
-**Status:** ready
+**Status:** done
 **Type:** feature (booking policy)
 **Scope:** medium (~8 files: availability checker, assignment service, OrderForm component + template, map controller JS, OrderCreateController, tests)
 **Depends on:** none (builds on spec 071's unified availability)
