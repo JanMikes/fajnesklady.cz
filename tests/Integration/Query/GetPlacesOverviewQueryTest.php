@@ -6,10 +6,10 @@ namespace App\Tests\Integration\Query;
 
 use App\Entity\Place;
 use App\Entity\StorageType;
-use App\Query\GetPlacesOverviewRow;
 use App\Query\GetPlacesOverview;
 use App\Query\GetPlacesOverviewQuery;
 use App\Query\GetPlacesOverviewResult;
+use App\Query\GetPlacesOverviewRow;
 use App\Repository\PlaceRepository;
 use App\Repository\StorageRepository;
 use App\Repository\StorageTypeRepository;
