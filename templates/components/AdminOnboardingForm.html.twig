@@ -286,20 +286,7 @@
             </div>
         {% endif %}
 
-        {# 9. Cenový model #}
-        <div class="card">
-            <div class="card-body">
-                <h2 class="text-lg font-bold text-gray-900 mb-4">Cenový model</h2>
-                {{ form_row(form.monthlyPriceMode) }}
-                {% if monthlyPriceMode == 'custom' %}
-                    {{ form_row(form.customMonthlyPriceInCzk) }}
-                {% else %}
-                    {% do form.customMonthlyPriceInCzk.setRendered %}
-                {% endif %}
-            </div>
-        </div>
-
-        {# 10. Platební metoda — metoda se volí PRVNÍ; karta frekvence níže se jí přizpůsobuje. #}
+        {# 9. Platební metoda — metoda se volí PRVNÍ; karta frekvence níže se jí přizpůsobuje. #}
         <div class="card">
             <div class="card-body">
                 <h2 class="text-lg font-bold text-gray-900 mb-4">Platební metoda</h2>
@@ -330,7 +317,7 @@
             </div>
         </div>
 
-        {# 11. Frekvence plateb — billing mode je odvozený (spec 076): karta = automatická
+        {# 10. Frekvence plateb — billing mode je odvozený (spec 076): karta = automatická
            měsíční, převod/externí = ruční, roční = vždy ruční převodem. Pro GoPay se karta
            skrývá úplně (frekvenci není co volit) a AdminOnboardingFormType::PRE_SUBMIT
            normalizuje odeslanou frekvenci na MONTHLY, takže skrytá zastaralá hodnota
@@ -417,6 +404,22 @@
             </div>
         </div>
         {% endif %}
+
+        {# 11. Cenový model — až za metodou a frekvencí: individuální cena je
+           měsíční / roční / celková podle zvolené frekvence a popisek pole se
+           jí přizpůsobuje, takže admin nejdřív volí JAK se platí a teprve pak
+           KOLIK. #}
+        <div class="card">
+            <div class="card-body">
+                <h2 class="text-lg font-bold text-gray-900 mb-4">Cenový model</h2>
+                {{ form_row(form.monthlyPriceMode) }}
+                {% if monthlyPriceMode == 'custom' %}
+                    {{ form_row(form.customMonthlyPriceInCzk) }}
+                {% else %}
+                    {% do form.customMonthlyPriceInCzk.setRendered %}
+                {% endif %}
+            </div>
+        </div>
 
         {# 12. Externí předplatné #}
         <div class="card">
