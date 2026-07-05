@@ -133,18 +133,13 @@ final class AdminOnboardingFormType extends AbstractType
                 'placeholder' => false,
                 'choices' => [
                     'Standardní (sazba skladu)' => 'standard',
-                    'Individuální měsíční cena' => 'custom',
+                    'Individuální cena' => 'custom',
                     'Zdarma (bez účtování)' => 'free',
                 ],
             ])
-            ->add('customMonthlyPriceInCzk', NumberType::class, [
-                'label' => 'Individuální měsíční cena (Kč)',
-                'required' => false,
-                'scale' => 2,
-                // NumberType scale 2 renders type=text; the decimal keypad helps on mobile.
-                'attr' => ['placeholder' => '1500.00', 'inputmode' => 'decimal', 'autocomplete' => 'off'],
-                'help' => 'Maximálně 15 000 Kč (zákonný strop pro opakované platby).',
-            ])
+            // Label/help follow the frequency (per month / per year / whole
+            // rental) — reconfigured by the PRE_SET_DATA / PRE_SUBMIT listeners.
+            ->add('customMonthlyPriceInCzk', NumberType::class, self::customPriceOptions(PaymentFrequency::MONTHLY))
             ->add('isExternallyPrepaid', CheckboxType::class, [
                 'label' => 'Externí předplatné — zákazník již zaplatil mimo GoPay',
                 'required' => false,
@@ -184,11 +179,17 @@ final class AdminOnboardingFormType extends AbstractType
         // PRE_SET_DATA covers a possible pre-filled initial render.
         $builder->addEventListener(FormEvents::PRE_SET_DATA, static function (FormEvent $event): void {
             $data = $event->getData();
-            if (!$data instanceof AdminOnboardingFormData || null === $data->startDate) {
+            if (!$data instanceof AdminOnboardingFormData) {
                 return;
             }
 
-            self::reconfigureFrequencyChoices($event->getForm(), $data->startDate, $data->endDate);
+            if (null !== $data->paymentFrequency) {
+                $event->getForm()->add('customMonthlyPriceInCzk', NumberType::class, self::customPriceOptions($data->paymentFrequency));
+            }
+
+            if (null !== $data->startDate) {
+                self::reconfigureFrequencyChoices($event->getForm(), $data->startDate, $data->endDate);
+            }
         });
 
         $builder->addEventListener(FormEvents::PRE_SUBMIT, static function (FormEvent $event): void {
@@ -206,6 +207,18 @@ final class AdminOnboardingFormType extends AbstractType
                 $raw['paymentFrequency'] = PaymentFrequency::MONTHLY->value;
                 $event->setData($raw);
             }
+
+            // The custom-price label states what the amount means (per month /
+            // per year / whole rental) — keep it in sync with the submitted
+            // frequency even before a valid rental window exists.
+            $submittedFrequency = is_string($raw['paymentFrequency'] ?? null)
+                ? PaymentFrequency::tryFrom($raw['paymentFrequency'])
+                : null;
+            $event->getForm()->add(
+                'customMonthlyPriceInCzk',
+                NumberType::class,
+                self::customPriceOptions($submittedFrequency ?? PaymentFrequency::MONTHLY),
+            );
 
             $startDate = self::parseSubmittedDate($raw['startDate'] ?? null);
             if (null === $startDate) {
@@ -239,6 +252,41 @@ final class AdminOnboardingFormType extends AbstractType
         }
 
         $form->add('paymentFrequency', EnumType::class, self::paymentFrequencyOptions($choices));
+    }
+
+    /**
+     * The individual price means something different per frequency — a monthly
+     * figure, a yearly figure, or the whole-rental total (spec: admin
+     * onboarding custom pricing). The label must say which one the admin is
+     * entering.
+     *
+     * @return array<string, mixed>
+     */
+    private static function customPriceOptions(PaymentFrequency $frequency): array
+    {
+        [$label, $help] = match ($frequency) {
+            PaymentFrequency::MONTHLY => [
+                'Individuální měsíční cena (Kč)',
+                'Maximálně 15 000 Kč (zákonný strop pro opakované platby).',
+            ],
+            PaymentFrequency::YEARLY => [
+                'Individuální roční cena (Kč)',
+                'Cena za každý rok pronájmu — účtuje se při každé roční platbě.',
+            ],
+            PaymentFrequency::ONE_TIME => [
+                'Individuální celková cena (Kč)',
+                'Celková cena za celý pronájem — zákazník ji zaplatí jednou platbou předem.',
+            ],
+        };
+
+        return [
+            'label' => $label,
+            'required' => false,
+            'scale' => 2,
+            // NumberType scale 2 renders type=text; the decimal keypad helps on mobile.
+            'attr' => ['placeholder' => '1500.00', 'inputmode' => 'decimal', 'autocomplete' => 'off'],
+            'help' => $help,
+        ];
     }
 
     /**

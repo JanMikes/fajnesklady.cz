@@ -15,7 +15,9 @@ use Symfony\Component\Uid\Uuid;
 final readonly class AdminOnboardingCommand
 {
     /**
-     * @param ?int    $individualMonthlyAmount halere; null = standard storage rate; 0 = free
+     * @param ?int    $individualMonthlyAmount halere; null = standard storage rate; 0 = free; > 0 = individual price
+     *                                         whose meaning follows $paymentFrequency: per month (MONTHLY),
+     *                                         per year (YEARLY), or the whole-rental total (single-payment ONE_TIME)
      * @param ?string $uploadedContractPath    absolute path to the uploaded contract document; null = no paper contract
      * @param ?string $variableSymbolOverride  null = auto-generate for BANK_TRANSFER
      */

@@ -83,8 +83,13 @@ final class AdminOnboardingFormData implements HasBillingAddress
     #[Assert\NotBlank(message: 'Vyberte cenový model.')]
     public ?string $monthlyPriceMode = null;
 
+    /**
+     * Individual price in CZK. Its meaning follows the payment frequency:
+     * per month (MONTHLY), per year (YEARLY), or the whole-rental total
+     * (ONE_TIME upfront). The 15 000 Kč legal recurring-payment cap applies
+     * only to the monthly figure — see {@see self::validateCustomPriceCap()}.
+     */
     #[Assert\PositiveOrZero(message: 'Cena nemůže být záporná.')]
-    #[Assert\LessThanOrEqual(value: 15000, message: 'Maximální měsíční cena je 15 000 Kč (zákonný strop pro opakované platby).')]
     public ?float $customMonthlyPriceInCzk = null;
 
     public bool $isExternallyPrepaid = false;
@@ -186,24 +191,50 @@ final class AdminOnboardingFormData implements HasBillingAddress
         }
 
         if (null === $this->customMonthlyPriceInCzk || $this->customMonthlyPriceInCzk <= 0) {
-            $context->buildViolation('Zadejte individuální měsíční cenu.')
+            $context->buildViolation('Zadejte individuální cenu.')
                 ->atPath('customMonthlyPriceInCzk')
                 ->addViolation();
         }
     }
 
     #[Assert\Callback]
-    public function validateNonMonthlyHasNoCustomPrice(ExecutionContextInterface $context): void
+    public function validateCustomPriceCap(ExecutionContextInterface $context): void
     {
-        // A custom monthly price is a *monthly* figure; yearly contracts bill
-        // off the storage's yearly rate (Contract::getEffectiveRecurringAmount)
-        // and ignore individualMonthlyAmount entirely, and an upfront order
-        // (spec 078) stores the WHOLE rental total as firstPaymentPrice — a
-        // monthly override would silently replace that total. Reject both
-        // combinations outright (mirrored by a hard guard in
-        // OrderService::createOrder).
-        if (in_array($this->paymentFrequency, [PaymentFrequency::YEARLY, PaymentFrequency::ONE_TIME], true) && 'custom' === $this->monthlyPriceMode) {
-            $context->buildViolation('Individuální cena není u roční ani jednorázové platby podporována — cena se řídí ceníkem skladu. Zvolte standardní cenu, nebo přepněte na měsíční platbu.')
+        // The 15 000 Kč cap is the legal maximum for a single recurring card
+        // charge (Podmínky opakovaných plateb čl. III) and therefore binds the
+        // MONTHLY figure only — yearly and upfront payments are bank-transfer
+        // territory (validatePaymentMethod) and routinely exceed it.
+        if ('custom' !== $this->monthlyPriceMode || null === $this->customMonthlyPriceInCzk) {
+            return;
+        }
+
+        $frequency = $this->paymentFrequency ?? PaymentFrequency::MONTHLY;
+        if (PaymentFrequency::MONTHLY === $frequency && $this->customMonthlyPriceInCzk > 15000) {
+            $context->buildViolation('Maximální měsíční cena je 15 000 Kč (zákonný strop pro opakované platby).')
+                ->atPath('customMonthlyPriceInCzk')
+                ->addViolation();
+        }
+    }
+
+    #[Assert\Callback]
+    public function validateUpfrontCustomPriceIsSinglePayment(ExecutionContextInterface $context): void
+    {
+        // An upfront custom price is the WHOLE-rental total and lands in
+        // firstPaymentPrice as a single payment. Rentals longer than 12 monthly
+        // periods pay in yearly tranches (spec 078) whose math recovers the
+        // locked monthly rate as firstPaymentPrice / 12 — an arbitrary total
+        // would corrupt every follow-up tranche. Mirrored by the hard guard in
+        // OrderService::createOrder.
+        if (PaymentFrequency::ONE_TIME !== $this->paymentFrequency || 'custom' !== $this->monthlyPriceMode) {
+            return;
+        }
+
+        if (null === $this->startDate || null === $this->endDate || $this->endDate <= $this->startDate) {
+            return;
+        }
+
+        if (PriceCalculator::isUpfrontSplitIntoTranches($this->startDate, $this->endDate)) {
+            $context->buildViolation('Individuální celkovou cenu lze zadat jen u jednorázové platby do 12 měsíců — delší pronájem se platí v ročních platbách podle ceníku. Zvolte roční nebo měsíční frekvenci.')
                 ->atPath('customMonthlyPriceInCzk')
                 ->addViolation();
         }

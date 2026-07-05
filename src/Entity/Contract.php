@@ -91,14 +91,17 @@ class Contract implements EntityWithEvents
     public private(set) ?\DateTimeImmutable $lastAdvanceNoticeSentAt = null;
 
     /**
-     * Per-contract monthly recurring price in halere (CZK × 100). When set, this
+     * Per-contract recurring price in halere (CZK × 100) for ONE billing
+     * period of this contract's cadence: a monthly figure on MONTHLY
+     * contracts, a yearly figure on YEARLY contracts (upfront ONE_TIME totals
+     * are never copied here — see OrderService::completeOrder). When set, this
      * overrides the current storage rate for ALL future recurring charges and
-     * for any code projecting the "locked-in monthly". Set during admin
+     * for any code projecting the locked-in price. Set during admin
      * onboarding (spec 025) for individual-price or free contracts.
      *
-     *  null → use storage.effectivePricePerMonth (default behaviour)
+     *  null → use the storage's effective rate for the cadence (default)
      *  0    → free contract: skip charging, skip invoicing
-     *  > 0  → custom monthly that survives storage-price changes
+     *  > 0  → custom per-period price that survives storage-price changes
      */
     #[ORM\Column(nullable: true)]
     public private(set) ?int $individualMonthlyAmount = null;
@@ -429,7 +432,12 @@ class Contract implements EntityWithEvents
             throw new \InvalidArgumentException('Individual monthly amount cannot be negative.');
         }
 
-        if (null !== $amount && $amount > PriceCalculator::MAX_RECURRING_PAYMENT_AMOUNT_IN_HALER) {
+        // The legal cap binds single recurring CARD charges (Podmínky
+        // opakovaných plateb čl. III). Yearly contracts are always manual
+        // bank-transfer billing (never a GoPay ON_DEMAND charge) and their
+        // individual amount is a per-YEAR figure, so the cap does not apply.
+        if (null !== $amount && $amount > PriceCalculator::MAX_RECURRING_PAYMENT_AMOUNT_IN_HALER
+            && PaymentFrequency::YEARLY !== $this->paymentFrequency) {
             throw new \DomainException(sprintf('Individual monthly amount %d Kč exceeds the legal recurring-payment maximum of %d Kč.', intdiv($amount, 100), intdiv(PriceCalculator::MAX_RECURRING_PAYMENT_AMOUNT_IN_HALER, 100)));
         }
 
@@ -449,7 +457,12 @@ class Contract implements EntityWithEvents
     public function getEffectiveMonthlyAmount(): int
     {
         if (null !== $this->individualMonthlyAmount) {
-            return $this->individualMonthlyAmount;
+            // On a YEARLY contract the individual amount is a per-year figure;
+            // callers of this method want a monthly-equivalent (outstanding-debt
+            // proration, e-mail displays, landlord contract lists).
+            return PaymentFrequency::YEARLY === $this->paymentFrequency
+                ? intdiv($this->individualMonthlyAmount, 12)
+                : $this->individualMonthlyAmount;
         }
 
         return $this->isLongTermMonthly()
@@ -532,15 +545,15 @@ class Contract implements EntityWithEvents
     }
 
     /**
-     * Recurring amount in halere. For MONTHLY this is {@see self::getEffectiveMonthlyAmount()};
-     * for YEARLY it reads the storage's effective yearly rate (no per-customer
-     * yearly override is supported today — admin onboarding's "individual price"
-     * remains a monthly figure).
+     * Recurring amount in halere for one billing period. For MONTHLY this is
+     * {@see self::getEffectiveMonthlyAmount()}; for YEARLY the individual
+     * amount (a per-year figure when set — admin onboarding custom pricing)
+     * wins over the storage's effective yearly rate.
      */
     public function getEffectiveRecurringAmount(): int
     {
         return PaymentFrequency::YEARLY === $this->paymentFrequency
-            ? $this->storage->getEffectivePricePerYear()
+            ? $this->individualMonthlyAmount ?? $this->storage->getEffectivePricePerYear()
             : $this->getEffectiveMonthlyAmount();
     }
 

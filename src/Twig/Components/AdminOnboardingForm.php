@@ -287,7 +287,7 @@ final class AdminOnboardingForm extends AbstractController
             return false;
         }
 
-        return $this->priceCalculator->isUpfrontSplitIntoTranches($data->startDate, $data->endDate);
+        return PriceCalculator::isUpfrontSplitIntoTranches($data->startDate, $data->endDate);
     }
 
     #[LiveAction]

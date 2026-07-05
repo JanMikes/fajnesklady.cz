@@ -59,19 +59,19 @@ final readonly class OrderService
             throw new \InvalidArgumentException('Every order must have an end date; open-ended rentals no longer exist.');
         }
 
-        // A per-customer monthly price override is a *monthly* figure and is not
-        // supported for yearly billing: accepting a positive override would
-        // charge a single month as the "first payment" and then silently ignore
-        // it on every recurring yearly charge (Contract::getEffectiveRecurringAmount
-        // reads the storage yearly rate). For an upfront order (spec 078) the
-        // override would replace the whole-rental total in firstPaymentPrice
-        // with a single monthly figure. The admin onboarding form blocks the
-        // 'custom' price mode for both — this is the defence-in-depth backstop.
-        // 0 is the "free" sentinel and is explicitly allowed: a free yearly
-        // contract issues no recurring charge at all, so there is nothing to drop.
+        // A per-customer price override is a per-billing-period figure: monthly
+        // for MONTHLY, yearly for YEARLY, the whole-rental total for a single
+        // upfront payment. An upfront rental longer than 12 monthly periods
+        // pays in yearly tranches (spec 078) whose math recovers the locked
+        // monthly rate as firstPaymentPrice / 12 — an arbitrary total would
+        // corrupt every follow-up tranche, so that combination stays blocked.
+        // The admin onboarding form rejects it too — this is the
+        // defence-in-depth backstop. 0 is the "free" sentinel and is always
+        // allowed: a free contract issues no charge at all.
         if (null !== $monthlyPriceOverride && 0 !== $monthlyPriceOverride
-            && in_array($paymentFrequency, [PaymentFrequency::YEARLY, PaymentFrequency::ONE_TIME], true)) {
-            throw new \InvalidArgumentException('Per-customer monthly price override is not supported for yearly or upfront billing.');
+            && PaymentFrequency::ONE_TIME === $paymentFrequency
+            && PriceCalculator::isUpfrontSplitIntoTranches($startDate, $endDate)) {
+            throw new \InvalidArgumentException('Per-customer price override is not supported for upfront rentals longer than 12 monthly periods (yearly tranches).');
         }
 
         if (null !== $preSelectedStorage) {
@@ -111,9 +111,11 @@ final readonly class OrderService
         }
 
         // Calculate first payment price. For YEARLY this is the yearly amount;
-        // for MONTHLY it's the monthly figure (or a one-shot for short rentals).
-        // Admin onboarding may pin a custom monthly that survives storage-price
-        // changes — yearly contracts don't support per-customer overrides today.
+        // for MONTHLY it's the monthly figure (or a one-shot for short rentals);
+        // for a single upfront payment it's the whole-rental total. Admin
+        // onboarding may pin a custom per-period price that survives
+        // storage-price changes — the override carries the same per-frequency
+        // meaning, so it slots straight in.
         $firstPaymentPrice = $monthlyPriceOverride
             ?? $this->priceCalculator->calculateFirstPaymentPrice($storage, $startDate, $endDate, $paymentFrequency);
 
@@ -209,7 +211,15 @@ final readonly class OrderService
 
         // Carry admin-onboarding billing terms onto the contract so the
         // recurring cron honours individual prices and external prepayment.
-        if (null !== $order->individualMonthlyAmount) {
+        // EXCEPT a positive upfront (ONE_TIME) total: that figure is the
+        // whole-rental price already paid via firstPaymentPrice, and the
+        // contract's individual amount is a per-billing-cycle figure —
+        // prolongation flips ONE_TIME to the monthly MANUAL track (spec 077),
+        // which would then bill the entire rental total every month. The free
+        // sentinel (0) still transfers so Contract::isFree() holds.
+        $isUpfrontTotal = PaymentFrequency::ONE_TIME === $order->paymentFrequency
+            && 0 !== $order->individualMonthlyAmount;
+        if (null !== $order->individualMonthlyAmount && !$isUpfrontTotal) {
             $contract->applyIndividualMonthlyAmount(
                 amount: $order->individualMonthlyAmount,
                 changedBy: $order->createdByAdmin,

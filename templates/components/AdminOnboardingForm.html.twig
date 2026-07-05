@@ -248,6 +248,15 @@
             <div class="card">
                 <div class="card-body">
                     <h2 class="text-lg font-bold text-gray-900 mb-2">Kalkulace plateb</h2>
+                    {% if monthlyPriceMode == 'custom' %}
+                        <p class="text-xs text-amber-700 mb-2">
+                            Kalkulace níže vychází ze standardního ceníku — místo ní se použije zadaná individuální cena.
+                        </p>
+                    {% elseif monthlyPriceMode == 'free' %}
+                        <p class="text-xs text-amber-700 mb-2">
+                            Kalkulace níže vychází ze standardního ceníku — smlouva bude zdarma, účtovat se nebude nic.
+                        </p>
+                    {% endif %}
                     <p class="text-sm font-semibold text-green-700 mb-3">
                         {% if schedule.isYearly and schedule.yearlyAmount %}
                             Roční platba: {{ (schedule.yearlyAmount / 100)|number_format(0, ',', ' ') }} Kč / rok

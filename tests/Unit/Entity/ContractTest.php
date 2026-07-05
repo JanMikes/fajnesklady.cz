@@ -667,6 +667,38 @@ class ContractTest extends TestCase
         $this->assertSame(1_500_000, $contract->getEffectiveMonthlyAmount());
     }
 
+    public function testYearlyContractIndividualAmountMayExceedRecurringCap(): void
+    {
+        // The 15 000 Kč cap binds recurring CARD charges; yearly contracts are
+        // bank-transfer only and their individual amount is a per-YEAR figure.
+        $contract = $this->createContract();
+        $contract->applyPaymentFrequency(PaymentFrequency::YEARLY);
+
+        $contract->applyIndividualMonthlyAmount(2_400_000, null, null, new \DateTimeImmutable());
+
+        $this->assertSame(2_400_000, $contract->individualMonthlyAmount);
+    }
+
+    public function testYearlyContractRecurringAmountUsesIndividualYearlyFigure(): void
+    {
+        $contract = $this->createContract();
+        $contract->applyPaymentFrequency(PaymentFrequency::YEARLY);
+        $contract->applyIndividualMonthlyAmount(2_400_000, null, null, new \DateTimeImmutable());
+
+        $this->assertSame(2_400_000, $contract->getEffectiveRecurringAmount());
+        // Monthly-equivalent projection (debt proration, e-mail displays).
+        $this->assertSame(200_000, $contract->getEffectiveMonthlyAmount());
+    }
+
+    public function testYearlyContractRecurringAmountFallsBackToStorageYearlyRate(): void
+    {
+        $contract = $this->createContract();
+        $contract->applyPaymentFrequency(PaymentFrequency::YEARLY);
+
+        // Storage type default yearly rate is 35 000 × 12 = 420 000 haléřů.
+        $this->assertSame(420_000, $contract->getEffectiveRecurringAmount());
+    }
+
     public function testApplyIndividualMonthlyAmountNullClearsOverride(): void
     {
         $contract = $this->createContract();

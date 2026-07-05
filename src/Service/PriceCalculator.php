@@ -369,7 +369,7 @@ final readonly class PriceCalculator
         if (PaymentFrequency::ONE_TIME === $order->paymentFrequency) {
             $endDate = $order->endDate;
 
-            if (null !== $endDate && $this->countMonthlyWalkEntries($order->startDate, $endDate) > self::MONTHS_PER_UPFRONT_TRANCHE) {
+            if (null !== $endDate && self::countMonthlyWalkEntries($order->startDate, $endDate) > self::MONTHS_PER_UPFRONT_TRANCHE) {
                 return $this->buildUpfrontSchedule(
                     $order->getUpfrontLockedMonthlyRate(),
                     $order->startDate,
@@ -532,11 +532,12 @@ final readonly class PriceCalculator
      * Whether an upfront (ONE_TIME) payment for this window splits into yearly
      * tranches (spec 078) — i.e. more monthly billing periods than fit in one
      * tranche. Date-only, so form surfaces can phrase the upfront option
-     * correctly before a storage unit is even selected.
+     * correctly before a storage unit is even selected. Static so validation
+     * callbacks without DI (AdminOnboardingFormData) can share the rule.
      */
-    public function isUpfrontSplitIntoTranches(\DateTimeImmutable $startDate, \DateTimeImmutable $endDate): bool
+    public static function isUpfrontSplitIntoTranches(\DateTimeImmutable $startDate, \DateTimeImmutable $endDate): bool
     {
-        return $this->countMonthlyWalkEntries($startDate, $endDate) > self::MONTHS_PER_UPFRONT_TRANCHE;
+        return self::countMonthlyWalkEntries($startDate, $endDate) > self::MONTHS_PER_UPFRONT_TRANCHE;
     }
 
     /**
@@ -544,7 +545,7 @@ final readonly class PriceCalculator
      * the window — full months plus one prorated tail. Depends only on the
      * dates, so callers can decide on the tranche split before knowing a rate.
      */
-    private function countMonthlyWalkEntries(\DateTimeImmutable $startDate, \DateTimeImmutable $endDate): int
+    private static function countMonthlyWalkEntries(\DateTimeImmutable $startDate, \DateTimeImmutable $endDate): int
     {
         $count = 0;
         $billingDate = $startDate;

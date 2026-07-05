@@ -94,7 +94,7 @@
                                         {% if order.individualMonthlyAmount == 0 %}
                                             <span class="badge badge-success badge-sm" title="Smlouva zdarma — bez fakturace">Zdarma</span>
                                         {% else %}
-                                            <span class="badge badge-warning badge-sm" title="Individuální měsíční cena: {{ (order.individualMonthlyAmount / 100)|number_format(0, ',', ' ') }} Kč">Indiv. cena</span>
+                                            <span class="badge badge-warning badge-sm" title="{{ order.paymentFrequency ? order.paymentFrequency.individualPriceLabel : 'Individuální měsíční cena' }}: {{ (order.individualMonthlyAmount / 100)|number_format(0, ',', ' ') }} Kč">Indiv. cena</span>
                                         {% endif %}
                                     {% endif %}
                                     {% if order.paidThroughDate %}

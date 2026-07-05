@@ -26,4 +26,19 @@ enum PaymentFrequency: string
             self::ONE_TIME => 'Jednorázová platba předem (celá částka)',
         };
     }
+
+    /**
+     * Label for an admin-set individual price, which is a per-month figure on
+     * monthly orders, a per-year figure on yearly orders, and the whole-rental
+     * total on single-payment upfront orders. Shared by the admin order list,
+     * order-detail banner and portal badges.
+     */
+    public function individualPriceLabel(): string
+    {
+        return match ($this) {
+            self::MONTHLY => 'Individuální měsíční cena',
+            self::YEARLY => 'Individuální roční cena',
+            self::ONE_TIME => 'Individuální celková cena (celý pronájem)',
+        };
+    }
 }

@@ -509,14 +509,93 @@ class OrderWorkflowTest extends KernelTestCase
         $this->assertSame('+1 year', $contract->getBillingCadenceStep());
     }
 
-    public function testYearlyWithPositiveMonthlyOverrideIsRejected(): void
+    public function testYearlyWithIndividualYearlyPriceLocksFirstPaymentAndRecurring(): void
+    {
+        // The admin-onboarding individual price on a YEARLY order is a
+        // per-YEAR figure: it becomes the first payment AND (via the contract)
+        // every recurring yearly charge. 24 000 Kč deliberately exceeds the
+        // 15 000 Kč recurring-card cap — yearly is bank-transfer only, so the
+        // cap must not fire.
+        [$tenant, $storageType, $place] = $this->getFixtures();
+        $now = $this->clock->now();
+        $startDate = $now->modify('+1 day');
+
+        $order = $this->orderService->createOrder(
+            user: $tenant,
+            storageType: $storageType,
+            place: $place,
+            startDate: $startDate,
+            endDate: $startDate->modify('+24 months'),
+            now: $now,
+            paymentFrequency: PaymentFrequency::YEARLY,
+            monthlyPriceOverride: 2_400_000,
+        );
+        $order->setBillingMode(BillingMode::MANUAL_RECURRING);
+        // AdminOnboardingHandler records the same figure as the onboarding
+        // billing terms — that is what completeOrder copies to the contract.
+        $order->setOnboardingBillingTerms(
+            individualMonthlyAmount: 2_400_000,
+            paidThroughDate: null,
+            createdByAdmin: null,
+        );
+
+        $this->assertSame(2_400_000, $order->firstPaymentPrice);
+
+        $order->reserve($now);
+        $this->orderService->processPayment($order);
+        $this->orderService->confirmPayment($order);
+        $contract = $this->orderService->completeOrder($order);
+
+        $this->assertSame(2_400_000, $contract->individualMonthlyAmount);
+        $this->assertSame(2_400_000, $contract->getEffectiveRecurringAmount());
+    }
+
+    public function testUpfrontWithIndividualTotalPriceLocksSinglePayment(): void
+    {
+        // A single-payment upfront order (≤ 12 monthly periods) may carry an
+        // individual TOTAL price: it becomes firstPaymentPrice, but is NOT
+        // copied onto the contract — prolongation flips ONE_TIME to the
+        // monthly manual track, which would misread the total as a monthly.
+        [$tenant, $storageType, $place] = $this->getFixtures();
+        $now = $this->clock->now();
+        $startDate = $now->modify('+1 day');
+
+        $order = $this->orderService->createOrder(
+            user: $tenant,
+            storageType: $storageType,
+            place: $place,
+            startDate: $startDate,
+            endDate: $startDate->modify('+6 months'),
+            now: $now,
+            paymentFrequency: PaymentFrequency::ONE_TIME,
+            monthlyPriceOverride: 900_000,
+        );
+        $order->setBillingMode(BillingMode::ONE_TIME);
+        $order->setOnboardingBillingTerms(
+            individualMonthlyAmount: 900_000,
+            paidThroughDate: null,
+            createdByAdmin: null,
+        );
+
+        $this->assertSame(900_000, $order->firstPaymentPrice);
+
+        $order->reserve($now);
+        $this->orderService->processPayment($order);
+        $this->orderService->confirmPayment($order);
+        $contract = $this->orderService->completeOrder($order);
+
+        $this->assertNull($contract->individualMonthlyAmount, 'upfront total must not become a per-cycle figure on the contract');
+    }
+
+    public function testTranchedUpfrontWithPositiveOverrideIsRejected(): void
     {
         [$tenant, $storageType, $place] = $this->getFixtures();
         $now = $this->clock->now();
         $startDate = $now->modify('+1 day');
 
-        // A per-customer monthly price is meaningless for yearly billing and
-        // would be silently dropped on recurring charges — must be rejected.
+        // An upfront rental longer than 12 monthly periods pays in yearly
+        // tranches whose math recovers the monthly rate as firstPaymentPrice/12
+        // — an arbitrary total would corrupt every follow-up tranche.
         $this->expectException(\InvalidArgumentException::class);
 
         $this->orderService->createOrder(
@@ -524,10 +603,10 @@ class OrderWorkflowTest extends KernelTestCase
             storageType: $storageType,
             place: $place,
             startDate: $startDate,
-            endDate: $startDate->modify('+12 months'),
+            endDate: $startDate->modify('+24 months'),
             now: $now,
-            paymentFrequency: PaymentFrequency::YEARLY,
-            monthlyPriceOverride: 150000,
+            paymentFrequency: PaymentFrequency::ONE_TIME,
+            monthlyPriceOverride: 900_000,
         );
     }
 

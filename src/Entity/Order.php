@@ -123,9 +123,13 @@ class Order implements EntityWithEvents
     public private(set) int $manualBillingOffsetOverdueFinal = 7;
 
     /**
-     * Per-order monthly override carried from admin onboarding into Contract
-     * creation. See spec 025 — copied onto Contract.individualMonthlyAmount in
-     * OrderService::completeOrder so future recurring charges respect it.
+     * Per-order price override carried from admin onboarding into Contract
+     * creation. The figure follows the payment frequency: per month (MONTHLY),
+     * per year (YEARLY), or the whole-rental total (single-payment ONE_TIME).
+     * See spec 025 — copied onto Contract.individualMonthlyAmount in
+     * OrderService::completeOrder so future recurring charges respect it
+     * (except the upfront total, which stays order-only: it is fully collected
+     * via firstPaymentPrice and must never become a per-cycle figure).
      *
      * null → standard storage rate; 0 → free; > 0 → individual price.
      */

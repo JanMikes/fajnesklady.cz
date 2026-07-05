@@ -66,12 +66,34 @@ final class OnboardingBannerRenderingTest extends KernelTestCase
         self::assertStringContainsString('Individuální měsíční cena', $rendered);
     }
 
+    public function testYearlyIndividualPriceRendersYearlyLabel(): void
+    {
+        // The individual amount on a yearly order is a per-YEAR figure — the
+        // banner must say so, or the admin reads it as a monthly.
+        $order = $this->createOrder(individualMonthlyAmount: 2_400_000, paymentFrequency: PaymentFrequency::YEARLY);
+
+        $rendered = $this->renderBanner($order);
+
+        self::assertStringContainsString('Individuální roční cena', $rendered);
+        self::assertStringNotContainsString('Individuální měsíční cena', $rendered);
+    }
+
+    public function testUpfrontIndividualPriceRendersTotalLabel(): void
+    {
+        $order = $this->createOrder(individualMonthlyAmount: 900_000, paymentFrequency: PaymentFrequency::ONE_TIME);
+
+        $rendered = $this->renderBanner($order);
+
+        self::assertStringContainsString('Individuální celková cena', $rendered);
+        self::assertStringNotContainsString('Individuální měsíční cena', $rendered);
+    }
+
     private function renderBanner(Order $order): string
     {
         return $this->twig->render('admin/order/_onboarding_banner.html.twig', ['order' => $order]);
     }
 
-    private function createOrder(?int $individualMonthlyAmount): Order
+    private function createOrder(?int $individualMonthlyAmount, PaymentFrequency $paymentFrequency = PaymentFrequency::MONTHLY): Order
     {
         $now = new \DateTimeImmutable('2025-06-15 12:00:00');
 
@@ -116,7 +138,7 @@ final class OnboardingBannerRenderingTest extends KernelTestCase
             id: Uuid::v7(),
             user: $user,
             storage: $storage,
-            paymentFrequency: PaymentFrequency::MONTHLY,
+            paymentFrequency: $paymentFrequency,
             startDate: $now->modify('+1 day'),
             endDate: $now->modify('+1 day')->modify('+12 months'),
             firstPaymentPrice: 35_000,

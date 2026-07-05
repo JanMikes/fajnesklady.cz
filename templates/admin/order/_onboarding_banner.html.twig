@@ -13,7 +13,8 @@
                 <div><strong>Smlouva zdarma</strong> — žádné účtování ani fakturace.</div>
             {% endif %}
             {% if hasIndividual %}
-                <div><strong>Individuální měsíční cena:</strong> {{ (order.individualMonthlyAmount / 100)|number_format(0, ',', ' ') }} Kč</div>
+                {# Legacy orders may have no frequency — those predate yearly/upfront individual prices, so the monthly label is correct for them. #}
+                <div><strong>{{ order.paymentFrequency ? order.paymentFrequency.individualPriceLabel : 'Individuální měsíční cena' }}:</strong> {{ (order.individualMonthlyAmount / 100)|number_format(0, ',', ' ') }} Kč</div>
             {% endif %}
             {% if hasPrepaid %}
                 <div><strong>Externě předplaceno do:</strong> {{ order.paidThroughDate|date('d.m.Y') }}</div>

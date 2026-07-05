@@ -181,21 +181,36 @@ final class AdminOnboardingFormDataTest extends TestCase
         self::assertSame('Roční platba je dostupná pouze pro pronájem na 12 měsíců a déle.', (string) $violations[0]->getMessage());
     }
 
-    public function testYearlyWithCustomPriceIsRejected(): void
+    public function testYearlyWithCustomPriceIsAllowed(): void
     {
-        // A per-customer monthly price is not supported for yearly billing —
-        // it would undercharge the first payment and be ignored on every
-        // recurring yearly charge. The form must block the combination.
+        // The individual price on a yearly order is a per-YEAR figure and may
+        // exceed the 15 000 Kč recurring-card cap — yearly billing is
+        // bank-transfer only, so the cap does not apply.
         $data = $this->validData();
         $data->paymentMethod = PaymentMethod::BANK_TRANSFER;
         $data->startDate = new \DateTimeImmutable('today');
         $data->endDate = new \DateTimeImmutable('today +400 days');
         $data->paymentFrequency = PaymentFrequency::YEARLY;
         $data->monthlyPriceMode = 'custom';
-        $data->customMonthlyPriceInCzk = 1500.0;
+        $data->customMonthlyPriceInCzk = 24000.0;
+
+        $violations = $this->violationsAt('customMonthlyPriceInCzk', $data);
+        self::assertEmpty($violations);
+    }
+
+    public function testMonthlyCustomPriceAboveLegalCapIsRejected(): void
+    {
+        // Monthly custom prices stay bound by the 15 000 Kč legal maximum for
+        // a single recurring charge (Podmínky opakovaných plateb čl. III).
+        $data = $this->validData();
+        $data->paymentMethod = PaymentMethod::BANK_TRANSFER;
+        $data->paymentFrequency = PaymentFrequency::MONTHLY;
+        $data->monthlyPriceMode = 'custom';
+        $data->customMonthlyPriceInCzk = 15001.0;
 
         $violations = $this->violationsAt('customMonthlyPriceInCzk', $data);
         self::assertNotEmpty($violations);
+        self::assertSame('Maximální měsíční cena je 15 000 Kč (zákonný strop pro opakované platby).', (string) $violations[0]->getMessage());
     }
 
     public function testYearlyWithStandardPricePasses(): void
@@ -242,17 +257,35 @@ final class AdminOnboardingFormDataTest extends TestCase
         self::assertSame('Pro pronájem uhrazený mimo systém použijte „Externí předplatné" s datem „Předplaceno do". Jednorázová platba předem je určena pro bankovní převod.', (string) $violations[0]->getMessage());
     }
 
-    public function testUpfrontWithCustomPriceIsRejected(): void
+    public function testUpfrontWithCustomTotalPriceIsAllowedForSinglePayment(): void
     {
-        // A monthly override would replace the whole-rental total stored in
-        // firstPaymentPrice (spec 078) — blocked like the yearly combination.
+        // A ≤ 12-month upfront rental is one whole-rental payment, so the
+        // individual price is the TOTAL the customer pays — above the
+        // recurring-card cap is fine (bank transfer only).
         $data = $this->validData();
         $data->paymentMethod = PaymentMethod::BANK_TRANSFER;
         $data->paymentFrequency = PaymentFrequency::ONE_TIME;
         $data->startDate = new \DateTimeImmutable('today');
         $data->endDate = new \DateTimeImmutable('today +90 days');
         $data->monthlyPriceMode = 'custom';
-        $data->customMonthlyPriceInCzk = 1500.0;
+        $data->customMonthlyPriceInCzk = 18000.0;
+
+        $violations = $this->violationsAt('customMonthlyPriceInCzk', $data);
+        self::assertEmpty($violations);
+    }
+
+    public function testUpfrontCustomPriceRejectedWhenSplitIntoTranches(): void
+    {
+        // Longer than 12 monthly periods → yearly tranches (spec 078) whose
+        // math derives the monthly rate from firstPaymentPrice / 12; an
+        // arbitrary total would corrupt every follow-up tranche.
+        $data = $this->validData();
+        $data->paymentMethod = PaymentMethod::BANK_TRANSFER;
+        $data->paymentFrequency = PaymentFrequency::ONE_TIME;
+        $data->startDate = new \DateTimeImmutable('today');
+        $data->endDate = new \DateTimeImmutable('today +400 days');
+        $data->monthlyPriceMode = 'custom';
+        $data->customMonthlyPriceInCzk = 18000.0;
 
         $violations = $this->violationsAt('customMonthlyPriceInCzk', $data);
         self::assertNotEmpty($violations);
