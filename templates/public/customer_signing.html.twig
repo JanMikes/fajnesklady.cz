@@ -40,7 +40,12 @@
                 {% if priceViewModel.situation.value == 'externally_prepaid' %}
                     <div class="rounded-lg bg-green-50 border-2 border-green-300 p-4 mb-6 text-center">
                         <strong class="text-green-900 text-lg">Pronájem je již předplacen externě do {{ priceViewModel.paidThroughDate|date('d.m.Y') }}</strong>
-                        <p class="mt-2 text-green-800 text-sm">Po podpisu smlouvy nemusíte nic platit. Po vypršení předplatného Vás kontaktujeme s pokyny pro další platby.</p>
+                        {% if priceViewModel.prepaidCoversWholeTerm %}
+                            <p class="mt-2 text-green-800 text-sm">Předplatné pokrývá celou dobu trvání smlouvy (do {{ order.endDate|date('d.m.Y') }}). Po podpisu smlouvy Vás už žádné platby nečekají.</p>
+                        {% else %}
+                            <p class="mt-2 text-green-800 text-sm">Po podpisu smlouvy nyní nic neplatíte. Od <strong>{{ priceViewModel.billingResumesOn|date('d.m.Y') }}</strong> činí nájemné <strong>{{ (priceViewModel.recurringAmountInHaler / 100)|number_format(0, ',', ' ') }} Kč / {{ priceViewModel.cadenceLabel }}</strong> <span class="text-xs">vč. DPH</span>.</p>
+                            <p class="mt-1 text-green-800 text-sm">Před každou splatností ({{ priceViewModel.reminderDaysBefore }} {{ priceViewModel.reminderDaysBefore == 1 ? 'den' : (priceViewModel.reminderDaysBefore <= 4 ? 'dny' : 'dní') }} předem) Vám pošleme e-mail s platebními údaji a QR kódem pro bankovní převod — nemusíte nic nastavovat.</p>
+                        {% endif %}
                     </div>
                 {% elseif priceViewModel.situation.value == 'free' %}
                     <div class="rounded-lg bg-green-50 border-2 border-green-300 p-4 mb-6 text-center">
@@ -95,6 +100,12 @@
                             <div class="flex justify-between font-semibold">
                                 <span>{{ priceViewModel.isRecurring ? 'Měsíční platba:' : (order.isPaidInUpfrontTranches ? 'První platba:' : 'Celková cena:') }}</span>
                                 <span>{{ (priceViewModel.monthlyPriceInHaler / 100)|number_format(0, ',', ' ') }} Kč{% if priceViewModel.isRecurring %} / měsíc{% endif %}</span>
+                            </div>
+                        {% elseif priceViewModel.situation.value == 'externally_prepaid' and not priceViewModel.prepaidCoversWholeTerm %}
+                            <hr class="border-gray-200 my-2">
+                            <div class="flex justify-between font-semibold">
+                                <span>{{ priceViewModel.cadenceLabel == 'rok' ? 'Roční' : 'Měsíční' }} platba od {{ priceViewModel.billingResumesOn|date('d.m.Y') }}:</span>
+                                <span>{{ (priceViewModel.recurringAmountInHaler / 100)|number_format(0, ',', ' ') }} Kč / {{ priceViewModel.cadenceLabel }} <span class="text-xs text-gray-500 font-normal">vč. DPH</span></span>
                             </div>
                         {% endif %}
                     </div>

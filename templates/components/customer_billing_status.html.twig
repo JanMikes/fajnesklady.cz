@@ -70,6 +70,10 @@
                     </svg>
                     <div class="flex-1 text-sm text-blue-900">
                         <strong>Platby probíhají ručně.</strong>
+                        {% if contract.paidThroughDate is not null and contract.paidThroughDate|date('Y-m-d') >= now|date('Y-m-d') %}
+                            Zaplaceno do {{ contract.paidThroughDate|date('d.m.Y') }}.
+                        {% endif %}
+                        Výše platby: <strong>{{ (contract.getEffectiveRecurringAmount() / 100)|number_format(0, ',', ' ') }} Kč / {{ contract.isYearly() ? 'rok' : 'měsíc' }}</strong> vč. DPH.
                         Před každou platbou (7 dní předem) Vám pošleme e-mail s platebními údaji a QR kódem pro bankovní převod.
                         {% if nextManualDate is defined and nextManualDate is not null %}
                             Příští: <strong>{{ nextManualDate|date('d.m.Y') }}</strong>.

@@ -309,8 +309,14 @@ final class AdminOnboardingFormData implements HasBillingAddress
             return;
         }
 
+        // Prepaid rentals bill on the manual track regardless of the method
+        // radio — mirror AdminOnboardingHandler so the admin's preview card
+        // shows the mode the order will actually get.
+        $isPrepaidInPlay = 'free' !== $this->monthlyPriceMode
+            && ($this->isExternallyPrepaid || $this->startsInPast());
+
         $this->billingMode = BillingMode::derive(
-            $this->paymentMethod,
+            $isPrepaidInPlay ? PaymentMethod::EXTERNAL : $this->paymentMethod,
             $this->paymentFrequency ?? PaymentFrequency::MONTHLY,
             $rentalDays,
         );
@@ -364,6 +370,14 @@ final class AdminOnboardingFormData implements HasBillingAddress
             && ($this->isExternallyPrepaid || $this->startsInPast());
 
         if (!$collected) {
+            return;
+        }
+
+        if (PaymentFrequency::ONE_TIME === $this->paymentFrequency) {
+            $context->buildViolation('Jednorázovou platbu předem nelze kombinovat s externím předplatným — zvolte měsíční či roční frekvenci, nebo nastavte „Předplaceno do" na konec smlouvy.')
+                ->atPath('paymentFrequency')
+                ->addViolation();
+
             return;
         }
 

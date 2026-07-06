@@ -411,6 +411,22 @@ class Order implements EntityWithEvents
         return $this->firstPaymentPrice / 100;
     }
 
+    /**
+     * First day the customer owes rent after an external prepayment; null when
+     * the order is not externally prepaid.
+     */
+    public function billingResumesOn(): ?\DateTimeImmutable
+    {
+        return $this->paidThroughDate?->modify('+1 day');
+    }
+
+    public function prepaidCoversWholeTerm(): bool
+    {
+        return null !== $this->paidThroughDate
+            && null !== $this->endDate
+            && $this->paidThroughDate >= $this->endDate;
+    }
+
     public function attachSignature(
         string $signaturePath,
         SigningMethod $signingMethod,

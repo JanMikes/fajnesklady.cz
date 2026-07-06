@@ -28,6 +28,8 @@ class SigningPriceViewModelTest extends TestCase
         $this->assertSame(80_000, $vm->monthlyPriceInHaler);
         $this->assertTrue($vm->isRecurring);
         $this->assertNull($vm->paidThroughDate);
+        $this->assertNull($vm->billingResumesOn);
+        $this->assertFalse($vm->prepaidCoversWholeTerm);
     }
 
     public function testReturnsExternallyPrepaidWhenPaidThroughDateSet(): void
@@ -41,6 +43,24 @@ class SigningPriceViewModelTest extends TestCase
         $this->assertSame(80_000, $vm->monthlyPriceInHaler);
         $this->assertNotNull($vm->paidThroughDate);
         $this->assertSame('2026-12-31', $vm->paidThroughDate->format('Y-m-d'));
+        $this->assertNotNull($vm->billingResumesOn);
+        $this->assertSame('2027-01-01', $vm->billingResumesOn->format('Y-m-d'));
+        $this->assertFalse($vm->prepaidCoversWholeTerm);
+        $this->assertSame(80_000, $vm->recurringAmountInHaler);
+        $this->assertSame('měsíc', $vm->cadenceLabel);
+        $this->assertSame(7, $vm->reminderDaysBefore);
+    }
+
+    public function testPrepaidCoveringWholeTermHasNoResumeStory(): void
+    {
+        $order = $this->createOrder(firstPaymentPrice: 80_000);
+        \assert(null !== $order->endDate);
+        $order->setOnboardingBillingTerms(80_000, $order->endDate);
+
+        $vm = SigningPriceViewModel::fromOrder($order);
+
+        $this->assertSame(CustomerBillingSituation::EXTERNALLY_PREPAID, $vm->situation);
+        $this->assertTrue($vm->prepaidCoversWholeTerm);
     }
 
     public function testReturnsFreeWhenIndividualMonthlyIsZero(): void

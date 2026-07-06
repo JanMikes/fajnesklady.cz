@@ -51,7 +51,7 @@ class CustomerSigningControllerTest extends WebTestCase
         $this->assertStringNotContainsString('1 500 Kč', $content);
     }
 
-    public function testExternallyPrepaidBranchShowsGreenBannerNoPriceNoLogos(): void
+    public function testExternallyPrepaidBranchShowsFutureBillingStoryNoLogos(): void
     {
         $order = $this->makeSigningOrder(
             paymentMethod: PaymentMethod::EXTERNAL,
@@ -59,6 +59,8 @@ class CustomerSigningControllerTest extends WebTestCase
             storageRate: 150_000,
             individualMonthlyAmount: 80_000,
             paidThroughDate: new \DateTimeImmutable('2026-12-31'),
+            billingMode: BillingMode::MANUAL_RECURRING,
+            endDate: new \DateTimeImmutable('2027-12-31'),
         );
 
         $this->client->request('GET', '/podpis/'.$order->signingToken);
@@ -67,11 +69,38 @@ class CustomerSigningControllerTest extends WebTestCase
         $content = $this->client->getResponse()->getContent();
         \assert(is_string($content));
         $this->assertStringContainsString('předplacen externě do 31.12.2026', $content);
-        $this->assertStringNotContainsString('Měsíční platba', $content);
+        // The customer must see what comes after the prepaid window (spec 085).
+        $this->assertStringContainsString('01.01.2027', $content);
+        $this->assertStringContainsString('800 Kč / měsíc', $content);
+        $this->assertStringContainsString('QR kódem pro bankovní převod', $content);
+        $this->assertStringContainsString('Měsíční platba od 01.01.2027', $content);
+        $this->assertStringNotContainsString('kontaktujeme', $content);
         // No payment surface for prepaid: no in-page card logos, no recurring consent.
         // (The footer always renders payment_logos, so key on the in-page SSL note instead.)
         $this->assertStringNotContainsString('Vaše platba je zabezpečena 256-bit SSL/TLS', $content);
         $this->assertStringNotContainsString('Parametry opakované platby', $content);
+    }
+
+    public function testExternallyPrepaidCoveringWholeTermShowsNoPaymentStory(): void
+    {
+        $order = $this->makeSigningOrder(
+            paymentMethod: PaymentMethod::EXTERNAL,
+            firstPaymentPrice: 80_000,
+            storageRate: 150_000,
+            individualMonthlyAmount: 80_000,
+            paidThroughDate: new \DateTimeImmutable('2027-12-31'),
+            billingMode: BillingMode::MANUAL_RECURRING,
+            endDate: new \DateTimeImmutable('2027-12-31'),
+        );
+
+        $this->client->request('GET', '/podpis/'.$order->signingToken);
+
+        $this->assertResponseIsSuccessful();
+        $content = $this->client->getResponse()->getContent();
+        \assert(is_string($content));
+        $this->assertStringContainsString('žádné platby nečekají', $content);
+        $this->assertStringNotContainsString('Měsíční platba od', $content);
+        $this->assertStringNotContainsString('QR kódem', $content);
     }
 
     public function testFreeBranchShowsGreenBannerNoPrice(): void

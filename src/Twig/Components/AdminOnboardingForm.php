@@ -472,7 +472,6 @@ final class AdminOnboardingForm extends AbstractController
         \assert(null !== $formData->startDate);
         \assert(null !== $formData->endDate);
         \assert(null !== $formData->paymentMethod);
-        \assert(null !== $formData->billingMode);
         \assert(null !== $formData->paymentFrequency);
 
         $storage = $this->getSelectedStorage();
@@ -537,7 +536,6 @@ final class AdminOnboardingForm extends AbstractController
                 individualMonthlyAmount: $individualMonthlyAmount,
                 paidThroughDate: $paidThroughDate,
                 createdByAdminId: $admin->id,
-                billingMode: $formData->billingMode,
                 paymentFrequency: $formData->paymentFrequency,
                 variableSymbolOverride: $formData->variableSymbol,
                 uploadedContractPath: $uploadedContractPath,

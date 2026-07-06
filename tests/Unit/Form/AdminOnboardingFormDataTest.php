@@ -330,6 +330,32 @@ final class AdminOnboardingFormDataTest extends TestCase
         self::assertEmpty($violations);
     }
 
+    public function testPrepaidWithOneTimeFrequencyIsRejected(): void
+    {
+        $data = $this->validData();
+        $data->paymentMethod = PaymentMethod::BANK_TRANSFER;
+        $data->paymentFrequency = PaymentFrequency::ONE_TIME;
+        $data->isExternallyPrepaid = true;
+        $data->paidThroughDate = (new \DateTimeImmutable('today'))->modify('+1 month');
+
+        $violations = $this->violationsAt('paymentFrequency', $data);
+        self::assertNotEmpty($violations);
+        self::assertStringContainsString('externím předplatným', (string) $violations[0]->getMessage());
+    }
+
+    public function testPrepaidWithGoPayDerivesManualRecurring(): void
+    {
+        $data = $this->validData();
+        $data->paymentMethod = PaymentMethod::GOPAY;
+        $data->isExternallyPrepaid = true;
+        $data->paidThroughDate = (new \DateTimeImmutable('today'))->modify('+1 month');
+        $data->billingMode = null;
+
+        $this->validator()->validate($data);
+
+        self::assertSame(BillingMode::MANUAL_RECURRING, $data->billingMode);
+    }
+
     public function testCustomPriceModeRequiresPositiveAmount(): void
     {
         $data = $this->validData();

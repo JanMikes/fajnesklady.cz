@@ -91,7 +91,11 @@
             <div class="banner banner-green">
                 <strong>Pronájem je již předplacen externě do {{ content.paidThroughDate|date('d.m.Y') }}</strong>
                 <br>
-                <span style="font-size: 13px;">Po podpisu smlouvy nemusíte nic platit.</span>
+                <span style="font-size: 13px;">Po podpisu smlouvy nyní nic neplatíte.</span>
+                {% if content.futureBillingLine %}
+                    <br>
+                    <span style="font-size: 13px;">{{ content.futureBillingLine }}</span>
+                {% endif %}
             </div>
         {% elseif content.situation.value == 'free' %}
             <div class="banner banner-green">
@@ -142,6 +146,11 @@
                 <tr>
                     <td class="label">{{ order.isRecurring() ? 'Měsíční platba:' : (order.isPaidInUpfrontTranches() ? 'První platba:' : 'Celková cena:') }}</td>
                     <td><strong>{{ (content.monthlyPriceInHaler / 100)|number_format(0, ',', ' ') }} Kč{% if order.isRecurring() %} / měsíc{% endif %}</strong></td>
+                </tr>
+                {% elseif content.situation.value == 'externally_prepaid' and content.billingResumesOn is not null %}
+                <tr>
+                    <td class="label">{{ content.cadenceLabel == 'rok' ? 'Roční' : 'Měsíční' }} platba od {{ content.billingResumesOn|date('d.m.Y') }}:</td>
+                    <td><strong>{{ (content.monthlyPriceInHaler / 100)|number_format(0, ',', ' ') }} Kč / {{ content.cadenceLabel }}</strong> vč. DPH</td>
                 </tr>
                 {% endif %}
             </table>

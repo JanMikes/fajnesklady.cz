@@ -50,6 +50,27 @@ class CustomerSigningCompleteControllerTest extends WebTestCase
         $this->assertResponseStatusCodeSame(404);
     }
 
+    public function testExternallyPrepaidCompletionTellsTheFutureBillingStory(): void
+    {
+        $order = $this->findCompletedAdminCreatedOrder();
+
+        $orderReflection = new \ReflectionClass($order);
+        $orderReflection->getProperty('firstPaymentPrice')->setValue($order, 80_000);
+        $orderReflection->getProperty('endDate')->setValue($order, new \DateTimeImmutable('2027-12-31'));
+        $order->setOnboardingBillingTerms(80_000, new \DateTimeImmutable('2026-12-31'));
+        $this->entityManager->flush();
+
+        $this->client->request('GET', '/podpis/dokonceno/'.$order->id);
+
+        $this->assertResponseIsSuccessful();
+        $content = $this->client->getResponse()->getContent();
+        \assert(is_string($content));
+        $this->assertStringContainsString('předplacen do 31.12.2026', $content);
+        $this->assertStringContainsString('Od 01.01.2027', $content);
+        $this->assertStringContainsString('800 Kč / měsíc', $content);
+        $this->assertStringContainsString('QR kódem pro bankovní převod', $content);
+    }
+
     private function findCompletedAdminCreatedOrder(): Order
     {
         $order = $this->entityManager->createQueryBuilder()

@@ -42,8 +42,25 @@ class RentalActivatedEmailContentTest extends TestCase
         $this->assertSame('Pronájem zahájen — předplaceno do 31.12.2026 — Sklady Praha', $content->subject);
         $this->assertSame('Pronájem byl zahájen', $content->headline);
         $this->assertStringContainsString('předplacen externě do 31.12.2026', $content->body);
+        $this->assertStringContainsString('Od 01.01.2027', $content->body);
+        $this->assertStringContainsString('1 500 Kč / měsíc', $content->body);
+        $this->assertStringContainsString('QR kódem', $content->body);
+        $this->assertStringNotContainsString('kontaktujeme', $content->body);
         $this->assertStringNotContainsString('Děkujeme za Vaši platbu', $content->body);
         $this->assertNotNull($content->paidThroughDate);
+    }
+
+    public function testExternallyPrepaidCoveringWholeTermPromisesNoFurtherPayments(): void
+    {
+        $contract = $this->createContract(placeName: 'Sklady Praha');
+        $contract->markExternallyPrepaid($contract->endDate);
+
+        $content = RentalActivatedEmailContent::fromContract($contract);
+
+        $this->assertNull($contract->nextBillingDate, 'prepayment to contract end must leave no billing anchor');
+        $this->assertStringContainsString('do konce smlouvy', $content->body);
+        $this->assertStringContainsString('žádné další platby Vás nečekají', $content->body);
+        $this->assertStringNotContainsString('QR kódem', $content->body);
     }
 
     public function testFreeContent(): void

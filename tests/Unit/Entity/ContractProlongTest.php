@@ -103,6 +103,22 @@ class ContractProlongTest extends TestCase
         self::assertEquals($previousEnd, $contract->nextBillingDate, 'Billing must resume where the paid period ends.');
     }
 
+    public function testProlongFullyPrepaidContractResumesBillingDayAfterPaidThrough(): void
+    {
+        // Spec 085: external prepayment covering the whole term leaves no
+        // billing anchor (markExternallyPrepaid caps at endDate). Prolonging
+        // must resume the day AFTER the inclusive paid-through day — not on it.
+        $contract = $this->createContract();
+        $contract->applyBillingMode(BillingMode::MANUAL_RECURRING);
+        $previousEnd = $contract->endDate;
+        $contract->markExternallyPrepaid($previousEnd);
+        self::assertNull($contract->nextBillingDate);
+
+        $contract->prolong($previousEnd->modify('+3 months'), null, $this->now);
+
+        self::assertEquals($previousEnd->modify('+1 day'), $contract->nextBillingDate, 'Customer already paid through the previous end date inclusive.');
+    }
+
     public function testProlongOneTimeContractDoesNotReseedBilling(): void
     {
         $contract = $this->createContract();

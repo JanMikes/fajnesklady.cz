@@ -334,8 +334,15 @@ class Contract implements EntityWithEvents
         // Resume billing when the final (prorated) cycle already closed the
         // schedule; mid-term prolongations keep their running cadence and the
         // amount calculator prorates against the new end automatically.
+        // Two anchor conventions coexist: token-holding (AUTO) cycles keep
+        // nextBillingDate == paidThroughDate, while tokenless anchors (external
+        // prepayment, manual track) mean "paid THROUGH that day inclusive" —
+        // billing resumes the day after (see markExternallyPrepaid()), or the
+        // customer would be billed for a day they already paid.
         if ($this->billingMode->isRecurring() && null === $this->nextBillingDate && !$this->isFree()) {
-            $this->nextBillingDate = $this->paidThroughDate ?? $previousEndDate;
+            $this->nextBillingDate = null === $this->goPayParentPaymentId
+                ? ($this->paidThroughDate?->modify('+1 day') ?? $previousEndDate)
+                : ($this->paidThroughDate ?? $previousEndDate);
         }
 
         $this->recordThat(new ContractProlonged(
@@ -581,7 +588,10 @@ class Contract implements EntityWithEvents
     public function markExternallyPrepaid(\DateTimeImmutable $paidThroughDate): void
     {
         $this->paidThroughDate = $paidThroughDate;
-        $this->nextBillingDate = $paidThroughDate->modify('+1 day');
+        $resumesOn = $paidThroughDate->modify('+1 day');
+        // Prepayment covering the whole term leaves no anchor: nothing to bill,
+        // nothing for the manual cron to request, nothing for the overdue sweep.
+        $this->nextBillingDate = $resumesOn > $this->endDate ? null : $resumesOn;
     }
 
     /**

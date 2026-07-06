@@ -730,6 +730,31 @@ class ContractTest extends TestCase
         $this->assertNull($contract->goPayParentPaymentId);
     }
 
+    public function testMarkExternallyPrepaidToContractEndLeavesNoBillingAnchor(): void
+    {
+        $contract = $this->createContract(
+            startDate: new \DateTimeImmutable('2025-07-01'),
+            endDate: new \DateTimeImmutable('2026-07-01'),
+        );
+
+        $contract->markExternallyPrepaid(new \DateTimeImmutable('2026-07-01'));
+
+        $this->assertEquals(new \DateTimeImmutable('2026-07-01'), $contract->paidThroughDate);
+        $this->assertNull($contract->nextBillingDate, 'nothing to bill — no anchor for the manual cron or the overdue sweep');
+    }
+
+    public function testMarkExternallyPrepaidLastDayBeforeEndKeepsAnchorOnEndDate(): void
+    {
+        $contract = $this->createContract(
+            startDate: new \DateTimeImmutable('2025-07-01'),
+            endDate: new \DateTimeImmutable('2026-07-01'),
+        );
+
+        $contract->markExternallyPrepaid(new \DateTimeImmutable('2026-06-30'));
+
+        $this->assertEquals(new \DateTimeImmutable('2026-07-01'), $contract->nextBillingDate);
+    }
+
     public function testDaysUntilExternalPrepaymentEndsReturnsNullWhenNotPrepaid(): void
     {
         $contract = $this->createContract();

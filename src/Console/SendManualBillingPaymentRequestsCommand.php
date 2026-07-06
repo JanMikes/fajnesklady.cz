@@ -59,6 +59,11 @@ final class SendManualBillingPaymentRequestsCommand extends Command
                     continue;
                 }
 
+                // Free contracts have nothing to request (mirrors TerminateOverdueContractsCommand).
+                if ($contract->isFree()) {
+                    continue;
+                }
+
                 $schedule = ManualBillingReminderSchedule::fromOrder($contract->order);
                 $stage = $schedule->dueStageOn($now, $contract->nextBillingDate);
 

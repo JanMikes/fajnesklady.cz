@@ -6,6 +6,7 @@ namespace App\Command;
 
 use App\Entity\Order;
 use App\Entity\User;
+use App\Enum\BillingMode;
 use App\Enum\PaymentMethod;
 use App\Event\AdminOnboardingInitiated;
 use App\Repository\UserRepository;
@@ -62,7 +63,6 @@ final readonly class AdminOnboardingHandler
             monthlyPriceOverride: $command->individualMonthlyAmount,
         );
 
-        $order->setBillingMode($command->billingMode);
         $order->markAsAdminCreated();
 
         $isFreeOrPrepaid = 0 === $command->individualMonthlyAmount || null !== $command->paidThroughDate;
@@ -70,6 +70,15 @@ final readonly class AdminOnboardingHandler
         $forceExternal = $isFreeOrPrepaid && !$hasDebt;
         $effectivePaymentMethod = $forceExternal ? PaymentMethod::EXTERNAL : $command->paymentMethod;
         $order->setPaymentMethod($effectivePaymentMethod);
+
+        // Prepaid rental billing always runs on the manual (bank-transfer request)
+        // track — even when the method radio stays GOPAY/BANK_TRANSFER for a debt
+        // payment, no card token is ever established for the rental itself.
+        $rentalDays = (int) $command->startDate->diff($command->endDate)->days;
+        $billingMode = null !== $command->paidThroughDate
+            ? BillingMode::derive(PaymentMethod::EXTERNAL, $command->paymentFrequency, $rentalDays)
+            : BillingMode::derive($effectivePaymentMethod, $command->paymentFrequency, $rentalDays);
+        $order->setBillingMode($billingMode);
 
         if (PaymentMethod::BANK_TRANSFER === $effectivePaymentMethod) {
             $vs = null !== $command->variableSymbolOverride && '' !== $command->variableSymbolOverride

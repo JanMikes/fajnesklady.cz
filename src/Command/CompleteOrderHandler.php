@@ -50,7 +50,7 @@ final readonly class CompleteOrderHandler
             }
 
             $contract->setRecurringPayment($order->goPayParentPaymentId, $nextBillingDate, $paidThroughDate);
-        } elseif (BillingMode::MANUAL_RECURRING === $contract->billingMode && null === $contract->nextBillingDate) {
+        } elseif (BillingMode::MANUAL_RECURRING === $contract->billingMode && null === $contract->nextBillingDate && !$contract->isFree()) {
             // MANUAL_RECURRING + no external prepayment: seed the first nextBillingDate
             // so the per-cycle reminder cron has an anchor. The customer just paid
             // their first cycle externally / one-shot — the next one is due in one

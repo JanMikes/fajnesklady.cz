@@ -43,8 +43,31 @@ class SigningEmailContentTest extends TestCase
         $this->assertSame('Podepište smlouvu — předplaceno do 31.12.2026', $content->subject);
         $this->assertStringContainsString('předplacen externě do 31.12.2026', $content->nextStepLine);
         $this->assertSame('Podepsat smlouvu', $content->buttonLabel);
-        $this->assertSame(0, $content->monthlyPriceInHaler);
+        $this->assertSame(80_000, $content->monthlyPriceInHaler);
         $this->assertNotNull($content->paidThroughDate);
+        $this->assertNotNull($content->billingResumesOn);
+        $this->assertSame('2027-01-01', $content->billingResumesOn->format('Y-m-d'));
+        $this->assertNotNull($content->futureBillingLine);
+        $this->assertStringContainsString('Od 01.01.2027', $content->futureBillingLine);
+        $this->assertStringContainsString('800 Kč / měsíc', $content->futureBillingLine);
+        $this->assertStringContainsString('7 dní předem', $content->futureBillingLine);
+        $this->assertStringContainsString('QR kódem', $content->futureBillingLine);
+        $this->assertSame('měsíc', $content->cadenceLabel);
+    }
+
+    public function testExternallyPrepaidCoveringWholeTermPromisesNoFurtherPayments(): void
+    {
+        $order = $this->createOrder(placeName: 'Sklady Praha');
+        \assert(null !== $order->endDate);
+        $order->setOnboardingBillingTerms(80_000, $order->endDate);
+
+        $content = SigningEmailContent::fromOrder($order);
+
+        $this->assertSame(CustomerBillingSituation::EXTERNALLY_PREPAID, $content->situation);
+        $this->assertStringContainsString('do konce smlouvy', $content->nextStepLine);
+        $this->assertStringContainsString('žádné platby nečekají', $content->nextStepLine);
+        $this->assertNull($content->futureBillingLine);
+        $this->assertNull($content->billingResumesOn);
     }
 
     public function testFreeContent(): void

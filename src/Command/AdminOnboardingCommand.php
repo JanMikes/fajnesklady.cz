@@ -7,7 +7,6 @@ namespace App\Command;
 use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
-use App\Enum\BillingMode;
 use App\Enum\PaymentFrequency;
 use App\Enum\PaymentMethod;
 use Symfony\Component\Uid\Uuid;
@@ -42,7 +41,6 @@ final readonly class AdminOnboardingCommand
         public ?int $individualMonthlyAmount,
         public ?\DateTimeImmutable $paidThroughDate,
         public Uuid $createdByAdminId,
-        public BillingMode $billingMode,
         public PaymentFrequency $paymentFrequency,
         public ?string $variableSymbolOverride = null,
         public ?string $uploadedContractPath = null,

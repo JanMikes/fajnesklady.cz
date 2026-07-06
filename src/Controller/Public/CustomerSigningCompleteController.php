@@ -7,6 +7,7 @@ namespace App\Controller\Public;
 use App\Repository\OrderRepository;
 use App\Service\Order\CompletionPageViewModel;
 use App\Service\Order\CustomerBillingSituation;
+use App\Service\Order\SigningPriceViewModel;
 use App\Service\OrderStatusUrlGenerator;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
@@ -47,7 +48,7 @@ final class CustomerSigningCompleteController extends AbstractController
                     'Vše vyřízeno — pronájem je předplacen do %s',
                     $order->paidThroughDate?->format('d.m.Y') ?? '',
                 ),
-                body: 'Žádná další akce není potřeba. Detail pronájmu a všechny dokumenty najdete na následující stránce.',
+                body: self::externallyPrepaidBody(SigningPriceViewModel::fromOrder($order)),
                 statusUrl: $statusUrl,
                 ctaLabel: 'Zobrazit pronájem',
             ),
@@ -63,5 +64,19 @@ final class CustomerSigningCompleteController extends AbstractController
         return $this->render('public/customer_signing_complete.html.twig', [
             'viewModel' => $viewModel,
         ]);
+    }
+
+    private static function externallyPrepaidBody(SigningPriceViewModel $price): string
+    {
+        if ($price->prepaidCoversWholeTerm) {
+            return 'Předplatné pokrývá celou dobu trvání smlouvy — žádné další platby Vás nečekají. Detail pronájmu a všechny dokumenty najdete na následující stránce.';
+        }
+
+        return sprintf(
+            'Od %s činí nájemné %s Kč / %s (vč. DPH) — před každou splatností Vám pošleme e-mail s platebními údaji a QR kódem pro bankovní převod. Nyní není potřeba žádná další akce. Detail pronájmu a všechny dokumenty najdete na následující stránce.',
+            $price->billingResumesOn?->format('d.m.Y') ?? '',
+            number_format($price->recurringAmountInHaler / 100, 0, ',', ' '),
+            $price->cadenceLabel,
+        );
     }
 }

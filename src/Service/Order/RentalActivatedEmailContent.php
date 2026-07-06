@@ -34,10 +34,7 @@ final readonly class RentalActivatedEmailContent
                 situation: $situation,
                 subject: sprintf('Pronájem zahájen — předplaceno do %s — %s', $contract->paidThroughDate?->format('d.m.Y') ?? '', $placeName),
                 headline: 'Pronájem byl zahájen',
-                body: sprintf(
-                    'Pronájem je předplacen externě do %s. Po vypršení předplatného Vás kontaktujeme s pokyny pro další platby. V příloze tohoto e-mailu najdete podepsanou smlouvu a všechny související dokumenty.',
-                    $contract->paidThroughDate?->format('d.m.Y') ?? '',
-                ),
+                body: self::externallyPrepaidBody($contract),
                 paidThroughDate: $contract->paidThroughDate,
             ),
             CustomerBillingSituation::FREE => new self(
@@ -47,6 +44,40 @@ final readonly class RentalActivatedEmailContent
                 body: 'U této smlouvy se neúčtuje žádné měsíční nájemné. V příloze tohoto e-mailu najdete podepsanou smlouvu a všechny související dokumenty.',
                 paidThroughDate: null,
             ),
+        };
+    }
+
+    /**
+     * markExternallyPrepaid() leaves nextBillingDate null exactly when the
+     * prepayment covers the whole term — nothing will ever be billed.
+     */
+    private static function externallyPrepaidBody(Contract $contract): string
+    {
+        $paidThroughFormatted = $contract->paidThroughDate?->format('d.m.Y') ?? '';
+
+        if (null === $contract->nextBillingDate) {
+            return sprintf(
+                'Pronájem je předplacen externě do konce smlouvy (%s) — žádné další platby Vás nečekají. V příloze tohoto e-mailu najdete podepsanou smlouvu a všechny související dokumenty.',
+                $paidThroughFormatted,
+            );
+        }
+
+        return sprintf(
+            'Pronájem je předplacen externě do %s. Od %s činí nájemné %s Kč / %s (vč. DPH) — před každou splatností (%s předem) Vám pošleme e-mail s platebními údaji a QR kódem pro bankovní převod. V příloze tohoto e-mailu najdete podepsanou smlouvu a všechny související dokumenty.',
+            $paidThroughFormatted,
+            $contract->nextBillingDate->format('d.m.Y'),
+            number_format($contract->getEffectiveRecurringAmount() / 100, 0, ',', ' '),
+            $contract->isYearly() ? 'rok' : 'měsíc',
+            self::formatDaysCzech(abs($contract->order->manualBillingOffsetInitial)),
+        );
+    }
+
+    private static function formatDaysCzech(int $days): string
+    {
+        return $days.' '.match (true) {
+            1 === $days => 'den',
+            $days <= 4 => 'dny',
+            default => 'dní',
         };
     }
 }
