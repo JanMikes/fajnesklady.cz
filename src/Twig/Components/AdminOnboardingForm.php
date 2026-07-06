@@ -20,7 +20,7 @@ use App\Repository\StorageTypeRepository;
 use App\Service\Messenger\HandlerFailureUnwrap;
 use App\Service\PriceCalculator;
 use App\Service\StorageAvailabilityChecker;
-use App\Value\PaymentSchedule;
+use App\Value\OnboardingSchedulePreview;
 use Psr\Log\LoggerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\FormInterface;
@@ -245,7 +245,15 @@ final class AdminOnboardingForm extends AbstractController
         return json_encode($payload, JSON_THROW_ON_ERROR);
     }
 
-    public function getPaymentSchedule(): ?PaymentSchedule
+    /**
+     * The "Kalkulace plateb" card content, computed from the CURRENT form
+     * values so the table always mirrors the contract submit() would create:
+     * pricing mode (standardní / individuální / zdarma), payment frequency
+     * (GoPay is already normalised to MONTHLY by the form's PRE_SUBMIT hook)
+     * and external prepayment. Null until a storage unit and a valid rental
+     * window are chosen — the card stays hidden.
+     */
+    public function getSchedulePreview(): ?OnboardingSchedulePreview
     {
         $storage = $this->getSelectedStorage();
         if (null === $storage) {
@@ -257,18 +265,114 @@ final class AdminOnboardingForm extends AbstractController
             return null;
         }
 
-        if (null === $data->startDate || null === $data->endDate) {
+        $startDate = $data->startDate;
+        $endDate = $data->endDate;
+        if (null === $startDate || null === $endDate || $endDate <= $startDate) {
             return null;
         }
 
-        $schedule = $this->priceCalculator->buildPaymentSchedule(
-            $storage,
-            $data->startDate,
-            $data->endDate,
-            $data->paymentFrequency ?? PaymentFrequency::MONTHLY,
-        );
+        if ('free' === $data->monthlyPriceMode) {
+            return new OnboardingSchedulePreview(schedule: null, isFree: true);
+        }
 
-        return $schedule->isEmpty() ? null : $schedule;
+        $frequency = $data->paymentFrequency ?? PaymentFrequency::MONTHLY;
+        $customPriceFallback = $this->resolveCustomPriceFallback($data, $frequency, $startDate, $endDate);
+        $customRate = 'custom' === $data->monthlyPriceMode && null === $customPriceFallback && null !== $data->customMonthlyPriceInCzk
+            ? (int) round($data->customMonthlyPriceInCzk * 100)
+            : null;
+
+        // Mirrors submit(): the paid-through date binds when external
+        // prepayment is on, or a backdated start forces it ('free' returned above).
+        $prepaidUntil = ($data->isExternallyPrepaid || $data->startsInPast()) ? $data->paidThroughDate : null;
+
+        if (null !== $prepaidUntil && $prepaidUntil >= $endDate) {
+            return new OnboardingSchedulePreview(schedule: null, isFullyPrepaid: true, prepaidUntil: $prepaidUntil);
+        }
+
+        if (null !== $prepaidUntil && $prepaidUntil > $startDate) {
+            $periodRate = $this->resolveLockedPeriodRate($storage, $startDate, $endDate, $frequency, $customRate);
+
+            if (null !== $periodRate) {
+                $schedule = $this->priceCalculator->buildScheduleFromBillingAnchor($periodRate, $frequency, $prepaidUntil, $endDate);
+
+                return new OnboardingSchedulePreview(
+                    schedule: $schedule->isEmpty() ? null : $schedule,
+                    prepaidUntil: $prepaidUntil,
+                    isAnchoredAtPaidThrough: true,
+                    customPriceFallback: $customPriceFallback,
+                );
+            }
+        }
+
+        $schedule = null !== $customRate
+            ? $this->priceCalculator->buildScheduleFromRate($customRate, $frequency, $startDate, $endDate)
+            : $this->priceCalculator->buildPaymentSchedule($storage, $startDate, $endDate, $frequency);
+
+        return new OnboardingSchedulePreview(
+            schedule: $schedule->isEmpty() ? null : $schedule,
+            prepaidUntil: $prepaidUntil,
+            customPriceFallback: $customPriceFallback,
+        );
+    }
+
+    /**
+     * Why the entered individual price cannot drive the preview (and the
+     * created contract): 'missing' — custom mode without a usable amount yet;
+     * 'upfront_tranches' — an upfront rental longer than 12 monthly periods
+     * pays in yearly tranches derived from the price list, a custom total is
+     * rejected by validation (see AdminOnboardingFormData). Null = applied.
+     */
+    private function resolveCustomPriceFallback(
+        AdminOnboardingFormData $data,
+        PaymentFrequency $frequency,
+        \DateTimeImmutable $startDate,
+        \DateTimeImmutable $endDate,
+    ): ?string {
+        if ('custom' !== $data->monthlyPriceMode) {
+            return null;
+        }
+
+        if (null === $data->customMonthlyPriceInCzk || $data->customMonthlyPriceInCzk <= 0) {
+            return 'missing';
+        }
+
+        if (PaymentFrequency::ONE_TIME === $frequency && PriceCalculator::isUpfrontSplitIntoTranches($startDate, $endDate)) {
+            return 'upfront_tranches';
+        }
+
+        return null;
+    }
+
+    /**
+     * The locked per-period rate the recurring billing would walk from the
+     * paid-through anchor — the monthly figure for MONTHLY and for ONE_TIME
+     * tranches, the yearly figure for YEARLY. The tier follows the FULL rental
+     * window (that is what gets locked into the order), never the remaining
+     * stub. Null when there is no per-period rate to walk: sub-31-day rentals
+     * are a single weekly-priced payment, and a custom ONE_TIME price is a
+     * whole-rental total — those fall back to the unshifted schedule.
+     */
+    private function resolveLockedPeriodRate(
+        Storage $storage,
+        \DateTimeImmutable $startDate,
+        \DateTimeImmutable $endDate,
+        PaymentFrequency $frequency,
+        ?int $customRate,
+    ): ?int {
+        $rateType = $this->priceCalculator->resolveRateType($frequency, $startDate, $endDate);
+        if ('weekly' === $rateType) {
+            return null;
+        }
+
+        if (null !== $customRate) {
+            return PaymentFrequency::ONE_TIME === $frequency ? null : $customRate;
+        }
+
+        return match ($rateType) {
+            'yearly' => $storage->getEffectivePricePerYear(),
+            'monthly_short' => $storage->getEffectivePricePerMonth(),
+            'monthly_long' => $storage->getEffectivePricePerMonthLongTerm(),
+        };
     }
 
     /**

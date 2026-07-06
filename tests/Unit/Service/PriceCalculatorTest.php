@@ -561,6 +561,167 @@ class PriceCalculatorTest extends TestCase
         $this->assertSame(500000, $schedule->firstPayment()->amount);
     }
 
+    /**
+     * The admin-onboarding preview path: a custom (individual) rate must drive
+     * the schedule with the exact same walk buildScheduleFromOrder uses after
+     * the order exists — per-frequency meaning included.
+     */
+    public function testBuildScheduleFromRateMonthlyCustomWalksMonths(): void
+    {
+        // 1 000 Kč/month individual price over exactly 3 calendar months.
+        $schedule = $this->calculator->buildScheduleFromRate(
+            100000,
+            PaymentFrequency::MONTHLY,
+            new \DateTimeImmutable('2026-08-01'),
+            new \DateTimeImmutable('2026-11-01'),
+        );
+
+        $this->assertCount(3, $schedule->entries);
+        $this->assertTrue($schedule->isRecurring);
+        $this->assertSame(100000, $schedule->monthlyAmount);
+        foreach ($schedule->entries as $entry) {
+            $this->assertSame(100000, $entry->amount);
+        }
+    }
+
+    public function testBuildScheduleFromRateYearlyCustomChargesPerYear(): void
+    {
+        // The reported bug case: individual price 12 000 Kč / rok on a 2-year
+        // rental must produce two yearly charges of 12 000 Kč — never the
+        // storage price list.
+        $schedule = $this->calculator->buildScheduleFromRate(
+            1200000,
+            PaymentFrequency::YEARLY,
+            new \DateTimeImmutable('2026-08-01'),
+            new \DateTimeImmutable('2028-08-01'),
+        );
+
+        $this->assertCount(2, $schedule->entries);
+        $this->assertTrue($schedule->isYearly());
+        $this->assertSame(1200000, $schedule->yearlyAmount);
+        $this->assertSame(1200000, $schedule->entries[0]->amount);
+        $this->assertSame(1200000, $schedule->entries[1]->amount);
+        $this->assertSame('2027-08-01', $schedule->entries[1]->chargeDate->format('Y-m-d'));
+    }
+
+    public function testBuildScheduleFromRateYearlyProratesTailOverYearDays(): void
+    {
+        // 1 year + 184 days: full year at the custom rate, tail prorated over
+        // 365 days and rounded up to whole CZK (184 × 12 000 / 365 → 6 050 Kč).
+        $schedule = $this->calculator->buildScheduleFromRate(
+            1200000,
+            PaymentFrequency::YEARLY,
+            new \DateTimeImmutable('2026-08-01'),
+            new \DateTimeImmutable('2028-02-01'),
+        );
+
+        $this->assertCount(2, $schedule->entries);
+        $this->assertSame(1200000, $schedule->entries[0]->amount);
+        $this->assertSame(605000, $schedule->entries[1]->amount);
+    }
+
+    public function testBuildScheduleFromRateOneTimeIsSingleWholeRentalPayment(): void
+    {
+        // ≤ 12 monthly periods: the rate is the whole-rental total, one payment.
+        $schedule = $this->calculator->buildScheduleFromRate(
+            550000,
+            PaymentFrequency::ONE_TIME,
+            new \DateTimeImmutable('2026-08-01'),
+            new \DateTimeImmutable('2027-02-01'),
+        );
+
+        $this->assertCount(1, $schedule->entries);
+        $this->assertSame(550000, $schedule->firstPayment()->amount);
+        $this->assertFalse($schedule->isRecurring);
+        $this->assertNull($schedule->monthlyAmount);
+    }
+
+    public function testBuildScheduleFromRateOneTimeTranchesRecoverMonthlyRate(): void
+    {
+        // > 12 monthly periods (spec 078): rate is the first 12-month tranche,
+        // the locked monthly rate is rate / 12 and rebuilds the partition 1:1.
+        $schedule = $this->calculator->buildScheduleFromRate(
+            1200000,
+            PaymentFrequency::ONE_TIME,
+            new \DateTimeImmutable('2026-08-01'),
+            new \DateTimeImmutable('2028-08-01'),
+        );
+
+        $this->assertCount(2, $schedule->entries);
+        $this->assertSame(1200000, $schedule->entries[0]->amount);
+        $this->assertSame(1200000, $schedule->entries[1]->amount);
+        $this->assertSame(100000, $schedule->monthlyAmount);
+        $this->assertSame('2027-08-01', $schedule->entries[1]->chargeDate->format('Y-m-d'));
+    }
+
+    public function testBuildScheduleFromRateAgreesWithBuildScheduleFromOrder(): void
+    {
+        // buildScheduleFromOrder delegates to the rate-based builder; the
+        // preview (rate) and the post-creation order detail must never diverge.
+        foreach ([PaymentFrequency::MONTHLY, PaymentFrequency::YEARLY, PaymentFrequency::ONE_TIME] as $frequency) {
+            $startDate = new \DateTimeImmutable('2026-08-01');
+            $endDate = new \DateTimeImmutable('2028-02-01');
+            $order = $this->createOrder($startDate, $endDate, 1200000, $frequency);
+
+            $fromOrder = $this->calculator->buildScheduleFromOrder($order);
+            $fromRate = $this->calculator->buildScheduleFromRate(1200000, $frequency, $startDate, $endDate);
+
+            $this->assertEquals($fromOrder, $fromRate, sprintf('Divergence for %s', $frequency->value));
+        }
+    }
+
+    public function testBuildScheduleFromBillingAnchorMonthlyWalksFromAnchor(): void
+    {
+        // Externally-prepaid preview: charges start at the paid-through date,
+        // full months at the locked rate, tail prorated over 30 days.
+        $schedule = $this->calculator->buildScheduleFromBillingAnchor(
+            100000,
+            PaymentFrequency::MONTHLY,
+            new \DateTimeImmutable('2026-10-01'),
+            new \DateTimeImmutable('2026-11-16'),
+        );
+
+        $this->assertCount(2, $schedule->entries);
+        $this->assertSame('2026-10-01', $schedule->entries[0]->chargeDate->format('Y-m-d'));
+        $this->assertSame(100000, $schedule->entries[0]->amount);
+        // 15 remaining days × 1 000 / 30 = 500 Kč
+        $this->assertSame(50000, $schedule->entries[1]->amount);
+        $this->assertTrue($schedule->isRecurring);
+        $this->assertSame(100000, $schedule->monthlyAmount);
+    }
+
+    public function testBuildScheduleFromBillingAnchorYearly(): void
+    {
+        $schedule = $this->calculator->buildScheduleFromBillingAnchor(
+            1200000,
+            PaymentFrequency::YEARLY,
+            new \DateTimeImmutable('2027-08-01'),
+            new \DateTimeImmutable('2028-08-01'),
+        );
+
+        $this->assertCount(1, $schedule->entries);
+        $this->assertSame('2027-08-01', $schedule->entries[0]->chargeDate->format('Y-m-d'));
+        $this->assertSame(1200000, $schedule->entries[0]->amount);
+        $this->assertTrue($schedule->isYearly());
+    }
+
+    public function testBuildScheduleFromBillingAnchorOneTimeTranches(): void
+    {
+        // Remaining upfront tranches walk from the anchor at the locked
+        // MONTHLY rate — 13 remaining months = 12 × rate, then 1 × rate.
+        $schedule = $this->calculator->buildScheduleFromBillingAnchor(
+            100000,
+            PaymentFrequency::ONE_TIME,
+            new \DateTimeImmutable('2026-08-01'),
+            new \DateTimeImmutable('2027-09-01'),
+        );
+
+        $this->assertCount(2, $schedule->entries);
+        $this->assertSame(1200000, $schedule->entries[0]->amount);
+        $this->assertSame(100000, $schedule->entries[1]->amount);
+        $this->assertFalse($schedule->isRecurring);
+    }
+
     private function createUser(): User
     {
         return new User(

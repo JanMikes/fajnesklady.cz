@@ -333,88 +333,135 @@ final readonly class PriceCalculator
      */
     public function buildScheduleFromOrder(Order $order): PaymentSchedule
     {
-        $isYearly = PaymentFrequency::YEARLY === $order->paymentFrequency;
+        return $this->buildScheduleFromRate(
+            $order->firstPaymentPrice,
+            $order->paymentFrequency ?? PaymentFrequency::MONTHLY,
+            $order->startDate,
+            $order->endDate,
+        );
+    }
 
-        if ($isYearly) {
-            $yearlyRate = $order->firstPaymentPrice;
-
-            if ($order->isOpenEnded()) {
+    /**
+     * Build the schedule for a rate that is already locked outside the current
+     * price list — an existing order's firstPaymentPrice (see
+     * {@see self::buildScheduleFromOrder()}) or the admin-onboarding individual
+     * price preview. $rate carries the per-frequency meaning: the monthly
+     * figure (MONTHLY), the yearly figure (YEARLY), or — for ONE_TIME — the
+     * whole-rental total (≤ 12 monthly periods) / the first 12-month tranche
+     * (longer rentals, spec 078), from which the locked monthly rate is
+     * recoverable exactly as rate / 12.
+     */
+    public function buildScheduleFromRate(
+        int $rate,
+        PaymentFrequency $frequency,
+        \DateTimeImmutable $startDate,
+        ?\DateTimeImmutable $endDate,
+    ): PaymentSchedule {
+        if (PaymentFrequency::YEARLY === $frequency) {
+            if (null === $endDate) {
                 return new PaymentSchedule(
-                    entries: [new PaymentScheduleEntry($order->startDate, $yearlyRate)],
+                    entries: [new PaymentScheduleEntry($startDate, $rate)],
                     isRecurring: true,
                     isOpenEnded: true,
                     monthlyAmount: null,
-                    yearlyAmount: $yearlyRate,
+                    yearlyAmount: $rate,
                 );
             }
 
-            $endDate = $order->endDate;
-            \assert(null !== $endDate);
-
             return new PaymentSchedule(
-                entries: $this->walkYearsFromAnchor($yearlyRate, $order->startDate, $endDate),
+                entries: $this->walkYearsFromAnchor($rate, $startDate, $endDate),
                 isRecurring: true,
                 isOpenEnded: false,
                 monthlyAmount: null,
-                yearlyAmount: $yearlyRate,
+                yearlyAmount: $rate,
             );
         }
 
-        // Spec 078 upfront orders: for ≤ 12 monthly periods firstPaymentPrice
-        // is the WHOLE rental total (single payment) — the monthly-walk branch
-        // below would corrupt it. Longer rentals pay in yearly tranches: the
-        // first tranche is always 12 FULL months (the prorated tail can only
-        // sit in the last tranche), so the locked monthly rate is recoverable
-        // exactly as firstPaymentPrice / 12 and the partition rebuilds 1:1.
-        if (PaymentFrequency::ONE_TIME === $order->paymentFrequency) {
-            $endDate = $order->endDate;
-
-            if (null !== $endDate && self::countMonthlyWalkEntries($order->startDate, $endDate) > self::MONTHS_PER_UPFRONT_TRANCHE) {
+        // Spec 078 upfront: for ≤ 12 monthly periods the rate is the WHOLE
+        // rental total (single payment) — the monthly-walk branch below would
+        // corrupt it. Longer rentals pay in yearly tranches: the first tranche
+        // is always 12 FULL months (the prorated tail can only sit in the last
+        // tranche), so the locked monthly rate is recoverable exactly as
+        // rate / 12 and the partition rebuilds 1:1.
+        if (PaymentFrequency::ONE_TIME === $frequency) {
+            if (null !== $endDate && self::countMonthlyWalkEntries($startDate, $endDate) > self::MONTHS_PER_UPFRONT_TRANCHE) {
                 return $this->buildUpfrontSchedule(
-                    $order->getUpfrontLockedMonthlyRate(),
-                    $order->startDate,
+                    intdiv($rate, self::MONTHS_PER_UPFRONT_TRANCHE),
+                    $startDate,
                     $endDate,
                 );
             }
 
             return new PaymentSchedule(
-                entries: [new PaymentScheduleEntry($order->startDate, $order->firstPaymentPrice)],
+                entries: [new PaymentScheduleEntry($startDate, $rate)],
                 isRecurring: false,
                 isOpenEnded: false,
                 monthlyAmount: null,
             );
         }
 
-        if ($order->isOpenEnded()) {
+        if (null === $endDate) {
             return new PaymentSchedule(
-                entries: [new PaymentScheduleEntry($order->startDate, $order->firstPaymentPrice)],
+                entries: [new PaymentScheduleEntry($startDate, $rate)],
                 isRecurring: true,
                 isOpenEnded: true,
-                monthlyAmount: $order->firstPaymentPrice,
+                monthlyAmount: $rate,
             );
         }
 
-        $endDate = $order->endDate;
-        \assert(null !== $endDate);
-
-        $days = $this->calculateDays($order->startDate, $endDate);
+        $days = $this->calculateDays($startDate, $endDate);
 
         if ($days < self::WEEKLY_THRESHOLD_DAYS) {
             return new PaymentSchedule(
-                entries: [new PaymentScheduleEntry($order->startDate, $order->firstPaymentPrice)],
+                entries: [new PaymentScheduleEntry($startDate, $rate)],
                 isRecurring: false,
                 isOpenEnded: false,
                 monthlyAmount: null,
             );
         }
 
-        $monthlyRate = $order->firstPaymentPrice;
-
         return new PaymentSchedule(
-            entries: $this->walkMonthsFromAnchor($monthlyRate, $order->startDate, $endDate),
+            entries: $this->walkMonthsFromAnchor($rate, $startDate, $endDate),
             isRecurring: true,
             isOpenEnded: false,
-            monthlyAmount: $monthlyRate,
+            monthlyAmount: $rate,
+        );
+    }
+
+    /**
+     * Remaining charges of a rental whose billing starts at $billingAnchor
+     * instead of the rental start — the externally-prepaid / backdated
+     * onboarding preview. $periodRate is the LOCKED per-period figure: monthly
+     * for MONTHLY and for ONE_TIME tranches, yearly for YEARLY. Mirrors
+     * {@see Billing\RecurringAmountCalculator}, which walks the
+     * same cadence from the contract's nextBillingDate anchor (set to
+     * paidThroughDate on activation).
+     */
+    public function buildScheduleFromBillingAnchor(
+        int $periodRate,
+        PaymentFrequency $frequency,
+        \DateTimeImmutable $billingAnchor,
+        \DateTimeImmutable $endDate,
+    ): PaymentSchedule {
+        if (PaymentFrequency::YEARLY === $frequency) {
+            return new PaymentSchedule(
+                entries: $this->walkYearsFromAnchor($periodRate, $billingAnchor, $endDate),
+                isRecurring: true,
+                isOpenEnded: false,
+                monthlyAmount: null,
+                yearlyAmount: $periodRate,
+            );
+        }
+
+        if (PaymentFrequency::ONE_TIME === $frequency) {
+            return $this->buildUpfrontSchedule($periodRate, $billingAnchor, $endDate);
+        }
+
+        return new PaymentSchedule(
+            entries: $this->walkMonthsFromAnchor($periodRate, $billingAnchor, $endDate),
+            isRecurring: true,
+            isOpenEnded: false,
+            monthlyAmount: $periodRate,
         );
     }
 

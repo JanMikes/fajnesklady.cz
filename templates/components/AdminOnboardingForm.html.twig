@@ -242,50 +242,6 @@
             </div>
         {% endif %}
 
-        {# Payment schedule preview #}
-        {% set schedule = this.paymentSchedule %}
-        {% if schedule %}
-            <div class="card">
-                <div class="card-body">
-                    <h2 class="text-lg font-bold text-gray-900 mb-2">Kalkulace plateb</h2>
-                    {% if monthlyPriceMode == 'custom' %}
-                        <p class="text-xs text-amber-700 mb-2">
-                            Kalkulace níže vychází ze standardního ceníku — místo ní se použije zadaná individuální cena.
-                        </p>
-                    {% elseif monthlyPriceMode == 'free' %}
-                        <p class="text-xs text-amber-700 mb-2">
-                            Kalkulace níže vychází ze standardního ceníku — smlouva bude zdarma, účtovat se nebude nic.
-                        </p>
-                    {% endif %}
-                    <p class="text-sm font-semibold text-green-700 mb-3">
-                        {% if schedule.isYearly and schedule.yearlyAmount %}
-                            Roční platba: {{ (schedule.yearlyAmount / 100)|number_format(0, ',', ' ') }} Kč / rok
-                        {% elseif not schedule.isRecurring and schedule.monthlyAmount %}
-                            {# Spec 078 upfront: whole-rental prepay; > 12 months splits into
-                               yearly tranches (rozpis níže). monthlyAmount is only the equivalence rate. #}
-                            {% if schedule.entryCount > 1 %}
-                                Platba předem ve {{ schedule.entryCount }} platbách (po 12 měsících): první {{ schedule.firstPayment.amountInCzk|number_format(0, ',', ' ') }} Kč (odpovídá {{ (schedule.monthlyAmount / 100)|number_format(0, ',', ' ') }} Kč / měsíc)
-                            {% else %}
-                                Jednorázová platba předem: {{ schedule.firstPayment.amountInCzk|number_format(0, ',', ' ') }} Kč (odpovídá {{ (schedule.monthlyAmount / 100)|number_format(0, ',', ' ') }} Kč / měsíc)
-                            {% endif %}
-                        {% elseif schedule.monthlyAmount %}
-                            Měsíční platba: {{ (schedule.monthlyAmount / 100)|number_format(0, ',', ' ') }} Kč / měsíc
-                        {% endif %}
-                    </p>
-                    {% if schedule.entries is not empty %}
-                        <ul class="text-xs text-gray-600 space-y-1 max-h-40 overflow-y-auto">
-                            {% for entry in schedule.entries %}
-                                <li class="flex justify-between">
-                                    <span>{{ entry.chargeDate|date('d.m.Y') }}</span>
-                                    <span class="font-medium">{{ (entry.amount / 100)|number_format(0, ',', ' ') }} Kč</span>
-                                </li>
-                            {% endfor %}
-                        </ul>
-                    {% endif %}
-                </div>
-            </div>
-        {% endif %}
-
         {# 9. Platební metoda — metoda se volí PRVNÍ; karta frekvence níže se jí přizpůsobuje. #}
         <div class="card">
             <div class="card-body">
@@ -420,6 +376,79 @@
                 {% endif %}
             </div>
         </div>
+
+        {# Kalkulace plateb — hned pod cenovým modelem: přepočítává se živě podle
+           VŠECH vstupů (cenový model včetně individuální ceny, frekvence, metoda,
+           externí předplatné). Obsah dodává OnboardingSchedulePreview. #}
+        {% set preview = this.schedulePreview %}
+        {% if preview %}
+            <div class="card">
+                <div class="card-body">
+                    <h2 class="text-lg font-bold text-gray-900 mb-2">Kalkulace plateb</h2>
+                    {% if preview.isFree %}
+                        <p class="text-sm font-semibold text-green-700">
+                            Smlouva je zdarma — zákazníkovi se nebude účtovat žádná platba.
+                        </p>
+                    {% elseif preview.isFullyPrepaid %}
+                        <p class="text-sm font-semibold text-green-700">
+                            Celý pronájem je předplacen externě do {{ preview.prepaidUntil|date('d.m.Y') }} — nebude se účtovat žádná platba.
+                        </p>
+                    {% elseif preview.schedule %}
+                        {% set schedule = preview.schedule %}
+                        {% if preview.customPriceFallback == 'missing' %}
+                            <p class="text-xs text-amber-700 mb-2">
+                                Zadejte individuální cenu — kalkulace níže zatím vychází ze standardního ceníku.
+                            </p>
+                        {% elseif preview.customPriceFallback == 'upfront_tranches' %}
+                            <p class="text-xs text-amber-700 mb-2">
+                                Individuální celková cena je možná jen u jednorázové platby do 12 měsíců — kalkulace níže vychází ze standardního ceníku.
+                            </p>
+                        {% endif %}
+                        <p class="text-sm font-semibold text-green-700 mb-3">
+                            {% if schedule.isYearly %}
+                                Roční platba: {{ (schedule.yearlyAmount / 100)|number_format(0, ',', ' ') }} Kč / rok
+                            {% elseif not schedule.isRecurring %}
+                                {# Spec 078 upfront: whole-rental prepay; > 12 months splits into
+                                   yearly tranches (rozpis níže). monthlyAmount is only the equivalence
+                                   rate — an individual upfront total has none. #}
+                                {% if schedule.entryCount > 1 %}
+                                    Platba předem ve {{ schedule.entryCount }} platbách (po 12 měsících): první {{ schedule.firstPayment.amountInCzk|number_format(0, ',', ' ') }} Kč{% if schedule.monthlyAmount %} (odpovídá {{ (schedule.monthlyAmount / 100)|number_format(0, ',', ' ') }} Kč / měsíc){% endif %}
+                                {% else %}
+                                    Jednorázová platba{{ isOneTimeUpfront ? ' předem' }}: {{ schedule.firstPayment.amountInCzk|number_format(0, ',', ' ') }} Kč{% if schedule.monthlyAmount %} (odpovídá {{ (schedule.monthlyAmount / 100)|number_format(0, ',', ' ') }} Kč / měsíc){% endif %}
+                                {% endif %}
+                            {% elseif schedule.monthlyAmount %}
+                                Měsíční platba: {{ (schedule.monthlyAmount / 100)|number_format(0, ',', ' ') }} Kč / měsíc
+                            {% endif %}
+                        </p>
+                        {% if preview.prepaidUntil %}
+                            <p class="text-xs text-blue-700 mb-2">
+                                {% if preview.isAnchoredAtPaidThrough %}
+                                    Zákazník má předplaceno do {{ preview.prepaidUntil|date('d.m.Y') }} — kalkulace zobrazuje až platby od tohoto data.
+                                {% else %}
+                                    Zákazník má předplaceno do {{ preview.prepaidUntil|date('d.m.Y') }}.
+                                {% endif %}
+                            </p>
+                        {% endif %}
+                        {% if schedule.entries is not empty %}
+                            <ul class="text-xs text-gray-600 space-y-1 max-h-40 overflow-y-auto">
+                                {% for entry in schedule.entries %}
+                                    <li class="flex justify-between">
+                                        <span>{{ entry.chargeDate|date('d.m.Y') }}</span>
+                                        <span class="font-medium">{{ (entry.amount / 100)|number_format(0, ',', ' ') }} Kč</span>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                            {% if schedule.entryCount > 1 and not schedule.isOpenEnded %}
+                                <p class="text-xs text-gray-700 mt-2 pt-2 border-t border-gray-200 flex justify-between font-semibold">
+                                    <span>Celkem</span>
+                                    <span>{{ schedule.totalKnownAmountInCzk|number_format(0, ',', ' ') }} Kč</span>
+                                </p>
+                            {% endif %}
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
 
         {# 12. Externí předplatné #}
         <div class="card">
