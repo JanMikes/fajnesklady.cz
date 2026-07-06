@@ -553,6 +553,24 @@ class OrderTest extends TestCase
         $this->assertTrue($order->isOpenEnded());
     }
 
+    public function testIsYearlyFrequencyFollowsPaymentFrequency(): void
+    {
+        // Display surfaces branch the "/ rok" vs "/ měsíc" cadence suffix on
+        // this predicate — firstPaymentPrice is a per-year figure for YEARLY.
+        $yearly = $this->createOrder(
+            paymentFrequency: PaymentFrequency::YEARLY,
+            startDate: new \DateTimeImmutable('2025-06-15'),
+            endDate: new \DateTimeImmutable('2027-06-15'),
+        );
+        $monthly = $this->createOrder(
+            startDate: new \DateTimeImmutable('2025-06-15'),
+            endDate: new \DateTimeImmutable('2027-06-15'),
+        );
+
+        $this->assertTrue($yearly->isYearlyFrequency());
+        $this->assertFalse($monthly->isYearlyFrequency());
+    }
+
     public function testPricingModePredicatesUpfrontOneTimeFrequency(): void
     {
         // Spec 078: ONE_TIME frequency (whole rental prepaid upfront) is never

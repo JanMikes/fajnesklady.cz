@@ -37,6 +37,9 @@ final readonly class SigningEmailContent
                 buttonLabel: 'Podepsat a zaplatit',
                 paidThroughDate: null,
                 monthlyPriceInHaler: $order->firstPaymentPrice,
+                // firstPaymentPrice is a per-year figure for YEARLY orders
+                // (bank-transfer onboarding) — the price row must not say měsíc.
+                cadenceLabel: PaymentFrequency::YEARLY === $order->paymentFrequency ? 'rok' : 'měsíc',
             ),
             CustomerBillingSituation::EXTERNALLY_PREPAID => self::externallyPrepaid($order, $situation),
             CustomerBillingSituation::FREE => new self(

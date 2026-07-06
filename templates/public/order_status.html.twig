@@ -303,6 +303,7 @@
                                         isRecurring: order.isRecurring,
                                         isUpfrontTranches: order.isPaidInUpfrontTranches,
                                         priceCzk: order.firstPaymentPriceInCzk,
+                                        yearlyAmountCzk: order.isYearlyFrequency ? order.firstPaymentPriceInCzk : null,
                                         labelClass: 'text-gray-500',
                                         valueClass: 'font-bold text-lg text-green-600',
                                     } only %}

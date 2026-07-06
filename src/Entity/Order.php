@@ -357,6 +357,16 @@ class Order implements EntityWithEvents
         return (int) $this->startDate->diff($this->endDate)->days >= PriceCalculator::WEEKLY_THRESHOLD_DAYS;
     }
 
+    /**
+     * Whether firstPaymentPrice is a PER-YEAR figure. Display surfaces must
+     * never label it "/ měsíc" for yearly orders — the recurring cadence (and
+     * the meaning of the locked amount) follows the payment frequency.
+     */
+    public function isYearlyFrequency(): bool
+    {
+        return PaymentFrequency::YEARLY === $this->paymentFrequency;
+    }
+
     public function isFixedTermRecurring(): bool
     {
         return $this->isRecurring() && null !== $this->endDate;

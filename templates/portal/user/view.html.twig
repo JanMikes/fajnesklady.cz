@@ -249,7 +249,7 @@
                                     {% endif %}
                                 </td>
                                 <td class="text-sm">
-                                    <div class="font-medium">{{ (order.firstPaymentPrice / 100)|number_format(0, ',', ' ') }} Kč{% if order.isRecurring %} / měsíc{% endif %}</div>
+                                    <div class="font-medium">{{ (order.firstPaymentPrice / 100)|number_format(0, ',', ' ') }} Kč{% if order.isRecurring %} / {{ order.isYearlyFrequency ? 'rok' : 'měsíc' }}{% endif %}</div>
                                     {% if order.individualMonthlyAmount is not null %}
                                         {% if order.individualMonthlyAmount == 0 %}
                                             <span class="badge badge-success badge-sm" title="Smlouva zdarma — bez fakturace">Zdarma</span>

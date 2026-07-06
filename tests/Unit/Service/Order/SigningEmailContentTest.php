@@ -30,6 +30,22 @@ class SigningEmailContentTest extends TestCase
         $this->assertStringContainsString('GoPay', $content->nextStepLine);
         $this->assertSame('Podepsat a zaplatit', $content->buttonLabel);
         $this->assertSame(80_000, $content->monthlyPriceInHaler);
+        $this->assertSame('měsíc', $content->cadenceLabel);
+    }
+
+    public function testYearlyOrderUsesYearlyCadence(): void
+    {
+        // Bank-transfer onboarding with YEARLY frequency lands in the same
+        // catch-all situation — firstPaymentPrice is then a PER-YEAR figure
+        // and the price row must never label it "/ měsíc".
+        $order = $this->createOrder(placeName: 'Sklady Praha', paymentFrequency: PaymentFrequency::YEARLY);
+        $order->setPaymentMethod(PaymentMethod::BANK_TRANSFER);
+
+        $content = SigningEmailContent::fromOrder($order);
+
+        $this->assertSame(CustomerBillingSituation::GOPAY_FIRST_CHARGE, $content->situation);
+        $this->assertSame(80_000, $content->monthlyPriceInHaler);
+        $this->assertSame('rok', $content->cadenceLabel);
     }
 
     public function testExternallyPrepaidContent(): void
@@ -84,7 +100,7 @@ class SigningEmailContentTest extends TestCase
         $this->assertSame(0, $content->monthlyPriceInHaler);
     }
 
-    private function createOrder(string $placeName): Order
+    private function createOrder(string $placeName, PaymentFrequency $paymentFrequency = PaymentFrequency::MONTHLY): Order
     {
         $user = new User(Uuid::v7(), 'user@example.com', 'password', 'Test', 'User', new \DateTimeImmutable());
         $owner = new User(Uuid::v7(), 'owner@example.com', 'password', 'Test', 'Owner', new \DateTimeImmutable());
@@ -121,7 +137,7 @@ class SigningEmailContentTest extends TestCase
             id: Uuid::v7(),
             user: $user,
             storage: $storage,
-            paymentFrequency: PaymentFrequency::MONTHLY,
+            paymentFrequency: $paymentFrequency,
             startDate: $startDate,
             endDate: $startDate->modify('+12 months'),
             firstPaymentPrice: 80_000,

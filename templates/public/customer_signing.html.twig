@@ -98,8 +98,8 @@
                         {% if priceViewModel.situation.value == 'gopay_first_charge' %}
                             <hr class="border-gray-200 my-2">
                             <div class="flex justify-between font-semibold">
-                                <span>{{ priceViewModel.isRecurring ? 'Měsíční platba:' : (order.isPaidInUpfrontTranches ? 'První platba:' : 'Celková cena:') }}</span>
-                                <span>{{ (priceViewModel.monthlyPriceInHaler / 100)|number_format(0, ',', ' ') }} Kč{% if priceViewModel.isRecurring %} / měsíc{% endif %}</span>
+                                <span>{{ priceViewModel.isRecurring ? (priceViewModel.cadenceLabel == 'rok' ? 'Roční platba:' : 'Měsíční platba:') : (order.isPaidInUpfrontTranches ? 'První platba:' : 'Celková cena:') }}</span>
+                                <span>{{ (priceViewModel.monthlyPriceInHaler / 100)|number_format(0, ',', ' ') }} Kč{% if priceViewModel.isRecurring %} / {{ priceViewModel.cadenceLabel }}{% endif %}</span>
                             </div>
                         {% elseif priceViewModel.situation.value == 'externally_prepaid' and not priceViewModel.prepaidCoversWholeTerm %}
                             <hr class="border-gray-200 my-2">

@@ -188,7 +188,7 @@
                                                 {{ statusLabel[order.status.value] ?? order.status.value }}
                                             </span>
                                             <p class="text-sm text-gray-900 mt-1">
-                                                {{ (order.firstPaymentPrice / 100)|number_format(2, ',', ' ') }} Kč{% if order.isRecurring %} / měsíc{% endif %}
+                                                {{ (order.firstPaymentPrice / 100)|number_format(2, ',', ' ') }} Kč{% if order.isRecurring %} / {{ order.isYearlyFrequency ? 'rok' : 'měsíc' }}{% endif %}
                                             </p>
                                         </div>
                                     </div>

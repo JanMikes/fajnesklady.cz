@@ -49,6 +49,9 @@ final readonly class SendOrderCancelledEmailHandler
                 'priceCzk' => $order->getFirstPaymentPriceInCzk(),
                 'isRecurring' => $order->isRecurring(),
                 'isUpfrontTranches' => $order->isPaidInUpfrontTranches(),
+                // For YEARLY orders firstPaymentPrice is the per-year figure —
+                // the price partial needs it to avoid labelling it "/ měsíc".
+                'yearlyAmountCzk' => $order->isYearlyFrequency() ? $order->getFirstPaymentPriceInCzk() : null,
                 'statusUrl' => $this->statusUrlGenerator->generate($order),
             ]);
 
