@@ -8,6 +8,7 @@
      manualNowBankAccount string|null         — formatted bank account for the pending cycle
      manualNowAmount    int|null              — amount in haler of the pending manual-billing request
      manualNowPeriodStart \DateTimeImmutable|null — period-start date of the pending manual-billing request
+     manualNowQrCodeDataUri string|null       — inline PNG data URI of the QR payment code for the pending cycle
      nextManualDate     \DateTimeImmutable|null — date of the next d-7 reminder when no request is open right now
 
    Free wins over external prepayment when both are set: a zero-priced contract
@@ -57,8 +58,10 @@
                             <dt class="text-amber-800">Variabilní symbol:</dt>
                             <dd class="font-mono font-semibold">{{ manualNowVariableSymbol }}</dd>
                         </dl>
-                        <img src="{{ path('public_qr_payment_image', {variableSymbol: manualNowVariableSymbol, amountInHaler: manualNowAmount}) }}"
-                             alt="QR platba" width="160" height="160" class="mt-3 rounded border border-amber-200 bg-white">
+                        {% if manualNowQrCodeDataUri is defined and manualNowQrCodeDataUri is not null %}
+                            <img src="{{ manualNowQrCodeDataUri }}"
+                                 alt="QR platba" width="160" height="160" class="mt-3 rounded border border-amber-200 bg-white">
+                        {% endif %}
                     </div>
                 </div>
             </div>

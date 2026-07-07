@@ -144,6 +144,7 @@ final readonly class OrderStatusViewModelFactory
         $manualNowBankAccount = null;
         $manualNowAmountInHaler = null;
         $manualNowPeriodStart = null;
+        $manualNowQrCodeDataUri = null;
         $nextManualPaymentRequestDate = null;
         if (null !== $contract && $contract->usesManualBillingTrack()) {
             $pendingRequest = $this->manualPaymentRequestRepository->findPendingForCurrentCycle($contract, $now);
@@ -153,6 +154,10 @@ final readonly class OrderStatusViewModelFactory
                 $manualNowBankAccount = $this->qrPaymentGenerator->getBankAccountFormatted();
                 $manualNowAmountInHaler = $pendingRequest->amount;
                 $manualNowPeriodStart = $pendingRequest->periodStart;
+                // Embed the QR inline like every other on-page QR — the signed
+                // /qr-platba route exists only for e-mails (data URIs are stripped
+                // by many mail clients); an unsigned page link would 403.
+                $manualNowQrCodeDataUri = $this->qrPaymentGenerator->generateDataUri($order->variableSymbol, $pendingRequest->amount);
             }
 
             if (null === $pendingRequest && null !== $contract->nextBillingDate) {
@@ -276,6 +281,7 @@ final readonly class OrderStatusViewModelFactory
             nextManualPaymentRequestDate: $nextManualPaymentRequestDate,
             manualNowAmountInHaler: $manualNowAmountInHaler,
             manualNowPeriodStart: $manualNowPeriodStart,
+            manualNowQrCodeDataUri: $manualNowQrCodeDataUri,
             handoverProtocol: $handoverProtocol,
             handoverViewUrl: $handoverViewUrl,
             debtPaymentUrl: $debtPaymentUrl,

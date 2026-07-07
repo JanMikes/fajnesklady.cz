@@ -49,6 +49,7 @@ final readonly class OrderStatusViewModel
         public ?\DateTimeImmutable $nextManualPaymentRequestDate = null,
         public ?int $manualNowAmountInHaler = null,
         public ?\DateTimeImmutable $manualNowPeriodStart = null,
+        public ?string $manualNowQrCodeDataUri = null,
         public ?HandoverProtocol $handoverProtocol = null,
         public ?string $handoverViewUrl = null,
         public ?string $debtPaymentUrl = null,

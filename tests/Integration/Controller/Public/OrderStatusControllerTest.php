@@ -8,8 +8,10 @@ use App\DataFixtures\OrderFixtures;
 use App\Entity\Contract;
 use App\Entity\Fine;
 use App\Entity\Invoice;
+use App\Entity\ManualPaymentRequest;
 use App\Entity\Order;
 use App\Entity\User;
+use App\Enum\BillingMode;
 use App\Enum\FineType;
 use App\Enum\OrderStatus;
 use App\Repository\ContractRepository;
@@ -280,6 +282,42 @@ class OrderStatusControllerTest extends WebTestCase
         // sidebar's existing failed-billing notice already says "Externí" elsewhere
         // — anchor on the unique sentence so this stays a focused regression check.
         $this->assertStringNotContainsString('Externí předplatné brzy končí.', $body);
+    }
+
+    public function testManualBillingPendingCycleEmbedsInlineQrCode(): void
+    {
+        // Regression: the pending-cycle QR used to render as an <img> pointing at
+        // the /qr-platba route via an *unsigned* path() — which the signed
+        // QrPaymentImageController 403s, so the QR never loaded on /stav. It must
+        // be an inline data URI like every other on-page QR.
+        $order = $this->findOrderByReference(OrderFixtures::REF_ORDER_COMPLETED);
+        $order->assignVariableSymbol('1877265723');
+
+        $contract = $this->contractRepository->findByOrder($order);
+        \assert($contract instanceof Contract, 'Fixture order must have a contract.');
+        $contract->applyBillingMode(BillingMode::MANUAL_RECURRING);
+
+        $now = new \DateTimeImmutable('2025-06-15 12:00:00');
+        $request = new ManualPaymentRequest(
+            id: Uuid::v7(),
+            contract: $contract,
+            periodStart: $now->modify('-1 day'),
+            periodEnd: $now->modify('+30 days'),
+            amount: 125_000,
+            createdAt: $now->modify('-1 day'),
+        );
+        $this->entityManager->persist($request);
+        $this->entityManager->flush();
+
+        $this->requestSigned($this->urlGenerator->generate($order));
+
+        $this->assertResponseIsSuccessful();
+        $body = (string) $this->client->getResponse()->getContent();
+        $this->assertStringContainsString('Platba k zaplacení:', $body);
+        $this->assertStringContainsString('alt="QR platba"', $body);
+        $this->assertStringContainsString('src="data:image/png;base64,', $body);
+        // The unsigned route link was the bug — it must never appear on the page.
+        $this->assertStringNotContainsString('/qr-platba/', $body);
     }
 
     private function findOnboardedOrderByStorageNumber(string $storageNumber): Order

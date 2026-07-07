@@ -87,6 +87,7 @@ final class OrderDetailController extends AbstractController
         $manualNowBankAccount = null;
         $manualNowAmount = null;
         $manualNowPeriodStart = null;
+        $manualNowQrCodeDataUri = null;
         $nextManualDate = null;
         if (null !== $contract && $contract->usesManualBillingTrack()) {
             $pending = $this->manualPaymentRequestRepository->findPendingForCurrentCycle($contract, $now);
@@ -96,6 +97,10 @@ final class OrderDetailController extends AbstractController
                 $manualNowBankAccount = $this->qrPaymentGenerator->getBankAccountFormatted();
                 $manualNowAmount = $pending->amount;
                 $manualNowPeriodStart = $pending->periodStart;
+                // Embed the QR inline like every other on-page QR — the signed
+                // /qr-platba route exists only for e-mails (data URIs are stripped
+                // by many mail clients); an unsigned page link would 403.
+                $manualNowQrCodeDataUri = $this->qrPaymentGenerator->generateDataUri($order->variableSymbol, $pending->amount);
             }
             if (null === $pending && null !== $contract->nextBillingDate) {
                 $schedule = ManualBillingReminderSchedule::fromOrder($contract->order);
@@ -135,6 +140,7 @@ final class OrderDetailController extends AbstractController
             'manualNowBankAccount' => $manualNowBankAccount,
             'manualNowAmount' => $manualNowAmount,
             'manualNowPeriodStart' => $manualNowPeriodStart,
+            'manualNowQrCodeDataUri' => $manualNowQrCodeDataUri,
             'nextManualDate' => $nextManualDate,
             'handoverProtocol' => $handoverProtocol,
             'fines' => $fines,
