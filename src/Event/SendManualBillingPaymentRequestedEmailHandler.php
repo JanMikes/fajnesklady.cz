@@ -6,6 +6,7 @@ namespace App\Event;
 
 use App\Repository\ContractRepository;
 use App\Repository\ManualPaymentRequestRepository;
+use App\Service\Billing\CzechDayCount;
 use App\Service\Billing\ManualBillingReminderSchedule;
 use App\Service\OrderStatusUrlGenerator;
 use App\Service\Payment\QrPaymentGenerator;
@@ -43,17 +44,37 @@ final readonly class SendManualBillingPaymentRequestedEmailHandler
         $storageType = $storage->storageType;
         $place = $storage->getPlace();
 
+        // Stages fire on place-configurable offsets, and a late-onboarded
+        // contract catches up off its nominal day — compute the actual
+        // day distance to the due date instead of hardcoding -7/-2/0.
+        $daysUntilDue = (int) $event->occurredOn->setTime(0, 0, 0)
+            ->diff($request->periodStart->setTime(0, 0, 0))
+            ->format('%r%a');
+        $dueWhen = match (true) {
+            $daysUntilDue > 0 => sprintf('za %s', CzechDayCount::days($daysUntilDue)),
+            0 === $daysUntilDue => 'dnes',
+            default => 'po splatnosti',
+        };
+
         [$subject, $template] = match ($event->stage) {
             ManualBillingReminderSchedule::STAGE_INITIAL => [
-                'Vaše platba bude splatná za 7 dní — Fajnesklady.cz',
+                $daysUntilDue > 0
+                    ? sprintf('Vaše platba bude splatná %s — Fajnesklady.cz', $dueWhen)
+                    : 'Vaše platba je splatná — Fajnesklady.cz',
                 'email/manual_billing_payment_initial.html.twig',
             ],
             ManualBillingReminderSchedule::STAGE_REMINDER => [
-                'Připomenutí: platba splatná za 2 dny — Fajnesklady.cz',
+                $daysUntilDue > 0
+                    ? sprintf('Připomenutí: platba splatná %s — Fajnesklady.cz', $dueWhen)
+                    : 'Připomenutí: platba je splatná — Fajnesklady.cz',
                 'email/manual_billing_payment_reminder.html.twig',
             ],
             ManualBillingReminderSchedule::STAGE_FINAL_DUE, 'manual' => [
-                'Platba je nyní splatná — Fajnesklady.cz',
+                match (true) {
+                    $daysUntilDue > 0 => sprintf('Platba je splatná %s — Fajnesklady.cz', $dueWhen),
+                    0 === $daysUntilDue => 'Platba je splatná dnes — Fajnesklady.cz',
+                    default => 'Platba je po splatnosti — Fajnesklady.cz',
+                },
                 'email/manual_billing_payment_due_today.html.twig',
             ],
             default => [null, null],
@@ -86,6 +107,8 @@ final readonly class SendManualBillingPaymentRequestedEmailHandler
                 'amountInCzk' => number_format($request->amount / 100, 2, ',', ' '),
                 'periodStart' => $request->periodStart,
                 'periodEnd' => $request->periodEnd,
+                'daysUntilDue' => $daysUntilDue,
+                'dueWhen' => $dueWhen,
                 'statusUrl' => $statusUrl,
                 'bankAccount' => $this->qrPaymentGenerator->getBankAccountFormatted(),
                 'variableSymbol' => $order->variableSymbol,

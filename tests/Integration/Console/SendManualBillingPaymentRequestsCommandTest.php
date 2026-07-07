@@ -19,9 +19,14 @@ use App\Tests\Mock\MockGoPayClient;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ManagerRegistry;
 use Psr\Clock\ClockInterface;
+use Symfony\Bridge\Twig\Mime\BodyRenderer;
+use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Console\Tester\CommandTester;
+use Symfony\Component\Mailer\Messenger\SendEmailMessage;
+use Symfony\Component\Messenger\Transport\InMemory\InMemoryTransport;
+use Twig\Environment;
 
 final class SendManualBillingPaymentRequestsCommandTest extends KernelTestCase
 {
@@ -117,10 +122,11 @@ final class SendManualBillingPaymentRequestsCommandTest extends KernelTestCase
         self::assertCount(1, $reloaded->sentStages);
     }
 
-    public function testCronDoesNothingWhenTodayIsNotAStageDay(): void
+    public function testCronDoesNothingBeforeTheEarliestStageDay(): void
     {
-        // nextBillingDate = 2025-06-20 → today (2025-06-15) is d-5, not a stage day.
-        $this->createManualContractDueOn('2025-06-20');
+        // nextBillingDate = 2025-06-25 → today (2025-06-15) is d-10, before the
+        // initial (-7) offset — the contract is dormant.
+        $this->createManualContractDueOn('2025-06-25');
 
         $this->runCron();
 
@@ -129,7 +135,99 @@ final class SendManualBillingPaymentRequestsCommandTest extends KernelTestCase
             ->from(ManualPaymentRequest::class, 'r')
             ->getQuery()
             ->getSingleScalarResult();
-        self::assertSame(0, $count, 'No ManualPaymentRequest row should be created on a non-stage day.');
+        self::assertSame(0, $count, 'No ManualPaymentRequest row should be created before the earliest stage day.');
+    }
+
+    public function testLateEntryBetweenStageDaysCatchesUpWithTheCurrentBracket(): void
+    {
+        // nextBillingDate = 2025-06-20 → today (2025-06-15) is d-5, between the
+        // initial (-7) and reminder (-2) days. A contract entering the manual
+        // track late (late onboarding, billing-mode repair) must still get the
+        // initial payment request instead of silently skipping it.
+        $contract = $this->createManualContractDueOn('2025-06-20');
+
+        $this->runCron();
+
+        $request = $this->loadRequestForContract($contract);
+        self::assertNotNull($request);
+        self::assertSame([ManualBillingReminderSchedule::STAGE_INITIAL], array_keys($request->sentStages));
+    }
+
+    public function testLateEntryAfterDueDateSendsExactlyOneCatchUpStage(): void
+    {
+        // The production incident: an admin-onboarded prepaid contract whose
+        // nextBillingDate (2025-06-14) already passed when it entered the
+        // manual track. Today (2025-06-15) is d+1 → the final-due stage is the
+        // current bracket; initial and reminder are skipped, and only ONE
+        // e-mail goes out — never a burst of all missed stages.
+        $contract = $this->createManualContractDueOn('2025-06-14');
+
+        $this->runCron();
+
+        $request = $this->loadRequestForContract($contract);
+        self::assertNotNull($request);
+        self::assertSame([ManualBillingReminderSchedule::STAGE_FINAL_DUE], array_keys($request->sentStages));
+        self::assertNotNull($request->contract->order->variableSymbol);
+
+        // The catch-up e-mail must render (strict_variables) and must NOT
+        // claim "splatná dnes" — the due date already passed.
+        $email = $this->findRenderedBillingEmail('Platba je po splatnosti — Fajnesklady.cz');
+        self::assertNotNull($email);
+        $html = (string) $email->getHtmlBody();
+        self::assertStringContainsString('po splatnosti', $html);
+        self::assertStringContainsString('14.06.2025', $html);
+    }
+
+    public function testLateEntryPastTheOverdueFinalDaySendsOnlyTheOverdueFinalStage(): void
+    {
+        // nextBillingDate = 2025-06-01 → today (2025-06-15) is d+14, past every
+        // offset. Exactly one catch-up e-mail (the last overdue stage) fires so
+        // the customer is contacted before the overdue-termination cron acts.
+        $contract = $this->createManualContractDueOn('2025-06-01');
+
+        $this->runCron();
+
+        $request = $this->loadRequestForContract($contract);
+        self::assertNotNull($request);
+        self::assertSame([ManualBillingReminderSchedule::STAGE_OVERDUE_FINAL], array_keys($request->sentStages));
+
+        // The day count is computed at send time (d+14), not hardcoded "7 dní".
+        $email = $this->findRenderedBillingEmail('Poslední upomínka: 14 dní po splatnosti — Fajnesklady.cz');
+        self::assertNotNull($email);
+        self::assertStringContainsString('14 dní po splatnosti', (string) $email->getHtmlBody());
+    }
+
+    /**
+     * Render every queued TemplatedEmail through Twig (the in-memory mailer
+     * transport defers body rendering, so template errors would otherwise
+     * never surface in tests) and return the one with the given subject.
+     */
+    private function findRenderedBillingEmail(string $subject): ?TemplatedEmail
+    {
+        $transport = static::getContainer()->get('test.messenger.transport.async');
+        \assert($transport instanceof InMemoryTransport);
+
+        /** @var Environment $twig */
+        $twig = static::getContainer()->get('test.twig');
+        $renderer = new BodyRenderer($twig);
+
+        foreach ($transport->getSent() as $envelope) {
+            $message = $envelope->getMessage();
+            if (!$message instanceof SendEmailMessage) {
+                continue;
+            }
+
+            $email = $message->getMessage();
+            if (!$email instanceof TemplatedEmail || $email->getSubject() !== $subject) {
+                continue;
+            }
+
+            $renderer->render($email);
+
+            return $email;
+        }
+
+        return null;
     }
 
     public function testOverdueStageIncrementsFailedBillingAttempts(): void

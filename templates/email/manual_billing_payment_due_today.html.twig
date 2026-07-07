@@ -1,7 +1,21 @@
-{% set subjectLine = 'Platba je splatná dnes' %}
-{% set headline = 'Platba je splatná dnes' %}
 {% set headerColor = '#dc2626' %}
-{% set intro %}
-    <p>platba za pronájem vašeho skladu je splatná <strong>dnes</strong>. Pokud jste ji ještě neuhradili, učiňte tak prosím co nejdříve níže uvedeným odkazem.</p>
-{% endset %}
+{% if daysUntilDue > 0 %}
+    {% set subjectLine = 'Platba je splatná ' ~ dueWhen %}
+    {% set headline = 'Platba je splatná ' ~ dueWhen %}
+    {% set intro %}
+        <p>platba za pronájem vašeho skladu je splatná <strong>{{ dueWhen }}</strong>, dne {{ periodStart|date('d.m.Y') }}. Uhraďte ji prosím bankovním převodem podle údajů níže.</p>
+    {% endset %}
+{% elseif daysUntilDue == 0 %}
+    {% set subjectLine = 'Platba je splatná dnes' %}
+    {% set headline = 'Platba je splatná dnes' %}
+    {% set intro %}
+        <p>platba za pronájem vašeho skladu je splatná <strong>dnes</strong>. Pokud jste ji ještě neuhradili, učiňte tak prosím co nejdříve podle údajů níže.</p>
+    {% endset %}
+{% else %}
+    {% set subjectLine = 'Platba je po splatnosti' %}
+    {% set headline = 'Platba je po splatnosti' %}
+    {% set intro %}
+        <p>platba za pronájem vašeho skladu je <strong>po splatnosti</strong> — splatná byla {{ periodStart|date('d.m.Y') }}. Pokud jste ji ještě neuhradili, učiňte tak prosím co nejdříve podle údajů níže.</p>
+    {% endset %}
+{% endif %}
 {{ include('email/_manual_billing_payment_body.html.twig') }}

@@ -6,6 +6,7 @@ namespace App\Event;
 
 use App\Repository\ContractRepository;
 use App\Repository\ManualPaymentRequestRepository;
+use App\Service\Billing\CzechDayCount;
 use App\Service\Billing\ManualBillingReminderSchedule;
 use App\Service\OrderStatusUrlGenerator;
 use App\Service\Payment\QrPaymentGenerator;
@@ -43,13 +44,21 @@ final readonly class SendManualBillingPaymentOverdueEmailHandler
         $storageType = $storage->storageType;
         $place = $storage->getPlace();
 
+        // Overdue offsets are place-configurable and a late-onboarded
+        // contract catches up off its nominal day — compute the actual
+        // days-overdue count instead of hardcoding +3/+7.
+        $daysOverdue = max(1, (int) $request->periodStart->setTime(0, 0, 0)
+            ->diff($event->occurredOn->setTime(0, 0, 0))
+            ->format('%r%a'));
+        $overdueDays = CzechDayCount::days($daysOverdue);
+
         [$subject, $template] = match ($event->stage) {
             ManualBillingReminderSchedule::STAGE_OVERDUE_FIRST => [
-                'Platba je 3 dny po splatnosti — Fajnesklady.cz',
+                sprintf('Platba je %s po splatnosti — Fajnesklady.cz', $overdueDays),
                 'email/manual_billing_payment_overdue_first.html.twig',
             ],
             ManualBillingReminderSchedule::STAGE_OVERDUE_FINAL => [
-                'Poslední upomínka: 7 dní po splatnosti — Fajnesklady.cz',
+                sprintf('Poslední upomínka: %s po splatnosti — Fajnesklady.cz', $overdueDays),
                 'email/manual_billing_payment_overdue_final.html.twig',
             ],
             default => [null, null],
@@ -82,6 +91,7 @@ final readonly class SendManualBillingPaymentOverdueEmailHandler
                 'amountInCzk' => number_format($request->amount / 100, 2, ',', ' '),
                 'periodStart' => $request->periodStart,
                 'periodEnd' => $request->periodEnd,
+                'overdueDays' => $overdueDays,
                 'statusUrl' => $statusUrl,
                 'bankAccount' => $this->qrPaymentGenerator->getBankAccountFormatted(),
                 'variableSymbol' => $order->variableSymbol,

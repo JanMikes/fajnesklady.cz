@@ -77,5 +77,11 @@ return App::config([
             'alias' => 'twig',
             'public' => true,
         ],
+        // In-memory mailer transport exposed so tests can pull queued
+        // SendEmailMessage envelopes and render/assert their content.
+        'test.messenger.transport.async' => [
+            'alias' => 'messenger.transport.async',
+            'public' => true,
+        ],
     ],
 ]);

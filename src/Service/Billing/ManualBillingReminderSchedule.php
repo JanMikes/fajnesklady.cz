@@ -66,10 +66,23 @@ final readonly class ManualBillingReminderSchedule
     }
 
     /**
-     * Return the stage whose offset matches today's calendar-day diff from
-     * $nextBillingDate. Compare in calendar days (truncated to midnight) so
-     * a DST shift or a midnight cron run hits the intended day. Returns null
-     * when today does not match any stage offset.
+     * Return the stage whose offset "bracket" covers today: the stage with
+     * the GREATEST offset <= today's calendar-day diff from $nextBillingDate
+     * (truncated to midnight so a DST shift or a midnight cron run hits the
+     * intended day). Returns null before the earliest offset day.
+     *
+     * On an uninterrupted daily-cron timeline this behaves exactly like an
+     * exact-day match: each stage first becomes "current" on its own offset
+     * day. The bracket semantics matter when a contract ENTERS the manual
+     * track late — onboarded close to (or past) the due date, repaired by a
+     * data migration, or after a cron outage. Exact matching silently
+     * skipped every stage whose day had already passed, so such a customer
+     * received no payment request at all (and could be overdue-terminated
+     * without a single e-mail). With brackets, the next cron run sends the
+     * ONE currently-applicable stage; earlier stages are never dispatched
+     * (their bracket has passed) and the handler's sentStages gate keeps
+     * every stage at most-once — a late entry never gets a burst of
+     * stacked reminders.
      */
     public function dueStageOn(\DateTimeImmutable $now, \DateTimeImmutable $nextBillingDate): ?string
     {
@@ -78,13 +91,17 @@ final readonly class ManualBillingReminderSchedule
         $diffDays = (int) $today->diff($anchor)->format('%r%a');
         $offsetToday = -$diffDays;
 
+        $currentStage = null;
+        $currentOffset = null;
+
         foreach ($this->stages() as $stage => $offset) {
-            if ($offset === $offsetToday) {
-                return $stage;
+            if ($offset <= $offsetToday && (null === $currentOffset || $offset > $currentOffset)) {
+                $currentStage = $stage;
+                $currentOffset = $offset;
             }
         }
 
-        return null;
+        return $currentStage;
     }
 
     /**

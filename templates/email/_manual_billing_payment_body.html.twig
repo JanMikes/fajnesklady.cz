@@ -37,6 +37,7 @@
                 <tr><td>Typ skladu</td><td>{{ storageType }}</td></tr>
                 <tr><td>Číslo skladu</td><td>{{ storageNumber }}</td></tr>
                 <tr><td>Období</td><td>{{ periodStart|date('d.m.Y') }} – {{ periodEnd|date('d.m.Y') }}</td></tr>
+                <tr><td>Datum splatnosti</td><td><strong>{{ periodStart|date('d.m.Y') }}</strong></td></tr>
                 <tr><td>Částka k úhradě</td><td><strong>{{ amountInCzk }} Kč vč. DPH</strong></td></tr>
             </table>
         </div>
