@@ -7,7 +7,6 @@ namespace App\Command;
 use App\Entity\BankTransaction;
 use App\Entity\Contract;
 use App\Entity\Order;
-use App\Enum\PaymentMethod;
 use App\Event\BankTransferAmountMismatch;
 use App\Repository\BankAccountMappingRepository;
 use App\Repository\BankTransactionRepository;
@@ -241,8 +240,17 @@ final readonly class ProcessIncomingBankTransactionHandler
     ): void {
         $contract = $this->contractRepository->findByOrder($order);
 
-        if (null !== $contract && $contract->usesManualBillingTrack()
-            && PaymentMethod::BANK_TRANSFER === $order->paymentMethod) {
+        // Any manual-billing-track contract collects its per-cycle payments by
+        // bank transfer (QR + variable symbol), so an incoming transfer that
+        // matches the order VS must reconcile against the contract regardless
+        // of the order's nominal first-payment method. In particular this must
+        // fire for EXTERNAL prepaid-onboarding orders (paidThroughDate set → the
+        // first period was paid outside the system, later periods run on the
+        // manual track) and for GOPAY-first orders that never established a
+        // recurring card token. Mirrors the account-mapping branch above, which
+        // gates on usesManualBillingTrack() alone — the VS branch used to also
+        // require BANK_TRANSFER, which silently left those transfers unmatched.
+        if (null !== $contract && $contract->usesManualBillingTrack()) {
             $expectedAmount = $this->amountCalculator->calculate($contract, $now);
 
             if ($bankTx->amount !== $expectedAmount) {
