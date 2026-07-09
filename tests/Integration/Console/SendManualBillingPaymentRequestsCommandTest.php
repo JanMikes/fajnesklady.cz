@@ -74,6 +74,23 @@ final class SendManualBillingPaymentRequestsCommandTest extends KernelTestCase
         self::assertSame([], $this->goPayClient->getCreatedPayments());
     }
 
+    public function testPaymentGraceSuppressesReminder(): void
+    {
+        // nextBillingDate = 2025-06-12 → today (2025-06-15) is d+3 = overdue
+        // first, which would normally fire — but an admin extension is active.
+        $contract = $this->createManualContractDueOn('2025-06-12');
+        $contract->extendPaymentDeadline(new \DateTimeImmutable('2025-06-30'), $this->clock->now());
+        $this->entityManager->flush();
+
+        $exitCode = $this->runCron();
+
+        self::assertSame(0, $exitCode);
+        self::assertNull(
+            $this->loadRequestForContract($contract),
+            'No payment-request row is created while an extension is in effect.',
+        );
+    }
+
     public function testRunningCronTwiceTheSameDayDoesNotResendTheStage(): void
     {
         $contract = $this->createManualContractDueOn('2025-06-22');

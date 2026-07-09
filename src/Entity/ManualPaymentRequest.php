@@ -103,6 +103,18 @@ class ManualPaymentRequest
         $this->paidAt = $now;
     }
 
+    /**
+     * Re-open this cycle's request after an admin extends the deadline
+     * (spec 086) so the post-grace reminder ladder re-fires on the same
+     * period row instead of being silenced by the sentStages gate.
+     */
+    public function reopenForExtension(): void
+    {
+        $this->sentStages = [];
+        $this->status = self::STATUS_PENDING;
+        $this->paidAt = null;
+    }
+
     public function markExpired(\DateTimeImmutable $now): void
     {
         $this->status = self::STATUS_EXPIRED;

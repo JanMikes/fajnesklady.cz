@@ -445,7 +445,10 @@ class ContractRepository
             ->andWhere('c.failedBillingAttempts = 0')
             ->andWhere('c.endDate IS NULL OR c.endDate >= :now')
             ->andWhere('c.terminatesAt IS NULL OR c.terminatesAt >= :now')
+            // Spec 086: an active admin extension pauses auto-charging until it lapses.
+            ->andWhere('c.paymentGraceUntil IS NULL OR c.paymentGraceUntil < :graceThreshold')
             ->setParameter('now', $now)
+            ->setParameter('graceThreshold', $now->setTime(0, 0, 0))
             ->getQuery()
             ->getResult();
     }
@@ -514,8 +517,11 @@ class ContractRepository
                 '(c.failedBillingAttempts = 1 AND c.lastBillingFailedAt <= :retryAfter3Days) OR '
                 .'(c.failedBillingAttempts = 2 AND c.lastBillingFailedAt <= :retryAfter4Days)'
             )
+            // Spec 086: an active admin extension pauses retries until it lapses.
+            ->andWhere('c.paymentGraceUntil IS NULL OR c.paymentGraceUntil < :graceThreshold')
             ->setParameter('retryAfter3Days', $retryAfter3Days)
             ->setParameter('retryAfter4Days', $retryAfter4Days)
+            ->setParameter('graceThreshold', $now->setTime(0, 0, 0))
             ->getQuery()
             ->getResult();
     }
@@ -587,7 +593,10 @@ class ContractRepository
             ->leftJoin('c.order', 'o')
             ->where('c.terminatedAt IS NULL')
             ->andWhere('c.nextBillingDate IS NOT NULL')
-            ->andWhere('c.nextBillingDate <= :overdueSince')
+            // Spec 086: an admin extension (paymentGraceUntil) re-anchors the
+            // termination countdown to the extended date — measure overdue
+            // against it, not the raw billing anchor.
+            ->andWhere('COALESCE(c.paymentGraceUntil, c.nextBillingDate) <= :overdueSince')
             ->setParameter('overdueSince', $overdueSince)
             ->orderBy('c.nextBillingDate', 'ASC')
             ->getQuery()
@@ -613,13 +622,16 @@ class ContractRepository
             ->leftJoin('s.place', 'p')
             ->leftJoin('c.order', 'o')
             ->where(
-                // Active contracts with billing problems
-                '(c.terminatedAt IS NULL AND (c.failedBillingAttempts > 0 OR '
+                // Active contracts with billing problems — an active admin
+                // extension (spec 086) suppresses the row until it lapses.
+                '(c.terminatedAt IS NULL AND (c.paymentGraceUntil IS NULL OR c.paymentGraceUntil < :graceThreshold) '
+                .'AND (c.failedBillingAttempts > 0 OR '
                 .'(c.nextBillingDate IS NOT NULL AND c.nextBillingDate < :overdueThreshold))) OR '
                 // Terminated contracts with outstanding debt
                 .'(c.outstandingDebtAmount IS NOT NULL AND c.outstandingDebtAmount > 0)'
             )
             ->setParameter('overdueThreshold', $now->modify('-1 day'))
+            ->setParameter('graceThreshold', $now->setTime(0, 0, 0))
             ->orderBy('c.outstandingDebtAmount', 'DESC')
             ->addOrderBy('c.failedBillingAttempts', 'DESC')
             ->getQuery()

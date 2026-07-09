@@ -90,6 +90,23 @@ class TerminateOverdueContractsCommandTest extends KernelTestCase
         }, priority: 1024);
     }
 
+    public function testContractInPaymentGraceIsNotTerminated(): void
+    {
+        // Overdue well past the 7-day limit, but an admin extended the deadline
+        // into the future — spec 086 suppresses termination until it lapses.
+        $contract = $this->createOverdueContract('sweep-grace', dueDaysAgo: 30);
+        $contract->applyBillingMode(BillingMode::MANUAL_RECURRING);
+        $contract->extendPaymentDeadline($this->clock->now()->modify('+10 days'), $this->clock->now());
+        $this->entityManager->flush();
+
+        $this->runSweep();
+
+        $this->entityManager->clear();
+        $reloaded = $this->entityManager->find(Contract::class, $contract->id);
+        self::assertNotNull($reloaded);
+        self::assertFalse($reloaded->isTerminated(), 'An active extension must suppress termination.');
+    }
+
     public function testManualContractOverduePastLimitIsTerminatedWithDebtAndEmails(): void
     {
         $contract = $this->createOverdueContract('sweep-manual', dueDaysAgo: 8);

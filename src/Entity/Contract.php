@@ -82,6 +82,18 @@ class Contract implements EntityWithEvents
     public private(set) ?\DateTimeImmutable $paidThroughDate = null;
 
     /**
+     * Admin-granted extension of the payment deadline (spec 086). While
+     * today <= this date, dunning reminders, auto-charge/retry and the overdue
+     * termination sweep are all suppressed; after it, the dunning ladder and
+     * the termination countdown re-anchor to this date (see
+     * {@see self::effectiveDunningAnchor()}). Deliberately orthogonal to
+     * nextBillingDate so the billing period never drifts. Cleared by any
+     * recorded payment.
+     */
+    #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
+    public private(set) ?\DateTimeImmutable $paymentGraceUntil = null;
+
+    /**
      * When the customer was last notified about an upcoming recurring charge.
      * Used to (a) prevent duplicate ≥6-month-gap notices firing every cron run
      * inside the 7-day pre-charge window, and (b) record that an admin-triggered
@@ -242,6 +254,9 @@ class Contract implements EntityWithEvents
         $this->lastBillingFailedAt = null;
         $this->pendingRecurringPaymentId = null;
         $this->paymentDemandSentAt = null;
+        // A real payment landing during an admin extension makes the extension
+        // moot (spec 086) — clear it so the next cycle dunning uses nextBillingDate.
+        $this->paymentGraceUntil = null;
     }
 
     public function recordFailedBillingAttempt(\DateTimeImmutable $failedAt): void
@@ -592,6 +607,72 @@ class Contract implements EntityWithEvents
         // Prepayment covering the whole term leaves no anchor: nothing to bill,
         // nothing for the manual cron to request, nothing for the overdue sweep.
         $this->nextBillingDate = $resumesOn > $this->endDate ? null : $resumesOn;
+    }
+
+    /**
+     * True while an admin-granted payment extension (spec 086) is still in
+     * effect: dunning, auto-charge/retry and overdue termination are all
+     * suppressed until (and including) $paymentGraceUntil.
+     */
+    public function isInPaymentGrace(\DateTimeImmutable $now): bool
+    {
+        return null !== $this->paymentGraceUntil
+            && $now->setTime(0, 0, 0) <= $this->paymentGraceUntil->setTime(0, 0, 0);
+    }
+
+    /**
+     * The date the dunning ladder and the termination countdown are measured
+     * from. An active or lapsed extension re-anchors both to the extended date
+     * (spec 086); otherwise the raw billing anchor is used. Never affects the
+     * billing period itself (paidThroughDate / next-period computation).
+     */
+    public function effectiveDunningAnchor(): ?\DateTimeImmutable
+    {
+        return $this->paymentGraceUntil ?? $this->nextBillingDate;
+    }
+
+    /**
+     * Extend the payment deadline (spec 086). Sets paymentGraceUntil only —
+     * nextBillingDate/paidThroughDate stay put so future cycles never drift.
+     */
+    public function extendPaymentDeadline(\DateTimeImmutable $newDeadline, \DateTimeImmutable $now): void
+    {
+        if ($this->isTerminated()) {
+            throw new \DomainException('Cannot extend a terminated contract.');
+        }
+
+        if (null === $this->nextBillingDate) {
+            throw new \DomainException('Nothing is due — no deadline to extend.');
+        }
+
+        $floor = $this->effectiveDunningAnchor();
+        if (null !== $floor && $newDeadline->setTime(0, 0, 0) <= $floor->setTime(0, 0, 0)) {
+            throw new \DomainException('New deadline must be after the current due date.');
+        }
+
+        if ($newDeadline->setTime(0, 0, 0) <= $now->setTime(0, 0, 0)) {
+            throw new \DomainException('New deadline must be in the future.');
+        }
+
+        $this->paymentGraceUntil = $newDeadline;
+    }
+
+    /**
+     * Record an off-system payment (cash / other bank account) covering the
+     * rental through $paidThroughDate (spec 086). Advances the anchor like a
+     * real charge and clears every dunning flag, including any active grace.
+     */
+    public function recordExternalPayment(\DateTimeImmutable $paidThroughDate, \DateTimeImmutable $now): void
+    {
+        $this->lastBilledAt = $now;
+        $this->paidThroughDate = $paidThroughDate;
+        $resumesOn = $paidThroughDate->modify('+1 day');
+        $this->nextBillingDate = $resumesOn > $this->getEffectiveEndDate() ? null : $resumesOn;
+        $this->failedBillingAttempts = 0;
+        $this->lastBillingFailedAt = null;
+        $this->pendingRecurringPaymentId = null;
+        $this->paymentDemandSentAt = null;
+        $this->paymentGraceUntil = null;
     }
 
     /**

@@ -64,8 +64,18 @@ final class SendManualBillingPaymentRequestsCommand extends Command
                     continue;
                 }
 
+                // Spec 086: an admin extension silences dunning until the
+                // extended date.
+                if ($contract->isInPaymentGrace($now)) {
+                    continue;
+                }
+
                 $schedule = ManualBillingReminderSchedule::fromOrder($contract->order);
-                $stage = $schedule->dueStageOn($now, $contract->nextBillingDate);
+                // Re-anchor the ladder to a lapsed extension so the post-grace
+                // cadence is measured from the extended date, not the original
+                // due date (nextBillingDate is guaranteed non-null above).
+                $anchor = $contract->effectiveDunningAnchor() ?? $contract->nextBillingDate;
+                $stage = $schedule->dueStageOn($now, $anchor);
 
                 if (null === $stage) {
                     continue;

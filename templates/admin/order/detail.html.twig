@@ -548,13 +548,38 @@
     {% set hasOnboardingAction = order.createdByAdmin is not null and order.signedAt is not null and order.paidAt is null %}
     {% set hasBillingAction = contract is not null and contract.usesManualBillingTrack() and hasPendingManualPayment %}
     {% set payableFines = fines|filter(fine => fine.payable) %}
-    {% if hasSigningAction or hasOnboardingAction or hasBillingAction or payableFines|length > 0 %}
+    {% set canExtendDeadline = contract is not null and not contract.isTerminated() and contract.nextBillingDate is not null %}
+    {% set canRecordExternalPayment = order.hasSignature() and (canExtendDeadline or order.canBePaid()) %}
+    {% if hasSigningAction or hasOnboardingAction or hasBillingAction or payableFines|length > 0 or canExtendDeadline or canRecordExternalPayment %}
     <div class="mt-6 bg-white shadow overflow-hidden sm:rounded-lg border-l-4 border-blue-400">
         <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
             <h3 class="text-lg font-medium text-gray-900">Manuální akce</h3>
         </div>
         <div class="px-4 py-5 sm:p-6">
+            {% if contract is not null and contract.paymentGraceUntil is not null %}
+                <div class="mb-4 rounded-md bg-blue-50 border border-blue-200 px-4 py-2 text-sm text-blue-800">
+                    Splatnost prodloužena do <strong>{{ contract.paymentGraceUntil|date('j. n. Y') }}</strong> — do té doby se neposílají výzvy k platbě ani nedojde k ukončení smlouvy.
+                </div>
+            {% endif %}
             <div class="flex flex-wrap gap-3">
+                {% if canRecordExternalPayment %}
+                    <a href="{{ path('admin_order_record_external_payment', {id: order.id}) }}"
+                       class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        <svg class="h-4 w-4 mr-2 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Označit jako externě zaplaceno
+                    </a>
+                {% endif %}
+                {% if canExtendDeadline %}
+                    <button type="button" onclick="document.getElementById('extendDeadlineModal').showModal()"
+                            class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        <svg class="h-4 w-4 mr-2 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Prodloužit splatnost
+                    </button>
+                {% endif %}
                 {% if hasSigningAction %}
                     <form method="post" action="{{ path('admin_order_resend_signing_link', {id: order.id}) }}">
                         <button type="submit" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
@@ -602,6 +627,35 @@
             </div>
         </div>
     </div>
+    {% endif %}
+
+    {% if canExtendDeadline %}
+    <dialog id="extendDeadlineModal" class="modal">
+        <div class="modal-box">
+            <h3 class="text-lg font-bold text-gray-900">Prodloužit splatnost</h3>
+            <div class="py-2 text-sm text-gray-600">
+                Do zvoleného data se pozastaví výzvy k platbě a smlouva nebude ukončena pro nezaplacení. Po tomto datu
+                se výzvy i lhůta pro ukončení počítají znovu od nového data.
+            </div>
+            {% set deadlineFloor = contract.effectiveDunningAnchor() ?? contract.nextBillingDate %}
+            {% set minDeadline = (deadlineFloor > date() ? deadlineFloor : date())|date_modify('+1 day')|date('Y-m-d') %}
+            <form action="{{ path('admin_contract_extend_deadline', {id: contract.id}) }}" method="post">
+                <div class="form-group mt-4">
+                    <label class="form-label" for="extendDeadlineDate">Nové datum splatnosti</label>
+                    <input type="date" name="newDeadline" id="extendDeadlineDate" required
+                           min="{{ minDeadline }}"
+                           class="form-input" />
+                </div>
+                <div class="modal-action">
+                    <button type="button" class="btn btn-ghost" onclick="document.getElementById('extendDeadlineModal').close()">Zrušit</button>
+                    <button type="submit" class="btn btn-primary">Prodloužit splatnost</button>
+                </div>
+            </form>
+        </div>
+        <form method="dialog" class="modal-backdrop">
+            <button>close</button>
+        </form>
+    </dialog>
     {% endif %}
 
     {# Email history #}
