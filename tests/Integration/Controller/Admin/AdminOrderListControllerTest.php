@@ -7,8 +7,10 @@ namespace App\Tests\Integration\Controller\Admin;
 use App\Entity\Contract;
 use App\Entity\Order;
 use App\Entity\User;
+use App\Enum\TerminationReason;
 use App\Service\Order\OrderReferenceFormatter;
 use Doctrine\ORM\EntityManagerInterface;
+use Psr\Clock\ClockInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
@@ -73,6 +75,27 @@ class AdminOrderListControllerTest extends WebTestCase
         $this->assertResponseIsSuccessful();
         $this->assertSelectorTextContains('table', 'Dluh');
         $this->assertSelectorTextContains('table', 'Po splatnosti');
+    }
+
+    public function testTerminatedContractShowsUkoncenoBadgeInList(): void
+    {
+        $this->client->loginUser($this->findUserByEmail('admin@example.com'), 'main');
+
+        // Terminating a contract sets contract.terminatedAt but leaves the order
+        // status = completed; the list must surface the ended state anyway.
+        $contract = $this->findAnyContract();
+        $contract->terminate(
+            static::getContainer()->get(ClockInterface::class)->now(),
+            TerminationReason::ADMIN,
+            releaseStorage: false,
+        );
+        $this->entityManager->flush();
+
+        $reference = static::getContainer()->get(OrderReferenceFormatter::class)->format($contract->order);
+        $this->client->request('GET', '/portal/admin/orders?q='.$reference);
+
+        $this->assertResponseIsSuccessful();
+        $this->assertSelectorTextContains('table', 'Ukončeno');
     }
 
     public function testSearchByCustomerEmailFindsOrders(): void
@@ -153,6 +176,20 @@ class AdminOrderListControllerTest extends WebTestCase
         \assert($order instanceof Order);
 
         return $order;
+    }
+
+    private function findAnyContract(): Contract
+    {
+        $contract = $this->entityManager->createQueryBuilder()
+            ->select('c')
+            ->from(Contract::class, 'c')
+            ->where('c.terminatedAt IS NULL')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+        \assert($contract instanceof Contract);
+
+        return $contract;
     }
 
     private function findContractWithDebt(): Contract

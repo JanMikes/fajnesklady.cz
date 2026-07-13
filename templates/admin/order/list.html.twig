@@ -90,6 +90,9 @@
                                     <span class="badge {{ statusClass[order.status.value] ?? 'badge-ghost' }}">
                                         {{ statusLabel[order.status.value] ?? order.status.value }}
                                     </span>
+                                    {% if contract and contract.terminatedAt %}
+                                        <span class="badge badge-error" title="Smlouva ukončena {{ contract.terminatedAt|date('d.m.Y') }}">Ukončeno</span>
+                                    {% endif %}
                                     {% if order.individualMonthlyAmount is not null %}
                                         {% if order.individualMonthlyAmount == 0 %}
                                             <span class="badge badge-success badge-sm" title="Smlouva zdarma — bez fakturace">Zdarma</span>
