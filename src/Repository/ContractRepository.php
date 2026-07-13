@@ -15,6 +15,7 @@ use App\Enum\BillingMode;
 use App\Exception\ContractNotFound;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\QueryBuilder;
 use Symfony\Component\Uid\Uuid;
 
 class ContractRepository
@@ -27,6 +28,29 @@ class ContractRepository
      * contracts that have not yet converted.
      */
     public const array RECURRING_BILLING_MODES = ['auto_recurring', 'manual_recurring'];
+
+    /**
+     * Single source of truth for "this contract is overdue". EVERY overdue
+     * surface (the /po-splatnosti list, the sidebar badge count, the overdue
+     * sum, and the per-user / per-order overdue badges) MUST filter through
+     * this so they can never disagree.
+     *
+     * Overdue = an ACTIVE contract with a billing problem (a failed billing
+     * attempt, or a nextBillingDate more than a day in the past) whose
+     * admin-granted payment-deadline extension (spec 086,
+     * {@see Contract::$paymentGraceUntil}) has lapsed — OR any contract still
+     * carrying outstanding debt. The grace guard is what previously drifted:
+     * it lived only in the list query, so an extended contract vanished from
+     * the list yet was still tallied by the badge ("badge says 2, list shows 1").
+     *
+     * References both :overdueThreshold and :graceThreshold — bind them via
+     * {@see self::setOverdueParameters()}.
+     */
+    private const string OVERDUE_PREDICATE =
+        '(c.terminatedAt IS NULL AND (c.paymentGraceUntil IS NULL OR c.paymentGraceUntil < :graceThreshold) '
+        .'AND (c.failedBillingAttempts > 0 OR '
+        .'(c.nextBillingDate IS NOT NULL AND c.nextBillingDate < :overdueThreshold))) OR '
+        .'(c.outstandingDebtAmount IS NOT NULL AND c.outstandingDebtAmount > 0)';
 
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
@@ -610,7 +634,7 @@ class ContractRepository
      */
     public function findWithPaymentIssues(\DateTimeImmutable $now): array
     {
-        return $this->entityManager->createQueryBuilder()
+        $qb = $this->entityManager->createQueryBuilder()
             // Fetch-join the to-one relations the overdue views + dashboard
             // tiles + export all traverse (user, storage→type/place, order) so
             // rendering them doesn't fire a lazy query per contract (N+1).
@@ -621,21 +645,25 @@ class ContractRepository
             ->leftJoin('s.storageType', 'st')
             ->leftJoin('s.place', 'p')
             ->leftJoin('c.order', 'o')
-            ->where(
-                // Active contracts with billing problems — an active admin
-                // extension (spec 086) suppresses the row until it lapses.
-                '(c.terminatedAt IS NULL AND (c.paymentGraceUntil IS NULL OR c.paymentGraceUntil < :graceThreshold) '
-                .'AND (c.failedBillingAttempts > 0 OR '
-                .'(c.nextBillingDate IS NOT NULL AND c.nextBillingDate < :overdueThreshold))) OR '
-                // Terminated contracts with outstanding debt
-                .'(c.outstandingDebtAmount IS NOT NULL AND c.outstandingDebtAmount > 0)'
-            )
-            ->setParameter('overdueThreshold', $now->modify('-1 day'))
-            ->setParameter('graceThreshold', $now->setTime(0, 0, 0))
+            ->where(self::OVERDUE_PREDICATE)
             ->orderBy('c.outstandingDebtAmount', 'DESC')
-            ->addOrderBy('c.failedBillingAttempts', 'DESC')
-            ->getQuery()
-            ->getResult();
+            ->addOrderBy('c.failedBillingAttempts', 'DESC');
+        $this->setOverdueParameters($qb, $now);
+
+        return $qb->getQuery()->getResult();
+    }
+
+    /**
+     * Binds the two named parameters referenced by {@see self::OVERDUE_PREDICATE}.
+     *
+     * `overdueThreshold` = now minus a day (a bill is only "overdue" once it is
+     * more than a day late). `graceThreshold` = today at midnight, so a
+     * day-precision `paymentGraceUntil` still in effect today suppresses the row.
+     */
+    private function setOverdueParameters(QueryBuilder $qb, \DateTimeImmutable $now): void
+    {
+        $qb->setParameter('overdueThreshold', $now->modify('-1 day'))
+            ->setParameter('graceThreshold', $now->setTime(0, 0, 0));
     }
 
     /**
@@ -687,43 +715,34 @@ class ContractRepository
 
     public function countOverdueContracts(\DateTimeImmutable $now): int
     {
-        return (int) $this->entityManager->createQueryBuilder()
+        $qb = $this->entityManager->createQueryBuilder()
             ->select('COUNT(c.id)')
             ->from(Contract::class, 'c')
-            ->where(
-                '(c.terminatedAt IS NULL AND (c.failedBillingAttempts > 0 OR '
-                .'(c.nextBillingDate IS NOT NULL AND c.nextBillingDate < :overdueThreshold))) OR '
-                .'(c.outstandingDebtAmount IS NOT NULL AND c.outstandingDebtAmount > 0)'
-            )
+            ->where(self::OVERDUE_PREDICATE)
             // Free contracts (individualMonthlyAmount = 0) skip charging entirely — a "0 Kč overdue"
             // entry would be meaningless. Mirrors OverdueChecker::findOverdueViews()'s isFree() filter.
-            ->andWhere('c.individualMonthlyAmount IS NULL OR c.individualMonthlyAmount > 0')
-            ->setParameter('overdueThreshold', $now->modify('-1 day'))
-            ->getQuery()
-            ->getSingleScalarResult();
+            ->andWhere('c.individualMonthlyAmount IS NULL OR c.individualMonthlyAmount > 0');
+        $this->setOverdueParameters($qb, $now);
+
+        return (int) $qb->getQuery()->getSingleScalarResult();
     }
 
     public function sumOverdueAmount(\DateTimeImmutable $now): int
     {
         // SUM = outstandingDebt for terminated, else order.firstPaymentPrice (one unpaid month).
-        $result = $this->entityManager->createQueryBuilder()
+        $qb = $this->entityManager->createQueryBuilder()
             ->select(
                 'SUM(CASE WHEN c.terminatedAt IS NOT NULL AND c.outstandingDebtAmount > 0 '
                 .'THEN c.outstandingDebtAmount ELSE o.firstPaymentPrice END)'
             )
             ->from(Contract::class, 'c')
             ->join('c.order', 'o')
-            ->where(
-                '(c.terminatedAt IS NULL AND (c.failedBillingAttempts > 0 OR '
-                .'(c.nextBillingDate IS NOT NULL AND c.nextBillingDate < :overdueThreshold))) OR '
-                .'(c.outstandingDebtAmount IS NOT NULL AND c.outstandingDebtAmount > 0)'
-            )
+            ->where(self::OVERDUE_PREDICATE)
             // Free contracts (individualMonthlyAmount = 0) skip charging — exclude them so the
             // sum stays consistent with countOverdueContracts() and OverdueChecker::summarise().
-            ->andWhere('c.individualMonthlyAmount IS NULL OR c.individualMonthlyAmount > 0')
-            ->setParameter('overdueThreshold', $now->modify('-1 day'))
-            ->getQuery()
-            ->getSingleScalarResult();
+            ->andWhere('c.individualMonthlyAmount IS NULL OR c.individualMonthlyAmount > 0');
+        $this->setOverdueParameters($qb, $now);
+        $result = $qb->getQuery()->getSingleScalarResult();
 
         return (int) ($result ?? 0);
     }
@@ -747,12 +766,8 @@ class ContractRepository
         $qb = $this->entityManager->createQueryBuilder()
             ->select('DISTINCT IDENTITY(c.user) AS userId')
             ->from(Contract::class, 'c')
-            ->where(
-                '(c.terminatedAt IS NULL AND (c.failedBillingAttempts > 0 OR '
-                .'(c.nextBillingDate IS NOT NULL AND c.nextBillingDate < :overdueThreshold))) OR '
-                .'(c.outstandingDebtAmount IS NOT NULL AND c.outstandingDebtAmount > 0)'
-            )
-            ->setParameter('overdueThreshold', $now->modify('-1 day'));
+            ->where(self::OVERDUE_PREDICATE);
+        $this->setOverdueParameters($qb, $now);
 
         if (null !== $restrictToUserIds) {
             $qb->andWhere('c.user IN (:ids)')->setParameter('ids', $restrictToUserIds);
@@ -781,20 +796,16 @@ class ContractRepository
             return [];
         }
 
-        /** @var array<int, array{contractId: string}> $rows */
-        $rows = $this->entityManager->createQueryBuilder()
+        $qb = $this->entityManager->createQueryBuilder()
             ->select('c.id AS contractId')
             ->from(Contract::class, 'c')
-            ->where(
-                '(c.terminatedAt IS NULL AND (c.failedBillingAttempts > 0 OR '
-                .'(c.nextBillingDate IS NOT NULL AND c.nextBillingDate < :overdueThreshold))) OR '
-                .'(c.outstandingDebtAmount IS NOT NULL AND c.outstandingDebtAmount > 0)'
-            )
+            ->where(self::OVERDUE_PREDICATE)
             ->andWhere('c.order IN (:orderIds)')
-            ->setParameter('overdueThreshold', $now->modify('-1 day'))
-            ->setParameter('orderIds', $orderIds)
-            ->getQuery()
-            ->getArrayResult();
+            ->setParameter('orderIds', $orderIds);
+        $this->setOverdueParameters($qb, $now);
+
+        /** @var array<int, array{contractId: string}> $rows */
+        $rows = $qb->getQuery()->getArrayResult();
 
         return array_values(array_map(static fn (array $r): string => (string) $r['contractId'], $rows));
     }

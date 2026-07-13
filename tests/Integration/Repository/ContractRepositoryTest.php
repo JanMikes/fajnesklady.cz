@@ -619,6 +619,54 @@ class ContractRepositoryTest extends KernelTestCase
         $this->assertContains($tenant->id->toRfc4122(), $userIds);
     }
 
+    public function testActivePaymentGraceSuppressesContractAcrossEveryOverdueSurface(): void
+    {
+        $now = new \DateTimeImmutable('2025-06-15 12:00:00');
+
+        // Isolate so exact counts/sums are assertable (DAMA rolls back).
+        $this->entityManager->getConnection()->executeStatement('DELETE FROM contract');
+
+        $tenant = $this->createUser('overdue-grace@test.com');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+        $storagePlain = $this->createStorage($storageType, $place, 'GRC1');
+        $storageGraced = $this->createStorage($storageType, $place, 'GRC2');
+
+        // Plainly overdue active contract — must surface everywhere.
+        $orderPlain = $this->createOrder($tenant, $storagePlain, $now->modify('-30 days'), $now->modify('+335 days'));
+        $contractPlain = $this->createContract($orderPlain, $tenant, $storagePlain, $now->modify('-30 days'), $now->modify('+335 days'));
+        $contractPlain->setRecurringPayment('parent-plain', $now->modify('-5 days'), $now->modify('-5 days'));
+        $contractPlain->recordFailedBillingAttempt($now->modify('-3 days'));
+
+        // Identically overdue, but the admin extended its payment deadline into
+        // the future (spec 086). It must be suppressed on EVERY overdue surface —
+        // the "badge says 2, list shows 1" bug was this contract being tallied by
+        // the count query while the list query (which had the grace guard) hid it.
+        $orderGraced = $this->createOrder($tenant, $storageGraced, $now->modify('-30 days'), $now->modify('+335 days'));
+        $contractGraced = $this->createContract($orderGraced, $tenant, $storageGraced, $now->modify('-30 days'), $now->modify('+335 days'));
+        $contractGraced->setRecurringPayment('parent-graced', $now->modify('-5 days'), $now->modify('-5 days'));
+        $contractGraced->recordFailedBillingAttempt($now->modify('-3 days'));
+        $contractGraced->extendPaymentDeadline($now->modify('+7 days'), $now);
+
+        $this->entityManager->flush();
+
+        // The list already applied the grace guard...
+        $listedIds = array_map(
+            static fn (Contract $c): string => $c->id->toRfc4122(),
+            $this->repository->findWithPaymentIssues($now),
+        );
+        $this->assertContains($contractPlain->id->toRfc4122(), $listedIds);
+        $this->assertNotContains($contractGraced->id->toRfc4122(), $listedIds);
+
+        // ...and now every other overdue surface agrees: 1, not 2.
+        $this->assertSame(1, $this->repository->countOverdueContracts($now));
+        $this->assertSame(10000, $this->repository->sumOverdueAmount($now));
+
+        $overdueContractIds = $this->repository->findOverdueContractIds($now, [$orderPlain->id, $orderGraced->id]);
+        $this->assertContains($contractPlain->id->toRfc4122(), $overdueContractIds);
+        $this->assertNotContains($contractGraced->id->toRfc4122(), $overdueContractIds);
+    }
+
     public function testFindOverdueUserIdsRestrictedToSubsetReturnsEmptyForNonDebtor(): void
     {
         $now = new \DateTimeImmutable('2025-06-15 12:00:00');
