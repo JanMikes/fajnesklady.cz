@@ -66,13 +66,17 @@ class ProcessPaymentNotificationHandlerTest extends KernelTestCase
         $this->assertNotNull($refreshedOrder->paidAt);
     }
 
-    public function testProcessPaymentNotificationCancelsOrderOnCanceled(): void
+    public function testCanceledPaymentSessionKeepsOrderPayable(): void
     {
+        // Regression (2026-07-14, order 019f5cdd): a dead GoPay payment
+        // SESSION must not cancel the ORDER. The customer may retry — the
+        // order lives until its own expiresAt (expiry cron).
         $order = $this->createAndInitiatePayment();
         $paymentId = $order->goPayPaymentId;
         \assert(null !== $paymentId);
 
-        // Simulate payment cancellation in GoPay
+        $storageStatusBefore = $order->storage->status;
+
         $this->goPayClient->simulatePaymentCanceled($paymentId);
 
         $this->commandBus->dispatch(new ProcessPaymentNotificationCommand($paymentId));
@@ -80,7 +84,72 @@ class ProcessPaymentNotificationHandlerTest extends KernelTestCase
         $this->entityManager->clear();
         $refreshedOrder = $this->entityManager->find(\App\Entity\Order::class, $order->id);
 
-        $this->assertSame(OrderStatus::CANCELLED, $refreshedOrder->status);
+        $this->assertSame(OrderStatus::AWAITING_PAYMENT, $refreshedOrder->status, 'Dead payment session must not cancel the order.');
+        $this->assertNull($refreshedOrder->cancelledAt);
+        $this->assertNull($refreshedOrder->goPayPaymentId, 'Dead payment session ID must be forgotten.');
+        $this->assertSame($storageStatusBefore, $refreshedOrder->storage->status, 'Dead payment session must not touch the storage.');
+
+        $this->assertAuditEventExists($order->id, 'payment_session_expired');
+        $this->assertAuditEventDoesNotExist($order->id, 'cancelled');
+    }
+
+    public function testTimeoutedPaymentSessionKeepsOrderPayableAndAllowsRetry(): void
+    {
+        $order = $this->createAndInitiatePayment();
+        $paymentId = $order->goPayPaymentId;
+        \assert(null !== $paymentId);
+
+        $this->goPayClient->simulatePaymentTimeouted($paymentId);
+        $this->commandBus->dispatch(new ProcessPaymentNotificationCommand($paymentId));
+        $this->entityManager->flush();
+
+        // A re-delivered webhook for the forgotten payment ID must be a no-op.
+        $this->commandBus->dispatch(new ProcessPaymentNotificationCommand($paymentId));
+        $this->entityManager->flush();
+
+        $refreshedOrder = $this->entityManager->find(\App\Entity\Order::class, $order->id);
+        \assert(null !== $refreshedOrder);
+        $this->assertSame(OrderStatus::AWAITING_PAYMENT, $refreshedOrder->status);
+
+        // Customer retries: a FRESH GoPay payment is created and completes.
+        $this->commandBus->dispatch(new InitiatePaymentCommand(
+            order: $refreshedOrder,
+            returnUrl: 'https://example.com/return',
+            notificationUrl: 'https://example.com/webhook',
+        ));
+        $retryPaymentId = $refreshedOrder->goPayPaymentId;
+        $this->assertNotNull($retryPaymentId, 'Retry must produce a fresh GoPay payment.');
+        $this->assertNotSame($paymentId, $retryPaymentId);
+
+        $this->goPayClient->simulatePaymentPaid($retryPaymentId);
+        $this->commandBus->dispatch(new ProcessPaymentNotificationCommand($retryPaymentId));
+
+        $this->entityManager->clear();
+        $paidOrder = $this->entityManager->find(\App\Entity\Order::class, $order->id);
+        $this->assertSame(OrderStatus::COMPLETED, $paidOrder->status, 'Order must complete after a successful retry.');
+    }
+
+    public function testRefundedFirstPaymentDoesNotCancelPaidOrder(): void
+    {
+        // A REFUNDED webhook (manual GoPay-console refund) must never cancel
+        // the order automatically — it is audit-logged for admin reconciliation.
+        $order = $this->createAndInitiatePayment();
+        $paymentId = $order->goPayPaymentId;
+        \assert(null !== $paymentId);
+
+        $this->goPayClient->simulatePaymentPaid($paymentId);
+        $this->commandBus->dispatch(new ProcessPaymentNotificationCommand($paymentId));
+        $this->entityManager->flush();
+        $this->entityManager->clear();
+
+        $this->goPayClient->simulatePaymentRefunded($paymentId);
+        $this->commandBus->dispatch(new ProcessPaymentNotificationCommand($paymentId));
+        $this->entityManager->flush();
+        $this->entityManager->clear();
+
+        $refreshedOrder = $this->entityManager->find(\App\Entity\Order::class, $order->id);
+        $this->assertSame(OrderStatus::COMPLETED, $refreshedOrder->status, 'Refund webhook must not mutate order state.');
+        $this->assertNull($refreshedOrder->cancelledAt);
     }
 
     public function testProcessPaymentNotificationStoresParentPaymentIdForRecurring(): void
@@ -507,6 +576,39 @@ class ProcessPaymentNotificationHandlerTest extends KernelTestCase
         $this->entityManager->clear();
         $refreshedOrder = $this->entityManager->find(\App\Entity\Order::class, $order->id);
         $this->assertNotNull($refreshedOrder->paidAt, 'Order should still be confirmed even when amount mismatches.');
+    }
+
+    private function assertAuditEventExists(\Symfony\Component\Uid\Uuid $orderId, string $eventType): void
+    {
+        $this->assertGreaterThan(
+            0,
+            $this->countAuditEvents($orderId, $eventType),
+            sprintf('Expected an audit_log row with event_type "%s" for the order.', $eventType),
+        );
+    }
+
+    private function assertAuditEventDoesNotExist(\Symfony\Component\Uid\Uuid $orderId, string $eventType): void
+    {
+        $this->assertSame(
+            0,
+            $this->countAuditEvents($orderId, $eventType),
+            sprintf('Expected NO audit_log row with event_type "%s" for the order.', $eventType),
+        );
+    }
+
+    private function countAuditEvents(\Symfony\Component\Uid\Uuid $orderId, string $eventType): int
+    {
+        return (int) $this->entityManager->createQueryBuilder()
+            ->select('COUNT(a.id)')
+            ->from(\App\Entity\AuditLog::class, 'a')
+            ->where('a.entityType = :entityType')
+            ->andWhere('a.entityId = :entityId')
+            ->andWhere('a.eventType = :eventType')
+            ->setParameter('entityType', 'order')
+            ->setParameter('entityId', $orderId->toRfc4122())
+            ->setParameter('eventType', $eventType)
+            ->getQuery()
+            ->getSingleScalarResult();
     }
 
     private function createAndInitiatePayment(): \App\Entity\Order

@@ -107,8 +107,34 @@ final readonly class ProcessPaymentNotificationHandler
                 if ($order->hasAcceptedTerms()) {
                     $this->commandBus->dispatch(new CompleteOrderCommand($order));
                 }
-            } elseif ($status->isCanceled() && !$order->status->isTerminal()) {
-                $order->cancel($now);
+            } elseif ($status->isCanceled()) {
+                // A dead payment SESSION must never kill the ORDER. GoPay
+                // sessions die after ~1 hour (TIMEOUTED) or when the customer
+                // clicks away on the gateway (CANCELED); the order has its own
+                // operator-configured lifetime (expiresAt, the expiry cron) and
+                // PaymentInitiateController creates a fresh GoPay payment on
+                // every pay attempt. Cancelling here killed a real customer's
+                // order 1h after they abandoned the gateway (2026-07-14,
+                // order 019f5cdd-d83c-7e75-85ef-cb83938429f8).
+                if ('REFUNDED' === $status->state) {
+                    // Refunds originate only from manual GoPay-console actions.
+                    // Never mutate order state automatically — surface loudly
+                    // and let the admin reconcile.
+                    $this->logger->error('GoPay reports order first payment REFUNDED — manual reconciliation needed', [
+                        'order_id' => $order->id->toRfc4122(),
+                        'order_status' => $order->status->value,
+                        'gopay_payment_id' => $command->goPayPaymentId,
+                    ]);
+                    $this->auditLogger->logOrderPaymentRefunded($order, $command->goPayPaymentId);
+                } elseif ($order->canBePaid()) {
+                    $order->clearGoPayPaymentId();
+                    $this->auditLogger->logOrderPaymentSessionExpired($order, $status->state, $command->goPayPaymentId);
+                    $this->logger->info('GoPay payment session died; order stays payable', [
+                        'order_id' => $order->id->toRfc4122(),
+                        'gopay_payment_id' => $command->goPayPaymentId,
+                        'gopay_state' => $status->state,
+                    ]);
+                }
             }
 
             return;

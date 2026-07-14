@@ -113,6 +113,45 @@ final readonly class AuditLogger
         );
     }
 
+    /**
+     * A GoPay payment SESSION died (customer abandoned the gateway, or the
+     * ~1h session timed out) — the order itself stays payable. System event,
+     * no acting user.
+     */
+    public function logOrderPaymentSessionExpired(Order $order, string $goPayState, string $goPayPaymentId): void
+    {
+        $this->log(
+            entityType: 'order',
+            entityId: $order->id->toRfc4122(),
+            eventType: 'payment_session_expired',
+            payload: [
+                'gopay_state' => $goPayState,
+                'gopay_payment_id' => $goPayPaymentId,
+            ],
+            orderId: $order->id,
+            userIdContext: $order->user->id,
+        );
+    }
+
+    /**
+     * GoPay reported the order's first payment as REFUNDED. Refunds only ever
+     * originate from a manual GoPay-console action — recorded for the admin,
+     * never acted on automatically.
+     */
+    public function logOrderPaymentRefunded(Order $order, string $goPayPaymentId): void
+    {
+        $this->log(
+            entityType: 'order',
+            entityId: $order->id->toRfc4122(),
+            eventType: 'payment_refunded',
+            payload: [
+                'gopay_payment_id' => $goPayPaymentId,
+            ],
+            orderId: $order->id,
+            userIdContext: $order->user->id,
+        );
+    }
+
     public function logOrderSigned(Order $order): void
     {
         $this->log(

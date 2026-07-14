@@ -467,6 +467,18 @@ class Order implements EntityWithEvents
         $this->goPayPaymentId = $paymentId;
     }
 
+    /**
+     * Forget a dead GoPay payment session (CANCELED/TIMEOUTED webhook). The
+     * order itself stays payable until {@see self::$expiresAt} — the customer
+     * gets a fresh GoPay payment on the next pay attempt. Clearing also makes
+     * re-deliveries of the same webhook no-ops (the order is no longer found
+     * by the dead payment ID).
+     */
+    public function clearGoPayPaymentId(): void
+    {
+        $this->goPayPaymentId = null;
+    }
+
     public function setGoPayParentPaymentId(string $parentPaymentId): void
     {
         $this->goPayParentPaymentId = $parentPaymentId;
