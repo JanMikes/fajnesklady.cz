@@ -129,6 +129,55 @@ class ProcessPaymentNotificationHandlerTest extends KernelTestCase
         $this->assertSame(OrderStatus::COMPLETED, $paidOrder->status, 'Order must complete after a successful retry.');
     }
 
+    public function testPaidWebhookForCancelledOrderAlertsInsteadOfSilence(): void
+    {
+        // The customer pays on the gateway AFTER the order was cancelled
+        // (admin/customer cancel raced the ~1h GoPay session). The money has
+        // no home — the order must NOT be resurrected or completed, but the
+        // capture must be loudly recorded for manual refund/reconciliation.
+        $order = $this->createAndInitiatePayment();
+        $paymentId = $order->goPayPaymentId;
+        \assert(null !== $paymentId);
+
+        $this->commandBus->dispatch(new \App\Command\CancelOrderCommand($order));
+        $this->entityManager->flush();
+
+        $this->goPayClient->simulatePaymentPaid($paymentId);
+        $this->commandBus->dispatch(new ProcessPaymentNotificationCommand($paymentId));
+        $this->entityManager->flush();
+        $this->entityManager->clear();
+
+        $refreshedOrder = $this->entityManager->find(\App\Entity\Order::class, $order->id);
+        $this->assertSame(OrderStatus::CANCELLED, $refreshedOrder->status, 'A late PAID webhook must not resurrect a cancelled order.');
+        $this->assertNull($refreshedOrder->paidAt);
+
+        $this->assertAuditEventExists($order->id, 'unaccounted_paid_payment');
+    }
+
+    public function testPaidWebhookForUnknownPaymentIsAuditedLoudly(): void
+    {
+        // A PAID webhook for a payment ID we do not track (e.g. an orphaned
+        // older session paid from a second tab) must leave a persistent trace.
+        $this->goPayClient->simulatePaymentPaid('gp_orphan_paid_1');
+
+        $this->commandBus->dispatch(new ProcessPaymentNotificationCommand('gp_orphan_paid_1'));
+        $this->entityManager->flush();
+
+        $count = (int) $this->entityManager->createQueryBuilder()
+            ->select('COUNT(a.id)')
+            ->from(\App\Entity\AuditLog::class, 'a')
+            ->where('a.entityType = :entityType')
+            ->andWhere('a.entityId = :entityId')
+            ->andWhere('a.eventType = :eventType')
+            ->setParameter('entityType', 'payment')
+            ->setParameter('entityId', 'gp_orphan_paid_1')
+            ->setParameter('eventType', 'unaccounted_paid_payment')
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        $this->assertSame(1, $count, 'Unknown PAID payment must write an unaccounted_paid_payment audit row.');
+    }
+
     public function testRefundedFirstPaymentDoesNotCancelPaidOrder(): void
     {
         // A REFUNDED webhook (manual GoPay-console refund) must never cancel

@@ -6,6 +6,7 @@ namespace App\Command;
 
 use App\Enum\PaymentMethod;
 use App\Event\OnboardingDebtPaymentRequested;
+use App\Service\AuditLogger;
 use App\Service\OrderService;
 use App\Service\SignatureStorage;
 use Psr\Clock\ClockInterface;
@@ -18,6 +19,7 @@ final readonly class CustomerSignOnboardingHandler
     public function __construct(
         private SignatureStorage $signatureStorage,
         private OrderService $orderService,
+        private AuditLogger $auditLogger,
         private ClockInterface $clock,
         private MessageBusInterface $commandBus,
     ) {
@@ -59,6 +61,14 @@ final readonly class CustomerSignOnboardingHandler
         // 4. Accept terms + reserve storage
         $order->acceptTerms($now);
         $order->reserve($now);
+
+        // Mirror the public-flow audit trail (SignOrderHandler /
+        // AcceptOrderTermsHandler) — without these rows the admin timeline of
+        // an onboarding order jumps from "created" straight to "paid" and the
+        // legally relevant signature event (incl. captured IP/UA) is invisible.
+        $this->auditLogger->logOrderSigned($order);
+        $this->auditLogger->logOrderReserved($order);
+        $this->auditLogger->logStorageReserved($order->storage, $order);
 
         // 5. Clear signing token (prevents reuse)
         $order->clearSigningToken();

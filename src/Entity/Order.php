@@ -285,6 +285,11 @@ class Order implements EntityWithEvents
         ));
     }
 
+    /**
+     * @phpstan-impure Reads mutable entity state — callers may legitimately
+     *                 re-check after a bus dispatch mutated the order (e.g.
+     *                 ExpireOrdersCommand reconciling a GoPay session).
+     */
     public function isExpired(\DateTimeImmutable $now): bool
     {
         return $now > $this->expiresAt && !$this->status->isTerminal() && OrderStatus::PAID !== $this->status;

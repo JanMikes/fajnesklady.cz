@@ -105,6 +105,100 @@ class ExpireOrdersCommandTest extends KernelTestCase
         $this->assertSame(StorageStatus::AVAILABLE, $order2->storage->status);
     }
 
+    public function testExpirySkipsOrderWithInFlightPaymentSession(): void
+    {
+        // The customer may be typing card details on the GoPay gateway right
+        // now — expiring the order under them would release the storage and
+        // strand their imminent PAID webhook. Pending session → skip this pass.
+        $order = $this->createOverdueOrderWithPayment();
+        $paymentId = $order->goPayPaymentId;
+        \assert(null !== $paymentId);
+        $this->goPayClient()->simulatePaymentPending($paymentId);
+
+        $this->runExpireCommand();
+
+        $this->entityManager->refresh($order);
+        $this->assertSame(OrderStatus::AWAITING_PAYMENT, $order->status, 'Order with in-flight payment session must not be expired.');
+    }
+
+    public function testExpiryReconcilesPaidSessionInsteadOfExpiring(): void
+    {
+        // GoPay says PAID but the webhook never reached us — the cron must
+        // reconcile (confirm + complete), not expire a paid order.
+        $order = $this->createOverdueOrderWithPayment();
+        $paymentId = $order->goPayPaymentId;
+        \assert(null !== $paymentId);
+        $this->goPayClient()->simulatePaymentPaid($paymentId);
+
+        $this->runExpireCommand();
+
+        $this->entityManager->refresh($order);
+        $this->assertSame(OrderStatus::COMPLETED, $order->status, 'Paid-but-unreported order must be completed, not expired.');
+    }
+
+    public function testExpiryProceedsWhenPaymentSessionIsDead(): void
+    {
+        $order = $this->createOverdueOrderWithPayment();
+        $paymentId = $order->goPayPaymentId;
+        \assert(null !== $paymentId);
+        $this->goPayClient()->simulatePaymentTimeouted($paymentId);
+
+        $this->runExpireCommand();
+
+        $this->entityManager->refresh($order);
+        $this->assertSame(OrderStatus::EXPIRED, $order->status, 'Order with a dead payment session past expiresAt must expire.');
+        $this->assertNull($order->goPayPaymentId, 'The dead session ID must have been cleared during reconciliation.');
+    }
+
+    private function createOverdueOrderWithPayment(): Order
+    {
+        /** @var User $tenant */
+        $tenant = $this->entityManager->getRepository(User::class)->findOneBy(['email' => UserFixtures::TENANT_EMAIL]);
+        /** @var StorageType $storageType */
+        $storageType = $this->entityManager->getRepository(StorageType::class)->findOneBy(['name' => 'Maly box']);
+        /** @var Place $place */
+        $place = $this->entityManager->getRepository(Place::class)->findOneBy(['name' => 'Sklad Praha - Centrum']);
+
+        $now = $this->clock->now();
+        $pastDate = $now->modify('-10 days');
+
+        $order = $this->orderService->createOrder(
+            $tenant,
+            $storageType,
+            $place,
+            $now->modify('+1 day'),
+            $now->modify('+30 days'),
+            $pastDate, // created in the past → expiresAt already passed
+        );
+        $order->acceptTerms($now);
+
+        $commandBus = static::getContainer()->get('test.command.bus');
+        $commandBus->dispatch(new \App\Command\InitiatePaymentCommand(
+            order: $order,
+            returnUrl: 'https://example.com/return',
+            notificationUrl: 'https://example.com/webhook',
+        ));
+        $this->entityManager->flush();
+
+        return $order;
+    }
+
+    private function goPayClient(): \App\Tests\Mock\MockGoPayClient
+    {
+        /** @var \App\Tests\Mock\MockGoPayClient $client */
+        $client = static::getContainer()->get(\App\Tests\Mock\MockGoPayClient::class);
+
+        return $client;
+    }
+
+    private function runExpireCommand(): void
+    {
+        $command = $this->application->find('app:expire-orders');
+        $commandTester = new CommandTester($command);
+        $commandTester->execute([]);
+        $commandTester->assertCommandIsSuccessful();
+    }
+
     public function testExpireOrdersCommandOutputsCount(): void
     {
         $now = $this->clock->now();

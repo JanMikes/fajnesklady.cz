@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Console;
 
 use App\Command\ExpireOrderCommand;
+use App\Command\ProcessPaymentNotificationCommand;
 use App\Entity\Order;
 use App\Repository\OrderRepository;
+use App\Service\GoPay\GoPayClient;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
@@ -32,6 +34,7 @@ final class ExpireOrdersCommand extends Command
     public function __construct(
         private readonly MessageBusInterface $commandBus,
         private readonly OrderRepository $orderRepository,
+        private readonly GoPayClient $goPayClient,
         private readonly ClockInterface $clock,
         private readonly EntityManagerInterface $entityManager,
         private readonly LoggerInterface $logger,
@@ -56,12 +59,40 @@ final class ExpireOrdersCommand extends Command
 
         $expired = 0;
         $failed = 0;
+        $awaitingPayment = 0;
 
         foreach ($ids as $id) {
             try {
                 $order = $this->orderRepository->find($id);
                 if (null === $order || !$order->isExpired($now)) {
                     continue;
+                }
+
+                // An order with a GoPay payment session must be reconciled
+                // BEFORE expiring: the customer may be typing card details
+                // right now (sessions live ~1h past expiresAt of the order).
+                // Expiring blind used to release the storage under a paying
+                // customer, whose PAID webhook then found a dead order.
+                if (null !== $order->goPayPaymentId) {
+                    $status = $this->goPayClient->getStatus($order->goPayPaymentId);
+
+                    if ($status->isPending()) {
+                        // Customer may be mid-gateway — skip this pass; the
+                        // session reaches a terminal state (PAID/TIMEOUTED)
+                        // within the hour and the next run settles it.
+                        ++$awaitingPayment;
+                        continue;
+                    }
+
+                    // Terminal session state: run it through the webhook
+                    // handler — PAID confirms + completes the order (making
+                    // isExpired() false below), a dead session clears the
+                    // stale payment id and audit-logs it.
+                    $this->commandBus->dispatch(new ProcessPaymentNotificationCommand($order->goPayPaymentId));
+
+                    if (!$order->isExpired($now)) {
+                        continue;
+                    }
                 }
 
                 // Through the command bus so its middleware both flushes and
@@ -83,6 +114,10 @@ final class ExpireOrdersCommand extends Command
 
         if ($failed > 0) {
             $io->warning(sprintf('%d order(s) failed to expire (see logs).', $failed));
+        }
+
+        if ($awaitingPayment > 0) {
+            $io->info(sprintf('%d order(s) skipped — GoPay payment session still in flight.', $awaitingPayment));
         }
 
         if ($expired > 0) {

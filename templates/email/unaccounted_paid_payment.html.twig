@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Přijatá platba bez uplatnění — {{ goPayPaymentId }}</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #b91c1c; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
+        .header h1 { margin: 0; font-size: 20px; }
+        .content { background-color: #f9f9f9; padding: 24px; border: 1px solid #ddd; border-top: none; }
+        .info { background-color: #fff; border: 1px solid #ddd; border-radius: 5px; padding: 14px 18px; margin: 16px 0; }
+        .info table { width: 100%; border-collapse: collapse; }
+        .info td { padding: 6px 0; border-bottom: 1px solid #eee; font-size: 14px; }
+        .info td:first-child { font-weight: 600; color: #555; width: 50%; }
+        .info tr:last-child td { border-bottom: none; }
+        .warn { color: #b91c1c; font-weight: 600; }
+        .footer { text-align: center; padding: 16px; font-size: 12px; color: #666; }
+        a { color: #2563eb; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>⚠ Přijatá platba bez uplatnění</h1>
+    </div>
+    <div class="content">
+        <p>Dobrý den {{ adminName }},</p>
+        <p>GoPay potvrdil přijatou platbu, kterou <strong>nelze automaticky nikam uplatnit</strong>. Peníze byly zákazníkovi strženy, ale v systému se nic nezměnilo — situaci je nutné vyřešit ručně.</p>
+
+        <div class="info">
+            <table>
+                <tr><td>GoPay payment ID</td><td>{{ goPayPaymentId }}</td></tr>
+                <tr><td>Důvod</td><td class="warn">{{ reasonLabel }}</td></tr>
+                {% if amount %}
+                    <tr><td>Částka</td><td>{{ amount }} Kč</td></tr>
+                {% endif %}
+                {% if orderId %}
+                    <tr><td>Objednávka (ID)</td><td>{{ orderId }}</td></tr>
+                {% endif %}
+                {% if customerName %}
+                    <tr><td>Zákazník</td><td>{{ customerName }} ({{ customerEmail }})</td></tr>
+                {% endif %}
+            </table>
+        </div>
+
+        <p><strong>Doporučená akce:</strong> Ověř platbu v GoPay administraci. Podle situace buď platbu refunduj, nebo objednávku/smlouvu ručně dokonči a platbu k ní přiřaď.</p>
+    </div>
+    <div class="footer">
+        <p>Mekmann s.r.o., IČO 11678631, Dvořákova 780, 739 11 Frýdlant nad Ostravicí</p>
+    </div>
+</body>
+</html>

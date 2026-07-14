@@ -42,6 +42,7 @@ class CustomerSignOnboardingHandlerTest extends TestCase
     private ClockInterface&Stub $clock;
     private SignatureStorage $signatureStorage;
     private OrderService $orderService;
+    private AuditLogger $auditLogger;
 
     protected function setUp(): void
     {
@@ -64,6 +65,7 @@ class CustomerSignOnboardingHandlerTest extends TestCase
             $requestStack,
             $this->clock,
         );
+        $this->auditLogger = $auditLogger;
 
         $orderRepository = $this->createStub(OrderRepository::class);
         $contractRepository = $this->createStub(ContractRepository::class);
@@ -125,6 +127,7 @@ class CustomerSignOnboardingHandlerTest extends TestCase
         $handler = new CustomerSignOnboardingHandler(
             $this->signatureStorage,
             $this->orderService,
+            $this->auditLogger,
             $this->clock,
             $commandBus,
         );
@@ -159,6 +162,7 @@ class CustomerSignOnboardingHandlerTest extends TestCase
         $handler = new CustomerSignOnboardingHandler(
             $this->signatureStorage,
             $this->orderService,
+            $this->auditLogger,
             $this->clock,
             $commandBus,
         );
@@ -197,6 +201,7 @@ class CustomerSignOnboardingHandlerTest extends TestCase
         $handler = new CustomerSignOnboardingHandler(
             $this->signatureStorage,
             $this->orderService,
+            $this->auditLogger,
             $this->clock,
             $commandBus,
         );
@@ -227,6 +232,7 @@ class CustomerSignOnboardingHandlerTest extends TestCase
         $handler = new CustomerSignOnboardingHandler(
             $this->signatureStorage,
             $this->orderService,
+            $this->auditLogger,
             $this->clock,
             $commandBus,
         );
@@ -260,6 +266,7 @@ class CustomerSignOnboardingHandlerTest extends TestCase
         $handler = new CustomerSignOnboardingHandler(
             $this->signatureStorage,
             $this->orderService,
+            $this->auditLogger,
             $this->clock,
             $commandBus,
         );

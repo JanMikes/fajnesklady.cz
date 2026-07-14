@@ -206,6 +206,17 @@ final class MockGoPayClient implements GoPayClient
         );
     }
 
+    public function simulatePaymentPending(string $paymentId): void
+    {
+        $current = $this->paymentStatuses[$paymentId] ?? null;
+        $this->paymentStatuses[$paymentId] = new GoPayPaymentStatus(
+            id: $paymentId,
+            state: 'PAYMENT_METHOD_CHOSEN',
+            parentId: $current?->parentId,
+            amount: $current?->amount,
+        );
+    }
+
     public function simulatePaymentTimeouted(string $paymentId): void
     {
         $current = $this->paymentStatuses[$paymentId] ?? null;

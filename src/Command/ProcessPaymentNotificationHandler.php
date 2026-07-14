@@ -8,8 +8,10 @@ use App\Entity\Contract;
 use App\Entity\ManualPaymentRequest;
 use App\Entity\Order;
 use App\Enum\BillingMode;
+use App\Enum\OrderStatus;
 use App\Enum\PaymentMethod;
 use App\Event\PaymentAmountMismatch;
+use App\Event\UnaccountedPaidPayment;
 use App\Event\RecurringPaymentCharged;
 use App\Event\RecurringPaymentEstablished;
 use App\Repository\ContractRepository;
@@ -107,6 +109,40 @@ final readonly class ProcessPaymentNotificationHandler
                 if ($order->hasAcceptedTerms()) {
                     $this->commandBus->dispatch(new CompleteOrderCommand($order));
                 }
+            } elseif ($status->isPaid() && in_array($order->status, [OrderStatus::CANCELLED, OrderStatus::EXPIRED], true)) {
+                // Money was captured for an order that died in the meantime
+                // (expiry cron or a cancellation raced the customer's gateway
+                // session). Nothing here may un-die the order automatically —
+                // alert loudly instead; admin decides refund vs. manual
+                // completion. NB: a PAID/COMPLETED order re-receiving its PAID
+                // webhook is a normal duplicate and stays a silent no-op.
+                $this->logger->error('GoPay payment PAID for a dead order — manual reconciliation needed', [
+                    'order_id' => $order->id->toRfc4122(),
+                    'order_status' => $order->status->value,
+                    'gopay_payment_id' => $command->goPayPaymentId,
+                    'amount' => $status->amount,
+                ]);
+                $this->auditLogger->log(
+                    entityType: 'order',
+                    entityId: $order->id->toRfc4122(),
+                    eventType: 'unaccounted_paid_payment',
+                    payload: [
+                        'gopay_payment_id' => $command->goPayPaymentId,
+                        'amount' => $status->amount,
+                        'order_status' => $order->status->value,
+                    ],
+                    orderId: $order->id,
+                    userIdContext: $order->user->id,
+                );
+                $this->eventBus->dispatch(new UnaccountedPaidPayment(
+                    goPayPaymentId: $command->goPayPaymentId,
+                    reason: OrderStatus::CANCELLED === $order->status
+                        ? UnaccountedPaidPayment::REASON_ORDER_CANCELLED
+                        : UnaccountedPaidPayment::REASON_ORDER_EXPIRED,
+                    amount: $status->amount,
+                    orderId: $order->id,
+                    occurredOn: $now,
+                ));
             } elseif ($status->isCanceled()) {
                 // A dead payment SESSION must never kill the ORDER. GoPay
                 // sessions die after ~1 hour (TIMEOUTED) or when the customer
@@ -203,6 +239,13 @@ final readonly class ProcessPaymentNotificationHandler
                     'gopay_payment_id' => $status->id,
                     'amount' => $status->amount,
                 ]);
+                $this->eventBus->dispatch(new UnaccountedPaidPayment(
+                    goPayPaymentId: $status->id,
+                    reason: UnaccountedPaidPayment::REASON_CARD_SETUP_CONTRACT_TERMINATED,
+                    amount: $status->amount,
+                    orderId: $cardSetupContract->order->id,
+                    occurredOn: $now,
+                ));
             } elseif ($status->isPaid()) {
                 $this->completeCardSetup($cardSetupContract, $status, $now);
             } elseif ($status->isCanceled()) {
@@ -217,6 +260,37 @@ final readonly class ProcessPaymentNotificationHandler
         // Could be a recurring charge notification — reconcile via parent payment ID
         if (null !== $status->parentId && '' !== $status->parentId && $status->isPaid()) {
             $this->reconcileRecurringPayment($status->parentId, $status, $now);
+
+            return;
+        }
+
+        // A PAID payment that matches nothing we track means captured money
+        // with no home — most likely an orphaned older session the customer
+        // paid from a second tab after re-initiating. Never swallow it
+        // silently: without this the only trace would be GoPay's console.
+        if ($status->isPaid()) {
+            $this->logger->error('GoPay notification: PAID payment matches nothing — manual reconciliation needed', [
+                'gopay_payment_id' => $command->goPayPaymentId,
+                'amount' => $status->amount,
+                'parent_id' => $status->parentId,
+            ]);
+            $this->auditLogger->log(
+                entityType: 'payment',
+                entityId: $command->goPayPaymentId,
+                eventType: 'unaccounted_paid_payment',
+                payload: [
+                    'gopay_payment_id' => $command->goPayPaymentId,
+                    'amount' => $status->amount,
+                    'parent_id' => $status->parentId,
+                ],
+            );
+            $this->eventBus->dispatch(new UnaccountedPaidPayment(
+                goPayPaymentId: $command->goPayPaymentId,
+                reason: UnaccountedPaidPayment::REASON_UNKNOWN_PAYMENT,
+                amount: $status->amount,
+                orderId: null,
+                occurredOn: $now,
+            ));
 
             return;
         }
@@ -237,10 +311,20 @@ final readonly class ProcessPaymentNotificationHandler
         $contract = $this->contractRepository->findByGoPayParentPaymentId($parentPaymentId);
 
         if (null === $contract) {
-            $this->logger->info('GoPay recurring notification for unknown parent payment', [
+            // Guarded by isPaid() at the call site — this is captured money
+            // referencing a parent token we no longer know. Alert, don't whisper.
+            $this->logger->error('GoPay recurring notification for unknown parent payment — manual reconciliation needed', [
                 'gopay_payment_id' => $status->id,
                 'parent_id' => $parentPaymentId,
+                'amount' => $status->amount,
             ]);
+            $this->eventBus->dispatch(new UnaccountedPaidPayment(
+                goPayPaymentId: $status->id,
+                reason: UnaccountedPaidPayment::REASON_UNKNOWN_RECURRING_PARENT,
+                amount: $status->amount,
+                orderId: null,
+                occurredOn: $now,
+            ));
 
             return;
         }
