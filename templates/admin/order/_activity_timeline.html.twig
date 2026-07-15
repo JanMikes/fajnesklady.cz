@@ -134,8 +134,8 @@
     }]) %}
 {% endfor %}
 
-{# Sort by date ascending #}
-{% set timeline = timeline|sort((a, b) => a.date <=> b.date) %}
+{# Sort by date descending — newest first #}
+{% set timeline = timeline|sort((a, b) => b.date <=> a.date) %}
 
 <div class="mt-6 bg-white shadow overflow-hidden sm:rounded-lg">
     <div class="px-4 py-5 sm:px-6 border-b border-gray-200 flex items-center justify-between">
