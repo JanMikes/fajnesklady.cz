@@ -68,6 +68,20 @@ final readonly class OrderPaymentOverviewFactory
             $rows[] = $row;
         }
 
+        // A terminated contract's residual debt is a receivable like any other.
+        if (null !== $contract && $contract->isTerminated() && $contract->hasOutstandingDebt() && null !== $contract->outstandingDebtAmount) {
+            $rows[] = new PaymentOverviewRow(
+                label: 'Dluh po ukončení smlouvy',
+                status: PaymentOverviewRow::STATUS_OVERDUE,
+                dueDate: $contract->terminatedAt,
+                amountInHaler: $contract->outstandingDebtAmount,
+                note: null !== $order->variableSymbol ? sprintf('VS %s', $order->variableSymbol) : null,
+                daysOverdue: null !== $contract->terminatedAt
+                    ? max(1, (int) $contract->terminatedAt->setTime(0, 0, 0)->diff($today)->days)
+                    : null,
+            );
+        }
+
         usort($rows, static fn (PaymentOverviewRow $a, PaymentOverviewRow $b): int => ($a->sortDate() ?? new \DateTimeImmutable('@0')) <=> ($b->sortDate() ?? new \DateTimeImmutable('@0')));
 
         $totalPaid = 0;
@@ -184,8 +198,10 @@ final readonly class OrderPaymentOverviewFactory
             );
         }
 
-        // No money yet — show what the system is waiting for.
-        if (!$order->canBePaid()) {
+        // No money yet — show what the system is waiting for. EXTERNAL orders
+        // never collect a first payment (they auto-complete as a 0 Kč
+        // formality at signature), so projecting an amount would be a lie.
+        if (!$order->canBePaid() || PaymentMethod::EXTERNAL === $order->paymentMethod) {
             return null;
         }
 
