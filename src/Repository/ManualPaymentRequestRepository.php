@@ -42,6 +42,24 @@ final class ManualPaymentRequestRepository
             ->getOneOrNullResult();
     }
 
+    /**
+     * Every billing-cycle request of a contract, oldest period first — the
+     * admin payment overview renders one row per cycle.
+     *
+     * @return list<ManualPaymentRequest>
+     */
+    public function findAllByContract(Contract $contract): array
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('r')
+            ->from(ManualPaymentRequest::class, 'r')
+            ->where('r.contract = :contract')
+            ->setParameter('contract', $contract)
+            ->orderBy('r.periodStart', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
     public function findByGoPayPaymentId(string $paymentId): ?ManualPaymentRequest
     {
         return $this->entityManager->createQueryBuilder()

@@ -24,6 +24,10 @@ final readonly class AuditLogDescriptionRenderer
             'order.created' => 'Objednávka vytvořena',
             'order.reserved' => 'Objednávka zarezervovala sklad',
             'order.paid' => 'Objednávka zaplacena',
+            'order.paid_externally' => 'Objednávka označena jako zaplacená mimo systém',
+            'order.external_first_payment_recorded' => 'Externí platba zaznamenána administrátorem',
+            'contract.external_payment_recorded' => 'Externí platba zaznamenána administrátorem',
+            'contract.payment_deadline_extended' => $this->describePaymentDeadlineExtended($log),
             'order.completed' => 'Objednávka dokončena',
             'order.cancelled' => 'Objednávka zrušena',
             'order.signed' => 'Objednávka podepsána',
@@ -71,6 +75,16 @@ final readonly class AuditLogDescriptionRenderer
         };
 
         return sprintf('Způsob platby nastaven: %s', $modeLabel);
+    }
+
+    private function describePaymentDeadlineExtended(AuditLog $log): string
+    {
+        $deadline = $log->payload['new_deadline'] ?? null;
+        if (is_string($deadline) && '' !== $deadline) {
+            return sprintf('Splatnost prodloužena do %s', $deadline);
+        }
+
+        return 'Splatnost prodloužena';
     }
 
     private function describeContractExpiringSoon(AuditLog $log): string

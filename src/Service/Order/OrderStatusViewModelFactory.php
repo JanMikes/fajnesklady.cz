@@ -326,6 +326,7 @@ final readonly class OrderStatusViewModelFactory
             'order.reserved' => ['Skladová jednotka rezervována', '🔒'],
             'order.signed' => ['Smlouva podepsána', '✍️'],
             'order.paid' => ['Platba přijata', '💳'],
+            'order.paid_externally' => ['Platba vyřízena mimo systém', '💳'],
             'order.completed' => ['Objednávka dokončena', '✅'],
             'order.cancelled' => ['Objednávka zrušena', '🚫'],
             'order.expired' => ['Rezervace vypršela', '⏰'],

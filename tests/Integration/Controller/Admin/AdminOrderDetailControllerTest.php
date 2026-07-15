@@ -58,6 +58,23 @@ class AdminOrderDetailControllerTest extends WebTestCase
         $this->assertSelectorTextNotContains('body', 'Historie ceny');
     }
 
+    public function testRendersStageHeaderAndPaymentOverview(): void
+    {
+        $this->client->loginUser($this->findAdmin(), 'main');
+
+        $contract = $this->findAnyContract();
+
+        $this->client->request('GET', '/portal/admin/orders/'.$contract->order->id->toRfc4122());
+
+        $this->assertResponseIsSuccessful();
+        $body = (string) $this->client->getResponse()->getContent();
+        // Stage card facts + payments table are always present.
+        $this->assertStringContainsString('Přehled plateb', $body);
+        $this->assertStringContainsString('Zaplaceno v systému', $body);
+        $this->assertStringContainsString('Způsob platby', $body);
+        $this->assertStringContainsString($contract->user->fullName, $body);
+    }
+
     public function testPaidFineWithInvoiceShowsInvoiceLinkInFinesTable(): void
     {
         $contract = $this->findAnyContract();

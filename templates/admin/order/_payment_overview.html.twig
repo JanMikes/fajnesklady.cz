@@ -1,0 +1,78 @@
+{#
+    Unified expected-vs-paid payment table for the whole order lifecycle.
+    Expects: paymentOverview (OrderPaymentOverview), order (Order)
+#}
+{% set statusBadge = {
+    'paid': {label: 'Zaplaceno', class: 'bg-green-100 text-green-800'},
+    'pending': {label: 'Čeká na platbu', class: 'bg-amber-100 text-amber-800'},
+    'overdue': {label: 'Po splatnosti', class: 'bg-red-100 text-red-800'},
+    'scheduled': {label: 'Naplánováno', class: 'bg-gray-100 text-gray-600'},
+    'covered_external': {label: 'Pokryto externě', class: 'bg-blue-100 text-blue-800'},
+    'cancelled': {label: 'Zrušeno', class: 'bg-gray-100 text-gray-500'},
+} %}
+
+<div class="mt-6 bg-white shadow overflow-hidden sm:rounded-lg">
+    <div class="px-4 py-5 sm:px-6 border-b border-gray-200 flex items-center justify-between">
+        <h3 class="text-lg font-medium text-gray-900">Přehled plateb</h3>
+        <div class="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm">
+            <span class="text-gray-500">Zaplaceno: <strong class="text-gray-900">{{ (paymentOverview.totalPaidInHaler / 100)|number_format(0, ',', ' ') }} Kč</strong></span>
+            {% if paymentOverview.overdueTotalInHaler > 0 %}
+                <span class="text-red-600">Po splatnosti: <strong>{{ (paymentOverview.overdueTotalInHaler / 100)|number_format(0, ',', ' ') }} Kč</strong></span>
+            {% endif %}
+            {% if paymentOverview.outstandingTotalInHaler > 0 %}
+                <span class="text-gray-500">Zbývá vybrat: <strong class="text-gray-900">{{ (paymentOverview.outstandingTotalInHaler / 100)|number_format(0, ',', ' ') }} Kč</strong></span>
+            {% endif %}
+        </div>
+    </div>
+    <div class="px-4 py-5 sm:p-6">
+        {% if paymentOverview.hasRows %}
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead>
+                        <tr>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Splatnost</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Popis</th>
+                            <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">Částka</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Stav</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Zaplaceno</th>
+                            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Zdroj / poznámka</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200">
+                        {% for row in paymentOverview.rows %}
+                            {% set badge = statusBadge[row.status] ?? {label: row.status, class: 'bg-gray-100 text-gray-600'} %}
+                            <tr class="{{ row.status == 'overdue' ? 'bg-red-50' : (row.status == 'scheduled' ? 'text-gray-400' : '') }}">
+                                <td class="px-3 py-2 text-sm whitespace-nowrap {{ row.status == 'scheduled' ? 'text-gray-400' : 'text-gray-900' }}">
+                                    {{ row.dueDate ? row.dueDate|date('d.m.Y') : '—' }}
+                                </td>
+                                <td class="px-3 py-2 text-sm {{ row.status == 'scheduled' ? 'text-gray-400' : 'text-gray-900' }}">
+                                    {{ row.label }}
+                                </td>
+                                <td class="px-3 py-2 text-sm text-right font-medium whitespace-nowrap {{ row.status == 'scheduled' ? 'text-gray-400' : 'text-gray-900' }}">
+                                    {{ row.amountInHaler is not null ? (row.amountInHaler / 100)|number_format(0, ',', ' ') ~ ' Kč' : '—' }}
+                                </td>
+                                <td class="px-3 py-2 text-sm whitespace-nowrap">
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {{ badge.class }}">
+                                        {{ badge.label }}{% if row.status == 'overdue' and row.daysOverdue %} ({{ row.daysOverdue }} {{ row.daysOverdue == 1 ? 'den' : (row.daysOverdue < 5 ? 'dny' : 'dní') }}){% endif %}
+                                    </span>
+                                </td>
+                                <td class="px-3 py-2 text-sm text-gray-500 whitespace-nowrap">
+                                    {{ row.paidAt ? row.paidAt|date('d.m.Y') : '—' }}
+                                </td>
+                                <td class="px-3 py-2 text-sm text-gray-500">
+                                    {% if row.source %}{{ row.source }}{% endif %}
+                                    {% if row.note %}
+                                        {% if row.source %}<span class="text-gray-300">·</span>{% endif %}
+                                        <span class="text-xs">{{ row.note }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="text-sm text-gray-500">Žádné platby k zobrazení.</p>
+        {% endif %}
+    </div>
+</div>

@@ -7,6 +7,7 @@ namespace App\Tests\Unit\Command;
 use App\Command\CompleteOrderCommand;
 use App\Command\CustomerSignOnboardingCommand;
 use App\Command\CustomerSignOnboardingHandler;
+use App\Entity\AuditLog;
 use App\Entity\Order;
 use App\Entity\Place;
 use App\Entity\Storage;
@@ -15,6 +16,7 @@ use App\Entity\User;
 use App\Enum\OrderStatus;
 use App\Enum\PaymentMethod;
 use App\Enum\SigningMethod;
+use App\Event\OrderPaid;
 use App\Repository\AuditLogRepository;
 use App\Repository\ContractRepository;
 use App\Repository\OrderRepository;
@@ -44,6 +46,9 @@ class CustomerSignOnboardingHandlerTest extends TestCase
     private OrderService $orderService;
     private AuditLogger $auditLogger;
 
+    /** @var list<string> */
+    private array $savedAuditEventTypes = [];
+
     protected function setUp(): void
     {
         $this->tempDir = sys_get_temp_dir().'/onboarding_sign_test_'.uniqid();
@@ -54,7 +59,11 @@ class CustomerSignOnboardingHandlerTest extends TestCase
         $identityProvider = $this->createStub(ProvideIdentity::class);
         $identityProvider->method('next')->willReturnCallback(fn () => Uuid::v7());
 
+        $this->savedAuditEventTypes = [];
         $auditLogRepository = $this->createStub(AuditLogRepository::class);
+        $auditLogRepository->method('save')->willReturnCallback(function (AuditLog $log): void {
+            $this->savedAuditEventTypes[] = $log->eventType;
+        });
         $security = $this->createStub(Security::class);
         $requestStack = new RequestStack();
 
@@ -146,6 +155,20 @@ class CustomerSignOnboardingHandlerTest extends TestCase
         $this->assertNull($order->signingToken);
         $this->assertSame(OrderStatus::PAID, $order->status);
         $this->assertNotNull($order->paidAt);
+
+        // No money moved through the platform: the OrderPaid event must carry
+        // an explicit 0 so RecordPaymentOnOrderPaidHandler never records a
+        // revenue-bearing Payment (phantom revenue / self-billing leak).
+        $orderPaidEvents = array_values(array_filter(
+            $order->popEvents(),
+            static fn (object $event): bool => $event instanceof OrderPaid,
+        ));
+        $this->assertCount(1, $orderPaidEvents);
+        $this->assertSame(0, $orderPaidEvents[0]->amountOverride);
+
+        // And the audit trail must say "settled externally", never "Platba přijata".
+        $this->assertContains('paid_externally', $this->savedAuditEventTypes);
+        $this->assertNotContains('paid', $this->savedAuditEventTypes);
     }
 
     public function testSignsOrderWithGoPayPayment(): void

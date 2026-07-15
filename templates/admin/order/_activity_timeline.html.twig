@@ -7,6 +7,10 @@
     'reserved': 'Sklad rezervován',
     'signed': 'Podepsáno',
     'paid': 'Platba přijata',
+    'paid_externally': 'Označeno jako zaplaceno mimo systém',
+    'external_payment_recorded': 'Externí platba zaznamenána (admin)',
+    'external_first_payment_recorded': 'Externí platba zaznamenána (admin)',
+    'payment_deadline_extended': 'Splatnost prodloužena',
     'completed': 'Objednávka dokončena',
     'cancelled': 'Zrušeno',
     'expired': 'Vypršelo',
@@ -53,6 +57,10 @@
     'reserved': 'blue',
     'signed': 'green',
     'paid': 'green',
+    'paid_externally': 'blue',
+    'external_payment_recorded': 'green',
+    'external_first_payment_recorded': 'green',
+    'payment_deadline_extended': 'amber',
     'completed': 'green',
     'cancelled': 'red',
     'expired': 'red',
@@ -183,6 +191,18 @@
                                                     {% endif %}
                                                     {% if item.eventType == 'issued' and item.payload.amount is defined %}
                                                         <span class="text-gray-500">— {{ (item.payload.amount / 100)|number_format(0, ',', ' ') }} Kč</span>
+                                                    {% endif %}
+                                                    {% if item.eventType == 'paid' and item.payload.total_price is defined %}
+                                                        <span class="text-gray-500">— {{ (item.payload.total_price / 100)|number_format(0, ',', ' ') }} Kč</span>
+                                                    {% endif %}
+                                                    {% if item.eventType == 'paid_externally' %}
+                                                        <span class="text-gray-500">(bez platby v systému{% if item.payload.paid_through is defined and item.payload.paid_through %}, předplaceno do {{ item.payload.paid_through|date('d.m.Y') }}{% endif %})</span>
+                                                    {% endif %}
+                                                    {% if item.eventType in ['external_payment_recorded', 'external_first_payment_recorded'] and item.payload.amount is defined and item.payload.amount %}
+                                                        <span class="text-gray-500">— {{ (item.payload.amount / 100)|number_format(0, ',', ' ') }} Kč{% if item.payload.paid_through is defined and item.payload.paid_through %}, do {{ item.payload.paid_through|date('d.m.Y') }}{% endif %}</span>
+                                                    {% endif %}
+                                                    {% if item.eventType == 'payment_deadline_extended' and item.payload.new_deadline is defined %}
+                                                        <span class="text-gray-500">→ do {{ item.payload.new_deadline|date('d.m.Y') }}</span>
                                                     {% endif %}
                                                 </p>
                                                 <p class="text-xs text-gray-500 mt-0.5">

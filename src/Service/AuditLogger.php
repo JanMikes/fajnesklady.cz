@@ -85,6 +85,29 @@ final readonly class AuditLogger
         );
     }
 
+    /**
+     * The order passed through PAID as a state-machine formality — settled
+     * externally (admin onboarding, "mark externally paid") or free/prepaid —
+     * with no money moving through the platform. Distinct from logOrderPaid()
+     * so the timeline never claims a payment was "received".
+     */
+    public function logOrderPaidExternally(Order $order, ?int $amountInHaler): void
+    {
+        $this->log(
+            entityType: 'order',
+            entityId: $order->id->toRfc4122(),
+            eventType: 'paid_externally',
+            payload: [
+                'paid_at' => $order->paidAt?->format('Y-m-d H:i:s'),
+                'amount' => $amountInHaler,
+                'paid_through' => $order->paidThroughDate?->format('Y-m-d'),
+                'payment_method' => $order->paymentMethod?->value,
+            ],
+            orderId: $order->id,
+            userIdContext: $order->user->id,
+        );
+    }
+
     public function logOrderCompleted(Order $order): void
     {
         $this->log(

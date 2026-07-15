@@ -17,6 +17,8 @@ use App\Repository\ManualPaymentRequestRepository;
 use App\Repository\OrderRepository;
 use App\Repository\PaymentRepository;
 use App\Service\ContractService;
+use App\Service\Order\AdminOrderStageFactory;
+use App\Service\Order\OrderPaymentOverviewFactory;
 use App\Service\Overdue\OverdueChecker;
 use App\Service\PriceCalculator;
 use App\Service\Security\OrderVoter;
@@ -47,6 +49,8 @@ final class AdminOrderDetailController extends AbstractController
         private readonly ContractService $contractService,
         private readonly PriceCalculator $priceCalculator,
         private readonly OverdueChecker $overdueChecker,
+        private readonly OrderPaymentOverviewFactory $paymentOverviewFactory,
+        private readonly AdminOrderStageFactory $stageFactory,
         private readonly ClockInterface $clock,
     ) {
     }
@@ -98,13 +102,43 @@ final class AdminOrderDetailController extends AbstractController
         $emailLogs = $this->emailLogRepository->findByOrderId($order->id);
         $auditLogs = $this->auditLogRepository->findForOrderTimeline($order->id);
 
-        $hasPendingManualPayment = false;
+        $pendingManualPayment = null;
         if (null !== $contract && $contract->usesManualBillingTrack()) {
-            $hasPendingManualPayment = null !== $this->manualPaymentRequestRepository->findPendingForCurrentCycle($contract, $now);
+            $pendingManualPayment = $this->manualPaymentRequestRepository->findPendingForCurrentCycle($contract, $now);
         }
 
         $mismatchTransactions = $this->bankTransactionRepository->findAmountMismatchByOrder($order);
         $bankTransferReceivedTotal = $this->bankTransactionRepository->sumReceivedByOrder($order);
+
+        // The overdue view of THIS contract (the user-level flag above also
+        // fires for the customer's other rentals).
+        $orderOverdueView = null;
+        if (null !== $contract) {
+            foreach ($this->overdueChecker->findOverdueViewsForUser($now, $order->user->id) as $view) {
+                if ($view->contract->id->equals($contract->id)) {
+                    $orderOverdueView = $view;
+
+                    break;
+                }
+            }
+        }
+
+        $stage = $this->stageFactory->build(
+            order: $order,
+            contract: $contract,
+            overdueView: $orderOverdueView,
+            pendingManualPayment: $pendingManualPayment,
+            amountMismatchCount: count($mismatchTransactions),
+            now: $now,
+        );
+
+        $paymentOverview = $this->paymentOverviewFactory->build(
+            order: $order,
+            contract: $contract,
+            payments: $this->paymentRepository->findAllForOrder($order, $contract),
+            requests: null !== $contract ? $this->manualPaymentRequestRepository->findAllByContract($contract) : [],
+            now: $now,
+        );
 
         return $this->render('admin/order/detail.html.twig', [
             'order' => $order,
@@ -126,9 +160,11 @@ final class AdminOrderDetailController extends AbstractController
             'fineInvoices' => $fineInvoices,
             'emailLogs' => $emailLogs,
             'auditLogs' => $auditLogs,
-            'hasPendingManualPayment' => $hasPendingManualPayment,
+            'hasPendingManualPayment' => null !== $pendingManualPayment,
             'mismatchTransactions' => $mismatchTransactions,
             'bankTransferReceivedTotal' => $bankTransferReceivedTotal,
+            'stage' => $stage,
+            'paymentOverview' => $paymentOverview,
         ]);
     }
 }

@@ -83,8 +83,11 @@ final readonly class CustomerSignOnboardingHandler
 
         // 6. Handle based on payment method
         if (PaymentMethod::EXTERNAL === $order->paymentMethod) {
-            // External payment: auto-complete the order
-            $this->orderService->confirmPayment($order, $now);
+            // External payment: auto-complete the order. Amount 0 — no money
+            // moved through the platform, so no revenue-bearing Payment row
+            // may be recorded (it would leak into revenue charts and the
+            // landlord self-billing invoice). Mirrors DebtPaymentService.
+            $this->orderService->confirmPayment($order, $now, 0);
             $this->commandBus->dispatch(new CompleteOrderCommand(order: $order));
         }
         // For GOPAY: order stays in RESERVED state, customer proceeds to GoPay payment page

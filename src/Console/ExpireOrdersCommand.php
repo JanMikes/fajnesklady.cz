@@ -81,6 +81,7 @@ final class ExpireOrdersCommand extends Command
                         // session reaches a terminal state (PAID/TIMEOUTED)
                         // within the hour and the next run settles it.
                         ++$awaitingPayment;
+
                         continue;
                     }
 

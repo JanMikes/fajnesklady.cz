@@ -41,6 +41,16 @@ final readonly class RecurringAmountCalculator
      */
     public function calculate(Contract $contract, \DateTimeImmutable $now): int
     {
+        return $this->calculateForPeriodStart($contract, $contract->nextBillingDate ?? $now);
+    }
+
+    /**
+     * Same rules as {@see self::calculate()}, but for an explicit billing
+     * period start — used to project FUTURE cycles (admin payment overview)
+     * without touching the contract's live anchor.
+     */
+    public function calculateForPeriodStart(Contract $contract, \DateTimeImmutable $billingPeriodStart): int
+    {
         // Spec 078 tranches: an upfront contract with a billing anchor bills
         // the remaining rental in yearly tranches. Each tranche is the next
         // up-to-12 months of the SAME monthly walk the upfront schedule was
@@ -57,7 +67,7 @@ final readonly class RecurringAmountCalculator
 
             return $this->priceCalculator->calculateUpfrontTrancheAmount(
                 $monthlyRate,
-                $contract->nextBillingDate ?? $now,
+                $billingPeriodStart,
                 $contract->getEffectiveEndDate(),
             );
         }
@@ -66,7 +76,6 @@ final readonly class RecurringAmountCalculator
         $periodDays = $contract->getBillingPeriodDays();
         $effectiveEndDate = $contract->getEffectiveEndDate();
 
-        $billingPeriodStart = $contract->nextBillingDate ?? $now;
         $nextFullPeriodEnd = $billingPeriodStart->modify($contract->getBillingCadenceStep());
 
         if ($nextFullPeriodEnd <= $effectiveEndDate) {

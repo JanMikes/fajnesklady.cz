@@ -11,6 +11,7 @@ use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\PaymentFrequency;
+use App\Enum\PaymentMethod;
 use App\Exception\NoStorageAvailable;
 use App\Repository\ContractRepository;
 use App\Repository\OrderRepository;
@@ -178,7 +179,15 @@ final readonly class OrderService
         }
 
         $order->markPaid($now, $explicitAmount);
-        $this->auditLogger->logOrderPaid($order);
+
+        // EXTERNAL settle (or an explicit zero — the free/prepaid formality)
+        // is a state-machine transition, not received money: it must never
+        // read as "Platba přijata" in the audit trail.
+        if (PaymentMethod::EXTERNAL === $order->paymentMethod || 0 === $explicitAmount) {
+            $this->auditLogger->logOrderPaidExternally($order, $explicitAmount);
+        } else {
+            $this->auditLogger->logOrderPaid($order);
+        }
     }
 
     /**

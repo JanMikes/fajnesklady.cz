@@ -142,6 +142,31 @@ class PaymentRepository
     }
 
     /**
+     * Every payment across an order's whole lifecycle (initial payment linked
+     * to the Order + recurring charges linked to the Contract), oldest first.
+     * Same order-OR-contract linkage rule as {@see self::sumPaidForOrder()}.
+     *
+     * @return list<Payment>
+     */
+    public function findAllForOrder(Order $order, ?Contract $contract): array
+    {
+        $qb = $this->entityManager->createQueryBuilder()
+            ->select('p')
+            ->from(Payment::class, 'p')
+            ->where('p.order = :order')
+            ->setParameter('order', $order);
+
+        if (null !== $contract) {
+            $qb->orWhere('p.contract = :contract')
+                ->setParameter('contract', $contract);
+        }
+
+        return $qb->orderBy('p.paidAt', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
      * Find all payments for storages owned by a landlord in a specific period.
      *
      * @return Payment[]
