@@ -32,13 +32,24 @@ final readonly class AdminTerminateContractHandler
         $now = $this->clock->now();
 
         if ($command->immediate) {
+            // Record the unpaid period as a debt BEFORE terminating so the
+            // existing ContractTerminated e-mail (which reloads the contract)
+            // surfaces the amount, and the contract stays in Po splatnosti.
+            $recordedDebt = 0;
+            if ($command->recordDebt) {
+                $recordedDebt = $this->contractService->calculateOutstandingDebt($contract, $now);
+                if ($recordedDebt > 0) {
+                    $contract->setOutstandingDebt($recordedDebt);
+                }
+            }
+
             $this->contractService->terminateContract($contract, $now, TerminationReason::ADMIN);
 
             $this->auditLogger->log(
                 'contract',
                 $contract->id->toRfc4122(),
                 'admin_terminated_immediately',
-                ['reason' => $command->reason],
+                ['reason' => $command->reason, 'recorded_debt' => $recordedDebt],
                 orderId: $contract->order->id,
                 userIdContext: $contract->user->id,
             );

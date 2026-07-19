@@ -594,7 +594,8 @@
     {% set payableFines = fines|filter(fine => fine.payable) %}
     {% set canExtendDeadline = contract is not null and not contract.isTerminated() and contract.nextBillingDate is not null %}
     {% set canRecordExternalPayment = order.hasSignature() and (canExtendDeadline or order.canBePaid()) %}
-    {% if hasSigningAction or hasOnboardingAction or hasBillingAction or payableFines|length > 0 or canExtendDeadline or canRecordExternalPayment %}
+    {% set canSettleDebt = contract is not null and contract.isTerminated() and contract.hasOutstandingDebt() %}
+    {% if hasSigningAction or hasOnboardingAction or hasBillingAction or payableFines|length > 0 or canExtendDeadline or canRecordExternalPayment or canSettleDebt %}
     <div class="mt-6 bg-white shadow overflow-hidden sm:rounded-lg border-l-4 border-blue-400">
         <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
             <h3 class="text-lg font-medium text-gray-900">Manuální akce</h3>
@@ -622,6 +623,22 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         Prodloužit splatnost
+                    </button>
+                {% endif %}
+                {% if canSettleDebt %}
+                    <button type="button" onclick="document.getElementById('settleDebtModal').showModal()"
+                            class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        <svg class="h-4 w-4 mr-2 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Označit dluh jako uhrazený
+                    </button>
+                    <button type="button" onclick="document.getElementById('waiveDebtModal').showModal()"
+                            class="inline-flex items-center px-4 py-2 border border-red-300 shadow-sm text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50">
+                        <svg class="h-4 w-4 mr-2 text-red-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                        </svg>
+                        Odepsat dluh
                     </button>
                 {% endif %}
                 {% if hasSigningAction %}
@@ -700,6 +717,66 @@
             <button>close</button>
         </form>
     </dialog>
+    {% endif %}
+
+    {% if canSettleDebt %}
+    {% set debtCzk = contract.outstandingDebtAmount / 100 %}
+    <dialog id="settleDebtModal" class="modal">
+        <div class="modal-box">
+            <h3 class="text-lg font-bold text-gray-900">Označit dluh jako uhrazený</h3>
+            <div class="py-2 text-sm text-gray-600">
+                Zaznamená přijatou platbu (bankovní převod / hotovost) a sníží evidovaný dluh.
+                Nižší částka než dluh ponechá zbytek stále k úhradě.
+            </div>
+            <form action="{{ path('admin_order_settle_debt', {id: order.id}) }}" method="post">
+                <div class="form-group mt-4">
+                    <label class="form-label" for="settleDebtAmount">Uhrazená částka (Kč)</label>
+                    <input type="number" name="amount" id="settleDebtAmount" required
+                           step="0.01" min="0.01" max="{{ debtCzk }}" value="{{ debtCzk }}"
+                           inputmode="decimal" class="form-input" />
+                    <p class="form-help">Evidovaný dluh: {{ debtCzk|number_format(2, ',', ' ') }} Kč</p>
+                </div>
+                <label class="flex items-center gap-2 mt-3">
+                    <input type="checkbox" name="issue_invoice" value="1"
+                           class="h-4 w-4 text-accent border-gray-300 rounded">
+                    <span class="text-sm text-gray-700">Vystavit fakturu</span>
+                </label>
+                <div class="modal-action">
+                    <button type="button" class="btn btn-ghost" onclick="document.getElementById('settleDebtModal').close()">Zrušit</button>
+                    <button type="submit" class="btn btn-primary">Označit jako uhrazený</button>
+                </div>
+            </form>
+        </div>
+        <form method="dialog" class="modal-backdrop">
+            <button>close</button>
+        </form>
+    </dialog>
+
+    {% embed 'components/_danger_modal.html.twig' with {
+        id: 'waiveDebtModal',
+        title: 'Odepsat dluh',
+        action: path('admin_order_waive_debt', {id: order.id}),
+    } %}
+        {% block description %}
+            <strong class="text-red-700">Tato akce je nevratná.</strong>
+            Odepsáním se dluh sníží bez přijetí platby — nezaznamená se žádná platba.
+        {% endblock %}
+        {% block extra_fields %}
+            {% set debtCzk = contract.outstandingDebtAmount / 100 %}
+            <div class="form-group">
+                <label class="form-label" for="waiveDebtAmount">Odepsaná částka (Kč)</label>
+                <input type="number" name="amount" id="waiveDebtAmount" required
+                       step="0.01" min="0.01" max="{{ debtCzk }}" value="{{ debtCzk }}"
+                       inputmode="decimal" class="form-input" />
+                <p class="form-help">Evidovaný dluh: {{ debtCzk|number_format(2, ',', ' ') }} Kč</p>
+            </div>
+            <div class="form-group mt-3">
+                <label class="block text-sm font-medium text-gray-600">Důvod (volitelný)</label>
+                <textarea name="reason" rows="2" maxlength="500" class="form-input mt-1 text-sm"></textarea>
+            </div>
+        {% endblock %}
+        {% block submit_label %}Odepsat dluh{% endblock %}
+    {% endembed %}
     {% endif %}
 
     {# Email history #}
@@ -869,6 +946,7 @@
                         <div>
                             <label class="flex items-center gap-2">
                                 <input type="radio" name="termination_type" value="with_notice" checked
+                                       onclick="document.getElementById('terminateDebtChoice')?.classList.add('hidden')"
                                        class="form-radio accent-red-600 focus:ring-red-500">
                                 <span class="text-sm text-gray-700">S výpovědní dobou (1 měsíc)</span>
                             </label>
@@ -876,10 +954,27 @@
                         <div>
                             <label class="flex items-center gap-2">
                                 <input type="radio" name="termination_type" value="immediate"
+                                       onclick="document.getElementById('terminateDebtChoice')?.classList.remove('hidden')"
                                        class="form-radio accent-red-600 focus:ring-red-500">
                                 <span class="text-sm text-gray-700">Okamžitě pro porušení smlouvy</span>
                             </label>
                         </div>
+                        {% if potentialTerminationDebtInHaler > 0 %}
+                            {# Shown only for immediate termination; server ignores it otherwise. #}
+                            <div id="terminateDebtChoice" class="hidden pl-6 space-y-2 border-l-2 border-red-200">
+                                <p class="text-xs text-gray-500">Neuhrazené období do dnešního dne:</p>
+                                <label class="flex items-center gap-2">
+                                    <input type="radio" name="record_debt" value="1" checked
+                                           class="form-radio accent-red-600 focus:ring-red-500">
+                                    <span class="text-sm text-gray-700">Ukončit a evidovat dluh ({{ (potentialTerminationDebtInHaler / 100)|number_format(0, ',', ' ') }} Kč)</span>
+                                </label>
+                                <label class="flex items-center gap-2">
+                                    <input type="radio" name="record_debt" value="0"
+                                           class="form-radio accent-red-600 focus:ring-red-500">
+                                    <span class="text-sm text-gray-700">Ukončit bez dluhu (odpustit)</span>
+                                </label>
+                            </div>
+                        {% endif %}
                         <div>
                             <label class="block text-sm font-medium text-gray-600">Důvod (volitelný)</label>
                             <textarea name="reason" rows="2" maxlength="500"

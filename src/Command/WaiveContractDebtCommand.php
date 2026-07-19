@@ -6,13 +6,12 @@ namespace App\Command;
 
 use App\Entity\Contract;
 
-final readonly class AdminTerminateContractCommand
+final readonly class WaiveContractDebtCommand
 {
     public function __construct(
         public Contract $contract,
-        public bool $immediate,
+        public int $amountInHaler,
         public ?string $reason = null,
-        public bool $recordDebt = false,
     ) {
     }
 }

@@ -180,6 +180,28 @@ class Contract implements EntityWithEvents
         $this->outstandingDebtAmount = $amount;
     }
 
+    /**
+     * Reduce a recorded post-termination debt by an exact amount (admin settle
+     * or waive). Clears the field to null once fully covered so
+     * hasOutstandingDebt(), the overdue predicate and the payment-overview debt
+     * row all drop off in lockstep.
+     */
+    public function reduceOutstandingDebt(int $amountInHaler): void
+    {
+        if (null === $this->outstandingDebtAmount || $this->outstandingDebtAmount <= 0) {
+            throw new \DomainException('Contract has no outstanding debt to reduce.');
+        }
+        if ($amountInHaler <= 0) {
+            throw new \InvalidArgumentException('Reduction amount must be positive.');
+        }
+        if ($amountInHaler > $this->outstandingDebtAmount) {
+            throw new \DomainException('Reduction exceeds the outstanding debt.');
+        }
+
+        $remaining = $this->outstandingDebtAmount - $amountInHaler;
+        $this->outstandingDebtAmount = $remaining > 0 ? $remaining : null;
+    }
+
     public function hasOutstandingDebt(): bool
     {
         return null !== $this->outstandingDebtAmount && $this->outstandingDebtAmount > 0;

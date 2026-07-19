@@ -120,6 +120,16 @@ class ManualPaymentRequest
         $this->status = self::STATUS_EXPIRED;
     }
 
+    /**
+     * Void this cycle's request when the contract is terminated — its
+     * receivable is superseded by the terminated-contract debt (or forgiven),
+     * so the payment overview must stop rendering it as an overdue row.
+     */
+    public function cancel(): void
+    {
+        $this->status = self::STATUS_CANCELLED;
+    }
+
     public function isPaid(): bool
     {
         return self::STATUS_PAID === $this->status;

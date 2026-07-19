@@ -52,7 +52,20 @@
         <div class="debt-box">
             <p>Neuhrazená částka:</p>
             <p class="debt-amount">{{ outstandingDebt|number_format(0, ',', ' ') }} Kč</p>
-            <p>Prosíme o úhradu této částky. Budeme Vás kontaktovat s pokyny k platbě.</p>
+            <p>Prosíme o úhradu této částky bankovním převodem:</p>
+            <table style="width: 100%; margin: 10px 0; border-collapse: collapse;">
+                <tr>
+                    <td style="padding: 6px 0; color: #7c2d12; text-align: left;">Číslo účtu:</td>
+                    <td style="padding: 6px 0; font-weight: bold; font-family: monospace; text-align: right;">{{ bankAccount }}</td>
+                </tr>
+                {% if variableSymbol is defined and variableSymbol %}
+                <tr>
+                    <td style="padding: 6px 0; color: #7c2d12; text-align: left;">Variabilní symbol:</td>
+                    <td style="padding: 6px 0; font-weight: bold; font-family: monospace; text-align: right;">{{ variableSymbol }}</td>
+                </tr>
+                {% endif %}
+            </table>
+            <p style="font-size: 13px;">V případě dotazů k platbě nás kontaktujte na <a href="mailto:skladmistr@fajnesklady.cz">skladmistr@fajnesklady.cz</a>.</p>
         </div>
         {% endif %}
 

@@ -15,6 +15,7 @@ use App\Entity\User;
 use App\Enum\BillingMode;
 use App\Enum\PaymentFrequency;
 use App\Enum\PaymentMethod;
+use App\Enum\TerminationReason;
 use App\Service\Billing\RecurringAmountCalculator;
 use App\Service\Order\OrderPaymentOverviewFactory;
 use App\Service\Order\PaymentOverviewRow;
@@ -193,6 +194,50 @@ class OrderPaymentOverviewFactoryTest extends TestCase
         $this->assertCount(1, $cycleRows);
         $this->assertSame(PaymentOverviewRow::STATUS_PAID, $cycleRows[0]->status);
         $this->assertNotNull($cycleRows[0]->paidAt);
+    }
+
+    public function testTerminatedContractCancelledRequestIsNotOverdue(): void
+    {
+        // After termination the stale cycle request is cancelled (spec 087), so
+        // only the post-termination debt is a receivable — no double-count.
+        $order = $this->createOrder(startDate: '2025-04-01', endDate: '2025-12-31');
+        $order->setPaymentMethod(PaymentMethod::BANK_TRANSFER);
+        $order->setBillingMode(BillingMode::MANUAL_RECURRING);
+        $order->assignVariableSymbol('3351547879');
+        $order->markPaid($this->now);
+
+        $contract = $this->createContract($order);
+        $contract->applyBillingMode(BillingMode::MANUAL_RECURRING);
+        $contract->setOutstandingDebt(48533);
+        $contract->terminate($this->now, TerminationReason::PAYMENT_FAILURE);
+
+        $cancelledRequest = new ManualPaymentRequest(
+            id: Uuid::v7(),
+            contract: $contract,
+            periodStart: new \DateTimeImmutable('2025-06-01'),
+            periodEnd: new \DateTimeImmutable('2025-06-30'),
+            amount: 288000,
+            createdAt: new \DateTimeImmutable('2025-06-02'),
+        );
+        $cancelledRequest->cancel();
+
+        $factory = $this->createFactory();
+        $overview = $factory->build($order, $contract, [], [$cancelledRequest], $this->now);
+
+        // The cancelled cycle renders grey, never as an overdue row.
+        $cancelledRows = array_values(array_filter($overview->rows, static fn (PaymentOverviewRow $r): bool => PaymentOverviewRow::STATUS_CANCELLED === $r->status));
+        $this->assertCount(1, $cancelledRows);
+        $this->assertSame(288000, $cancelledRows[0]->amountInHaler);
+
+        // Exactly one overdue row — the post-termination debt, not the full cycle.
+        $overdueRows = array_values(array_filter($overview->rows, static fn (PaymentOverviewRow $r): bool => PaymentOverviewRow::STATUS_OVERDUE === $r->status));
+        $this->assertCount(1, $overdueRows);
+        $this->assertSame(48533, $overdueRows[0]->amountInHaler);
+        $this->assertStringContainsString('Dluh po ukončení smlouvy', $overdueRows[0]->label);
+
+        // Totals reflect only the debt — the cancelled cycle is excluded.
+        $this->assertSame(48533, $overview->overdueTotalInHaler);
+        $this->assertSame(48533, $overview->outstandingTotalInHaler);
     }
 
     private function createFactory(): OrderPaymentOverviewFactory

@@ -72,10 +72,14 @@ final class AdminOrderDetailController extends AbstractController
 
         $daysRemaining = null;
         $canTerminate = false;
+        $potentialTerminationDebtInHaler = 0;
 
         if (null !== $contract) {
             $daysRemaining = $this->contractService->getDaysRemaining($contract, $now);
             $canTerminate = $this->isGranted('CONTRACT_TERMINATE', $contract);
+            if (!$contract->isTerminated()) {
+                $potentialTerminationDebtInHaler = $this->contractService->calculateOutstandingDebt($contract, $now);
+            }
         }
 
         $paymentSchedule = $this->priceCalculator->buildScheduleFromOrder($order);
@@ -149,6 +153,7 @@ final class AdminOrderDetailController extends AbstractController
             'invoices' => $invoices,
             'daysRemaining' => $daysRemaining,
             'canTerminate' => $canTerminate,
+            'potentialTerminationDebtInHaler' => $potentialTerminationDebtInHaler,
             'paymentSchedule' => $paymentSchedule,
             'totalPaid' => $totalPaid,
             'isUserOverdue' => $isUserOverdue,

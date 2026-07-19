@@ -93,6 +93,25 @@ final class ManualPaymentRequestRepository
             ->getOneOrNullResult();
     }
 
+    /**
+     * Every still-pending request of a contract — cancelled in bulk when the
+     * contract is terminated so no stale cycle keeps showing as overdue.
+     *
+     * @return list<ManualPaymentRequest>
+     */
+    public function findPendingByContract(Contract $contract): array
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('r')
+            ->from(ManualPaymentRequest::class, 'r')
+            ->where('r.contract = :contract')
+            ->andWhere('r.status = :pending')
+            ->setParameter('contract', $contract)
+            ->setParameter('pending', ManualPaymentRequest::STATUS_PENDING)
+            ->getQuery()
+            ->getResult();
+    }
+
     public function findUnpaidByContractAndPeriod(Contract $contract, \DateTimeImmutable $periodStart): ?ManualPaymentRequest
     {
         return $this->entityManager->createQueryBuilder()

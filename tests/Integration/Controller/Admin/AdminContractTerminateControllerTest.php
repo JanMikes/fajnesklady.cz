@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Integration\Controller\Admin;
 
 use App\Entity\Contract;
+use App\Entity\ManualPaymentRequest;
 use App\Entity\Order;
 use App\Entity\Place;
 use App\Entity\Storage;
@@ -158,6 +159,70 @@ class AdminContractTerminateControllerTest extends WebTestCase
         ]);
 
         $this->assertResponseRedirects('/login');
+    }
+
+    public function testImmediateTerminationRecordsDebtWhenChosen(): void
+    {
+        $contract = $this->createTestContract();
+        // Paid through 10 days ago → calculateOutstandingDebt() > 0.
+        $contract->scheduleNextBilling($this->clock->now(), $this->clock->now()->modify('-10 days'));
+        $this->entityManager->flush();
+
+        $this->loginAsAdmin();
+        $this->client->request('POST', $this->url($contract), [
+            'termination_type' => 'immediate',
+            'record_debt' => '1',
+            'password' => 'password',
+        ]);
+
+        $this->assertResponseRedirects('/portal/admin/orders/'.$contract->order->id->toRfc4122());
+
+        $this->entityManager->refresh($contract);
+        $this->assertTrue($contract->isTerminated());
+        $this->assertSame(TerminationReason::ADMIN, $contract->terminationReason);
+        $this->assertTrue($contract->hasOutstandingDebt());
+    }
+
+    public function testImmediateTerminationForgivesDebtByDefault(): void
+    {
+        $contract = $this->createTestContract();
+        $contract->scheduleNextBilling($this->clock->now(), $this->clock->now()->modify('-10 days'));
+        $this->entityManager->flush();
+
+        $this->loginAsAdmin();
+        $this->client->request('POST', $this->url($contract), [
+            'termination_type' => 'immediate',
+            'record_debt' => '0',
+            'password' => 'password',
+        ]);
+
+        $this->entityManager->refresh($contract);
+        $this->assertTrue($contract->isTerminated());
+        $this->assertFalse($contract->hasOutstandingDebt());
+    }
+
+    public function testImmediateTerminationCancelsPendingRequest(): void
+    {
+        $contract = $this->createTestContract();
+        $request = new ManualPaymentRequest(
+            id: Uuid::v7(),
+            contract: $contract,
+            periodStart: $this->clock->now()->modify('-5 days'),
+            periodEnd: $this->clock->now()->modify('+25 days'),
+            amount: 35000,
+            createdAt: $this->clock->now()->modify('-5 days'),
+        );
+        $this->entityManager->persist($request);
+        $this->entityManager->flush();
+
+        $this->loginAsAdmin();
+        $this->client->request('POST', $this->url($contract), [
+            'termination_type' => 'immediate',
+            'password' => 'password',
+        ]);
+
+        $this->entityManager->refresh($request);
+        $this->assertSame(ManualPaymentRequest::STATUS_CANCELLED, $request->status);
     }
 
     private function url(Contract $contract): string

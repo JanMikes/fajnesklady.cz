@@ -6,6 +6,7 @@ namespace App\Event;
 
 use App\Repository\ContractRepository;
 use App\Service\OrderStatusUrlGenerator;
+use App\Service\Payment\QrPaymentGenerator;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -18,6 +19,7 @@ final readonly class SendContractTerminatedEmailHandler
         private ContractRepository $contractRepository,
         private MailerInterface $mailer,
         private OrderStatusUrlGenerator $statusUrlGenerator,
+        private QrPaymentGenerator $qrPaymentGenerator,
     ) {
     }
 
@@ -42,6 +44,8 @@ final readonly class SendContractTerminatedEmailHandler
                 'terminationReason' => $contract->terminationReason,
                 'hasOutstandingDebt' => $contract->hasOutstandingDebt(),
                 'outstandingDebt' => $contract->outstandingDebtAmount ? $contract->outstandingDebtAmount / 100 : 0,
+                'bankAccount' => $this->qrPaymentGenerator->getBankAccountFormatted(),
+                'variableSymbol' => $contract->order->variableSymbol,
                 'statusUrl' => $this->statusUrlGenerator->generate($contract->order),
             ]);
 

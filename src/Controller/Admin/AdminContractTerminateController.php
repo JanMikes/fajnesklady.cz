@@ -80,6 +80,9 @@ final class AdminContractTerminateController extends AbstractController
             contract: $contract,
             immediate: $immediate,
             reason: $reason,
+            // Only meaningful for immediate termination — with-notice keeps
+            // billing until terminatesAt, where the overdue cron records debt.
+            recordDebt: $immediate && $request->request->getBoolean('record_debt'),
         ));
 
         if ($immediate) {

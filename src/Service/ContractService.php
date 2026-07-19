@@ -10,6 +10,7 @@ use App\Enum\BillingMode;
 use App\Enum\TerminationReason;
 use App\Repository\ContractRepository;
 use App\Repository\HandoverProtocolRepository;
+use App\Repository\ManualPaymentRequestRepository;
 use App\Service\GoPay\GoPayClient;
 
 /**
@@ -22,6 +23,7 @@ final readonly class ContractService
     public function __construct(
         private ContractRepository $contractRepository,
         private HandoverProtocolRepository $handoverProtocolRepository,
+        private ManualPaymentRequestRepository $manualPaymentRequestRepository,
         private ContractDocumentGenerator $documentGenerator,
         private AuditLogger $auditLogger,
         private GoPayClient $goPayClient,
@@ -77,6 +79,14 @@ final readonly class ContractService
 
         $contract->terminate($now, $reason, !$hasIncompleteHandover);
         $this->auditLogger->logContractTerminated($contract);
+
+        // The terminated contract's unpaid cycle is now void — its receivable is
+        // either crystallised into outstandingDebtAmount or forgiven. Cancel any
+        // still-pending request so the payment overview stops double-counting it
+        // as an overdue row (applies to the admin action and the overdue cron).
+        foreach ($this->manualPaymentRequestRepository->findPendingByContract($contract) as $request) {
+            $request->cancel();
+        }
 
         if (!$hasIncompleteHandover) {
             $this->auditLogger->logStorageReleased($contract->storage, sprintf('Contract terminated (%s)', $reason->value));

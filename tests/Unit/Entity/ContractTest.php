@@ -543,6 +543,54 @@ class ContractTest extends TestCase
         $this->assertFalse($contract->hasOutstandingDebt());
     }
 
+    public function testReduceOutstandingDebtPartialLeavesRemainder(): void
+    {
+        $contract = $this->createContract();
+        $contract->setOutstandingDebt(48533);
+
+        $contract->reduceOutstandingDebt(20000);
+
+        $this->assertTrue($contract->hasOutstandingDebt());
+        $this->assertSame(28533, $contract->outstandingDebtAmount);
+    }
+
+    public function testReduceOutstandingDebtFullClearsToNull(): void
+    {
+        $contract = $this->createContract();
+        $contract->setOutstandingDebt(48533);
+
+        $contract->reduceOutstandingDebt(48533);
+
+        $this->assertFalse($contract->hasOutstandingDebt());
+        $this->assertNull($contract->outstandingDebtAmount);
+    }
+
+    public function testReduceOutstandingDebtRejectsWhenNoDebt(): void
+    {
+        $contract = $this->createContract();
+
+        $this->expectException(\DomainException::class);
+        $contract->reduceOutstandingDebt(1000);
+    }
+
+    public function testReduceOutstandingDebtRejectsExcess(): void
+    {
+        $contract = $this->createContract();
+        $contract->setOutstandingDebt(48533);
+
+        $this->expectException(\DomainException::class);
+        $contract->reduceOutstandingDebt(48534);
+    }
+
+    public function testReduceOutstandingDebtRejectsNonPositive(): void
+    {
+        $contract = $this->createContract();
+        $contract->setOutstandingDebt(48533);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $contract->reduceOutstandingDebt(0);
+    }
+
     public function testRequestTermination(): void
     {
         $contract = $this->createContract();
