@@ -10,6 +10,7 @@ use App\Entity\Invoice;
 use App\Entity\Order;
 use App\Entity\User;
 use App\Enum\FineType;
+use App\Enum\OrderStatus;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -31,6 +32,31 @@ class AdminOrderDetailControllerTest extends WebTestCase
     {
         parent::tearDown();
         static::ensureKernelShutdown();
+    }
+
+    public function testDeferredOrderShowsAwaitingChoiceIndicator(): void
+    {
+        // Spec 088: a deferred onboarding renders without error and shows
+        // "Zákazník zvolí" instead of a concrete (provisional) method/price.
+        $order = $this->entityManager->createQueryBuilder()
+            ->select('o')
+            ->from(Order::class, 'o')
+            ->where('o.status = :reserved')
+            ->setParameter('reserved', OrderStatus::RESERVED)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+        \assert($order instanceof Order);
+
+        $order->markCustomerChoosesPayment();
+        (new \ReflectionClass($order))->getProperty('paymentMethod')->setValue($order, null);
+        $this->entityManager->flush();
+
+        $this->client->loginUser($this->findAdmin(), 'main');
+        $this->client->request('GET', '/portal/admin/orders/'.$order->id->toRfc4122());
+
+        $this->assertResponseIsSuccessful();
+        $this->assertSelectorTextContains('body', 'Zákazník zvolí');
     }
 
     public function testRendersHistoriCenyPanelForOnboardedContract(): void

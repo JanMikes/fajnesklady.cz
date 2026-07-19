@@ -9,8 +9,10 @@ use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
+use App\Enum\BillingMode;
 use App\Enum\OrderStatus;
 use App\Enum\PaymentFrequency;
+use App\Enum\PaymentMethod;
 use App\Enum\SigningMethod;
 use App\Event\OrderCancelled;
 use App\Event\OrderCompleted;
@@ -813,5 +815,97 @@ class OrderTest extends TestCase
 
         $this->assertTrue($order->hasUploadedContract());
         $this->assertFalse($order->uploadedContractIsImage());
+    }
+
+    public function testMarkCustomerChoosesPaymentPutsOrderIntoAwaitingChoice(): void
+    {
+        $order = $this->createOrder();
+        $this->assertFalse($order->customerChoosesPayment);
+        $this->assertFalse($order->isAwaitingPaymentChoice());
+
+        $order->markCustomerChoosesPayment();
+
+        $this->assertTrue($order->customerChoosesPayment);
+        $this->assertTrue($order->isAwaitingPaymentChoice(), 'No method chosen yet.');
+        $this->assertTrue($order->canEditPaymentChoice());
+    }
+
+    public function testApplyCustomerPaymentChoiceLocksAllFields(): void
+    {
+        $order = $this->createOrder(paymentFrequency: PaymentFrequency::MONTHLY, firstPaymentPrice: 50000);
+        $order->markCustomerChoosesPayment();
+
+        $order->applyCustomerPaymentChoice(
+            PaymentMethod::BANK_TRANSFER,
+            PaymentFrequency::YEARLY,
+            120000,
+            BillingMode::MANUAL_RECURRING,
+            '1234567890',
+        );
+
+        $this->assertSame(PaymentMethod::BANK_TRANSFER, $order->paymentMethod);
+        $this->assertSame(PaymentFrequency::YEARLY, $order->paymentFrequency);
+        $this->assertSame(120000, $order->firstPaymentPrice);
+        $this->assertSame(BillingMode::MANUAL_RECURRING, $order->billingMode);
+        $this->assertSame('1234567890', $order->variableSymbol);
+        // Provenance stays true, but the choice is now made.
+        $this->assertTrue($order->customerChoosesPayment);
+        $this->assertFalse($order->isAwaitingPaymentChoice());
+    }
+
+    public function testApplyCustomerPaymentChoiceWithNullVsClearsStaleValue(): void
+    {
+        $order = $this->createOrder();
+        $order->markCustomerChoosesPayment();
+        $order->assignVariableSymbol('9999999999');
+
+        $order->applyCustomerPaymentChoice(
+            PaymentMethod::GOPAY,
+            PaymentFrequency::MONTHLY,
+            50000,
+            BillingMode::AUTO_RECURRING,
+            null,
+        );
+
+        $this->assertNull($order->variableSymbol);
+    }
+
+    public function testApplyCustomerPaymentChoiceThrowsWhenNotDeferred(): void
+    {
+        $order = $this->createOrder();
+
+        $this->expectException(\DomainException::class);
+        $order->applyCustomerPaymentChoice(
+            PaymentMethod::GOPAY,
+            PaymentFrequency::MONTHLY,
+            50000,
+            BillingMode::AUTO_RECURRING,
+            null,
+        );
+    }
+
+    public function testApplyCustomerPaymentChoiceThrowsWhenAlreadySigned(): void
+    {
+        $order = $this->createOrder();
+        $order->markCustomerChoosesPayment();
+        $order->attachSignature(
+            signaturePath: '/var/signatures/x.png',
+            signingMethod: SigningMethod::DRAW,
+            typedName: null,
+            styleId: null,
+            signingPlace: 'Praha',
+            now: new \DateTimeImmutable(),
+        );
+
+        $this->assertFalse($order->canEditPaymentChoice());
+
+        $this->expectException(\DomainException::class);
+        $order->applyCustomerPaymentChoice(
+            PaymentMethod::GOPAY,
+            PaymentFrequency::MONTHLY,
+            50000,
+            BillingMode::AUTO_RECURRING,
+            null,
+        );
     }
 }

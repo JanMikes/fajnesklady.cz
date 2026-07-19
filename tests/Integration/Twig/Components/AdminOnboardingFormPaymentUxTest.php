@@ -64,6 +64,21 @@ final class AdminOnboardingFormPaymentUxTest extends KernelTestCase
         self::assertLessThan($frequencyPos, $methodPos);
     }
 
+    public function testLetCustomerChooseHidesPaymentSections(): void
+    {
+        // Spec 088: checking "Nechat vybrat zákazníka" hides method / frequency /
+        // cenový model / externí předplatné and shows the deferral note.
+        $component = $this->makeComponentWithPlaceAndType();
+        $component->submitForm(['admin_onboarding_form' => $this->payload(['letCustomerChoosePayment' => '1'])]);
+
+        $html = $component->render()->toString();
+        self::assertStringContainsString('Zákazník si při podpisu smlouvy sám zvolí způsob platby', $html);
+        self::assertStringNotContainsString('Platební metoda', $html);
+        self::assertStringNotContainsString('Frekvence plateb', $html);
+        self::assertStringNotContainsString('Cenový model', $html);
+        self::assertStringNotContainsString('Externí předplatné', $html);
+    }
+
     public function testGopayHidesFrequencyCardEntirely(): void
     {
         $component = $this->makeComponentWithPlaceAndType();

@@ -110,6 +110,11 @@ final class AdminOnboardingFormType extends AbstractType
                 'required' => false,
                 'widget' => 'single_text',
             ])
+            ->add('letCustomerChoosePayment', CheckboxType::class, [
+                'label' => 'Nechat vybrat zákazníka',
+                'required' => false,
+                'help' => 'Zákazník si při podpisu sám zvolí způsob a frekvenci platby. Pronájem bude za standardní ceník.',
+            ])
             ->add('paymentMethod', EnumType::class, [
                 'class' => PaymentMethod::class,
                 'label' => 'Způsob platby',

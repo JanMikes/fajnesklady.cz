@@ -66,7 +66,7 @@
                                     <span class="text-gray-500">(automat. prodlužování)</span>
                                 {% endif %}
                             </td>
-                            <td class="font-medium">{{ (order.firstPaymentPrice / 100)|number_format(0, ',', ' ') }} Kč{% if order.isRecurring %} / {{ order.isYearlyFrequency ? 'rok' : 'měsíc' }}{% endif %}</td>
+                            <td class="font-medium">{% if order.isAwaitingPaymentChoice() %}<span class="badge badge-warning badge-sm" title="Zákazník zvolí způsob a frekvenci platby při podpisu">Čeká na volbu platby</span>{% else %}{{ (order.firstPaymentPrice / 100)|number_format(0, ',', ' ') }} Kč{% if order.isRecurring %} / {{ order.isYearlyFrequency ? 'rok' : 'měsíc' }}{% endif %}{% endif %}</td>
                             <td>
                                 {% set statusClass = {
                                     'created': 'badge-ghost',

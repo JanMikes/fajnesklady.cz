@@ -46,6 +46,7 @@ Stack: PHP 8.5 (Docker image `ghcr.io/thedevs-cz/php:8.5-fajnesklady`) · Symfon
 - `/predavaci-protokol/{id}` → `Public\HandoverViewController` (UriSigner-protected — signed link mailed to tenant; lets them upload signature/photos without logging in)
 - `/podpis/{token}` → `CustomerSigningController` — onboarding signing page; situation-aware parity with the order flow (scenario B renders the shared `templates/public/_contract_terms.html.twig`; scenario A previews the uploaded contract; contextual logos + recurring consent; spec 072)
 - `/podpis/{token}/smlouva` → `Public\CustomerSigningContractController` — serves the admin-uploaded contract inline for the scenario-A signing preview (signing-token-gated, path-confined to `var/contracts`; spec 072)
+- `/podpis/{token}/zpusob-platby` → `Public\CustomerPaymentChoiceController` — dedicated payment-choice step for a **deferred** admin onboarding (`Order.customerChoosesPayment`): the customer picks method + frequency (via `OnboardingPaymentChoiceForm` Live Component) before signing; `ChooseOnboardingPaymentCommand` locks price + billing mode + VS. Signing-token-gated; `/podpis/{token}` 302-redirects here while `Order.isAwaitingPaymentChoice()` (spec 088)
 - `/podpis/dokonceno/{id}` → `CustomerSigningCompleteController`
 - `/opakovana-platba/{contractId}/zrusit` → `CancelRecurringPaymentController` (UriSigner-protected)
 - `/vzor-smlouvy` → `ContractSampleController` — sample contract PDF
@@ -318,7 +319,7 @@ User, Place, PlaceAccess, PlaceAccessRequest, PlaceChangeRequest, PlaceStorageCo
 
 ## Twig (`src/Twig/`)
 
-- Components: `AdminOnboardingForm` (Live Component — unified onboarding, spec 050; window-aware storage selection gated by the date-range `StorageAvailabilityChecker`, spec 071), `BillingInfoForm`, `OrderForm` (Live Component — hosts the reactive order map that repaints on date/type change; storage availability is window-derived via `StorageAvailabilityChecker`, spec 071; manual pick limited to unengaged units, spec 084), `PlaceOccupancyMap` (Live Component — date-shifting occupancy canvas, spec 047), `RevenueChart`.
+- Components: `AdminOnboardingForm` (Live Component — unified onboarding, spec 050; window-aware storage selection gated by the date-range `StorageAvailabilityChecker`, spec 071; "Nechat vybrat zákazníka" defers method+frequency to the customer, spec 088), `OnboardingPaymentChoiceForm` (Live Component — customer method+frequency choice on the deferred-onboarding signing step, spec 088), `BillingInfoForm`, `OrderForm` (Live Component — hosts the reactive order map that repaints on date/type change; storage availability is window-derived via `StorageAvailabilityChecker`, spec 071; manual pick limited to unengaged units, spec 084), `PlaceOccupancyMap` (Live Component — date-shifting occupancy canvas, spec 047), `RevenueChart`.
 - Extensions: `BankTransactionExtension`, `FineExtension` (fine type labels, amount formatting), `OperationsExtension` (sidebar badge count for admin operations hub), `OrderReferenceExtension` (canonical order reference filter — see `Order\OrderReferenceFormatter`), `OverdueExtension` (severity badges / labels), `RoleLabelExtension`, `UploadExtension`, `PlaceAddressExtension` (`place_address`, `place_navigation_url`, `place_has_navigation`).
 
 ## Value objects (`src/Value/`)

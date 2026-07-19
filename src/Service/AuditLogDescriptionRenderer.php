@@ -22,6 +22,7 @@ final readonly class AuditLogDescriptionRenderer
 
         return match ($key) {
             'order.created' => 'Objednávka vytvořena',
+            'order.payment_chosen' => 'Zákazník zvolil způsob platby',
             'order.reserved' => 'Objednávka zarezervovala sklad',
             'order.paid' => 'Objednávka zaplacena',
             'order.paid_externally' => 'Objednávka označena jako zaplacená mimo systém',

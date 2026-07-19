@@ -20,6 +20,7 @@ final readonly class SigningEmailContent
         public ?\DateTimeImmutable $billingResumesOn = null,
         public ?string $futureBillingLine = null,
         public string $cadenceLabel = 'měsíc',
+        public bool $awaitingChoice = false,
     ) {
     }
 
@@ -27,6 +28,21 @@ final readonly class SigningEmailContent
     {
         $situation = CustomerBillingSituation::fromOrder($order);
         $placeName = $order->storage->getPlace()->name;
+
+        // Spec 088: a deferred onboarding has no locked method/price yet — the
+        // customer chooses at signing, so the e-mail stays neutral (no price row).
+        if ($order->isAwaitingPaymentChoice()) {
+            return new self(
+                situation: $situation,
+                subject: 'Vyberte způsob platby a podepište smlouvu — pronájem skladu v '.$placeName,
+                headline: 'Výběr platby a podpis smlouvy',
+                nextStepLine: 'Nejprve si zvolíte způsob platby (kartou nebo bankovním převodem) a frekvenci, poté podepíšete smlouvu.',
+                buttonLabel: 'Vybrat platbu a podepsat',
+                paidThroughDate: null,
+                monthlyPriceInHaler: 0,
+                awaitingChoice: true,
+            );
+        }
 
         return match ($situation) {
             CustomerBillingSituation::GOPAY_FIRST_CHARGE => new self(

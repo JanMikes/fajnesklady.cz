@@ -100,6 +100,22 @@ class SigningEmailContentTest extends TestCase
         $this->assertSame(0, $content->monthlyPriceInHaler);
     }
 
+    public function testAwaitingPaymentChoiceContentIsNeutral(): void
+    {
+        // Spec 088: a deferred onboarding has no locked method/price yet.
+        $order = $this->createOrder(placeName: 'Sklady Praha');
+        $order->markCustomerChoosesPayment();
+        (new \ReflectionClass($order))->getProperty('paymentMethod')->setValue($order, null);
+        $this->assertTrue($order->isAwaitingPaymentChoice());
+
+        $content = SigningEmailContent::fromOrder($order);
+
+        $this->assertTrue($content->awaitingChoice);
+        $this->assertSame('Vyberte způsob platby a podepište smlouvu — pronájem skladu v Sklady Praha', $content->subject);
+        $this->assertSame('Vybrat platbu a podepsat', $content->buttonLabel);
+        $this->assertSame(0, $content->monthlyPriceInHaler);
+    }
+
     private function createOrder(string $placeName, PaymentFrequency $paymentFrequency = PaymentFrequency::MONTHLY): Order
     {
         $user = new User(Uuid::v7(), 'user@example.com', 'password', 'Test', 'User', new \DateTimeImmutable());

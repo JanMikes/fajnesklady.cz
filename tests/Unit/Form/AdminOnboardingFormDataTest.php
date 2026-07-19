@@ -529,6 +529,54 @@ final class AdminOnboardingFormDataTest extends TestCase
         self::assertFalse($data->startsInPast());
     }
 
+    public function testLetCustomerChooseWithoutMethodPasses(): void
+    {
+        // Method + frequency are not required when the customer will choose.
+        $data = $this->validData();
+        $data->letCustomerChoosePayment = true;
+        $data->paymentMethod = null;
+        $data->paymentFrequency = null;
+
+        $violations = $this->validator()->validate($data);
+
+        self::assertCount(0, $violations);
+    }
+
+    public function testLetCustomerChooseRejectsCustomPrice(): void
+    {
+        $data = $this->validData();
+        $data->letCustomerChoosePayment = true;
+        $data->paymentMethod = null;
+        $data->paymentFrequency = null;
+        $data->monthlyPriceMode = 'custom';
+        $data->customMonthlyPriceInCzk = 500.0;
+
+        self::assertNotEmpty($this->violationsAt('monthlyPriceMode', $data));
+    }
+
+    public function testLetCustomerChooseRejectsExternalPrepaid(): void
+    {
+        $data = $this->validData();
+        $data->letCustomerChoosePayment = true;
+        $data->paymentMethod = null;
+        $data->paymentFrequency = null;
+        $data->isExternallyPrepaid = true;
+        $data->paidThroughDate = new \DateTimeImmutable('today +3 months');
+
+        self::assertNotEmpty($this->violationsAt('isExternallyPrepaid', $data));
+    }
+
+    public function testLetCustomerChooseRejectsBackdatedStart(): void
+    {
+        $data = $this->validData();
+        $data->letCustomerChoosePayment = true;
+        $data->paymentMethod = null;
+        $data->paymentFrequency = null;
+        $data->startDate = new \DateTimeImmutable('today -10 days');
+
+        self::assertNotEmpty($this->violationsAt('startDate', $data));
+    }
+
     /**
      * @return array<int, \Symfony\Component\Validator\ConstraintViolationInterface>
      */

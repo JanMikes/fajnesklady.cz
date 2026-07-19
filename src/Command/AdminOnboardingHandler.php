@@ -7,6 +7,7 @@ namespace App\Command;
 use App\Entity\Order;
 use App\Entity\User;
 use App\Enum\BillingMode;
+use App\Enum\PaymentFrequency;
 use App\Enum\PaymentMethod;
 use App\Event\AdminOnboardingInitiated;
 use App\Repository\UserRepository;
@@ -51,48 +52,79 @@ final readonly class AdminOnboardingHandler
             $user->updateBirthDate($command->birthDate, $now);
         }
 
-        $order = $this->orderService->createOrder(
-            user: $user,
-            storageType: $command->storageType,
-            place: $command->place,
-            startDate: $command->startDate,
-            endDate: $command->endDate,
-            now: $now,
-            paymentFrequency: $command->paymentFrequency,
-            preSelectedStorage: $command->storage,
-            monthlyPriceOverride: $command->individualMonthlyAmount,
-        );
-
-        $order->markAsAdminCreated();
-
-        $isFreeOrPrepaid = 0 === $command->individualMonthlyAmount || null !== $command->paidThroughDate;
-        $hasDebt = null !== $command->debtInHaler && $command->debtInHaler > 0;
-        $forceExternal = $isFreeOrPrepaid && !$hasDebt;
-        $effectivePaymentMethod = $forceExternal ? PaymentMethod::EXTERNAL : $command->paymentMethod;
-        $order->setPaymentMethod($effectivePaymentMethod);
-
-        // Prepaid rental billing always runs on the manual (bank-transfer request)
-        // track — even when the method radio stays GOPAY/BANK_TRANSFER for a debt
-        // payment, no card token is ever established for the rental itself.
-        $rentalDays = (int) $command->startDate->diff($command->endDate)->days;
-        $billingMode = null !== $command->paidThroughDate
-            ? BillingMode::derive(PaymentMethod::EXTERNAL, $command->paymentFrequency, $rentalDays)
-            : BillingMode::derive($effectivePaymentMethod, $command->paymentFrequency, $rentalDays);
-        $order->setBillingMode($billingMode);
-
-        if (PaymentMethod::BANK_TRANSFER === $effectivePaymentMethod) {
-            $vs = null !== $command->variableSymbolOverride && '' !== $command->variableSymbolOverride
-                ? $command->variableSymbolOverride
-                : $this->variableSymbolGenerator->generate($order->id);
-            $order->assignVariableSymbol($vs);
-        }
-
         $createdByAdmin = $this->userRepository->get($command->createdByAdminId);
-        $order->setOnboardingBillingTerms(
-            individualMonthlyAmount: $command->individualMonthlyAmount,
-            paidThroughDate: $command->paidThroughDate,
-            createdByAdmin: $createdByAdmin,
-        );
+
+        if ($command->letCustomerChoosePayment) {
+            // Spec 088: deferred choice. Provisional MONTHLY standard-ceník order;
+            // the customer picks method + frequency at signing
+            // (ChooseOnboardingPaymentHandler), which recomputes firstPaymentPrice
+            // + billingMode + VS. No method / mode / VS / external-force here.
+            $order = $this->orderService->createOrder(
+                user: $user,
+                storageType: $command->storageType,
+                place: $command->place,
+                startDate: $command->startDate,
+                endDate: $command->endDate,
+                now: $now,
+                paymentFrequency: PaymentFrequency::MONTHLY,
+                preSelectedStorage: $command->storage,
+                monthlyPriceOverride: null,
+            );
+            $order->markAsAdminCreated();
+            $order->markCustomerChoosesPayment();
+            $order->setOnboardingBillingTerms(
+                individualMonthlyAmount: null,
+                paidThroughDate: null,
+                createdByAdmin: $createdByAdmin,
+            );
+        } else {
+            $paymentMethod = $command->paymentMethod;
+            $paymentFrequency = $command->paymentFrequency;
+            \assert($paymentMethod instanceof PaymentMethod);
+            \assert($paymentFrequency instanceof PaymentFrequency);
+
+            $order = $this->orderService->createOrder(
+                user: $user,
+                storageType: $command->storageType,
+                place: $command->place,
+                startDate: $command->startDate,
+                endDate: $command->endDate,
+                now: $now,
+                paymentFrequency: $paymentFrequency,
+                preSelectedStorage: $command->storage,
+                monthlyPriceOverride: $command->individualMonthlyAmount,
+            );
+
+            $order->markAsAdminCreated();
+
+            $isFreeOrPrepaid = 0 === $command->individualMonthlyAmount || null !== $command->paidThroughDate;
+            $hasDebt = null !== $command->debtInHaler && $command->debtInHaler > 0;
+            $forceExternal = $isFreeOrPrepaid && !$hasDebt;
+            $effectivePaymentMethod = $forceExternal ? PaymentMethod::EXTERNAL : $paymentMethod;
+            $order->setPaymentMethod($effectivePaymentMethod);
+
+            // Prepaid rental billing always runs on the manual (bank-transfer request)
+            // track — even when the method radio stays GOPAY/BANK_TRANSFER for a debt
+            // payment, no card token is ever established for the rental itself.
+            $rentalDays = (int) $command->startDate->diff($command->endDate)->days;
+            $billingMode = null !== $command->paidThroughDate
+                ? BillingMode::derive(PaymentMethod::EXTERNAL, $paymentFrequency, $rentalDays)
+                : BillingMode::derive($effectivePaymentMethod, $paymentFrequency, $rentalDays);
+            $order->setBillingMode($billingMode);
+
+            if (PaymentMethod::BANK_TRANSFER === $effectivePaymentMethod) {
+                $vs = null !== $command->variableSymbolOverride && '' !== $command->variableSymbolOverride
+                    ? $command->variableSymbolOverride
+                    : $this->variableSymbolGenerator->generate($order->id);
+                $order->assignVariableSymbol($vs);
+            }
+
+            $order->setOnboardingBillingTerms(
+                individualMonthlyAmount: $command->individualMonthlyAmount,
+                paidThroughDate: $command->paidThroughDate,
+                createdByAdmin: $createdByAdmin,
+            );
+        }
 
         if (null !== $command->debtInHaler && $command->debtInHaler > 0) {
             $order->setOnboardingDebt($command->debtInHaler);

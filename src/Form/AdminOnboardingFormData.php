@@ -67,7 +67,14 @@ final class AdminOnboardingFormData implements HasBillingAddress
     #[Assert\NotNull(message: 'Zadejte datum konce.')]
     public ?\DateTimeImmutable $endDate = null;
 
-    #[Assert\NotNull(message: 'Vyberte způsob platby.')]
+    /**
+     * Spec 088: when checked, the admin defers the payment method + frequency to
+     * the customer (chosen at signing). paymentMethod / paymentFrequency are then
+     * not required here and the rental is forced onto the standard ceník.
+     */
+    public bool $letCustomerChoosePayment = false;
+
+    // Required only when NOT deferring — see validatePaymentSelectionRequired().
     public ?PaymentMethod $paymentMethod = null;
 
     /**
@@ -77,7 +84,7 @@ final class AdminOnboardingFormData implements HasBillingAddress
      */
     public ?BillingMode $billingMode = null;
 
-    #[Assert\NotNull(message: 'Vyberte frekvenci platby.')]
+    // Required only when NOT deferring — see validatePaymentSelectionRequired().
     public ?PaymentFrequency $paymentFrequency = null;
 
     #[Assert\NotBlank(message: 'Vyberte cenový model.')]
@@ -186,6 +193,10 @@ final class AdminOnboardingFormData implements HasBillingAddress
     #[Assert\Callback]
     public function validateMonthlyPriceMode(ExecutionContextInterface $context): void
     {
+        if ($this->letCustomerChoosePayment) {
+            return; // standard ceník forced — no custom price
+        }
+
         if ('custom' !== $this->monthlyPriceMode) {
             return;
         }
@@ -200,6 +211,10 @@ final class AdminOnboardingFormData implements HasBillingAddress
     #[Assert\Callback]
     public function validateCustomPriceCap(ExecutionContextInterface $context): void
     {
+        if ($this->letCustomerChoosePayment) {
+            return; // standard ceník forced — no custom price
+        }
+
         // The 15 000 Kč cap is the legal maximum for a single recurring card
         // charge (Podmínky opakovaných plateb čl. III) and therefore binds the
         // MONTHLY figure only — yearly and upfront payments are bank-transfer
@@ -219,6 +234,10 @@ final class AdminOnboardingFormData implements HasBillingAddress
     #[Assert\Callback]
     public function validateUpfrontCustomPriceIsSinglePayment(ExecutionContextInterface $context): void
     {
+        if ($this->letCustomerChoosePayment) {
+            return; // standard ceník forced — no custom price
+        }
+
         // An upfront custom price is the WHOLE-rental total and lands in
         // firstPaymentPrice as a single payment. Rentals longer than 12 monthly
         // periods pay in yearly tranches (spec 078) whose math recovers the
@@ -240,9 +259,69 @@ final class AdminOnboardingFormData implements HasBillingAddress
         }
     }
 
+    /**
+     * Method + frequency are required only when the admin does NOT defer the
+     * choice to the customer (spec 088). Property-level NotNull would fire even
+     * in deferred mode, so the requirement lives here instead.
+     */
+    #[Assert\Callback]
+    public function validatePaymentSelectionRequired(ExecutionContextInterface $context): void
+    {
+        if ($this->letCustomerChoosePayment) {
+            return;
+        }
+
+        if (null === $this->paymentMethod) {
+            $context->buildViolation('Vyberte způsob platby.')
+                ->atPath('paymentMethod')
+                ->addViolation();
+        }
+
+        if (null === $this->paymentFrequency) {
+            $context->buildViolation('Vyberte frekvenci platby.')
+                ->atPath('paymentFrequency')
+                ->addViolation();
+        }
+    }
+
+    /**
+     * Enforces the "standard ceník only" rule for deferred onboardings
+     * (spec 088). The UI hides these controls; this is the defence-in-depth
+     * backstop against a crafted POST.
+     */
+    #[Assert\Callback]
+    public function validateLetCustomerChoose(ExecutionContextInterface $context): void
+    {
+        if (!$this->letCustomerChoosePayment) {
+            return;
+        }
+
+        if (null !== $this->monthlyPriceMode && 'standard' !== $this->monthlyPriceMode) {
+            $context->buildViolation('Při volbě „Nechat vybrat zákazníka" nelze nastavit individuální cenu ani pronájem zdarma.')
+                ->atPath('monthlyPriceMode')
+                ->addViolation();
+        }
+
+        if ($this->isExternallyPrepaid || null !== $this->paidThroughDate) {
+            $context->buildViolation('Při volbě „Nechat vybrat zákazníka" nelze zadat externí předplatné.')
+                ->atPath('isExternallyPrepaid')
+                ->addViolation();
+        }
+
+        if ($this->startsInPast()) {
+            $context->buildViolation('Při volbě „Nechat vybrat zákazníka" musí být datum začátku dnes nebo v budoucnosti (zpětné předplatné volí administrátor).')
+                ->atPath('startDate')
+                ->addViolation();
+        }
+    }
+
     #[Assert\Callback]
     public function validatePaymentMethod(ExecutionContextInterface $context): void
     {
+        if ($this->letCustomerChoosePayment) {
+            return; // method chosen by the customer at signing
+        }
+
         // Spec 076: cards only establish recurring monthly payments.
         if (PaymentMethod::GOPAY === $this->paymentMethod && PaymentFrequency::YEARLY === $this->paymentFrequency) {
             $context->buildViolation('Roční platbu lze platit pouze bankovním převodem.')
@@ -280,6 +359,10 @@ final class AdminOnboardingFormData implements HasBillingAddress
     #[Assert\Callback]
     public function validatePaymentFrequency(ExecutionContextInterface $context): void
     {
+        if ($this->letCustomerChoosePayment) {
+            return; // frequency chosen by the customer at signing
+        }
+
         if (PaymentFrequency::YEARLY !== $this->paymentFrequency) {
             return;
         }
@@ -304,6 +387,10 @@ final class AdminOnboardingFormData implements HasBillingAddress
     #[Assert\Callback]
     public function deriveBillingMode(ExecutionContextInterface $context): void
     {
+        if ($this->letCustomerChoosePayment) {
+            return; // billingMode derived from the customer's choice at signing
+        }
+
         $rentalDays = $this->rentalDays();
         if (null === $this->paymentMethod || null === $rentalDays) {
             return;
@@ -336,6 +423,10 @@ final class AdminOnboardingFormData implements HasBillingAddress
     #[Assert\Callback]
     public function validateExternalIsPrepaid(ExecutionContextInterface $context): void
     {
+        if ($this->letCustomerChoosePayment) {
+            return; // EXTERNAL never applies — the customer pays via card/bank
+        }
+
         if (PaymentMethod::EXTERNAL !== $this->paymentMethod) {
             return;
         }
@@ -362,6 +453,10 @@ final class AdminOnboardingFormData implements HasBillingAddress
     #[Assert\Callback]
     public function validatePaidThroughDate(ExecutionContextInterface $context): void
     {
+        if ($this->letCustomerChoosePayment) {
+            return; // no external prepayment in deferred mode (validateLetCustomerChoose blocks it)
+        }
+
         // The "Předplaceno do" date is in play when the customer prepaid externally, or
         // when the rental starts in the past (elapsed period must already be covered).
         // Never for free rentals. When not in play it is nulled at submit — don't validate
@@ -416,6 +511,10 @@ final class AdminOnboardingFormData implements HasBillingAddress
     #[Assert\Callback]
     public function validateDebtPaymentMethod(ExecutionContextInterface $context): void
     {
+        if ($this->letCustomerChoosePayment) {
+            return; // deferred method is always card/bank — never EXTERNAL
+        }
+
         if (null === $this->debtAmountInCzk || $this->debtAmountInCzk <= 0) {
             return;
         }

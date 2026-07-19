@@ -164,6 +164,17 @@ class Order implements EntityWithEvents
     #[ORM\Column(nullable: true)]
     public private(set) ?string $debtGoPayPaymentId = null;
 
+    /**
+     * Admin onboarding opt-in (spec 088): when true, the admin deferred the
+     * payment method + frequency to the customer, so the order is created in a
+     * "čeká na volbu platby" state — paymentMethod stays null and the price is a
+     * provisional MONTHLY ceník figure until the customer chooses at signing via
+     * {@see self::applyCustomerPaymentChoice()}. Write-once provenance; never
+     * cleared (the "choice made" fact is derived from paymentMethod !== null).
+     */
+    #[ORM\Column(options: ['default' => false])]
+    public private(set) bool $customerChoosesPayment = false;
+
     public function __construct(
         #[ORM\Id]
         #[ORM\Column(type: UuidType::NAME, unique: true)]
@@ -636,5 +647,57 @@ class Order implements EntityWithEvents
         if (null !== $createdByAdmin) {
             $this->createdByAdmin = $createdByAdmin;
         }
+    }
+
+    /**
+     * Set once at admin onboarding when the admin defers the payment shape to
+     * the customer (spec 088).
+     */
+    public function markCustomerChoosesPayment(): void
+    {
+        $this->customerChoosesPayment = true;
+    }
+
+    /**
+     * The customer has not yet chosen — the signing flow must route to the
+     * payment-choice step first.
+     */
+    public function isAwaitingPaymentChoice(): bool
+    {
+        return $this->customerChoosesPayment && null === $this->paymentMethod;
+    }
+
+    /**
+     * The choice may still be (re)made: a deferred order that is still payable
+     * (not cancelled / expired / completed) and not yet signed. The customer can
+     * revisit the choice step and change it until they sign.
+     */
+    public function canEditPaymentChoice(): bool
+    {
+        return $this->customerChoosesPayment && $this->canBePaid() && !$this->hasSignature();
+    }
+
+    /**
+     * The customer's payment choice — the ONLY path that writes the otherwise
+     * constructor-locked paymentFrequency + firstPaymentPrice after creation.
+     * Guarded to deferred, unsigned orders so it can never rewrite a normal
+     * order's price.
+     */
+    public function applyCustomerPaymentChoice(
+        PaymentMethod $paymentMethod,
+        PaymentFrequency $paymentFrequency,
+        int $firstPaymentPrice,
+        BillingMode $billingMode,
+        ?string $variableSymbol,
+    ): void {
+        if (!$this->canEditPaymentChoice()) {
+            throw new \DomainException('Order is not awaiting an editable customer payment choice.');
+        }
+
+        $this->paymentMethod = $paymentMethod;
+        $this->paymentFrequency = $paymentFrequency;
+        $this->firstPaymentPrice = $firstPaymentPrice;
+        $this->billingMode = $billingMode;
+        $this->variableSymbol = $variableSymbol; // null clears any stale VS (method flipped bank→card)
     }
 }

@@ -1,0 +1,155 @@
+{% set formData = form.vars.data %}
+{% set paymentMethod = formData.paymentMethod %}
+{% set paymentFrequency = formData.paymentFrequency %}
+{% set isGopay = paymentMethod is not null and paymentMethod.value == 'gopay' %}
+{% set isBankTransfer = paymentMethod is not null and paymentMethod.value == 'bank_transfer' %}
+{% set isYearly = paymentFrequency is not null and paymentFrequency.value == 'yearly' %}
+{% set isOneTimeUpfront = paymentFrequency is not null and paymentFrequency.value == 'one_time' %}
+{% set bankTransferSurchargeInCzk = this.bankTransferSurchargeInCzk %}
+{% set schedule = this.paymentSchedule %}
+
+<div {{ attributes.defaults({'data-controller': 'live-form-scroll'}) }}>
+    {{ form_start(form, {attr: {
+        'novalidate': 'novalidate',
+        'data-turbo': 'false',
+        'class': 'space-y-6',
+    }}) }}
+
+        {% if this.submitError %}
+            <div class="rounded-lg border border-red-300 bg-red-50 p-4 text-sm text-red-800">
+                {{ this.submitError }}
+            </div>
+        {% endif %}
+
+        {# Způsob platby #}
+        <div class="bg-gray-50 rounded-lg p-6">
+            <h2 class="text-lg font-semibold text-gray-900 mb-4">Způsob platby</h2>
+
+            {# Spec 076: the availability guarantee is the card product's selling point. #}
+            <div class="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                <p class="text-sm text-green-900 font-semibold">
+                    Při volbě automatické platby kartou garantujeme dostupnost Vaší skladovací jednotky v případě potřeby prodloužení pronájmu.
+                </p>
+            </div>
+
+            {{ form_widget(form.paymentMethod) }}
+
+            {% if not this.isCardEligible %}
+                <div class="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                    <p class="text-sm text-amber-800">
+                        Platba kartou je dostupná pro pronájmy od 31 dnů. Kratší pronájem zaplatíte bankovním převodem.
+                    </p>
+                </div>
+            {% endif %}
+
+            {% if isGopay %}
+                <div class="mt-3 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <p class="text-sm text-blue-900">
+                        Platba kartou probíhá automaticky jednou měsíčně — frekvenci platby není potřeba volit.
+                    </p>
+                </div>
+            {% endif %}
+
+            {% if isBankTransfer %}
+                <div class="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg space-y-1">
+                    {% if bankTransferSurchargeInCzk > 0 %}
+                        <p class="text-sm text-amber-800">
+                            Při platbě bankovním převodem je účtován příplatek {{ bankTransferSurchargeInCzk|number_format(0, ',', ' ') }} Kč za každé fakturační období.
+                        </p>
+                    {% endif %}
+                    <p class="text-sm text-amber-800">
+                        Negarantujeme dostupnost vaší skladovací jednotky v případě potřeby prodloužení pronájmu.
+                    </p>
+                </div>
+            {% endif %}
+        </div>
+
+        {# Frekvence platby — pro kartu se nevolí (vždy automatická měsíční, spec 076). #}
+        {% if isGopay %}
+            {% do form.paymentFrequency.setRendered %}
+        {% else %}
+            <div class="bg-gray-50 rounded-lg p-6">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                    Frekvence platby
+                    {% if this.isEligibleForFrequencyChoice %}
+                        <span class="ml-2 badge badge-success">−10 %</span>
+                    {% endif %}
+                </h2>
+
+                <div class="space-y-3">
+                    {% for child in form.paymentFrequency %}
+                        <div class="flex items-start">
+                            {{ form_widget(child, {attr: {'class': 'mt-0.5'}}) }}
+                            <label for="{{ child.vars.id }}" class="ml-3 text-sm text-gray-700 cursor-pointer">
+                                {{ child.vars.label }}
+                                <span class="block text-xs text-gray-500 mt-0.5">
+                                    {% if child.vars.value == 'monthly' %}
+                                        Platba převodem každý měsíc na základě e-mailové výzvy.
+                                    {% elseif child.vars.value == 'yearly' %}
+                                        Jedna platba předem na každý rok pronájmu se slevou 10 %.
+                                    {% else %}
+                                        Celý pronájem předem jedním bankovním převodem.
+                                    {% endif %}
+                                </span>
+                            </label>
+                        </div>
+                    {% endfor %}
+                </div>
+                {{ form_errors(form.paymentFrequency) }}
+
+                {% if isYearly %}
+                    <div class="mt-3 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <p class="text-sm text-blue-900">
+                            <strong>Roční platba se vždy odbavuje ručně a platí se převodem.</strong>
+                            Před vypršením roku obdržíte e-mail s výzvou k další platbě.
+                        </p>
+                    </div>
+                {% endif %}
+            </div>
+        {% endif %}
+
+        {# Kalkulace plateb — všechny ceny vč. DPH. #}
+        {% if schedule %}
+            <div class="bg-gray-50 rounded-lg p-6">
+                <h2 class="text-lg font-semibold text-gray-900 mb-2">Kalkulace plateb</h2>
+                <p class="text-sm font-semibold text-green-700 mb-3">
+                    {% if schedule.isYearly %}
+                        Roční platba: {{ schedule.yearlyAmountInCzk|number_format(0, ',', ' ') }} Kč / rok <span class="text-xs font-normal text-gray-500">vč. DPH</span>
+                    {% elseif not schedule.isRecurring %}
+                        Jednorázová platba: {{ schedule.firstPayment.amountInCzk|number_format(0, ',', ' ') }} Kč <span class="text-xs font-normal text-gray-500">vč. DPH</span>
+                    {% elseif schedule.monthlyAmount %}
+                        Měsíční platba: {{ schedule.monthlyAmountInCzk|number_format(0, ',', ' ') }} Kč / měsíc <span class="text-xs font-normal text-gray-500">vč. DPH</span>
+                    {% endif %}
+                </p>
+                {% if schedule.entries is not empty %}
+                    <ul class="text-xs text-gray-600 space-y-1 max-h-40 overflow-y-auto">
+                        {% for entry in schedule.entries %}
+                            <li class="flex justify-between">
+                                <span>{{ entry.chargeDate|date('d.m.Y') }}</span>
+                                <span class="font-medium">{{ (entry.amount / 100)|number_format(0, ',', ' ') }} Kč</span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                    {% if schedule.entryCount > 1 and not schedule.isOpenEnded %}
+                        <p class="text-xs text-gray-700 mt-2 pt-2 border-t border-gray-200 flex justify-between font-semibold">
+                            <span>Celkem</span>
+                            <span>{{ schedule.totalKnownAmountInCzk|number_format(0, ',', ' ') }} Kč</span>
+                        </p>
+                    {% endif %}
+                {% endif %}
+            </div>
+        {% endif %}
+
+        <button type="button"
+                data-action="live#action live-form-scroll#markSubmit"
+                data-live-action-param="submit"
+                data-loading="action(submit)|addAttribute(disabled)"
+                class="btn btn-primary btn-lg w-full">
+            <svg xmlns="http://www.w3.org/2000/svg" class="hidden animate-spin h-5 w-5 mr-2" data-loading="action(submit)|removeClass(hidden)" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            </svg>
+            Pokračovat k podpisu
+        </button>
+    {{ form_end(form) }}
+</div>

@@ -115,11 +115,29 @@ final class AdminOnboardingHandlerTest extends TestCase
         self::assertSame(BillingMode::MANUAL_RECURRING, $order->billingMode);
     }
 
+    public function testLetCustomerChooseCreatesDeferredOrder(): void
+    {
+        $order = $this->invokeHandler($this->createCommand(
+            paymentMethod: null,
+            letCustomerChoosePayment: true,
+        ));
+
+        self::assertTrue($order->customerChoosesPayment);
+        self::assertTrue($order->isAwaitingPaymentChoice());
+        self::assertNull($order->paymentMethod);
+        self::assertNull($order->variableSymbol);
+        self::assertNull($order->individualMonthlyAmount);
+        // Provisional MONTHLY ceník price until the customer chooses at signing.
+        self::assertSame(PaymentFrequency::MONTHLY, $order->paymentFrequency);
+        self::assertGreaterThan(0, $order->firstPaymentPrice);
+    }
+
     private function createCommand(
-        PaymentMethod $paymentMethod,
+        ?PaymentMethod $paymentMethod = null,
         ?\DateTimeImmutable $paidThroughDate = null,
         ?int $individualMonthlyAmount = null,
         ?int $debtInHaler = null,
+        bool $letCustomerChoosePayment = false,
     ): AdminOnboardingCommand {
         return new AdminOnboardingCommand(
             email: 'customer@example.com',
@@ -142,8 +160,9 @@ final class AdminOnboardingHandlerTest extends TestCase
             individualMonthlyAmount: $individualMonthlyAmount,
             paidThroughDate: $paidThroughDate,
             createdByAdminId: Uuid::v7(),
-            paymentFrequency: PaymentFrequency::MONTHLY,
+            paymentFrequency: $letCustomerChoosePayment ? null : PaymentFrequency::MONTHLY,
             debtInHaler: $debtInHaler,
+            letCustomerChoosePayment: $letCustomerChoosePayment,
         );
     }
 

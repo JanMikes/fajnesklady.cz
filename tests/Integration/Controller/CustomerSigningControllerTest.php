@@ -362,6 +362,31 @@ class CustomerSigningControllerTest extends WebTestCase
         return $order;
     }
 
+    public function testAwaitingPaymentChoiceRedirectsToChoiceStep(): void
+    {
+        // Spec 088: a deferred onboarding cannot be shown the signing page until
+        // the customer has locked their payment method + frequency.
+        $order = $this->entityManager->createQueryBuilder()
+            ->select('o')
+            ->from(Order::class, 'o')
+            ->where('o.status = :reserved')
+            ->setParameter('reserved', OrderStatus::RESERVED)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+        \assert($order instanceof Order);
+
+        $order->markCustomerChoosesPayment();
+        (new \ReflectionClass($order))->getProperty('paymentMethod')->setValue($order, null);
+        $order->setSigningToken(str_repeat('c', 64));
+        $order->extendExpiration(new \DateTimeImmutable('+30 days'));
+        $this->entityManager->flush();
+
+        $this->client->request('GET', '/podpis/'.$order->signingToken);
+
+        $this->assertResponseRedirects('/podpis/'.$order->signingToken.'/zpusob-platby');
+    }
+
     private function makeSigningOrder(
         PaymentMethod $paymentMethod,
         int $firstPaymentPrice,

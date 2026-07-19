@@ -65,8 +65,8 @@
 
         <dl class="mt-4 pt-3 border-t border-gray-200/70 flex flex-wrap gap-x-8 gap-y-2 text-sm">
             <div>
-                <dt class="text-xs uppercase text-gray-500">{{ order.isRecurring ? (order.isYearlyFrequency ? 'Roční platba' : 'Měsíční platba') : 'Cena' }}</dt>
-                <dd class="font-semibold text-gray-900">{{ (order.firstPaymentPrice / 100)|number_format(0, ',', ' ') }} Kč</dd>
+                <dt class="text-xs uppercase text-gray-500">{{ order.isAwaitingPaymentChoice() ? 'Platba' : (order.isRecurring ? (order.isYearlyFrequency ? 'Roční platba' : 'Měsíční platba') : 'Cena') }}</dt>
+                <dd class="font-semibold {{ order.isAwaitingPaymentChoice() ? 'text-amber-700' : 'text-gray-900' }}">{% if order.isAwaitingPaymentChoice() %}Zákazník zvolí{% else %}{{ (order.firstPaymentPrice / 100)|number_format(0, ',', ' ') }} Kč{% endif %}</dd>
             </div>
             <div>
                 <dt class="text-xs uppercase text-gray-500">Období</dt>
@@ -76,7 +76,7 @@
             </div>
             <div>
                 <dt class="text-xs uppercase text-gray-500">Způsob platby</dt>
-                <dd class="font-semibold text-gray-900">{{ order.billingMode.label() }}</dd>
+                <dd class="font-semibold {{ order.isAwaitingPaymentChoice() ? 'text-amber-700' : 'text-gray-900' }}">{{ order.isAwaitingPaymentChoice() ? 'Zákazník zvolí' : order.billingMode.label() }}</dd>
             </div>
             <div>
                 <dt class="text-xs uppercase text-gray-500">Zaplaceno v systému</dt>
@@ -320,7 +320,7 @@
                     </div>
                     <div>
                         <dt class="text-sm font-medium text-gray-500">Způsob platby</dt>
-                        <dd class="mt-1 text-sm text-gray-900">{{ order.billingMode.label() }}</dd>
+                        <dd class="mt-1 text-sm {{ order.isAwaitingPaymentChoice() ? 'text-amber-700' : 'text-gray-900' }}">{{ order.isAwaitingPaymentChoice() ? 'Zákazník zvolí způsob a frekvenci platby' : order.billingMode.label() }}</dd>
                     </div>
                     <div>
                         <dt class="text-sm font-medium text-gray-500">Datum začátku</dt>
@@ -341,8 +341,8 @@
                         </dd>
                     </div>
                     <div>
-                        <dt class="text-sm font-medium text-gray-500">{{ order.isRecurring ? (order.isYearlyFrequency ? 'Roční platba' : 'Měsíční platba') : (order.isPaidInUpfrontTranches ? 'První platba' : 'Celková cena') }}</dt>
-                        <dd class="mt-1 text-sm text-gray-900 font-semibold">{{ (order.firstPaymentPrice / 100)|number_format(2, ',', ' ') }} Kč{% if order.isRecurring %} / {{ order.isYearlyFrequency ? 'rok' : 'měsíc' }}{% endif %}</dd>
+                        <dt class="text-sm font-medium text-gray-500">{{ order.isAwaitingPaymentChoice() ? 'Cena' : (order.isRecurring ? (order.isYearlyFrequency ? 'Roční platba' : 'Měsíční platba') : (order.isPaidInUpfrontTranches ? 'První platba' : 'Celková cena')) }}</dt>
+                        <dd class="mt-1 text-sm font-semibold {{ order.isAwaitingPaymentChoice() ? 'text-amber-700' : 'text-gray-900' }}">{% if order.isAwaitingPaymentChoice() %}Zákazník zvolí{% else %}{{ (order.firstPaymentPrice / 100)|number_format(2, ',', ' ') }} Kč{% if order.isRecurring %} / {{ order.isYearlyFrequency ? 'rok' : 'měsíc' }}{% endif %}{% endif %}</dd>
                     </div>
                     {% include '_price_aggregate.html.twig' with { order: order, paymentSchedule: paymentSchedule, totalPaid: totalPaid, bankTransferReceivedTotal: bankTransferReceivedTotal } only %}
                     <div>

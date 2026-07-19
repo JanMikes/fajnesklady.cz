@@ -55,6 +55,27 @@ final readonly class AuditLogger
         );
     }
 
+    /**
+     * Spec 088: the customer chose the payment method + frequency for a deferred
+     * onboarding, locking billing mode + price + VS.
+     */
+    public function logOnboardingPaymentChosen(Order $order): void
+    {
+        $this->log(
+            entityType: 'order',
+            entityId: $order->id->toRfc4122(),
+            eventType: 'payment_chosen',
+            payload: [
+                'payment_method' => $order->paymentMethod?->value,
+                'payment_frequency' => $order->paymentFrequency?->value,
+                'billing_mode' => $order->billingMode->value,
+                'first_payment_price' => $order->firstPaymentPrice,
+            ],
+            orderId: $order->id,
+            userIdContext: $order->user->id,
+        );
+    }
+
     public function logOrderReserved(Order $order): void
     {
         $this->log(

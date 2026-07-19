@@ -43,6 +43,12 @@ final readonly class CustomerSignOnboardingHandler
             throw new \DomainException('Order cannot be signed in its current state.');
         }
 
+        // Spec 088: a deferred onboarding must have the customer's payment choice
+        // locked before it can be signed.
+        if ($order->isAwaitingPaymentChoice()) {
+            throw new \DomainException('Order is awaiting a customer payment choice and cannot be signed yet.');
+        }
+
         // 2. Store signature
         $signaturePath = $this->signatureStorage->store($order->id, $command->signatureDataUrl);
 

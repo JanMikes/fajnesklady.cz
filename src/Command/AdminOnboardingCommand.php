@@ -14,11 +14,17 @@ use Symfony\Component\Uid\Uuid;
 final readonly class AdminOnboardingCommand
 {
     /**
-     * @param ?int    $individualMonthlyAmount halere; null = standard storage rate; 0 = free; > 0 = individual price
-     *                                         whose meaning follows $paymentFrequency: per month (MONTHLY),
-     *                                         per year (YEARLY), or the whole-rental total (single-payment ONE_TIME)
-     * @param ?string $uploadedContractPath    absolute path to the uploaded contract document; null = no paper contract
-     * @param ?string $variableSymbolOverride  null = auto-generate for BANK_TRANSFER
+     * @param ?PaymentMethod    $paymentMethod            null when $letCustomerChoosePayment is true — the customer picks at signing
+     * @param ?PaymentFrequency $paymentFrequency         null when $letCustomerChoosePayment is true — the customer picks at signing
+     * @param ?int              $individualMonthlyAmount  halere; null = standard storage rate; 0 = free; > 0 = individual price
+     *                                                    whose meaning follows $paymentFrequency: per month (MONTHLY),
+     *                                                    per year (YEARLY), or the whole-rental total (single-payment ONE_TIME)
+     * @param ?string           $uploadedContractPath     absolute path to the uploaded contract document; null = no paper contract
+     * @param ?string           $variableSymbolOverride   null = auto-generate for BANK_TRANSFER
+     * @param bool              $letCustomerChoosePayment spec 088: when true the order is created "čeká na volbu platby" — the
+     *                                                    customer chooses method + frequency at signing; $paymentMethod /
+     *                                                    $paymentFrequency / $individualMonthlyAmount / $paidThroughDate /
+     *                                                    $variableSymbolOverride are all null (standard ceník)
      */
     public function __construct(
         public string $email,
@@ -37,14 +43,15 @@ final readonly class AdminOnboardingCommand
         public Place $place,
         public \DateTimeImmutable $startDate,
         public \DateTimeImmutable $endDate,
-        public PaymentMethod $paymentMethod,
+        public ?PaymentMethod $paymentMethod,
         public ?int $individualMonthlyAmount,
         public ?\DateTimeImmutable $paidThroughDate,
         public Uuid $createdByAdminId,
-        public PaymentFrequency $paymentFrequency,
+        public ?PaymentFrequency $paymentFrequency,
         public ?string $variableSymbolOverride = null,
         public ?string $uploadedContractPath = null,
         public ?int $debtInHaler = null,
+        public bool $letCustomerChoosePayment = false,
     ) {
     }
 }

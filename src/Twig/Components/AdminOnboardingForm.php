@@ -265,6 +265,10 @@ final class AdminOnboardingForm extends AbstractController
             return null;
         }
 
+        if ($data->letCustomerChoosePayment) {
+            return null; // spec 088: the customer chooses method + frequency at signing
+        }
+
         $startDate = $data->startDate;
         $endDate = $data->endDate;
         if (null === $startDate || null === $endDate || $endDate <= $startDate) {
@@ -471,8 +475,12 @@ final class AdminOnboardingForm extends AbstractController
         $formData = $form->getData();
         \assert(null !== $formData->startDate);
         \assert(null !== $formData->endDate);
-        \assert(null !== $formData->paymentMethod);
-        \assert(null !== $formData->paymentFrequency);
+
+        $deferPayment = $formData->letCustomerChoosePayment;
+        if (!$deferPayment) {
+            \assert(null !== $formData->paymentMethod);
+            \assert(null !== $formData->paymentFrequency);
+        }
 
         $storage = $this->getSelectedStorage();
         if (null === $storage) {
@@ -489,12 +497,14 @@ final class AdminOnboardingForm extends AbstractController
             return null;
         }
 
-        $individualMonthlyAmount = match ($formData->monthlyPriceMode) {
+        // Deferred (spec 088): standard ceník, no prepayment — the customer picks
+        // method + frequency at signing, which locks the price + VS then.
+        $individualMonthlyAmount = $deferPayment ? null : match ($formData->monthlyPriceMode) {
             'custom' => null !== $formData->customMonthlyPriceInCzk ? (int) round($formData->customMonthlyPriceInCzk * 100) : null,
             'free' => 0,
             default => null,
         };
-        $paidThroughDate = ($formData->isExternallyPrepaid
+        $paidThroughDate = !$deferPayment && ($formData->isExternallyPrepaid
             || ($formData->startsInPast() && 'free' !== $formData->monthlyPriceMode))
             ? $formData->paidThroughDate
             : null;
@@ -532,14 +542,15 @@ final class AdminOnboardingForm extends AbstractController
                 place: $place,
                 startDate: $formData->startDate,
                 endDate: $formData->endDate,
-                paymentMethod: $formData->paymentMethod,
+                paymentMethod: $deferPayment ? null : $formData->paymentMethod,
                 individualMonthlyAmount: $individualMonthlyAmount,
                 paidThroughDate: $paidThroughDate,
                 createdByAdminId: $admin->id,
-                paymentFrequency: $formData->paymentFrequency,
-                variableSymbolOverride: $formData->variableSymbol,
+                paymentFrequency: $deferPayment ? null : $formData->paymentFrequency,
+                variableSymbolOverride: $deferPayment ? null : $formData->variableSymbol,
                 uploadedContractPath: $uploadedContractPath,
                 debtInHaler: $debtInHaler,
+                letCustomerChoosePayment: $deferPayment,
             ));
 
             $handledStamp = $envelope->last(HandledStamp::class);

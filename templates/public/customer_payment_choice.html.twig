@@ -1,0 +1,40 @@
+{% extends 'user/layout.html.twig' %}
+
+{% block title %}Výběr způsobu platby - Fajnesklady.cz{% endblock %}
+
+{% block content %}
+    <div class="max-w-2xl mx-auto">
+        <div class="card">
+            <div class="card-body">
+                <h1 class="text-2xl font-bold text-gray-900 mb-2">Výběr způsobu platby</h1>
+                <p class="text-sm text-gray-600 mb-6">
+                    Zvolte prosím, jak chcete pronájem platit. Po výběru budete pokračovat k podpisu smlouvy.
+                </p>
+
+                {# Rekapitulace pronájmu #}
+                <div class="border border-gray-200 rounded-lg p-4 mb-6 bg-white text-sm text-gray-700">
+                    <p><span class="text-gray-500">Skladovací jednotka:</span>
+                        <strong>{{ storageType.name }} č. {{ storage.number }}</strong></p>
+                    <p><span class="text-gray-500">Pobočka:</span> {{ place.name }}</p>
+                    <p><span class="text-gray-500">Doba pronájmu:</span>
+                        {{ order.startDate|date('d.m.Y') }}{% if order.endDate %} – {{ order.endDate|date('d.m.Y') }}{% endif %}</p>
+                </div>
+
+                {{ component('OnboardingPaymentChoiceForm', { token: token }) }}
+
+                {# Pronajímatel identification — visible on every order-flow page
+                   (GoPay rule + Náležitosti prodejního místa). Locked to
+                   .claude/COMPLIANCE.md canonical contact values. #}
+                <div class="bg-white border border-gray-200 rounded-lg p-4 mt-6 text-xs text-gray-600">
+                    <p class="font-semibold text-gray-800 mb-1">Pronajímatel</p>
+                    <p>
+                        Mekmann s.r.o., IČO 11678631, DIČ CZ11678631<br>
+                        Sídlo: Dvořákova 780, 739 11 Frýdlant nad Ostravicí<br>
+                        Zápis: Krajský soud v Ostravě, oddíl C, vložka 86521<br>
+                        Kontakt: <a href="tel:+420605522566" class="text-accent hover:underline">+420 605 522 566</a> · <a href="mailto:skladmistr@fajnesklady.cz" class="text-accent hover:underline">skladmistr@fajnesklady.cz</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

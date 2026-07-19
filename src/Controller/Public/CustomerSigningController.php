@@ -51,6 +51,13 @@ final class CustomerSigningController extends AbstractController
             ]);
         }
 
+        // Spec 088: a deferred onboarding must first go through the payment-choice
+        // step — the order cannot be shown or signed until method + frequency are
+        // locked (GET and POST alike).
+        if ($order->isAwaitingPaymentChoice()) {
+            return $this->redirectToRoute('public_customer_payment_choice', ['token' => $token]);
+        }
+
         if ($request->isMethod('POST')) {
             return $this->handlePost($request, $order, $now);
         }
