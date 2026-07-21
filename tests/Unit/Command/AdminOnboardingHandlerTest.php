@@ -125,7 +125,8 @@ final class AdminOnboardingHandlerTest extends TestCase
         self::assertTrue($order->customerChoosesPayment);
         self::assertTrue($order->isAwaitingPaymentChoice());
         self::assertNull($order->paymentMethod);
-        self::assertNull($order->variableSymbol);
+        // Spec 089: a VS is assigned at creation even for a deferred-choice order.
+        self::assertNotNull($order->variableSymbol);
         self::assertNull($order->individualMonthlyAmount);
         // Provisional MONTHLY ceník price until the customer chooses at signing.
         self::assertSame(PaymentFrequency::MONTHLY, $order->paymentFrequency);
@@ -211,6 +212,7 @@ final class AdminOnboardingHandlerTest extends TestCase
             $storageRepository,
             new PriceCalculator(),
             $auditLogger,
+            new VariableSymbolGenerator($this->createStub(EntityManagerInterface::class)),
         );
 
         $handler = new AdminOnboardingHandler(
@@ -218,7 +220,6 @@ final class AdminOnboardingHandlerTest extends TestCase
             $orderService,
             $clock,
             $identityProvider,
-            new VariableSymbolGenerator($this->createStub(EntityManagerInterface::class)),
             sys_get_temp_dir(),
         );
 

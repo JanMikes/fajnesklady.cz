@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Event;
 
-use App\Enum\PaymentMethod;
 use App\Repository\OrderRepository;
 use App\Service\Payment\QrPaymentGenerator;
 use App\Service\Place\PlaceAddressFormatter;
@@ -45,8 +44,6 @@ final readonly class SendDebtPaymentRequestEmailHandler
             UrlGeneratorInterface::ABSOLUTE_URL,
         );
 
-        $isBankTransfer = PaymentMethod::BANK_TRANSFER === $order->paymentMethod;
-
         $email = (new TemplatedEmail())
             ->from(new Address('noreply@fajnesklady.cz', 'Fajnesklady.cz'))
             ->to(new Address($user->email, $user->fullName))
@@ -58,10 +55,11 @@ final readonly class SendDebtPaymentRequestEmailHandler
                 'debtPaymentUrl' => $debtPaymentUrl,
                 'placeName' => $place->name,
                 'placeAddress' => $this->addressFormatter->format($place),
-                'isBankTransfer' => $isBankTransfer,
-                'bankAccount' => $isBankTransfer ? $this->qrPaymentGenerator->getBankAccountFormatted() : null,
+                // Spec 089: both payment methods are offered on every order, so the
+                // wire details always ship alongside the link to the card gateway.
+                'bankAccount' => $this->qrPaymentGenerator->getBankAccountFormatted(),
                 'variableSymbol' => $order->variableSymbol,
-                'qrCodeDataUri' => $isBankTransfer && null !== $order->variableSymbol && null !== $order->onboardingDebtInHaler
+                'qrCodeDataUri' => null !== $order->variableSymbol && null !== $order->onboardingDebtInHaler
                     ? $this->qrPaymentGenerator->generateImageUrl($order->variableSymbol, $order->onboardingDebtInHaler)
                     : null,
             ]);

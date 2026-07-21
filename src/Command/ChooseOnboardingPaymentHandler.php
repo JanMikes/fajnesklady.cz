@@ -8,7 +8,6 @@ use App\Enum\BillingMode;
 use App\Enum\PaymentFrequency;
 use App\Enum\PaymentMethod;
 use App\Service\AuditLogger;
-use App\Service\Payment\VariableSymbolGenerator;
 use App\Service\PriceCalculator;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
@@ -17,7 +16,6 @@ final readonly class ChooseOnboardingPaymentHandler
 {
     public function __construct(
         private PriceCalculator $priceCalculator,
-        private VariableSymbolGenerator $variableSymbolGenerator,
         private AuditLogger $auditLogger,
     ) {
     }
@@ -62,11 +60,8 @@ final readonly class ChooseOnboardingPaymentHandler
             $frequency,
         );
         $billingMode = BillingMode::derive($method, $frequency, $rentalDays);
-        $variableSymbol = PaymentMethod::BANK_TRANSFER === $method
-            ? ($order->variableSymbol ?? $this->variableSymbolGenerator->generate($order->id))
-            : null;
 
-        $order->applyCustomerPaymentChoice($method, $frequency, $firstPaymentPrice, $billingMode, $variableSymbol);
+        $order->applyCustomerPaymentChoice($method, $frequency, $firstPaymentPrice, $billingMode);
         $this->auditLogger->logOnboardingPaymentChosen($order);
     }
 }

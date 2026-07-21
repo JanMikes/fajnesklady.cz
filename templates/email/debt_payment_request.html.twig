@@ -90,13 +90,13 @@
                     <td class="label">Dluh k úhradě:</td>
                     <td><strong style="color: #dc2626;">{{ debtAmountCzk }} Kč</strong></td>
                 </tr>
-                {% if isBankTransfer and bankAccount %}
+                {% if bankAccount %}
                 <tr>
                     <td class="label">Číslo účtu:</td>
                     <td><strong>{{ bankAccount }}</strong></td>
                 </tr>
                 {% endif %}
-                {% if isBankTransfer and variableSymbol %}
+                {% if variableSymbol %}
                 <tr>
                     <td class="label">Variabilní symbol:</td>
                     <td><strong>{{ variableSymbol }}</strong></td>
@@ -105,21 +105,19 @@
             </table>
         </div>
 
-        {% if isBankTransfer and qrCodeDataUri %}
+        {% if qrCodeDataUri %}
             <div style="text-align: center; margin: 20px 0;">
                 <p style="font-size: 14px; color: #666;">QR kód pro platbu:</p>
                 <img src="{{ qrCodeDataUri }}" alt="QR platba" style="width: 200px; height: 200px;">
             </div>
         {% endif %}
 
+        <p style="font-size: 14px; color: #444;">
+            Dluh můžete uhradit bankovním převodem podle údajů výše, nebo kartou online — obojí vede ke stejnému výsledku.
+        </p>
+
         <div style="text-align: center;">
-            <a href="{{ debtPaymentUrl }}" class="button">
-                {% if isBankTransfer %}
-                    Zobrazit platební údaje
-                {% else %}
-                    Zaplatit dluh kartou
-                {% endif %}
-            </a>
+            <a href="{{ debtPaymentUrl }}" class="button">Zaplatit dluh online</a>
         </div>
 
         <p style="font-size: 13px; color: #666;">

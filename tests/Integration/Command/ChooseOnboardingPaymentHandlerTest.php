@@ -16,7 +16,6 @@ use App\Enum\PaymentFrequency;
 use App\Enum\PaymentMethod;
 use App\Service\AuditLogger;
 use App\Service\OrderService;
-use App\Service\Payment\VariableSymbolGenerator;
 use App\Service\PriceCalculator;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ManagerRegistry;
@@ -43,7 +42,7 @@ class ChooseOnboardingPaymentHandlerTest extends KernelTestCase
         $this->clock = $container->get(ClockInterface::class);
     }
 
-    public function testCardChoiceLocksAutoRecurringMonthlyNoVs(): void
+    public function testCardChoiceLocksAutoRecurringMonthlyKeepingVs(): void
     {
         $order = $this->createDeferredOrder('+6 months');
 
@@ -56,7 +55,8 @@ class ChooseOnboardingPaymentHandlerTest extends KernelTestCase
         $this->assertSame(PaymentMethod::GOPAY, $order->paymentMethod);
         $this->assertSame(PaymentFrequency::MONTHLY, $order->paymentFrequency);
         $this->assertSame(BillingMode::AUTO_RECURRING, $order->billingMode);
-        $this->assertNull($order->variableSymbol);
+        // Spec 089: every order carries a VS regardless of the chosen method.
+        $this->assertNotNull($order->variableSymbol);
         $this->assertGreaterThan(0, $order->firstPaymentPrice);
         $this->assertFalse($order->isAwaitingPaymentChoice());
     }
@@ -141,7 +141,8 @@ class ChooseOnboardingPaymentHandlerTest extends KernelTestCase
             PaymentMethod::BANK_TRANSFER,
             PaymentFrequency::YEARLY,
         ));
-        $this->assertNotNull($order->variableSymbol);
+        $vsBeforeFlip = $order->variableSymbol;
+        $this->assertNotNull($vsBeforeFlip);
 
         // Customer changes their mind to card monthly — still allowed (unsigned).
         $this->handler()(new ChooseOnboardingPaymentCommand(
@@ -152,7 +153,7 @@ class ChooseOnboardingPaymentHandlerTest extends KernelTestCase
 
         $this->assertSame(PaymentMethod::GOPAY, $order->paymentMethod);
         $this->assertSame(BillingMode::AUTO_RECURRING, $order->billingMode);
-        $this->assertNull($order->variableSymbol, 'switching to card clears the bank VS');
+        $this->assertSame($vsBeforeFlip, $order->variableSymbol, 'switching to card keeps the VS (spec 089)');
     }
 
     private function handler(): ChooseOnboardingPaymentHandler
@@ -161,7 +162,6 @@ class ChooseOnboardingPaymentHandlerTest extends KernelTestCase
 
         return new ChooseOnboardingPaymentHandler(
             $container->get(PriceCalculator::class),
-            $container->get(VariableSymbolGenerator::class),
             $container->get(AuditLogger::class),
         );
     }

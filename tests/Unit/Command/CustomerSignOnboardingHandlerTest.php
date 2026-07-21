@@ -25,10 +25,12 @@ use App\Repository\StorageUnavailabilityRepository;
 use App\Service\AuditLogger;
 use App\Service\Identity\ProvideIdentity;
 use App\Service\OrderService;
+use App\Service\Payment\VariableSymbolGenerator;
 use App\Service\PriceCalculator;
 use App\Service\SignatureStorage;
 use App\Service\StorageAssignment;
 use App\Service\StorageAvailabilityChecker;
+use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 use Psr\Clock\ClockInterface;
@@ -107,6 +109,7 @@ class CustomerSignOnboardingHandlerTest extends TestCase
             $storageRepository,
             $priceCalculator,
             $auditLogger,
+            new VariableSymbolGenerator($this->createStub(EntityManagerInterface::class)),
         );
     }
 

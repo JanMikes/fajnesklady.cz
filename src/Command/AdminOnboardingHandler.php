@@ -13,7 +13,6 @@ use App\Event\AdminOnboardingInitiated;
 use App\Repository\UserRepository;
 use App\Service\Identity\ProvideIdentity;
 use App\Service\OrderService;
-use App\Service\Payment\VariableSymbolGenerator;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
@@ -27,7 +26,6 @@ final readonly class AdminOnboardingHandler
         private OrderService $orderService,
         private ClockInterface $clock,
         private ProvideIdentity $identityProvider,
-        private VariableSymbolGenerator $variableSymbolGenerator,
         private string $contractsDirectory,
     ) {
     }
@@ -58,7 +56,8 @@ final readonly class AdminOnboardingHandler
             // Spec 088: deferred choice. Provisional MONTHLY standard-ceník order;
             // the customer picks method + frequency at signing
             // (ChooseOnboardingPaymentHandler), which recomputes firstPaymentPrice
-            // + billingMode + VS. No method / mode / VS / external-force here.
+            // + billingMode. No method / mode / external-force here. The VS is
+            // already assigned by createOrder() and never changes (spec 089).
             $order = $this->orderService->createOrder(
                 user: $user,
                 storageType: $command->storageType,
@@ -112,11 +111,11 @@ final readonly class AdminOnboardingHandler
                 : BillingMode::derive($effectivePaymentMethod, $paymentFrequency, $rentalDays);
             $order->setBillingMode($billingMode);
 
-            if (PaymentMethod::BANK_TRANSFER === $effectivePaymentMethod) {
-                $vs = null !== $command->variableSymbolOverride && '' !== $command->variableSymbolOverride
-                    ? $command->variableSymbolOverride
-                    : $this->variableSymbolGenerator->generate($order->id);
-                $order->assignVariableSymbol($vs);
+            // The order already carries a generated VS (OrderService::createOrder). An
+            // explicit admin override — e.g. a VS printed on a legacy paper contract —
+            // replaces it; otherwise the generated one stands.
+            if (null !== $command->variableSymbolOverride && '' !== $command->variableSymbolOverride) {
+                $order->assignVariableSymbol($command->variableSymbolOverride);
             }
 
             $order->setOnboardingBillingTerms(

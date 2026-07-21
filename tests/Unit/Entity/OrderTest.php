@@ -834,13 +834,13 @@ class OrderTest extends TestCase
     {
         $order = $this->createOrder(paymentFrequency: PaymentFrequency::MONTHLY, firstPaymentPrice: 50000);
         $order->markCustomerChoosesPayment();
+        $order->assignVariableSymbol('1234567890');
 
         $order->applyCustomerPaymentChoice(
             PaymentMethod::BANK_TRANSFER,
             PaymentFrequency::YEARLY,
             120000,
             BillingMode::MANUAL_RECURRING,
-            '1234567890',
         );
 
         $this->assertSame(PaymentMethod::BANK_TRANSFER, $order->paymentMethod);
@@ -853,8 +853,10 @@ class OrderTest extends TestCase
         $this->assertFalse($order->isAwaitingPaymentChoice());
     }
 
-    public function testApplyCustomerPaymentChoiceWithNullVsClearsStaleValue(): void
+    public function testApplyCustomerPaymentChoiceKeepsVariableSymbolWhenFlippingToCard(): void
     {
+        // Spec 089: the VS is assigned once at creation and survives a bank→card
+        // flip, so the debt stays payable by transfer whatever the customer picks.
         $order = $this->createOrder();
         $order->markCustomerChoosesPayment();
         $order->assignVariableSymbol('9999999999');
@@ -864,10 +866,9 @@ class OrderTest extends TestCase
             PaymentFrequency::MONTHLY,
             50000,
             BillingMode::AUTO_RECURRING,
-            null,
         );
 
-        $this->assertNull($order->variableSymbol);
+        $this->assertSame('9999999999', $order->variableSymbol);
     }
 
     public function testApplyCustomerPaymentChoiceThrowsWhenNotDeferred(): void
@@ -880,7 +881,6 @@ class OrderTest extends TestCase
             PaymentFrequency::MONTHLY,
             50000,
             BillingMode::AUTO_RECURRING,
-            null,
         );
     }
 
@@ -905,7 +905,6 @@ class OrderTest extends TestCase
             PaymentFrequency::MONTHLY,
             50000,
             BillingMode::AUTO_RECURRING,
-            null,
         );
     }
 }

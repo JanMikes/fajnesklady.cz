@@ -18,9 +18,11 @@ use App\Service\AuditLogger;
 use App\Service\Identity\ProvideIdentity;
 use App\Service\Onboarding\DebtPaymentService;
 use App\Service\OrderService;
+use App\Service\Payment\VariableSymbolGenerator;
 use App\Service\PriceCalculator;
 use App\Service\StorageAssignment;
 use App\Service\StorageAvailabilityChecker;
+use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\TestCase;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\RequestStack;
@@ -150,6 +152,7 @@ class DebtPaymentServiceTest extends TestCase
             $storageRepository,
             new PriceCalculator(),
             $auditLogger,
+            new VariableSymbolGenerator($this->createStub(EntityManagerInterface::class)),
         );
 
         return new DebtPaymentService($orderService, $auditLogger, $commandBus);

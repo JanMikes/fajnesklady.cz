@@ -682,13 +682,16 @@ class Order implements EntityWithEvents
      * constructor-locked paymentFrequency + firstPaymentPrice after creation.
      * Guarded to deferred, unsigned orders so it can never rewrite a normal
      * order's price.
+     *
+     * The variable symbol is deliberately NOT touched here: since spec 089 it is
+     * assigned once at creation and never changes, so a bank→card flip keeps it
+     * and the debt/rental stays payable by transfer either way.
      */
     public function applyCustomerPaymentChoice(
         PaymentMethod $paymentMethod,
         PaymentFrequency $paymentFrequency,
         int $firstPaymentPrice,
         BillingMode $billingMode,
-        ?string $variableSymbol,
     ): void {
         if (!$this->canEditPaymentChoice()) {
             throw new \DomainException('Order is not awaiting an editable customer payment choice.');
@@ -698,6 +701,5 @@ class Order implements EntityWithEvents
         $this->paymentFrequency = $paymentFrequency;
         $this->firstPaymentPrice = $firstPaymentPrice;
         $this->billingMode = $billingMode;
-        $this->variableSymbol = $variableSymbol; // null clears any stale VS (method flipped bank→card)
     }
 }

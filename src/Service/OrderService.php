@@ -17,6 +17,7 @@ use App\Repository\ContractRepository;
 use App\Repository\OrderRepository;
 use App\Repository\StorageRepository;
 use App\Service\Identity\ProvideIdentity;
+use App\Service\Payment\VariableSymbolGenerator;
 
 /**
  * Service for managing order lifecycle.
@@ -34,6 +35,7 @@ final readonly class OrderService
         private StorageRepository $storageRepository,
         private PriceCalculator $priceCalculator,
         private AuditLogger $auditLogger,
+        private VariableSymbolGenerator $variableSymbolGenerator,
     ) {
     }
 
@@ -144,6 +146,12 @@ final readonly class OrderService
             $place->manualBillingOffsetOverdueFirst,
             $place->manualBillingOffsetOverdueFinal,
         );
+
+        // Spec 089: the variable symbol is an identity attribute of the order, not a
+        // property of a payment method. Every order gets one at creation so a debt or
+        // a rental payment can always be settled by bank transfer, whatever billing
+        // track the customer picked. Deterministic on the order id (crc32).
+        $order->assignVariableSymbol($this->variableSymbolGenerator->generate($order->id));
 
         $this->orderRepository->save($order);
         $this->auditLogger->logOrderCreated($order);
