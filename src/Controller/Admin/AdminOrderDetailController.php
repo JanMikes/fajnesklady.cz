@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller\Admin;
 
 use App\Repository\AuditLogRepository;
+use App\Repository\BankTransactionAllocationRepository;
 use App\Repository\BankTransactionRepository;
 use App\Repository\ContractPriceChangeRepository;
 use App\Repository\ContractProlongationRepository;
@@ -40,6 +41,7 @@ final class AdminOrderDetailController extends AbstractController
         private readonly ContractProlongationRepository $prolongationRepository,
         private readonly AuditLogRepository $auditLogRepository,
         private readonly BankTransactionRepository $bankTransactionRepository,
+        private readonly BankTransactionAllocationRepository $allocationRepository,
         private readonly EmailLogRepository $emailLogRepository,
         private readonly FineRepository $fineRepository,
         private readonly HandoverProtocolRepository $handoverProtocolRepository,
@@ -112,7 +114,14 @@ final class AdminOrderDetailController extends AbstractController
         }
 
         $mismatchTransactions = $this->bankTransactionRepository->findAmountMismatchByOrder($order);
-        $bankTransferReceivedTotal = $this->bankTransactionRepository->sumReceivedByOrder($order);
+        // Compare like with like. Debt settlement moves real money but creates no
+        // Payment row, so counting it here would make every order that paid a debt
+        // by transfer look like a pairing error — and since spec 089 offers bank
+        // transfer for the debt on every order, that would be most of them.
+        // Subtracting (rather than summing revenue allocations) keeps the check
+        // working for pre-091 rows, which have no allocation records at all.
+        $bankTransferReceivedTotal = $this->bankTransactionRepository->sumReceivedByOrder($order)
+            - $this->allocationRepository->sumDebtAllocationsForOrder($order);
 
         // The overdue view of THIS contract (the user-level flag above also
         // fires for the customer's other rentals).

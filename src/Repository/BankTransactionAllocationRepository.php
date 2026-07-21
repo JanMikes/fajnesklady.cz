@@ -44,6 +44,33 @@ final class BankTransactionAllocationRepository
     }
 
     /**
+     * Money allocated to settling debts rather than to rent.
+     *
+     * Debt settlement deliberately creates no `Payment` row — it clears an
+     * obligation, it is not rental revenue ({@see \App\Service\Onboarding\DebtPaymentService::confirmDebtPaid()}).
+     * Any admin reconciliation that compares received bank money against Payment
+     * rows must therefore discount this, or every order that settled a debt by
+     * transfer looks like a pairing error.
+     */
+    public function sumDebtAllocationsForOrder(Order $order): int
+    {
+        $result = $this->entityManager->createQueryBuilder()
+            ->select('SUM(a.amountInHaler)')
+            ->from(BankTransactionAllocation::class, 'a')
+            ->where('a.order = :order')
+            ->andWhere('a.type IN (:debtTypes)')
+            ->setParameter('order', $order)
+            ->setParameter('debtTypes', [
+                AllocationStepType::ONBOARDING_DEBT,
+                AllocationStepType::CONTRACT_DEBT,
+            ])
+            ->getQuery()
+            ->getSingleScalarResult();
+
+        return (int) ($result ?? 0);
+    }
+
+    /**
      * Drop everything a transaction was previously allocated to.
      *
      * Needed before an admin re-pairs a partially-allocated row: replaying the

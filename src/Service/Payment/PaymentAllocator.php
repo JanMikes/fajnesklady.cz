@@ -13,6 +13,7 @@ use App\Entity\Order;
 use App\Enum\AllocationStepType;
 use App\Enum\BillingMode;
 use App\Repository\BankTransactionAllocationRepository;
+use App\Repository\BankTransactionRepository;
 use App\Service\AuditLogger;
 use App\Service\Billing\RecurringAmountCalculator;
 use App\Service\Identity\ProvideIdentity;
@@ -35,6 +36,7 @@ final readonly class PaymentAllocator
 {
     public function __construct(
         private BankTransactionAllocationRepository $allocationRepository,
+        private BankTransactionRepository $bankTransactionRepository,
         private RecurringAmountCalculator $amountCalculator,
         private AuditLogger $auditLogger,
         private ProvideIdentity $identityProvider,
@@ -239,6 +241,21 @@ final readonly class PaymentAllocator
 
             if ($step->fullySettled) {
                 $settledSteps[] = $step;
+            }
+        }
+
+        // Earlier transfers that under-paid carry an `amount_mismatch` badge, which
+        // drives a customer-facing "the amount does not match, please contact us"
+        // banner. Once this plan settles everything, those transfers are no longer
+        // outstanding and must stop being flagged — otherwise a customer who
+        // eventually paid in full keeps seeing the warning forever.
+        if ([] !== $settledSteps && $plan->settlesEverything()) {
+            foreach ($this->bankTransactionRepository->findAmountMismatchByOrder($order) as $stale) {
+                if ($stale->id->equals($transaction->id)) {
+                    continue;
+                }
+
+                $stale->promoteToMatched($now);
             }
         }
 

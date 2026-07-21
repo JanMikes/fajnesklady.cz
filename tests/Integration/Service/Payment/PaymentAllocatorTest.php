@@ -374,6 +374,43 @@ final class PaymentAllocatorTest extends KernelTestCase
         self::assertNotSame([], $plan->obligationSteps(), 'So the pairing guard must not refuse the whole transfer.');
     }
 
+    /**
+     * Deleting tryAccumulatePartialPayments() removed the only caller of
+     * promoteToMatched(), so a transfer that under-paid stayed `amount_mismatch`
+     * forever — even after a later transfer settled the obligation in full. The
+     * customer then sees "Neshoda částky platby — kontaktujte nás" permanently on
+     * their order detail, and the admin table keeps a red badge on settled money.
+     */
+    public function testEarlierPartialTransfersAreNoLongerFlaggedOnceSettled(): void
+    {
+        [$order, $contract] = $this->orderWithManualContract();
+        $cycle = $this->cycleAmount($contract);
+        $first = intdiv($cycle, 2);
+        $now = $this->clock->now();
+
+        $txA = $this->transaction($first);
+        $planA = $this->allocator->plan($order, $contract, $first, $now);
+        $txA->markAmountMismatchContract($contract, 'variable_symbol', $cycle, $now);
+        $this->allocator->apply($planA, $txA, $order, $contract, $now);
+        $this->entityManager->flush();
+
+        self::assertTrue($txA->isAmountMismatch(), 'The under-payment is flagged, as it should be.');
+
+        $second = $cycle - $first;
+        $txB = $this->transaction($second);
+        $planB = $this->allocator->plan($order, $contract, $second, $now);
+        self::assertTrue($planB->step(AllocationStepType::BILLING_CYCLE)?->fullySettled);
+        $this->allocator->apply($planB, $txB, $order, $contract, $now);
+        $this->entityManager->flush();
+        $this->entityManager->refresh($txA);
+
+        self::assertFalse(
+            $txA->isAmountMismatch(),
+            'Once the obligation is settled the earlier partial must stop being flagged.',
+        );
+        self::assertTrue($txA->isMatched());
+    }
+
     private function cycleAmount(Contract $contract): int
     {
         return $this->amountCalculator->calculate($contract, $this->clock->now());
