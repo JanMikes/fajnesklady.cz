@@ -12,6 +12,7 @@ use App\Enum\BillingMode;
 use App\Enum\OrderStatus;
 use App\Enum\PaymentMethod;
 use App\Exception\OrderNotFound;
+use App\Service\Payment\VariableSymbolGenerator;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
@@ -635,9 +636,16 @@ class OrderRepository
      * BOTH the order id and the contract id (the customer-facing number is
      * order-derived, historical "Číslo smlouvy" was contract-derived).
      *
+     * The same token is matched against the variable symbol so an admin can
+     * paste the symbol straight off a bank statement (spec 091) — that is the
+     * identifier the payer actually typed, and the one that failed to match.
+     *
+     * Public because the manual bank-pairing order picker searches orders
+     * directly rather than through {@see self::findAdminFiltered()}.
+     *
      * @return list<Uuid>
      */
-    private function searchOrderIds(string $search): array
+    public function searchOrderIds(string $search): array
     {
         $dashPos = strrpos($search, '-');
         $refToken = strtolower(false !== $dashPos ? substr($search, $dashPos + 1) : $search);
@@ -650,6 +658,7 @@ class OrderRepository
                 LEFT JOIN contract c ON c.order_id = o.id
                 WHERE o.id::text LIKE :ref
                    OR c.id::text LIKE :ref
+                   OR o.variable_symbol LIKE :ref
                    OR LOWER(u.first_name || ' ' || u.last_name) LIKE :nameq
                    OR LOWER(u.email) LIKE :nameq
                 SQL,
@@ -696,11 +705,19 @@ class OrderRepository
 
     public function findByVariableSymbol(string $variableSymbol): ?Order
     {
+        $normalized = VariableSymbolGenerator::normalize($variableSymbol);
+
+        if (null === $normalized) {
+            return null;
+        }
+
         return $this->entityManager->createQueryBuilder()
             ->select('o')
             ->from(Order::class, 'o')
-            ->where('o.variableSymbol = :vs')
-            ->setParameter('vs', $variableSymbol)
+            // Compare numerically-equivalent symbols: we historically issued
+            // zero-padded values that the bank returns unpadded (spec 090).
+            ->where("TRIM(LEADING '0' FROM o.variableSymbol) = :vs")
+            ->setParameter('vs', $normalized)
             ->getQuery()
             ->getOneOrNullResult();
     }

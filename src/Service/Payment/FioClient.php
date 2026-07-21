@@ -41,7 +41,9 @@ final readonly class FioClient
                 id: (string) $t->getId(),
                 amount: (int) round($t->getAmount() * 100),
                 currency: $t->getCurrency(),
-                variableSymbol: $t->getVariableSymbol(),
+                // Store the canonical form so the bank_transaction row, admin table,
+                // audit payloads and mismatch e-mails all show what the bank sent (spec 090).
+                variableSymbol: VariableSymbolGenerator::normalize($t->getVariableSymbol()),
                 senderAccountNumber: $this->formatAccount($t->getSenderAccountNumber(), $t->getSenderBankCode()),
                 senderName: $t->getSenderName(),
                 date: $t->getDate(),

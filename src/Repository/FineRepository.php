@@ -7,6 +7,7 @@ namespace App\Repository;
 use App\Entity\Contract;
 use App\Entity\Fine;
 use App\Entity\User;
+use App\Service\Payment\VariableSymbolGenerator;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Tools\Pagination\Paginator;
 use Symfony\Component\Uid\Uuid;
@@ -30,11 +31,19 @@ final class FineRepository
 
     public function findByVariableSymbol(string $vs): ?Fine
     {
+        $normalized = VariableSymbolGenerator::normalize($vs);
+
+        if (null === $normalized) {
+            return null;
+        }
+
         return $this->entityManager->createQueryBuilder()
             ->select('f')
             ->from(Fine::class, 'f')
-            ->where('f.variableSymbol = :vs')
-            ->setParameter('vs', $vs)
+            // Compare numerically-equivalent symbols: we historically issued
+            // zero-padded values that the bank returns unpadded (spec 090).
+            ->where("TRIM(LEADING '0' FROM f.variableSymbol) = :vs")
+            ->setParameter('vs', $normalized)
             ->getQuery()
             ->getOneOrNullResult();
     }
@@ -146,15 +155,24 @@ final class FineRepository
     }
 
     /**
-     * Variable symbol uniqueness check — used by VariableSymbolGenerator.
+     * Variable symbol uniqueness check. Currently unused — VariableSymbolGenerator
+     * runs its own probe — but kept normalised so a future caller cannot
+     * reintroduce the leading-zero mismatch this comparison used to have (spec 090).
      */
     public function existsByVariableSymbol(string $vs): bool
     {
+        $normalized = VariableSymbolGenerator::normalize($vs);
+
+        if (null === $normalized) {
+            return false;
+        }
+
         return null !== $this->entityManager->createQueryBuilder()
             ->select('1')
             ->from(Fine::class, 'f')
-            ->where('f.variableSymbol = :vs')
-            ->setParameter('vs', $vs)
+            ->where("TRIM(LEADING '0' FROM f.variableSymbol) = :vs")
+            ->setParameter('vs', $normalized)
+            ->setMaxResults(1)
             ->getQuery()
             ->getOneOrNullResult();
     }
