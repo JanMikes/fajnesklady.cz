@@ -8,10 +8,13 @@ use App\DataFixtures\UserFixtures;
 use App\Entity\Contract;
 use App\Entity\Fine;
 use App\Entity\Invoice;
+use App\Entity\ManualPaymentRequest;
 use App\Entity\Order;
 use App\Entity\User;
+use App\Enum\BillingMode;
 use App\Enum\FineType;
 use App\Enum\OrderStatus;
+use App\Enum\PaymentFrequency;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -171,6 +174,133 @@ class OrderDetailControllerTest extends WebTestCase
         $body = (string) $this->client->getResponse()->getContent();
         $this->assertStringContainsString('Zaplaceno', $body);
         $this->assertStringNotContainsString('(smluvní pokuta)', $body);
+    }
+
+    public function testManualBillingCycleWithoutCreditShowsTheFullAmount(): void
+    {
+        $order = $this->createManualBillingOrderWithPendingCycle(credit: 0);
+        $this->client->loginUser($order->user, 'main');
+
+        $this->client->request('GET', $this->buildUrl($order));
+
+        $this->assertResponseIsSuccessful();
+        $body = (string) $this->client->getResponse()->getContent();
+        $this->assertStringContainsString('Platba k zaplacení:', $body);
+        $this->assertStringContainsString('3 100,00 Kč vč. DPH', $body);
+        $this->assertStringContainsString('Variabilní symbol:', $body);
+        $this->assertStringContainsString('data:image/png;base64,', $body);
+    }
+
+    public function testManualBillingCycleSubtractsContractCreditFromTheRequestedAmount(): void
+    {
+        // Spec 091 D3: 400 Kč credit against a 3 100 Kč cycle → ask for 2 700 Kč.
+        $order = $this->createManualBillingOrderWithPendingCycle(credit: 40_000);
+        $this->client->loginUser($order->user, 'main');
+
+        $this->client->request('GET', $this->buildUrl($order));
+
+        $this->assertResponseIsSuccessful();
+        $body = (string) $this->client->getResponse()->getContent();
+        $this->assertStringContainsString('2 700,00 Kč vč. DPH', $body);
+        $this->assertStringNotContainsString('3 100,00 Kč vč. DPH', $body);
+        // The persisted request row keeps the full cycle — this is render-time only.
+        $this->assertSame(310_000, $this->pendingRequestFor($order)->amount);
+    }
+
+    public function testManualBillingCycleFullyCoveredByCreditRendersNoPaymentInstruction(): void
+    {
+        $order = $this->createManualBillingOrderWithPendingCycle(credit: 310_000);
+        $this->client->loginUser($order->user, 'main');
+
+        $this->client->request('GET', $this->buildUrl($order));
+
+        $this->assertResponseIsSuccessful();
+        $body = (string) $this->client->getResponse()->getContent();
+        // A 0 Kč QR is a valid but nonsensical instruction — drop the whole block.
+        $this->assertStringNotContainsString('Platba k zaplacení:', $body);
+        $this->assertStringNotContainsString('0,00 Kč vč. DPH', $body);
+        $this->assertStringContainsString('Platby probíhají ručně.', $body);
+    }
+
+    private function pendingRequestFor(Order $order): ManualPaymentRequest
+    {
+        $request = $this->entityManager->createQueryBuilder()
+            ->select('r')
+            ->from(ManualPaymentRequest::class, 'r')
+            ->join('r.contract', 'c')
+            ->where('c.order = :order')
+            ->setParameter('order', $order)
+            ->getQuery()
+            ->getOneOrNullResult();
+        \assert($request instanceof ManualPaymentRequest, 'No pending manual payment request for order.');
+
+        return $request;
+    }
+
+    /**
+     * A MANUAL_RECURRING contract mid-term (no proration) whose current cycle
+     * has a pending payment request frozen at the full 3 100 Kč.
+     */
+    private function createManualBillingOrderWithPendingCycle(int $credit): Order
+    {
+        $source = $this->findCompletedOrder();
+
+        $now = new \DateTimeImmutable('2025-06-15 12:00:00');
+        $startDate = new \DateTimeImmutable('2025-01-01');
+        $endDate = new \DateTimeImmutable('2026-06-30');
+        // findPendingForCurrentCycle() wants periodEnd >= now, so the cycle in
+        // flight at MockClock time is the June one.
+        $periodStart = new \DateTimeImmutable('2025-06-01');
+
+        $order = new Order(
+            id: Uuid::v7(),
+            user: $source->user,
+            storage: $source->storage,
+            paymentFrequency: PaymentFrequency::MONTHLY,
+            startDate: $startDate,
+            endDate: $endDate,
+            firstPaymentPrice: 310_000,
+            expiresAt: $now->modify('+7 days'),
+            createdAt: $now,
+        );
+        $order->setBillingMode(BillingMode::MANUAL_RECURRING);
+        $order->assignVariableSymbol('9100000456');
+        $order->popEvents();
+        $this->entityManager->persist($order);
+
+        $contract = new Contract(
+            id: Uuid::v7(),
+            order: $order,
+            user: $order->user,
+            storage: $order->storage,
+            startDate: $startDate,
+            endDate: $endDate,
+            createdAt: $now,
+        );
+        $contract->sign($now);
+        $contract->applyBillingMode(BillingMode::MANUAL_RECURRING);
+        $contract->applyPaymentFrequency(PaymentFrequency::MONTHLY);
+        // Pin the price so the cycle amount does not depend on the storage rate.
+        $contract->applyIndividualMonthlyAmount(310_000, null, null, $now);
+        $contract->scheduleNextBilling($periodStart, null);
+        if ($credit > 0) {
+            $contract->addCredit($credit);
+        }
+        $contract->popEvents();
+        $this->entityManager->persist($contract);
+
+        $request = new ManualPaymentRequest(
+            id: Uuid::v7(),
+            contract: $contract,
+            periodStart: $periodStart,
+            periodEnd: new \DateTimeImmutable('2025-06-30'),
+            amount: 310_000,
+            createdAt: $now,
+        );
+        $this->entityManager->persist($request);
+        $this->entityManager->flush();
+
+        return $order;
     }
 
     private function createPaidFine(Order $order): Fine

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use App\Enum\BankTransactionStatus;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
@@ -20,8 +21,8 @@ class BankTransaction
     #[ORM\JoinColumn(nullable: true)]
     public private(set) ?Contract $pairedContract = null;
 
-    #[ORM\Column(length: 20, options: ['default' => 'unmatched'])]
-    public private(set) string $status = 'unmatched';
+    #[ORM\Column(length: 20, enumType: BankTransactionStatus::class, options: ['default' => 'unmatched'])]
+    public private(set) BankTransactionStatus $status = BankTransactionStatus::UNMATCHED;
 
     #[ORM\ManyToOne(targetEntity: User::class)]
     #[ORM\JoinColumn(nullable: true)]
@@ -70,7 +71,7 @@ class BankTransaction
         $this->matchMethod = $matchMethod;
         $this->pairedBy = $pairedBy;
         $this->pairedAt = $now;
-        $this->status = 'matched';
+        $this->status = BankTransactionStatus::MATCHED;
     }
 
     public function pairToContract(Contract $contract, string $matchMethod, ?User $pairedBy, \DateTimeImmutable $now): void
@@ -80,7 +81,7 @@ class BankTransaction
         $this->matchMethod = $matchMethod;
         $this->pairedBy = $pairedBy;
         $this->pairedAt = $now;
-        $this->status = 'matched';
+        $this->status = BankTransactionStatus::MATCHED;
     }
 
     public function markAmountMismatch(Order $order, string $matchMethod, int $expectedAmount, \DateTimeImmutable $now): void
@@ -89,7 +90,7 @@ class BankTransaction
         $this->matchMethod = $matchMethod;
         $this->expectedAmountInHaler = $expectedAmount;
         $this->pairedAt = $now;
-        $this->status = 'amount_mismatch';
+        $this->status = BankTransactionStatus::AMOUNT_MISMATCH;
     }
 
     public function markAmountMismatchContract(Contract $contract, string $matchMethod, int $expectedAmount, \DateTimeImmutable $now): void
@@ -99,16 +100,16 @@ class BankTransaction
         $this->matchMethod = $matchMethod;
         $this->expectedAmountInHaler = $expectedAmount;
         $this->pairedAt = $now;
-        $this->status = 'amount_mismatch';
+        $this->status = BankTransactionStatus::AMOUNT_MISMATCH;
     }
 
     public function promoteToMatched(\DateTimeImmutable $now): void
     {
-        if ('amount_mismatch' !== $this->status) {
-            throw new \DomainException(sprintf('Cannot promote transaction %s: status is "%s", expected "amount_mismatch".', $this->id->toRfc4122(), $this->status));
+        if (BankTransactionStatus::AMOUNT_MISMATCH !== $this->status) {
+            throw new \DomainException(sprintf('Cannot promote transaction %s: status is "%s", expected "amount_mismatch".', $this->id->toRfc4122(), $this->status->value));
         }
 
-        $this->status = 'matched';
+        $this->status = BankTransactionStatus::MATCHED;
         $this->pairedAt = $now;
     }
 
@@ -117,34 +118,51 @@ class BankTransaction
         $this->pairedBy = $admin;
         $this->pairedAt = $now;
         $this->ignoreReason = $reason;
-        $this->status = 'ignored';
+        $this->status = BankTransactionStatus::IGNORED;
     }
 
     public function unignore(): void
     {
-        $this->status = 'unmatched';
+        $this->status = BankTransactionStatus::UNMATCHED;
         $this->ignoreReason = null;
         $this->pairedBy = null;
         $this->pairedAt = null;
     }
 
+    /**
+     * Drop an existing pairing so the row can be re-paired to a different order
+     * (spec 091 — an `amount_mismatch` row is already pointed at an order, and an
+     * admin may be correcting exactly that). Leaves the row unmatched; the caller
+     * is expected to pair it again in the same unit of work.
+     */
+    public function clearPairing(): void
+    {
+        $this->pairedOrder = null;
+        $this->pairedContract = null;
+        $this->matchMethod = null;
+        $this->expectedAmountInHaler = null;
+        $this->pairedBy = null;
+        $this->pairedAt = null;
+        $this->status = BankTransactionStatus::UNMATCHED;
+    }
+
     public function isUnmatched(): bool
     {
-        return 'unmatched' === $this->status;
+        return BankTransactionStatus::UNMATCHED === $this->status;
     }
 
     public function isMatched(): bool
     {
-        return 'matched' === $this->status;
+        return BankTransactionStatus::MATCHED === $this->status;
     }
 
     public function isIgnored(): bool
     {
-        return 'ignored' === $this->status;
+        return BankTransactionStatus::IGNORED === $this->status;
     }
 
     public function isAmountMismatch(): bool
     {
-        return 'amount_mismatch' === $this->status;
+        return BankTransactionStatus::AMOUNT_MISMATCH === $this->status;
     }
 }

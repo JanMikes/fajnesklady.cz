@@ -7,9 +7,11 @@ namespace App\Service\Order;
 use App\Entity\AuditLog;
 use App\Entity\Contract;
 use App\Entity\Order;
+use App\Enum\AllocationStepType;
 use App\Enum\OrderStatus;
 use App\Enum\PaymentMethod;
 use App\Repository\AuditLogRepository;
+use App\Repository\BankTransactionAllocationRepository;
 use App\Repository\BankTransactionRepository;
 use App\Repository\ContractRepository;
 use App\Repository\FineRepository;
@@ -17,6 +19,7 @@ use App\Repository\HandoverProtocolRepository;
 use App\Repository\InvoiceRepository;
 use App\Repository\ManualPaymentRequestRepository;
 use App\Service\Billing\ManualBillingReminderSchedule;
+use App\Service\Billing\RecurringAmountCalculator;
 use App\Service\Fine\FinePaymentUrlGenerator;
 use App\Service\Handover\HandoverUrlGenerator;
 use App\Service\OrderStatusUrlGenerator;
@@ -43,6 +46,8 @@ final readonly class OrderStatusViewModelFactory
         private HandoverProtocolRepository $handoverProtocolRepository,
         private HandoverUrlGenerator $handoverUrlGenerator,
         private QrPaymentGenerator $qrPaymentGenerator,
+        private BankTransactionAllocationRepository $allocationRepository,
+        private RecurringAmountCalculator $amountCalculator,
     ) {
     }
 
@@ -149,15 +154,22 @@ final readonly class OrderStatusViewModelFactory
         if (null !== $contract && $contract->usesManualBillingTrack()) {
             $pendingRequest = $this->manualPaymentRequestRepository->findPendingForCurrentCycle($contract, $now);
             // Spec 076: manual cycles are paid by bank transfer — surface VS + QR.
-            if (null !== $pendingRequest && null !== $order->variableSymbol) {
+            // Spec 091 D3: ask for the cycle amount less any credit the contract
+            // is holding. A credit that covers the whole cycle leaves nothing to
+            // pay, so no payment instruction is rendered at all.
+            $amountToRequest = null !== $pendingRequest
+                ? $this->amountCalculator->amountToRequest($contract, $now)
+                : 0;
+
+            if (null !== $pendingRequest && null !== $order->variableSymbol && $amountToRequest > 0) {
                 $manualNowVariableSymbol = $order->variableSymbol;
                 $manualNowBankAccount = $this->qrPaymentGenerator->getBankAccountFormatted();
-                $manualNowAmountInHaler = $pendingRequest->amount;
+                $manualNowAmountInHaler = $amountToRequest;
                 $manualNowPeriodStart = $pendingRequest->periodStart;
                 // Embed the QR inline like every other on-page QR — the signed
                 // /qr-platba route exists only for e-mails (data URIs are stripped
                 // by many mail clients); an unsigned page link would 403.
-                $manualNowQrCodeDataUri = $this->qrPaymentGenerator->generateDataUri($order->variableSymbol, $pendingRequest->amount);
+                $manualNowQrCodeDataUri = $this->qrPaymentGenerator->generateDataUri($order->variableSymbol, $amountToRequest);
             }
 
             if (null === $pendingRequest && null !== $contract->nextBillingDate) {
@@ -245,7 +257,8 @@ final readonly class OrderStatusViewModelFactory
         $bankAccount = $isBankTransfer ? $this->qrPaymentGenerator->getBankAccountFormatted() : null;
         $amountMismatchTransactions = $this->bankTransactionRepository->findAmountMismatchByOrder($order);
 
-        $partiallyPaid = $this->bankTransactionRepository->sumReceivedByOrder($order);
+        // Scoped to FIRST_PAYMENT allocations (spec 091 D2).
+        $partiallyPaid = $this->allocationRepository->sumForOrderByType($order, AllocationStepType::FIRST_PAYMENT);
         $remainingAmount = max(0, $order->firstPaymentPrice - $partiallyPaid);
         $effectivePaymentAmount = $remainingAmount > 0 ? $remainingAmount : $order->firstPaymentPrice;
 

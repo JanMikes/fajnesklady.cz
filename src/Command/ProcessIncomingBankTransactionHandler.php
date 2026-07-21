@@ -14,11 +14,11 @@ use App\Repository\ContractRepository;
 use App\Repository\FineRepository;
 use App\Repository\OrderRepository;
 use App\Service\AuditLogger;
-use App\Service\Billing\RecurringAmountCalculator;
 use App\Service\Identity\ProvideIdentity;
-use App\Service\Messenger\HandlerFailureUnwrap;
+use App\Service\Payment\AllocationPlan;
+use App\Service\Payment\AllocationStep;
+use App\Service\Payment\PaymentAllocator;
 use Psr\Clock\ClockInterface;
-use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Messenger\MessageBusInterface;
@@ -32,14 +32,12 @@ final readonly class ProcessIncomingBankTransactionHandler
         private ContractRepository $contractRepository,
         private BankAccountMappingRepository $bankAccountMappingRepository,
         private FineRepository $fineRepository,
-        private RecurringAmountCalculator $amountCalculator,
+        private PaymentAllocator $paymentAllocator,
         private AuditLogger $auditLogger,
         private ProvideIdentity $identityProvider,
-        private MessageBusInterface $commandBus,
         #[Autowire(service: 'event.bus')]
         private MessageBusInterface $eventBus,
         private ClockInterface $clock,
-        private LoggerInterface $logger,
     ) {
     }
 
@@ -87,18 +85,28 @@ final readonly class ProcessIncomingBankTransactionHandler
             $order = $this->orderRepository->findByVariableSymbol($bankTx->variableSymbol);
 
             if (null !== $order) {
-                $accountMapping = null !== $bankTx->senderAccountNumber
-                    ? $this->bankAccountMappingRepository->findByAccountNumber($bankTx->senderAccountNumber)
-                    : null;
+                $accountMappings = null !== $bankTx->senderAccountNumber
+                    ? $this->bankAccountMappingRepository->findAllByAccountNumber($bankTx->senderAccountNumber)
+                    : [];
 
-                if (null !== $accountMapping && !$accountMapping->order->id->equals($order->id)) {
+                // The variable symbol is the stronger signal and wins, but record
+                // it when the payer's registered account points somewhere else.
+                $conflicting = array_values(array_filter(
+                    $accountMappings,
+                    static fn ($mapping): bool => !$mapping->order->id->equals($order->id),
+                ));
+
+                if ([] !== $conflicting) {
                     $this->auditLogger->log(
                         entityType: 'bank_transaction',
                         entityId: $bankTx->id->toRfc4122(),
                         eventType: 'vs_override_account_mapping',
                         payload: [
                             'vs_matched_order_id' => $order->id->toRfc4122(),
-                            'account_mapping_order_id' => $accountMapping->order->id->toRfc4122(),
+                            'account_mapping_order_ids' => array_map(
+                                static fn ($mapping): string => $mapping->order->id->toRfc4122(),
+                                $conflicting,
+                            ),
                             'variable_symbol' => $bankTx->variableSymbol,
                             'sender_account' => $bankTx->senderAccountNumber,
                         ],
@@ -156,82 +164,49 @@ final readonly class ProcessIncomingBankTransactionHandler
         }
 
         if (null !== $bankTx->senderAccountNumber && '' !== $bankTx->senderAccountNumber) {
-            $mapping = $this->bankAccountMappingRepository->findByAccountNumber($bankTx->senderAccountNumber);
+            $mappings = $this->bankAccountMappingRepository->findAllByAccountNumber($bankTx->senderAccountNumber);
 
-            if (null !== $mapping) {
-                $order = $mapping->order;
-                $contract = $this->contractRepository->findByOrder($order);
+            // Exactly one mapping means we know where this payer's money goes.
+            // Two or more means the payer funds several orders and we cannot know
+            // which this transfer is for — leave it for a human rather than
+            // guessing, which is what the old setMaxResults(1)-with-no-ORDER-BY
+            // lookup did (spec 091 requirement 6).
+            if (count($mappings) > 1) {
+                $this->auditLogger->log(
+                    entityType: 'bank_transaction',
+                    entityId: $bankTx->id->toRfc4122(),
+                    eventType: 'account_mapping_ambiguous',
+                    payload: [
+                        'sender_account' => $bankTx->senderAccountNumber,
+                        'mapping_count' => count($mappings),
+                        'order_ids' => array_map(
+                            static fn ($m): string => $m->order->id->toRfc4122(),
+                            $mappings,
+                        ),
+                    ],
+                );
 
-                // Manual cycles + outstanding upfront tranches (spec 078) —
-                // the calculator returns the current-cycle / current-tranche amount.
-                if (null !== $contract && $contract->usesManualBillingTrack()) {
-                    $expectedAmount = $this->amountCalculator->calculate($contract, $now);
+                return;
+            }
 
-                    if ($bankTx->amount !== $expectedAmount) {
-                        if ($this->tryAccumulatePartialPayments($bankTx, $order, $contract, 'account_mapping', $expectedAmount, $now)) {
-                            $this->dispatchPaymentCommand(new ProcessBankTransferPaymentCommand($bankTx, $order, $expectedAmount));
-
-                            return;
-                        }
-
-                        $bankTx->markAmountMismatchContract($contract, 'account_mapping', $expectedAmount, $now);
-
-                        $this->auditLogger->log(
-                            entityType: 'bank_transaction',
-                            entityId: $bankTx->id->toRfc4122(),
-                            eventType: 'amount_mismatch',
-                            payload: [
-                                'contract_id' => $contract->id->toRfc4122(),
-                                'expected_amount' => $expectedAmount,
-                                'received_amount' => $bankTx->amount,
-                                'difference' => $bankTx->amount - $expectedAmount,
-                                'variable_symbol' => $bankTx->variableSymbol,
-                            ],
-                            orderId: $order->id,
-                            userIdContext: $order->user->id,
-                        );
-
-                        $this->eventBus->dispatch(BankTransferAmountMismatch::forContract(
-                            bankTransactionId: $bankTx->id,
-                            contractId: $contract->id,
-                            orderId: $order->id,
-                            expectedAmount: $expectedAmount,
-                            receivedAmount: $bankTx->amount,
-                            variableSymbol: $bankTx->variableSymbol,
-                            occurredOn: $now,
-                        ));
-
-                        return;
-                    }
-
-                    $bankTx->pairToContract($contract, 'account_mapping', null, $now);
-
-                    $this->auditLogger->log(
-                        entityType: 'bank_transaction',
-                        entityId: $bankTx->id->toRfc4122(),
-                        eventType: 'auto_matched_via_account',
-                        payload: [
-                            'order_id' => $order->id->toRfc4122(),
-                            'contract_id' => $contract->id->toRfc4122(),
-                            'sender_account' => $bankTx->senderAccountNumber,
-                            'mapping_id' => $mapping->id->toRfc4122(),
-                            'expected_amount' => $expectedAmount,
-                            'received_amount' => $bankTx->amount,
-                        ],
-                        orderId: $order->id,
-                        userIdContext: $order->user->id,
-                    );
-
-                    $this->dispatchPaymentCommand(new ProcessBankTransferPaymentCommand($bankTx, $order));
-
-                    return;
-                }
-
-                $this->matchToOrder($bankTx, $order, 'account_mapping', $now);
+            if (1 === count($mappings)) {
+                $this->matchToOrder($bankTx, $mappings[0]->order, 'account_mapping', $now);
             }
         }
     }
 
+    /**
+     * Run the transfer through the single allocation waterfall (spec 091):
+     * onboarding debt → post-termination contract debt → the current obligation
+     * (a manual-billing cycle, or the order's first payment) → credit.
+     *
+     * Replaces the old hand-rolled cascade, which returned unconditionally from
+     * the manual-billing branch and so could never reach the debt branch for a
+     * customer who had both — every transfer went to the rental while the debt
+     * was never touched. It also replaces tryAccumulatePartialPayments(), whose
+     * undifferentiated per-order sum of `amount_mismatch` rows let debt money be
+     * counted a second time against the first payment.
+     */
     private function matchToOrder(
         BankTransaction $bankTx,
         Order $order,
@@ -240,255 +215,89 @@ final readonly class ProcessIncomingBankTransactionHandler
     ): void {
         $contract = $this->contractRepository->findByOrder($order);
 
-        // Any manual-billing-track contract collects its per-cycle payments by
-        // bank transfer (QR + variable symbol), so an incoming transfer that
-        // matches the order VS must reconcile against the contract regardless
-        // of the order's nominal first-payment method. In particular this must
-        // fire for EXTERNAL prepaid-onboarding orders (paidThroughDate set → the
-        // first period was paid outside the system, later periods run on the
-        // manual track) and for GOPAY-first orders that never established a
-        // recurring card token. Mirrors the account-mapping branch above, which
-        // gates on usesManualBillingTrack() alone — the VS branch used to also
-        // require BANK_TRANSFER, which silently left those transfers unmatched.
-        if (null !== $contract && $contract->usesManualBillingTrack()) {
-            $expectedAmount = $this->amountCalculator->calculate($contract, $now);
+        $plan = $this->paymentAllocator->plan($order, $contract, $bankTx->amount, $now);
 
-            if ($bankTx->amount !== $expectedAmount) {
-                if ($this->tryAccumulatePartialPayments($bankTx, $order, $contract, $matchMethod, $expectedAmount, $now)) {
-                    $this->dispatchPaymentCommand(new ProcessBankTransferPaymentCommand($bankTx, $order, $expectedAmount));
+        // The allocator itself refuses to put money toward a card order's first
+        // payment (spec 091 D1) — the recurring mandate only exists if that charge
+        // went through the card gateway. Note this is NOT an early return: a card
+        // order may still carry an onboarding debt, and settling that by wire is
+        // exactly what spec 089 exists to allow. Only a plan that reached nothing
+        // at all is left for an admin.
+        if ([] === $plan->obligationSteps() && 0 === $plan->creditAdded()) {
+            $blockedForCard = $this->paymentAllocator->isFirstPaymentBlockedForCard($order, $contract);
 
-                    return;
-                }
+            $this->auditLogger->log(
+                entityType: 'bank_transaction',
+                entityId: $bankTx->id->toRfc4122(),
+                eventType: $blockedForCard ? 'auto_match_declined_card_order' : 'auto_match_no_obligation',
+                payload: [
+                    'order_id' => $order->id->toRfc4122(),
+                    'variable_symbol' => $bankTx->variableSymbol,
+                    'amount' => $bankTx->amount,
+                    'reason' => $blockedForCard
+                        ? 'first payment of an auto-recurring card order cannot be settled by bank transfer'
+                        : 'no debt, cycle or payable first payment for this order',
+                ],
+                orderId: $order->id,
+                userIdContext: $order->user->id,
+            );
 
-                $bankTx->markAmountMismatchContract($contract, $matchMethod, $expectedAmount, $now);
+            return;
+        }
 
-                $this->auditLogger->log(
-                    entityType: 'bank_transaction',
-                    entityId: $bankTx->id->toRfc4122(),
-                    eventType: 'amount_mismatch',
-                    payload: [
-                        'contract_id' => $contract->id->toRfc4122(),
-                        'expected_amount' => $expectedAmount,
-                        'received_amount' => $bankTx->amount,
-                        'difference' => $bankTx->amount - $expectedAmount,
-                        'variable_symbol' => $bankTx->variableSymbol,
-                    ],
-                    orderId: $order->id,
-                    userIdContext: $order->user->id,
-                );
+        // We know whose money this is, so the row is paired either way. Status
+        // records whether this transfer alone finished what it was applied to:
+        // a shortfall stays `amount_mismatch` so it keeps its admin badge.
+        $unsettled = $this->firstUnsettledStep($plan);
 
-                $this->eventBus->dispatch(BankTransferAmountMismatch::forContract(
+        if (null === $unsettled) {
+            if (null !== $contract) {
+                $bankTx->pairToContract($contract, $matchMethod, null, $now);
+            } else {
+                $bankTx->pairToOrder($order, $matchMethod, null, $now);
+            }
+        } elseif (null !== $contract) {
+            $bankTx->markAmountMismatchContract($contract, $matchMethod, $unsettled->expected, $now);
+        } else {
+            $bankTx->markAmountMismatch($order, $matchMethod, $unsettled->expected, $now);
+        }
+
+        $this->paymentAllocator->apply($plan, $bankTx, $order, $contract, $now);
+
+        if (null !== $unsettled) {
+            $this->eventBus->dispatch(null !== $contract
+                ? BankTransferAmountMismatch::forContract(
                     bankTransactionId: $bankTx->id,
                     contractId: $contract->id,
                     orderId: $order->id,
-                    expectedAmount: $expectedAmount,
+                    expectedAmount: $unsettled->expected,
                     receivedAmount: $bankTx->amount,
                     variableSymbol: $bankTx->variableSymbol,
                     occurredOn: $now,
-                ));
-
-                return;
-            }
-
-            $bankTx->pairToContract($contract, $matchMethod, null, $now);
-
-            $this->auditLogger->log(
-                entityType: 'bank_transaction',
-                entityId: $bankTx->id->toRfc4122(),
-                eventType: 'auto_matched_to_contract',
-                payload: [
-                    'contract_id' => $contract->id->toRfc4122(),
-                    'order_id' => $order->id->toRfc4122(),
-                    'variable_symbol' => $bankTx->variableSymbol,
-                    'expected_amount' => $expectedAmount,
-                    'received_amount' => $bankTx->amount,
-                    'billing_period_start' => ($contract->nextBillingDate ?? $now)->format('Y-m-d'),
-                ],
-                orderId: $order->id,
-                userIdContext: $order->user->id,
-            );
-
-            $this->dispatchPaymentCommand(new ProcessBankTransferPaymentCommand($bankTx, $order));
-
-            return;
-        }
-
-        if ($order->hasUnpaidDebt()) {
-            $debtAmount = (int) $order->onboardingDebtInHaler;
-
-            if ($bankTx->amount !== $debtAmount) {
-                if ($this->tryAccumulatePartialPayments($bankTx, $order, null, $matchMethod, $debtAmount, $now)) {
-                    $this->dispatchPaymentCommand(new ProcessBankTransferDebtPaymentCommand($bankTx, $order));
-
-                    return;
-                }
-
-                $bankTx->markAmountMismatch($order, $matchMethod, $debtAmount, $now);
-
-                $this->auditLogger->log(
-                    entityType: 'bank_transaction',
-                    entityId: $bankTx->id->toRfc4122(),
-                    eventType: 'amount_mismatch',
-                    payload: [
-                        'order_id' => $order->id->toRfc4122(),
-                        'expected_amount' => $debtAmount,
-                        'received_amount' => $bankTx->amount,
-                        'difference' => $bankTx->amount - $debtAmount,
-                        'variable_symbol' => $bankTx->variableSymbol,
-                        'type' => 'debt_payment',
-                    ],
-                    orderId: $order->id,
-                    userIdContext: $order->user->id,
-                );
-
-                $this->eventBus->dispatch(BankTransferAmountMismatch::forOrder(
+                )
+                : BankTransferAmountMismatch::forOrder(
                     bankTransactionId: $bankTx->id,
                     orderId: $order->id,
-                    expectedAmount: $debtAmount,
+                    expectedAmount: $unsettled->expected,
                     receivedAmount: $bankTx->amount,
                     variableSymbol: $bankTx->variableSymbol,
                     occurredOn: $now,
                 ));
-
-                return;
-            }
-
-            $bankTx->pairToOrder($order, $matchMethod, null, $now);
-
-            $this->auditLogger->log(
-                entityType: 'bank_transaction',
-                entityId: $bankTx->id->toRfc4122(),
-                eventType: 'auto_matched_to_order_debt',
-                payload: [
-                    'order_id' => $order->id->toRfc4122(),
-                    'variable_symbol' => $bankTx->variableSymbol,
-                    'expected_amount' => $order->onboardingDebtInHaler,
-                    'received_amount' => $bankTx->amount,
-                    'match_method' => $matchMethod,
-                ],
-                orderId: $order->id,
-                userIdContext: $order->user->id,
-            );
-
-            $this->dispatchPaymentCommand(new ProcessBankTransferDebtPaymentCommand($bankTx, $order));
-
-            return;
-        }
-
-        if ($order->canBePaid()) {
-            if ($bankTx->amount !== $order->firstPaymentPrice) {
-                if ($this->tryAccumulatePartialPayments($bankTx, $order, null, $matchMethod, $order->firstPaymentPrice, $now)) {
-                    $this->dispatchPaymentCommand(new ProcessBankTransferPaymentCommand($bankTx, $order, $order->firstPaymentPrice));
-
-                    return;
-                }
-
-                $bankTx->markAmountMismatch($order, $matchMethod, $order->firstPaymentPrice, $now);
-
-                $this->auditLogger->log(
-                    entityType: 'bank_transaction',
-                    entityId: $bankTx->id->toRfc4122(),
-                    eventType: 'amount_mismatch',
-                    payload: [
-                        'order_id' => $order->id->toRfc4122(),
-                        'expected_amount' => $order->firstPaymentPrice,
-                        'received_amount' => $bankTx->amount,
-                        'difference' => $bankTx->amount - $order->firstPaymentPrice,
-                        'variable_symbol' => $bankTx->variableSymbol,
-                    ],
-                    orderId: $order->id,
-                    userIdContext: $order->user->id,
-                );
-
-                $this->eventBus->dispatch(BankTransferAmountMismatch::forOrder(
-                    bankTransactionId: $bankTx->id,
-                    orderId: $order->id,
-                    expectedAmount: $order->firstPaymentPrice,
-                    receivedAmount: $bankTx->amount,
-                    variableSymbol: $bankTx->variableSymbol,
-                    occurredOn: $now,
-                ));
-
-                return;
-            }
-
-            $bankTx->pairToOrder($order, $matchMethod, null, $now);
-
-            $this->auditLogger->log(
-                entityType: 'bank_transaction',
-                entityId: $bankTx->id->toRfc4122(),
-                eventType: 'auto_matched_to_order',
-                payload: [
-                    'order_id' => $order->id->toRfc4122(),
-                    'variable_symbol' => $bankTx->variableSymbol,
-                    'expected_amount' => $order->firstPaymentPrice,
-                    'received_amount' => $bankTx->amount,
-                    'match_method' => $matchMethod,
-                ],
-                orderId: $order->id,
-                userIdContext: $order->user->id,
-            );
-
-            $this->dispatchPaymentCommand(new ProcessBankTransferPaymentCommand($bankTx, $order));
         }
     }
 
-    private function tryAccumulatePartialPayments(
-        BankTransaction $bankTx,
-        Order $order,
-        ?Contract $contract,
-        string $matchMethod,
-        int $expectedAmount,
-        \DateTimeImmutable $now,
-    ): bool {
-        $existingMismatchSum = $this->bankTransactionRepository->sumAmountMismatchByOrder($order);
-        $accumulatedTotal = $existingMismatchSum + $bankTx->amount;
-
-        if ($accumulatedTotal !== $expectedAmount) {
-            return false;
-        }
-
-        $mismatchTransactions = $this->bankTransactionRepository->findAmountMismatchByOrder($order);
-        foreach ($mismatchTransactions as $mismatchTx) {
-            $mismatchTx->promoteToMatched($now);
-        }
-
-        if (null !== $contract) {
-            $bankTx->pairToContract($contract, $matchMethod, null, $now);
-        } else {
-            $bankTx->pairToOrder($order, $matchMethod, null, $now);
-        }
-
-        $this->auditLogger->log(
-            entityType: 'bank_transaction',
-            entityId: $bankTx->id->toRfc4122(),
-            eventType: 'accumulated_partial_payments_matched',
-            payload: [
-                'order_id' => $order->id->toRfc4122(),
-                'contract_id' => $contract?->id->toRfc4122(),
-                'expected_amount' => $expectedAmount,
-                'accumulated_amount' => $accumulatedTotal,
-                'transaction_count' => count($mismatchTransactions) + 1,
-                'match_method' => $matchMethod,
-            ],
-            orderId: $order->id,
-            userIdContext: $order->user->id,
-        );
-
-        return true;
-    }
-
-    private function dispatchPaymentCommand(object $command): void
+    /**
+     * The first obligation the plan could not fully cover — what the admin badge
+     * and the mismatch e-mail should talk about.
+     */
+    private function firstUnsettledStep(AllocationPlan $plan): ?AllocationStep
     {
-        try {
-            $this->commandBus->dispatch($command);
-        } catch (\Throwable $rawException) {
-            $exception = HandlerFailureUnwrap::unwrap($rawException);
-
-            $this->logger->error('Failed to process bank transfer payment', [
-                'command' => $command::class,
-                'exception' => $exception,
-            ]);
+        foreach ($plan->obligationSteps() as $step) {
+            if (!$step->fullySettled) {
+                return $step;
+            }
         }
+
+        return null;
     }
 }

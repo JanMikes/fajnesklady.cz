@@ -47,6 +47,16 @@ class Contract implements EntityWithEvents
     #[ORM\Column(options: ['default' => 0])]
     public private(set) int $failedBillingAttempts = 0;
 
+    /**
+     * Money received but not yet consumed by an obligation, in haléře (spec 091).
+     * Fed by over-payments and by under-payments that could not complete a cycle;
+     * drained by the next allocation before any new money is considered, and
+     * subtracted from what we ask the customer for
+     * ({@see \App\Service\Billing\RecurringAmountCalculator::amountToRequest()}).
+     */
+    #[ORM\Column(options: ['default' => 0])]
+    public private(set) int $creditBalance = 0;
+
     #[ORM\Column(nullable: true)]
     public private(set) ?\DateTimeImmutable $lastBillingFailedAt = null;
 
@@ -205,6 +215,33 @@ class Contract implements EntityWithEvents
     public function hasOutstandingDebt(): bool
     {
         return null !== $this->outstandingDebtAmount && $this->outstandingDebtAmount > 0;
+    }
+
+    public function addCredit(int $amountInHaler): void
+    {
+        if ($amountInHaler <= 0) {
+            throw new \InvalidArgumentException('Credit amount must be positive.');
+        }
+
+        $this->creditBalance += $amountInHaler;
+    }
+
+    /**
+     * Take up to $amountInHaler out of the credit balance and report what was
+     * actually taken. Clamped to the available balance so callers never have to
+     * guard, and a zero/negative request is simply a no-op — the allocator asks
+     * for whatever an obligation needs without knowing what is on hand.
+     */
+    public function consumeCredit(int $amountInHaler): int
+    {
+        if ($amountInHaler <= 0) {
+            return 0;
+        }
+
+        $consumed = min($amountInHaler, $this->creditBalance);
+        $this->creditBalance -= $consumed;
+
+        return $consumed;
     }
 
     public function isTerminatedDueToPaymentFailure(): bool

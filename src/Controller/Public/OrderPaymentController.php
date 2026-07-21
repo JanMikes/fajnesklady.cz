@@ -5,10 +5,11 @@ declare(strict_types=1);
 namespace App\Controller\Public;
 
 use App\Command\CancelOrderCommand;
+use App\Enum\AllocationStepType;
 use App\Enum\OrderStatus;
 use App\Enum\PaymentFrequency;
 use App\Enum\PaymentMethod;
-use App\Repository\BankTransactionRepository;
+use App\Repository\BankTransactionAllocationRepository;
 use App\Repository\OrderRepository;
 use App\Service\GoPay\GoPayClient;
 use App\Service\OrderStatusUrlGenerator;
@@ -29,7 +30,7 @@ final class OrderPaymentController extends AbstractController
 {
     public function __construct(
         private readonly OrderRepository $orderRepository,
-        private readonly BankTransactionRepository $bankTransactionRepository,
+        private readonly BankTransactionAllocationRepository $allocationRepository,
         private readonly MessageBusInterface $commandBus,
         private readonly GoPayClient $goPayClient,
         private readonly PriceCalculator $priceCalculator,
@@ -113,7 +114,9 @@ final class OrderPaymentController extends AbstractController
 
         $isBankTransfer = PaymentMethod::BANK_TRANSFER === $order->paymentMethod;
 
-        $partiallyPaid = $this->bankTransactionRepository->sumReceivedByOrder($order);
+        // Scoped to money allocated to the FIRST PAYMENT: debt money lives in its
+        // own pool and must not discount the rent (spec 091 D2).
+        $partiallyPaid = $this->allocationRepository->sumForOrderByType($order, AllocationStepType::FIRST_PAYMENT);
         $remainingAmount = $partiallyPaid > 0
             ? max(0, $order->firstPaymentPrice - $partiallyPaid)
             : null;

@@ -52,6 +52,8 @@ return App::config([
                 '../src/Service/Excel/ExcelSheet.php',
                 '../src/Service/Fakturoid/StaleFakturoidSubjectException.php',
                 '../src/Service/Billing/ManualBillingReminderSchedule.php',
+                '../src/Service/Payment/AllocationPlan.php',
+                '../src/Service/Payment/AllocationStep.php',
                 '../src/Service/Onboarding/OnboardingReminderSchedule.php',
             ],
         ],

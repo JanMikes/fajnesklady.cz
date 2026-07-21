@@ -7,6 +7,7 @@ namespace App\Repository;
 use App\Entity\BankTransaction;
 use App\Entity\Contract;
 use App\Entity\Order;
+use App\Enum\BankTransactionStatus;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -48,12 +49,16 @@ class BankTransactionRepository
             ->from(BankTransaction::class, 'bt')
             ->orderBy('bt.transactionDate', 'DESC');
 
-        if ('all' === $statusFilter) {
+        // An unrecognised ?filter= value falls back to "all" rather than silently
+        // returning an empty table.
+        $status = BankTransactionStatus::tryFrom($statusFilter);
+
+        if (null === $status) {
             $qb->where('bt.status != :ignored')
-                ->setParameter('ignored', 'ignored');
+                ->setParameter('ignored', BankTransactionStatus::IGNORED);
         } else {
             $qb->where('bt.status = :status')
-                ->setParameter('status', $statusFilter);
+                ->setParameter('status', $status);
         }
 
         return $qb->getQuery()->getResult();
@@ -65,7 +70,7 @@ class BankTransactionRepository
             ->select('COUNT(bt.id)')
             ->from(BankTransaction::class, 'bt')
             ->where('bt.status = :status')
-            ->setParameter('status', 'unmatched')
+            ->setParameter('status', BankTransactionStatus::UNMATCHED)
             ->getQuery()
             ->getSingleScalarResult();
     }
@@ -76,7 +81,7 @@ class BankTransactionRepository
             ->select('COUNT(bt.id)')
             ->from(BankTransaction::class, 'bt')
             ->where('bt.status = :status')
-            ->setParameter('status', 'ignored')
+            ->setParameter('status', BankTransactionStatus::IGNORED)
             ->getQuery()
             ->getSingleScalarResult();
     }
@@ -92,7 +97,7 @@ class BankTransactionRepository
             ->where('bt.pairedOrder = :order')
             ->andWhere('bt.status = :status')
             ->setParameter('order', $order)
-            ->setParameter('status', 'amount_mismatch')
+            ->setParameter('status', BankTransactionStatus::AMOUNT_MISMATCH)
             ->orderBy('bt.transactionDate', 'DESC')
             ->getQuery()
             ->getResult();
@@ -106,7 +111,7 @@ class BankTransactionRepository
             ->where('bt.pairedOrder = :order')
             ->andWhere('bt.status = :status')
             ->setParameter('order', $order)
-            ->setParameter('status', 'amount_mismatch')
+            ->setParameter('status', BankTransactionStatus::AMOUNT_MISMATCH)
             ->getQuery()
             ->getSingleScalarResult();
 
@@ -121,7 +126,7 @@ class BankTransactionRepository
             ->where('bt.pairedOrder = :order')
             ->andWhere('bt.status IN (:statuses)')
             ->setParameter('order', $order)
-            ->setParameter('statuses', ['matched', 'amount_mismatch'])
+            ->setParameter('statuses', [BankTransactionStatus::MATCHED, BankTransactionStatus::AMOUNT_MISMATCH])
             ->getQuery()
             ->getSingleScalarResult();
 

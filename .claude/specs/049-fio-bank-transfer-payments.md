@@ -11,7 +11,7 @@ The platform only supports GoPay (card) payments. Customers who prefer bank tran
 
 ## Goal
 
-Customers can choose "Bankovní převod" during the order flow. They see bank account details, a unique variable symbol, and a QR code (SPD standard). A cron job polls FIO banka API every 5 minutes, auto-matches incoming payments by variable symbol, and triggers the same "order paid" / "recurring charge received" events as GoPay. Admin gets a dedicated "Bankovní platby" page showing all transactions (matched + unmatched) with manual pairing for edge cases. A configurable monthly surcharge (default 100 CZK) is added to bank transfer orders to incentivize GoPay usage.
+Customers can choose "Bankovní převod" during the order flow. They see bank account details, a unique variable symbol, and a QR code (SPD standard). A cron job polls FIO banka API every 5 minutes, auto-matches incoming payments by variable symbol, and triggers the same "order paid" / "recurring charge received" events as GoPay. Admin gets a dedicated "Bankovní platby" page showing all transactions (matched + unmatched). *(Correction: manual pairing was deferred by spec 078 and never shipped with this spec — it was delivered by spec 091.)* A configurable monthly surcharge (default 100 CZK) is added to bank transfer orders to incentivize GoPay usage.
 
 ## Context (current state)
 

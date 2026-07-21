@@ -61,17 +61,14 @@
                         <td class="text-gray-900">{{ tx.senderName ?? '—' }}</td>
                         <td class="text-gray-500 whitespace-nowrap">{{ tx.senderAccountNumber ?? '—' }}</td>
                         <td class="whitespace-nowrap">
-                            {% if tx.status == 'matched' %}
-                                <span class="badge badge-success">Spárováno</span>
-                            {% elseif tx.status == 'unmatched' %}
-                                <span class="badge badge-warning">Nespárováno</span>
-                            {% elseif tx.status == 'amount_mismatch' %}
-                                <span class="badge badge-error">Nesouhlasí částka</span>
-                            {% elseif tx.status == 'ignored' %}
-                                <span class="badge badge-ghost">Ignorováno</span>
-                                {% if tx.ignoreReason %}
-                                    <div class="text-xs text-gray-400 max-w-[16rem] truncate" title="{{ tx.ignoreReason }}">{{ tx.ignoreReason }}</div>
-                                {% endif %}
+                            <span class="badge {{ tx.status.badgeClass }}">{{ tx.status.label }}</span>
+                            {% if tx.isAmountMismatch and tx.expectedAmountInHaler %}
+                                <div class="text-xs text-gray-500">
+                                    přijato {{ (tx.amount / 100)|number_format(0, ',', ' ') }} z {{ (tx.expectedAmountInHaler / 100)|number_format(0, ',', ' ') }} Kč
+                                </div>
+                            {% endif %}
+                            {% if tx.isIgnored and tx.ignoreReason %}
+                                <div class="text-xs text-gray-400 max-w-[16rem] truncate" title="{{ tx.ignoreReason }}">{{ tx.ignoreReason }}</div>
                             {% endif %}
                         </td>
                         <td class="text-gray-500 whitespace-nowrap">
@@ -84,6 +81,9 @@
                             {% endif %}
                         </td>
                         <td class="whitespace-nowrap">
+                            {% if tx.isUnmatched or tx.isAmountMismatch %}
+                                <a href="{{ path('admin_bank_transaction_pair', {id: tx.id, filter: filter}) }}" class="btn btn-primary btn-sm">Spárovat</a>
+                            {% endif %}
                             {% if tx.isUnmatched %}
                                 <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('ignore-{{ tx.id }}').showModal()">Ignorovat</button>
                                 <dialog id="ignore-{{ tx.id }}" class="modal">
@@ -115,7 +115,8 @@
                                 <form action="{{ path('admin_bank_transaction_unignore', {id: tx.id}) }}" method="post" class="inline">
                                     <button type="submit" class="btn btn-ghost btn-sm">Obnovit</button>
                                 </form>
-                            {% else %}
+                            {% elseif tx.isMatched %}
+                                {# Spárované řádky se nerozpárovávají — spárování rozešle platby, faktury a e-maily, které nelze vzít zpět. #}
                                 —
                             {% endif %}
                         </td>

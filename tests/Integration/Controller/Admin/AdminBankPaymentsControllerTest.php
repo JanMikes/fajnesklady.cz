@@ -117,7 +117,8 @@ class AdminBankPaymentsControllerTest extends WebTestCase
 
         $this->assertResponseIsSuccessful();
         $this->assertSelectorTextContains('body', 'Ignorovaný odesílatel s.r.o.');
-        $this->assertSelectorTextContains('body', 'Ignorováno');
+        // Badge text now comes from BankTransactionStatus::label() (spec 091).
+        $this->assertSelectorTextContains('body', 'Nesouvisející');
         $this->assertSelectorTextContains('body', 'Provozní platba');
     }
 

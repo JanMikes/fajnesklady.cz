@@ -13,6 +13,7 @@ use App\Repository\InvoiceRepository;
 use App\Repository\ManualPaymentRequestRepository;
 use App\Repository\OrderRepository;
 use App\Service\Billing\ManualBillingReminderSchedule;
+use App\Service\Billing\RecurringAmountCalculator;
 use App\Service\ContractService;
 use App\Service\Fine\FinePaymentUrlGenerator;
 use App\Service\Payment\QrPaymentGenerator;
@@ -43,6 +44,7 @@ final class OrderDetailController extends AbstractController
         private readonly FinePaymentUrlGenerator $finePaymentUrlGenerator,
         private readonly PriceCalculator $priceCalculator,
         private readonly QrPaymentGenerator $qrPaymentGenerator,
+        private readonly RecurringAmountCalculator $amountCalculator,
         private readonly ClockInterface $clock,
     ) {
     }
@@ -91,16 +93,24 @@ final class OrderDetailController extends AbstractController
         $nextManualDate = null;
         if (null !== $contract && $contract->usesManualBillingTrack()) {
             $pending = $this->manualPaymentRequestRepository->findPendingForCurrentCycle($contract, $now);
+            // Spec 091 D3: credit already sitting on the contract reduces what we
+            // ask for — the frozen ManualPaymentRequest::$amount stays the full
+            // cycle. Computed ONCE so the shown amount and the QR always agree.
+            // A zero request (credit covers the whole cycle) renders no payment
+            // block at all: a 0 Kč QR is a valid but nonsensical instruction.
+            $amountToRequest = null !== $pending
+                ? $this->amountCalculator->amountToRequest($contract, $now)
+                : 0;
             // Spec 076: manual cycles are paid by bank transfer — surface VS + QR.
-            if (null !== $pending && null !== $order->variableSymbol) {
+            if (null !== $pending && null !== $order->variableSymbol && $amountToRequest > 0) {
                 $manualNowVariableSymbol = $order->variableSymbol;
                 $manualNowBankAccount = $this->qrPaymentGenerator->getBankAccountFormatted();
-                $manualNowAmount = $pending->amount;
+                $manualNowAmount = $amountToRequest;
                 $manualNowPeriodStart = $pending->periodStart;
                 // Embed the QR inline like every other on-page QR — the signed
                 // /qr-platba route exists only for e-mails (data URIs are stripped
                 // by many mail clients); an unsigned page link would 403.
-                $manualNowQrCodeDataUri = $this->qrPaymentGenerator->generateDataUri($order->variableSymbol, $pending->amount);
+                $manualNowQrCodeDataUri = $this->qrPaymentGenerator->generateDataUri($order->variableSymbol, $amountToRequest);
             }
             if (null === $pending && null !== $contract->nextBillingDate) {
                 $schedule = ManualBillingReminderSchedule::fromOrder($contract->order);

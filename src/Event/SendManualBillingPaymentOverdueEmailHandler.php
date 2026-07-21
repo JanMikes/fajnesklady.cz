@@ -8,6 +8,7 @@ use App\Repository\ContractRepository;
 use App\Repository\ManualPaymentRequestRepository;
 use App\Service\Billing\CzechDayCount;
 use App\Service\Billing\ManualBillingReminderSchedule;
+use App\Service\Billing\RecurringAmountCalculator;
 use App\Service\OrderStatusUrlGenerator;
 use App\Service\Payment\QrPaymentGenerator;
 use Psr\Log\LoggerInterface;
@@ -31,6 +32,7 @@ final readonly class SendManualBillingPaymentOverdueEmailHandler
         private MailerInterface $mailer,
         private LoggerInterface $logger,
         private QrPaymentGenerator $qrPaymentGenerator,
+        private RecurringAmountCalculator $amountCalculator,
     ) {
     }
 
@@ -76,6 +78,16 @@ final readonly class SendManualBillingPaymentOverdueEmailHandler
         $statusUrl = $this->statusUrlGenerator->generate($contract->order);
         $order = $contract->order;
 
+        // Spec 091 D3: credit already sitting on the contract reduces what we ask
+        // for — the frozen ManualPaymentRequest::$amount stays the full cycle.
+        // Computed ONCE so the displayed amount and the QR can never disagree.
+        $amountToRequest = $this->amountCalculator->amountToRequest($contract, $event->occurredOn);
+        // Credit fully covers the cycle → there is nothing to transfer. A QR for
+        // 0 Kč is a valid SPD string (`AM:0.00`) but a nonsensical instruction,
+        // so drop the whole bank block (the template gates it on `bankAccount`)
+        // and still send the e-mail as the cycle notification it is.
+        $hasAmountToPay = $amountToRequest > 0;
+
         // Spec 076: every manual cycle is paid by bank transfer — the dispatcher
         // guarantees a variable symbol before this event fires.
         $email = (new TemplatedEmail())
@@ -88,15 +100,15 @@ final readonly class SendManualBillingPaymentOverdueEmailHandler
                 'placeName' => $place->name,
                 'storageType' => $storageType->name,
                 'storageNumber' => $storage->number,
-                'amountInCzk' => number_format($request->amount / 100, 2, ',', ' '),
+                'amountInCzk' => number_format($amountToRequest / 100, 2, ',', ' '),
                 'periodStart' => $request->periodStart,
                 'periodEnd' => $request->periodEnd,
                 'overdueDays' => $overdueDays,
                 'statusUrl' => $statusUrl,
-                'bankAccount' => $this->qrPaymentGenerator->getBankAccountFormatted(),
+                'bankAccount' => $hasAmountToPay ? $this->qrPaymentGenerator->getBankAccountFormatted() : null,
                 'variableSymbol' => $order->variableSymbol,
-                'qrCodeDataUri' => null !== $order->variableSymbol
-                    ? $this->qrPaymentGenerator->generateImageUrl($order->variableSymbol, $request->amount)
+                'qrCodeDataUri' => $hasAmountToPay && null !== $order->variableSymbol
+                    ? $this->qrPaymentGenerator->generateImageUrl($order->variableSymbol, $amountToRequest)
                     : null,
             ]);
 

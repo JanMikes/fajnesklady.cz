@@ -1,0 +1,261 @@
+{% extends 'portal/layout.html.twig' %}
+
+{% block title %}Spárovat bankovní platbu - Admin{% endblock %}
+
+{% block breadcrumb %}
+    {% include 'components/breadcrumb.html.twig' with {breadcrumb_items: [
+        {label: 'Bankovní platby', url: path('admin_bank_payments', filter and filter != 'all' ? {filter: filter} : {})},
+        {label: 'Spárovat'},
+    ]} %}
+{% endblock %}
+
+{% block content %}
+    <h1 class="text-3xl font-bold mb-6">Spárovat bankovní platbu</h1>
+
+    <div class="card mb-6">
+        <div class="card-body">
+            <h2 class="text-lg font-semibold mb-3">Příchozí platba</h2>
+            <dl class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-3 text-sm">
+                <div>
+                    <dt class="text-gray-500">Datum</dt>
+                    <dd class="text-gray-900 font-medium">{{ transaction.transactionDate|date('d.m.Y') }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">Částka</dt>
+                    <dd class="text-gray-900 font-medium">{{ (transaction.amount / 100)|number_format(2, ',', ' ') }} {{ transaction.currency }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">Variabilní symbol</dt>
+                    <dd class="text-gray-900 font-mono">{{ transaction.variableSymbol ?? '—' }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">Odesílatel</dt>
+                    <dd class="text-gray-900">{{ transaction.senderName ?? '—' }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">Účet odesílatele</dt>
+                    <dd class="text-gray-900 font-mono">{{ transaction.senderAccountNumber ?? '—' }}</dd>
+                </div>
+                <div>
+                    <dt class="text-gray-500">Zpráva pro příjemce</dt>
+                    <dd class="text-gray-900">{{ transaction.comment ?? '—' }}</dd>
+                </div>
+            </dl>
+        </div>
+    </div>
+
+    {% if order is null %}
+        {# ---------- Krok 1: výběr objednávky ---------- #}
+        <div class="card">
+            <div class="card-body">
+                <h2 class="text-lg font-semibold mb-1">Vyberte objednávku</h2>
+                <p class="text-sm text-gray-500 mb-4">Hledat lze podle čísla objednávky, jména či e-mailu zákazníka nebo variabilního symbolu.</p>
+
+                <form method="get" action="{{ path('admin_bank_transaction_pair', {id: transaction.id}) }}" class="flex flex-col sm:flex-row gap-2 mb-6">
+                    <input type="hidden" name="filter" value="{{ filter }}">
+                    <label class="sr-only" for="pair-search">Hledat objednávku</label>
+                    <input type="search"
+                           id="pair-search"
+                           name="q"
+                           value="{{ search }}"
+                           class="form-input sm:flex-1"
+                           placeholder="Např. 2025-0615-019E4643, Novák, novak@example.com nebo 7800000001">
+                    <button type="submit" class="btn btn-primary">Hledat</button>
+                </form>
+
+                {% if orders is empty %}
+                    <div class="bg-gray-50 rounded-lg p-6 text-center text-gray-500">
+                        {% if search %}
+                            Zadanému hledání neodpovídá žádná objednávka.
+                        {% else %}
+                            Žádné objednávky k zobrazení.
+                        {% endif %}
+                    </div>
+                {% else %}
+                    {% if not search %}
+                        <p class="text-xs text-gray-500 mb-2">Zobrazeno 20 nejnovějších objednávek.</p>
+                    {% endif %}
+                    <div class="overflow-x-auto">
+                        <table class="table table-zebra text-sm">
+                            <thead>
+                                <tr>
+                                    <th>Číslo</th>
+                                    <th>Zákazník</th>
+                                    <th>Sklad</th>
+                                    <th>Pobočka</th>
+                                    <th>Stav</th>
+                                    <th>VS</th>
+                                    <th>První platba</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for pickable in orders %}
+                                    <tr>
+                                        <td class="font-mono whitespace-nowrap">{{ order_reference(pickable) }}</td>
+                                        <td>
+                                            {{ pickable.user.fullName }}
+                                            <div class="text-xs text-gray-500">{{ pickable.user.email }}</div>
+                                        </td>
+                                        <td class="text-gray-900">{{ pickable.storage.number }}</td>
+                                        <td class="text-gray-500">{{ pickable.storage.place.name }}</td>
+                                        <td class="whitespace-nowrap">{{ pickable.status.label }}</td>
+                                        <td class="font-mono text-gray-500 whitespace-nowrap">{{ pickable.variableSymbol ?? '—' }}</td>
+                                        <td class="whitespace-nowrap">{{ (pickable.firstPaymentPrice / 100)|number_format(0, ',', ' ') }} Kč</td>
+                                        <td class="whitespace-nowrap">
+                                            <a href="{{ path('admin_bank_transaction_pair', {id: transaction.id, order: pickable.id, filter: filter}) }}" class="btn btn-primary btn-sm">Vybrat</a>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    {% else %}
+        {# ---------- Krok 2: potvrzení ---------- #}
+        <div class="card">
+            <div class="card-body">
+                <h2 class="text-lg font-semibold mb-1">Objednávka</h2>
+                <p class="mb-4 text-sm">
+                    <a href="{{ path('admin_order_detail', {id: order.id}) }}" class="link font-mono">{{ order_reference(order) }}</a>
+                    <span class="text-gray-500">— {{ order.user.fullName }}, sklad {{ order.storage.number }}, {{ order.storage.place.name }}</span>
+                </p>
+
+                {% if blockedForCard %}
+                    <div class="alert alert-error mb-4">
+                        <div>
+                            <p class="font-semibold">Tuto platbu nelze s objednávkou spárovat.</p>
+                            <p class="text-sm mt-1">
+                                Objednávka je nastavena na opakovanou platbu kartou. Souhlas k opakovaným platbám
+                                vzniká výhradně první úspěšnou platbou kartou — kdybychom první platbu uhradili
+                                převodem, smlouva by vznikla bez mandátu a další nájem by nešlo strhnout.
+                            </p>
+                            <p class="text-sm mt-2">
+                                Vraťte prosím částku zákazníkovi na jeho účet a požádejte ho, aby první platbu
+                                provedl kartou. Poté už lze další platby přijímat i převodem.
+                            </p>
+                        </div>
+                    </div>
+                    <a href="{{ path('admin_bank_transaction_pair', {id: transaction.id, filter: filter}) }}" class="btn btn-ghost">Zpět na výběr objednávky</a>
+                {% else %}
+                    <h3 class="text-base font-semibold mb-2">Co platba uhradí</h3>
+
+                    {% if plan.obligationSteps is empty %}
+                        <div class="alert alert-info mb-4">
+                            <div>
+                                <p class="font-semibold">Tato objednávka nemá žádný otevřený závazek.</p>
+                                <p class="text-sm mt-1">
+                                    {% if plan.unallocated > 0 %}
+                                        Celá částka {{ (plan.unallocated / 100)|number_format(2, ',', ' ') }} Kč zůstane nezařazená — objednávka
+                                        zatím nemá smlouvu, na které by šel přeplatek evidovat. Zvažte vrácení částky zákazníkovi.
+                                    {% else %}
+                                        Celá částka bude evidována jako přeplatek a použije se na další období.
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="overflow-x-auto mb-4">
+                            <table class="table table-zebra text-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Závazek</th>
+                                        <th>Očekáváno</th>
+                                        <th>Z této platby</th>
+                                        <th>Výsledek</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for step in plan.obligationSteps %}
+                                        <tr>
+                                            <td class="text-gray-900">
+                                                {{ step.type.label }}
+                                                {% if step.previouslyPaid > 0 %}
+                                                    <div class="text-xs text-gray-500">Dříve uhrazeno {{ (step.previouslyPaid / 100)|number_format(2, ',', ' ') }} Kč</div>
+                                                {% endif %}
+                                            </td>
+                                            <td class="whitespace-nowrap">{{ (step.expected / 100)|number_format(2, ',', ' ') }} Kč</td>
+                                            <td class="whitespace-nowrap">{{ (step.allocated / 100)|number_format(2, ',', ' ') }} Kč</td>
+                                            <td class="whitespace-nowrap">
+                                                {% if step.fullySettled %}
+                                                    <span class="badge badge-success">Uhrazeno</span>
+                                                {% else %}
+                                                    <span class="badge badge-warning">Neuhrazeno</span>
+                                                    <div class="text-xs text-gray-500">Zbývá {{ (step.shortfall / 100)|number_format(2, ',', ' ') }} Kč</div>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% endif %}
+
+                    <ul class="text-sm text-gray-600 space-y-1 mb-4">
+                        <li>Příchozí částka: <span class="font-medium text-gray-900">{{ (transaction.amount / 100)|number_format(2, ',', ' ') }} Kč</span></li>
+                        {% if plan.creditUsed > 0 %}
+                            <li>Použitý přeplatek z předchozích plateb: <span class="font-medium text-gray-900">{{ (plan.creditUsed / 100)|number_format(2, ',', ' ') }} Kč</span></li>
+                        {% endif %}
+                        {% if plan.creditAdded > 0 %}
+                            <li>Přeplatek {{ (plan.creditAdded / 100)|number_format(2, ',', ' ') }} Kč bude převeden na další období.</li>
+                        {% endif %}
+                        {% if plan.unallocated > 0 and plan.obligationSteps is not empty %}
+                            <li class="text-amber-700">Nezařazeno zůstane {{ (plan.unallocated / 100)|number_format(2, ',', ' ') }} Kč — objednávka nemá smlouvu, na které by šel přeplatek evidovat.</li>
+                        {% endif %}
+                    </ul>
+
+                    {% if not plan.settlesEverything %}
+                        <div class="alert alert-warning mb-4">
+                            <div>
+                                <p class="font-semibold">Platba neuhradí vše.</p>
+                                <p class="text-sm mt-1">
+                                    Částka nestačí na plné uhrazení označených závazků. Neuhrazený nájem se nezaúčtuje —
+                                    peníze zůstanou evidované jako přeplatek a použijí se, jakmile dorazí zbytek.
+                                </p>
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    <form method="post" action="{{ path('admin_bank_transaction_pair', {id: transaction.id}) }}">
+                        <input type="hidden" name="filter" value="{{ filter }}">
+                        <input type="hidden" name="order" value="{{ order.id }}">
+
+                        {% if transaction.senderAccountNumber %}
+                            <div class="form-group">
+                                <label class="flex items-start gap-2 text-sm text-gray-700">
+                                    <input type="checkbox"
+                                           name="rememberSenderAccount"
+                                           value="1"
+                                           class="h-4 w-4 mt-0.5 border-gray-300 rounded">
+                                    <span>
+                                        Zapamatovat si účet odesílatele
+                                        <span class="font-mono">{{ transaction.senderAccountNumber }}</span>
+                                        <span class="block text-xs text-gray-500">Budoucí platby z tohoto účtu se automaticky spárují s touto objednávkou.</span>
+                                    </span>
+                                </label>
+                            </div>
+                        {% endif %}
+
+                        <div class="form-group">
+                            <label class="form-label" for="pair-note">Poznámka</label>
+                            <textarea name="note"
+                                      id="pair-note"
+                                      maxlength="500"
+                                      rows="2"
+                                      class="form-input"
+                                      placeholder="Např. zákazník uvedl chybný variabilní symbol (nepovinné)"></textarea>
+                            <p class="form-help">Poznámka se uloží do auditního záznamu.</p>
+                        </div>
+
+                        <div class="flex flex-wrap gap-2 mt-4">
+                            <button type="submit" class="btn btn-primary">Spárovat</button>
+                            <a href="{{ path('admin_bank_transaction_pair', {id: transaction.id, filter: filter}) }}" class="btn btn-ghost">Zpět na výběr objednávky</a>
+                        </div>
+                    </form>
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
+{% endblock %}

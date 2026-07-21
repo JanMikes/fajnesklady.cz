@@ -45,6 +45,22 @@ final readonly class RecurringAmountCalculator
     }
 
     /**
+     * What we actually ask the customer to send: the cycle amount less any credit
+     * the contract is already holding (spec 091 D3). A contract sitting on a
+     * 400 Kč over-payment facing a 3 100 Kč cycle is asked for 2 700 Kč.
+     *
+     * Request-side only. {@see \App\Service\Payment\PaymentAllocator} still works
+     * against the FULL cycle amount from {@see self::calculate()} and adds the
+     * credit to the money available — subtracting it here as well would count it
+     * twice. The two agree: the customer sends 2 700, the allocator sees
+     * 400 + 2 700 = 3 100, the cycle settles and the credit drains to zero.
+     */
+    public function amountToRequest(Contract $contract, \DateTimeImmutable $now): int
+    {
+        return max(0, $this->calculate($contract, $now) - $contract->creditBalance);
+    }
+
+    /**
      * Same rules as {@see self::calculate()}, but for an explicit billing
      * period start — used to project FUTURE cycles (admin payment overview)
      * without touching the contract's live anchor.
