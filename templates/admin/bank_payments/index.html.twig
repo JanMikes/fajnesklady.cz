@@ -76,6 +76,15 @@
                                 <a href="{{ path('admin_order_detail', {id: tx.pairedOrder.id}) }}" class="link">
                                     {{ tx.pairedOrder.id|slice(0, 8)|upper }}
                                 </a>
+                            {% elseif suggestions[tx.id.toRfc4122] is defined %}
+                                {% set suggestion = suggestions[tx.id.toRfc4122] %}
+                                <div class="text-xs">
+                                    <span class="badge badge-warning badge-sm">Návrh</span>
+                                    <a href="{{ path('admin_bank_transaction_pair', {id: tx.id, filter: filter, order: suggestion.order.id}) }}" class="link font-medium">
+                                        {{ suggestion.order.user.fullName }}
+                                    </a>
+                                    <div class="text-gray-400 mt-0.5">{{ suggestion.reason }} · obj. {{ suggestion.order.id|slice(0, 8)|upper }}</div>
+                                </div>
                             {% else %}
                                 —
                             {% endif %}

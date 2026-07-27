@@ -39,6 +39,19 @@ class OrderRepository
         return $this->find($id) ?? throw OrderNotFound::withId($id);
     }
 
+    public function findLatestByUser(User $user): ?Order
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('o')
+            ->from(Order::class, 'o')
+            ->where('o.user = :user')
+            ->setParameter('user', $user)
+            ->orderBy('o.createdAt', 'DESC')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
     /**
      * @return Order[]
      */

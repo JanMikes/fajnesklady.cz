@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller\Admin;
 
 use App\Repository\BankTransactionRepository;
+use App\Service\Payment\BankTransactionPairingSuggester;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -17,6 +18,7 @@ final class AdminBankPaymentsController extends AbstractController
 {
     public function __construct(
         private readonly BankTransactionRepository $bankTransactionRepository,
+        private readonly BankTransactionPairingSuggester $pairingSuggester,
     ) {
     }
 
@@ -31,6 +33,7 @@ final class AdminBankPaymentsController extends AbstractController
             'filter' => $filter,
             'unmatchedCount' => $unmatchedCount,
             'ignoredCount' => $this->bankTransactionRepository->countIgnored(),
+            'suggestions' => $this->pairingSuggester->suggestForUnmatched($transactions),
         ]);
     }
 }

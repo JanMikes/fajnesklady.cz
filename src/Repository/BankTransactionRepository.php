@@ -149,6 +149,26 @@ class BankTransactionRepository
     }
 
     /**
+     * Previously paired transfers from the same counterparty account, newest
+     * pairing first — the strongest hint for where an unmatched transfer with
+     * an unknown VS belongs.
+     *
+     * @return BankTransaction[]
+     */
+    public function findPairedBySenderAccount(string $senderAccountNumber): array
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('bt')
+            ->from(BankTransaction::class, 'bt')
+            ->where('bt.senderAccountNumber = :account')
+            ->andWhere('bt.pairedOrder IS NOT NULL')
+            ->setParameter('account', $senderAccountNumber)
+            ->orderBy('bt.pairedAt', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
      * @return BankTransaction[]
      */
     public function findByContract(Contract $contract): array

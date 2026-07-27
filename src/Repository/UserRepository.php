@@ -86,6 +86,24 @@ class UserRepository
     }
 
     /**
+     * Users whose name matches a bank-transfer sender name, either ordering
+     * ("Jan Novák" and "Novák Jan"), case-insensitively. Used only to SUGGEST a
+     * home for an unmatched transfer — never to auto-pair.
+     *
+     * @return User[]
+     */
+    public function findByFullName(string $fullName): array
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('u')
+            ->from(User::class, 'u')
+            ->where("LOWER(CONCAT(u.firstName, ' ', u.lastName)) = :name OR LOWER(CONCAT(u.lastName, ' ', u.firstName)) = :name")
+            ->setParameter('name', mb_strtolower(trim($fullName)))
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
      * @return User[]
      */
     public function findAll(): array

@@ -122,6 +122,86 @@ class AdminBankPaymentsControllerTest extends WebTestCase
         $this->assertSelectorTextContains('body', 'Provozní platba');
     }
 
+    public function testSuggestsCustomerWhoPaidBeforeFromTheSameAccount(): void
+    {
+        $this->client->loginUser($this->findUserByEmail('admin@example.com'), 'main');
+
+        // An earlier transfer from this account was paired to an order; a new
+        // unmatched transfer (wrong VS) from the same account must surface that
+        // customer as a suggestion — without being auto-paired.
+        $order = $this->findAnyOrder();
+        $this->createBankTransaction('matched', $order);
+        $unmatched = $this->createBankTransaction('unmatched');
+
+        $this->client->request('GET', '/portal/admin/bankovni-platby?filter=unmatched');
+
+        $this->assertResponseIsSuccessful();
+        $this->assertSelectorTextContains('body', 'Návrh');
+        $this->assertSelectorTextContains('body', $order->user->fullName);
+        $this->assertSelectorTextContains('body', 'Dřívější platba ze stejného účtu');
+        // Still unmatched — a suggestion never pairs.
+        $this->entityManager->refresh($unmatched);
+        self::assertTrue($unmatched->isUnmatched());
+    }
+
+    public function testSuggestsCustomerByExactSenderName(): void
+    {
+        $this->client->loginUser($this->findUserByEmail('admin@example.com'), 'main');
+
+        // tenant@example.com owns fixture orders; a transfer from an unknown
+        // account whose sender name equals their name suggests them.
+        $tenant = $this->findUserByEmail('tenant@example.com');
+        $this->createBankTransaction(
+            'unmatched',
+            senderName: $tenant->fullName,
+            senderAccountNumber: '999999001/0300',
+        );
+
+        $this->client->request('GET', '/portal/admin/bankovni-platby?filter=unmatched');
+
+        $this->assertResponseIsSuccessful();
+        $this->assertSelectorTextContains('body', 'Návrh');
+        $this->assertSelectorTextContains('body', 'Shoda jména odesílatele');
+    }
+
+    public function testNoSuggestionWhenAccountPaidSeveralCustomers(): void
+    {
+        $this->client->loginUser($this->findUserByEmail('admin@example.com'), 'main');
+
+        // The same account funded orders of two different customers — ambiguous,
+        // and the sender name matches nobody, so no suggestion may render.
+        [$orderA, $orderB] = $this->findTwoOrdersOfDifferentUsers();
+        $this->createBankTransaction('matched', $orderA);
+        $this->createBankTransaction('matched', $orderB);
+        $this->createBankTransaction('unmatched');
+
+        $this->client->request('GET', '/portal/admin/bankovni-platby?filter=unmatched');
+
+        $this->assertResponseIsSuccessful();
+        self::assertStringNotContainsString('Návrh', (string) $this->client->getResponse()->getContent());
+    }
+
+    /**
+     * @return array{Order, Order}
+     */
+    private function findTwoOrdersOfDifferentUsers(): array
+    {
+        /** @var Order[] $orders */
+        $orders = $this->entityManager->createQueryBuilder()
+            ->select('o')
+            ->from(Order::class, 'o')
+            ->getQuery()
+            ->getResult();
+
+        foreach ($orders as $candidate) {
+            if (!$candidate->user->id->equals($orders[0]->user->id)) {
+                return [$orders[0], $candidate];
+            }
+        }
+
+        self::fail('Fixtures no longer contain orders of two different users.');
+    }
+
     private function createIgnoredBankTransaction(User $admin, string $senderName): BankTransaction
     {
         $tx = $this->createBankTransaction('unmatched', senderName: $senderName);
@@ -131,7 +211,7 @@ class AdminBankPaymentsControllerTest extends WebTestCase
         return $tx;
     }
 
-    private function createBankTransaction(string $status, ?Order $pairedOrder = null, string $senderName = 'Test Sender'): BankTransaction
+    private function createBankTransaction(string $status, ?Order $pairedOrder = null, string $senderName = 'Test Sender', string $senderAccountNumber = '1234567890/0100'): BankTransaction
     {
         $tx = new BankTransaction(
             id: Uuid::v7(),
@@ -139,7 +219,7 @@ class AdminBankPaymentsControllerTest extends WebTestCase
             amount: 150000,
             currency: 'CZK',
             variableSymbol: '1234567890',
-            senderAccountNumber: '1234567890/0100',
+            senderAccountNumber: $senderAccountNumber,
             senderName: $senderName,
             transactionDate: $this->clock->now(),
             comment: null,
