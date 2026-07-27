@@ -93,6 +93,31 @@ class InvoiceRepository
     }
 
     /**
+     * Invoices whose number matches a bank-transfer variable symbol. Customers
+     * sometimes pay from an (already settled) invoice PDF using its number as
+     * the VS — and banks strip the leading zeros of our zero-padded numbers
+     * (0012202607 arrives as 12202607), so both sides compare zero-stripped.
+     *
+     * @return list<Invoice>
+     */
+    public function findByNumberMatchingVariableSymbol(string $variableSymbol): array
+    {
+        $stripped = ltrim($variableSymbol, '0');
+
+        if ('' === $stripped) {
+            return [];
+        }
+
+        return $this->entityManager->createQueryBuilder()
+            ->select('i')
+            ->from(Invoice::class, 'i')
+            ->where("TRIM(LEADING '0' FROM i.invoiceNumber) = :stripped")
+            ->setParameter('stripped', $stripped)
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
      * @return Invoice[]
      */
     public function findByUser(User $user): array

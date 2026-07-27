@@ -121,6 +121,11 @@ final readonly class FakturoidApiClient implements FakturoidClient
                 'subject_id' => $subjectId,
                 // Prices in our system are gross (vč. DPH); Fakturoid must back-calculate VAT, not add it on top.
                 'vat_price_mode' => 'from_total_with_vat',
+                // Our invoices are tax documents issued AFTER the money arrived. Without
+                // these two fields Fakturoid defaults the VS to the invoice number and the
+                // PDF shows a due date — customers have paid such invoices a second time,
+                // with a VS the bank matcher cannot resolve.
+                ...$this->paidDocumentFields($order->variableSymbol),
                 'lines' => [
                     [
                         'name' => sprintf(
@@ -181,6 +186,7 @@ final readonly class FakturoidApiClient implements FakturoidClient
                 'subject_id' => $subjectId,
                 // The debt amount is gross (vč. DPH); Fakturoid must back-calculate VAT, not add it on top.
                 'vat_price_mode' => 'from_total_with_vat',
+                ...$this->paidDocumentFields($order->variableSymbol),
                 'lines' => [
                     [
                         // The debt is from a previous arrangement — name it generically, tagged by place for the books.
@@ -238,6 +244,7 @@ final readonly class FakturoidApiClient implements FakturoidClient
                 // Kept for symmetry with the other invoices: were the rate ever
                 // flipped to a non-zero one, the gross amount must stay gross.
                 'vat_price_mode' => 'from_total_with_vat',
+                ...$this->paidDocumentFields($fine->variableSymbol),
                 'lines' => [
                     [
                         'name' => sprintf('Smluvní pokuta — %s (%s)', $fine->type->label(), $place->name),
@@ -296,6 +303,7 @@ final readonly class FakturoidApiClient implements FakturoidClient
                 'subject_id' => $subjectId,
                 // Prices in our system are gross (vč. DPH); Fakturoid must back-calculate VAT, not add it on top.
                 'vat_price_mode' => 'from_total_with_vat',
+                ...$this->paidDocumentFields($contract->order->variableSymbol),
                 'lines' => [
                     [
                         'name' => sprintf(
@@ -426,6 +434,30 @@ final readonly class FakturoidApiClient implements FakturoidClient
             number: (string) $body->number,
             total: (int) round((float) $body->total * 100),
         );
+    }
+
+    /**
+     * Fields shared by every customer invoice we create: they are all tax
+     * documents for money that has ALREADY arrived (each caller marks the
+     * invoice paid right after creation), so the PDF must say "Neplaťte, již
+     * uhrazeno" — and carry OUR variable symbol, not Fakturoid's default
+     * (the invoice number). A customer who pays from the PDF anyway then
+     * sends a VS the bank matcher resolves straight to the order.
+     *
+     * NOT used by createSelfBillingInvoice — that one is a proforma we still
+     * owe money on.
+     *
+     * @return array<string, mixed>
+     */
+    private function paidDocumentFields(?string $variableSymbol): array
+    {
+        $fields = ['show_already_paid_note_in_pdf' => true];
+
+        if (null !== $variableSymbol && '' !== $variableSymbol) {
+            $fields['variable_symbol'] = $variableSymbol;
+        }
+
+        return $fields;
     }
 
     /**

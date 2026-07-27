@@ -12,6 +12,7 @@ use App\Repository\BankAccountMappingRepository;
 use App\Repository\BankTransactionRepository;
 use App\Repository\ContractRepository;
 use App\Repository\FineRepository;
+use App\Repository\InvoiceRepository;
 use App\Repository\OrderRepository;
 use App\Service\AuditLogger;
 use App\Service\Identity\ProvideIdentity;
@@ -32,6 +33,7 @@ final readonly class ProcessIncomingBankTransactionHandler
         private ContractRepository $contractRepository,
         private BankAccountMappingRepository $bankAccountMappingRepository,
         private FineRepository $fineRepository,
+        private InvoiceRepository $invoiceRepository,
         private PaymentAllocator $paymentAllocator,
         private AuditLogger $auditLogger,
         private ProvideIdentity $identityProvider,
@@ -161,6 +163,15 @@ final readonly class ProcessIncomingBankTransactionHandler
 
                 return;
             }
+
+            // Customers pay from an already-settled invoice PDF using its number
+            // as the VS (the PDF used to show no other symbol). The invoice tells
+            // us exactly whose money this is, so resolve it to the invoice's
+            // order and let the allocation waterfall decide what it settles —
+            // typically the next billing cycle or credit.
+            if ($this->matchViaInvoiceNumber($bankTx, $now)) {
+                return;
+            }
         }
 
         if (null !== $bankTx->senderAccountNumber && '' !== $bankTx->senderAccountNumber) {
@@ -193,6 +204,63 @@ final readonly class ProcessIncomingBankTransactionHandler
                 $this->matchToOrder($bankTx, $mappings[0]->order, 'account_mapping', $now);
             }
         }
+    }
+
+    /**
+     * VS → invoice-number fallback. Both sides compare with leading zeros
+     * stripped (banks strip them from our zero-padded numbers). Only an
+     * unambiguous hit pairs: if the number somehow resolves to invoices of
+     * several orders, the transfer stays for a human.
+     */
+    private function matchViaInvoiceNumber(BankTransaction $bankTx, \DateTimeImmutable $now): bool
+    {
+        /** @var string $variableSymbol guarded by the caller */
+        $variableSymbol = $bankTx->variableSymbol;
+
+        $invoices = $this->invoiceRepository->findByNumberMatchingVariableSymbol($variableSymbol);
+
+        if ([] === $invoices) {
+            return false;
+        }
+
+        $orders = [];
+        foreach ($invoices as $invoice) {
+            $orders[$invoice->order->id->toRfc4122()] = $invoice->order;
+        }
+
+        if (count($orders) > 1) {
+            $this->auditLogger->log(
+                entityType: 'bank_transaction',
+                entityId: $bankTx->id->toRfc4122(),
+                eventType: 'invoice_number_match_ambiguous',
+                payload: [
+                    'variable_symbol' => $variableSymbol,
+                    'order_ids' => array_keys($orders),
+                ],
+            );
+
+            return false;
+        }
+
+        $order = reset($orders);
+
+        $this->auditLogger->log(
+            entityType: 'bank_transaction',
+            entityId: $bankTx->id->toRfc4122(),
+            eventType: 'matched_via_invoice_number',
+            payload: [
+                'variable_symbol' => $variableSymbol,
+                'invoice_number' => $invoices[0]->invoiceNumber,
+                'order_id' => $order->id->toRfc4122(),
+                'order_variable_symbol' => $order->variableSymbol,
+            ],
+            orderId: $order->id,
+            userIdContext: $order->user->id,
+        );
+
+        $this->matchToOrder($bankTx, $order, 'invoice_number', $now);
+
+        return true;
     }
 
     /**

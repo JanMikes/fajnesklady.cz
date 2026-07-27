@@ -42,6 +42,74 @@ class FakturoidApiClientTest extends TestCase
         $this->assertSame(21, $captured['lines'][0]['vat_rate']);
     }
 
+    public function testCreateInvoiceSendsOurVariableSymbolAndPaidNote(): void
+    {
+        $user = $this->createUser();
+        $order = $this->createOrder($user);
+        $order->assignVariableSymbol('2546260478');
+
+        $captured = $this->captureCreatePayload(static fn (FakturoidApiClient $client): mixed => $client->createInvoice(123, $order));
+
+        // Without our VS Fakturoid defaults to the invoice number — customers have
+        // then paid the (already settled) invoice again with a symbol the bank
+        // matcher could not resolve (2026-07-27 incident).
+        $this->assertSame('2546260478', $captured['variable_symbol']);
+        $this->assertTrue($captured['show_already_paid_note_in_pdf']);
+    }
+
+    public function testCreateInvoiceOmitsVariableSymbolWhenOrderHasNone(): void
+    {
+        $user = $this->createUser();
+        $order = $this->createOrder($user);
+
+        $captured = $this->captureCreatePayload(static fn (FakturoidApiClient $client): mixed => $client->createInvoice(123, $order));
+
+        // Legacy orders without a VS must fall back to Fakturoid's default, not send an empty symbol.
+        $this->assertArrayNotHasKey('variable_symbol', $captured);
+        $this->assertTrue($captured['show_already_paid_note_in_pdf']);
+    }
+
+    public function testCreateRecurringInvoiceSendsOrderVariableSymbolAndPaidNote(): void
+    {
+        $user = $this->createUser();
+        $contract = $this->createContract($user);
+        $contract->order->assignVariableSymbol('9812340077');
+
+        $captured = $this->captureCreatePayload(static fn (FakturoidApiClient $client): mixed => $client->createRecurringInvoice(
+            123,
+            $contract,
+            60_000,
+            new \DateTimeImmutable('2025-06-15'),
+        ));
+
+        $this->assertSame('9812340077', $captured['variable_symbol']);
+        $this->assertTrue($captured['show_already_paid_note_in_pdf']);
+    }
+
+    public function testCreateFineInvoiceSendsFineVariableSymbolAndPaidNote(): void
+    {
+        $user = $this->createUser();
+        $fine = $this->createFine($user);
+        $fine->assignVariableSymbol('8412340011');
+
+        $captured = $this->captureCreatePayload(static fn (FakturoidApiClient $client): mixed => $client->createFineInvoice(123, $fine));
+
+        // A fine has its own VS — the invoice must carry that one, not the order's.
+        $this->assertSame('8412340011', $captured['variable_symbol']);
+        $this->assertTrue($captured['show_already_paid_note_in_pdf']);
+    }
+
+    public function testCreateSelfBillingInvoiceStaysAPayableProforma(): void
+    {
+        $invoice = $this->createSelfBillingInvoice();
+
+        $captured = $this->captureCreatePayload(static fn (FakturoidApiClient $client): mixed => $client->createSelfBillingInvoice(123, $invoice));
+
+        // Self-billing proformas are documents we still owe money on — they must
+        // NOT carry the "already paid" note.
+        $this->assertArrayNotHasKey('show_already_paid_note_in_pdf', $captured);
+    }
+
     public function testCreateDebtInvoiceSendsVatPriceModeFromTotalWithVat(): void
     {
         $user = $this->createUser();
