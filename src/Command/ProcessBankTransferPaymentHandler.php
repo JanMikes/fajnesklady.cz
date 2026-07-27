@@ -109,9 +109,9 @@ final readonly class ProcessBankTransferPaymentHandler
             $manualRequest->markPaid($now);
         }
 
-        $this->eventBus->dispatch(new RecurringPaymentCharged(
+        $this->eventBus->dispatch(RecurringPaymentCharged::viaBankTransfer(
             contractId: $contract->id,
-            paymentId: $transaction->id->toRfc4122(),
+            bankTransactionId: $transaction->id,
             amount: $effectiveAmount,
             occurredOn: $now,
         ));

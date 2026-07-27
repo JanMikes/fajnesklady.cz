@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Event;
 
 use App\Entity\Payment;
+use App\Repository\BankTransactionRepository;
 use App\Repository\ContractRepository;
 use App\Repository\PaymentRepository;
 use App\Service\Identity\ProvideIdentity;
@@ -15,6 +16,7 @@ final readonly class RecordPaymentOnRecurringChargeHandler
 {
     public function __construct(
         private ContractRepository $contractRepository,
+        private BankTransactionRepository $bankTransactionRepository,
         private PaymentRepository $paymentRepository,
         private ProvideIdentity $identityProvider,
     ) {
@@ -38,7 +40,19 @@ final readonly class RecordPaymentOnRecurringChargeHandler
             createdAt: $event->occurredOn,
         );
 
-        $payment->setGoPayPaymentId($event->paymentId);
+        // Only a real GoPay id may land in goPayPaymentId — its unique index is
+        // the race backstop for parallel webhook deliveries, and the payment
+        // overview labels any non-null value "Kartou (GoPay)".
+        if (null !== $event->goPayPaymentId) {
+            $payment->setGoPayPaymentId($event->goPayPaymentId);
+        }
+
+        if (null !== $event->bankTransactionId) {
+            $bankTransaction = $this->bankTransactionRepository->find($event->bankTransactionId);
+            if (null !== $bankTransaction) {
+                $payment->linkBankTransaction($bankTransaction);
+            }
+        }
 
         $this->paymentRepository->save($payment);
     }

@@ -204,9 +204,9 @@ final readonly class ChargeRecurringPaymentHandler
             userIdContext: $contract->user->id,
         );
 
-        $this->eventBus->dispatch(new RecurringPaymentCharged(
+        $this->eventBus->dispatch(RecurringPaymentCharged::viaGoPay(
             contractId: $contract->id,
-            paymentId: $paymentId,
+            goPayPaymentId: $paymentId,
             amount: $amount,
             occurredOn: $now,
         ));

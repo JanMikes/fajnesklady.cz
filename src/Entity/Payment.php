@@ -23,6 +23,12 @@ class Payment
     #[ORM\Column(length: 50, nullable: true)]
     public private(set) ?string $goPayPaymentId = null;
 
+    // Set when the payment was reconciled from an incoming bank transfer —
+    // mutually exclusive with goPayPaymentId, which is only ever a GoPay id.
+    #[ORM\ManyToOne(targetEntity: BankTransaction::class)]
+    #[ORM\JoinColumn(nullable: true)]
+    public private(set) ?BankTransaction $bankTransaction = null;
+
     public function __construct(
         #[ORM\Id]
         #[ORM\Column(type: UuidType::NAME, unique: true)]
@@ -48,6 +54,11 @@ class Payment
     public function setGoPayPaymentId(string $goPayPaymentId): void
     {
         $this->goPayPaymentId = $goPayPaymentId;
+    }
+
+    public function linkBankTransaction(BankTransaction $bankTransaction): void
+    {
+        $this->bankTransaction = $bankTransaction;
     }
 
     public function linkToSelfBillingInvoice(SelfBillingInvoice $invoice): void

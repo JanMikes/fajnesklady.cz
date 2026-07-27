@@ -376,9 +376,9 @@ final readonly class ProcessPaymentNotificationHandler
         // expected outcome — log a warning and return cleanly so the messenger
         // does not surface a duplicate as an error.
         try {
-            $this->eventBus->dispatch(new RecurringPaymentCharged(
+            $this->eventBus->dispatch(RecurringPaymentCharged::viaGoPay(
                 contractId: $contract->id,
-                paymentId: $status->id,
+                goPayPaymentId: $status->id,
                 amount: $receivedAmount,
                 occurredOn: $now,
             ));
@@ -448,9 +448,9 @@ final readonly class ProcessPaymentNotificationHandler
         $this->auditLogger->logManualPaymentReceived($manualRequest);
 
         try {
-            $this->eventBus->dispatch(new RecurringPaymentCharged(
+            $this->eventBus->dispatch(RecurringPaymentCharged::viaGoPay(
                 contractId: $contract->id,
-                paymentId: $status->id,
+                goPayPaymentId: $status->id,
                 amount: $receivedAmount,
                 occurredOn: $now,
             ));
@@ -528,9 +528,9 @@ final readonly class ProcessPaymentNotificationHandler
         ));
 
         try {
-            $this->eventBus->dispatch(new RecurringPaymentCharged(
+            $this->eventBus->dispatch(RecurringPaymentCharged::viaGoPay(
                 contractId: $contract->id,
-                paymentId: $status->id,
+                goPayPaymentId: $status->id,
                 amount: $status->amount ?? $contract->getEffectiveRecurringAmount(),
                 occurredOn: $now,
             ));

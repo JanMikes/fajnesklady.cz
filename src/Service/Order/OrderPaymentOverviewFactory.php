@@ -334,7 +334,11 @@ final readonly class OrderPaymentOverviewFactory
                 status: PaymentOverviewRow::STATUS_PAID,
                 amountInHaler: $payment->amount,
                 paidAt: $payment->paidAt,
-                source: null !== $payment->goPayPaymentId ? 'Kartou (GoPay)' : 'Bankovní převod / externí záznam',
+                source: match (true) {
+                    null !== $payment->goPayPaymentId => 'Kartou (GoPay)',
+                    null !== $payment->bankTransaction => 'Bankovní převod',
+                    default => 'Externí záznam',
+                },
             );
         }
 

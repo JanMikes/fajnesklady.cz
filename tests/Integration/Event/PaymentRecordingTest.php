@@ -132,9 +132,9 @@ class PaymentRecordingTest extends KernelTestCase
         $paymentsBefore = $this->countPaymentsForStorage($contract->storage);
 
         // Dispatch RecurringPaymentCharged event directly
-        $this->eventBus->dispatch(new RecurringPaymentCharged(
+        $this->eventBus->dispatch(RecurringPaymentCharged::viaGoPay(
             contractId: $contract->id,
-            paymentId: '123456',
+            goPayPaymentId: '123456',
             amount: 50000, // 500 CZK
             occurredOn: $now,
         ));
@@ -154,6 +154,48 @@ class PaymentRecordingTest extends KernelTestCase
         $this->assertNotNull($payment->contract);
         $this->assertTrue($payment->contract->id->equals($contract->id));
         $this->assertNull($payment->order); // Recurring payments don't have order
+        $this->assertSame('123456', $payment->goPayPaymentId);
+        $this->assertNull($payment->bankTransaction, 'a GoPay charge must not reference a bank transaction');
+    }
+
+    public function testBankTransferChargeRecordsBankTransactionNotGoPayId(): void
+    {
+        // Regression: bank-transfer reconciliations used to smuggle the bank
+        // transaction UUID into goPayPaymentId, so the payment rendered as
+        // "Kartou (GoPay)" although the customer paid by wire.
+        $contract = $this->createContractWithRecurringPayment();
+        $now = $this->clock->now();
+
+        $bankTransaction = new \App\Entity\BankTransaction(
+            id: Uuid::v7(),
+            fioTransactionId: 'fio-payment-recording-1',
+            amount: 50000,
+            currency: 'CZK',
+            variableSymbol: '9912345678',
+            senderAccountNumber: '123456789/0800',
+            senderName: 'Jan Testovací',
+            transactionDate: $now,
+            comment: null,
+            createdAt: $now,
+        );
+        $this->entityManager->persist($bankTransaction);
+        $this->entityManager->flush();
+
+        $this->eventBus->dispatch(RecurringPaymentCharged::viaBankTransfer(
+            contractId: $contract->id,
+            bankTransactionId: $bankTransaction->id,
+            amount: 50000,
+            occurredOn: $now,
+        ));
+
+        $this->entityManager->flush();
+        $this->entityManager->clear();
+
+        $payment = $this->getLastPaymentForStorage($contract->storage);
+        $this->assertNotNull($payment);
+        $this->assertNull($payment->goPayPaymentId, 'a bank transfer must never occupy goPayPaymentId');
+        $this->assertNotNull($payment->bankTransaction);
+        $this->assertTrue($payment->bankTransaction->id->equals($bankTransaction->id));
     }
 
     public function testPaymentLinkedToCorrectStorage(): void

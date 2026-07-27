@@ -80,6 +80,22 @@ final class ProcessIncomingBankTransactionInvoiceNumberTest extends KernelTestCa
         $reloaded = $this->entityManager->find(Contract::class, $contract->id);
         self::assertNotNull($reloaded);
         self::assertNotNull($reloaded->lastBilledAt, 'cycle must be recorded as billed');
+
+        // The recorded Payment references the bank transaction — NOT goPayPaymentId,
+        // which would render the payment as "Kartou (GoPay)" in the overview.
+        $payment = $this->entityManager->createQueryBuilder()
+            ->select('p')
+            ->from(\App\Entity\Payment::class, 'p')
+            ->where('p.contract = :contract')
+            ->setParameter('contract', $reloaded)
+            ->orderBy('p.createdAt', 'DESC')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+        self::assertInstanceOf(\App\Entity\Payment::class, $payment);
+        self::assertNull($payment->goPayPaymentId);
+        self::assertNotNull($payment->bankTransaction);
+        self::assertTrue($payment->bankTransaction->id->equals($bankTx->id));
     }
 
     public function testFullInvoiceNumberSymbolPairsToo(): void
