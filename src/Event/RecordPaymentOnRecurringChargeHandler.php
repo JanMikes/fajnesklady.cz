@@ -54,6 +54,8 @@ final readonly class RecordPaymentOnRecurringChargeHandler
             }
         }
 
+        $payment->coverPeriod($event->periodStart, $event->periodEnd);
+
         $this->paymentRepository->save($payment);
     }
 }

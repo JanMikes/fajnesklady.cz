@@ -136,6 +136,8 @@ class PaymentRecordingTest extends KernelTestCase
             contractId: $contract->id,
             goPayPaymentId: '123456',
             amount: 50000, // 500 CZK
+            periodStart: $now,
+            periodEnd: $now->modify('+1 month'),
             occurredOn: $now,
         ));
 
@@ -185,6 +187,8 @@ class PaymentRecordingTest extends KernelTestCase
             contractId: $contract->id,
             bankTransactionId: $bankTransaction->id,
             amount: 50000,
+            periodStart: $now,
+            periodEnd: $now->modify('+1 month'),
             occurredOn: $now,
         ));
 

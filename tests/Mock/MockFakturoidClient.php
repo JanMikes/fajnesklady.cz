@@ -85,7 +85,7 @@ final class MockFakturoidClient implements FakturoidClient
         return $invoice;
     }
 
-    public function createRecurringInvoice(int $subjectId, Contract $contract, int $amount, \DateTimeImmutable $billingDate): FakturoidInvoice
+    public function createRecurringInvoice(int $subjectId, Contract $contract, int $amount, \DateTimeImmutable $billingDate, ?\DateTimeImmutable $periodStart = null, ?\DateTimeImmutable $periodEnd = null): FakturoidInvoice
     {
         $invoiceId = $this->nextInvoiceId++;
         $invoice = new FakturoidInvoice(

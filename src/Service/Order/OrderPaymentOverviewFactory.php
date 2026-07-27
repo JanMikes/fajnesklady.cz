@@ -329,9 +329,19 @@ final readonly class OrderPaymentOverviewFactory
                 continue; // already visible as a paid request row
             }
 
+            // With a known cycle the row reads like a request row and sorts into
+            // its slot in the schedule; without one (historic rows) it stays a
+            // bare "Opakovaná platba" floating at the top.
+            $hasPeriod = null !== $payment->periodStart && null !== $payment->periodEnd;
+
             $rows[] = new PaymentOverviewRow(
-                label: 'Opakovaná platba',
+                label: $hasPeriod
+                    ? sprintf('Období %s – %s', $payment->periodStart->format('d.m.Y'), $payment->periodEnd->format('d.m.Y'))
+                    : 'Opakovaná platba',
                 status: PaymentOverviewRow::STATUS_PAID,
+                dueDate: $payment->periodStart,
+                periodStart: $payment->periodStart,
+                periodEnd: $payment->periodEnd,
                 amountInHaler: $payment->amount,
                 paidAt: $payment->paidAt,
                 source: match (true) {

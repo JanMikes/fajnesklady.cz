@@ -20,6 +20,8 @@ final readonly class RecurringPaymentCharged
         public ?string $goPayPaymentId,
         public ?Uuid $bankTransactionId,
         public int $amount,
+        public \DateTimeImmutable $periodStart,
+        public \DateTimeImmutable $periodEnd,
         public \DateTimeImmutable $occurredOn,
     ) {
     }
@@ -28,17 +30,21 @@ final readonly class RecurringPaymentCharged
         Uuid $contractId,
         string $goPayPaymentId,
         int $amount,
+        \DateTimeImmutable $periodStart,
+        \DateTimeImmutable $periodEnd,
         \DateTimeImmutable $occurredOn,
     ): self {
-        return new self($contractId, $goPayPaymentId, null, $amount, $occurredOn);
+        return new self($contractId, $goPayPaymentId, null, $amount, $periodStart, $periodEnd, $occurredOn);
     }
 
     public static function viaBankTransfer(
         Uuid $contractId,
         Uuid $bankTransactionId,
         int $amount,
+        \DateTimeImmutable $periodStart,
+        \DateTimeImmutable $periodEnd,
         \DateTimeImmutable $occurredOn,
     ): self {
-        return new self($contractId, null, $bankTransactionId, $amount, $occurredOn);
+        return new self($contractId, null, $bankTransactionId, $amount, $periodStart, $periodEnd, $occurredOn);
     }
 }

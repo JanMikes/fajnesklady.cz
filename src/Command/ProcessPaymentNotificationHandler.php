@@ -380,6 +380,8 @@ final readonly class ProcessPaymentNotificationHandler
                 contractId: $contract->id,
                 goPayPaymentId: $status->id,
                 amount: $receivedAmount,
+                periodStart: $billingPeriodStart,
+                periodEnd: $paidThroughDate,
                 occurredOn: $now,
             ));
         } catch (HandlerFailedException $e) {
@@ -452,6 +454,8 @@ final readonly class ProcessPaymentNotificationHandler
                 contractId: $contract->id,
                 goPayPaymentId: $status->id,
                 amount: $receivedAmount,
+                periodStart: $billingPeriodStart,
+                periodEnd: $paidThroughDate,
                 occurredOn: $now,
             ));
         } catch (HandlerFailedException $e) {
@@ -532,6 +536,8 @@ final readonly class ProcessPaymentNotificationHandler
                 contractId: $contract->id,
                 goPayPaymentId: $status->id,
                 amount: $status->amount ?? $contract->getEffectiveRecurringAmount(),
+                periodStart: $billingPeriodStart,
+                periodEnd: $paidThroughDate,
                 occurredOn: $now,
             ));
         } catch (HandlerFailedException $e) {

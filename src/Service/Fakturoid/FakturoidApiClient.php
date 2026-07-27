@@ -292,11 +292,19 @@ final readonly class FakturoidApiClient implements FakturoidClient
         );
     }
 
-    public function createRecurringInvoice(int $subjectId, Contract $contract, int $amount, \DateTimeImmutable $billingDate): FakturoidInvoice
+    public function createRecurringInvoice(int $subjectId, Contract $contract, int $amount, \DateTimeImmutable $billingDate, ?\DateTimeImmutable $periodStart = null, ?\DateTimeImmutable $periodEnd = null): FakturoidInvoice
     {
         $storage = $contract->storage;
         $storageType = $storage->storageType;
         $place = $storage->getPlace();
+
+        // The covered cycle, with exact dates — cycles anchor on the contract
+        // start day, so a calendar-month label ("07/2026" = the CHARGE month)
+        // misdescribed the period and customers read it as the wrong invoice.
+        // Callers without a cycle (debt settlements) fall back to the charge month.
+        $periodLabel = null !== $periodStart && null !== $periodEnd
+            ? sprintf('období %s – %s', $periodStart->format('d.m.Y'), $periodEnd->format('d.m.Y'))
+            : $billingDate->format('m/Y');
 
         try {
             $response = $this->manager->getInvoicesProvider()->create([
@@ -311,7 +319,7 @@ final readonly class FakturoidApiClient implements FakturoidClient
                             $storageType->name,
                             $storage->number,
                             $place->name,
-                            $billingDate->format('m/Y'),
+                            $periodLabel,
                         ),
                         'quantity' => 1,
                         'unit_price' => $amount / 100,

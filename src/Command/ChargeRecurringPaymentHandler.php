@@ -208,6 +208,8 @@ final readonly class ChargeRecurringPaymentHandler
             contractId: $contract->id,
             goPayPaymentId: $paymentId,
             amount: $amount,
+            periodStart: $billingPeriodStart,
+            periodEnd: $paidThroughDate,
             occurredOn: $now,
         ));
     }

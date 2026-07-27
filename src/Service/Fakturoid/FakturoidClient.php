@@ -32,7 +32,7 @@ interface FakturoidClient
      */
     public function createFineInvoice(int $subjectId, Fine $fine): FakturoidInvoice;
 
-    public function createRecurringInvoice(int $subjectId, Contract $contract, int $amount, \DateTimeImmutable $billingDate): FakturoidInvoice;
+    public function createRecurringInvoice(int $subjectId, Contract $contract, int $amount, \DateTimeImmutable $billingDate, ?\DateTimeImmutable $periodStart = null, ?\DateTimeImmutable $periodEnd = null): FakturoidInvoice;
 
     public function downloadInvoicePdf(int $invoiceId): string;
 

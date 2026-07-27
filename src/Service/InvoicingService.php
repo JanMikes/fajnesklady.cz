@@ -166,17 +166,22 @@ readonly class InvoicingService
         return $invoice;
     }
 
-    public function issueInvoiceForRecurringPayment(Contract $contract, int $amount, \DateTimeImmutable $chargedAt): Invoice
-    {
+    public function issueInvoiceForRecurringPayment(
+        Contract $contract,
+        int $amount,
+        \DateTimeImmutable $chargedAt,
+        ?\DateTimeImmutable $periodStart = null,
+        ?\DateTimeImmutable $periodEnd = null,
+    ): Invoice {
         $user = $contract->user;
 
         $subjectId = $this->ensureFakturoidSubject($user, $chargedAt);
 
         try {
-            $fakturoidInvoice = $this->fakturoidClient->createRecurringInvoice($subjectId, $contract, $amount, $chargedAt);
+            $fakturoidInvoice = $this->fakturoidClient->createRecurringInvoice($subjectId, $contract, $amount, $chargedAt, $periodStart, $periodEnd);
         } catch (StaleFakturoidSubjectException $e) {
             $subjectId = $this->recreateFakturoidSubject($user, $chargedAt, $e->subjectId);
-            $fakturoidInvoice = $this->fakturoidClient->createRecurringInvoice($subjectId, $contract, $amount, $chargedAt);
+            $fakturoidInvoice = $this->fakturoidClient->createRecurringInvoice($subjectId, $contract, $amount, $chargedAt, $periodStart, $periodEnd);
         }
 
         // Recurring payments are charged immediately, so mark as paid

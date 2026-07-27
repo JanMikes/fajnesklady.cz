@@ -86,6 +86,42 @@ class FakturoidApiClientTest extends TestCase
         $this->assertTrue($captured['show_already_paid_note_in_pdf']);
     }
 
+    public function testCreateRecurringInvoiceLineNamesTheCoveredPeriod(): void
+    {
+        $user = $this->createUser();
+        $contract = $this->createContract($user);
+
+        $captured = $this->captureCreatePayload(static fn (FakturoidApiClient $client): mixed => $client->createRecurringInvoice(
+            123,
+            $contract,
+            60_000,
+            new \DateTimeImmutable('2026-07-27'),
+            new \DateTimeImmutable('2026-08-29'),
+            new \DateTimeImmutable('2026-09-29'),
+        ));
+
+        // The line must describe the cycle PAID, not the month the charge ran in —
+        // cycles anchor mid-month, so "07/2026" misdescribed an Aug–Sep period.
+        $this->assertStringContainsString('období 29.08.2026 – 29.09.2026', (string) $captured['lines'][0]['name']);
+        $this->assertStringNotContainsString('07/2026', (string) $captured['lines'][0]['name']);
+    }
+
+    public function testCreateRecurringInvoiceFallsBackToChargeMonthWithoutPeriod(): void
+    {
+        $user = $this->createUser();
+        $contract = $this->createContract($user);
+
+        $captured = $this->captureCreatePayload(static fn (FakturoidApiClient $client): mixed => $client->createRecurringInvoice(
+            123,
+            $contract,
+            60_000,
+            new \DateTimeImmutable('2026-07-27'),
+        ));
+
+        // Period-less callers (debt settlements, external records) keep the old label.
+        $this->assertStringContainsString('07/2026', (string) $captured['lines'][0]['name']);
+    }
+
     public function testCreateFineInvoiceSendsFineVariableSymbolAndPaidNote(): void
     {
         $user = $this->createUser();

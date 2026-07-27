@@ -28,6 +28,8 @@ final readonly class IssueInvoiceOnRecurringChargeHandler
                 $contract,
                 $event->amount,
                 $event->occurredOn,
+                $event->periodStart,
+                $event->periodEnd,
             );
         } catch (\Throwable $e) {
             $this->logger->error('Failed to issue invoice for recurring payment', [

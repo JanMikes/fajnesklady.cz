@@ -96,6 +96,8 @@ final class ProcessIncomingBankTransactionInvoiceNumberTest extends KernelTestCa
         self::assertNull($payment->goPayPaymentId);
         self::assertNotNull($payment->bankTransaction);
         self::assertTrue($payment->bankTransaction->id->equals($bankTx->id));
+        self::assertNotNull($payment->periodStart, 'the payment must record which cycle it settled');
+        self::assertNotNull($payment->periodEnd);
     }
 
     public function testFullInvoiceNumberSymbolPairsToo(): void

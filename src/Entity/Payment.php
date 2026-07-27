@@ -29,6 +29,14 @@ class Payment
     #[ORM\JoinColumn(nullable: true)]
     public private(set) ?BankTransaction $bankTransaction = null;
 
+    // The billing cycle this payment settled. Nullable only because rows
+    // predate the columns — every new recurring payment carries its period.
+    #[ORM\Column(nullable: true)]
+    public private(set) ?\DateTimeImmutable $periodStart = null;
+
+    #[ORM\Column(nullable: true)]
+    public private(set) ?\DateTimeImmutable $periodEnd = null;
+
     public function __construct(
         #[ORM\Id]
         #[ORM\Column(type: UuidType::NAME, unique: true)]
@@ -59,6 +67,12 @@ class Payment
     public function linkBankTransaction(BankTransaction $bankTransaction): void
     {
         $this->bankTransaction = $bankTransaction;
+    }
+
+    public function coverPeriod(\DateTimeImmutable $periodStart, \DateTimeImmutable $periodEnd): void
+    {
+        $this->periodStart = $periodStart;
+        $this->periodEnd = $periodEnd;
     }
 
     public function linkToSelfBillingInvoice(SelfBillingInvoice $invoice): void

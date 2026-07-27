@@ -113,6 +113,8 @@ final readonly class ProcessBankTransferPaymentHandler
             contractId: $contract->id,
             bankTransactionId: $transaction->id,
             amount: $effectiveAmount,
+            periodStart: $billingPeriodStart,
+            periodEnd: $paidThroughDate,
             occurredOn: $now,
         ));
 
