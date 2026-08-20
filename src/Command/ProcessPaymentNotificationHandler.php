@@ -194,7 +194,7 @@ final readonly class ProcessPaymentNotificationHandler
         // we previously generated for a Contract. Reconcile via the
         // ManualPaymentRequest row so the contract's billing dates advance
         // and the invoice + Payment row issue exactly as for AUTO.
-        $manualRequest = $this->manualPaymentRequestRepository->findByGoPayPaymentId($command->goPayPaymentId);
+        $manualRequest = $this->manualPaymentRequestRepository->findByGoPayPaymentIdForUpdate($command->goPayPaymentId);
         if (null !== $manualRequest && $status->isPaid()) {
             $this->reconcileManualPayment($manualRequest, $status, $now);
 
@@ -447,6 +447,18 @@ final readonly class ProcessPaymentNotificationHandler
     private function reconcileManualPayment(ManualPaymentRequest $manualRequest, GoPayPaymentStatus $status, \DateTimeImmutable $now): void
     {
         $contract = $manualRequest->contract;
+
+        // Re-check under the row lock taken by findByGoPayPaymentIdForUpdate() —
+        // a parallel delivery may have finalised this payment since the guard at
+        // the top of __invoke ran. Bail before the invoice is issued.
+        if ($this->paymentRepository->existsByGoPayPaymentId($status->id)) {
+            $this->logger->info('Manual-billing payment already finalised by a parallel delivery — skipping', [
+                'contract_id' => $contract->id->toRfc4122(),
+                'gopay_payment_id' => $status->id,
+            ]);
+
+            return;
+        }
 
         $billingPeriodStart = $contract->nextBillingDate ?? $now;
         $effectiveEndDate = $contract->getEffectiveEndDate();

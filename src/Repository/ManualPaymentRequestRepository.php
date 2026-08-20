@@ -60,7 +60,17 @@ final class ManualPaymentRequestRepository
             ->getResult();
     }
 
-    public function findByGoPayPaymentId(string $paymentId): ?ManualPaymentRequest
+    /**
+     * Webhook lookup for a MANUAL_RECURRING cycle payment. SELECT ... FOR UPDATE
+     * for the same reason as
+     * {@see ContractRepository::findByGoPayParentPaymentIdForUpdate()}: two
+     * parallel deliveries of one notification would both clear the
+     * existsByGoPayPaymentId guard at the top of
+     * {@see \App\Command\ProcessPaymentNotificationHandler::__invoke()} and both
+     * reach Fakturoid. The duplicate Payment INSERT is caught at flush, but the
+     * invoice the loser already created is not undone by the rollback.
+     */
+    public function findByGoPayPaymentIdForUpdate(string $paymentId): ?ManualPaymentRequest
     {
         return $this->entityManager->createQueryBuilder()
             ->select('r')
@@ -68,6 +78,7 @@ final class ManualPaymentRequestRepository
             ->where('r.goPayPaymentId = :paymentId')
             ->setParameter('paymentId', $paymentId)
             ->getQuery()
+            ->setLockMode(LockMode::PESSIMISTIC_WRITE)
             ->getOneOrNullResult();
     }
 
