@@ -7,6 +7,7 @@ namespace App\Tests\Integration\Command;
 use App\Command\InitiatePaymentCommand;
 use App\Command\ProcessPaymentNotificationCommand;
 use App\DataFixtures\UserFixtures;
+use App\Entity\AuditLog;
 use App\Entity\Payment;
 use App\Entity\Place;
 use App\Entity\StorageType;
@@ -165,7 +166,7 @@ class ProcessPaymentNotificationHandlerTest extends KernelTestCase
 
         $count = (int) $this->entityManager->createQueryBuilder()
             ->select('COUNT(a.id)')
-            ->from(\App\Entity\AuditLog::class, 'a')
+            ->from(AuditLog::class, 'a')
             ->where('a.entityType = :entityType')
             ->andWhere('a.entityId = :entityId')
             ->andWhere('a.eventType = :eventType')
@@ -404,6 +405,25 @@ class ProcessPaymentNotificationHandlerTest extends KernelTestCase
                 $refreshedContract->nextBillingDate?->format('Y-m-d'),
             );
         }
+
+        // A webhook-settled cycle must leave the same audit trail the cron
+        // writes; otherwise a charge looks unaudited purely because GoPay
+        // answered via the webhook instead of the polling loop.
+        $audit = $this->entityManager->createQueryBuilder()
+            ->select('a')
+            ->from(AuditLog::class, 'a')
+            ->where('a.entityType = :type')
+            ->andWhere('a.entityId = :id')
+            ->andWhere('a.eventType = :event')
+            ->setParameter('type', 'contract')
+            ->setParameter('id', $contract->id->toRfc4122())
+            ->setParameter('event', 'recurring_charged')
+            ->getQuery()
+            ->getResult();
+
+        $this->assertCount(1, $audit, 'Webhook reconciliation must write a recurring_charged audit row.');
+        $this->assertSame($recurringPaymentId, $audit[0]->payload['gopay_payment_id']);
+        $this->assertSame('webhook', $audit[0]->payload['reconciled_via']);
     }
 
     public function testParallelWebhookRaceLosesGracefullyWithoutDuplicatePayment(): void
@@ -649,7 +669,7 @@ class ProcessPaymentNotificationHandlerTest extends KernelTestCase
     {
         return (int) $this->entityManager->createQueryBuilder()
             ->select('COUNT(a.id)')
-            ->from(\App\Entity\AuditLog::class, 'a')
+            ->from(AuditLog::class, 'a')
             ->where('a.entityType = :entityType')
             ->andWhere('a.entityId = :entityId')
             ->andWhere('a.eventType = :eventType')

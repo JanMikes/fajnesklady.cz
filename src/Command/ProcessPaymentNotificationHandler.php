@@ -308,7 +308,7 @@ final readonly class ProcessPaymentNotificationHandler
      */
     private function reconcileRecurringPayment(string $parentPaymentId, GoPayPaymentStatus $status, \DateTimeImmutable $now): void
     {
-        $contract = $this->contractRepository->findByGoPayParentPaymentId($parentPaymentId);
+        $contract = $this->contractRepository->findByGoPayParentPaymentIdForUpdate($parentPaymentId);
 
         if (null === $contract) {
             // Guarded by isPaid() at the call site — this is captured money
@@ -325,6 +325,20 @@ final readonly class ProcessPaymentNotificationHandler
                 orderId: null,
                 occurredOn: $now,
             ));
+
+            return;
+        }
+
+        // Re-check now that we hold the contract row. The existsByGoPayPaymentId
+        // guard at the top of __invoke ran before the lock, so the recurring
+        // cron — which opens its transaction long before it charges — may have
+        // committed this very payment in the meantime. Returning here keeps us
+        // out of Fakturoid; see findByGoPayParentPaymentIdForUpdate().
+        if ($this->paymentRepository->existsByGoPayPaymentId($status->id)) {
+            $this->logger->info('Recurring charge already finalised by the billing cron — skipping', [
+                'contract_id' => $contract->id->toRfc4122(),
+                'gopay_payment_id' => $status->id,
+            ]);
 
             return;
         }
@@ -367,6 +381,26 @@ final readonly class ProcessPaymentNotificationHandler
         }
 
         $contract->recordBillingCharge($now, $nextBillingDate, $paidThroughDate);
+
+        // Same audit row the cron writes in ChargeRecurringPaymentHandler::
+        // finalizeCharge(). Without it a webhook-settled cycle left no trace at
+        // all in audit_log, so a charge looked unaudited purely because GoPay
+        // happened to answer via the webhook rather than the polling loop.
+        $this->auditLogger->log(
+            entityType: 'contract',
+            entityId: $contract->id->toRfc4122(),
+            eventType: 'recurring_charged',
+            payload: [
+                'gopay_payment_id' => $status->id,
+                'amount' => $receivedAmount,
+                'billing_mode' => 'auto_recurring',
+                'reconciled_via' => 'webhook',
+                'next_billing_date' => $nextBillingDate?->format('Y-m-d'),
+                'paid_through_date' => $paidThroughDate->format('Y-m-d'),
+            ],
+            orderId: $contract->order->id,
+            userIdContext: $contract->user->id,
+        );
 
         // Persist the Payment row via RecurringPaymentCharged. The unique
         // partial index on payment.go_pay_payment_id is the hard backstop

@@ -12,6 +12,7 @@ use App\Service\AuditLogger;
 use App\Service\GoPay\GoPayException;
 use App\Service\GoPay\PaymentNotConfirmedException;
 use App\Service\Messenger\HandlerFailureUnwrap;
+use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ManagerRegistry;
 use Psr\Clock\ClockInterface;
@@ -67,8 +68,28 @@ final class ProcessRecurringPaymentsCommand extends Command
                 ++$successCount;
                 $io->text(sprintf('  [OK] Contract %s charged successfully.', $contract->id));
             } catch (\Throwable $rawException) {
-                ++$failureCount;
                 $exception = HandlerFailureUnwrap::unwrap($rawException);
+
+                // Backstop for the cron-vs-webhook race (see
+                // ContractRepository::findByGoPayParentPaymentIdForUpdate()).
+                // The row lock should make this unreachable, but if the webhook
+                // still wins the insert then the money WAS taken and recorded —
+                // that is a charged cycle, not a billing failure. Counting it as
+                // one would page on-call and, worse, feed the retry ladder.
+                if ($this->isDuplicateGoPayPayment($exception)) {
+                    ++$successCount;
+                    $this->doctrine->resetManager();
+
+                    $this->logger->warning('Recurring charge already recorded by the GoPay webhook', [
+                        'contract_id' => $contract->id->toRfc4122(),
+                        'exception' => $exception,
+                    ]);
+                    $io->text(sprintf('  [OK] Contract %s already settled via webhook.', $contract->id));
+
+                    continue;
+                }
+
+                ++$failureCount;
 
                 $this->recordFailure($contract, $exception, $now);
 
@@ -140,6 +161,23 @@ final class ProcessRecurringPaymentsCommand extends Command
 
             $this->doctrine->resetManager();
         }
+    }
+
+    /**
+     * Did this failure come from losing the Payment-insert race on
+     * uniq_payment_gopay_payment_id? Matched on the constraint name so an
+     * unrelated unique violation still reports as a real failure.
+     */
+    private function isDuplicateGoPayPayment(\Throwable $exception): bool
+    {
+        for ($cur = $exception; null !== $cur; $cur = $cur->getPrevious()) {
+            if ($cur instanceof UniqueConstraintViolationException
+                && str_contains($cur->getMessage(), 'uniq_payment_gopay_payment_id')) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function getEntityManager(): EntityManagerInterface

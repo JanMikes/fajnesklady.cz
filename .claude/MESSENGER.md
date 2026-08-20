@@ -123,4 +123,37 @@ The webhook handler (`PaymentNotificationController` →
 the **authoritative source of truth** for payment outcomes — synchronous polling
 in handlers is best-effort. When in doubt, the webhook reconciles.
 
+## 7. The webhook and the recurring cron race — serialise on the contract row
+
+Because the webhook is authoritative (§6) **and** the cron polls GoPay for up to
+30 s, both finalise the *same* recurrence concurrently: the cron's transaction is
+already open when GoPay delivers the notification to the web container. Each side
+then advances billing dates, issues a Fakturoid invoice, and inserts a `Payment`.
+
+The `uniq_payment_gopay_payment_id` index catches the duplicate — **but far too
+late to help.** It fires at flush, long after `IssueInvoiceOnRecurringChargeHandler`
+already POSTed to Fakturoid, and **an external HTTP call does not roll back**. The
+loser's rollback therefore leaves an orphaned PAID invoice in the accounting with
+no `invoice` row behind it (2026-08-08 and 2026-08-20 each left one; a third pair
+sits in the pre-reset May/June test data).
+
+> A `catch (UniqueConstraintViolationException)` around a bus dispatch does **not**
+> make a cross-process race safe. It only suppresses the error — every non-transactional
+> side effect the handler already performed still happened. Prevent, don't catch.
+
+Both sides take a `PESSIMISTIC_WRITE` lock on the contract row and then re-check
+`PaymentRepository::existsByGoPayPaymentId()` **before** the `RecurringPaymentCharged`
+fan-out:
+
+- webhook — `ContractRepository::findByGoPayParentPaymentIdForUpdate()`
+- cron — `ContractRepository::lockForUpdate()` in `ChargeRecurringPaymentHandler::finalizeCharge()`
+
+Under READ COMMITTED the loser blocks on the lock, and once the winner commits its
+next statement sees the `Payment` row and bails cleanly. The non-locking
+`findByGoPayParentPaymentId()` was deleted so it cannot be reintroduced.
+
+Applies to any new code that finalises a GoPay payment from more than one entry
+point (cron, webhook, admin action): lock the aggregate row first, re-check second,
+touch external services last.
+
 [incident-2026-05-08]: see `git log --grep="recurring payment"` around 2026-05-08

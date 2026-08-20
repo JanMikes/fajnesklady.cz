@@ -9,17 +9,20 @@ use App\Command\InitiatePaymentCommand;
 use App\Command\ProcessPaymentNotificationCommand;
 use App\DataFixtures\UserFixtures;
 use App\Entity\Contract;
+use App\Entity\Payment;
 use App\Entity\Place;
 use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\PaymentFrequency;
 use App\Service\OrderService;
+use App\Tests\Mock\MockFakturoidClient;
 use App\Tests\Mock\MockGoPayClient;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ManagerRegistry;
 use Psr\Clock\ClockInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Component\Uid\Uuid;
 
 class ChargeRecurringPaymentHandlerTest extends KernelTestCase
 {
@@ -260,6 +263,67 @@ class ChargeRecurringPaymentHandlerTest extends KernelTestCase
         $this->assertEquals($now->format('Y-m-d H:i:s'), $refreshed->lastBilledAt->format('Y-m-d H:i:s'));
         $this->assertSame(0, $refreshed->failedBillingAttempts);
         $this->assertSame([], $this->goPayClient->getRecurrenceAmounts(), 'No new charge must be issued — the in-flight one was reconciled.');
+    }
+
+    public function testSkipsFinalisationWhenWebhookAlreadyRecordedThePayment(): void
+    {
+        // The GoPay webhook races this cron: it can finalise the very same
+        // recurrence — billing dates, Fakturoid invoice, Payment row — and
+        // commit while we are still polling. The cron must notice under the
+        // contract row lock and bail BEFORE the RecurringPaymentCharged
+        // fan-out. Re-issuing leaves a duplicate PAID invoice in Fakturoid
+        // that the rollback on uniq_payment_gopay_payment_id cannot take back
+        // (2026-08-08 and 2026-08-20 each left one behind).
+        $contract = $this->createContractWithRecurringPayment();
+
+        $contract->recordInFlightCharge('gp_webhook_won');
+        $this->entityManager->flush();
+        $this->goPayClient->reset();
+        $this->goPayClient->seedRecurrenceStatus('gp_webhook_won', 'PAID', (string) $contract->goPayParentPaymentId, 150_000);
+
+        // Stand in for the webhook's already-committed Payment row.
+        $webhookPayment = new Payment(
+            id: Uuid::v7(),
+            order: null,
+            contract: $contract,
+            storage: $contract->storage,
+            amount: 150_000,
+            paidAt: $this->clock->now(),
+            createdAt: $this->clock->now(),
+        );
+        $webhookPayment->setGoPayPaymentId('gp_webhook_won');
+        $this->entityManager->persist($webhookPayment);
+        $this->entityManager->flush();
+
+        /** @var MockFakturoidClient $fakturoidClient */
+        $fakturoidClient = static::getContainer()->get(MockFakturoidClient::class);
+        $fakturoidClient->reset();
+
+        $this->commandBus->dispatch(new ChargeRecurringPaymentCommand($contract));
+
+        $this->entityManager->clear();
+
+        $this->assertSame(
+            [],
+            $fakturoidClient->getCreatedInvoices(),
+            'The losing side must not issue a second Fakturoid invoice — external HTTP survives our rollback.',
+        );
+
+        $duplicates = $this->entityManager->createQueryBuilder()
+            ->select('COUNT(p.id)')
+            ->from(Payment::class, 'p')
+            ->where('p.goPayPaymentId = :id')
+            ->setParameter('id', 'gp_webhook_won')
+            ->getQuery()
+            ->getSingleScalarResult();
+        $this->assertSame(1, (int) $duplicates, 'Exactly one Payment row may exist for a GoPay payment ID.');
+
+        $refreshed = $this->entityManager->find(Contract::class, $contract->id);
+        $this->assertNull(
+            $refreshed->pendingRecurringPaymentId,
+            'In-flight tracking must still be cleared, or the contract skips every future run.',
+        );
+        $this->assertSame([], $this->goPayClient->getRecurrenceAmounts(), 'No new charge may be issued.');
     }
 
     public function testSkipsChargeWhenInFlightPaymentIsStillPending(): void

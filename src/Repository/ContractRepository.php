@@ -1035,7 +1035,20 @@ class ContractRepository
             ->getResult();
     }
 
-    public function findByGoPayParentPaymentId(string $parentPaymentId): ?Contract
+    /**
+     * Webhook lookup for a recurring charge. SELECT ... FOR UPDATE mirrors the
+     * card-setup branch below, but guards a different collision: the recurring
+     * CRON finalises the very same GoPay payment from its own process and its
+     * own transaction. GoPay routinely delivers the notification while
+     * {@see \App\Command\ChargeRecurringPaymentHandler} is still polling, so
+     * without this lock both sides issue a Fakturoid invoice and both insert a
+     * Payment — the loser rolls back on uniq_payment_gopay_payment_id, but the
+     * invoice it already created in Fakturoid survives the rollback (external
+     * HTTP is not transactional). Locking the contract row serialises the two:
+     * whoever wins finalises, the loser sees the Payment row and bails BEFORE
+     * touching Fakturoid.
+     */
+    public function findByGoPayParentPaymentIdForUpdate(string $parentPaymentId): ?Contract
     {
         return $this->entityManager->createQueryBuilder()
             ->select('c')
@@ -1043,7 +1056,19 @@ class ContractRepository
             ->where('c.goPayParentPaymentId = :paymentId')
             ->setParameter('paymentId', $parentPaymentId)
             ->getQuery()
+            ->setLockMode(LockMode::PESSIMISTIC_WRITE)
             ->getOneOrNullResult();
+    }
+
+    /**
+     * Take the same PESSIMISTIC_WRITE row lock on an already-loaded contract.
+     * The cron side of the race above holds a Contract entity rather than a
+     * payment ID, so it locks late — right before it re-checks whether the
+     * webhook beat it to the finalisation.
+     */
+    public function lockForUpdate(Contract $contract): void
+    {
+        $this->entityManager->lock($contract, LockMode::PESSIMISTIC_WRITE);
     }
 
     /**

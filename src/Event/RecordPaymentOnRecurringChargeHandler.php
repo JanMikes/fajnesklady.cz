@@ -26,6 +26,15 @@ final readonly class RecordPaymentOnRecurringChargeHandler
     {
         $contract = $this->contractRepository->get($event->contractId);
 
+        // Prefer the GoPay id: the cron and the webhook race to finalise the
+        // same charge with DIFFERENT occurredOn clocks, so contract+paidAt
+        // never matched across the two processes. Keep the paidAt check for
+        // the bank-transfer path, which carries no GoPay id.
+        if (null !== $event->goPayPaymentId
+            && $this->paymentRepository->existsByGoPayPaymentId($event->goPayPaymentId)) {
+            return;
+        }
+
         if (null !== $this->paymentRepository->findByContractAndPaidAt($contract, $event->occurredOn)) {
             return;
         }

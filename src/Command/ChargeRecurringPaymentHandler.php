@@ -6,6 +6,8 @@ namespace App\Command;
 
 use App\Entity\Contract;
 use App\Event\RecurringPaymentCharged;
+use App\Repository\ContractRepository;
+use App\Repository\PaymentRepository;
 use App\Service\AuditLogger;
 use App\Service\Billing\RecurringAmountCalculator;
 use App\Service\GoPay\GoPayClient;
@@ -37,6 +39,8 @@ final readonly class ChargeRecurringPaymentHandler
         private LoggerInterface $logger,
         private RecurringAmountCalculator $amountCalculator,
         private AuditLogger $auditLogger,
+        private ContractRepository $contractRepository,
+        private PaymentRepository $paymentRepository,
         private int $pollIntervalMicroseconds = self::POLL_INTERVAL_MICROSECONDS,
     ) {
     }
@@ -172,6 +176,28 @@ final readonly class ChargeRecurringPaymentHandler
 
     private function finalizeCharge(Contract $contract, string $paymentId, int $amount, \DateTimeImmutable $now): void
     {
+        // GoPay delivers the recurrence webhook to the web container while we
+        // are still polling above, so ProcessPaymentNotificationHandler may be
+        // finalising this exact payment right now. Lock the contract row so
+        // only one of the two proceeds, then re-check under the lock. Bailing
+        // here — BEFORE the RecurringPaymentCharged fan-out — is what matters:
+        // the invoice handler talks to Fakturoid, and a Fakturoid invoice
+        // created inside a transaction that later rolls back on
+        // uniq_payment_gopay_payment_id stays in the accounting forever
+        // (2026-08-08 and 2026-08-20 each left an orphaned paid duplicate).
+        $this->contractRepository->lockForUpdate($contract);
+
+        if ($this->paymentRepository->existsByGoPayPaymentId($paymentId)) {
+            $contract->clearPendingRecurringCharge();
+
+            $this->logger->info('Recurring charge already finalised by the GoPay webhook — skipping', [
+                'contract_id' => $contract->id->toRfc4122(),
+                'gopay_payment_id' => $paymentId,
+            ]);
+
+            return;
+        }
+
         // Use nextBillingDate as billing period start for deterministic proration
         /** @var \DateTimeImmutable $billingPeriodStart */
         $billingPeriodStart = $contract->nextBillingDate ?? $now;
