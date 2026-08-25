@@ -13,6 +13,8 @@ use App\Entity\User;
 use App\Service\ContractDocumentGenerator;
 use App\Service\Order\OrderReferenceFormatter;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 use Symfony\Component\Uid\Uuid;
 
 class ContractDocumentGeneratorTest extends TestCase
@@ -24,7 +26,7 @@ class ContractDocumentGeneratorTest extends TestCase
     {
         $this->tempDir = sys_get_temp_dir().'/contract_test_'.uniqid();
         mkdir($this->tempDir, 0755, true);
-        $this->generator = new ContractDocumentGenerator($this->tempDir, new OrderReferenceFormatter());
+        $this->generator = new ContractDocumentGenerator($this->tempDir, new OrderReferenceFormatter(), new NullLogger());
     }
 
     protected function tearDown(): void
@@ -188,7 +190,7 @@ class ContractDocumentGeneratorTest extends TestCase
 
         // Use a nested directory that doesn't exist
         $nestedDir = $this->tempDir.'/nested/contracts';
-        $generator = new ContractDocumentGenerator($nestedDir, new OrderReferenceFormatter());
+        $generator = new ContractDocumentGenerator($nestedDir, new OrderReferenceFormatter(), new NullLogger());
 
         $templatePath = $this->createTestTemplate();
         $outputPath = $generator->generate($contract, $templatePath);
@@ -237,6 +239,49 @@ class ContractDocumentGeneratorTest extends TestCase
         $templatePath = $this->createTestTemplateWithSignature();
 
         $outputPath = $this->generator->generate($contract, $templatePath, '/nonexistent/signature.png');
+
+        $this->assertFileExists($outputPath);
+    }
+
+    /**
+     * A signed order whose PNG is gone must still produce a document (never
+     * block completion) but MUST leave a loud trace — a silent skip is how
+     * 10 of 27 prod contracts lost their signature before 2026-08-25.
+     */
+    public function testMissingSignatureFileIsLoggedAsErrorWhileDocumentStillRenders(): void
+    {
+        $tenant = $this->createUser();
+        $storage = $this->createStorage();
+        $order = $this->createOrder($tenant, $storage);
+        $contract = $this->createContract($order);
+        $templatePath = $this->createTestTemplateWithSignature();
+
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->once())->method('error')->with(
+            $this->stringContains('UNSIGNED'),
+            $this->callback(static fn (array $context): bool => '/nonexistent/signature.png' === $context['signature_path']
+                && isset($context['document_number']) && '' !== $context['document_number']),
+        );
+        $generator = new ContractDocumentGenerator($this->tempDir, new OrderReferenceFormatter(), $logger);
+
+        $outputPath = $generator->generate($contract, $templatePath, '/nonexistent/signature.png');
+
+        $this->assertFileExists($outputPath);
+    }
+
+    public function testNullSignaturePathIsNotReportedAsMissing(): void
+    {
+        $tenant = $this->createUser();
+        $storage = $this->createStorage();
+        $order = $this->createOrder($tenant, $storage);
+        $contract = $this->createContract($order);
+        $templatePath = $this->createTestTemplateWithSignature();
+
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->never())->method('error');
+        $generator = new ContractDocumentGenerator($this->tempDir, new OrderReferenceFormatter(), $logger);
+
+        $outputPath = $generator->generate($contract, $templatePath, null);
 
         $this->assertFileExists($outputPath);
     }

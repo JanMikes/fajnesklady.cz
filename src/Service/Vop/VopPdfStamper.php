@@ -35,6 +35,15 @@ readonly class VopPdfStamper
         }
 
         if (null === $signaturePath || !file_exists($signaturePath)) {
+            if (null !== $signaturePath) {
+                // Signed order whose PNG is gone: serve the plain PDF rather
+                // than fail, but never silently — see ContractDocumentGenerator.
+                $this->logger->error('VOP: signature file missing — PDF served UNSIGNED', [
+                    'docx_path' => $docxPath,
+                    'signature_path' => $signaturePath,
+                ]);
+            }
+
             $bytes = file_get_contents($pdfPath);
 
             return false === $bytes ? null : $bytes;

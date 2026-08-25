@@ -11,6 +11,7 @@ use App\Entity\StorageType;
 use App\Entity\User;
 use App\Service\Order\OrderReferenceFormatter;
 use PhpOffice\PhpWord\TemplateProcessor;
+use Psr\Log\LoggerInterface;
 
 /**
  * Service for generating contract documents from DOCX templates.
@@ -28,6 +29,7 @@ readonly class ContractDocumentGenerator
     public function __construct(
         private string $contractsDirectory,
         private OrderReferenceFormatter $orderReferenceFormatter,
+        private LoggerInterface $logger,
     ) {
     }
 
@@ -131,7 +133,7 @@ readonly class ContractDocumentGenerator
         $processor->setValue('SIGNING_PLACE', $signingPlace ?? $place->city);
         $processor->setValue('SIGNING_DATE', $signedAt?->format('d.m.Y') ?? $documentDate->format('d.m.Y'));
 
-        $this->embedSignature($processor, $signaturePath);
+        $this->embedSignature($processor, $signaturePath, $documentNumber);
 
         $tempPath = tempnam(sys_get_temp_dir(), 'contract_doc_');
         if (false === $tempPath) {
@@ -151,7 +153,7 @@ readonly class ContractDocumentGenerator
         }
     }
 
-    private function embedSignature(TemplateProcessor $processor, ?string $signaturePath): void
+    private function embedSignature(TemplateProcessor $processor, ?string $signaturePath, string $documentNumber): void
     {
         if (null !== $signaturePath && file_exists($signaturePath)) {
             $processor->setImageValue('SIGNATURE', [
@@ -160,9 +162,23 @@ readonly class ContractDocumentGenerator
                 'height' => 100,
                 'ratio' => true,
             ]);
-        } else {
-            $processor->setValue('SIGNATURE', '');
+
+            return;
         }
+
+        if (null !== $signaturePath) {
+            // The order says it was signed, but the PNG is gone. Rendering an
+            // unsigned contract without a trace is how 10 of 27 prod contracts
+            // silently lost their signature (var/signatures was not a volume
+            // until 2026-08-25). Never throw — the document must still ship —
+            // but make it loud enough to notice.
+            $this->logger->error('Contract signature file missing — document rendered UNSIGNED', [
+                'document_number' => $documentNumber,
+                'signature_path' => $signaturePath,
+            ]);
+        }
+
+        $processor->setValue('SIGNATURE', '');
     }
 
     private function formatTenantInfo(User $user): string
