@@ -38,6 +38,8 @@ final readonly class AuditLogDescriptionRenderer
             'contract.terminated' => 'Smlouva ukončena',
             'contract.debt_settled' => 'Dluh uhrazen (externě)',
             'contract.debt_waived' => 'Dluh odepsán',
+            'order.onboarding_debt_settled' => 'Dluh z předchozí smlouvy označen jako uhrazený (externě)',
+            'order.debt_payment_confirmed' => 'Dluh z předchozí smlouvy uhrazen',
             'contract.expiring_soon' => $this->describeContractExpiringSoon($log),
             'storage.reserved' => 'Sklad rezervován',
             'storage.occupied' => 'Sklad obsazen',

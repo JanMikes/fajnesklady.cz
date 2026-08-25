@@ -595,7 +595,10 @@
     {% set canExtendDeadline = contract is not null and not contract.isTerminated() and contract.nextBillingDate is not null %}
     {% set canRecordExternalPayment = order.hasSignature() and (canExtendDeadline or order.canBePaid()) %}
     {% set canSettleDebt = contract is not null and contract.isTerminated() and contract.hasOutstandingDebt() %}
-    {% if hasSigningAction or hasOnboardingAction or hasBillingAction or payableFines|length > 0 or canExtendDeadline or canRecordExternalPayment or canSettleDebt %}
+    {# Onboarding debt (previous contract) — only GoPay / FIO clear it automatically; money on another account needs this. #}
+    {% set canSettleOnboardingDebt = order.hasUnpaidDebt() %}
+    {% set settlingOnboardingDebtCompletesOrder = canSettleOnboardingDebt and order.canBePaid() and order.hasAcceptedTerms() and (order.individualMonthlyAmount is same as(0) or order.paidThroughDate is not null) %}
+    {% if hasSigningAction or hasOnboardingAction or hasBillingAction or payableFines|length > 0 or canExtendDeadline or canRecordExternalPayment or canSettleDebt or canSettleOnboardingDebt %}
     <div class="mt-6 bg-white shadow overflow-hidden sm:rounded-lg border-l-4 border-blue-400">
         <div class="px-4 py-5 sm:px-6 border-b border-gray-200">
             <h3 class="text-lg font-medium text-gray-900">Manuální akce</h3>
@@ -639,6 +642,15 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
                         </svg>
                         Odepsat dluh
+                    </button>
+                {% endif %}
+                {% if canSettleOnboardingDebt %}
+                    <button type="button" onclick="document.getElementById('settleOnboardingDebtModal').showModal()"
+                            class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        <svg class="h-4 w-4 mr-2 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        Označit dluh z předchozí smlouvy jako uhrazený
                     </button>
                 {% endif %}
                 {% if hasSigningAction %}
@@ -710,6 +722,38 @@
                 <div class="modal-action">
                     <button type="button" class="btn btn-ghost" onclick="document.getElementById('extendDeadlineModal').close()">Zrušit</button>
                     <button type="submit" class="btn btn-primary">Prodloužit splatnost</button>
+                </div>
+            </form>
+        </div>
+        <form method="dialog" class="modal-backdrop">
+            <button>close</button>
+        </form>
+    </dialog>
+    {% endif %}
+
+    {% if canSettleOnboardingDebt %}
+    <dialog id="settleOnboardingDebtModal" class="modal">
+        <div class="modal-box">
+            <h3 class="text-lg font-bold text-gray-900">Označit dluh z předchozí smlouvy jako uhrazený</h3>
+            <div class="py-2 text-sm text-gray-600 space-y-2">
+                <p>
+                    Dluh <strong>{{ (order.onboardingDebtInHaler / 100)|number_format(0, ',', ' ') }} Kč</strong> byl uhrazen mimo systém
+                    (jiný bankovní účet, hotovost). Označí se jako uhrazený v plné výši — částečná úhrada není možná.
+                </p>
+                <p>
+                    Zákazníkovi se odešle potvrzení o úhradě dluhu s vystavenou fakturou (Fakturoid).
+                </p>
+                {% if settlingOnboardingDebtCompletesOrder %}
+                    <p class="text-amber-700">
+                        Objednávka je {{ order.individualMonthlyAmount is same as(0) ? 'bezplatná' : 'předplacená do ' ~ order.paidThroughDate|date('d.m.Y') }},
+                        dluh byl jedinou překážkou — po jeho uhrazení se objednávka rovnou dokončí a vznikne smlouva.
+                    </p>
+                {% endif %}
+            </div>
+            <form action="{{ path('admin_order_settle_onboarding_debt', {id: order.id}) }}" method="post">
+                <div class="modal-action">
+                    <button type="button" class="btn btn-ghost" onclick="document.getElementById('settleOnboardingDebtModal').close()">Zrušit</button>
+                    <button type="submit" class="btn btn-primary">Označit jako uhrazený</button>
                 </div>
             </form>
         </div>
