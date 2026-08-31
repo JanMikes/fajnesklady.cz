@@ -44,9 +44,10 @@
                     {% for order in orders %}
                         <tr>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm font-medium text-gray-900">
-                                    {{ order.user.fullName }}
-                                </div>
+                                {% include 'components/customer_identity.html.twig' with {
+                                    customer: order.user,
+                                    class: 'text-sm font-medium text-gray-900',
+                                } only %}
                                 <div class="text-sm text-gray-500">
                                     {{ order.user.email }}
                                 </div>

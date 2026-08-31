@@ -59,7 +59,7 @@
                            name="q"
                            value="{{ search }}"
                            class="form-input sm:flex-1"
-                           placeholder="Např. 2025-0615-019E4643, Novák, novak@example.com nebo 7800000001">
+                           placeholder="Např. 2025-0615-019E4643, Novák, novak@example.com, Firma s.r.o., 27604977 nebo 7800000001">
                     <button type="submit" class="btn btn-primary">Hledat</button>
                 </form>
 
@@ -94,7 +94,7 @@
                                     <tr>
                                         <td class="font-mono whitespace-nowrap">{{ order_reference(pickable) }}</td>
                                         <td>
-                                            {{ pickable.user.fullName }}
+                                            {% include 'components/customer_identity.html.twig' with {customer: pickable.user} only %}
                                             <div class="text-xs text-gray-500">{{ pickable.user.email }}</div>
                                         </td>
                                         <td class="text-gray-900">{{ pickable.storage.number }}</td>
@@ -120,7 +120,7 @@
                 <h2 class="text-lg font-semibold mb-1">Objednávka</h2>
                 <p class="mb-4 text-sm">
                     <a href="{{ path('admin_order_detail', {id: order.id}) }}" class="link font-mono">{{ order_reference(order) }}</a>
-                    <span class="text-gray-500">— {{ order.user.fullName }}, sklad {{ order.storage.number }}, {{ order.storage.place.name }}</span>
+                    <span class="text-gray-500">— {{ order.user.displayName }}, sklad {{ order.storage.number }}, {{ order.storage.place.name }}</span>
                 </p>
 
                 {% if blockedForCard %}

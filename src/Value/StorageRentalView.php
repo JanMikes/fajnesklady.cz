@@ -53,6 +53,6 @@ final class StorageRentalView
     }
 
     public ?string $tenantName {
-        get => $this->currentContract?->user->fullName ?? $this->currentOrder?->user->fullName;
+        get => $this->currentContract?->user->displayName ?? $this->currentOrder?->user->displayName;
     }
 }

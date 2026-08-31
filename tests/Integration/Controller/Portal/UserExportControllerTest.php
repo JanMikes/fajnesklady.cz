@@ -60,9 +60,24 @@ class UserExportControllerTest extends WebTestCase
         $body = $this->assertXlsxResponse($this->client);
         $rows = $this->readXlsxRows($body);
 
-        self::assertSame('Jméno', $rows[0][0]);
+        self::assertSame('Zákazník', $rows[0][0]);
         self::assertTrue($this->rowsContainCellValue($rows, 'admin@example.com'));
         self::assertTrue($this->rowsContainCellValue($rows, 'tenant@example.com'));
+    }
+
+    public function testCompanyCustomerIsExportedUnderTheCompanyName(): void
+    {
+        $this->client->loginUser($this->findUserByEmail($this->entityManager, 'admin@example.com'), 'main');
+        $this->client->request('GET', '/portal/users/export');
+
+        $body = $this->assertXlsxResponse($this->client);
+        $rows = $this->readXlsxRows($body);
+
+        self::assertSame('Zákazník', $rows[0][0]);
+        self::assertSame('Kontaktní osoba', $rows[0][1]);
+        self::assertContains('Firma', $rows[0]);
+        self::assertTrue($this->rowsContainCellValue($rows, 'Skladová Eva s.r.o.'));
+        self::assertTrue($this->rowsContainCellValue($rows, 'Eva Najemce'));
     }
 
     public function testActiveFilter(): void

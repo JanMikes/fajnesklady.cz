@@ -33,6 +33,7 @@ final class AdminOverdueExportController extends AbstractController
 
         $columns = [
             new ExcelColumn('Zákazník'),
+            new ExcelColumn('Kontaktní osoba'),
             new ExcelColumn('E-mail'),
             new ExcelColumn('Telefon'),
             new ExcelColumn('Pobočka'),
@@ -47,6 +48,7 @@ final class AdminOverdueExportController extends AbstractController
         $rows = [];
         foreach ($views as $view) {
             $rows[] = [
+                $view->contract->user->displayName,
                 $view->contract->user->fullName,
                 $view->contract->user->email,
                 $view->contract->user->phone,

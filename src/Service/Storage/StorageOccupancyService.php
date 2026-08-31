@@ -153,7 +153,7 @@ final readonly class StorageOccupancyService
                 kind: RentalSpanKind::CONTRACT,
                 startDate: $contract->startDate,
                 endDate: $contract->terminatesAt ?? $contract->endDate,
-                tenantName: $contract->user->fullName,
+                tenantName: $contract->user->displayName,
                 source: $contract,
             );
         }
@@ -170,7 +170,7 @@ final readonly class StorageOccupancyService
                 kind: RentalSpanKind::ORDER,
                 startDate: $order->startDate,
                 endDate: $order->endDate,
-                tenantName: $order->user->fullName,
+                tenantName: $order->user->displayName,
                 source: $order,
             );
         }

@@ -73,7 +73,7 @@
                     <tbody>
                         {% for contract in activeContracts %}
                             <tr>
-                                <td class="font-medium text-gray-900">{{ contract.user.fullName }}</td>
+                                <td>{% include 'components/customer_identity.html.twig' with {customer: contract.user} only %}</td>
                                 <td class="text-gray-600">{{ contract.storage.storageType.name }} – {{ contract.storage.number }}</td>
                                 <td class="text-gray-700">{{ contract.startDate|date('d.m.Y') }}</td>
                                 <td class="text-gray-700">
@@ -114,7 +114,7 @@
                         <div>
                             <p class="text-sm font-medium text-gray-900">
                                 <a href="{{ path(orderRoute, {id: contract.order.id}) }}" class="link">
-                                    {{ contract.user.fullName }}
+                                    {{ contract.user.displayName }}
                                 </a>
                             </p>
                             <p class="text-sm text-gray-500">
@@ -142,7 +142,7 @@
                         <div>
                             <p class="text-sm font-medium text-gray-900">
                                 <a href="{{ path(orderRoute, {id: order.id}) }}" class="link">
-                                    {{ order.user.fullName }}
+                                    {{ order.user.displayName }}
                                 </a>
                             </p>
                             <p class="text-sm text-gray-500">
@@ -175,7 +175,7 @@
                                     </a>
                                 </p>
                                 <p class="text-sm text-gray-500">
-                                    {{ order.user.fullName }} · {{ order.createdAt|date('d.m.Y H:i') }}
+                                    {{ order.user.displayName }} · {{ order.createdAt|date('d.m.Y H:i') }}
                                 </p>
                             </div>
                             <div class="text-right">

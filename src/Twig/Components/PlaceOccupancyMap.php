@@ -108,9 +108,9 @@ final class PlaceOccupancyMap
 
             $tenantName = null;
             if (null !== $contract) {
-                $tenantName = $contract->user->fullName;
+                $tenantName = $contract->user->displayName;
             } elseif (null !== $order) {
-                $tenantName = $order->user->fullName;
+                $tenantName = $order->user->displayName;
             }
 
             $rentedUntilStr = $view?->rentedUntil?->format('Y-m-d');

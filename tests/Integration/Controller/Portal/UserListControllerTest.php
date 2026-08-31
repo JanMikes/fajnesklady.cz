@@ -116,6 +116,83 @@ class UserListControllerTest extends WebTestCase
         $this->assertStringNotContainsString('landlord@example.com', $tableText);
     }
 
+    public function testCompanyCustomerIsListedUnderTheCompanyName(): void
+    {
+        $this->client->loginUser($this->findUserByEmail('admin@example.com'), 'main');
+
+        $crawler = $this->client->request('GET', '/portal/users?q=tenant@example.com');
+
+        $this->assertResponseIsSuccessful();
+        $tableText = implode(' ', $crawler->filter('table tbody td')->extract(['_text']));
+        // Company heads the row; the signing person stays on the secondary line.
+        $this->assertStringContainsString('Skladová Eva s.r.o.', $tableText);
+        $this->assertStringContainsString('Eva Najemce', $tableText);
+        $this->assertStringContainsString('27604977', $tableText);
+    }
+
+    public function testSearchByCompanyNameNarrowsTable(): void
+    {
+        $this->client->loginUser($this->findUserByEmail('admin@example.com'), 'main');
+
+        $crawler = $this->client->request('GET', '/portal/users?q='.urlencode('Skladová Eva'));
+
+        $this->assertResponseIsSuccessful();
+        $tableText = implode(' ', $crawler->filter('table tbody td')->extract(['_text']));
+        $this->assertStringContainsString('tenant@example.com', $tableText);
+        $this->assertStringNotContainsString('landlord@example.com', $tableText);
+    }
+
+    public function testSearchByCompanyIdNarrowsTable(): void
+    {
+        $this->client->loginUser($this->findUserByEmail('admin@example.com'), 'main');
+
+        $crawler = $this->client->request('GET', '/portal/users?q=27604977');
+
+        $this->assertResponseIsSuccessful();
+        $tableText = implode(' ', $crawler->filter('table tbody td')->extract(['_text']));
+        $this->assertStringContainsString('tenant@example.com', $tableText);
+        $this->assertStringNotContainsString('admin@example.com', $tableText);
+    }
+
+    public function testSearchByCompanyVatIdNarrowsTable(): void
+    {
+        $this->client->loginUser($this->findUserByEmail('admin@example.com'), 'main');
+
+        $crawler = $this->client->request('GET', '/portal/users?q=CZ27604977');
+
+        $this->assertResponseIsSuccessful();
+        $tableText = implode(' ', $crawler->filter('table tbody td')->extract(['_text']));
+        $this->assertStringContainsString('tenant@example.com', $tableText);
+    }
+
+    public function testSortingByNameOrdersCompaniesByTheirCompanyName(): void
+    {
+        $this->client->loginUser($this->findUserByEmail('admin@example.com'), 'main');
+
+        $crawler = $this->client->request('GET', '/portal/users?sort=name&dir=asc');
+
+        $this->assertResponseIsSuccessful();
+        $names = $crawler->filter('table tbody tr td:first-child')->extract(['_text']);
+
+        $indexOf = static function (array $names, string $needle): ?int {
+            foreach ($names as $index => $name) {
+                if (str_contains($name, $needle)) {
+                    return $index;
+                }
+            }
+
+            return null;
+        };
+
+        $company = $indexOf($names, 'Skladová Eva s.r.o.');
+        $novak = $indexOf($names, 'Jan Novak');
+        self::assertNotNull($company, 'Company customer must appear in the name-sorted list.');
+        self::assertNotNull($novak);
+        // Sorted by what the column renders: the tenant sits under "S" for
+        // Skladová, not under "E" for her personal name "Eva Najemce".
+        self::assertGreaterThan($novak, $company);
+    }
+
     public function testSearchPreservesActiveFilterChip(): void
     {
         $this->client->loginUser($this->findUserByEmail('admin@example.com'), 'main');

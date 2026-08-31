@@ -131,9 +131,9 @@
                                 </td>
                                 <td class="text-gray-700">
                                     {% if view and view.currentContract %}
-                                        {{ view.currentContract.user.fullName }}
+                                        {{ view.currentContract.user.displayName }}
                                     {% elseif view and view.currentOrder %}
-                                        {{ view.currentOrder.user.fullName }}
+                                        {{ view.currentOrder.user.displayName }}
                                     {% else %}
                                         <span class="text-gray-400">—</span>
                                     {% endif %}

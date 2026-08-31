@@ -10,6 +10,7 @@ use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\StorageStatus;
 use App\Exception\StorageNotFound;
+use App\Service\Customer\CustomerDisplayName;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -685,6 +686,7 @@ class StorageRepository
                     s.place_id::text AS place_id,
                     u.first_name AS first_name,
                     u.last_name AS last_name,
+                    u.company_name AS company_name,
                     u.email AS email
                 FROM storage s
                 INNER JOIN users u ON u.id = s.owner_id
@@ -701,7 +703,10 @@ class StorageRepository
             $placeId = (string) $row['place_id'];
             $owners[$placeId] ??= [];
             $owners[$placeId][] = [
-                'fullName' => trim(((string) $row['first_name']).' '.((string) $row['last_name'])),
+                'fullName' => CustomerDisplayName::resolve(
+                    trim(((string) $row['first_name']).' '.((string) $row['last_name'])),
+                    null !== $row['company_name'] ? (string) $row['company_name'] : null,
+                ),
                 'email' => (string) $row['email'],
             ];
         }

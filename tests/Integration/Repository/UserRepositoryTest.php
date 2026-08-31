@@ -533,6 +533,40 @@ class UserRepositoryTest extends KernelTestCase
         \assert($payer instanceof User);
     }
 
+    public function testFindForAdminListExposesCompanyIdentity(): void
+    {
+        $now = new \DateTimeImmutable('2025-06-15 12:00:00');
+        $user = new User(Uuid::v7(), 'company-row@example.com', 'password', 'Petr', 'Jednatel', $now);
+        $user->updateBillingInfo('Jednatel Sklady s.r.o.', '11223344', 'CZ11223344', 'Ulice 1', 'Brno', '60200', $now);
+        $this->entityManager->persist($user);
+        $this->entityManager->flush();
+
+        $rows = $this->repository->findForAdminList(
+            new UserListCriteria('company-row@example.com', null, 'created', 'desc', 1, 100),
+            $now,
+        );
+
+        $this->assertCount(1, $rows);
+        $this->assertTrue($rows[0]->isCompany);
+        $this->assertSame('Jednatel Sklady s.r.o.', $rows[0]->displayName);
+        $this->assertSame('Petr Jednatel', $rows[0]->fullName);
+        $this->assertSame('11223344', $rows[0]->companyId);
+    }
+
+    public function testFindForAdminListSearchesCompanyNameIdAndVatId(): void
+    {
+        $now = new \DateTimeImmutable('2025-06-15 12:00:00');
+        $user = new User(Uuid::v7(), 'company-search@example.com', 'password', 'Petr', 'Jednatel', $now);
+        $user->updateBillingInfo('Hledatelná Firma s.r.o.', '99887766', 'CZ99887766', 'Ulice 1', 'Brno', '60200', $now);
+        $this->entityManager->persist($user);
+        $this->entityManager->flush();
+
+        foreach (['hledatelná firma', '99887766', 'CZ99887766'] as $query) {
+            $emails = $this->emailsForCriteria(new UserListCriteria($query, null, 'created', 'desc', 1, 100), $now);
+            $this->assertContains('company-search@example.com', $emails, sprintf('Search "%s" must find the company.', $query));
+        }
+    }
+
     public function testFindForAdminListCombinesSearchWithFilter(): void
     {
         $now = new \DateTimeImmutable('2025-06-15 12:00:00');

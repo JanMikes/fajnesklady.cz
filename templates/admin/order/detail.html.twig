@@ -13,7 +13,7 @@
     <div class="mb-6">
         <h1 class="text-3xl font-bold text-gray-900">Detail objednávky</h1>
         <p class="mt-1 text-sm text-gray-500">
-            <a href="{{ path('portal_users_view', {id: order.user.id}) }}" class="link">{{ order.user.fullName }}</a>
+            <a href="{{ path('portal_users_view', {id: order.user.id}) }}" class="link">{{ order.user.displayName }}</a>
             · {{ storageType.name }} č. {{ storage.number }}
             · {{ place.name }}
             · <span class="font-mono">{{ order.id|slice(0, 8)|upper }}</span>
@@ -277,8 +277,24 @@
             </div>
             <div class="px-4 py-5 sm:p-6">
                 <dl class="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
+                    {% if order.user.isCompany %}
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500">Firma</dt>
+                            <dd class="mt-1 text-sm font-medium text-gray-900">
+                                <a href="{{ path('portal_users_view', {id: order.user.id}) }}" class="link">
+                                    {{ order.user.companyName }}
+                                </a>
+                            </dd>
+                        </div>
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500">IČO / DIČ</dt>
+                            <dd class="mt-1 text-sm text-gray-900">
+                                {{ order.user.companyId ?: '—' }}{% if order.user.companyVatId %} / {{ order.user.companyVatId }}{% endif %}
+                            </dd>
+                        </div>
+                    {% endif %}
                     <div>
-                        <dt class="text-sm font-medium text-gray-500">Jméno</dt>
+                        <dt class="text-sm font-medium text-gray-500">{{ order.user.isCompany ? 'Kontaktní osoba' : 'Jméno' }}</dt>
                         <dd class="mt-1 text-sm text-gray-900">
                             <a href="{{ path('portal_users_view', {id: order.user.id}) }}" class="link">
                                 {{ order.user.fullName }}

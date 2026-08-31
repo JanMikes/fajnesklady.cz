@@ -550,7 +550,8 @@ class OrderRepository
 
     /**
      * Paginated admin orders, optionally narrowed by an onboarding-related filter
-     * and/or a free-text search (order/contract reference or customer name/email).
+     * and/or a free-text search (order/contract reference, or customer name /
+     * e-mail / company name / IČO / DIČ).
      *
      * @param ?string $filter null | 'individual' | 'external' | 'ending' | 'free'
      *
@@ -649,6 +650,9 @@ class OrderRepository
      * BOTH the order id and the contract id (the customer-facing number is
      * order-derived, historical "Číslo smlouvy" was contract-derived).
      *
+     * Company customers are searchable by company name / IČO / DIČ as well —
+     * that is the identity the order is listed under.
+     *
      * The same token is matched against the variable symbol so an admin can
      * paste the symbol straight off a bank statement (spec 091) — that is the
      * identifier the payer actually typed, and the one that failed to match.
@@ -674,6 +678,9 @@ class OrderRepository
                    OR o.variable_symbol LIKE :ref
                    OR LOWER(u.first_name || ' ' || u.last_name) LIKE :nameq
                    OR LOWER(u.email) LIKE :nameq
+                   OR LOWER(u.company_name) LIKE :nameq
+                   OR LOWER(u.company_id) LIKE :nameq
+                   OR LOWER(u.company_vat_id) LIKE :nameq
                 SQL,
             [
                 'ref' => $refToken.'%',

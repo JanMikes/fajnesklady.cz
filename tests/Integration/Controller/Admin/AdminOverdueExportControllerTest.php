@@ -53,6 +53,6 @@ class AdminOverdueExportControllerTest extends WebTestCase
         $rows = $this->readXlsxRows($body);
 
         self::assertSame('Zákazník', $rows[0][0]);
-        self::assertSame('Dluh (Kč)', $rows[0][9]);
+        self::assertSame('Dluh (Kč)', $rows[0][10]);
     }
 }

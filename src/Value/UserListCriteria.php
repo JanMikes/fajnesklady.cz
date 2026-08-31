@@ -13,7 +13,9 @@ final readonly class UserListCriteria
      * @var array<string, string>
      */
     public const array SORT_COLUMNS = [
-        'name' => 'u.first_name, u.last_name',
+        // Sorts by what the column actually renders: the company when the
+        // customer has one, the personal name otherwise.
+        'name' => "COALESCE(NULLIF(u.company_name, ''), u.first_name || ' ' || u.last_name)",
         'email' => 'u.email',
         'created' => 'u.created_at',
         'contracts' => 'active_count',

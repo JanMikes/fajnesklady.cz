@@ -137,6 +137,39 @@ class UserTest extends TestCase
         $this->assertSame('Jan Novak', $user->fullName);
     }
 
+    public function testDisplayNameFallsBackToPersonalNameForPrivateCustomers(): void
+    {
+        $user = new User(Uuid::v7(), 'test@example.com', 'password123', 'Jan', 'Novak', new \DateTimeImmutable());
+
+        $this->assertFalse($user->isCompany);
+        $this->assertSame('Jan Novak', $user->displayName);
+    }
+
+    public function testDisplayNamePrefersCompanyNameOnceBillingInfoIsProvided(): void
+    {
+        $now = new \DateTimeImmutable('2024-01-01 10:00:00');
+        $user = new User(Uuid::v7(), 'test@example.com', 'password123', 'Jan', 'Novak', $now);
+
+        $user->updateBillingInfo('Sklady Novák s.r.o.', '12345678', 'CZ12345678', 'Skladová 1', 'Praha', '11000', $now);
+
+        $this->assertTrue($user->isCompany);
+        $this->assertSame('Sklady Novák s.r.o.', $user->displayName);
+        // The signing person stays reachable — lists show it as a secondary line.
+        $this->assertSame('Jan Novak', $user->fullName);
+    }
+
+    public function testClearingTheCompanyNameRestoresThePersonalDisplayName(): void
+    {
+        $now = new \DateTimeImmutable('2024-01-01 10:00:00');
+        $user = new User(Uuid::v7(), 'test@example.com', 'password123', 'Jan', 'Novak', $now);
+
+        $user->updateBillingInfo('Sklady Novák s.r.o.', '12345678', null, 'Skladová 1', 'Praha', '11000', $now);
+        $user->updateBillingInfo(null, null, null, 'Skladová 1', 'Praha', '11000', $now);
+
+        $this->assertFalse($user->isCompany);
+        $this->assertSame('Jan Novak', $user->displayName);
+    }
+
     public function testUpdateProfile(): void
     {
         $createdAt = new \DateTimeImmutable('2024-01-01 10:00:00');

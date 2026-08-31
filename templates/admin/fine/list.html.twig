@@ -44,7 +44,7 @@
     {# Search #}
     <form method="get" action="{{ path('admin_fine_list') }}" class="mb-4 flex items-center gap-2">
         {% if status %}<input type="hidden" name="status" value="{{ status }}">{% endif %}
-        <input type="search" name="search" value="{{ search }}" placeholder="Hledat zákazníka (jméno, e-mail)…" class="form-input text-sm py-1.5 w-72">
+        <input type="search" name="search" value="{{ search }}" placeholder="Hledat zákazníka (jméno, e-mail, firma, IČO)…" class="form-input text-sm py-1.5 w-72">
         <button type="submit" class="btn btn-sm btn-primary">Hledat</button>
         {% if search %}
             <a href="{{ path('admin_fine_list', {status: status}) }}" class="btn btn-sm btn-ghost">Zrušit</a>
@@ -73,10 +73,11 @@
                         <tr>
                             <td class="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">{{ fine.issuedAt|date('d.m.Y') }}</td>
                             <td class="px-4 py-3 text-sm">
-                                <a href="{{ path('portal_users_view', {id: fine.user.id}) }}" class="link">
-                                    {{ fine.user.fullName }}
-                                </a>
-                                <br><span class="text-xs text-gray-500">{{ fine.user.email }}</span>
+                                {% include 'components/customer_identity.html.twig' with {
+                                    customer: fine.user,
+                                    href: path('portal_users_view', {id: fine.user.id}),
+                                } only %}
+                                <div class="text-xs text-gray-500">{{ fine.user.email }}</div>
                             </td>
                             <td class="px-4 py-3 text-sm text-gray-900">{{ fine.type.label() }}</td>
                             <td class="px-4 py-3 text-sm text-gray-900 text-right font-medium whitespace-nowrap">

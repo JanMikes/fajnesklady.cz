@@ -16,7 +16,7 @@
 
         <div class="bg-gray-50 rounded-lg p-4 mb-6">
             <div class="text-sm text-gray-600 space-y-1">
-                <p>Zákazník: <strong>{{ order.user.fullName }}</strong> ({{ order.user.email }})</p>
+                <p>Zákazník: <strong>{{ order.user.displayName }}</strong> ({{ order.user.email }})</p>
                 <p>Skladová jednotka: <strong>{{ order.storage.storageType.name }} ({{ order.storage.number }})</strong></p>
                 <p>Pobočka: <strong>{{ order.storage.place.name }}</strong></p>
                 {% if contract is null %}

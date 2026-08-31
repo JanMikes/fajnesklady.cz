@@ -53,9 +53,11 @@
                         {% for view in views %}
                             <tr class="{{ view.severity.rowClass }}">
                                 <td>
-                                    <a href="{{ path('portal_users_view', {id: view.contract.user.id}) }}" class="link font-semibold">
-                                        {{ view.contract.user.fullName }}
-                                    </a>
+                                    {% include 'components/customer_identity.html.twig' with {
+                                        customer: view.contract.user,
+                                        href: path('portal_users_view', {id: view.contract.user.id}),
+                                        class: 'font-semibold',
+                                    } only %}
                                     <div class="text-sm text-gray-500">{{ view.contract.user.email }}</div>
                                     {% if view.contract.user.phone %}
                                         <div class="text-sm text-gray-500">{{ view.contract.user.phone }}</div>

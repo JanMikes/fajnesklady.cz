@@ -119,6 +119,17 @@ final class UserFixtures extends Fixture
         $tenant->changePassword($this->passwordHasher->hashPassword($tenant, 'password'), $now);
         $tenant->markAsVerified($now);
         $tenant->updateBankAccount('123456-1234567890', '0100', $now);
+        // Company customer — every admin listing must show "Skladová Eva s.r.o."
+        // instead of "Eva Najemce" for her orders, contracts and fines.
+        $tenant->updateBillingInfo(
+            companyName: 'Skladová Eva s.r.o.',
+            companyId: '27604977',
+            companyVatId: 'CZ27604977',
+            billingStreet: 'Skladová 12',
+            billingCity: 'Praha',
+            billingPostalCode: '11000',
+            now: $now,
+        );
         $tenant->popEvents();
         $manager->persist($tenant);
         $this->addReference(self::REF_TENANT, $tenant);

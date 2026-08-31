@@ -67,6 +67,41 @@ class UserViewControllerTest extends WebTestCase
         $this->assertStringContainsString('0 Kč', $body);
     }
 
+    public function testCompanyCustomerShowsBillingCardAndCompanyHeadline(): void
+    {
+        $admin = $this->findUserByEmail(UserFixtures::ADMIN_EMAIL);
+        // TENANT fixture ordered as "Skladová Eva s.r.o.".
+        $customer = $this->findUserByEmail(UserFixtures::TENANT_EMAIL);
+
+        $this->client->loginUser($admin, 'main');
+        $this->client->request('GET', '/portal/users/'.$customer->id->toRfc4122());
+
+        $this->assertResponseIsSuccessful();
+        $body = (string) $this->client->getResponse()->getContent();
+        $this->assertStringContainsString('Fakturační údaje', $body);
+        $this->assertStringContainsString('Skladová Eva s.r.o.', $body);
+        $this->assertStringContainsString('27604977', $body);
+        $this->assertStringContainsString('CZ27604977', $body);
+        // The signing person is labelled as the contact, not as "Jméno".
+        $this->assertStringContainsString('Kontaktní osoba', $body);
+        $this->assertStringContainsString('Eva Najemce', $body);
+    }
+
+    public function testPrivateCustomerShowsNoCompanyDetails(): void
+    {
+        $admin = $this->findUserByEmail(UserFixtures::ADMIN_EMAIL);
+        $customer = $this->findUserByEmail(UserFixtures::USER_EMAIL);
+
+        $this->client->loginUser($admin, 'main');
+        $this->client->request('GET', '/portal/users/'.$customer->id->toRfc4122());
+
+        $this->assertResponseIsSuccessful();
+        $body = (string) $this->client->getResponse()->getContent();
+        $this->assertStringContainsString('Jan Novak', $body);
+        $this->assertStringContainsString('jedná se o soukromou osobu', $body);
+        $this->assertStringNotContainsString('Kontaktní osoba', $body);
+    }
+
     public function testNonAdminCannotAccessUserDetail(): void
     {
         $tenant = $this->findUserByEmail(UserFixtures::TENANT_EMAIL);

@@ -29,7 +29,7 @@
         {% if filter %}<input type="hidden" name="filter" value="{{ filter }}">{% endif %}
         {% if sort %}<input type="hidden" name="sort" value="{{ sort }}">{% endif %}
         {% if dir %}<input type="hidden" name="dir" value="{{ dir }}">{% endif %}
-        <input type="search" name="q" value="{{ search }}" placeholder="Hledat jméno, e-mail, telefon…" class="form-input text-sm py-1.5 w-72" autocomplete="off">
+        <input type="search" name="q" value="{{ search }}" placeholder="Hledat jméno, e-mail, telefon, firmu nebo IČO…" class="form-input text-sm py-1.5 w-72" autocomplete="off">
         <button type="submit" class="btn btn-sm btn-primary">Hledat</button>
         {% if search %}
             <a href="{{ path('portal_users_list', filter ? {filter: filter} : {}) }}" class="btn btn-sm btn-ghost" title="Zrušit hledání">×</a>
@@ -78,9 +78,11 @@
                             <td>
                                 <div class="flex items-center space-x-3">
                                     <div class="flex-shrink-0 h-10 w-10 rounded-full bg-gray-600 text-white flex items-center justify-center font-medium text-sm">
-                                        {{ row.fullName|first|upper }}
+                                        {{ row.displayName|first|upper }}
                                     </div>
-                                    <div class="font-medium text-gray-900">{{ row.fullName }}</div>
+                                    <div>
+                                        {% include 'components/customer_identity.html.twig' with {customer: row} only %}
+                                    </div>
                                 </div>
                             </td>
                             <td class="text-gray-500">{{ row.email }}</td>

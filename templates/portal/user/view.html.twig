@@ -5,7 +5,7 @@
 {% block breadcrumb %}
     {% include 'components/breadcrumb.html.twig' with {breadcrumb_items: [
         {label: 'Uživatelé', url: path('portal_users_list')},
-        {label: user.fullName},
+        {label: user.displayName},
     ]} %}
 {% endblock %}
 
@@ -42,11 +42,14 @@
             <div class="flex items-center gap-6 mb-6">
                 <div class="flex-shrink-0">
                     <div class="bg-primary text-white rounded-full w-24 h-24 flex items-center justify-center">
-                        <span class="text-3xl font-semibold">{{ user.fullName|first|upper }}</span>
+                        <span class="text-3xl font-semibold">{{ user.displayName|first|upper }}</span>
                     </div>
                 </div>
                 <div>
-                    <h2 class="text-2xl font-bold text-gray-900">{{ user.fullName }}</h2>
+                    <h2 class="text-2xl font-bold text-gray-900">{{ user.displayName }}</h2>
+                    {% if user.isCompany %}
+                        <p class="text-gray-600">{{ user.fullName }}{% if user.companyId %} · IČO {{ user.companyId }}{% endif %}</p>
+                    {% endif %}
                     <p class="text-gray-600">{{ user.email }}</p>
                 </div>
             </div>
@@ -65,8 +68,13 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-semibold text-gray-700 mb-2">Jméno</label>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">{{ user.isCompany ? 'Kontaktní osoba' : 'Jméno' }}</label>
                     <div class="text-sm text-gray-900">{{ user.fullName }}</div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Telefon</label>
+                    <div class="text-sm text-gray-900">{{ user.phone ?: '—' }}</div>
                 </div>
 
                 <div>
@@ -139,6 +147,38 @@
                         <p class="mt-1">{{ user.adminNote }}</p>
                     </div>
                 </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card mt-6">
+        <div class="card-body">
+            <h2 class="text-xl font-bold text-gray-900 mb-4">Fakturační údaje</h2>
+            {% if user.isCompany or user.billingStreet %}
+                <div class="grid md:grid-cols-2 gap-6">
+                    {% if user.isCompany %}
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Firma</label>
+                            <div class="text-sm text-gray-900">{{ user.companyName }}</div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">IČO</label>
+                            <div class="text-sm text-gray-900">{{ user.companyId ?: '—' }}</div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">DIČ</label>
+                            <div class="text-sm text-gray-900">{{ user.companyVatId ?: '—' }}</div>
+                        </div>
+                    {% endif %}
+                    <div>
+                        <label class="block text-sm font-semibold text-gray-700 mb-2">Fakturační adresa</label>
+                        <div class="text-sm text-gray-900">
+                            {{ user.billingStreet ?: '—' }}{% if user.billingCity %}, {{ user.billingPostalCode }} {{ user.billingCity }}{% endif %}
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <p class="text-sm text-gray-500">Zákazník neuvedl firemní ani fakturační údaje — jedná se o soukromou osobu.</p>
             {% endif %}
         </div>
     </div>

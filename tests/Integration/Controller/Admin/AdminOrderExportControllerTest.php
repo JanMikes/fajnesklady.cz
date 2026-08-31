@@ -54,7 +54,7 @@ class AdminOrderExportControllerTest extends WebTestCase
 
         // Header row.
         self::assertSame('Číslo objednávky', $rows[0][0]);
-        self::assertSame('Pobočka', $rows[0][7]);
+        self::assertSame('Pobočka', $rows[0][8]);
 
         // Tenant fixture is the user behind several orders.
         self::assertTrue(
@@ -64,6 +64,22 @@ class AdminOrderExportControllerTest extends WebTestCase
 
         $disposition = (string) $this->client->getResponse()->headers->get('Content-Disposition');
         self::assertStringContainsString('objednavky-', $disposition);
+    }
+
+    public function testCompanyCustomerIsExportedUnderTheCompanyName(): void
+    {
+        $this->client->loginUser($this->findUserByEmail($this->entityManager, 'admin@example.com'), 'main');
+        $this->client->request('GET', '/portal/admin/orders/export');
+
+        $body = $this->assertXlsxResponse($this->client);
+        $rows = $this->readXlsxRows($body);
+
+        self::assertSame('Zákazník', $rows[0][3]);
+        self::assertSame('Kontaktní osoba', $rows[0][4]);
+        // Tenant fixture ordered as "Skladová Eva s.r.o." — the company heads
+        // the Zákazník column, the signing person stays in its own column.
+        self::assertTrue($this->rowsContainCellValue($rows, 'Skladová Eva s.r.o.'));
+        self::assertTrue($this->rowsContainCellValue($rows, 'Eva Najemce'));
     }
 
     public function testFilterIsHonoured(): void

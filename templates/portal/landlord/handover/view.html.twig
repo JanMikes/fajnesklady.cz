@@ -32,7 +32,7 @@
         <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium {{ statusClass[protocol.status.value] ?? 'bg-gray-100 text-gray-800' }}">
             {{ statusLabel[protocol.status.value] ?? protocol.status.value }}
         </span>
-        <span class="ml-3 text-sm text-gray-500">Nájemce: {{ contract.user.fullName }}</span>
+        <span class="ml-3 text-sm text-gray-500">Nájemce: {{ contract.user.displayName }}</span>
     </div>
 
     {# Tenant's part (read-only) #}

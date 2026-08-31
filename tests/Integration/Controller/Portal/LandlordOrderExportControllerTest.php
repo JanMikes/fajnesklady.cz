@@ -54,7 +54,7 @@ class LandlordOrderExportControllerTest extends WebTestCase
         $rows = $this->readXlsxRows($body);
 
         self::assertSame('Číslo objednávky', $rows[0][0]);
-        self::assertSame('Pobočka', $rows[0][7]);
+        self::assertSame('Pobočka', $rows[0][8]);
 
         $disposition = (string) $this->client->getResponse()->headers->get('Content-Disposition');
         self::assertStringContainsString('objednavky-', $disposition);

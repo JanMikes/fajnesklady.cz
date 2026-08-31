@@ -230,7 +230,7 @@
                         <div class="flex justify-between items-start">
                             <div>
                                 <p class="text-sm font-medium text-gray-900">
-                                    {{ order.user.fullName }}
+                                    {{ order.user.displayName }}
                                 </p>
                                 <p class="text-sm text-gray-500">
                                     {{ order.storage.storageType.place.name }} · {{ order.storage.storageType.name }} - {{ order.storage.number }} | {{ order.createdAt|date('d.m.Y H:i') }}

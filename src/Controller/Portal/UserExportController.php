@@ -43,7 +43,8 @@ final class UserExportController extends AbstractController
         $search = (null !== $searchParam && '' !== trim($searchParam)) ? trim($searchParam) : null;
 
         $columns = [
-            new ExcelColumn('Jméno'),
+            new ExcelColumn('Zákazník'),
+            new ExcelColumn('Kontaktní osoba'),
             new ExcelColumn('E-mail'),
             new ExcelColumn('Telefon'),
             new ExcelColumn('Role'),
@@ -51,6 +52,7 @@ final class UserExportController extends AbstractController
             new ExcelColumn('Ověřený', ExcelColumnType::BOOLEAN),
             new ExcelColumn('Onboardovaný', ExcelColumnType::BOOLEAN),
             new ExcelColumn('Dlužník', ExcelColumnType::BOOLEAN),
+            new ExcelColumn('Firma'),
             new ExcelColumn('IČO'),
             new ExcelColumn('DIČ'),
             new ExcelColumn('Adresa'),
@@ -72,6 +74,7 @@ final class UserExportController extends AbstractController
                 /* @var User $user */
                 $userId = (string) $user->id;
                 yield [
+                    $user->displayName,
                     $user->fullName,
                     $user->email,
                     $user->phone,
@@ -80,6 +83,7 @@ final class UserExportController extends AbstractController
                     $user->isVerified(),
                     isset($onboardedIdSet[$userId]),
                     isset($debtorIdSet[$userId]),
+                    $user->companyName,
                     $user->companyId,
                     $user->companyVatId,
                     self::renderAddress($user),

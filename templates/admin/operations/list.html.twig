@@ -81,9 +81,11 @@
                                 {% set days = (now.timestamp - protocol.createdAt.timestamp) // 86400 %}
                                 <tr class="{{ days > 14 ? 'bg-red-50' : '' }}">
                                     <td>
-                                        <a href="{{ path('portal_users_view', {id: protocol.contract.user.id}) }}" class="link font-semibold">
-                                            {{ protocol.contract.user.fullName }}
-                                        </a>
+                                        {% include 'components/customer_identity.html.twig' with {
+                                            customer: protocol.contract.user,
+                                            href: path('portal_users_view', {id: protocol.contract.user.id}),
+                                            class: 'font-semibold',
+                                        } only %}
                                         <div class="text-sm text-gray-500">{{ protocol.contract.user.email }}</div>
                                     </td>
                                     <td>
@@ -141,9 +143,11 @@
                             {% for contract in summary.contractsEndingWithoutProtocol %}
                                 <tr>
                                     <td>
-                                        <a href="{{ path('portal_users_view', {id: contract.user.id}) }}" class="link font-semibold">
-                                            {{ contract.user.fullName }}
-                                        </a>
+                                        {% include 'components/customer_identity.html.twig' with {
+                                            customer: contract.user,
+                                            href: path('portal_users_view', {id: contract.user.id}),
+                                            class: 'font-semibold',
+                                        } only %}
                                         <div class="text-sm text-gray-500">{{ contract.user.email }}</div>
                                     </td>
                                     <td>
@@ -189,9 +193,11 @@
                             {% for order in summary.onboardingSignedUnpaid %}
                                 <tr>
                                     <td>
-                                        <a href="{{ path('portal_users_view', {id: order.user.id}) }}" class="link font-semibold">
-                                            {{ order.user.fullName }}
-                                        </a>
+                                        {% include 'components/customer_identity.html.twig' with {
+                                            customer: order.user,
+                                            href: path('portal_users_view', {id: order.user.id}),
+                                            class: 'font-semibold',
+                                        } only %}
                                         <div class="text-sm text-gray-500">{{ order.user.email }}</div>
                                     </td>
                                     <td>
@@ -240,9 +246,11 @@
                             {% for contract in summary.externalPrepaymentEnding %}
                                 <tr>
                                     <td>
-                                        <a href="{{ path('portal_users_view', {id: contract.user.id}) }}" class="link font-semibold">
-                                            {{ contract.user.fullName }}
-                                        </a>
+                                        {% include 'components/customer_identity.html.twig' with {
+                                            customer: contract.user,
+                                            href: path('portal_users_view', {id: contract.user.id}),
+                                            class: 'font-semibold',
+                                        } only %}
                                         <div class="text-sm text-gray-500">{{ contract.user.email }}</div>
                                     </td>
                                     <td>

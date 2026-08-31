@@ -87,7 +87,7 @@ final class StorageExportController extends AbstractController
                 $storage->createdAt,
             ];
             if ($isAdmin) {
-                $row[] = null === $storage->owner ? '' : $storage->owner->fullName;
+                $row[] = null === $storage->owner ? '' : $storage->owner->displayName;
             }
             $rows[] = $row;
         }

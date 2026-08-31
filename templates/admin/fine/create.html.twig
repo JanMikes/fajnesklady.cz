@@ -17,7 +17,7 @@
         <div class="bg-gray-50 rounded-lg p-4 mb-6">
             <h2 class="font-semibold text-gray-900 mb-2">Smlouva</h2>
             <div class="text-sm text-gray-600 space-y-1">
-                <p>Zákazník: <strong>{{ contract.user.fullName }}</strong> ({{ contract.user.email }})</p>
+                <p>Zákazník: <strong>{{ contract.user.displayName }}</strong> ({{ contract.user.email }})</p>
                 <p>Skladová jednotka: <strong>{{ contract.storage.storageType.name }} ({{ contract.storage.number }})</strong></p>
                 <p>Pobočka: <strong>{{ contract.storage.place.name }}</strong></p>
             </div>

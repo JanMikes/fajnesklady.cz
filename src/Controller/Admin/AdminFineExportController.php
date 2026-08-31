@@ -38,6 +38,7 @@ final class AdminFineExportController extends AbstractController
         $columns = [
             new ExcelColumn('Datum vystavení', ExcelColumnType::DATETIME),
             new ExcelColumn('Zákazník'),
+            new ExcelColumn('Kontaktní osoba'),
             new ExcelColumn('E-mail'),
             new ExcelColumn('Typ'),
             new ExcelColumn('Částka (Kč)', ExcelColumnType::MONEY_KC),
@@ -67,6 +68,7 @@ final class AdminFineExportController extends AbstractController
 
                 yield [
                     $fine->issuedAt,
+                    $fine->user->displayName,
                     $fine->user->fullName,
                     $fine->user->email,
                     $fine->type->label(),

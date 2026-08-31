@@ -144,7 +144,14 @@ final class FineRepository
         }
 
         if (null !== $search && '' !== $search) {
-            $qb->andWhere('LOWER(u.email) LIKE :search OR LOWER(u.firstName) LIKE :search OR LOWER(u.lastName) LIKE :search')
+            $qb->andWhere(
+                'LOWER(u.email) LIKE :search'
+                .' OR LOWER(u.firstName) LIKE :search'
+                .' OR LOWER(u.lastName) LIKE :search'
+                .' OR LOWER(u.companyName) LIKE :search'
+                .' OR LOWER(u.companyId) LIKE :search'
+                .' OR LOWER(u.companyVatId) LIKE :search'
+            )
                 ->setParameter('search', '%'.mb_strtolower($search).'%');
         }
 

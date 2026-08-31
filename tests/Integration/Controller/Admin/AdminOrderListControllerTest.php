@@ -125,6 +125,56 @@ class AdminOrderListControllerTest extends WebTestCase
         $this->assertSelectorTextContains('table', $tenant->fullName);
     }
 
+    public function testCompanyCustomerIsListedUnderTheCompanyName(): void
+    {
+        $this->client->loginUser($this->findUserByEmail('admin@example.com'), 'main');
+
+        // Tenant fixture ordered as "Skladová Eva s.r.o." — the company is the
+        // counterparty, so it heads the row with the person kept underneath.
+        $this->client->request('GET', '/portal/admin/orders?q=tenant@example.com');
+
+        $this->assertResponseIsSuccessful();
+        $tableHtml = $this->client->getCrawler()->filter('table')->html();
+        self::assertStringContainsString('Skladová Eva s.r.o.', $tableHtml);
+        self::assertStringContainsString('Eva Najemce', $tableHtml);
+        self::assertStringContainsString('IČO 27604977', $tableHtml);
+    }
+
+    public function testSearchByCompanyNameFindsOrders(): void
+    {
+        $this->client->loginUser($this->findUserByEmail('admin@example.com'), 'main');
+
+        $this->client->request('GET', '/portal/admin/orders?q='.urlencode('Skladová Eva'));
+
+        $this->assertResponseIsSuccessful();
+        self::assertGreaterThan(
+            0,
+            $this->client->getCrawler()->filter('tbody tr td.font-mono')->count(),
+            'Expected ≥1 order row when searching by company name.',
+        );
+        $this->assertSelectorTextContains('table', 'Skladová Eva s.r.o.');
+    }
+
+    public function testSearchByCompanyIdFindsOrders(): void
+    {
+        $this->client->loginUser($this->findUserByEmail('admin@example.com'), 'main');
+
+        $this->client->request('GET', '/portal/admin/orders?q=27604977');
+
+        $this->assertResponseIsSuccessful();
+        $this->assertSelectorTextContains('table', 'Skladová Eva s.r.o.');
+    }
+
+    public function testSearchByCompanyVatIdFindsOrders(): void
+    {
+        $this->client->loginUser($this->findUserByEmail('admin@example.com'), 'main');
+
+        $this->client->request('GET', '/portal/admin/orders?q=CZ27604977');
+
+        $this->assertResponseIsSuccessful();
+        $this->assertSelectorTextContains('table', 'Skladová Eva s.r.o.');
+    }
+
     public function testSearchWithNoMatchRendersEmptyState(): void
     {
         $this->client->loginUser($this->findUserByEmail('admin@example.com'), 'main');

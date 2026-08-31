@@ -149,6 +149,8 @@ class UserRepository
                     u.last_name,
                     u.email,
                     u.phone,
+                    u.company_name,
+                    u.company_id,
                     u.roles,
                     u.is_verified,
                     u.deactivated_at,
@@ -193,6 +195,8 @@ class UserRepository
                 yrrInHaler: (int) $row['yrr'],
                 isOverdue: (bool) $row['is_overdue'],
                 isOnboarded: (bool) $row['is_onboarded'],
+                companyName: null !== $row['company_name'] ? (string) $row['company_name'] : null,
+                companyId: null !== $row['company_id'] ? (string) $row['company_id'] : null,
             );
         }, $rows);
     }
@@ -553,7 +557,10 @@ class UserRepository
             $qb->andWhere(
                 "LOWER(CONCAT(u.firstName, ' ', u.lastName)) LIKE :search "
                 .'OR LOWER(u.email) LIKE :search '
-                .'OR LOWER(u.phone) LIKE :search'
+                .'OR LOWER(u.phone) LIKE :search '
+                .'OR LOWER(u.companyName) LIKE :search '
+                .'OR LOWER(u.companyId) LIKE :search '
+                .'OR LOWER(u.companyVatId) LIKE :search'
             )->setParameter('search', '%'.mb_strtolower($trimmedSearch).'%');
         }
 
@@ -607,7 +614,12 @@ class UserRepository
         $conditions = [];
 
         if (null !== $criteria->search) {
-            $conditions[] = '((u.first_name || \' \' || u.last_name) ILIKE :search OR u.email ILIKE :search OR u.phone ILIKE :search)';
+            $conditions[] = '((u.first_name || \' \' || u.last_name) ILIKE :search'
+                .' OR u.email ILIKE :search'
+                .' OR u.phone ILIKE :search'
+                .' OR u.company_name ILIKE :search'
+                .' OR u.company_id ILIKE :search'
+                .' OR u.company_vat_id ILIKE :search)';
             $params['search'] = '%'.$criteria->search.'%';
             $types['search'] = Types::STRING;
         }

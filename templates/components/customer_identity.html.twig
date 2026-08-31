@@ -1,0 +1,24 @@
+{# Customer identity for listings and detail headers.
+
+   Company takes precedence: when the customer ordered under a company, the
+   company name is the headline and the signing person drops to a secondary
+   line together with the IČO. Private customers render exactly as before —
+   a single line with their name.
+
+   Inputs:
+     customer  App\Entity\User|App\Value\UserListRow  (required — needs displayName / isCompany / fullName / companyId)
+     href      string|null  (default null)   — turns the headline into a link
+     class     string       (default 'font-medium text-gray-900') — headline classes
+     person    bool         (default true)   — render the secondary person / IČO line
+#}
+{%- set _class = class|default('font-medium text-gray-900') -%}
+{%- if href|default(null) -%}
+    <a href="{{ href }}" class="link {{ _class }}">{{ customer.displayName }}</a>
+{%- else -%}
+    <span class="{{ _class }}">{{ customer.displayName }}</span>
+{%- endif -%}
+{%- if customer.isCompany and person|default(true) %}
+    <div class="text-xs text-gray-500">
+        {{- customer.fullName }}{% if customer.companyId %} · IČO {{ customer.companyId }}{% endif -%}
+    </div>
+{%- endif -%}

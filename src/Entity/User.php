@@ -8,6 +8,7 @@ use App\Enum\UserRole;
 use App\Event\EmailVerified;
 use App\Event\PasswordChangedByAdmin;
 use App\Event\UserRegistered;
+use App\Service\Customer\CustomerDisplayName;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Types\UuidType;
@@ -85,6 +86,23 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface, EntityW
 
     public string $fullName {
         get => trim($this->firstName.' '.$this->lastName);
+    }
+
+    /**
+     * True when the customer ordered under a company (IČO handed over during
+     * onboarding). Company identity wins over the personal one in listings.
+     */
+    public bool $isCompany {
+        get => CustomerDisplayName::isCompany($this->companyName);
+    }
+
+    /**
+     * Company name when there is one, otherwise the person's name. Use this
+     * wherever a customer is *listed*; {@see self::$fullName} stays the name of
+     * the signing person.
+     */
+    public string $displayName {
+        get => CustomerDisplayName::resolve($this->fullName, $this->companyName);
     }
 
     public function __construct(

@@ -32,7 +32,7 @@
         <div class="card">
             <div class="card-body">
                 <h2 class="text-sm font-medium text-gray-500 uppercase mb-2">Zákazník</h2>
-                <p class="text-lg font-semibold text-gray-900">{{ contract.user.fullName }}</p>
+                <p class="text-lg font-semibold text-gray-900">{{ contract.user.displayName }}</p>
                 <p class="text-sm text-gray-500">{{ contract.user.email }}</p>
                 {% if contract.user.phone %}
                     <p class="text-sm text-gray-500">{{ contract.user.phone }}</p>

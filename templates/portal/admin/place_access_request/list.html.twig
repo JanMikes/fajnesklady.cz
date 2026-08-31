@@ -23,7 +23,7 @@
                 <tbody>
                     {% for request in requests %}
                         <tr>
-                            <td class="font-medium text-gray-900">{{ request.requestedBy.fullName }}</td>
+                            <td class="font-medium text-gray-900">{{ request.requestedBy.displayName }}</td>
                             <td class="text-gray-500">{{ request.requestedBy.email }}</td>
                             <td class="font-medium">{{ request.place.name }}</td>
                             <td class="text-gray-500 max-w-xs truncate">{{ request.message|default('-') }}</td>
