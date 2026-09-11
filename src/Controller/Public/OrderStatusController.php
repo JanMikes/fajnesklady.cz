@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller\Public;
 
 use App\Repository\OrderRepository;
+use App\Service\Analytics\AnalyticsEventFlusher;
 use App\Service\Order\OrderStatusViewModelFactory;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -22,6 +23,7 @@ final class OrderStatusController extends AbstractController
         private readonly OrderRepository $orderRepository,
         private readonly UriSigner $uriSigner,
         private readonly OrderStatusViewModelFactory $viewModelFactory,
+        private readonly AnalyticsEventFlusher $analyticsEventFlusher,
     ) {
     }
 
@@ -38,6 +40,9 @@ final class OrderStatusController extends AbstractController
 
         $viewModel = $this->viewModelFactory->build($order);
 
-        return $this->render('public/order_status.html.twig', ['vm' => $viewModel]);
+        return $this->render('public/order_status.html.twig', [
+            'vm' => $viewModel,
+            'analytics_events' => $this->analyticsEventFlusher->flushFor($order),
+        ]);
     }
 }

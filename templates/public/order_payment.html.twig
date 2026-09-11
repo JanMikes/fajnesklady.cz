@@ -5,6 +5,8 @@
 {% from 'macros/price.html.twig' import vat_suffix %}
 
 {% block content %}
+    {% include 'components/_analytics_datalayer.html.twig' %}
+
     {# Breadcrumb #}
     <nav class="mb-6">
         <ol class="flex items-center space-x-2 text-sm text-gray-600">

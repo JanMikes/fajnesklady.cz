@@ -367,6 +367,15 @@ Order flow, payment, and any consumer-facing legal text are governed by [.claude
 
 When a rule conflicts with a feature request, stop and consult [.claude/COMPLIANCE.md](.claude/COMPLIANCE.md) and the source documents (`public/documents/*.pdf`) before deviating.
 
+## Measurement events (GTM dataLayer)
+
+Two server-confirmed events (`order_created`, `first_payment_success`) reach the marketing side's GTM
+via an outbox table, because the GoPay webhook and the bank-transfer cron have no browser to push
+into. **The payload keys are an external contract with their tag configuration** and the value is in
+CZK while the database stores haléře. Read before touching anything under `src/Service/Analytics`,
+the `OrderCreated`/`OrderPaid` handlers, or `components/_analytics_datalayer.html.twig`:
+[.claude/ANALYTICS.md](.claude/ANALYTICS.md).
+
 ## Customer-facing documents
 
 Inventory of every document a customer can encounter (contract, invoice, map, VOP, poučení spotřebitele, formuláře, …), where each is generated, where it's stored, and how the customer accesses it: [.claude/CUSTOMER_DOCUMENTS.md](.claude/CUSTOMER_DOCUMENTS.md). Update that file whenever a document is added, removed, or moves between storage tiers / e-mail touchpoints.

@@ -1,0 +1,25 @@
+{#
+    Pushes server-confirmed measurement events into the GTM dataLayer.
+
+    Expects `analytics_events` — a list of {name, payload} from
+    App\Service\Analytics\AnalyticsEventFlusher::flushFor().
+
+    The push happens regardless of cookie consent, and that is deliberate:
+    dataLayer is a plain JavaScript array in the visitor's own page. Pushing to
+    it neither stores anything on the device nor sends anything anywhere, so
+    ZEK § 89 odst. 3 — which governs storing on / reading from terminal
+    equipment — does not reach it. What consent gates is the GTM *tags* that
+    read the dataLayer and transmit, and those are already held by Consent Mode
+    v2 (components/_gtm_head.html.twig). Pushing unconditionally is also what
+    lets a tag fire correctly for a visitor who accepts later in the session.
+
+    Placed in the body, after the GTM loader in <head>, so `dataLayer` exists.
+#}
+{% if gtm_container_id and analytics_events is defined and analytics_events|length > 0 %}
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        {% for event in analytics_events %}
+        window.dataLayer.push({{ { 'event': event.name }|merge(event.payload)|json_encode|raw }});
+        {% endfor %}
+    </script>
+{% endif %}

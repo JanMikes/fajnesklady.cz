@@ -11,6 +11,7 @@ use App\Enum\PaymentFrequency;
 use App\Enum\PaymentMethod;
 use App\Repository\BankTransactionAllocationRepository;
 use App\Repository\OrderRepository;
+use App\Service\Analytics\AnalyticsEventFlusher;
 use App\Service\GoPay\GoPayClient;
 use App\Service\OrderStatusUrlGenerator;
 use App\Service\Payment\QrPaymentGenerator;
@@ -36,6 +37,7 @@ final class OrderPaymentController extends AbstractController
         private readonly PriceCalculator $priceCalculator,
         private readonly OrderStatusUrlGenerator $orderStatusUrlGenerator,
         private readonly QrPaymentGenerator $qrPaymentGenerator,
+        private readonly AnalyticsEventFlusher $analyticsEventFlusher,
         private readonly LoggerInterface $logger,
     ) {
     }
@@ -123,6 +125,7 @@ final class OrderPaymentController extends AbstractController
         $effectivePaymentAmount = $remainingAmount ?? $order->firstPaymentPrice;
 
         return $this->render('public/order_payment.html.twig', [
+            'analytics_events' => $this->analyticsEventFlusher->flushFor($order),
             'order' => $order,
             'storage' => $storage,
             'storageType' => $storageType,

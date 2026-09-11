@@ -18,6 +18,8 @@
 {% block title %}Stav objednávky - Fajnesklady.cz{% endblock %}
 
 {% block content %}
+    {% include 'components/_analytics_datalayer.html.twig' %}
+
     <div class="max-w-4xl mx-auto">
         {# Status banner #}
         <div class="mb-6 rounded-lg border p-5 {{ variantClasses[status.variant] ?? variantClasses['neutral'] }}">
