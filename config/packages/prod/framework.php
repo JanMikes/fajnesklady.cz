@@ -6,16 +6,9 @@ namespace Symfony\Component\DependencyInjection\Loader\Configurator;
 
 return App::config([
     'framework' => [
-        'http_client' => [
-            'default_options' => [
-                'headers' => [
-                    'X-Frame-Options' => 'DENY',
-                    'X-Content-Type-Options' => 'nosniff',
-                    'X-XSS-Protection' => '1; mode=block',
-                    'Referrer-Policy' => 'strict-origin-when-cross-origin',
-                    'Strict-Transport-Security' => 'max-age=31536000; includeSubDomains',
-                ],
-            ],
-        ],
+        // Browser-facing security headers used to be declared here under
+        // `http_client.default_options.headers`, which put them on OUTGOING
+        // API requests instead of on responses — visitors never received them.
+        // They now live in App\Event\SecurityHeadersSubscriber.
     ],
 ]);
