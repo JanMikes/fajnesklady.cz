@@ -3,6 +3,21 @@
 /* Fajne Sklady Design System v2.0 */
 
 /* Alpine.js cloak - prevents flash of unstyled content */
+/* Skip link — WCAG 2.4.1 (A). Off-screen until focused, then pinned top-left.
+   Never use display:none here: a hidden element cannot receive focus. */
+.skip-link {
+    @apply absolute left-2 z-[100] rounded-md px-4 py-2 text-sm font-medium text-white shadow-lg;
+    top: -100px;
+    background-color: var(--color-primary);
+    transition: top 150ms ease-in-out;
+}
+
+.skip-link:focus {
+    @apply outline-none ring-2 ring-offset-2;
+    top: 0.5rem;
+    --tw-ring-color: var(--color-accent);
+}
+
 [x-cloak] {
     display: none !important;
 }

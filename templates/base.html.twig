@@ -42,6 +42,9 @@
     <body class="min-h-screen bg-gray-50 overflow-x-hidden" x-data="{ mobileMenuOpen: false }" data-turbo="false">
         {% include 'components/_gtm_body.html.twig' %}
 
+        {# WCAG 2.4.1 (A) — lets keyboard and screen-reader users jump the navigation. #}
+        <a href="#hlavni-obsah" class="skip-link">Přeskočit na hlavní obsah</a>
+
         {% block body %}{% endblock %}
 
         {% include 'components/cookie_consent.html.twig' %}
