@@ -1,0 +1,153 @@
+{#
+    Cookie consent bar (ZEK § 89 odst. 3 / GDPR opt-in).
+
+    Rendered only when a GTM container is configured — with no container the
+    site sets nothing but strictly necessary cookies (PHP session, remember-me,
+    CSRF), which need no consent and therefore no banner.
+
+    ÚOOÚ requirements baked into this markup, do not "simplify" them away:
+      * "Odmítnout vše" sits in the FIRST layer and carries the same visual
+        weight as "Přijmout vše" — nudging via a quieter reject button is the
+        single most-fined defect in Czech cookie bars.
+      * No non-essential category is pre-checked.
+      * Withdrawing is as easy as granting — the footer link reopens this bar.
+
+    The actual consent signal travels through Google Consent Mode v2
+    (components/_gtm_head.html.twig). This component only writes the choice to
+    the fs_cookie_consent cookie and pushes the update.
+#}
+{% if gtm_container_id %}
+<div
+    x-data="{
+        open: false,
+        details: false,
+        analytics: false,
+        ads: false,
+        preferences: false,
+        init() {
+            this.open = ! window.fsConsent;
+            window.addEventListener('fs:cookie-settings', () => this.reopen());
+        },
+        reopen() {
+            const stored = window.fsConsent;
+            this.analytics = !! (stored && stored.analytics);
+            this.ads = !! (stored && stored.ads);
+            this.preferences = !! (stored && stored.preferences);
+            this.details = true;
+            this.open = true;
+        },
+        acceptAll() {
+            this.analytics = true;
+            this.ads = true;
+            this.preferences = true;
+            this.persist();
+        },
+        rejectAll() {
+            this.analytics = false;
+            this.ads = false;
+            this.preferences = false;
+            this.persist();
+        },
+        persist() {
+            const choice = { v: 1, analytics: this.analytics, ads: this.ads, preferences: this.preferences, ts: Date.now() };
+            const secure = window.location.protocol === 'https:' ? '; secure' : '';
+            document.cookie = 'fs_cookie_consent=' + encodeURIComponent(JSON.stringify(choice)) + '; path=/; max-age=15552000; samesite=Lax' + secure;
+            window.fsConsent = choice;
+
+            if (typeof gtag === 'function') {
+                gtag('consent', 'update', {
+                    ad_storage: this.ads ? 'granted' : 'denied',
+                    ad_user_data: this.ads ? 'granted' : 'denied',
+                    ad_personalization: this.ads ? 'granted' : 'denied',
+                    analytics_storage: this.analytics ? 'granted' : 'denied',
+                    functionality_storage: this.preferences ? 'granted' : 'denied',
+                    personalization_storage: this.preferences ? 'granted' : 'denied',
+                    security_storage: 'granted'
+                });
+                gtag('set', 'ads_data_redaction', ! this.ads);
+            }
+
+            window.dataLayer = window.dataLayer || [];
+            window.dataLayer.push({ event: 'fs_consent_update' });
+
+            this.open = false;
+            this.details = false;
+        }
+    }"
+    x-show="open"
+    x-cloak
+    role="dialog"
+    aria-modal="false"
+    aria-label="Nastavení souborů cookies"
+    class="fixed inset-x-0 bottom-0 z-50 p-3 sm:p-4"
+>
+    <div class="mx-auto max-w-3xl rounded-xl bg-white shadow-2xl ring-1 ring-gray-900/10">
+        <div class="p-5 sm:p-6">
+            <h2 class="text-base font-semibold text-gray-900">Používáme cookies</h2>
+            <p class="mt-2 text-sm leading-relaxed text-gray-600">
+                Nezbytné cookies potřebujeme k tomu, aby web vůbec fungoval — ty běží vždy.
+                Analytické a marketingové cookies nám pomáhají web zlepšovat a měřit reklamu; ty zapneme
+                jen s vaším souhlasem. Souhlas můžete kdykoliv změnit odkazem „Nastavení cookies“ v patičce.
+                Podrobnosti najdete v sekci
+                <a href="{{ path('public_privacy_policy') }}#cookies" class="link">Ochrana osobních údajů</a>.
+            </p>
+
+            {# Second layer — granular categories. No non-essential box is pre-checked. #}
+            <div x-show="details" x-cloak class="mt-5 space-y-3 border-t border-gray-200 pt-4">
+                <div class="flex items-start gap-3">
+                    <input type="checkbox" checked disabled class="mt-1 h-4 w-4 rounded border-gray-300" aria-label="Nezbytné cookies (vždy aktivní)">
+                    <div>
+                        <p class="text-sm font-medium text-gray-900">Nezbytné <span class="text-xs font-normal text-gray-500">(vždy aktivní)</span></p>
+                        <p class="text-xs leading-relaxed text-gray-500">Přihlášení, bezpečnost formulářů, průchod objednávkou. Bez nich web nefunguje, souhlas se na ně nevztahuje.</p>
+                    </div>
+                </div>
+
+                <div class="flex items-start gap-3">
+                    <input id="cookie-consent-analytics" type="checkbox" x-model="analytics" class="mt-1 h-4 w-4 rounded border-gray-300">
+                    <div>
+                        <label for="cookie-consent-analytics" class="text-sm font-medium text-gray-900">Analytické</label>
+                        <p class="text-xs leading-relaxed text-gray-500">Anonymizovaná statistika návštěvnosti, abychom věděli, které stránky zlepšit.</p>
+                    </div>
+                </div>
+
+                <div class="flex items-start gap-3">
+                    <input id="cookie-consent-preferences" type="checkbox" x-model="preferences" class="mt-1 h-4 w-4 rounded border-gray-300">
+                    <div>
+                        <label for="cookie-consent-preferences" class="text-sm font-medium text-gray-900">Předvolby</label>
+                        <p class="text-xs leading-relaxed text-gray-500">Zapamatování voleb, které jste na webu udělali, aby se vám nezobrazovaly znovu.</p>
+                    </div>
+                </div>
+
+                <div class="flex items-start gap-3">
+                    <input id="cookie-consent-ads" type="checkbox" x-model="ads" class="mt-1 h-4 w-4 rounded border-gray-300">
+                    <div>
+                        <label for="cookie-consent-ads" class="text-sm font-medium text-gray-900">Marketingové</label>
+                        <p class="text-xs leading-relaxed text-gray-500">Měření účinnosti reklamy a zobrazování relevantnějších nabídek mimo náš web.</p>
+                    </div>
+                </div>
+            </div>
+
+            {# First layer — reject is never quieter than accept. #}
+            <div class="mt-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
+                <button
+                    type="button"
+                    x-show="! details"
+                    @click="reopen()"
+                    class="btn btn-ghost order-3 sm:order-1 sm:mr-auto"
+                >Nastavení</button>
+
+                <button
+                    type="button"
+                    x-show="details"
+                    x-cloak
+                    @click="persist()"
+                    class="btn btn-ghost order-3 sm:order-1 sm:mr-auto"
+                >Uložit nastavení</button>
+
+                <button type="button" @click="rejectAll()" class="btn btn-outline order-2">Odmítnout vše</button>
+                <button type="button" @click="acceptAll()" class="btn btn-primary order-1 sm:order-3">Přijmout vše</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}

@@ -477,6 +477,14 @@
                 {% block breadcrumb %}{% endblock %}
                 {% block content %}{% endblock %}
             </div>
+
+            {% if gtm_container_id %}
+                {# Portal has no site footer, so the consent-withdrawal entry point lives here.
+                   Withdrawing must be as easy as granting (ZEK § 89 / GDPR). #}
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8 text-right">
+                    <button type="button" onclick="window.dispatchEvent(new CustomEvent('fs:cookie-settings'))" class="text-xs text-gray-400 hover:text-gray-600 transition-colors">Nastavení cookies</button>
+                </div>
+            {% endif %}
         </main>
     </div>
 </div>

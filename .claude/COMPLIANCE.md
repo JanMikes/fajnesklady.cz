@@ -135,9 +135,44 @@ If we ever enable Apple Pay / Google Pay through GoPay, their official wordmarks
 - The order form (pre-purchase) MUST also link to VOP, Poučení spotřebitele, and Podmínky opakovaných plateb (a terse inline list above the submit button is enough).
 - Withdrawal & complaint forms MUST be downloadable as PDF (`public/documents/formular-odstoupeni-od-smlouvy.pdf`, `public/documents/reklamacni-formular.pdf`). The printable forms inside `pouceni-spotrebitele.pdf` are kept as a fallback.
 
-## Cookie / tracking note (intentionally out of scope here)
+## Cookies & tracking
 
-Cookie-consent compliance is governed separately. Don't add it to this file unless we're updating that flow.
+Governing law: **§ 89 odst. 3 zákona č. 127/2005 Sb. (ZEK)** — since 1. 1. 2022 Czechia is **opt-in**. Anything
+beyond strictly necessary cookies needs consent *before* it runs. ÚOOÚ fines here are real (highest binding one to
+date: 898 000 Kč) and the most-fined defect is a banner where rejecting is harder than accepting.
+
+Locked-in rules:
+
+- **Google Consent Mode v2 defaults to `denied`, and the default block is pushed BEFORE `gtm.js` is fetched.**
+  All four v2 signals (`ad_storage`, `ad_user_data`, `ad_personalization`, `analytics_storage`) plus
+  `functionality_storage` and `personalization_storage` start denied; only `security_storage` is granted.
+  If the default lands after the container, the session's first hit leaves the browser with no consent signal at all.
+- **The GTM container script itself may load before consent** — it is a tag loader and sets no cookies on its own.
+  What must not fire before consent are the *tags*, and Consent Mode is what holds them back. Do not "fix" this by
+  deferring the container: the operator asked for the standard snippet high in `<head>`, and that is compatible
+  with consent as long as the default block precedes it.
+- **The cookie bar is NOT implemented inside GTM.** It ships as first-party markup
+  (`templates/components/cookie_consent.html.twig`) so the banner cannot itself be blocked by an ad-blocker or by a
+  container change, and so the consent gate survives the operator editing the container. A CMP tag inside GTM would
+  make consent depend on the very thing it is supposed to gate.
+- **"Odmítnout vše" lives in the first layer and carries the same visual weight as "Přijmout vše."**
+  Same `.btn` size, no `btn-xs`, no burying rejection behind "Nastavení".
+- **No non-essential category is pre-checked.**
+- **Withdrawing is as easy as granting** — "Nastavení cookies" in the footer (`components/footer.html.twig`) and in
+  the portal layout, both reopening the bar via the `fs:cookie-settings` window event.
+- **Consent is re-asked after 6 months** (`fs_cookie_consent` cookie, `max-age=15552000`).
+- Blanking `GTM_CONTAINER_ID` drops the GTM snippets **and** the cookie bar together. That is correct: with no
+  container the site sets only strictly necessary cookies, which need no consent. Never render one without the other.
+
+Open item, decide before switching on Google Ads remarketing: Google requires EEA advertisers using
+remarketing / personalised ads to obtain consent through a **Google-certified CMP**. The hand-rolled bar satisfies
+ZEK and GDPR and emits correct Consent Mode v2 signals (so GA4 measurement is fine), but it is not on Google's
+certified list. If Ads remarketing is turned on, either swap the bar for a certified CMP or confirm the current
+setup is acceptable for the intended Ads features.
+
+The `<noscript>` GTM iframe is consent-blind by nature — Consent Mode is JavaScript. It is kept because the operator
+asked for the standard snippet and it only reaches visitors with JS disabled, who cannot be shown a banner at all.
+If that becomes a concern, the iframe is the piece to drop, not the head snippet.
 
 ## Where this is enforced in code
 
@@ -151,7 +186,11 @@ Cookie-consent compliance is governed separately. Don't add it to this file unle
 - `templates/public/order_payment.html.twig` — identification block, SSL/3DS notice, GoPay logos.
 - `templates/components/OrderForm.html.twig` — pre-purchase legal-doc links, VAT in prices.
 - `templates/components/payment_logos.html.twig` — card + 3DS + GoPay-link logos.
-- `templates/components/footer.html.twig` — full identification, ČOI link, all PDF/legal links, SSL notice.
+- `templates/components/footer.html.twig` — full identification, ČOI link, all PDF/legal links, SSL notice, cookie-settings reopen link.
+- `templates/components/_gtm_head.html.twig` — Consent Mode v2 defaults + GTM loader, in that order; `templates/components/_gtm_body.html.twig` — noscript iframe; both included from `templates/base.html.twig`.
+- `templates/components/cookie_consent.html.twig` — the consent bar itself.
+- `templates/public/_privacy_policy_content.html.twig` — the `#cookies` section (category table, retention, controller, withdrawal).
+- `tests/Integration/Controller/GoogleTagManagerTest.php` — asserts snippet placement, denied-by-default ordering, reject-in-first-layer, and no pre-checked categories.
 - `templates/macros/price.html.twig` — VAT macro.
 - `src/Event/Order/RecurringPaymentEstablished.php` + handler — 2-business-day confirmation e-mail.
 - `src/Console/NotifyUpcomingRecurringChargeCommand.php` — daily 7-business-day pre-charge notice.

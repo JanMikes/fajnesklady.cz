@@ -3,6 +3,9 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+        {% include 'components/_gtm_head.html.twig' %}
+
         <title>{% block title %}Fajnesklady.cz{% endblock %}</title>
         <meta name="description" content="{% block meta_description %}Pronájem skladových prostor v Ostravě. Bezpečné a dostupné sklady pro firmy i jednotlivce.{% endblock %}">
 
@@ -37,6 +40,10 @@
         {% endblock %}
     </head>
     <body class="min-h-screen bg-gray-50 overflow-x-hidden" x-data="{ mobileMenuOpen: false }" data-turbo="false">
+        {% include 'components/_gtm_body.html.twig' %}
+
         {% block body %}{% endblock %}
+
+        {% include 'components/cookie_consent.html.twig' %}
     </body>
 </html>

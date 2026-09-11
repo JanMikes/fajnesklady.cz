@@ -1,0 +1,70 @@
+{#
+    Google Tag Manager — head part. MUST stay as high in <head> as possible
+    (only the charset/viewport metas may precede it).
+
+    The consent block above the loader is NOT optional decoration: Google
+    Consent Mode v2 defaults have to be in the dataLayer *before* gtm.js is
+    fetched, otherwise the very first hit of a session leaves the browser
+    before any consent signal exists. See .claude/COMPLIANCE.md "Cookies &
+    tracking". Keep the two <script> blocks in this order and adjacent.
+
+    Tag configuration itself lives in the GTM UI (the operator manages the
+    container) — nothing here creates GA4/Ads tags.
+#}
+{% if gtm_container_id %}
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+
+        gtag('consent', 'default', {
+            ad_storage: 'denied',
+            ad_user_data: 'denied',
+            ad_personalization: 'denied',
+            analytics_storage: 'denied',
+            functionality_storage: 'denied',
+            personalization_storage: 'denied',
+            security_storage: 'granted',
+            wait_for_update: 500
+        });
+        gtag('set', 'ads_data_redaction', true);
+        gtag('set', 'url_passthrough', true);
+
+        /* Replay a stored choice before gtm.js loads, so returning visitors who
+           already consented are measured from their first pageview. */
+        window.fsConsent = (function () {
+            var raw = document.cookie.match(/(?:^|;\s*)fs_cookie_consent=([^;]*)/);
+            if (!raw) {
+                return null;
+            }
+            try {
+                var stored = JSON.parse(decodeURIComponent(raw[1]));
+                if (!stored || stored.v !== 1) {
+                    return null;
+                }
+                gtag('consent', 'update', {
+                    ad_storage: stored.ads ? 'granted' : 'denied',
+                    ad_user_data: stored.ads ? 'granted' : 'denied',
+                    ad_personalization: stored.ads ? 'granted' : 'denied',
+                    analytics_storage: stored.analytics ? 'granted' : 'denied',
+                    functionality_storage: stored.preferences ? 'granted' : 'denied',
+                    personalization_storage: stored.preferences ? 'granted' : 'denied',
+                    security_storage: 'granted'
+                });
+                if (stored.ads) {
+                    gtag('set', 'ads_data_redaction', false);
+                }
+                return stored;
+            } catch (e) {
+                return null;
+            }
+        })();
+    </script>
+
+    <!-- Google Tag Manager -->
+    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+    })(window,document,'script','dataLayer','{{ gtm_container_id }}');</script>
+    <!-- End Google Tag Manager -->
+{% endif %}

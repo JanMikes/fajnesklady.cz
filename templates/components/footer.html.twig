@@ -107,6 +107,10 @@
                     <a href="{{ path('public_consumer_notice') }}" class="text-sm text-white/50 hover:text-white transition-colors">Poučení spotřebitele</a>
                     <a href="{{ path('public_contract_sample') }}" class="text-sm text-white/50 hover:text-white transition-colors" target="_blank">Vzor smlouvy</a>
                     <a href="https://www.coi.cz" target="_blank" rel="noopener" class="text-sm text-white/50 hover:text-white transition-colors">Mimosoudní řešení sporů (ČOI)</a>
+                    {% if gtm_container_id %}
+                        {# Withdrawing consent must be as easy as giving it (ZEK § 89 / GDPR). #}
+                        <button type="button" onclick="window.dispatchEvent(new CustomEvent('fs:cookie-settings'))" class="text-sm text-white/50 hover:text-white transition-colors">Nastavení cookies</button>
+                    {% endif %}
                     {% if not app.user %}
                         <a href="{{ path('app_login') }}" class="text-sm text-white/50 hover:text-white transition-colors">Přihlášení</a>
                         <a href="{{ path('app_register') }}" class="text-sm text-white/50 hover:text-white transition-colors">Registrace</a>
