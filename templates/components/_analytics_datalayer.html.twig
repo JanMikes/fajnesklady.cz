@@ -1,19 +1,24 @@
 {#
-    Pushes server-confirmed measurement events into the GTM dataLayer.
+    Pushes server-confirmed measurement events into the GTM dataLayer, then
+    tells the server the browser really did it.
 
-    Expects `analytics_events` — a list of {name, payload} from
-    App\Service\Analytics\AnalyticsEventFlusher::flushFor().
+    Expects `analytics_events` — a list of {id, name, payload} from
+    App\Service\Analytics\AnalyticsEventFlusher::pendingFor().
 
-    The push happens regardless of cookie consent, and that is deliberate:
+    The acknowledgement is the point: this page is reached from a link in an
+    e-mail, and mail scanners fetch such links without running JavaScript. If
+    the server marked the events delivered at render time, a scanner would eat
+    the conversion and the customer's own click would push nothing. Only a
+    browser that actually ran this script confirms, so anything that cannot
+    run it leaves the event pending for the next real visit.
+
+    The push itself happens regardless of cookie consent, and that is correct:
     dataLayer is a plain JavaScript array in the visitor's own page. Pushing to
     it neither stores anything on the device nor sends anything anywhere, so
     ZEK § 89 odst. 3 — which governs storing on / reading from terminal
     equipment — does not reach it. What consent gates is the GTM *tags* that
-    read the dataLayer and transmit, and those are already held by Consent Mode
-    v2 (components/_gtm_head.html.twig). Pushing unconditionally is also what
-    lets a tag fire correctly for a visitor who accepts later in the session.
-
-    Placed in the body, after the GTM loader in <head>, so `dataLayer` exists.
+    read the dataLayer and transmit, and those are held by Consent Mode v2
+    (components/_gtm_head.html.twig).
 #}
 {% if gtm_container_id and analytics_events is defined and analytics_events|length > 0 %}
     <script>
@@ -21,5 +26,16 @@
         {% for event in analytics_events %}
         window.dataLayer.push({{ { 'event': event.name }|merge(event.payload)|json_encode|raw }});
         {% endfor %}
+
+        /* keepalive so the confirmation survives the customer navigating away
+           in the same instant; a failure just leaves the event pending. */
+        try {
+            fetch({{ path('public_analytics_ack')|json_encode|raw }}, {
+                method: 'POST',
+                keepalive: true,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids: {{ analytics_events|map(e => e.id)|json_encode|raw }} })
+            }).catch(function () {});
+        } catch (e) {}
     </script>
 {% endif %}

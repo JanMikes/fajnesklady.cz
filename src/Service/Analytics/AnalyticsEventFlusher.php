@@ -4,49 +4,47 @@ declare(strict_types=1);
 
 namespace App\Service\Analytics;
 
-use App\Command\MarkAnalyticsEventsPushedCommand;
 use App\Entity\Order;
 use App\Repository\AnalyticsEventRepository;
-use Symfony\Component\Messenger\MessageBusInterface;
 
 /**
- * Hands a controller the measurement events still waiting for a browser, and
- * marks them delivered in the same breath.
+ * Hands a controller the measurement events still waiting for a browser.
  *
- * Call it from a controller the customer lands on after the moment of truth;
- * pass the result to components/_analytics_datalayer.html.twig.
+ * It deliberately does NOT mark them delivered. Delivery is confirmed by the
+ * browser itself, via AnalyticsEventAckController, once the push has actually
+ * run — see components/_analytics_datalayer.html.twig.
+ *
+ * The reason is that the status page is reached through a link in an e-mail,
+ * and plenty of things open such a link without being the customer: mail
+ * security scanners, link previewers, corporate gateways. They fetch the HTML
+ * and never run JavaScript. Marking on render handed the conversion to one of
+ * those and left the customer's own click with nothing to push — a real
+ * conversion lost, silently, with the database claiming success.
+ *
+ * The trade-off runs the other way now: an event can be pushed twice if a page
+ * is loaded twice before the acknowledgement lands, or if the request fails.
+ * That is the better risk — GA4 de-duplicates on `transaction_id`, and a
+ * duplicate is visible in reports where a miss never is.
  */
 final readonly class AnalyticsEventFlusher
 {
     public function __construct(
         private AnalyticsEventRepository $analyticsEventRepository,
-        private MessageBusInterface $commandBus,
     ) {
     }
 
     /**
-     * @return list<array{name: string, payload: array<string, scalar|null>}>
+     * @return list<array{id: string, name: string, payload: array<string, scalar|null>}>
      */
-    public function flushFor(Order $order): array
+    public function pendingFor(Order $order): array
     {
-        $events = $this->analyticsEventRepository->findUnpushedForOrder($order);
-
-        if ([] === $events) {
-            return [];
-        }
-
-        // Read the payloads out before dispatching: the dispatch commits, and
-        // anything we touched afterwards would be reasoning about entities the
-        // transaction has already moved past.
-        $rendered = array_map(
-            static fn ($event): array => ['name' => $event->name, 'payload' => $event->payload],
-            $events,
+        return array_map(
+            static fn ($event): array => [
+                'id' => $event->id->toRfc4122(),
+                'name' => $event->name,
+                'payload' => $event->payload,
+            ],
+            $this->analyticsEventRepository->findUnpushedForOrder($order),
         );
-
-        $this->commandBus->dispatch(new MarkAnalyticsEventsPushedCommand(
-            analyticsEventIds: array_map(static fn ($event) => $event->id, $events),
-        ));
-
-        return $rendered;
     }
 }

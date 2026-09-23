@@ -6,6 +6,7 @@ namespace App\Tests\Integration\Analytics;
 
 use App\Command\ConfirmOrderPaymentCommand;
 use App\Command\CreateOrderCommand;
+use App\Command\MarkAnalyticsEventsPushedCommand;
 use App\Entity\AnalyticsEvent;
 use App\Entity\Order;
 use App\Entity\Storage;
@@ -18,6 +19,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Messenger\Stamp\HandledStamp;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * The measurement outbox (GTM order/payment events).
@@ -91,19 +93,41 @@ final class AnalyticsEventRecordingTest extends WebTestCase
         );
     }
 
-    public function testFlushingHandsTheEventOverExactlyOnce(): void
+    public function testRenderingAloneDoesNotConsumeTheEvent(): void
     {
         $order = $this->createOrderThroughTheBus();
         $this->commandBus->dispatch(new ConfirmOrderPaymentCommand($order));
 
         $flusher = static::getContainer()->get(AnalyticsEventFlusher::class);
 
-        $first = $flusher->flushFor($order);
+        $first = $flusher->pendingFor($order);
         $names = array_column($first, 'name');
         self::assertContains(AnalyticsEvent::FIRST_PAYMENT_SUCCESS, $names);
         self::assertContains(AnalyticsEvent::ORDER_CREATED, $names);
 
-        self::assertSame([], $flusher->flushFor($order), 'Druhé načtení stránky nesmí konverzi poslat znovu.');
+        // A mail scanner fetches the page and runs no JavaScript. The event
+        // must survive that untouched, or the customer's own click gets nothing.
+        self::assertCount(
+            count($first),
+            $flusher->pendingFor($order),
+            'Bez potvrzení z prohlížeče musí událost zůstat nedoručená.',
+        );
+    }
+
+    public function testAcknowledgementFromTheBrowserConsumesTheEvent(): void
+    {
+        $order = $this->createOrderThroughTheBus();
+        $this->commandBus->dispatch(new ConfirmOrderPaymentCommand($order));
+
+        $flusher = static::getContainer()->get(AnalyticsEventFlusher::class);
+        $pending = $flusher->pendingFor($order);
+        self::assertNotSame([], $pending);
+
+        $this->commandBus->dispatch(new MarkAnalyticsEventsPushedCommand(
+            array_map(static fn (array $e): Uuid => Uuid::fromString($e['id']), $pending),
+        ));
+
+        self::assertSame([], $flusher->pendingFor($order), 'Po potvrzení se konverze už posílat nesmí.');
     }
 
     public function testCreationEventIsOrderedBeforeThePaymentEvent(): void
@@ -111,7 +135,7 @@ final class AnalyticsEventRecordingTest extends WebTestCase
         $order = $this->createOrderThroughTheBus();
         $this->commandBus->dispatch(new ConfirmOrderPaymentCommand($order));
 
-        $flushed = static::getContainer()->get(AnalyticsEventFlusher::class)->flushFor($order);
+        $flushed = static::getContainer()->get(AnalyticsEventFlusher::class)->pendingFor($order);
 
         self::assertSame(
             [AnalyticsEvent::ORDER_CREATED, AnalyticsEvent::FIRST_PAYMENT_SUCCESS],

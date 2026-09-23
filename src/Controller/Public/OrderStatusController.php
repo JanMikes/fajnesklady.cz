@@ -42,7 +42,7 @@ final class OrderStatusController extends AbstractController
 
         return $this->render('public/order_status.html.twig', [
             'vm' => $viewModel,
-            'analytics_events' => $this->analyticsEventFlusher->flushFor($order),
+            'analytics_events' => $this->analyticsEventFlusher->pendingFor($order),
         ]);
     }
 }

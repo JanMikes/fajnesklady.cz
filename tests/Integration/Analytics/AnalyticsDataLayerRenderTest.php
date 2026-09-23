@@ -71,7 +71,7 @@ final class AnalyticsDataLayerRenderTest extends WebTestCase
         );
     }
 
-    public function testReloadingTheStatusPageDoesNotPushTheConversionTwice(): void
+    public function testReloadWithoutAcknowledgementStillOffersTheConversion(): void
     {
         $order = $this->paidOrder();
         $url = $this->urlGenerator->generate($order);
@@ -79,12 +79,58 @@ final class AnalyticsDataLayerRenderTest extends WebTestCase
         $this->client->request('GET', $url);
         self::assertStringContainsString('first_payment_success', (string) $this->client->getResponse()->getContent());
 
+        // A mail scanner fetching the page runs no JavaScript and therefore
+        // never acknowledges. The conversion must survive for the real visit.
+        $this->client->request('GET', $url);
+        self::assertStringContainsString(
+            'first_payment_success',
+            (string) $this->client->getResponse()->getContent(),
+            'Bez potvrzení z prohlížeče musí konverze zůstat k dispozici.',
+        );
+    }
+
+    public function testOnceTheBrowserAcknowledgesTheConversionIsNotPushedAgain(): void
+    {
+        $order = $this->paidOrder();
+        $url = $this->urlGenerator->generate($order);
+
+        $this->client->request('GET', $url);
+        $html = (string) $this->client->getResponse()->getContent();
+
+        preg_match_all('/ids:\s*(\[[^\]]*\])/', $html, $matches);
+        self::assertNotEmpty($matches[1], 'Stránka musí prohlížeči předat id událostí k potvrzení.');
+
+        $this->client->request(
+            'POST',
+            '/analytics/ack',
+            server: ['CONTENT_TYPE' => 'application/json'],
+            content: sprintf('{"ids": %s}', $matches[1][0]),
+        );
+        self::assertResponseStatusCodeSame(204);
+
         $this->client->request('GET', $url);
         self::assertStringNotContainsString(
             'first_payment_success',
             (string) $this->client->getResponse()->getContent(),
-            'Obnovení stránky nesmí konverzi nahlásit podruhé.',
+            'Po potvrzení se konverze už posílat nesmí.',
         );
+    }
+
+    public function testAcknowledgementRejectsAMalformedBody(): void
+    {
+        $this->client->request('POST', '/analytics/ack', server: ['CONTENT_TYPE' => 'application/json'], content: 'not json');
+        self::assertResponseStatusCodeSame(400);
+    }
+
+    public function testAcknowledgementIgnoresUnknownIds(): void
+    {
+        $this->client->request(
+            'POST',
+            '/analytics/ack',
+            server: ['CONTENT_TYPE' => 'application/json'],
+            content: '{"ids": ["01a0cdfb-0000-7000-8000-000000000000", "nonsense"]}',
+        );
+        self::assertResponseStatusCodeSame(204);
     }
 
     private function paidOrder(): Order

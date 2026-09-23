@@ -36,11 +36,19 @@ bank transfer is matched days later by the cron. `dataLayer.push()` at the momen
 therefore impossible — there is nothing to push into.
 
 So the moment of truth writes an `analytics_event` row with the payload snapshotted right then, and
-the next page that customer loads flushes whatever is unpushed
-(`AnalyticsEventFlusher::flushFor()`, currently wired into `OrderPaymentController` and
+the next page that customer loads renders whatever is unpushed
+(`AnalyticsEventFlusher::pendingFor()`, wired into `OrderPaymentController` and
 `OrderStatusController` — the latter is also the link in the confirmation e-mail, which is how a
-bank-transfer conversion eventually lands). `pushedAt` is never reset: a conversion must not be
-counted twice.
+bank-transfer conversion eventually lands).
+
+**Rendering does not consume the event.** The browser confirms delivery by POSTing the ids to
+`/analytics/ack` (`AnalyticsEventAckController`) right after the push, and only that sets `pushedAt`.
+The status page is reached through an e-mailed link, and mail security scanners open such links
+without running JavaScript; marking on render handed them the conversion and left the customer's own
+click with nothing, silently. The trade-off is reversed on purpose: an event can be pushed twice if
+the acknowledgement never arrives, and GA4 de-duplicates on `transaction_id` — a duplicate shows up
+in reports, a miss never does. `pushedAt` is never reset in code (only by hand on staging, to re-arm
+a test).
 
 Snapshotting matters — the order can change afterwards (price edits, prolongation) and a conversion
 must report what was true when it happened.

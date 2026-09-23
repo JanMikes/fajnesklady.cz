@@ -125,7 +125,7 @@ final class OrderPaymentController extends AbstractController
         $effectivePaymentAmount = $remainingAmount ?? $order->firstPaymentPrice;
 
         return $this->render('public/order_payment.html.twig', [
-            'analytics_events' => $this->analyticsEventFlusher->flushFor($order),
+            'analytics_events' => $this->analyticsEventFlusher->pendingFor($order),
             'order' => $order,
             'storage' => $storage,
             'storageType' => $storageType,
