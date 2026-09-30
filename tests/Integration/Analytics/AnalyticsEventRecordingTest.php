@@ -79,6 +79,28 @@ final class AnalyticsEventRecordingTest extends WebTestCase
         self::assertSame(round($order->firstPaymentPrice / 100, 2), $event->payload['value']);
     }
 
+    public function testTheConversionAlwaysCarriesADeduplicationKey(): void
+    {
+        // GA4 de-duplicates purchases on transaction_id. A bank transfer has no
+        // GoPay payment, so this must not be sourced from one — otherwise the
+        // one payment method that settles days later, out of band, is also the
+        // one with no protection against being counted twice.
+        $order = $this->orderByStorageNumber('B1');
+
+        $this->commandBus->dispatch(new ConfirmOrderPaymentCommand($order));
+
+        $event = $this->eventFor($order, AnalyticsEvent::FIRST_PAYMENT_SUCCESS);
+        self::assertNotNull($event);
+
+        self::assertNotNull($event->payload['transaction_id'], 'transaction_id nesmí být nikdy null.');
+        self::assertSame(
+            $order->id->toRfc4122(),
+            $event->payload['transaction_id'],
+            'Klíč pro deduplikaci musí být id objednávky — jedna první platba na objednávku.',
+        );
+        self::assertArrayHasKey('gopay_payment_id', $event->payload, 'GoPay id se posílá dál pod vlastním klíčem.');
+    }
+
     public function testExternallySettledPaymentIsNotAConversion(): void
     {
         $order = $this->orderByStorageNumber('B1');

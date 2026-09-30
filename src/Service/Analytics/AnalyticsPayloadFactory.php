@@ -49,7 +49,13 @@ final readonly class AnalyticsPayloadFactory
         return [
             'order_id' => $order->id->toRfc4122(),
             'order_number' => $order->variableSymbol,
-            'transaction_id' => $order->goPayPaymentId,
+            // Always present and unique per order, so GA4 always has a
+            // de-duplication key. It used to carry the GoPay payment id, which
+            // is null for a bank transfer — exactly the case where a retry or a
+            // re-opened link could otherwise count the same payment twice.
+            // The GoPay id is still sent, under its own name.
+            'transaction_id' => $order->id->toRfc4122(),
+            'gopay_payment_id' => $order->goPayPaymentId,
             'payment_method' => $order->paymentMethod?->value,
             'value' => $this->toMajorUnits($amountInHaler),
             'currency' => self::CURRENCY,

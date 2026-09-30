@@ -75,9 +75,14 @@ unconditionally is also what lets a tag fire correctly for someone who accepts l
 `storage_type_id`, `storage_type_name`, `value`, `currency`, `rental_start_date`, `rental_end_date`,
 `rental_days`, `payment_frequency`.
 
-`first_payment_success`: `order_id`, `order_number`, `transaction_id` (GoPay payment id),
+`first_payment_success`: `order_id`, `order_number`, `transaction_id`, `gopay_payment_id`,
 `payment_method`, `value`, `currency`, `place_id`, `place_name`, `storage_type_id`,
 `storage_type_name`.
 
-`value` is the first payment, not the whole rental. For a bank transfer `transaction_id` is null —
-there is no GoPay payment.
+`value` is the first payment, not the whole rental.
+
+**`transaction_id` is the order id and is never null** — it is GA4's de-duplication key, so it must
+exist for every payment method. It deliberately does NOT carry the GoPay payment id: that is null
+for a bank transfer, which is precisely the method that settles days later out of band and most
+needs the protection. There is exactly one first payment per order, so the order id is a correct and
+stable key. The GoPay id still travels, as `gopay_payment_id` (null for bank transfers).
