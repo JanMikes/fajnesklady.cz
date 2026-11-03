@@ -103,7 +103,7 @@ final readonly class ProcessPaymentNotificationHandler
                     ));
                 }
 
-                $this->orderService->confirmPayment($order, $now);
+                $this->orderService->confirmPayment($order, $now, goPayPaymentId: $status->id);
 
                 // Auto-complete the order (terms were already accepted before payment)
                 if ($order->hasAcceptedTerms()) {

@@ -245,8 +245,12 @@ class Order implements EntityWithEvents
         $this->status = OrderStatus::AWAITING_PAYMENT;
     }
 
-    public function markPaid(\DateTimeImmutable $now, ?int $amountOverride = null): void
-    {
+    public function markPaid(
+        \DateTimeImmutable $now,
+        ?int $amountOverride = null,
+        ?string $goPayPaymentId = null,
+        ?Uuid $bankTransactionId = null,
+    ): void {
         $this->status = OrderStatus::PAID;
         $this->paidAt = $now;
 
@@ -254,6 +258,8 @@ class Order implements EntityWithEvents
             orderId: $this->id,
             occurredOn: $now,
             amountOverride: $amountOverride,
+            goPayPaymentId: $goPayPaymentId,
+            bankTransactionId: $bankTransactionId,
         ));
     }
 

@@ -191,9 +191,16 @@ final readonly class OrderPaymentOverviewFactory
                 status: PaymentOverviewRow::STATUS_PAID,
                 amountInHaler: $initialPayment->amount,
                 paidAt: $initialPayment->paidAt,
-                source: null !== $initialPayment->goPayPaymentId
-                    ? 'Kartou (GoPay)'
-                    : ($isExternal ? 'Externě (mimo systém)' : 'Bankovní převod'),
+                source: match (true) {
+                    null !== $initialPayment->goPayPaymentId => 'Kartou (GoPay)',
+                    null !== $initialPayment->bankTransaction => 'Bankovní převod',
+                    $isExternal => 'Externě (mimo systém)',
+                    // Legacy rows recorded before the source was stored: an
+                    // order settled through its own GoPay session was a card
+                    // payment (a later bank→card switch never sets it).
+                    null !== $order->goPayPaymentId && PaymentMethod::GOPAY === $order->paymentMethod => 'Kartou (GoPay)',
+                    default => 'Bankovní převod',
+                },
                 note: $isExternal ? 'Částka evidovaná administrátorem — penězi neprošla platformou.' : null,
             );
         }

@@ -493,6 +493,23 @@ class Contract implements EntityWithEvents
         return $this->terminatesAt ?? $this->endDate;
     }
 
+    /**
+     * Whether the move-out handover is due: the rental is over, or it ends
+     * within {@see HandoverProtocol::WINDOW_DAYS_BEFORE_END} days. Outside this
+     * window a handover protocol is meaningless — the tenant keeps the unit
+     * (e.g. after a prolongation), so no reminders and no lock-code change.
+     */
+    public function isWithinHandoverWindow(\DateTimeImmutable $now): bool
+    {
+        if ($this->isTerminated()) {
+            return true;
+        }
+
+        $windowEnd = $now->modify(sprintf('+%d days', HandoverProtocol::WINDOW_DAYS_BEFORE_END));
+
+        return $this->getEffectiveEndDate() <= $windowEnd;
+    }
+
     public function recordAdvanceNoticeSent(\DateTimeImmutable $now): void
     {
         $this->lastAdvanceNoticeSentAt = $now;

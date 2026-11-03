@@ -8,6 +8,7 @@ use App\Repository\ContractRepository;
 use App\Service\AuditLogger;
 use App\Service\StorageCodeGenerator;
 use Psr\Clock\ClockInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]
@@ -18,6 +19,7 @@ final readonly class ReleaseStorageOnHandoverCompletedHandler
         private AuditLogger $auditLogger,
         private StorageCodeGenerator $codeGenerator,
         private ClockInterface $clock,
+        private LoggerInterface $logger,
     ) {
     }
 
@@ -28,7 +30,17 @@ final readonly class ReleaseStorageOnHandoverCompletedHandler
         $now = $this->clock->now();
 
         if (null !== $event->newLockCode) {
-            $this->codeGenerator->applyCode($storage, $event->newLockCode, $now);
+            if ($contract->isWithinHandoverWindow($now)) {
+                $this->codeGenerator->applyCode($storage, $event->newLockCode, $now);
+            } else {
+                // A protocol completed while the rental still runs on (e.g. a
+                // prolonged contract) must never re-key the unit — that would
+                // lock a paying tenant out of their own storage.
+                $this->logger->warning('Handover completed outside the handover window — new lock code NOT applied', [
+                    'handover_protocol_id' => $event->handoverProtocolId->toRfc4122(),
+                    'contract_id' => $contract->id->toRfc4122(),
+                ]);
+            }
         }
 
         if ($contract->isTerminated() && $storage->isOccupied()) {

@@ -88,6 +88,7 @@ final readonly class SendStorageAvailabilityWarningHandler
                 'endDate' => $contract->endDate->format('d.m.Y'),
                 'portalUrl' => $portalUrl,
             ]);
+        $email->getHeaders()->addTextHeader('X-Order-Id', $contract->order->id->toRfc4122());
 
         $this->mailer->send($email);
     }

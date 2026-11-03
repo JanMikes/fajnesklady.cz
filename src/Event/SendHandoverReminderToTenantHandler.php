@@ -55,6 +55,7 @@ final readonly class SendHandoverReminderToTenantHandler
                 'isUrgent' => $isUrgent,
                 'handoverUrl' => $handoverUrl,
             ]);
+        $email->getHeaders()->addTextHeader('X-Order-Id', $contract->order->id->toRfc4122());
 
         try {
             $this->mailer->send($email);

@@ -858,47 +858,10 @@
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-200">
-                            {% set templateLabels = {
-                                'email/signing_link': 'Odkaz k podpisu',
-                                'email/order_placed': 'Potvrzení objednávky',
-                                'email/order_cancelled': 'Zrušení objednávky',
-                                'email/rental_activated': 'Aktivace pronájmu',
-                                'email/invoice': 'Faktura',
-                                'email/onboarding_payment_reminder': 'Připomínka platby (onboarding)',
-                                'email/manual_billing_payment_initial': 'Výzva k platbě (7 dní)',
-                                'email/manual_billing_payment_reminder': 'Připomínka platby (2 dny)',
-                                'email/manual_billing_payment_due_today': 'Platba splatná dnes',
-                                'email/manual_billing_payment_overdue_first': 'Upomínka — platba po splatnosti',
-                                'email/manual_billing_payment_overdue_final': 'Poslední upomínka',
-                                'email/manual_billing_overdue_admin': 'Upomínka (admin)',
-                                'email/recurring_payment_established': 'Nastavení opakované platby',
-                                'email/recurring_payment_failed': 'Selhání opakované platby',
-                                'email/recurring_payment_failed_admin': 'Selhání platby (admin)',
-                                'email/recurring_payment_advance_notice': 'Předběžné oznámení platby',
-                                'email/recurring_payment_cancelled': 'Zrušení opakované platby',
-                                'email/recurring_payment_cancelled_admin': 'Zrušení platby (admin)',
-                                'email/contract_expiring': 'Blížící se konec smlouvy',
-                                'email/contract_terminated': 'Ukončení smlouvy',
-                                'email/termination_notice': 'Výpověď',
-                                'email/termination_notice_admin': 'Výpověď (admin)',
-                                'email/payment_default_tenant': 'Oznámení o prodlení',
-                                'email/payment_default_admin': 'Prodlení (admin)',
-                                'email/payment_demand_tenant': 'Výzva k úhradě',
-                                'email/payment_demand_admin': 'Výzva k úhradě (admin)',
-                                'email/external_prepayment_ending_soon': 'Končící externí předplatné',
-                                'email/external_prepayment_ending_soon_admin': 'Končící předplatné (admin)',
-                                'email/debt_payment_request': 'Výzva k úhradě dluhu',
-                                'email/fine_issued': 'Vystavení pokuty',
-                                'email/fine_payment_reminder': 'Připomínka pokuty',
-                                'email/fine_paid': 'Potvrzení úhrady pokuty',
-                                'email/payment_amount_mismatch': 'Nesouhlasí částka platby',
-                                'email/bank_transfer_amount_mismatch_admin': 'Neshoda převodu (admin)',
-                                'email/bank_transfer_amount_mismatch_customer': 'Neshoda převodu (zákazník)',
-                            } %}
                             {% for log in emailLogs %}
                                 <tr>
                                     <td class="px-3 py-2 text-sm text-gray-900 whitespace-nowrap">{{ log.attemptedAt|date('d.m.Y H:i') }}</td>
-                                    <td class="px-3 py-2 text-sm text-gray-900">{{ templateLabels[log.templateName] ?? log.templateName ?? '—' }}</td>
+                                    <td class="px-3 py-2 text-sm text-gray-900">{{ log.templateName|email_template_label }}</td>
                                     <td class="px-3 py-2 text-sm text-gray-500">{{ log.toAddresses[0].email ?? '—' }}</td>
                                     <td class="px-3 py-2 text-sm whitespace-nowrap">
                                         {% if log.status.value == 'sent' %}

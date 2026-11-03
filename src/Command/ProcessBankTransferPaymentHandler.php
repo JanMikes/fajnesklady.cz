@@ -50,7 +50,7 @@ final readonly class ProcessBankTransferPaymentHandler
         }
 
         if ($order->canBePaid()) {
-            $this->orderService->confirmPayment($order, $now, $effectiveAmount);
+            $this->orderService->confirmPayment($order, $now, $effectiveAmount, bankTransactionId: $transaction->id);
 
             if ($order->hasAcceptedTerms()) {
                 $this->commandBus->dispatch(new CompleteOrderCommand($order));

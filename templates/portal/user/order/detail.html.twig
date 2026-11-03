@@ -13,39 +13,7 @@
     <div class="flex items-center justify-between mb-8">
         <h1 class="text-3xl font-bold text-gray-900">Detail objednávky</h1>
         <div class="flex items-center space-x-3">
-            {% set statusClass = {
-                'created': 'bg-gray-100 text-gray-800',
-                'reserved': 'bg-yellow-100 text-yellow-800',
-                'awaiting_payment': 'bg-amber-100 text-amber-800',
-                'paid': 'bg-green-100 text-green-800',
-                'completed': 'bg-green-100 text-green-800',
-                'cancelled': 'bg-red-100 text-red-800',
-                'expired': 'bg-gray-100 text-gray-800'
-            } %}
-            {% set statusLabel = {
-                'created': 'Vytvořeno',
-                'reserved': 'Rezervováno',
-                'awaiting_payment': 'Čeká na platbu',
-                'paid': 'Zaplaceno',
-                'completed': 'Dokončeno',
-                'cancelled': 'Zrušeno',
-                'expired': 'Expirováno'
-            } %}
-            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium {{ statusClass[order.status.value] ?? 'bg-gray-100 text-gray-800' }}">
-                {{ statusLabel[order.status.value] ?? order.status.value }}
-            </span>
-            {% if contract %}
-                {% set isContractActive = contract.terminatedAt is null and contract.endDate >= now %}
-                {% if contract.terminatedAt %}
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
-                        Smlouva ukončena
-                    </span>
-                {% elseif isContractActive %}
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-                        Smlouva aktivní
-                    </span>
-                {% endif %}
-            {% endif %}
+            {% include 'components/order_status_badge.html.twig' with {order: order, contract: contract, size: 'md'} only %}
         </div>
     </div>
 

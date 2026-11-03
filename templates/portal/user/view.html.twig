@@ -242,24 +242,6 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% set statusClass = {
-                            'created': 'badge-ghost',
-                            'reserved': 'badge-info',
-                            'awaiting_payment': 'badge-warning',
-                            'paid': 'badge-success',
-                            'completed': 'badge-success',
-                            'cancelled': 'badge-error',
-                            'expired': 'badge-error'
-                        } %}
-                        {% set statusLabel = {
-                            'created': 'Vytvořeno',
-                            'reserved': 'Rezervováno',
-                            'awaiting_payment': 'Čeká na platbu',
-                            'paid': 'Zaplaceno',
-                            'completed': 'Dokončeno',
-                            'cancelled': 'Zrušeno',
-                            'expired': 'Expirováno'
-                        } %}
                         {% for order in orders %}
                             {% set contract = contractsByOrderId[order.id.toRfc4122()] ?? null %}
                             {% set overdueView = contract ? (overdueViewsByContractId[contract.id.toRfc4122()] ?? null) : null %}
@@ -271,9 +253,7 @@
                                 </td>
                                 <td>
                                     <div class="flex flex-wrap gap-1">
-                                        <span class="badge {{ statusClass[order.status.value] ?? 'badge-ghost' }}">
-                                            {{ statusLabel[order.status.value] ?? order.status.value }}
-                                        </span>
+                                        {% include 'components/order_status_badge.html.twig' with {order: order, contract: contract, style: 'badge'} only %}
                                     </div>
                                 </td>
                                 <td class="text-sm">

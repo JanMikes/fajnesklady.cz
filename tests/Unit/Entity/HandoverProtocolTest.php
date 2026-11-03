@@ -114,7 +114,65 @@ class HandoverProtocolTest extends TestCase
         return new User(Uuid::v7(), $email, 'password', 'Test', 'User', $this->now);
     }
 
-    private function createProtocol(): HandoverProtocol
+    public function testFreshProtocolIsUntouched(): void
+    {
+        self::assertTrue($this->createProtocol()->isUntouched());
+    }
+
+    public function testProtocolWithAnySideFilledIsNotUntouched(): void
+    {
+        $tenantDone = $this->createProtocol();
+        $tenantDone->completeTenantSide('Vyklizeno.', $this->now);
+        self::assertFalse($tenantDone->isUntouched());
+
+        $landlordDone = $this->createProtocol();
+        $landlordDone->completeLandlordSide('Převzato.', null, $this->now);
+        self::assertFalse($landlordDone->isUntouched());
+
+        $skipped = $this->createProtocol();
+        $skipped->skipTenantSide($this->createUser('admin@example.com'), $this->now);
+        self::assertFalse($skipped->isUntouched());
+    }
+
+    public function testRemindersDoNotMakeProtocolTouched(): void
+    {
+        $protocol = $this->createProtocol();
+        $protocol->recordReminderSent($this->now);
+
+        self::assertTrue($protocol->isUntouched());
+    }
+
+    public function testContractEndingWithinSevenDaysIsInsideHandoverWindow(): void
+    {
+        $contract = $this->createProtocol($this->now->modify('+7 days'))->contract;
+
+        self::assertTrue($contract->isWithinHandoverWindow($this->now));
+    }
+
+    /**
+     * Regression (order 01a0cd43): after a prolongation the end moved a month
+     * out — the open protocol must stop acting until the window reopens.
+     */
+    public function testProlongedContractIsOutsideHandoverWindow(): void
+    {
+        $contract = $this->createProtocol($this->now->modify('+5 days'))->contract;
+        self::assertTrue($contract->isWithinHandoverWindow($this->now));
+
+        $contract->prolong($this->now->modify('+35 days'), null, $this->now);
+
+        self::assertFalse($contract->isWithinHandoverWindow($this->now));
+        self::assertTrue($contract->isWithinHandoverWindow($this->now->modify('+28 days')));
+    }
+
+    public function testPendingTerminationUsesTerminationDateForWindow(): void
+    {
+        $contract = $this->createProtocol($this->now->modify('+300 days'))->contract;
+        $contract->requestTermination($this->now, $this->now->modify('+5 days'));
+
+        self::assertTrue($contract->isWithinHandoverWindow($this->now));
+    }
+
+    private function createProtocol(?\DateTimeImmutable $endDate = null): HandoverProtocol
     {
         $user = $this->createUser();
         $place = new Place(
@@ -149,7 +207,7 @@ class HandoverProtocolTest extends TestCase
             owner: null,
         );
         $startDate = $this->now->modify('-6 months');
-        $endDate = $this->now->modify('+1 day');
+        $endDate ??= $this->now->modify('+1 day');
         $order = new Order(
             id: Uuid::v7(),
             user: $user,

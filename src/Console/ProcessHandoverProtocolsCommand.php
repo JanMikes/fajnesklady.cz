@@ -28,7 +28,6 @@ use Symfony\Component\Uid\Uuid;
 )]
 final class ProcessHandoverProtocolsCommand extends Command
 {
-    private const int DAYS_BEFORE_END = 7;
     private const int FORCE_RELEASE_DAYS = 14;
 
     public function __construct(
@@ -66,11 +65,11 @@ final class ProcessHandoverProtocolsCommand extends Command
 
     private function createHandoverProtocols(SymfonyStyle $io, \DateTimeImmutable $now): int
     {
-        $threshold = $now->modify('+'.self::DAYS_BEFORE_END.' days');
+        $threshold = $now->modify('+'.HandoverProtocol::WINDOW_DAYS_BEFORE_END.' days');
         $created = 0;
 
         // Find contracts ending within 7 days (LIMITED)
-        $expiringContracts = $this->contractRepository->findExpiringWithinDays(self::DAYS_BEFORE_END, $now);
+        $expiringContracts = $this->contractRepository->findExpiringWithinDays(HandoverProtocol::WINDOW_DAYS_BEFORE_END, $now);
 
         // Find contracts with termination notice within 7 days (UNLIMITED)
         $terminatingContracts = $this->contractRepository->findDueForTermination($threshold);

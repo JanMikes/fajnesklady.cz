@@ -56,6 +56,7 @@ final readonly class ForceReleaseStorageOnHandoverExpiredHandler
                     'landlordName' => null !== $storage->owner ? $storage->owner->fullName : 'N/A',
                     'contractTerminatedAt' => $contract->terminatedAt?->format('d.m.Y'),
                 ]);
+            $email->getHeaders()->addTextHeader('X-Order-Id', $contract->order->id->toRfc4122());
 
             try {
                 $this->mailer->send($email);

@@ -18,6 +18,7 @@ use App\Repository\OrderRepository;
 use App\Repository\StorageRepository;
 use App\Service\Identity\ProvideIdentity;
 use App\Service\Payment\VariableSymbolGenerator;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * Service for managing order lifecycle.
@@ -179,14 +180,23 @@ final readonly class OrderService
      *                             order's locked-in monthly. Used by the admin
      *                             migrate flow (lump-sum prepayment); null
      *                             everywhere else.
+     * @param ?string $goPayPaymentId  GoPay payment that settled the order
+     * @param ?Uuid   $bankTransactionId FIO transaction that settled the order
+     *                                   — both recorded as the initial
+     *                                   Payment's source (card vs. transfer)
      */
-    public function confirmPayment(Order $order, \DateTimeImmutable $now = new \DateTimeImmutable(), ?int $explicitAmount = null): void
-    {
+    public function confirmPayment(
+        Order $order,
+        \DateTimeImmutable $now = new \DateTimeImmutable(),
+        ?int $explicitAmount = null,
+        ?string $goPayPaymentId = null,
+        ?Uuid $bankTransactionId = null,
+    ): void {
         if (!$order->canBePaid()) {
             throw new \DomainException('Order cannot be paid in its current state.');
         }
 
-        $order->markPaid($now, $explicitAmount);
+        $order->markPaid($now, $explicitAmount, $goPayPaymentId, $bankTransactionId);
 
         // EXTERNAL settle (or an explicit zero — the free/prepaid formality)
         // is a state-machine transition, not received money: it must never

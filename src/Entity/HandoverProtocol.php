@@ -18,6 +18,13 @@ class HandoverProtocol implements EntityWithEvents
 {
     use HasEvents;
 
+    /**
+     * How many days before the contract's effective end the protocol opens
+     * (creation cron) — and the window outside of which it must not nag the
+     * tenant or touch the lock code ({@see Contract::isWithinHandoverWindow()}).
+     */
+    public const int WINDOW_DAYS_BEFORE_END = 7;
+
     #[ORM\Column(length: 30, enumType: HandoverStatus::class)]
     public private(set) HandoverStatus $status;
 
@@ -131,6 +138,20 @@ class HandoverProtocol implements EntityWithEvents
     public function isFullyCompleted(): bool
     {
         return $this->status->isCompleted();
+    }
+
+    /**
+     * Nobody has put anything into the protocol yet — no side submitted or
+     * skipped, no photo uploaded. Such a protocol carries no information and
+     * can be discarded safely when it turns out to be premature.
+     */
+    public function isUntouched(): bool
+    {
+        return HandoverStatus::PENDING === $this->status
+            && null === $this->tenantCompletedAt
+            && null === $this->tenantSkippedAt
+            && null === $this->landlordCompletedAt
+            && $this->photos->isEmpty();
     }
 
     public function needsTenantCompletion(): bool

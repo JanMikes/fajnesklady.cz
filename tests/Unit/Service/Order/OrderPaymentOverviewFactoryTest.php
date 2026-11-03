@@ -151,6 +151,61 @@ class OrderPaymentOverviewFactoryTest extends TestCase
         $this->assertSame('Automaticky kartou', $scheduledRows[0]->source);
     }
 
+    /**
+     * Regression (order 01a0cd43): first payments recorded before the source
+     * was stored had neither a GoPay id nor a bank transaction, and every
+     * card-paid one read "Bankovní převod".
+     */
+    public function testLegacyFirstPaymentOfGoPaySettledOrderReadsAsCard(): void
+    {
+        $order = $this->createOrder(startDate: '2025-05-01', endDate: '2025-09-30');
+        $order->setPaymentMethod(PaymentMethod::GOPAY);
+        $order->setGoPayPaymentId('9300412319');
+        $order->markPaid(new \DateTimeImmutable('2025-05-01 10:00:00'));
+
+        $overview = $this->createFactory()->build($order, $this->createContract($order), [$this->legacyFirstPayment($order)], [], $this->now);
+
+        $this->assertSame('Kartou (GoPay)', $this->firstPaymentRow($overview->rows)->source);
+    }
+
+    public function testLegacyFirstPaymentOfBankTransferOrderReadsAsTransfer(): void
+    {
+        $order = $this->createOrder(startDate: '2025-05-01', endDate: '2025-09-30');
+        $order->setPaymentMethod(PaymentMethod::BANK_TRANSFER);
+        $order->markPaid(new \DateTimeImmutable('2025-05-01 10:00:00'));
+
+        $overview = $this->createFactory()->build($order, $this->createContract($order), [$this->legacyFirstPayment($order)], [], $this->now);
+
+        $this->assertSame('Bankovní převod', $this->firstPaymentRow($overview->rows)->source);
+    }
+
+    private function legacyFirstPayment(Order $order): Payment
+    {
+        return new Payment(
+            id: Uuid::v7(),
+            order: $order,
+            contract: null,
+            storage: $order->storage,
+            amount: 288000,
+            paidAt: new \DateTimeImmutable('2025-05-01 10:00:00'),
+            createdAt: new \DateTimeImmutable('2025-05-01 10:00:00'),
+        );
+    }
+
+    /**
+     * @param list<PaymentOverviewRow> $rows
+     */
+    private function firstPaymentRow(array $rows): PaymentOverviewRow
+    {
+        foreach ($rows as $row) {
+            if ('První platba' === $row->label) {
+                return $row;
+            }
+        }
+
+        self::fail('No "První platba" row.');
+    }
+
     public function testPaidRequestIsNotDuplicatedByItsPaymentRow(): void
     {
         $order = $this->createOrder(startDate: '2025-04-01', endDate: '2025-09-30');

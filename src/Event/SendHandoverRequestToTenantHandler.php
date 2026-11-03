@@ -45,6 +45,7 @@ final readonly class SendHandoverRequestToTenantHandler
                 'endDate' => $contract->getEffectiveEndDate()->format('d.m.Y'),
                 'handoverUrl' => $handoverUrl,
             ]);
+        $email->getHeaders()->addTextHeader('X-Order-Id', $contract->order->id->toRfc4122());
 
         try {
             $this->mailer->send($email);

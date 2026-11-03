@@ -1,0 +1,39 @@
+{#
+    Order status badge — shows the CONTRACT state for completed orders
+    ("Aktivní", "Smlouva ukončena", …), never the bare "Dokončeno" order-flow
+    status. See App\Twig\OrderStatusBadgeExtension.
+
+    Inputs:
+      - order: Order (required)
+      - contract: ?Contract (optional; looked up when omitted)
+      - size: 'xs' | 'sm' | 'md' (default 'sm') — pill size
+      - style: 'pill' | 'badge' (default 'pill') — 'badge' uses the app.css .badge-* set
+#}
+{% set _status = order_status_badge(order, contract ?? null) %}
+{% set _size = size ?? 'sm' %}
+{% if (style ?? 'pill') == 'badge' %}
+    {% set _badgeClass = {
+        'green': 'badge-success',
+        'blue': 'badge-info',
+        'amber': 'badge-warning',
+        'yellow': 'badge-warning',
+        'red': 'badge-error',
+        'gray': 'badge-ghost',
+    } %}
+    <span class="badge {{ _badgeClass[_status.tone] ?? 'badge-ghost' }}"{% if _status.title %} title="{{ _status.title }}"{% endif %}>{{ _status.label }}</span>
+{% else %}
+    {% set _toneClass = {
+        'green': 'bg-green-100 text-green-800',
+        'blue': 'bg-blue-100 text-blue-800',
+        'amber': 'bg-amber-100 text-amber-800',
+        'yellow': 'bg-yellow-100 text-yellow-800',
+        'red': 'bg-red-100 text-red-800',
+        'gray': 'bg-gray-100 text-gray-800',
+    } %}
+    {% set _sizeClass = {
+        'xs': 'px-2 py-0.5 rounded text-xs',
+        'sm': 'px-2.5 py-0.5 rounded-full text-xs',
+        'md': 'px-3 py-1 rounded-full text-sm',
+    } %}
+    <span class="inline-flex items-center font-medium {{ _sizeClass[_size] ?? _sizeClass['sm'] }} {{ _toneClass[_status.tone] ?? _toneClass['gray'] }}"{% if _status.title %} title="{{ _status.title }}"{% endif %}>{{ _status.label }}</span>
+{% endif %}

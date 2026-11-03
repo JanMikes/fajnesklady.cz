@@ -120,6 +120,10 @@ class PaymentRecordingTest extends KernelTestCase
         $this->assertSame($order->firstPaymentPrice, $payment->amount);
         $this->assertNotNull($payment->order);
         $this->assertTrue($payment->order->id->equals($order->id));
+        // The source must be recorded — without it the payment overview
+        // labelled card-paid first payments "Bankovní převod".
+        $this->assertSame($paymentId, $payment->goPayPaymentId);
+        $this->assertNull($payment->bankTransaction);
     }
 
     public function testPaymentRecordedOnRecurringPaymentCharged(): void

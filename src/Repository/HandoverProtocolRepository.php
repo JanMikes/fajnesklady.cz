@@ -40,23 +40,39 @@ class HandoverProtocolRepository
             ->getOneOrNullResult();
     }
 
+    public function remove(HandoverProtocol $handoverProtocol): void
+    {
+        $this->entityManager->remove($handoverProtocol);
+    }
+
     /**
-     * Find incomplete handover protocols for sending reminders.
-     * Only returns protocols where last reminder was sent more than 3 days ago (or never sent).
+     * Incomplete protocols due for a reminder: 3+ days since the last
+     * reminder — or, for the first one, since the protocol was created (the
+     * creation itself already e-mailed the request; reminding in the same
+     * run is a duplicate).
+     *
+     * Only protocols inside the handover window qualify: a contract that was
+     * prolonged (or otherwise runs on) past it keeps its unit, so nagging the
+     * tenant to hand it over would be wrong. Mirrors
+     * {@see \App\Entity\Contract::isWithinHandoverWindow()}.
      *
      * @return HandoverProtocol[]
      */
     public function findIncompleteForReminders(\DateTimeImmutable $now): array
     {
         $reminderThreshold = $now->modify('-3 days');
+        $windowEnd = $now->modify(sprintf('+%d days', HandoverProtocol::WINDOW_DAYS_BEFORE_END));
 
         return $this->entityManager->createQueryBuilder()
             ->select('hp')
             ->from(HandoverProtocol::class, 'hp')
+            ->join('hp.contract', 'c')
             ->where('hp.status != :completed')
-            ->andWhere('hp.lastReminderSentAt IS NULL OR hp.lastReminderSentAt <= :threshold')
-            ->setParameter('completed', 'completed')
+            ->andWhere('(hp.lastReminderSentAt IS NULL AND hp.createdAt <= :threshold) OR hp.lastReminderSentAt <= :threshold')
+            ->andWhere('c.terminatedAt IS NOT NULL OR COALESCE(c.terminatesAt, c.endDate) <= :windowEnd')
+            ->setParameter('completed', HandoverStatus::COMPLETED->value)
             ->setParameter('threshold', $reminderThreshold)
+            ->setParameter('windowEnd', $windowEnd)
             ->getQuery()
             ->getResult();
     }

@@ -10,6 +10,7 @@ use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Mime\Address;
+use Symfony\Component\Uid\Uuid;
 
 #[AsMessageHandler]
 final readonly class SendHandoverCompletedEmailHandler
@@ -41,6 +42,7 @@ final readonly class SendHandoverCompletedEmailHandler
             'Předávací protokol dokončen - '.$place->name,
             array_merge($context, ['name' => $user->fullName]),
             $event,
+            $contract->order->id,
         );
 
         // Email to landlord
@@ -51,6 +53,7 @@ final readonly class SendHandoverCompletedEmailHandler
                 'Předávací protokol dokončen - '.$place->name,
                 array_merge($context, ['name' => $landlord->fullName]),
                 $event,
+                $contract->order->id,
             );
         }
     }
@@ -58,7 +61,7 @@ final readonly class SendHandoverCompletedEmailHandler
     /**
      * @param array<string, mixed> $context
      */
-    private function sendEmail(string $toEmail, string $toName, string $subject, array $context, HandoverCompleted $event): void
+    private function sendEmail(string $toEmail, string $toName, string $subject, array $context, HandoverCompleted $event, Uuid $orderId): void
     {
         $email = (new TemplatedEmail())
             ->from(new Address('noreply@fajnesklady.cz', 'Fajnesklady.cz'))
@@ -66,6 +69,7 @@ final readonly class SendHandoverCompletedEmailHandler
             ->subject($subject)
             ->htmlTemplate('email/handover_completed.html.twig')
             ->context($context);
+        $email->getHeaders()->addTextHeader('X-Order-Id', $orderId->toRfc4122());
 
         try {
             $this->mailer->send($email);

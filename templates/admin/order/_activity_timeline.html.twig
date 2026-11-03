@@ -2,7 +2,19 @@
     Activity timeline panel — merges audit log + email log chronologically.
     Expects: auditLogs (AuditLog[]), emailLogs (EmailLog[]), order (Order)
 #}
+{#
+    Labels are looked up as 'entity.event' first, then by the bare event —
+    several entities share event names ('created', 'signed', …), and the bare
+    fallback alone made e.g. a handover protocol read "Objednávka vytvořena".
+#}
 {% set eventLabels = {
+    'contract.created': 'Smlouva vytvořena',
+    'contract.signed': 'Smlouva podepsána',
+    'storage.reserved': 'Sklad rezervován',
+    'handover.created': 'Předávací protokol vytvořen',
+    'handover.tenant_skipped': 'Protokol — strana nájemce přeskočena (admin)',
+    'handover.discarded_on_prolongation': 'Předávací protokol zrušen (smlouva prodloužena)',
+    'handover.kept_on_prolongation': 'Předávací protokol ponechán po prodloužení — zkontrolovat',
     'created': 'Objednávka vytvořena',
     'reserved': 'Sklad rezervován',
     'signed': 'Podepsáno',
@@ -55,6 +67,10 @@
 } %}
 
 {% set eventIcons = {
+    'handover.created': 'amber',
+    'handover.tenant_skipped': 'blue',
+    'handover.discarded_on_prolongation': 'blue',
+    'handover.kept_on_prolongation': 'amber',
     'created': 'blue',
     'reserved': 'blue',
     'signed': 'green',
@@ -166,7 +182,7 @@
                                 {% endif %}
                                 <div class="relative flex space-x-3">
                                     {% if item.type == 'audit' %}
-                                        {% set color = eventIcons[item.eventType] ?? 'blue' %}
+                                        {% set color = eventIcons[item.entityType ~ '.' ~ item.eventType] ?? eventIcons[item.eventType] ?? 'blue' %}
                                         <div>
                                             <span class="h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-white {{ colorClasses[color] ?? 'bg-gray-100 text-gray-600' }}">
                                                 {% if color == 'green' %}
@@ -183,7 +199,7 @@
                                         <div class="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
                                             <div>
                                                 <p class="text-sm text-gray-900">
-                                                    {{ eventLabels[item.eventType] ?? (item.entityType ~ '.' ~ item.eventType) }}
+                                                    {{ eventLabels[item.entityType ~ '.' ~ item.eventType] ?? eventLabels[item.eventType] ?? (item.entityType ~ '.' ~ item.eventType) }}
                                                     {% if item.eventType == 'admin_manual_email_sent' and item.payload.email_type is defined %}
                                                         <span class="text-gray-500">({{ manualEmailLabels[item.payload.email_type] ?? item.payload.email_type }})</span>
                                                     {% endif %}
@@ -231,34 +247,8 @@
                                         </div>
                                         <div class="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
                                             <div>
-                                                {% set templateLabels = {
-                                                    'email/signing_link': 'Odkaz k podpisu',
-                                                    'email/order_placed': 'Potvrzení objednávky',
-                                                    'email/order_cancelled': 'Zrušení objednávky',
-                                                    'email/rental_activated': 'Aktivace pronájmu',
-                                                    'email/invoice': 'Faktura',
-                                                    'email/onboarding_payment_reminder': 'Připomínka platby (onboarding)',
-                                                    'email/manual_billing_payment_initial': 'Výzva k platbě',
-                                                    'email/manual_billing_payment_reminder': 'Připomínka platby',
-                                                    'email/manual_billing_payment_due_today': 'Platba splatná dnes',
-                                                    'email/manual_billing_payment_overdue_first': 'Upomínka',
-                                                    'email/manual_billing_payment_overdue_final': 'Poslední upomínka',
-                                                    'email/recurring_payment_established': 'Nastavení opak. platby',
-                                                    'email/recurring_payment_failed': 'Selhání platby',
-                                                    'email/recurring_payment_advance_notice': 'Předběžné oznámení',
-                                                    'email/recurring_payment_cancelled': 'Zrušení opak. platby',
-                                                    'email/contract_expiring': 'Blížící se konec smlouvy',
-                                                    'email/contract_terminated': 'Ukončení smlouvy',
-                                                    'email/termination_notice': 'Výpověď',
-                                                    'email/payment_default_tenant': 'Oznámení o prodlení',
-                                                    'email/payment_demand_tenant': 'Výzva k úhradě',
-                                                    'email/debt_payment_request': 'Výzva k úhradě dluhu',
-                                                    'email/fine_issued': 'Vystavení pokuty',
-                                                    'email/fine_payment_reminder': 'Připomínka pokuty',
-                                                    'email/fine_paid': 'Potvrzení úhrady pokuty',
-                                                } %}
                                                 <p class="text-sm text-gray-900">
-                                                    E-mail: {{ templateLabels[item.templateName] ?? item.templateName ?? '—' }}
+                                                    E-mail: {{ item.templateName|email_template_label }}
                                                     {% if item.status.value != 'sent' %}
                                                         <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">Selhalo</span>
                                                     {% endif %}

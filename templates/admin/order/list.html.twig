@@ -69,31 +69,8 @@
                             </td>
                             <td class="font-medium">{% if order.isAwaitingPaymentChoice() %}<span class="badge badge-warning badge-sm" title="Zákazník zvolí způsob a frekvenci platby při podpisu">Čeká na volbu platby</span>{% else %}{{ (order.firstPaymentPrice / 100)|number_format(0, ',', ' ') }} Kč{% if order.isRecurring %} / {{ order.isYearlyFrequency ? 'rok' : 'měsíc' }}{% endif %}{% endif %}</td>
                             <td>
-                                {% set statusClass = {
-                                    'created': 'badge-ghost',
-                                    'reserved': 'badge-info',
-                                    'awaiting_payment': 'badge-warning',
-                                    'paid': 'badge-success',
-                                    'completed': 'badge-success',
-                                    'cancelled': 'badge-error',
-                                    'expired': 'badge-error'
-                                } %}
-                                {% set statusLabel = {
-                                    'created': 'Vytvořeno',
-                                    'reserved': 'Rezervováno',
-                                    'awaiting_payment': 'Čeká na platbu',
-                                    'paid': 'Zaplaceno',
-                                    'completed': 'Dokončeno',
-                                    'cancelled': 'Zrušeno',
-                                    'expired': 'Expirováno'
-                                } %}
                                 <div class="flex flex-wrap gap-1">
-                                    <span class="badge {{ statusClass[order.status.value] ?? 'badge-ghost' }}">
-                                        {{ statusLabel[order.status.value] ?? order.status.value }}
-                                    </span>
-                                    {% if contract and contract.terminatedAt %}
-                                        <span class="badge badge-error" title="Smlouva ukončena {{ contract.terminatedAt|date('d.m.Y') }}">Ukončeno</span>
-                                    {% endif %}
+                                    {% include 'components/order_status_badge.html.twig' with {order: order, contract: contract, style: 'badge'} only %}
                                     {% if order.individualMonthlyAmount is not null %}
                                         {% if order.individualMonthlyAmount == 0 %}
                                             <span class="badge badge-success badge-sm" title="Smlouva zdarma — bez fakturace">Zdarma</span>

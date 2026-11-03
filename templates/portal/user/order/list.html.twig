@@ -68,27 +68,7 @@
                                 {{ (order.firstPaymentPrice / 100)|number_format(2, ',', ' ') }} Kč{% if order.isRecurring %} / {{ order.isYearlyFrequency ? 'rok' : 'měsíc' }}{% endif %}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
-                                {% set statusClass = {
-                                    'created': 'bg-gray-100 text-gray-800',
-                                    'reserved': 'bg-yellow-100 text-yellow-800',
-                                    'awaiting_payment': 'bg-amber-100 text-amber-800',
-                                    'paid': 'bg-green-100 text-green-800',
-                                    'completed': 'bg-green-100 text-green-800',
-                                    'cancelled': 'bg-red-100 text-red-800',
-                                    'expired': 'bg-gray-100 text-gray-800'
-                                } %}
-                                {% set statusLabel = {
-                                    'created': 'Vytvořeno',
-                                    'reserved': 'Rezervováno',
-                                    'awaiting_payment': 'Čeká na platbu',
-                                    'paid': 'Zaplaceno',
-                                    'completed': 'Dokončeno',
-                                    'cancelled': 'Zrušeno',
-                                    'expired': 'Expirováno'
-                                } %}
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ statusClass[order.status.value] ?? 'bg-gray-100 text-gray-800' }}">
-                                    {{ statusLabel[order.status.value] ?? order.status.value }}
-                                </span>
+                                {% include 'components/order_status_badge.html.twig' with {order: order, contract: null, size: 'sm'} only %}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                 {{ order.createdAt|date('d.m.Y H:i') }}

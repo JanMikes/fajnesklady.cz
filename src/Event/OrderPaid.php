@@ -14,11 +14,18 @@ final readonly class OrderPaid
      *                             order's locked-in monthly. Used by the admin
      *                             migrate flow (lump-sum prepayment). Null for
      *                             every other path.
+     * @param ?string $goPayPaymentId    The GoPay payment that settled the order
+     *                                   (card / GoPay path) — recorded on the
+     *                                   initial Payment as its source.
+     * @param ?Uuid   $bankTransactionId The FIO transaction that settled the
+     *                                   order (bank-transfer path).
      */
     public function __construct(
         public Uuid $orderId,
         public \DateTimeImmutable $occurredOn,
         public ?int $amountOverride = null,
+        public ?string $goPayPaymentId = null,
+        public ?Uuid $bankTransactionId = null,
     ) {
     }
 }

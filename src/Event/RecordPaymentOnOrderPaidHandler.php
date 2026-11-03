@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Event;
 
 use App\Entity\Payment;
+use App\Repository\BankTransactionRepository;
 use App\Repository\OrderRepository;
 use App\Repository\PaymentRepository;
 use App\Service\Identity\ProvideIdentity;
@@ -17,6 +18,7 @@ final readonly class RecordPaymentOnOrderPaidHandler
         private OrderRepository $orderRepository,
         private PaymentRepository $paymentRepository,
         private ProvideIdentity $identityProvider,
+        private BankTransactionRepository $bankTransactionRepository,
     ) {
     }
 
@@ -37,6 +39,20 @@ final readonly class RecordPaymentOnOrderPaidHandler
             paidAt: $event->occurredOn,
             createdAt: $event->occurredOn,
         );
+
+        // Record where the money came from — without it the payment overview
+        // can only guess, and it used to label every card-paid first payment
+        // "Bankovní převod".
+        if (null !== $event->goPayPaymentId) {
+            $payment->setGoPayPaymentId($event->goPayPaymentId);
+        }
+
+        if (null !== $event->bankTransactionId) {
+            $bankTransaction = $this->bankTransactionRepository->find($event->bankTransactionId);
+            if (null !== $bankTransaction) {
+                $payment->linkBankTransaction($bankTransaction);
+            }
+        }
 
         $this->paymentRepository->save($payment);
     }

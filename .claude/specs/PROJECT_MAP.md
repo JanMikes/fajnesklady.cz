@@ -199,7 +199,7 @@ Stack: PHP 8.5 (Docker image `ghcr.io/thedevs-cz/php:8.5-fajnesklady`) · Symfon
 | `BankAccountMapping` | Maps sender bank account → order/user for FIO reconciliation; unique on `(accountNumber, order)` | user, order, createdBy:User |
 | `BankTransaction` | FIO bank transaction record; auto/manual pairing to order/contract; unique on `fioTransactionId`; status: unmatched/matched/ignored (admin ignore/unignore actions) | pairedOrder, pairedContract, pairedBy:User |
 | `PlatformSettings` | Singleton admin-configurable settings; `bankTransferSurchargeInHaler` (default 10 000 = 100 CZK), `overdueTerminationDays` (default 7, min 7 = VOP čl. XI floor — drives `app:terminate-overdue-contracts`) | — |
-| `HandoverProtocol` (records events) | Check-in/out doc; `tenantSkippedAt`/`tenantSkippedBy` + `skipTenantSide()` let an admin waive an unreachable tenant (spec 083 — completes immediately when landlord side done) | contract(1:1); photos |
+| `HandoverProtocol` (records events) | Check-in/out doc; `tenantSkippedAt`/`tenantSkippedBy` + `skipTenantSide()` let an admin waive an unreachable tenant (spec 083 — completes immediately when landlord side done) | contract(1:1); photos. Lives only inside the 7-day handover window (`Contract::isWithinHandoverWindow()`): reminders and lock-code changes ignore protocols outside it, and a prolongation discards an untouched premature protocol (`DiscardPrematureHandoverOnContractProlongedHandler`) |
 | `HandoverPhoto` | Image in handover | handoverProtocol |
 | `PlaceAccessRequest` (records events) | Request manager access | requester, place, approver |
 | `PlaceAccess` | Granted access | place, user |
