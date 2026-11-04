@@ -260,6 +260,11 @@ class LandlordHandoverViewControllerTest extends WebTestCase
         $storage = $protocol->contract->storage;
         $place = $storage->getPlace();
 
+        // A real move-out: the rental ends within the handover window (a
+        // new lock code is only ever applied there — see
+        // testCompletingHandoverOutsideWindowNeverRekeysTheUnit).
+        $protocol->contract->requestTermination($this->clock->now(), $this->clock->now()->modify('+3 days'));
+
         // HandoverCompleted (which rotates the code) fires only once BOTH
         // sides are complete — finish the tenant side up front.
         if ($protocol->needsTenantCompletion()) {
@@ -298,6 +303,42 @@ class LandlordHandoverViewControllerTest extends WebTestCase
 
         $this->assertContains('0611', $codes, 'The replaced code must be retired into history even without a prior row.');
         $this->assertContains('0822', $codes, 'The new code must be recorded as used.');
+    }
+
+    /**
+     * Regression (order 01a0cd43): a protocol left open on a contract that
+     * runs on (prolonged) must never re-key the unit — the tenant is staying.
+     */
+    public function testCompletingHandoverOutsideWindowNeverRekeysTheUnit(): void
+    {
+        $protocol = $this->createPendingHandoverForRecurringContract(); // C1 ends in +700 days
+        $storage = $protocol->contract->storage;
+        $storageId = $storage->id;
+
+        if ($protocol->needsTenantCompletion()) {
+            $protocol->completeTenantSide('Převzato bez závad.', $this->clock->now());
+        }
+        $storage->updateLockCode('0611', $this->clock->now());
+        $this->entityManager->flush();
+
+        $this->client->loginUser($this->findUserByEmail('landlord@example.com'), 'main');
+        $this->client->request(
+            'POST',
+            '/portal/pronajimatel/predavaci-protokol/'.$protocol->id->toRfc4122(),
+            [
+                'landlord_handover_form' => [
+                    'comment' => 'Předáno bez závad, kód vyměněn.',
+                    'newLockCode' => '0822',
+                ],
+            ],
+        );
+
+        $this->assertResponseRedirects('/portal/pronajimatel/predavaci-protokol/'.$protocol->id->toRfc4122());
+
+        $this->entityManager->clear();
+        $reloaded = $this->entityManager->find(\App\Entity\Storage::class, $storageId);
+        $this->assertNotNull($reloaded);
+        $this->assertSame('0611', $reloaded->lockCode, 'The paying tenant\'s code must stay in place.');
     }
 
     /**

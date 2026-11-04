@@ -77,7 +77,7 @@ class AdminOrderListControllerTest extends WebTestCase
         $this->assertSelectorTextContains('table', 'Po splatnosti');
     }
 
-    public function testTerminatedContractShowsUkoncenoBadgeInList(): void
+    public function testTerminatedContractShowsEndedStateInList(): void
     {
         $this->client->loginUser($this->findUserByEmail('admin@example.com'), 'main');
 
@@ -95,7 +95,9 @@ class AdminOrderListControllerTest extends WebTestCase
         $this->client->request('GET', '/portal/admin/orders?q='.$reference);
 
         $this->assertResponseIsSuccessful();
-        $this->assertSelectorTextContains('table', 'Ukončeno');
+        // The status badge resolves the CONTRACT state, not the raw order
+        // status "Dokončeno" (which every running rental used to show).
+        $this->assertSelectorTextContains('table', 'Smlouva ukončena');
     }
 
     public function testSearchByCustomerEmailFindsOrders(): void
