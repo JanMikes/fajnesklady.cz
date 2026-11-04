@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Entity\AuditLog;
+use App\Enum\AllocationStepType;
+use App\Enum\PaymentMethod;
 
 /**
  * Translates an AuditLog (entityType + eventType + payload) into a human-readable
@@ -24,10 +26,10 @@ final readonly class AuditLogDescriptionRenderer
             'order.created' => 'Objednávka vytvořena',
             'order.payment_chosen' => 'Zákazník zvolil způsob platby',
             'order.reserved' => 'Objednávka zarezervovala sklad',
-            'order.paid' => 'Objednávka zaplacena',
+            'order.paid' => $this->withPaymentMethod('Objednávka zaplacena', $log),
             'order.paid_externally' => 'Objednávka označena jako zaplacená mimo systém',
-            'order.external_first_payment_recorded' => 'Externí platba zaznamenána administrátorem',
-            'contract.external_payment_recorded' => 'Externí platba zaznamenána administrátorem',
+            'order.external_first_payment_recorded' => 'Platba mimo systém zaznamenána administrátorem',
+            'contract.external_payment_recorded' => 'Platba mimo systém zaznamenána administrátorem',
             'contract.payment_deadline_extended' => $this->describePaymentDeadlineExtended($log),
             'order.completed' => 'Objednávka dokončena',
             'order.cancelled' => 'Objednávka zrušena',
@@ -36,10 +38,22 @@ final readonly class AuditLogDescriptionRenderer
             'contract.created' => 'Smlouva vytvořena',
             'contract.signed' => 'Smlouva podepsána',
             'contract.terminated' => 'Smlouva ukončena',
-            'contract.debt_settled' => 'Dluh uhrazen (externě)',
+            'contract.debt_settled' => 'Dluh uhrazen mimo systém',
             'contract.debt_waived' => 'Dluh odepsán',
-            'order.onboarding_debt_settled' => 'Dluh z předchozí smlouvy označen jako uhrazený (externě)',
-            'order.debt_payment_confirmed' => 'Dluh z předchozí smlouvy uhrazen',
+            'order.onboarding_debt_settled' => 'Dluh z předchozí smlouvy označen jako uhrazený mimo systém',
+            'order.debt_payment_confirmed' => $this->withPaymentMethod('Dluh z předchozí smlouvy uhrazen', $log),
+            'contract.recurring_charged' => 'Opakovaná platba stržena z karty',
+            'contract.bank_transfer_recurring_confirmed' => 'Opakovaná platba přijata bankovním převodem',
+            'order.bank_transfer_payment_confirmed' => 'Platba přijata bankovním převodem',
+            'bank_transaction.received' => 'Bankovní převod přijat',
+            'contract.credit_converted_to_payment' => 'Přeplatek převeden na platbu a vyfakturován',
+            'bank_transaction.allocated' => $this->describeBankTransactionAllocated($log),
+            'bank_transaction.manually_paired' => 'Bankovní převod ručně spárován',
+            'bank_transaction.auto_matched_to_order' => 'Bankovní převod spárován s objednávkou',
+            'bank_transaction.auto_matched_to_contract' => 'Bankovní převod spárován se smlouvou',
+            'bank_transaction.matched_via_invoice_number' => 'Bankovní převod spárován podle čísla faktury',
+            'bank_transaction.ignored' => 'Bankovní převod ignorován',
+            'bank_transaction.credit_allocation_backfilled' => 'Přeplatek z převodu doplněn do kreditu',
             'contract.expiring_soon' => $this->describeContractExpiringSoon($log),
             'storage.reserved' => 'Sklad rezervován',
             'storage.occupied' => 'Sklad obsazen',
@@ -48,7 +62,7 @@ final readonly class AuditLogDescriptionRenderer
             'storage.manually_released' => 'Sklad ručně uvolněn',
             'user.password_changed_by_admin' => $this->describeUserPasswordChangedByAdmin($log),
             'manual_payment_request.requested' => $this->describeManualPaymentRequested($log),
-            'manual_payment_request.received' => 'Ručně schvalovaná platba přijata',
+            'manual_payment_request.received' => 'Platba na výzvu přijata',
             'order.billing_mode_set' => $this->describeBillingModeSet($log),
             default => sprintf('%s — %s', $log->entityType, $log->eventType),
         };
@@ -66,7 +80,7 @@ final readonly class AuditLogDescriptionRenderer
             default => is_string($stage) ? $stage : 'neznámá fáze',
         };
 
-        return sprintf('Ručně schvalovaná platba — %s', $stageLabel);
+        return sprintf('Výzva k platbě převodem — %s', $stageLabel);
     }
 
     private function describeBillingModeSet(AuditLog $log): string
@@ -75,11 +89,44 @@ final readonly class AuditLogDescriptionRenderer
         $modeLabel = match ($mode) {
             'one_time' => 'jednorázová platba',
             'auto_recurring' => 'automatická opakovaná platba',
-            'manual_recurring' => 'ručně schvalovaná opakovaná platba',
+            'manual_recurring' => 'opakovaná platba převodem na výzvu',
             default => is_string($mode) ? $mode : 'neznámý režim',
         };
 
         return sprintf('Způsob platby nastaven: %s', $modeLabel);
+    }
+
+    private function withPaymentMethod(string $description, AuditLog $log): string
+    {
+        $method = $log->payload['payment_method'] ?? null;
+        $paymentMethod = is_string($method) ? PaymentMethod::tryFrom($method) : null;
+
+        return null !== $paymentMethod
+            ? sprintf('%s (%s)', $description, mb_strtolower($paymentMethod->label()))
+            : $description;
+    }
+
+    private function describeBankTransactionAllocated(AuditLog $log): string
+    {
+        $incoming = $log->payload['incoming_amount'] ?? null;
+        $steps = $log->payload['steps'] ?? [];
+
+        $parts = [];
+        if (is_array($steps)) {
+            foreach ($steps as $step) {
+                if (!is_array($step) || !is_string($step['type'] ?? null) || !is_int($step['allocated'] ?? null)) {
+                    continue;
+                }
+                $type = AllocationStepType::tryFrom($step['type']);
+                $parts[] = sprintf('%s %s Kč', null !== $type ? mb_strtolower($type->label()) : $step['type'], number_format($step['allocated'] / 100, 0, ',', ' '));
+            }
+        }
+
+        $description = is_int($incoming)
+            ? sprintf('Bankovní převod %s Kč rozúčtován', number_format($incoming / 100, 0, ',', ' '))
+            : 'Bankovní převod rozúčtován';
+
+        return [] !== $parts ? sprintf('%s: %s', $description, implode(', ', $parts)) : $description;
     }
 
     private function describePaymentDeadlineExtended(AuditLog $log): string

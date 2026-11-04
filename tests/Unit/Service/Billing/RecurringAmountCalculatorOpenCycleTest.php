@@ -61,6 +61,25 @@ class RecurringAmountCalculatorOpenCycleTest extends TestCase
     }
 
     /**
+     * Order 01a051d7 (1 900 Kč/month, 30.08 – 30.10): the anchor 30.09
+     * 09:00:56 made 30.10 09:00:56 overshoot the 30.10 00:00 end date, so the
+     * LAST full month was "prorated" to 29/30 days and requested as 1 837 Kč.
+     * The customer wired the usual 1 900 Kč and 63 Kč was stranded as credit
+     * on a contract that then ended.
+     */
+    public function testLastFullMonthEndingOnTheAnchorDayIsNotProrated(): void
+    {
+        $contract = $this->createMonthlyContract(
+            startDate: new \DateTimeImmutable('2026-08-30'),
+            endDate: new \DateTimeImmutable('2026-10-30'),
+            nextBillingDate: new \DateTimeImmutable('2026-09-30 09:00:56'),
+        );
+        $contract->applyIndividualMonthlyAmount(190_000, null, null, new \DateTimeImmutable('2026-08-01'));
+
+        self::assertSame(190_000, $this->calculator->calculate($contract, new \DateTimeImmutable('2026-09-23 05:00:00')));
+    }
+
+    /**
      * After a prolongation the live contract prices the 01.11 cycle as a full
      * month, but the request already sent to the customer stays authoritative.
      */

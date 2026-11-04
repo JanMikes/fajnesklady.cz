@@ -9,6 +9,9 @@
                                     bank transfers. Only differs from totalPaid when
                                     a wire was received but not (fully) recorded as a
                                     Payment — a reconciliation gap worth flagging.
+     contract                  ?Contract (optional) — its creditBalance explains the
+                                    gap when the customer simply OVERPAID: the surplus
+                                    is parked as credit, not lost, and is no pairing error.
    For unlimited-recurring orders the "K zaplacení celkem" row is omitted —
    the lifetime total is undefined.
 #}
@@ -19,14 +22,25 @@
     </dd>
 </div>
 {% if bankTransferReceivedTotal is defined and bankTransferReceivedTotal > 0 and bankTransferReceivedTotal != totalPaid %}
+{% set creditBalance = (contract ?? null) ? contract.creditBalance : 0 %}
+{# Transfers cover card payments too, so only the transfer surplus is comparable to the credit. #}
+{% set isOverpaymentOnCredit = creditBalance > 0 and bankTransferReceivedTotal - totalPaid == creditBalance %}
+{% set creditStranded = isOverpaymentOnCredit and contract.isTerminated() %}
 <div>
     <dt class="text-sm font-medium text-gray-500">Přijato bankovním převodem</dt>
-    <dd class="mt-1 text-sm text-amber-600 font-semibold">
+    <dd class="mt-1 text-sm font-semibold {{ isOverpaymentOnCredit and not creditStranded ? 'text-gray-900' : 'text-amber-600' }}">
         {{ (bankTransferReceivedTotal / 100)|number_format(2, ',', ' ') }} Kč
     </dd>
-    <dd class="mt-0.5 text-xs text-amber-600">
-        Neshoduje se se zaplacenou částkou — zkontrolujte spárování plateb.
-    </dd>
+    {% if isOverpaymentOnCredit %}
+        <dd class="mt-0.5 text-xs {{ creditStranded ? 'text-amber-600' : 'text-gray-500' }}">
+            Z toho přeplatek {{ (creditBalance / 100)|number_format(2, ',', ' ') }} Kč evidovaný jako kredit smlouvy
+            {%- if creditStranded %} — smlouva už skončila, přeplatek vraťte zákazníkovi.{% else %} — odečte se z příští platby.{% endif %}
+        </dd>
+    {% else %}
+        <dd class="mt-0.5 text-xs text-amber-600">
+            Liší se od částky „Zaplaceno“ o {{ ((bankTransferReceivedTotal - totalPaid)|abs / 100)|number_format(2, ',', ' ') }} Kč — zkontrolujte spárování plateb.
+        </dd>
+    {% endif %}
 </div>
 {% endif %}
 {% if not paymentSchedule.isOpenEnded and paymentSchedule.isRecurring %}

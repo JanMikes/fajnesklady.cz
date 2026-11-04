@@ -9,7 +9,9 @@ use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
+use App\Enum\PaymentMethod;
 use App\Repository\InvoiceRepository;
+use App\Repository\PaymentRepository;
 use App\Repository\UserRepository;
 use App\Service\Fakturoid\FakturoidClient;
 use App\Service\Fakturoid\StaleFakturoidSubjectException;
@@ -64,7 +66,7 @@ class InvoicingServiceTest extends TestCase
 
         $fakturoidClient->expects($this->once())
             ->method('createInvoice')
-            ->with(12345, $order)
+            ->with(12345, $order, PaymentMethod::GOPAY)
             ->willReturn(new FakturoidInvoice(99999, 'FV-2025-0001', 35000));
 
         $fakturoidClient->expects($this->once())
@@ -86,6 +88,7 @@ class InvoicingServiceTest extends TestCase
             $identityProvider,
             $invoiceRepository,
             $userRepository,
+            $this->createStub(PaymentRepository::class),
             new NullLogger(),
             $this->tempDir,
         );
@@ -115,7 +118,7 @@ class InvoicingServiceTest extends TestCase
 
         $fakturoidClient->expects($this->once())
             ->method('createInvoice')
-            ->with(54321, $order)
+            ->with(54321, $order, PaymentMethod::GOPAY)
             ->willReturn(new FakturoidInvoice(88888, 'FV-2025-0002', 35000));
 
         $fakturoidClient->expects($this->once())
@@ -137,6 +140,7 @@ class InvoicingServiceTest extends TestCase
             $identityProvider,
             $invoiceRepository,
             $userRepository,
+            $this->createStub(PaymentRepository::class),
             new NullLogger(),
             $this->tempDir,
         );
@@ -146,6 +150,71 @@ class InvoicingServiceTest extends TestCase
         $this->assertSame('FV-2025-0002', $invoice->invoiceNumber);
     }
 
+    /**
+     * The accountant tells card from transfer by the invoice's "Způsob platby":
+     * an order settled by a FIO transfer must be invoiced as a bank payment
+     * even though the customer originally chose the card gateway.
+     */
+    public function testIssueInvoiceForOrderCarriesHowTheFirstPaymentActuallyArrived(): void
+    {
+        $user = $this->createUser();
+        $user->setFakturoidSubjectId(54321, new \DateTimeImmutable());
+        $order = $this->createOrder($user);
+        $order->setPaymentMethod(PaymentMethod::GOPAY);
+        $order->markPaid(new \DateTimeImmutable('2025-06-15 11:00:00'), bankTransactionId: Uuid::v7());
+
+        $fakturoidClient = $this->createMock(FakturoidClient::class);
+        $fakturoidClient->expects($this->once())
+            ->method('createInvoice')
+            ->with(54321, $order, PaymentMethod::BANK_TRANSFER)
+            ->willReturn(new FakturoidInvoice(66666, 'FV-2025-0003', 35000));
+        $fakturoidClient->method('downloadInvoicePdf')->willReturn('%PDF-1.4');
+
+        $identityProvider = $this->createStub(ProvideIdentity::class);
+        $identityProvider->method('next')->willReturn(Uuid::v7());
+
+        $service = new InvoicingService(
+            $fakturoidClient,
+            $identityProvider,
+            $this->createStub(InvoiceRepository::class),
+            $this->createStub(UserRepository::class),
+            $this->createStub(PaymentRepository::class),
+            new NullLogger(),
+            $this->tempDir,
+        );
+
+        $service->issueInvoiceForOrder($order, new \DateTimeImmutable('2025-06-15 12:00:00'));
+    }
+
+    /**
+     * Off-system ("mimo systém") money has no payment evidence in the
+     * platform — no path may turn it into a tax document.
+     */
+    public function testNeverInvoicesAnOffSystemPayment(): void
+    {
+        $user = $this->createUser();
+        $order = $this->createOrder($user);
+        $order->setOnboardingDebt(120_000);
+        $order->markDebtPaid(new \DateTimeImmutable('2025-06-15 10:00:00'), PaymentMethod::EXTERNAL);
+
+        $fakturoidClient = $this->createMock(FakturoidClient::class);
+        $fakturoidClient->expects($this->never())->method('createDebtInvoice');
+        $fakturoidClient->expects($this->never())->method('createSubject');
+
+        $service = new InvoicingService(
+            $fakturoidClient,
+            $this->createStub(ProvideIdentity::class),
+            $this->createStub(InvoiceRepository::class),
+            $this->createStub(UserRepository::class),
+            $this->createStub(PaymentRepository::class),
+            new NullLogger(),
+            $this->tempDir,
+        );
+
+        $this->expectException(\DomainException::class);
+        $service->issueInvoiceForDebt($order, new \DateTimeImmutable('2025-06-15 12:00:00'));
+    }
+
     public function testIssueInvoiceForDebtIssuesPaidInvoiceFromDebtAmount(): void
     {
         $user = $this->createUser();
@@ -153,7 +222,7 @@ class InvoicingServiceTest extends TestCase
         $order = $this->createOrder($user);
         $order->setOnboardingDebt(120_000); // 1 200 Kč gross
         $paidAt = new \DateTimeImmutable('2025-06-15 10:00:00');
-        $order->markDebtPaid($paidAt);
+        $order->markDebtPaid($paidAt, PaymentMethod::GOPAY);
         $now = new \DateTimeImmutable('2025-06-15 12:00:00');
         $invoiceId = Uuid::v7();
 
@@ -161,7 +230,7 @@ class InvoicingServiceTest extends TestCase
         $fakturoidClient->expects($this->never())->method('createInvoice');
         $fakturoidClient->expects($this->once())
             ->method('createDebtInvoice')
-            ->with(54321, $order)
+            ->with(54321, $order, PaymentMethod::GOPAY)
             ->willReturn(new FakturoidInvoice(70001, 'FV-2025-DEBT', 120_000));
         // The debt is already paid, so the invoice is marked paid at debtPaidAt.
         $fakturoidClient->expects($this->once())
@@ -185,6 +254,7 @@ class InvoicingServiceTest extends TestCase
             $identityProvider,
             $invoiceRepository,
             $userRepository,
+            $this->createStub(PaymentRepository::class),
             new NullLogger(),
             $this->tempDir,
         );
@@ -248,6 +318,7 @@ class InvoicingServiceTest extends TestCase
             $identityProvider,
             $invoiceRepository,
             $userRepository,
+            $this->createStub(PaymentRepository::class),
             new NullLogger(),
             $this->tempDir,
         );
@@ -284,6 +355,7 @@ class InvoicingServiceTest extends TestCase
             $identityProvider,
             $invoiceRepository,
             $userRepository,
+            $this->createStub(PaymentRepository::class),
             new NullLogger(),
             $this->tempDir,
         );
@@ -322,6 +394,7 @@ class InvoicingServiceTest extends TestCase
             $identityProvider,
             $invoiceRepository,
             $userRepository,
+            $this->createStub(PaymentRepository::class),
             new NullLogger(),
             $nestedDir,
         );
@@ -387,11 +460,14 @@ class InvoicingServiceTest extends TestCase
         );
     }
 
+    /**
+     * A card-paid order — invoices are only ever issued with payment evidence.
+     */
     private function createOrder(User $user): Order
     {
         $storage = $this->createStorage();
 
-        return new Order(
+        $order = new Order(
             id: Uuid::v7(),
             user: $user,
             storage: $storage,
@@ -402,5 +478,8 @@ class InvoicingServiceTest extends TestCase
             expiresAt: new \DateTimeImmutable('+7 days'),
             createdAt: new \DateTimeImmutable('2025-06-15'),
         );
+        $order->markPaid(new \DateTimeImmutable('2025-06-15 11:00:00'), goPayPaymentId: 'gp-test');
+
+        return $order;
     }
 }

@@ -52,7 +52,7 @@ final readonly class SendManualBillingOverdueAdminEmailHandler
             $email = (new TemplatedEmail())
                 ->from(new Address('noreply@fajnesklady.cz', 'Fajnesklady.cz'))
                 ->to(new Address($admin->email, $admin->fullName))
-                ->subject(sprintf('UPOZORNĚNÍ: Ručně schvalovaná platba %s — %s', $stageLabel, $user->fullName))
+                ->subject(sprintf('UPOZORNĚNÍ: Platba převodem na výzvu %s — %s', $stageLabel, $user->fullName))
                 ->htmlTemplate('email/manual_billing_overdue_admin.html.twig')
                 ->context([
                     'adminName' => $admin->fullName,

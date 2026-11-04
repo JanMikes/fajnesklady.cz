@@ -9,6 +9,7 @@ use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
+use App\Enum\PaymentMethod;
 use App\Event\OnboardingDebtPaid;
 use App\Event\SendOnboardingDebtPaidAdminEmailHandler;
 use App\Repository\OrderRepository;
@@ -158,7 +159,7 @@ class SendOnboardingDebtPaidAdminEmailHandlerTest extends TestCase
             createdAt: new \DateTimeImmutable('2025-06-15 12:00:00'),
         );
         $order->setOnboardingDebt(120_000); // 1 200 Kč
-        $order->markDebtPaid(new \DateTimeImmutable('2025-06-15 11:00:00'));
+        $order->markDebtPaid(new \DateTimeImmutable('2025-06-15 11:00:00'), PaymentMethod::GOPAY);
 
         return $order;
     }

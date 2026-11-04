@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Form;
 
 use Symfony\Component\Form\AbstractType;
-use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\DateType;
 use Symfony\Component\Form\Extension\Core\Type\NumberType;
@@ -45,12 +44,7 @@ final class ExternalPaymentFormType extends AbstractType
                     'min' => 0,
                     'step' => '0.01',
                 ],
-                'help' => 'Zaznamená se jako přijatá platba; při vystavení faktury je to fakturovaná částka.',
-            ])
-            ->add('issueInvoice', CheckboxType::class, [
-                'label' => 'Vystavit fakturu',
-                'required' => false,
-                'help' => 'Vystaví a e-mailem odešle fakturu (vč. DPH) na tuto částku.',
+                'help' => 'Zaznamená se jako přijatá platba. Faktura se nevystavuje — platba mimo systém nemá v systému doklad o úhradě.',
             ]);
     }
 

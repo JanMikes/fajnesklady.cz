@@ -208,7 +208,7 @@ class CustomerSigningControllerTest extends WebTestCase
         $this->assertResponseIsSuccessful();
         $content = $this->client->getResponse()->getContent();
         \assert(is_string($content));
-        $this->assertStringContainsString('Ručně schvalovaná platba', $content);
+        $this->assertStringContainsString('Platba bankovním převodem na výzvu', $content);
         // Bank transfer is not a card surface: no in-page card logos, no AUTO recurring consent.
         $this->assertStringNotContainsString('Vaše platba je zabezpečena 256-bit SSL/TLS', $content);
         $this->assertStringNotContainsString('Parametry opakované platby', $content);

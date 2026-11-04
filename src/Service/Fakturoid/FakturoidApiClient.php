@@ -9,6 +9,7 @@ use App\Entity\Fine;
 use App\Entity\Order;
 use App\Entity\SelfBillingInvoice;
 use App\Entity\User;
+use App\Enum\PaymentMethod;
 use App\Value\FakturoidInvoice;
 use App\Value\FakturoidSubject;
 use Fakturoid\Exception\RequestException;
@@ -110,7 +111,7 @@ final readonly class FakturoidApiClient implements FakturoidClient
         }
     }
 
-    public function createInvoice(int $subjectId, Order $order): FakturoidInvoice
+    public function createInvoice(int $subjectId, Order $order, PaymentMethod $paidVia): FakturoidInvoice
     {
         $storage = $order->storage;
         $storageType = $storage->storageType;
@@ -125,7 +126,7 @@ final readonly class FakturoidApiClient implements FakturoidClient
                 // these two fields Fakturoid defaults the VS to the invoice number and the
                 // PDF shows a due date — customers have paid such invoices a second time,
                 // with a VS the bank matcher cannot resolve.
-                ...$this->paidDocumentFields($order->variableSymbol),
+                ...$this->paidDocumentFields($order->variableSymbol, $paidVia),
                 'lines' => [
                     [
                         'name' => sprintf(
@@ -177,7 +178,7 @@ final readonly class FakturoidApiClient implements FakturoidClient
         );
     }
 
-    public function createDebtInvoice(int $subjectId, Order $order): FakturoidInvoice
+    public function createDebtInvoice(int $subjectId, Order $order, PaymentMethod $paidVia): FakturoidInvoice
     {
         $place = $order->storage->getPlace();
 
@@ -186,7 +187,7 @@ final readonly class FakturoidApiClient implements FakturoidClient
                 'subject_id' => $subjectId,
                 // The debt amount is gross (vč. DPH); Fakturoid must back-calculate VAT, not add it on top.
                 'vat_price_mode' => 'from_total_with_vat',
-                ...$this->paidDocumentFields($order->variableSymbol),
+                ...$this->paidDocumentFields($order->variableSymbol, $paidVia),
                 'lines' => [
                     [
                         // The debt is from a previous arrangement — name it generically, tagged by place for the books.
@@ -234,7 +235,7 @@ final readonly class FakturoidApiClient implements FakturoidClient
         );
     }
 
-    public function createFineInvoice(int $subjectId, Fine $fine): FakturoidInvoice
+    public function createFineInvoice(int $subjectId, Fine $fine, PaymentMethod $paidVia): FakturoidInvoice
     {
         $place = $fine->contract->storage->getPlace();
 
@@ -244,7 +245,7 @@ final readonly class FakturoidApiClient implements FakturoidClient
                 // Kept for symmetry with the other invoices: were the rate ever
                 // flipped to a non-zero one, the gross amount must stay gross.
                 'vat_price_mode' => 'from_total_with_vat',
-                ...$this->paidDocumentFields($fine->variableSymbol),
+                ...$this->paidDocumentFields($fine->variableSymbol, $paidVia),
                 'lines' => [
                     [
                         'name' => sprintf('Smluvní pokuta — %s (%s)', $fine->type->label(), $place->name),
@@ -292,7 +293,7 @@ final readonly class FakturoidApiClient implements FakturoidClient
         );
     }
 
-    public function createRecurringInvoice(int $subjectId, Contract $contract, int $amount, \DateTimeImmutable $billingDate, ?\DateTimeImmutable $periodStart = null, ?\DateTimeImmutable $periodEnd = null): FakturoidInvoice
+    public function createRecurringInvoice(int $subjectId, Contract $contract, int $amount, \DateTimeImmutable $billingDate, PaymentMethod $paidVia, ?\DateTimeImmutable $periodStart = null, ?\DateTimeImmutable $periodEnd = null): FakturoidInvoice
     {
         $storage = $contract->storage;
         $storageType = $storage->storageType;
@@ -311,7 +312,7 @@ final readonly class FakturoidApiClient implements FakturoidClient
                 'subject_id' => $subjectId,
                 // Prices in our system are gross (vč. DPH); Fakturoid must back-calculate VAT, not add it on top.
                 'vat_price_mode' => 'from_total_with_vat',
-                ...$this->paidDocumentFields($contract->order->variableSymbol),
+                ...$this->paidDocumentFields($contract->order->variableSymbol, $paidVia),
                 'lines' => [
                     [
                         'name' => sprintf(
@@ -365,10 +366,12 @@ final readonly class FakturoidApiClient implements FakturoidClient
     public function markInvoiceAsPaid(int $invoiceId, \DateTimeImmutable $paidAt): void
     {
         try {
+            // No payment_method here: Fakturoid's payment record has no such
+            // attribute (a 'card' sent here was silently ignored for every
+            // invoice). The method lives on the invoice — see paidDocumentFields().
             $this->manager->getInvoicesProvider()->createPayment($invoiceId, [
                 'paid_on' => $paidAt->format('Y-m-d'),
                 'currency' => 'CZK',
-                'payment_method' => 'card',
             ]);
         } catch (\Throwable $e) {
             $this->logger->error('Failed to mark Fakturoid invoice as paid', [
@@ -376,6 +379,13 @@ final readonly class FakturoidApiClient implements FakturoidClient
                 'exception' => $e,
             ]);
         }
+    }
+
+    public function updateInvoicePaymentMethod(int $invoiceId, PaymentMethod $paidVia): void
+    {
+        // Throws on failure (e.g. 403 document_locked) — the backfill command
+        // reports each invoice it could not update.
+        $this->manager->getInvoicesProvider()->update($invoiceId, $this->paymentMethodFields($paidVia));
     }
 
     public function downloadInvoicePdf(int $invoiceId): string
@@ -452,20 +462,34 @@ final readonly class FakturoidApiClient implements FakturoidClient
      * (the invoice number). A customer who pays from the PDF anyway then
      * sends a VS the bank matcher resolves straight to the order.
      *
+     * The payment method is printed on the PDF ("Způsob platby") — it is how
+     * the accountant tells a card payment from a bank transfer.
+     *
      * NOT used by createSelfBillingInvoice — that one is a proforma we still
      * owe money on.
      *
      * @return array<string, mixed>
      */
-    private function paidDocumentFields(?string $variableSymbol): array
+    private function paidDocumentFields(?string $variableSymbol, PaymentMethod $paidVia): array
     {
-        $fields = ['show_already_paid_note_in_pdf' => true];
+        $fields = [
+            'show_already_paid_note_in_pdf' => true,
+            ...$this->paymentMethodFields($paidVia),
+        ];
 
         if (null !== $variableSymbol && '' !== $variableSymbol) {
             $fields['variable_symbol'] = $variableSymbol;
         }
 
         return $fields;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function paymentMethodFields(PaymentMethod $paidVia): array
+    {
+        return ['payment_method' => $paidVia->fakturoidPaymentMethod()];
     }
 
     /**

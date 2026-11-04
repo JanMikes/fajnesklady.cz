@@ -119,7 +119,7 @@ final class OrderFixtures extends Fixture implements DependentFixtureInterface
         $orderPaid->reserve($now);
         $orderPaid->acceptTerms($now);
         $orderPaid->markAwaitingPayment($now);
-        $orderPaid->markPaid($now);
+        $orderPaid->markPaid($now, goPayPaymentId: 'fixture-gopay-1'); // paid by card
         $orderPaid->popEvents();
         $manager->persist($orderPaid);
         $this->addReference(self::REF_ORDER_PAID, $orderPaid);
@@ -141,7 +141,7 @@ final class OrderFixtures extends Fixture implements DependentFixtureInterface
         $orderCompleted->reserve($now->modify('-8 days'));
         $orderCompleted->acceptTerms($now->modify('-8 days'));
         $orderCompleted->markAwaitingPayment($now->modify('-7 days'));
-        $orderCompleted->markPaid($now->modify('-6 days'));
+        $orderCompleted->markPaid($now->modify('-6 days'), goPayPaymentId: 'fixture-gopay-2'); // paid by card
         // complete() will be called from ContractFixtures after contract is created
         $orderCompleted->popEvents();
         $manager->persist($orderCompleted);
@@ -165,7 +165,7 @@ final class OrderFixtures extends Fixture implements DependentFixtureInterface
         $orderRecurring->reserve($now->modify('-37 days'));
         $orderRecurring->acceptTerms($now->modify('-37 days'));
         $orderRecurring->markAwaitingPayment($now->modify('-36 days'));
-        $orderRecurring->markPaid($now->modify('-35 days'));
+        $orderRecurring->markPaid($now->modify('-35 days'), goPayPaymentId: 'fixture-gopay-3'); // paid by card
         // complete() will be called from ContractFixtures after contract is created
         $orderRecurring->popEvents();
         $manager->persist($orderRecurring);
@@ -224,7 +224,7 @@ final class OrderFixtures extends Fixture implements DependentFixtureInterface
         $orderExpiringSoon->reserve($now->modify('-30 days'));
         $orderExpiringSoon->acceptTerms($now->modify('-30 days'));
         $orderExpiringSoon->markAwaitingPayment($now->modify('-29 days'));
-        $orderExpiringSoon->markPaid($now->modify('-28 days'));
+        $orderExpiringSoon->markPaid($now->modify('-28 days'), goPayPaymentId: 'fixture-gopay-4'); // paid by card
         // complete() will be called from ContractFixtures after contract is created
         $orderExpiringSoon->popEvents();
         $manager->persist($orderExpiringSoon);
@@ -252,7 +252,7 @@ final class OrderFixtures extends Fixture implements DependentFixtureInterface
         $orderTerminating->reserve($now->modify('-67 days'));
         $orderTerminating->acceptTerms($now->modify('-67 days'));
         $orderTerminating->markAwaitingPayment($now->modify('-66 days'));
-        $orderTerminating->markPaid($now->modify('-65 days'));
+        $orderTerminating->markPaid($now->modify('-65 days'), goPayPaymentId: 'fixture-gopay-5'); // paid by card
         $orderTerminating->popEvents();
         $manager->persist($orderTerminating);
         $this->addReference(self::REF_ORDER_TERMINATING, $orderTerminating);
@@ -286,7 +286,7 @@ final class OrderFixtures extends Fixture implements DependentFixtureInterface
         $orderUpfront->reserve($now->modify('-37 days'));
         $orderUpfront->acceptTerms($now->modify('-37 days'));
         $orderUpfront->markAwaitingPayment($now->modify('-36 days'));
-        $orderUpfront->markPaid($now->modify('-35 days'));
+        $orderUpfront->markPaid($now->modify('-35 days'), bankTransactionId: Uuid::v7()); // paid by transfer
         // complete() will be called from ContractFixtures after contract is created
         $orderUpfront->popEvents();
         $manager->persist($orderUpfront);

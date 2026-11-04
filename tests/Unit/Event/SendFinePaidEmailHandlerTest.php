@@ -13,6 +13,7 @@ use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\FineType;
+use App\Enum\PaymentMethod;
 use App\Event\FinePaid;
 use App\Event\SendFinePaidEmailHandler;
 use App\Repository\FineRepository;
@@ -215,7 +216,7 @@ class SendFinePaidEmailHandlerTest extends TestCase
             issuedAt: new \DateTimeImmutable('2025-06-14 12:00:00'),
             createdAt: new \DateTimeImmutable('2025-06-14 12:00:00'),
         );
-        $fine->markPaid(new \DateTimeImmutable('2025-06-15 12:00:00'));
+        $fine->markPaid(new \DateTimeImmutable('2025-06-15 12:00:00'), PaymentMethod::GOPAY);
 
         return $fine;
     }

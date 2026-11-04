@@ -79,7 +79,7 @@
                                         {% endif %}
                                     {% endif %}
                                     {% if order.paidThroughDate %}
-                                        <span class="badge badge-info badge-sm" title="Externí platba do {{ order.paidThroughDate|date('d.m.Y') }}">Předplaceno do {{ order.paidThroughDate|date('d.m.Y') }}</span>
+                                        <span class="badge badge-info badge-sm" title="Předplaceno mimo systém do {{ order.paidThroughDate|date('d.m.Y') }}">Předplaceno do {{ order.paidThroughDate|date('d.m.Y') }}</span>
                                     {% endif %}
                                     {% if contract and contract.outstandingDebtAmount and contract.outstandingDebtAmount > 0 %}
                                         <span class="badge badge-error badge-sm" title="Smlouva má nesplacený dluh">Dluh {{ (contract.outstandingDebtAmount / 100)|number_format(0, ',', ' ') }} Kč</span>

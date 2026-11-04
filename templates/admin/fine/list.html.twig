@@ -94,11 +94,8 @@
                             </td>
                             <td class="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
                                 {% if fine.isPaid() %}
-                                    {% if fine.goPayPaymentId %}
-                                        GoPay ({{ fine.goPayPaymentId }})
-                                    {% else %}
-                                        Převodem (VS {{ fine.variableSymbol }})
-                                    {% endif %}
+                                    {# paidVia, not goPayPaymentId — the latter is set when the gateway is merely opened. #}
+                                    {% if fine.paidVia %}{{ fine.paidVia.label() }}{% if fine.paidVia.value == 'gopay' and fine.goPayPaymentId %} ({{ fine.goPayPaymentId }}){% elseif fine.paidVia.value == 'bank_transfer' %} (VS {{ fine.variableSymbol }}){% endif %}{% else %}Neuvedeno{% endif %}
                                 {% endif %}
                             </td>
                             <td class="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">{{ fine.issuedBy.fullName }}</td>

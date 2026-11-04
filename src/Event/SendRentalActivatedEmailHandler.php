@@ -183,7 +183,7 @@ final readonly class SendRentalActivatedEmailHandler
         // invoice without a real payment". When the customer eventually pays
         // via GoPay (per-cycle or recurring), that charge fires
         // RecurringPaymentCharged → IssueInvoiceOnRecurringChargeHandler.
-        if (PaymentMethod::EXTERNAL === $order->paymentMethod) {
+        if (PaymentMethod::EXTERNAL === $order->paymentMethod || PaymentMethod::EXTERNAL === $order->paidVia) {
             return null;
         }
 

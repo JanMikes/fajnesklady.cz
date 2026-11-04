@@ -44,7 +44,7 @@ final class AdminOrderRecordExternalPaymentController extends AbstractController
         $now = $this->clock->now();
 
         if (!$this->isEligible($order, $contract)) {
-            $this->addFlash('error', 'Tuto objednávku nelze označit jako externě zaplacenou.');
+            $this->addFlash('error', 'K této objednávce nelze zaznamenat platbu mimo systém.');
 
             return $this->redirectToRoute('admin_order_detail', ['id' => $id]);
         }
@@ -67,14 +67,9 @@ final class AdminOrderRecordExternalPaymentController extends AbstractController
                 wholeCycle: $wholeCycle,
                 paidThroughDate: $wholeCycle ? null : $formData->paidThroughDate,
                 amount: (int) round($formData->amountInCzk * 100),
-                issueInvoice: $formData->issueInvoice,
             ));
 
-            $message = 'Platba byla zaznamenána.';
-            if ($formData->issueInvoice) {
-                $message .= ' Faktura byla vystavena.';
-            }
-            $this->addFlash('success', $message);
+            $this->addFlash('success', 'Platba byla zaznamenána.');
 
             return $this->redirectToRoute('admin_order_detail', ['id' => $id]);
         }

@@ -15,6 +15,7 @@ use App\Enum\BillingMode;
 use App\Enum\FineType;
 use App\Enum\OrderStatus;
 use App\Enum\PaymentFrequency;
+use App\Enum\PaymentMethod;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -326,7 +327,7 @@ class OrderDetailControllerTest extends WebTestCase
             issuedAt: $now->modify('-1 day'),
             createdAt: $now->modify('-1 day'),
         );
-        $fine->markPaid($now);
+        $fine->markPaid($now, PaymentMethod::GOPAY);
         $fine->popEvents();
         $this->entityManager->persist($fine);
         $this->entityManager->flush();

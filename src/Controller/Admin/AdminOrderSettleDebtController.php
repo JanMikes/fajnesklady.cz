@@ -46,19 +46,12 @@ final class AdminOrderSettleDebtController extends AbstractController
             return $this->redirectToRoute('admin_order_detail', ['id' => $id]);
         }
 
-        $issueInvoice = $request->request->getBoolean('issue_invoice');
-
         $this->commandBus->dispatch(new SettleContractDebtCommand(
             contract: $contract,
             amountInHaler: $amountInHaler,
-            issueInvoice: $issueInvoice,
         ));
 
-        $message = 'Dluh byl označen jako uhrazený.';
-        if ($issueInvoice) {
-            $message .= ' Faktura byla vystavena.';
-        }
-        $this->addFlash('success', $message);
+        $this->addFlash('success', 'Dluh byl označen jako uhrazený.');
 
         return $this->redirectToRoute('admin_order_detail', ['id' => $id]);
     }

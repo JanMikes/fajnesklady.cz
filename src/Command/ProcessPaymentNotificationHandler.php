@@ -180,7 +180,7 @@ final readonly class ProcessPaymentNotificationHandler
         $debtOrder = $this->orderRepository->findByDebtGoPayPaymentIdForUpdate($command->goPayPaymentId);
         if (null !== $debtOrder) {
             if ($status->isPaid() && $debtOrder->hasUnpaidDebt()) {
-                $this->debtPaymentService->confirmDebtPaid($debtOrder, $now, $command->goPayPaymentId);
+                $this->debtPaymentService->confirmDebtPaid($debtOrder, $now, PaymentMethod::GOPAY, $command->goPayPaymentId);
             }
 
             return;
@@ -205,7 +205,7 @@ final readonly class ProcessPaymentNotificationHandler
         $fine = $this->fineRepository->findByGoPayPaymentId($command->goPayPaymentId);
         if (null !== $fine) {
             if ($status->isPaid() && $fine->isPayable()) {
-                $fine->markPaid($now);
+                $fine->markPaid($now, PaymentMethod::GOPAY);
 
                 $this->auditLogger->log(
                     entityType: 'fine',

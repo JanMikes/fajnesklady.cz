@@ -11,7 +11,6 @@ final readonly class SettleContractDebtCommand
     public function __construct(
         public Contract $contract,
         public int $amountInHaler,
-        public bool $issueInvoice,
     ) {
     }
 }

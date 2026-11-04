@@ -6,6 +6,7 @@ namespace App\Service\Onboarding;
 
 use App\Command\CompleteOrderCommand;
 use App\Entity\Order;
+use App\Enum\PaymentMethod;
 use App\Service\AuditLogger;
 use App\Service\OrderService;
 use Symfony\Component\Messenger\MessageBusInterface;
@@ -19,9 +20,9 @@ final readonly class DebtPaymentService
     ) {
     }
 
-    public function confirmDebtPaid(Order $order, \DateTimeImmutable $now, ?string $goPayPaymentId = null): void
+    public function confirmDebtPaid(Order $order, \DateTimeImmutable $now, PaymentMethod $paidVia, ?string $goPayPaymentId = null): void
     {
-        $order->markDebtPaid($now);
+        $order->markDebtPaid($now, $paidVia);
 
         $this->auditLogger->log(
             entityType: 'order',
@@ -29,6 +30,7 @@ final readonly class DebtPaymentService
             eventType: 'debt_payment_confirmed',
             payload: [
                 'debt_amount' => $order->onboardingDebtInHaler,
+                'payment_method' => $paidVia->value,
                 'gopay_payment_id' => $goPayPaymentId,
             ],
             orderId: $order->id,

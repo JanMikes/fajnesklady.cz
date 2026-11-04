@@ -99,7 +99,7 @@
                     </div>
                     <div>
                         <dt class="text-sm font-medium text-gray-500">Způsob platby</dt>
-                        <dd class="mt-1 text-sm text-gray-900">{{ order.billingMode.label() }}</dd>
+                        <dd class="mt-1 text-sm text-gray-900">{{ order.paymentArrangementLabel() }}</dd>
                     </div>
                     <div>
                         <dt class="text-sm font-medium text-gray-500">Datum začátku</dt>
@@ -249,11 +249,8 @@
                                 </td>
                                 <td class="px-3 py-2 text-sm text-gray-500 whitespace-nowrap">
                                     {% if fine.isPaid() %}
-                                        {% if fine.goPayPaymentId %}
-                                            Kartou (GoPay)
-                                        {% else %}
-                                            Převodem (VS {{ fine.variableSymbol }})
-                                        {% endif %}
+                                        {# paidVia, not goPayPaymentId — the latter is set when the gateway is merely opened. #}
+                                        {% if fine.paidVia %}{{ fine.paidVia.label() }}{% if fine.paidVia.value == 'bank_transfer' %} (VS {{ fine.variableSymbol }}){% endif %}{% else %}Neuvedeno{% endif %}
                                         {% if fineInvoices[fine.id|raw] is defined and fineInvoices[fine.id|raw].hasPdf() %}
                                             · <a href="{{ path('portal_user_invoice_pdf', {id: fineInvoices[fine.id|raw].id, download: 1}) }}" download
                                                  class="text-accent underline hover:text-accent-hover">Faktura</a>

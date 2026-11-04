@@ -221,6 +221,8 @@ class OrderRepository
             ->andWhere('o.paidAt IS NOT NULL')
             ->andWhere('o.paidAt < :cutoff')
             ->andWhere('o.paymentMethod IS NULL OR o.paymentMethod != :external')
+            // No invoice without payment evidence (InvoicingService enforces it too).
+            ->andWhere('o.paidVia IS NULL OR o.paidVia != :external')
             ->andWhere('NOT EXISTS (SELECT 1 FROM App\\Entity\\Invoice i WHERE i.order = o)')
             ->setParameter('completed', OrderStatus::COMPLETED)
             ->setParameter('external', PaymentMethod::EXTERNAL)
@@ -861,5 +863,39 @@ class OrderRepository
         }
 
         return $qb->getQuery()->getResult();
+    }
+
+    /**
+     * Paid orders that predate Order::$paidVia (app:backfill-payment-methods).
+     *
+     * @return list<Order>
+     */
+    public function findPaidWithoutPaidVia(): array
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('o')
+            ->from(Order::class, 'o')
+            ->where('o.paidAt IS NOT NULL')
+            ->andWhere('o.paidVia IS NULL')
+            ->orderBy('o.paidAt', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Settled onboarding debts that predate Order::$debtPaidVia.
+     *
+     * @return list<Order>
+     */
+    public function findDebtPaidWithoutDebtPaidVia(): array
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('o')
+            ->from(Order::class, 'o')
+            ->where('o.debtPaidAt IS NOT NULL')
+            ->andWhere('o.debtPaidVia IS NULL')
+            ->orderBy('o.debtPaidAt', 'ASC')
+            ->getQuery()
+            ->getResult();
     }
 }

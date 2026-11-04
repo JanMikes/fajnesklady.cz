@@ -15,13 +15,30 @@
     'handover.tenant_skipped': 'Protokol — strana nájemce vyřešena bez nájemce',
     'handover.discarded_on_prolongation': 'Předávací protokol zrušen (smlouva prodloužena)',
     'handover.kept_on_prolongation': 'Předávací protokol ponechán po prodloužení — zkontrolovat',
+    'bank_transaction.received': 'Bankovní převod přijat',
+    'bank_transaction.allocated': 'Bankovní převod rozúčtován',
+    'bank_transaction.manually_paired': 'Bankovní převod ručně spárován',
+    'bank_transaction.matched_via_invoice_number': 'Bankovní převod spárován podle čísla faktury',
+    'bank_transaction.ignored': 'Bankovní převod ignorován',
+    'bank_transaction.credit_allocation_backfilled': 'Přeplatek z převodu doplněn do kreditu',
+    'bank_transaction.unignored': 'Bankovní převod vrácen ke spárování',
+    'bank_transaction.account_mapping_ambiguous': 'Bankovní převod — účet odesílatele odpovídá více objednávkám',
+    'bank_transaction.invoice_number_match_ambiguous': 'Bankovní převod — číslo faktury odpovídá více objednávkám',
+    'order.onboarding_debt_settled': 'Dluh z předchozí smlouvy označen jako uhrazený mimo systém',
+    'order.payment_chosen': 'Zákazník zvolil způsob platby',
+    'contract.credit_converted_to_payment': 'Přeplatek převeden na platbu a vyfakturován',
+    'fine.issued': 'Pokuta vystavena',
+    'fine.paid': 'Pokuta zaplacena',
+    'fine.cancelled': 'Pokuta zrušena',
+    'platform_settings.surcharge_changed': 'Změna příplatku za bankovní převod',
+    'manual_payment_request.received': 'Platba na výzvu přijata',
     'created': 'Objednávka vytvořena',
     'reserved': 'Sklad rezervován',
     'signed': 'Podepsáno',
     'paid': 'Platba přijata',
     'paid_externally': 'Označeno jako zaplaceno mimo systém',
-    'external_payment_recorded': 'Externí platba zaznamenána (admin)',
-    'external_first_payment_recorded': 'Externí platba zaznamenána (admin)',
+    'external_payment_recorded': 'Platba mimo systém zaznamenána (admin)',
+    'external_first_payment_recorded': 'Platba mimo systém zaznamenána (admin)',
     'payment_deadline_extended': 'Splatnost prodloužena',
     'completed': 'Objednávka dokončena',
     'cancelled': 'Zrušeno',
@@ -31,7 +48,7 @@
     'unaccounted_paid_payment': 'Přijata platba bez uplatnění (nutná kontrola!)',
     'reactivated': 'Objednávka obnovena',
     'billing_mode_set': 'Způsob platby nastaven',
-    'recurring_charged': 'Opakovaná platba stržena',
+    'recurring_charged': 'Opakovaná platba stržena z karty',
     'recurring_payment_failed': 'Platba selhala',
     'recurring_cancelled': 'Opakované platby zrušeny',
     'prolonged': 'Smlouva prodloužena',
@@ -48,9 +65,9 @@
     'landlord_submitted': 'Protokol — pronajímatel vyplnil',
     'admin_manual_email_sent': 'Manuální e-mail odeslán',
     'bank_transfer_payment_confirmed': 'Bankovní převod potvrzen',
-    'bank_transfer_recurring_confirmed': 'Bankovní převod (opakovaná platba)',
+    'bank_transfer_recurring_confirmed': 'Opakovaná platba přijata bankovním převodem',
     'debt_payment_confirmed': 'Dluh uhrazen',
-    'debt_settled': 'Dluh uhrazen (externě)',
+    'debt_settled': 'Dluh uhrazen mimo systém',
     'debt_waived': 'Dluh odepsán',
     'occupied': 'Sklad obsazen',
     'released': 'Sklad uvolněn',
@@ -107,6 +124,19 @@
     'bank_transfer_recurring_confirmed': 'green',
     'debt_payment_confirmed': 'green',
     'debt_settled': 'green',
+    'bank_transaction.received': 'green',
+    'bank_transaction.allocated': 'green',
+    'bank_transaction.manually_paired': 'green',
+    'bank_transaction.matched_via_invoice_number': 'green',
+    'bank_transaction.ignored': 'amber',
+    'bank_transaction.unignored': 'blue',
+    'bank_transaction.account_mapping_ambiguous': 'amber',
+    'bank_transaction.invoice_number_match_ambiguous': 'amber',
+    'order.onboarding_debt_settled': 'green',
+    'order.payment_chosen': 'blue',
+    'contract.credit_converted_to_payment': 'green',
+    'fine.paid': 'green',
+    'fine.cancelled': 'blue',
     'debt_waived': 'amber',
     'occupied': 'green',
     'released': 'blue',
@@ -120,6 +150,34 @@
     'auto_matched_via_account': 'green',
     'amount_mismatch': 'red',
     'vs_override_account_mapping': 'amber',
+} %}
+
+{% set entityLabels = {
+    'order': 'objednávka',
+    'contract': 'smlouva',
+    'storage': 'sklad',
+    'handover': 'předávací protokol',
+    'bank_transaction': 'bankovní převod',
+    'manual_payment_request': 'výzva k platbě',
+    'fine': 'pokuta',
+    'platform_settings': 'nastavení',
+    'user': 'uživatel',
+} %}
+
+{# Keys of payload.payment_method (App\Enum\PaymentMethod values). #}
+{% set paymentMethodLabels = {
+    'gopay': 'platební karta (GoPay)',
+    'bank_transfer': 'bankovní převod',
+    'external': 'mimo systém',
+} %}
+
+{# App\Enum\AllocationStepType values — where an incoming transfer went. #}
+{% set allocationStepLabels = {
+    'onboarding_debt': 'dluh z předchozí smlouvy',
+    'contract_debt': 'dluh po ukončení smlouvy',
+    'billing_cycle': 'nájem za období',
+    'first_payment': 'první platba',
+    'credit': 'přeplatek → kredit',
 } %}
 
 {% set colorClasses = {
@@ -212,8 +270,24 @@
                                                     {% if item.eventType == 'issued' and item.payload.amount is defined %}
                                                         <span class="text-gray-500">— {{ (item.payload.amount / 100)|number_format(0, ',', ' ') }} Kč</span>
                                                     {% endif %}
-                                                    {% if item.eventType == 'paid' and item.payload.total_price is defined %}
-                                                        <span class="text-gray-500">— {{ (item.payload.total_price / 100)|number_format(0, ',', ' ') }} Kč</span>
+                                                    {% if item.entityType == 'order' and item.eventType == 'paid' %}
+                                                        {# Older entries predate payload.payment_method — the order's own paidVia
+                                                           is the same fact (an order is paid exactly once). #}
+                                                        {% set paidVia = item.payload.payment_method ?? (order.paidVia ? order.paidVia.value : null) %}
+                                                        <span class="text-gray-500">
+                                                            {%- if item.payload.total_price is defined %} — {{ (item.payload.total_price / 100)|number_format(0, ',', ' ') }} Kč{% endif -%}
+                                                            {%- if paidVia %} · {{ paymentMethodLabels[paidVia] ?? paidVia }}{% endif -%}
+                                                        </span>
+                                                    {% endif %}
+                                                    {% if item.eventType == 'debt_payment_confirmed' and item.payload.payment_method is defined and item.payload.payment_method %}
+                                                        <span class="text-gray-500">· {{ paymentMethodLabels[item.payload.payment_method] ?? item.payload.payment_method }}</span>
+                                                    {% endif %}
+                                                    {% if item.entityType == 'bank_transaction' and item.eventType == 'allocated' and item.payload.incoming_amount is defined %}
+                                                        <span class="text-gray-500">— {{ (item.payload.incoming_amount / 100)|number_format(0, ',', ' ') }} Kč
+                                                            {%- if item.payload.steps is defined and item.payload.steps|length > 0 %}:
+                                                                {% for step in item.payload.steps %}{{ allocationStepLabels[step.type] ?? step.type }} {{ (step.allocated / 100)|number_format(0, ',', ' ') }} Kč{% if not loop.last %}, {% endif %}{% endfor %}
+                                                            {%- endif -%}
+                                                        </span>
                                                     {% endif %}
                                                     {% if item.eventType == 'paid_externally' %}
                                                         <span class="text-gray-500">(bez platby v systému{% if item.payload.paid_through is defined and item.payload.paid_through %}, předplaceno do {{ item.payload.paid_through|date('d.m.Y') }}{% endif %})</span>
@@ -231,7 +305,7 @@
                                                     {% else %}
                                                         Systém
                                                     {% endif %}
-                                                    · {{ item.entityType }}
+                                                    · {{ entityLabels[item.entityType] ?? item.entityType }}
                                                 </p>
                                             </div>
                                             <div class="text-right text-sm whitespace-nowrap text-gray-500">

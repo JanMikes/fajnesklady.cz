@@ -13,6 +13,7 @@ use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\PaymentFrequency;
+use App\Enum\PaymentMethod;
 use App\Event\OnboardingDebtPaid;
 use App\Repository\AuditLogRepository;
 use App\Repository\ContractRepository;
@@ -80,7 +81,7 @@ final class SettleOnboardingDebtHandlerTest extends TestCase
         $order = $this->createOrder();
         $order->markAsAdminCreated();
         $order->setOnboardingDebt(50000);
-        $order->markDebtPaid(new \DateTimeImmutable('2025-06-01 10:00:00'));
+        $order->markDebtPaid(new \DateTimeImmutable('2025-06-01 10:00:00'), PaymentMethod::GOPAY);
         $order->popEvents();
 
         $commandBus = $this->createMock(MessageBusInterface::class);

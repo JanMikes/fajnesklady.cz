@@ -46,9 +46,9 @@ enum BillingMode: string
     public function label(): string
     {
         return match ($this) {
-            self::ONE_TIME => 'Jednorázová platba',
-            self::AUTO_RECURRING => 'Automatická platba kartou',
-            self::MANUAL_RECURRING => 'Ručně schvalovaná platba (výzva e-mailem)',
+            self::ONE_TIME => 'Jednorázová platba předem',
+            self::AUTO_RECURRING => 'Automatické strhávání z karty',
+            self::MANUAL_RECURRING => 'Platba převodem na výzvu e-mailem',
         };
     }
 }

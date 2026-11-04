@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Enum\FineType;
+use App\Enum\PaymentMethod;
 use App\Event\FineIssued;
 use App\Event\FinePaid;
 use Doctrine\DBAL\Types\Types;
@@ -28,6 +29,12 @@ class Fine implements EntityWithEvents
 
     #[ORM\Column(nullable: true)]
     public private(set) ?\DateTimeImmutable $paidAt = null;
+
+    // Where the money came from. goPayPaymentId above is NOT that: it is
+    // written when the customer merely opens the card gateway, so a fine paid
+    // by transfer after an abandoned card attempt still carries one.
+    #[ORM\Column(length: 20, nullable: true, enumType: PaymentMethod::class)]
+    public private(set) ?PaymentMethod $paidVia = null;
 
     #[ORM\Column(nullable: true)]
     public private(set) ?\DateTimeImmutable $cancelledAt = null;
@@ -96,9 +103,10 @@ class Fine implements EntityWithEvents
         return !$this->isPaid() && !$this->isCancelled();
     }
 
-    public function markPaid(\DateTimeImmutable $now): void
+    public function markPaid(\DateTimeImmutable $now, PaymentMethod $paidVia): void
     {
         $this->paidAt = $now;
+        $this->paidVia = $paidVia;
 
         $this->recordThat(new FinePaid(
             fineId: $this->id,
@@ -107,6 +115,15 @@ class Fine implements EntityWithEvents
             amountInHaler: $this->amountInHaler,
             occurredOn: $now,
         ));
+    }
+
+    /**
+     * One-off repair for fines paid before paidVia existed — never a payment
+     * event, so no FinePaid is recorded.
+     */
+    public function backfillPaidVia(PaymentMethod $paidVia): void
+    {
+        $this->paidVia ??= $paidVia;
     }
 
     public function cancel(User $cancelledBy, \DateTimeImmutable $now): void

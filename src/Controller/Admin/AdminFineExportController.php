@@ -57,7 +57,8 @@ final class AdminFineExportController extends AbstractController
                 /** @var Fine $fine */
                 $paymentMethod = '';
                 if ($fine->isPaid()) {
-                    $paymentMethod = null !== $fine->goPayPaymentId ? 'GoPay' : 'Bankovní převod';
+                    // paidVia, not goPayPaymentId — the latter is set when the gateway is merely opened.
+                    $paymentMethod = $fine->paidVia?->label() ?? 'Neuvedeno';
                 }
 
                 $stateLabel = match (true) {

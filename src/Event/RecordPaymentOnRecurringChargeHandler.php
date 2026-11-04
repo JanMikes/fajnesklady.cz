@@ -51,7 +51,7 @@ final readonly class RecordPaymentOnRecurringChargeHandler
 
         // Only a real GoPay id may land in goPayPaymentId — its unique index is
         // the race backstop for parallel webhook deliveries, and the payment
-        // overview labels any non-null value "Kartou (GoPay)".
+        // overview labels any non-null value as a card payment.
         if (null !== $event->goPayPaymentId) {
             $payment->setGoPayPaymentId($event->goPayPaymentId);
         }

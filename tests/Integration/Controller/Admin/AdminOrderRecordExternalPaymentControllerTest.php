@@ -84,7 +84,7 @@ class AdminOrderRecordExternalPaymentControllerTest extends WebTestCase
         $this->client->request('GET', $this->url($order));
 
         $this->assertResponseIsSuccessful();
-        $this->assertSelectorTextContains('h1', 'Označit jako externě zaplaceno');
+        $this->assertSelectorTextContains('h1', 'Zaznamenat platbu mimo systém');
     }
 
     public function testDetailPageShowsBothActionsForEligibleContract(): void
@@ -98,7 +98,7 @@ class AdminOrderRecordExternalPaymentControllerTest extends WebTestCase
         // Exercises the new "Manuální akce" buttons + the extend-deadline modal
         // Twig (canExtendDeadline path with date()/date_modify).
         $this->assertResponseIsSuccessful();
-        $this->assertSelectorTextContains('body', 'Označit jako externě zaplaceno');
+        $this->assertSelectorTextContains('body', 'Zaznamenat platbu mimo systém');
         $this->assertSelectorTextContains('body', 'Prodloužit splatnost');
     }
 
@@ -114,7 +114,6 @@ class AdminOrderRecordExternalPaymentControllerTest extends WebTestCase
             'external_payment_form' => [
                 'coverage' => 'whole_cycle',
                 'amountInCzk' => '350',
-                'issueInvoice' => '',
             ],
         ]);
 

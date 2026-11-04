@@ -13,7 +13,6 @@ final readonly class RecordExternalPaymentCommand
         public bool $wholeCycle,
         public ?\DateTimeImmutable $paidThroughDate,
         public int $amount,
-        public bool $issueInvoice,
     ) {
     }
 }

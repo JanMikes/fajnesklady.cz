@@ -9,6 +9,7 @@ use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
+use App\Enum\PaymentMethod;
 use App\Repository\AuditLogRepository;
 use App\Repository\ContractRepository;
 use App\Repository\OrderRepository;
@@ -43,9 +44,10 @@ class DebtPaymentServiceTest extends TestCase
         $commandBus->expects(self::never())->method('dispatch');
 
         $service = $this->buildService($commandBus);
-        $service->confirmDebtPaid($order, new \DateTimeImmutable('2025-06-15 12:00:00'), 'gopay-123');
+        $service->confirmDebtPaid($order, new \DateTimeImmutable('2025-06-15 12:00:00'), PaymentMethod::GOPAY, 'gopay-123');
 
         self::assertNotNull($order->debtPaidAt);
+        self::assertSame(PaymentMethod::GOPAY, $order->debtPaidVia);
         self::assertFalse($order->hasUnpaidDebt());
         self::assertTrue($order->hasDebt());
     }
@@ -63,7 +65,7 @@ class DebtPaymentServiceTest extends TestCase
             ->willReturn(new Envelope(new \stdClass()));
 
         $service = $this->buildService($commandBus);
-        $service->confirmDebtPaid($order, new \DateTimeImmutable('2025-06-15 12:00:00'));
+        $service->confirmDebtPaid($order, new \DateTimeImmutable('2025-06-15 12:00:00'), PaymentMethod::BANK_TRANSFER);
 
         self::assertFalse($order->hasUnpaidDebt());
     }
@@ -81,7 +83,7 @@ class DebtPaymentServiceTest extends TestCase
             ->willReturn(new Envelope(new \stdClass()));
 
         $service = $this->buildService($commandBus);
-        $service->confirmDebtPaid($order, new \DateTimeImmutable('2025-06-15 12:00:00'));
+        $service->confirmDebtPaid($order, new \DateTimeImmutable('2025-06-15 12:00:00'), PaymentMethod::BANK_TRANSFER);
 
         self::assertFalse($order->hasUnpaidDebt());
     }
@@ -98,7 +100,7 @@ class DebtPaymentServiceTest extends TestCase
         $commandBus->expects(self::never())->method('dispatch');
 
         $service = $this->buildService($commandBus);
-        $service->confirmDebtPaid($order, new \DateTimeImmutable('2025-06-15 12:00:00'));
+        $service->confirmDebtPaid($order, new \DateTimeImmutable('2025-06-15 12:00:00'), PaymentMethod::BANK_TRANSFER);
 
         self::assertFalse($order->hasUnpaidDebt());
         self::assertTrue($order->canBePaid());

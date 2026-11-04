@@ -100,6 +100,8 @@ final readonly class AuditLogger
             payload: [
                 'paid_at' => $order->paidAt?->format('Y-m-d H:i:s'),
                 'total_price' => $order->firstPaymentPrice,
+                // Set by Order::markPaid() just before — card vs. transfer.
+                'payment_method' => $order->paidVia?->value,
             ],
             orderId: $order->id,
             userIdContext: $order->user->id,

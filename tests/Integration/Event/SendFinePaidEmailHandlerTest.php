@@ -9,6 +9,7 @@ use App\Entity\Fine;
 use App\Entity\Invoice;
 use App\Entity\User;
 use App\Enum\FineType;
+use App\Enum\PaymentMethod;
 use App\Event\FinePaid;
 use App\Event\SendFinePaidEmailHandler;
 use Doctrine\ORM\EntityManagerInterface;
@@ -127,7 +128,7 @@ class SendFinePaidEmailHandlerTest extends KernelTestCase
             issuedAt: $now->modify('-1 day'),
             createdAt: $now->modify('-1 day'),
         );
-        $fine->markPaid($now);
+        $fine->markPaid($now, PaymentMethod::GOPAY);
         // Constructor + markPaid buffer domain events; drop them so persisting
         // directly in the test stays side-effect free (mirrors the fixtures' pattern).
         $fine->popEvents();

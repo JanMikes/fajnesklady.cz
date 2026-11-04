@@ -162,7 +162,7 @@ final class ContractFixtures extends Fixture implements DependentFixtureInterfac
         );
         $terminatedOrder->reserve($now->modify('-67 days'));
         $terminatedOrder->markAwaitingPayment($now->modify('-66 days'));
-        $terminatedOrder->markPaid($now->modify('-65 days'));
+        $terminatedOrder->markPaid($now->modify('-65 days'), goPayPaymentId: 'fixture-gopay-terminated'); // paid by card
         $terminatedOrder->popEvents();
         $manager->persist($terminatedOrder);
 

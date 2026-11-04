@@ -1,18 +1,18 @@
 {% extends 'portal/layout.html.twig' %}
 
-{% block title %}Externí platba - Admin{% endblock %}
+{% block title %}Platba mimo systém - Admin{% endblock %}
 
 {% block breadcrumb %}
     {% include 'components/breadcrumb.html.twig' with {breadcrumb_items: [
         {label: 'Objednávky', url: path('admin_orders_list')},
         {label: 'Detail', url: path('admin_order_detail', {id: order.id})},
-        {label: 'Externí platba'},
+        {label: 'Platba mimo systém'},
     ]} %}
 {% endblock %}
 
 {% block content %}
     <div class="max-w-2xl mx-auto">
-        <h1 class="text-3xl font-bold text-gray-900 mb-6">Označit jako externě zaplaceno</h1>
+        <h1 class="text-3xl font-bold text-gray-900 mb-6">Zaznamenat platbu mimo systém</h1>
 
         <div class="bg-gray-50 rounded-lg p-4 mb-6">
             <div class="text-sm text-gray-600 space-y-1">
@@ -34,7 +34,6 @@
             {{ form_row(form.coverage) }}
             {{ form_row(form.paidThroughDate) }}
             {{ form_row(form.amountInCzk) }}
-            {{ form_row(form.issueInvoice) }}
 
             <div class="flex justify-end space-x-3">
                 <a href="{{ path('admin_order_detail', {id: order.id}) }}" class="btn btn-secondary">Zrušit</a>

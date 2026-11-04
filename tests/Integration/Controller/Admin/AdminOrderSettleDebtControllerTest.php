@@ -50,7 +50,6 @@ class AdminOrderSettleDebtControllerTest extends WebTestCase
         $this->loginAsAdmin();
         $this->client->request('POST', $this->url($order), [
             'amount' => '500',
-            'issue_invoice' => '',
         ]);
 
         $this->assertResponseRedirects('/portal/admin/orders/'.$orderId);

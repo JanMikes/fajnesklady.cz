@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Service\Order;
 
+use App\Entity\BankTransaction;
 use App\Entity\Contract;
 use App\Entity\ManualPaymentRequest;
 use App\Entity\Order;
@@ -76,7 +77,7 @@ class OrderPaymentOverviewFactoryTest extends TestCase
         // Prepaid onboarding period is visible and explains itself.
         $prepaidRows = array_values(array_filter($overview->rows, static fn (PaymentOverviewRow $r): bool => PaymentOverviewRow::STATUS_COVERED_EXTERNAL === $r->status));
         $this->assertCount(1, $prepaidRows);
-        $this->assertStringContainsString('externě', $prepaidRows[0]->label);
+        $this->assertStringContainsString('mimo systém', $prepaidRows[0]->label);
 
         // The 0 Kč formality payment adds no extra row.
         $this->assertNotContains('První platba', array_map(static fn (PaymentOverviewRow $r): string => $r->label, $overview->rows));
@@ -142,41 +143,104 @@ class OrderPaymentOverviewFactoryTest extends TestCase
 
         $paidRows = array_values(array_filter($overview->rows, static fn (PaymentOverviewRow $r): bool => PaymentOverviewRow::STATUS_PAID === $r->status));
         $this->assertCount(2, $paidRows);
-        $this->assertSame('Kartou (GoPay)', $paidRows[0]->source);
+        $this->assertSame('Platební karta (GoPay)', $paidRows[0]->source);
+        $this->assertSame('Platební karta (GoPay)', $paidRows[1]->source);
         $this->assertSame(576000, $overview->totalPaidInHaler);
 
         // Upcoming card charges are projected from nextBillingDate.
         $scheduledRows = array_values(array_filter($overview->rows, static fn (PaymentOverviewRow $r): bool => PaymentOverviewRow::STATUS_SCHEDULED === $r->status));
         $this->assertNotEmpty($scheduledRows);
-        $this->assertSame('Automaticky kartou', $scheduledRows[0]->source);
+        $this->assertSame('Platební karta (automaticky)', $scheduledRows[0]->source);
     }
 
     /**
-     * Regression (order 01a0cd43): first payments recorded before the source
-     * was stored had neither a GoPay id nor a bank transaction, and every
-     * card-paid one read "Bankovní převod".
+     * Regression (order 019f83e5): the customer chose the card and the order
+     * carried a GoPay session id, but the money came by bank transfer. The
+     * source is how the money arrived, never the chosen method.
      */
-    public function testLegacyFirstPaymentOfGoPaySettledOrderReadsAsCard(): void
+    public function testCardOrderSettledByTransferReadsAsTransfer(): void
     {
         $order = $this->createOrder(startDate: '2025-05-01', endDate: '2025-09-30');
         $order->setPaymentMethod(PaymentMethod::GOPAY);
         $order->setGoPayPaymentId('9300412319');
-        $order->markPaid(new \DateTimeImmutable('2025-05-01 10:00:00'));
-
-        $overview = $this->createFactory()->build($order, $this->createContract($order), [$this->legacyFirstPayment($order)], [], $this->now);
-
-        $this->assertSame('Kartou (GoPay)', $this->firstPaymentRow($overview->rows)->source);
-    }
-
-    public function testLegacyFirstPaymentOfBankTransferOrderReadsAsTransfer(): void
-    {
-        $order = $this->createOrder(startDate: '2025-05-01', endDate: '2025-09-30');
-        $order->setPaymentMethod(PaymentMethod::BANK_TRANSFER);
-        $order->markPaid(new \DateTimeImmutable('2025-05-01 10:00:00'));
+        $order->markPaid(new \DateTimeImmutable('2025-05-01 10:00:00'), bankTransactionId: Uuid::v7());
 
         $overview = $this->createFactory()->build($order, $this->createContract($order), [$this->legacyFirstPayment($order)], [], $this->now);
 
         $this->assertSame('Bankovní převod', $this->firstPaymentRow($overview->rows)->source);
+    }
+
+    /**
+     * A legacy row without any recorded source (before app:backfill-payment-
+     * methods ran) is "unknown" — the old guess from the order's chosen
+     * method labelled transfers as card payments.
+     */
+    public function testLegacyFirstPaymentWithoutEvidenceIsNotGuessed(): void
+    {
+        $order = $this->createOrder(startDate: '2025-05-01', endDate: '2025-09-30');
+        $order->setPaymentMethod(PaymentMethod::GOPAY);
+        $order->setGoPayPaymentId('9300412319');
+
+        $overview = $this->createFactory()->build($order, $this->createContract($order), [$this->legacyFirstPayment($order)], [], $this->now);
+
+        $this->assertSame('Neuvedeno', $this->firstPaymentRow($overview->rows)->source);
+    }
+
+    /**
+     * The 30.09 cycle of order 01a051d7 read "Bankovní převod / externě": the
+     * paid request row never looked at the Payment that settled it.
+     */
+    public function testPaidRequestRowNamesTheMethodOfItsSettlingPayment(): void
+    {
+        $order = $this->createOrder(startDate: '2025-05-01', endDate: '2025-09-30');
+        $order->setPaymentMethod(PaymentMethod::BANK_TRANSFER);
+        $order->setBillingMode(BillingMode::MANUAL_RECURRING);
+        $contract = $this->createContract($order);
+        $contract->applyBillingMode(BillingMode::MANUAL_RECURRING);
+
+        $paidAt = new \DateTimeImmutable('2025-05-30 00:45:32');
+        $request = new ManualPaymentRequest(
+            id: Uuid::v7(),
+            contract: $contract,
+            periodStart: new \DateTimeImmutable('2025-06-01'),
+            periodEnd: new \DateTimeImmutable('2025-06-30'),
+            amount: 288000,
+            createdAt: new \DateTimeImmutable('2025-05-25'),
+        );
+        $request->markPaid($paidAt);
+
+        $cyclePayment = new Payment(
+            id: Uuid::v7(),
+            order: null,
+            contract: $contract,
+            storage: $order->storage,
+            amount: 288000,
+            paidAt: $paidAt,
+            createdAt: $paidAt,
+        );
+        $cyclePayment->linkBankTransaction($this->createBankTransaction());
+
+        $overview = $this->createFactory()->build($order, $contract, [$cyclePayment], [$request], $this->now);
+
+        $paidRows = array_values(array_filter($overview->rows, static fn (PaymentOverviewRow $r): bool => PaymentOverviewRow::STATUS_PAID === $r->status));
+        $this->assertCount(1, $paidRows, 'the settling payment must not show up as a second row');
+        $this->assertSame('Bankovní převod', $paidRows[0]->source);
+    }
+
+    private function createBankTransaction(): BankTransaction
+    {
+        return new BankTransaction(
+            id: Uuid::v7(),
+            fioTransactionId: 'fio-1',
+            amount: 288000,
+            currency: 'CZK',
+            variableSymbol: '1234567890',
+            senderAccountNumber: null,
+            senderName: null,
+            transactionDate: new \DateTimeImmutable('2025-05-30'),
+            comment: null,
+            createdAt: new \DateTimeImmutable('2025-05-30'),
+        );
     }
 
     private function legacyFirstPayment(Order $order): Payment

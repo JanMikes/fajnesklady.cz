@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Event;
 
 use App\Entity\Order;
+use App\Enum\PaymentMethod;
 use App\Repository\OrderRepository;
 use App\Service\InvoicingService;
 use App\Service\OrderStatusUrlGenerator;
@@ -83,6 +84,11 @@ final readonly class SendOnboardingDebtPaidEmailHandler
      */
     private function attachDebtInvoice(TemplatedEmail $email, Order $order, \DateTimeImmutable $now): ?string
     {
+        // An admin-settled debt has no payment evidence — never invoiced.
+        if (PaymentMethod::EXTERNAL === $order->debtPaidVia) {
+            return null;
+        }
+
         try {
             $invoice = $this->invoicingService->issueInvoiceForDebt($order, $now);
         } catch (\Throwable $e) {

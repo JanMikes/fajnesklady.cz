@@ -4,13 +4,18 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Controller\Admin;
 
+use App\Entity\BankTransaction;
 use App\Entity\Contract;
 use App\Entity\Fine;
 use App\Entity\Invoice;
 use App\Entity\Order;
 use App\Entity\User;
+use App\Enum\BillingMode;
 use App\Enum\FineType;
 use App\Enum\OrderStatus;
+use App\Enum\PaymentMethod;
+use App\Repository\PaymentRepository;
+use App\Service\AuditLogger;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -132,6 +137,78 @@ class AdminOrderDetailControllerTest extends WebTestCase
         $this->assertStringNotContainsString('/pdf?download=1', $body);
     }
 
+    /**
+     * Order 01a051d7: the customer wired 1 900 Kč for a cycle requested at
+     * 1 837 Kč. "Přijato bankovním převodem" then disagreed with "Zaplaceno"
+     * by the 63 Kč parked as credit, and the page told the admin to check the
+     * pairing — although nothing was mispaired. Payment wording is one
+     * vocabulary: method first, no "Ručně schvalovaná platba", no raw keys.
+     */
+    public function testOverpaymentParkedAsCreditIsExplainedNotFlaggedAsPairingError(): void
+    {
+        $contract = $this->findContractWithoutBankTransfers();
+        $order = $contract->order;
+        $order->setPaymentMethod(PaymentMethod::BANK_TRANSFER);
+        $order->setBillingMode(BillingMode::MANUAL_RECURRING);
+
+        $totalPaid = static::getContainer()->get(PaymentRepository::class)->sumPaidForOrder($order, $contract);
+        $now = new \DateTimeImmutable('2025-06-15 12:00:00');
+        $transfer = new BankTransaction(
+            id: Uuid::v7(),
+            fioTransactionId: 'fio-overpay-'.Uuid::v7()->toBase58(),
+            amount: $totalPaid + 6_300,
+            currency: 'CZK',
+            variableSymbol: $order->variableSymbol,
+            senderAccountNumber: null,
+            senderName: null,
+            transactionDate: $now,
+            comment: null,
+            createdAt: $now,
+        );
+        $transfer->pairToContract($contract, 'variable_symbol', null, $now);
+        $this->entityManager->persist($transfer);
+        $contract->addCredit(6_300);
+        static::getContainer()->get(AuditLogger::class)->log(
+            entityType: 'bank_transaction',
+            entityId: $transfer->id->toRfc4122(),
+            eventType: 'allocated',
+            payload: ['incoming_amount' => 190_000, 'steps' => [
+                ['type' => 'billing_cycle', 'allocated' => 183_700],
+                ['type' => 'credit', 'allocated' => 6_300],
+            ]],
+            orderId: $order->id,
+        );
+        $this->entityManager->flush();
+
+        $this->client->loginUser($this->findAdmin(), 'main');
+        $this->client->request('GET', '/portal/admin/orders/'.$order->id->toRfc4122());
+
+        $this->assertResponseIsSuccessful();
+        $body = (string) $this->client->getResponse()->getContent();
+        $this->assertStringContainsString('Z toho přeplatek 63,00 Kč evidovaný jako kredit smlouvy', $body);
+        $this->assertStringNotContainsString('zkontrolujte spárování plateb', $body);
+        $this->assertStringContainsString('Bankovní převod — výzva e-mailem před každou platbou', $body);
+        $this->assertStringContainsString('Bankovní převod rozúčtován', $body);
+        $this->assertStringContainsString('nájem za období 1 837 Kč, přeplatek → kredit 63 Kč', $body);
+        $this->assertStringNotContainsString('bank_transaction.allocated', $body);
+        $this->assertStringNotContainsString('Ručně schvalovaná', $body);
+    }
+
+    private function findContractWithoutBankTransfers(): Contract
+    {
+        $contract = $this->entityManager->createQueryBuilder()
+            ->select('c')
+            ->from(Contract::class, 'c')
+            ->where('c.terminatedAt IS NULL')
+            ->andWhere('NOT EXISTS (SELECT bt.id FROM '.BankTransaction::class.' bt WHERE bt.pairedOrder = c.order)')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+        \assert($contract instanceof Contract, 'No fixture contract without bank transfers.');
+
+        return $contract;
+    }
+
     private function findAnyContract(): Contract
     {
         $contract = $this->entityManager->createQueryBuilder()
@@ -159,7 +236,7 @@ class AdminOrderDetailControllerTest extends WebTestCase
             issuedAt: $now->modify('-1 day'),
             createdAt: $now->modify('-1 day'),
         );
-        $fine->markPaid($now);
+        $fine->markPaid($now, PaymentMethod::GOPAY);
         $fine->popEvents();
         $this->entityManager->persist($fine);
         $this->entityManager->flush();

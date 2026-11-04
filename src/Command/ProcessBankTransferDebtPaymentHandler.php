@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Command;
 
+use App\Enum\PaymentMethod;
 use App\Service\Onboarding\DebtPaymentService;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -26,6 +27,6 @@ final readonly class ProcessBankTransferDebtPaymentHandler
             return;
         }
 
-        $this->debtPaymentService->confirmDebtPaid($order, $now);
+        $this->debtPaymentService->confirmDebtPaid($order, $now, PaymentMethod::BANK_TRANSFER);
     }
 }

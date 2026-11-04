@@ -9,7 +9,9 @@ use App\Entity\Fine;
 use App\Entity\Invoice;
 use App\Entity\Order;
 use App\Entity\User;
+use App\Enum\PaymentMethod;
 use App\Repository\InvoiceRepository;
+use App\Repository\PaymentRepository;
 use App\Repository\UserRepository;
 use App\Service\Fakturoid\FakturoidClient;
 use App\Service\Fakturoid\StaleFakturoidSubjectException;
@@ -23,6 +25,7 @@ readonly class InvoicingService
         private ProvideIdentity $identityProvider,
         private InvoiceRepository $invoiceRepository,
         private UserRepository $userRepository,
+        private PaymentRepository $paymentRepository,
         private LoggerInterface $logger,
         private string $invoicesDirectory,
     ) {
@@ -32,13 +35,15 @@ readonly class InvoicingService
     {
         $user = $order->user;
 
+        $paidVia = $this->firstPaymentMethod($order);
+        self::assertPaymentEvidence($paidVia);
         $subjectId = $this->ensureFakturoidSubject($user, $now);
 
         try {
-            $fakturoidInvoice = $this->fakturoidClient->createInvoice($subjectId, $order);
+            $fakturoidInvoice = $this->fakturoidClient->createInvoice($subjectId, $order, $paidVia);
         } catch (StaleFakturoidSubjectException $e) {
             $subjectId = $this->recreateFakturoidSubject($user, $now, $e->subjectId);
-            $fakturoidInvoice = $this->fakturoidClient->createInvoice($subjectId, $order);
+            $fakturoidInvoice = $this->fakturoidClient->createInvoice($subjectId, $order, $paidVia);
         }
 
         // Invoice is created after payment, so mark it as paid immediately
@@ -79,13 +84,16 @@ readonly class InvoicingService
     {
         $user = $order->user;
 
+        // Set by Order::markDebtPaid() before OnboardingDebtPaid fires this.
+        $paidVia = $order->debtPaidVia ?? PaymentMethod::EXTERNAL;
+        self::assertPaymentEvidence($paidVia);
         $subjectId = $this->ensureFakturoidSubject($user, $now);
 
         try {
-            $fakturoidInvoice = $this->fakturoidClient->createDebtInvoice($subjectId, $order);
+            $fakturoidInvoice = $this->fakturoidClient->createDebtInvoice($subjectId, $order, $paidVia);
         } catch (StaleFakturoidSubjectException $e) {
             $subjectId = $this->recreateFakturoidSubject($user, $now, $e->subjectId);
-            $fakturoidInvoice = $this->fakturoidClient->createDebtInvoice($subjectId, $order);
+            $fakturoidInvoice = $this->fakturoidClient->createDebtInvoice($subjectId, $order, $paidVia);
         }
 
         // The debt is already paid when this runs, so mark the invoice paid immediately.
@@ -124,13 +132,16 @@ readonly class InvoicingService
     {
         $user = $fine->user;
 
+        // Set by Fine::markPaid() before FinePaid fires this.
+        $paidVia = $fine->paidVia ?? PaymentMethod::EXTERNAL;
+        self::assertPaymentEvidence($paidVia);
         $subjectId = $this->ensureFakturoidSubject($user, $now);
 
         try {
-            $fakturoidInvoice = $this->fakturoidClient->createFineInvoice($subjectId, $fine);
+            $fakturoidInvoice = $this->fakturoidClient->createFineInvoice($subjectId, $fine, $paidVia);
         } catch (StaleFakturoidSubjectException $e) {
             $subjectId = $this->recreateFakturoidSubject($user, $now, $e->subjectId);
-            $fakturoidInvoice = $this->fakturoidClient->createFineInvoice($subjectId, $fine);
+            $fakturoidInvoice = $this->fakturoidClient->createFineInvoice($subjectId, $fine, $paidVia);
         }
 
         // The fine is already paid when this runs, so mark the invoice paid immediately.
@@ -170,18 +181,20 @@ readonly class InvoicingService
         Contract $contract,
         int $amount,
         \DateTimeImmutable $chargedAt,
+        PaymentMethod $paidVia,
         ?\DateTimeImmutable $periodStart = null,
         ?\DateTimeImmutable $periodEnd = null,
     ): Invoice {
+        self::assertPaymentEvidence($paidVia);
         $user = $contract->user;
 
         $subjectId = $this->ensureFakturoidSubject($user, $chargedAt);
 
         try {
-            $fakturoidInvoice = $this->fakturoidClient->createRecurringInvoice($subjectId, $contract, $amount, $chargedAt, $periodStart, $periodEnd);
+            $fakturoidInvoice = $this->fakturoidClient->createRecurringInvoice($subjectId, $contract, $amount, $chargedAt, $paidVia, $periodStart, $periodEnd);
         } catch (StaleFakturoidSubjectException $e) {
             $subjectId = $this->recreateFakturoidSubject($user, $chargedAt, $e->subjectId);
-            $fakturoidInvoice = $this->fakturoidClient->createRecurringInvoice($subjectId, $contract, $amount, $chargedAt, $periodStart, $periodEnd);
+            $fakturoidInvoice = $this->fakturoidClient->createRecurringInvoice($subjectId, $contract, $amount, $chargedAt, $paidVia, $periodStart, $periodEnd);
         }
 
         // Recurring payments are charged immediately, so mark as paid
@@ -213,6 +226,30 @@ readonly class InvoicingService
         }
 
         return $invoice;
+    }
+
+    /**
+     * We never issue a tax document for money the platform has no evidence
+     * of: only a GoPay charge or a paired bank transfer proves a payment.
+     * Off-system ("mimo systém") records are bookkeeping notes, not receipts.
+     */
+    private static function assertPaymentEvidence(PaymentMethod $paidVia): void
+    {
+        if (PaymentMethod::EXTERNAL === $paidVia) {
+            throw new \DomainException('No invoice for an off-system payment — there is no evidence of the payment.');
+        }
+    }
+
+    /**
+     * How the order's first payment arrived. Order::$paidVia is written by
+     * markPaid(); the Payment row is the fallback for orders paid before that
+     * column existed (and not yet backfilled).
+     */
+    private function firstPaymentMethod(Order $order): PaymentMethod
+    {
+        return $order->paidVia
+            ?? $this->paymentRepository->findByOrder($order)->paidVia
+            ?? PaymentMethod::EXTERNAL;
     }
 
     private function ensureFakturoidSubject(User $user, \DateTimeImmutable $now): int

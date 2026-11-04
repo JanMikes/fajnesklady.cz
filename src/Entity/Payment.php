@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use App\Enum\PaymentMethod;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Types\UuidType;
 use Symfony\Component\Uid\Uuid;
@@ -36,6 +37,21 @@ class Payment
 
     #[ORM\Column(nullable: true)]
     public private(set) ?\DateTimeImmutable $periodEnd = null;
+
+    /**
+     * How the money reached us, read off the stored source links: a GoPay id
+     * is only ever written once GoPay confirmed the charge, a bank transaction
+     * only once FIO money was paired. Every other row was recorded by an admin
+     * (onboarding, off-system settlements). Zero-amount formality rows also
+     * land on EXTERNAL — no money moved at all.
+     */
+    public PaymentMethod $paidVia {
+        get => match (true) {
+            null !== $this->goPayPaymentId => PaymentMethod::GOPAY,
+            null !== $this->bankTransaction => PaymentMethod::BANK_TRANSFER,
+            default => PaymentMethod::EXTERNAL,
+        };
+    }
 
     public function __construct(
         #[ORM\Id]

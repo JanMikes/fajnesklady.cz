@@ -24,6 +24,9 @@ final readonly class OrderPaymentOverviewFactory
 {
     private const int MAX_PROJECTED_CYCLES = 24;
 
+    // Only for paid rows whose source was never recorded (pre-backfill data).
+    private const string UNKNOWN_SOURCE = 'Neuvedeno';
+
     public function __construct(
         private RecurringAmountCalculator $amountCalculator,
     ) {
@@ -57,7 +60,7 @@ final readonly class OrderPaymentOverviewFactory
         }
 
         foreach ($requests as $request) {
-            $rows[] = $this->buildRequestRow($order, $contract, $request, $today);
+            $rows[] = $this->buildRequestRow($order, $contract, $request, $payments, $today);
         }
 
         foreach ($this->buildUnmatchedContractPaymentRows($payments, $requests) as $row) {
@@ -118,11 +121,11 @@ final readonly class OrderPaymentOverviewFactory
         }
 
         return new PaymentOverviewRow(
-            label: 'Předplaceno externě (onboarding)',
+            label: 'Předplaceno mimo systém (onboarding)',
             status: PaymentOverviewRow::STATUS_COVERED_EXTERNAL,
             periodStart: $order->startDate,
             periodEnd: $order->paidThroughDate,
-            source: 'Mimo systém',
+            source: PaymentMethod::EXTERNAL->label(),
             note: sprintf('Uhrazeno mimo platformu do %s — v systému neprošla žádná platba.', $order->paidThroughDate->format('d.m.Y')),
         );
     }
@@ -140,7 +143,9 @@ final readonly class OrderPaymentOverviewFactory
                 dueDate: $order->createdAt,
                 amountInHaler: $order->onboardingDebtInHaler,
                 paidAt: $order->debtPaidAt,
-                source: null !== $order->debtGoPayPaymentId ? 'Kartou (GoPay)' : 'Převod / externě',
+                // debtGoPayPaymentId is NOT proof of a card payment — it is set
+                // as soon as the customer opens the gateway.
+                source: $order->debtPaidVia?->label() ?? self::UNKNOWN_SOURCE,
             );
         }
 
@@ -179,29 +184,29 @@ final readonly class OrderPaymentOverviewFactory
                     label: 'První platba',
                     status: PaymentOverviewRow::STATUS_COVERED_EXTERNAL,
                     paidAt: $initialPayment->paidAt,
-                    source: 'Mimo systém',
-                    note: 'Označeno jako vyřízené bez platby v systému (externí / zdarma).',
+                    source: PaymentMethod::EXTERNAL->label(),
+                    note: 'Vyřízeno bez platby v systému (předplaceno mimo systém nebo zdarma).',
                 );
             }
 
-            $isExternal = PaymentMethod::EXTERNAL === $order->paymentMethod && null === $initialPayment->goPayPaymentId;
+            // How the money ACTUALLY arrived — never the order's chosen method:
+            // a card order can be settled by a transfer to its VS. A GoPay /
+            // bank link on the Payment is hard evidence; Order::$paidVia comes
+            // next; an unlinked legacy row is "unknown" rather than a guess.
+            $paidVia = match (true) {
+                PaymentMethod::EXTERNAL !== $initialPayment->paidVia => $initialPayment->paidVia,
+                null !== $order->paidVia => $order->paidVia,
+                PaymentMethod::EXTERNAL === $order->paymentMethod => PaymentMethod::EXTERNAL,
+                default => null,
+            };
 
             return new PaymentOverviewRow(
                 label: 'První platba',
                 status: PaymentOverviewRow::STATUS_PAID,
                 amountInHaler: $initialPayment->amount,
                 paidAt: $initialPayment->paidAt,
-                source: match (true) {
-                    null !== $initialPayment->goPayPaymentId => 'Kartou (GoPay)',
-                    null !== $initialPayment->bankTransaction => 'Bankovní převod',
-                    $isExternal => 'Externě (mimo systém)',
-                    // Legacy rows recorded before the source was stored: an
-                    // order settled through its own GoPay session was a card
-                    // payment (a later bank→card switch never sets it).
-                    null !== $order->goPayPaymentId && PaymentMethod::GOPAY === $order->paymentMethod => 'Kartou (GoPay)',
-                    default => 'Bankovní převod',
-                },
-                note: $isExternal ? 'Částka evidovaná administrátorem — penězi neprošla platformou.' : null,
+                source: $paidVia?->label() ?? self::UNKNOWN_SOURCE,
+                note: PaymentMethod::EXTERNAL === $paidVia ? 'Částku zaznamenal administrátor — peníze neprošly platební bránou ani párováním z banky.' : null,
             );
         }
 
@@ -236,7 +241,10 @@ final readonly class OrderPaymentOverviewFactory
         );
     }
 
-    private function buildRequestRow(Order $order, ?Contract $contract, ManualPaymentRequest $request, \DateTimeImmutable $today): PaymentOverviewRow
+    /**
+     * @param list<Payment> $payments
+     */
+    private function buildRequestRow(Order $order, ?Contract $contract, ManualPaymentRequest $request, array $payments, \DateTimeImmutable $today): PaymentOverviewRow
     {
         $label = sprintf(
             'Období %s – %s',
@@ -253,7 +261,7 @@ final readonly class OrderPaymentOverviewFactory
                 periodEnd: $request->periodEnd,
                 amountInHaler: $request->amount,
                 paidAt: $request->paidAt,
-                source: null !== $request->goPayPaymentId ? 'Kartou (GoPay)' : 'Bankovní převod / externě',
+                source: $this->findSettlingPayment($request, $payments)?->paidVia->label() ?? self::UNKNOWN_SOURCE,
             );
         }
 
@@ -351,15 +359,35 @@ final readonly class OrderPaymentOverviewFactory
                 periodEnd: $payment->periodEnd,
                 amountInHaler: $payment->amount,
                 paidAt: $payment->paidAt,
-                source: match (true) {
-                    null !== $payment->goPayPaymentId => 'Kartou (GoPay)',
-                    null !== $payment->bankTransaction => 'Bankovní převod',
-                    default => 'Externí záznam',
-                },
+                source: $payment->paidVia->label(),
             );
         }
 
         return $rows;
+    }
+
+    /**
+     * The Payment row that settled a paid request. Both are written by the same
+     * handler with the same $now, so paidAt is the join key (the same one
+     * {@see buildUnmatchedContractPaymentRows()} uses to avoid double rows).
+     *
+     * @param list<Payment> $payments
+     */
+    private function findSettlingPayment(ManualPaymentRequest $request, array $payments): ?Payment
+    {
+        if (null === $request->paidAt) {
+            return null;
+        }
+
+        foreach ($payments as $payment) {
+            if (null === $payment->order && $payment->paidAt->format(\DateTimeInterface::ATOM) === $request->paidAt->format(\DateTimeInterface::ATOM)) {
+                return $payment;
+            }
+        }
+
+        // Not inferred from $request->goPayPaymentId: that is set when the
+        // customer opens the card gateway, not when the money arrives.
+        return null;
     }
 
     /**
@@ -432,7 +460,7 @@ final readonly class OrderPaymentOverviewFactory
                     periodStart: $periodStart,
                     periodEnd: $periodEnd,
                     amountInHaler: $this->amountCalculator->calculateForPeriodStart($contract, $periodStart),
-                    source: $isAutoRecurring ? 'Automaticky kartou' : 'Výzva e-mailem (převod)',
+                    source: $isAutoRecurring ? 'Platební karta (automaticky)' : 'Bankovní převod (na výzvu)',
                     note: $note,
                     daysOverdue: $daysOverdue,
                 );

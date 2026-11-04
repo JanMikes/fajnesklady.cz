@@ -76,7 +76,7 @@
             </div>
             <div>
                 <dt class="text-xs uppercase text-gray-500">Způsob platby</dt>
-                <dd class="font-semibold {{ order.isAwaitingPaymentChoice() ? 'text-amber-700' : 'text-gray-900' }}">{{ order.isAwaitingPaymentChoice() ? 'Zákazník zvolí' : order.billingMode.label() }}</dd>
+                <dd class="font-semibold {{ order.isAwaitingPaymentChoice() ? 'text-amber-700' : 'text-gray-900' }}">{{ order.paymentArrangementLabel() }}</dd>
             </div>
             <div>
                 <dt class="text-xs uppercase text-gray-500">Zaplaceno v systému</dt>
@@ -84,7 +84,7 @@
             </div>
             {% if order.paidThroughDate %}
                 <div>
-                    <dt class="text-xs uppercase text-gray-500">Předplaceno externě do</dt>
+                    <dt class="text-xs uppercase text-gray-500">Předplaceno mimo systém do</dt>
                     <dd class="font-semibold text-gray-900">{{ order.paidThroughDate|date('d.m.Y') }}</dd>
                 </div>
             {% endif %}
@@ -204,11 +204,8 @@
                                     </td>
                                     <td class="px-3 py-2 text-sm text-gray-500 whitespace-nowrap">
                                         {% if fine.isPaid() %}
-                                            {% if fine.goPayPaymentId %}
-                                                Kartou (GoPay)
-                                            {% else %}
-                                                Převodem (VS {{ fine.variableSymbol }})
-                                            {% endif %}
+                                            {# paidVia, not goPayPaymentId — the latter is set when the gateway is merely opened. #}
+                                            {% if fine.paidVia %}{{ fine.paidVia.label() }}{% if fine.paidVia.value == 'bank_transfer' %} (VS {{ fine.variableSymbol }}){% endif %}{% else %}Neuvedeno{% endif %}
                                             {% if fineInvoices[fine.id|raw] is defined and fineInvoices[fine.id|raw].hasPdf() %}
                                                 · <a href="{{ path('portal_user_invoice_pdf', {id: fineInvoices[fine.id|raw].id, download: 1}) }}" download
                                                      class="text-accent underline hover:text-accent-hover">Faktura</a>
@@ -336,7 +333,7 @@
                     </div>
                     <div>
                         <dt class="text-sm font-medium text-gray-500">Způsob platby</dt>
-                        <dd class="mt-1 text-sm {{ order.isAwaitingPaymentChoice() ? 'text-amber-700' : 'text-gray-900' }}">{{ order.isAwaitingPaymentChoice() ? 'Zákazník zvolí způsob a frekvenci platby' : order.billingMode.label() }}</dd>
+                        <dd class="mt-1 text-sm {{ order.isAwaitingPaymentChoice() ? 'text-amber-700' : 'text-gray-900' }}">{{ order.isAwaitingPaymentChoice() ? 'Zákazník zvolí způsob a frekvenci platby' : order.paymentArrangementLabel() }}</dd>
                     </div>
                     <div>
                         <dt class="text-sm font-medium text-gray-500">Datum začátku</dt>
@@ -360,7 +357,7 @@
                         <dt class="text-sm font-medium text-gray-500">{{ order.isAwaitingPaymentChoice() ? 'Cena' : (order.isRecurring ? (order.isYearlyFrequency ? 'Roční platba' : 'Měsíční platba') : (order.isPaidInUpfrontTranches ? 'První platba' : 'Celková cena')) }}</dt>
                         <dd class="mt-1 text-sm font-semibold {{ order.isAwaitingPaymentChoice() ? 'text-amber-700' : 'text-gray-900' }}">{% if order.isAwaitingPaymentChoice() %}Zákazník zvolí{% else %}{{ (order.firstPaymentPrice / 100)|number_format(2, ',', ' ') }} Kč{% if order.isRecurring %} / {{ order.isYearlyFrequency ? 'rok' : 'měsíc' }}{% endif %}{% endif %}</dd>
                     </div>
-                    {% include '_price_aggregate.html.twig' with { order: order, paymentSchedule: paymentSchedule, totalPaid: totalPaid, bankTransferReceivedTotal: bankTransferReceivedTotal } only %}
+                    {% include '_price_aggregate.html.twig' with { order: order, paymentSchedule: paymentSchedule, totalPaid: totalPaid, bankTransferReceivedTotal: bankTransferReceivedTotal, contract: contract } only %}
                     <div>
                         <dt class="text-sm font-medium text-gray-500">Vytvořeno</dt>
                         <dd class="mt-1 text-sm text-gray-900">{{ order.createdAt|date('d.m.Y H:i') }}</dd>
@@ -632,7 +629,7 @@
                         <svg class="h-4 w-4 mr-2 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        Označit jako externě zaplaceno
+                        Zaznamenat platbu mimo systém
                     </a>
                 {% endif %}
                 {% if canExtendDeadline %}
@@ -796,11 +793,7 @@
                            inputmode="decimal" class="form-input" />
                     <p class="form-help">Evidovaný dluh: {{ debtCzk|number_format(2, ',', ' ') }} Kč</p>
                 </div>
-                <label class="flex items-center gap-2 mt-3">
-                    <input type="checkbox" name="issue_invoice" value="1"
-                           class="h-4 w-4 text-accent border-gray-300 rounded">
-                    <span class="text-sm text-gray-700">Vystavit fakturu</span>
-                </label>
+                <p class="form-help mt-3">Faktura se nevystavuje — platba mimo systém nemá v systému doklad o úhradě.</p>
                 <div class="modal-action">
                     <button type="button" class="btn btn-ghost" onclick="document.getElementById('settleDebtModal').close()">Zrušit</button>
                     <button type="submit" class="btn btn-primary">Označit jako uhrazený</button>

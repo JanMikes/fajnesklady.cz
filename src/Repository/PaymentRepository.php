@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Repository;
 
+use App\Entity\BankTransaction;
 use App\Entity\Contract;
 use App\Entity\Order;
 use App\Entity\Payment;
@@ -438,5 +439,53 @@ class PaymentRepository
             ->getSingleScalarResult();
 
         return (int) ($result ?? 0);
+    }
+
+    /**
+     * First payments with money on them whose source was never recorded —
+     * rows written before RecordPaymentOnOrderPaidHandler stored the GoPay /
+     * bank link. Input for app:backfill-payment-methods.
+     *
+     * @return list<Payment>
+     */
+    public function findUnlinkedFirstPayments(): array
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('p')
+            ->from(Payment::class, 'p')
+            ->where('p.order IS NOT NULL')
+            ->andWhere('p.goPayPaymentId IS NULL')
+            ->andWhere('p.bankTransaction IS NULL')
+            ->andWhere('p.amount > 0')
+            ->orderBy('p.paidAt', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    public function isBankTransactionLinked(BankTransaction $bankTransaction): bool
+    {
+        return null !== $this->entityManager->createQueryBuilder()
+            ->select('p.id')
+            ->from(Payment::class, 'p')
+            ->where('p.bankTransaction = :bankTransaction')
+            ->setParameter('bankTransaction', $bankTransaction)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
+    /**
+     * @return list<Payment>
+     */
+    public function findByBankTransaction(BankTransaction $bankTransaction): array
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('p')
+            ->from(Payment::class, 'p')
+            ->where('p.bankTransaction = :bankTransaction')
+            ->setParameter('bankTransaction', $bankTransaction)
+            ->orderBy('p.paidAt', 'ASC')
+            ->getQuery()
+            ->getResult();
     }
 }

@@ -131,4 +131,17 @@ class InvoiceRepository
             ->getQuery()
             ->getResult();
     }
+
+    /**
+     * @return list<Invoice>
+     */
+    public function findAllOrderedByIssuedAt(): array
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('i')
+            ->from(Invoice::class, 'i')
+            ->orderBy('i.issuedAt', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
 }

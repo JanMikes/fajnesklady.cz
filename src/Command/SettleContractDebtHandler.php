@@ -8,9 +8,7 @@ use App\Entity\Payment;
 use App\Repository\PaymentRepository;
 use App\Service\AuditLogger;
 use App\Service\Identity\ProvideIdentity;
-use App\Service\InvoicingService;
 use Psr\Clock\ClockInterface;
-use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]
@@ -19,10 +17,8 @@ final readonly class SettleContractDebtHandler
     public function __construct(
         private PaymentRepository $paymentRepository,
         private ProvideIdentity $identityProvider,
-        private InvoicingService $invoicingService,
         private AuditLogger $auditLogger,
         private ClockInterface $clock,
-        private LoggerInterface $logger,
     ) {
     }
 
@@ -49,18 +45,8 @@ final readonly class SettleContractDebtHandler
             createdAt: $now,
         ));
 
-        if ($command->issueInvoice) {
-            try {
-                $this->invoicingService->issueInvoiceForRecurringPayment($contract, $command->amountInHaler, $now);
-            } catch (\Throwable $e) {
-                // Best-effort: a Fakturoid outage must not roll back the
-                // recorded settlement. The admin can re-issue in Fakturoid.
-                $this->logger->error('Debt-settlement invoice failed', [
-                    'contract_id' => $contract->id->toRfc4122(),
-                    'exception' => $e,
-                ]);
-            }
-        }
+        // No invoice: off-system money has no payment evidence in the
+        // platform, and we never issue a tax document without one.
 
         $this->auditLogger->log(
             entityType: 'contract',
@@ -69,7 +55,6 @@ final readonly class SettleContractDebtHandler
             payload: [
                 'amount' => $command->amountInHaler,
                 'remaining' => $contract->outstandingDebtAmount ?? 0,
-                'invoice_issued' => $command->issueInvoice,
             ],
             orderId: $contract->order->id,
             userIdContext: $contract->user->id,

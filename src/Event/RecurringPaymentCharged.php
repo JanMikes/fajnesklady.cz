@@ -11,7 +11,7 @@ use Symfony\Component\Uid\Uuid;
  * a GoPay card charge id, or the bank transaction of a transfer. The two used
  * to share one string field, which put bank-transaction UUIDs into
  * payment.go_pay_payment_id — and every such payment then rendered as
- * "Kartou (GoPay)" although the customer paid by wire.
+ * a card payment although the customer paid by wire.
  */
 final readonly class RecurringPaymentCharged
 {

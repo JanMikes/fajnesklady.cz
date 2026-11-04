@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Event;
 
+use App\Enum\PaymentMethod;
 use App\Repository\ContractRepository;
 use App\Service\InvoicingService;
 use Psr\Log\LoggerInterface;
@@ -28,6 +29,7 @@ final readonly class IssueInvoiceOnRecurringChargeHandler
                 $contract,
                 $event->amount,
                 $event->occurredOn,
+                null !== $event->goPayPaymentId ? PaymentMethod::GOPAY : PaymentMethod::BANK_TRANSFER,
                 $event->periodStart,
                 $event->periodEnd,
             );

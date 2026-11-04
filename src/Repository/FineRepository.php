@@ -206,4 +206,21 @@ final class FineRepository
 
         return $qb->getQuery()->getResult();
     }
+
+    /**
+     * Paid fines that predate Fine::$paidVia.
+     *
+     * @return list<Fine>
+     */
+    public function findPaidWithoutPaidVia(): array
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('f')
+            ->from(Fine::class, 'f')
+            ->where('f.paidAt IS NOT NULL')
+            ->andWhere('f.paidVia IS NULL')
+            ->orderBy('f.paidAt', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
 }

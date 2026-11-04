@@ -121,7 +121,7 @@ final class AdminOnboardingFormType extends AbstractType
                 'expanded' => true,
                 'placeholder' => false,
                 'choice_label' => static fn (PaymentMethod $method): string => match ($method) {
-                    PaymentMethod::EXTERNAL => 'Externí platba (hotovost, jiné)',
+                    PaymentMethod::EXTERNAL => 'Mimo systém (hotovost, převod na jiný účet)',
                     PaymentMethod::GOPAY => 'GoPay (zákazník nastaví při podpisu)',
                     PaymentMethod::BANK_TRANSFER => 'Bankovní převod (zákazník platí převodem)',
                 },

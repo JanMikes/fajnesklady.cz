@@ -15,10 +15,8 @@ use App\Repository\ManualPaymentRequestRepository;
 use App\Repository\PaymentRepository;
 use App\Service\AuditLogger;
 use App\Service\Identity\ProvideIdentity;
-use App\Service\InvoicingService;
 use App\Service\OrderService;
 use Psr\Clock\ClockInterface;
-use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Messenger\MessageBusInterface;
 
@@ -30,12 +28,10 @@ final readonly class RecordExternalPaymentHandler
         private ManualPaymentRequestRepository $manualPaymentRequestRepository,
         private PaymentRepository $paymentRepository,
         private ProvideIdentity $identityProvider,
-        private InvoicingService $invoicingService,
         private OrderService $orderService,
         private MessageBusInterface $commandBus,
         private AuditLogger $auditLogger,
         private ClockInterface $clock,
-        private LoggerInterface $logger,
     ) {
     }
 
@@ -98,18 +94,8 @@ final readonly class RecordExternalPaymentHandler
             createdAt: $now,
         ));
 
-        if ($command->issueInvoice) {
-            try {
-                $this->invoicingService->issueInvoiceForRecurringPayment($contract, $command->amount, $now);
-            } catch (\Throwable $e) {
-                // Best-effort: a Fakturoid outage must not roll back the
-                // recorded payment. The admin can re-issue in Fakturoid.
-                $this->logger->error('External-payment invoice failed', [
-                    'contract_id' => $contract->id->toRfc4122(),
-                    'exception' => $e,
-                ]);
-            }
-        }
+        // No invoice: money recorded off-system has no payment evidence in
+        // the platform, and we never issue a tax document without one.
 
         $this->auditLogger->log(
             entityType: 'contract',
@@ -119,7 +105,6 @@ final readonly class RecordExternalPaymentHandler
                 'paid_through' => $paidThroughDate->format('Y-m-d'),
                 'amount' => $command->amount,
                 'whole_cycle' => $command->wholeCycle,
-                'invoice_issued' => $command->issueInvoice,
             ],
             orderId: $order->id,
             userIdContext: $order->user->id,
@@ -152,11 +137,8 @@ final readonly class RecordExternalPaymentHandler
             $this->commandBus->dispatch(new CompleteOrderCommand($order));
         }
 
-        // Completion skips the invoice for EXTERNAL orders (no real money moved
-        // through the system); issue it explicitly only when the admin asked.
-        if ($command->issueInvoice) {
-            $this->commandBus->dispatch(new IssueInvoiceForOrderCommand($order));
-        }
+        // Completion skips the invoice for EXTERNAL orders: no payment
+        // evidence, no tax document.
 
         $this->auditLogger->log(
             entityType: 'order',
@@ -165,7 +147,6 @@ final readonly class RecordExternalPaymentHandler
             payload: [
                 'amount' => $command->amount,
                 'paid_through' => $command->paidThroughDate?->format('Y-m-d'),
-                'invoice_issued' => $command->issueInvoice,
             ],
             orderId: $order->id,
             userIdContext: $order->user->id,

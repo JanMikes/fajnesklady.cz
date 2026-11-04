@@ -7,6 +7,7 @@ namespace App\Command;
 use App\Entity\BankTransaction;
 use App\Entity\Contract;
 use App\Entity\Order;
+use App\Enum\PaymentMethod;
 use App\Event\BankTransferAmountMismatch;
 use App\Repository\BankAccountMappingRepository;
 use App\Repository\BankTransactionRepository;
@@ -125,7 +126,7 @@ final readonly class ProcessIncomingBankTransactionHandler
             $fine = $this->fineRepository->findByVariableSymbol($bankTx->variableSymbol);
             if (null !== $fine && $fine->isPayable()) {
                 if ($bankTx->amount === $fine->amountInHaler) {
-                    $fine->markPaid($now);
+                    $fine->markPaid($now, PaymentMethod::BANK_TRANSFER);
                     $bankTx->pairToContract($fine->contract, 'variable_symbol_fine', null, $now);
 
                     $this->auditLogger->log(

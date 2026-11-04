@@ -20,8 +20,6 @@ final class ExternalPaymentFormData
     #[Assert\GreaterThanOrEqual(value: 0, message: 'Částka nemůže být záporná.')]
     public ?float $amountInCzk = null;
 
-    public bool $issueInvoice = false;
-
     #[Assert\Callback]
     public function validatePaidThroughDate(ExecutionContextInterface $context): void
     {

@@ -17,10 +17,10 @@
                 <div><strong>{{ order.paymentFrequency ? order.paymentFrequency.individualPriceLabel : 'Individuální měsíční cena' }}:</strong> {{ (order.individualMonthlyAmount / 100)|number_format(0, ',', ' ') }} Kč</div>
             {% endif %}
             {% if hasPrepaid %}
-                <div><strong>Externě předplaceno do:</strong> {{ order.paidThroughDate|date('d.m.Y') }}</div>
+                <div><strong>Předplaceno mimo systém do:</strong> {{ order.paidThroughDate|date('d.m.Y') }}</div>
             {% endif %}
             {% if order.paymentMethod %}
-                <div><strong>Způsob platby:</strong> {{ order.paymentMethod.value == 'external' ? 'Externí (mimo GoPay)' : 'GoPay' }}</div>
+                <div><strong>Způsob platby:</strong> {{ order.paymentMethod.label() }}</div>
             {% endif %}
         </div>
     </div>

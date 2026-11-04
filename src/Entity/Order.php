@@ -162,8 +162,20 @@ class Order implements EntityWithEvents
     #[ORM\Column(nullable: true)]
     public private(set) ?\DateTimeImmutable $debtPaidAt = null;
 
+    // The GoPay session opened for the debt — set when the customer merely
+    // opens the gateway, so it does NOT prove the debt was paid by card.
     #[ORM\Column(nullable: true)]
     public private(set) ?string $debtGoPayPaymentId = null;
+
+    // How the FIRST payment actually arrived. Not $paymentMethod: that is the
+    // customer's chosen method, and a "card" order can still be settled by a
+    // bank transfer to its variable symbol (and vice versa after a switch).
+    #[ORM\Column(length: 20, nullable: true, enumType: PaymentMethod::class)]
+    public private(set) ?PaymentMethod $paidVia = null;
+
+    // How the onboarding debt was actually settled (card / transfer / admin).
+    #[ORM\Column(length: 20, nullable: true, enumType: PaymentMethod::class)]
+    public private(set) ?PaymentMethod $debtPaidVia = null;
 
     /**
      * Admin onboarding opt-in (spec 088): when true, the admin deferred the
@@ -254,6 +266,11 @@ class Order implements EntityWithEvents
     ): void {
         $this->status = OrderStatus::PAID;
         $this->paidAt = $now;
+        $this->paidVia = match (true) {
+            null !== $goPayPaymentId => PaymentMethod::GOPAY,
+            null !== $bankTransactionId => PaymentMethod::BANK_TRANSFER,
+            default => PaymentMethod::EXTERNAL, // admin-recorded or 0 Kč formality
+        };
 
         $this->recordThat(new OrderPaid(
             orderId: $this->id,
@@ -604,7 +621,7 @@ class Order implements EntityWithEvents
         return null !== $this->onboardingDebtInHaler && $this->onboardingDebtInHaler > 0;
     }
 
-    public function markDebtPaid(\DateTimeImmutable $now): void
+    public function markDebtPaid(\DateTimeImmutable $now, PaymentMethod $paidVia): void
     {
         // Idempotent by construction: the GoPay webhook and the FIO cron can
         // both race to clear the same debt. Without this guard a second call
@@ -616,6 +633,7 @@ class Order implements EntityWithEvents
         }
 
         $this->debtPaidAt = $now;
+        $this->debtPaidVia = $paidVia;
 
         $this->recordThat(new OnboardingDebtPaid(
             orderId: $this->id,
@@ -623,6 +641,23 @@ class Order implements EntityWithEvents
             amountInHaler: $this->onboardingDebtInHaler ?? 0, // non-null > 0 whenever a debt exists; ?? 0 satisfies PHPStan
             occurredOn: $now,
         ));
+    }
+
+    /**
+     * One-off repairs for payments settled before paidVia / debtPaidVia
+     * existed — never payment events, so nothing is recorded.
+     */
+    public function backfillPaidVia(PaymentMethod $paidVia): void
+    {
+        $this->paidVia ??= $paidVia;
+    }
+
+    /**
+     * One-off repair, see {@see backfillPaidVia()}.
+     */
+    public function backfillDebtPaidVia(PaymentMethod $paidVia): void
+    {
+        $this->debtPaidVia ??= $paidVia;
     }
 
     public function setDebtGoPayPaymentId(string $paymentId): void
@@ -658,6 +693,39 @@ class Order implements EntityWithEvents
     public function markCustomerChoosesPayment(): void
     {
         $this->customerChoosesPayment = true;
+    }
+
+    /**
+     * "Způsob platby" as one readable line: HOW the customer pays first, then
+     * the cadence — e.g. "Bankovní převod — výzva e-mailem před každou platbou".
+     * The billing mode alone ("ručně schvalovaná platba") told staff nothing
+     * about card vs. transfer.
+     */
+    public function paymentArrangementLabel(): string
+    {
+        if ($this->isAwaitingPaymentChoice()) {
+            return 'Zákazník zvolí';
+        }
+
+        if (null === $this->paymentMethod) {
+            return $this->billingMode->label();
+        }
+
+        $cadence = match ($this->billingMode) {
+            BillingMode::AUTO_RECURRING => 'automatické strhávání každý měsíc',
+            BillingMode::MANUAL_RECURRING => PaymentFrequency::YEARLY === $this->paymentFrequency
+                ? 'výzva e-mailem před každou roční platbou'
+                : 'výzva e-mailem před každou platbou',
+            BillingMode::ONE_TIME => 'jednorázově předem',
+        };
+
+        // An externally onboarded rental keeps billing — by bank transfer on
+        // request — once the off-system prepaid period runs out.
+        if (PaymentMethod::EXTERNAL === $this->paymentMethod && BillingMode::MANUAL_RECURRING === $this->billingMode) {
+            return 'Mimo systém (onboarding) — další platby bankovním převodem na výzvu e-mailem';
+        }
+
+        return sprintf('%s — %s', $this->paymentMethod->label(), $cadence);
     }
 
     /**

@@ -18,9 +18,9 @@ final class BillingModeTest extends TestCase
 
     public function testLabelsAreCzechWithDiacritics(): void
     {
-        self::assertSame('Jednorázová platba', BillingMode::ONE_TIME->label());
-        self::assertSame('Automatická platba kartou', BillingMode::AUTO_RECURRING->label());
-        self::assertSame('Ručně schvalovaná platba (výzva e-mailem)', BillingMode::MANUAL_RECURRING->label());
+        self::assertSame('Jednorázová platba předem', BillingMode::ONE_TIME->label());
+        self::assertSame('Automatické strhávání z karty', BillingMode::AUTO_RECURRING->label());
+        self::assertSame('Platba převodem na výzvu e-mailem', BillingMode::MANUAL_RECURRING->label());
     }
 
     public function testStringValuesPersist(): void

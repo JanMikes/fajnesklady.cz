@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Integration\Event;
 
 use App\Entity\Order;
+use App\Enum\PaymentMethod;
 use App\Event\OnboardingDebtPaid;
 use App\Event\SendOnboardingDebtPaidEmailHandler;
 use Doctrine\ORM\EntityManagerInterface;
@@ -111,7 +112,7 @@ class SendOnboardingDebtPaidEmailHandlerRenderTest extends KernelTestCase
             createdAt: $now,
         );
         $order->setOnboardingDebt(120_000); // 1 200 Kč
-        $order->markDebtPaid($now);
+        $order->markDebtPaid($now, PaymentMethod::GOPAY);
         $order->popEvents();
 
         $this->entityManager->persist($order);

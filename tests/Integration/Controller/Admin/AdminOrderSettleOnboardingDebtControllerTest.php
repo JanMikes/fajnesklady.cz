@@ -14,6 +14,7 @@ use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\OrderStatus;
 use App\Enum\PaymentFrequency;
+use App\Enum\PaymentMethod;
 use App\Enum\SigningMethod;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Clock\ClockInterface;
@@ -49,7 +50,7 @@ class AdminOrderSettleOnboardingDebtControllerTest extends WebTestCase
         static::ensureKernelShutdown();
     }
 
-    public function testSettleMarksDebtPaidIssuesInvoiceAndKeepsStandardOrderPayable(): void
+    public function testSettleMarksDebtPaidWithoutInvoiceAndKeepsStandardOrderPayable(): void
     {
         $order = $this->createSignedOnboardingOrder(debtInHaler: 1_656_000);
         $this->entityManager->flush();
@@ -70,8 +71,9 @@ class AdminOrderSettleOnboardingDebtControllerTest extends WebTestCase
 
         $this->assertNotNull($this->findAuditRow($orderId, 'onboarding_debt_settled'));
         $this->assertNotNull($this->findAuditRow($orderId, 'debt_payment_confirmed'));
-        // OnboardingDebtPaid → SendOnboardingDebtPaidEmailHandler issues the debt invoice (mock Fakturoid).
-        $this->assertCount(1, $this->findInvoicesForOrder($orderId));
+        $this->assertSame(PaymentMethod::EXTERNAL, $reloaded->debtPaidVia);
+        // An admin-settled debt has no payment evidence — no tax document (daňový doklad) is issued.
+        $this->assertCount(0, $this->findInvoicesForOrder($orderId));
     }
 
     public function testSettlePrepaidOrderCompletesItAndCreatesContract(): void
@@ -114,7 +116,7 @@ class AdminOrderSettleOnboardingDebtControllerTest extends WebTestCase
     {
         $order = $this->createSignedOnboardingOrder(debtInHaler: 50_000);
         $paidAt = $this->clock->now()->modify('-1 day');
-        $order->markDebtPaid($paidAt);
+        $order->markDebtPaid($paidAt, PaymentMethod::GOPAY);
         $order->popEvents();
         $this->entityManager->flush();
         $orderId = $order->id->toRfc4122();
@@ -164,7 +166,7 @@ class AdminOrderSettleOnboardingDebtControllerTest extends WebTestCase
     public function testDetailPageHidesActionOnceDebtIsPaid(): void
     {
         $order = $this->createSignedOnboardingOrder(debtInHaler: 50_000);
-        $order->markDebtPaid($this->clock->now());
+        $order->markDebtPaid($this->clock->now(), PaymentMethod::GOPAY);
         $order->popEvents();
         $this->entityManager->flush();
 

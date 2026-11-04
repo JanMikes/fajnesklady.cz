@@ -13,6 +13,7 @@ use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\FineType;
+use App\Enum\PaymentMethod;
 use App\Service\Fakturoid\FakturoidApiClient;
 use App\Service\Fakturoid\StaleFakturoidSubjectException;
 use Fakturoid\DispatcherInterface;
@@ -34,7 +35,7 @@ class FakturoidApiClientTest extends TestCase
         $user = $this->createUser();
         $order = $this->createOrder($user);
 
-        $captured = $this->captureCreatePayload(static fn (FakturoidApiClient $client): mixed => $client->createInvoice(123, $order));
+        $captured = $this->captureCreatePayload(static fn (FakturoidApiClient $client): mixed => $client->createInvoice(123, $order, PaymentMethod::GOPAY));
 
         // Prices in our system are gross (vč. DPH); without this flag Fakturoid would add 21 % on top.
         $this->assertSame('from_total_with_vat', $captured['vat_price_mode']);
@@ -48,7 +49,7 @@ class FakturoidApiClientTest extends TestCase
         $order = $this->createOrder($user);
         $order->assignVariableSymbol('2546260478');
 
-        $captured = $this->captureCreatePayload(static fn (FakturoidApiClient $client): mixed => $client->createInvoice(123, $order));
+        $captured = $this->captureCreatePayload(static fn (FakturoidApiClient $client): mixed => $client->createInvoice(123, $order, PaymentMethod::GOPAY));
 
         // Without our VS Fakturoid defaults to the invoice number — customers have
         // then paid the (already settled) invoice again with a symbol the bank
@@ -62,7 +63,7 @@ class FakturoidApiClientTest extends TestCase
         $user = $this->createUser();
         $order = $this->createOrder($user);
 
-        $captured = $this->captureCreatePayload(static fn (FakturoidApiClient $client): mixed => $client->createInvoice(123, $order));
+        $captured = $this->captureCreatePayload(static fn (FakturoidApiClient $client): mixed => $client->createInvoice(123, $order, PaymentMethod::GOPAY));
 
         // Legacy orders without a VS must fall back to Fakturoid's default, not send an empty symbol.
         $this->assertArrayNotHasKey('variable_symbol', $captured);
@@ -80,6 +81,7 @@ class FakturoidApiClientTest extends TestCase
             $contract,
             60_000,
             new \DateTimeImmutable('2025-06-15'),
+            PaymentMethod::GOPAY,
         ));
 
         $this->assertSame('9812340077', $captured['variable_symbol']);
@@ -96,6 +98,7 @@ class FakturoidApiClientTest extends TestCase
             $contract,
             60_000,
             new \DateTimeImmutable('2026-07-27'),
+            PaymentMethod::GOPAY,
             new \DateTimeImmutable('2026-08-29'),
             new \DateTimeImmutable('2026-09-29'),
         ));
@@ -116,6 +119,7 @@ class FakturoidApiClientTest extends TestCase
             $contract,
             60_000,
             new \DateTimeImmutable('2026-07-27'),
+            PaymentMethod::GOPAY,
         ));
 
         // Period-less callers (debt settlements, external records) keep the old label.
@@ -128,11 +132,46 @@ class FakturoidApiClientTest extends TestCase
         $fine = $this->createFine($user);
         $fine->assignVariableSymbol('8412340011');
 
-        $captured = $this->captureCreatePayload(static fn (FakturoidApiClient $client): mixed => $client->createFineInvoice(123, $fine));
+        $captured = $this->captureCreatePayload(static fn (FakturoidApiClient $client): mixed => $client->createFineInvoice(123, $fine, PaymentMethod::BANK_TRANSFER));
 
         // A fine has its own VS — the invoice must carry that one, not the order's.
         $this->assertSame('8412340011', $captured['variable_symbol']);
         $this->assertTrue($captured['show_already_paid_note_in_pdf']);
+    }
+
+    /**
+     * @return iterable<string, array{PaymentMethod, string}>
+     */
+    public static function paymentMethods(): iterable
+    {
+        yield 'card' => [PaymentMethod::GOPAY, 'card'];
+        yield 'bank transfer' => [PaymentMethod::BANK_TRANSFER, 'bank'];
+    }
+
+    /**
+     * "Způsob platby" on the invoice PDF is how the accountant tells a card
+     * payment from a bank transfer — it must be set on the INVOICE (Fakturoid's
+     * payment record has no such attribute).
+     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('paymentMethods')]
+    public function testEveryCustomerInvoiceCarriesItsPaymentMethod(PaymentMethod $paidVia, string $expected): void
+    {
+        $user = $this->createUser();
+        $order = $this->createOrder($user);
+        $order->setOnboardingDebt(60_000);
+        $contract = $this->createContract($user);
+        $fine = $this->createFine($user);
+
+        $payloads = [
+            $this->captureCreatePayload(static fn (FakturoidApiClient $client): mixed => $client->createInvoice(123, $order, $paidVia)),
+            $this->captureCreatePayload(static fn (FakturoidApiClient $client): mixed => $client->createDebtInvoice(123, $order, $paidVia)),
+            $this->captureCreatePayload(static fn (FakturoidApiClient $client): mixed => $client->createFineInvoice(123, $fine, $paidVia)),
+            $this->captureCreatePayload(static fn (FakturoidApiClient $client): mixed => $client->createRecurringInvoice(123, $contract, 60_000, new \DateTimeImmutable('2025-06-15'), $paidVia)),
+        ];
+
+        foreach ($payloads as $payload) {
+            $this->assertSame($expected, $payload['payment_method']);
+        }
     }
 
     public function testCreateSelfBillingInvoiceStaysAPayableProforma(): void
@@ -152,7 +191,7 @@ class FakturoidApiClientTest extends TestCase
         $order = $this->createOrder($user);
         $order->setOnboardingDebt(60_000); // 600 Kč gross — the figure the admin entered.
 
-        $captured = $this->captureCreatePayload(static fn (FakturoidApiClient $client): mixed => $client->createDebtInvoice(123, $order));
+        $captured = $this->captureCreatePayload(static fn (FakturoidApiClient $client): mixed => $client->createDebtInvoice(123, $order, PaymentMethod::BANK_TRANSFER));
 
         // The debt amount is gross (vč. DPH); without this flag Fakturoid would add 21 % on top — guards spec 034.
         $this->assertSame('from_total_with_vat', $captured['vat_price_mode']);
@@ -171,6 +210,7 @@ class FakturoidApiClientTest extends TestCase
             $contract,
             60_000,
             new \DateTimeImmutable('2025-06-15'),
+            PaymentMethod::GOPAY,
         ));
 
         $this->assertSame('from_total_with_vat', $captured['vat_price_mode']);
@@ -183,7 +223,7 @@ class FakturoidApiClientTest extends TestCase
         $user = $this->createUser();
         $fine = $this->createFine($user);
 
-        $captured = $this->captureCreatePayload(static fn (FakturoidApiClient $client): mixed => $client->createFineInvoice(123, $fine));
+        $captured = $this->captureCreatePayload(static fn (FakturoidApiClient $client): mixed => $client->createFineInvoice(123, $fine, PaymentMethod::BANK_TRANSFER));
 
         // Smluvní pokuta není předmětem DPH — the rate is the 0 literal, NOT the configured 21 %.
         $this->assertSame(0, $captured['lines'][0]['vat_rate']);
@@ -205,7 +245,7 @@ class FakturoidApiClientTest extends TestCase
         $this->expectException(StaleFakturoidSubjectException::class);
 
         try {
-            $client->createInvoice(30388961, $this->createOrder($this->createUser()));
+            $client->createInvoice(30388961, $this->createOrder($this->createUser()), PaymentMethod::GOPAY);
         } catch (StaleFakturoidSubjectException $e) {
             $this->assertSame(30388961, $e->subjectId);
 
@@ -222,7 +262,7 @@ class FakturoidApiClientTest extends TestCase
         $client = $this->buildClientThatThrowsOnCreate($this->buildRequestException(422, $unrelatedBody));
 
         $this->expectException(RequestException::class);
-        $client->createInvoice(123, $this->createOrder($this->createUser()));
+        $client->createInvoice(123, $this->createOrder($this->createUser()), PaymentMethod::GOPAY);
     }
 
     private function buildClientThatThrowsOnCreate(\Throwable $exception): FakturoidApiClient

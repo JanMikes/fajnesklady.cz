@@ -9,6 +9,7 @@ use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
+use App\Enum\PaymentMethod;
 use App\Event\OnboardingDebtPaid;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
@@ -34,7 +35,7 @@ class OrderDebtTest extends TestCase
     {
         $order = $this->createOrder();
         $order->setOnboardingDebt(50000);
-        $order->markDebtPaid(new \DateTimeImmutable('2025-06-15 12:00:00'));
+        $order->markDebtPaid(new \DateTimeImmutable('2025-06-15 12:00:00'), PaymentMethod::GOPAY);
 
         self::assertFalse($order->hasUnpaidDebt());
     }
@@ -43,7 +44,7 @@ class OrderDebtTest extends TestCase
     {
         $order = $this->createOrder();
         $order->setOnboardingDebt(50000);
-        $order->markDebtPaid(new \DateTimeImmutable('2025-06-15 12:00:00'));
+        $order->markDebtPaid(new \DateTimeImmutable('2025-06-15 12:00:00'), PaymentMethod::GOPAY);
 
         self::assertTrue($order->hasDebt());
     }
@@ -84,7 +85,7 @@ class OrderDebtTest extends TestCase
         $order->setOnboardingDebt(50000);
 
         $now = new \DateTimeImmutable('2025-06-15 12:00:00');
-        $order->markDebtPaid($now);
+        $order->markDebtPaid($now, PaymentMethod::GOPAY);
 
         self::assertSame($now, $order->debtPaidAt);
     }
@@ -96,7 +97,7 @@ class OrderDebtTest extends TestCase
         $order->popEvents(); // clear the OrderCreated event from construction
 
         $now = new \DateTimeImmutable('2025-06-15 12:00:00');
-        $order->markDebtPaid($now);
+        $order->markDebtPaid($now, PaymentMethod::GOPAY);
 
         $events = $order->popEvents();
         self::assertCount(1, $events);

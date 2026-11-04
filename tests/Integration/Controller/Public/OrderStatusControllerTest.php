@@ -14,6 +14,7 @@ use App\Entity\User;
 use App\Enum\BillingMode;
 use App\Enum\FineType;
 use App\Enum\OrderStatus;
+use App\Enum\PaymentMethod;
 use App\Repository\ContractRepository;
 use App\Service\OrderStatusUrlGenerator;
 use Doctrine\ORM\EntityManagerInterface;
@@ -423,7 +424,7 @@ class OrderStatusControllerTest extends WebTestCase
             issuedAt: $now->modify('-1 day'),
             createdAt: $now->modify('-1 day'),
         );
-        $fine->markPaid($now);
+        $fine->markPaid($now, PaymentMethod::GOPAY);
         $fine->popEvents();
         $this->entityManager->persist($fine);
         $this->entityManager->flush();

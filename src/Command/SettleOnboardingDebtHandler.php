@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Command;
 
+use App\Enum\PaymentMethod;
 use App\Service\AuditLogger;
 use App\Service\Onboarding\DebtPaymentService;
 use Psr\Clock\ClockInterface;
@@ -48,6 +49,6 @@ final readonly class SettleOnboardingDebtHandler
         // e-mail to the customer, admin notification) and auto-completes a
         // free / externally prepaid onboarding order whose only blocker was
         // this debt.
-        $this->debtPaymentService->confirmDebtPaid($order, $now);
+        $this->debtPaymentService->confirmDebtPaid($order, $now, PaymentMethod::EXTERNAL);
     }
 }

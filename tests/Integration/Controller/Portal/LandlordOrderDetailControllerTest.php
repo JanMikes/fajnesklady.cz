@@ -9,6 +9,7 @@ use App\Entity\Fine;
 use App\Entity\Invoice;
 use App\Entity\User;
 use App\Enum\FineType;
+use App\Enum\PaymentMethod;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Clock\ClockInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -103,7 +104,7 @@ class LandlordOrderDetailControllerTest extends WebTestCase
             issuedAt: $now->modify('-1 day'),
             createdAt: $now->modify('-1 day'),
         );
-        $fine->markPaid($now);
+        $fine->markPaid($now, PaymentMethod::GOPAY);
         $fine->popEvents();
         $this->entityManager->persist($fine);
 
