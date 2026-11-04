@@ -6,6 +6,7 @@ namespace App\Command;
 
 use App\Event\TerminationNoticeRequested;
 use App\Service\AuditLogger;
+use App\Service\Billing\BillingCalendar;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -27,7 +28,8 @@ final readonly class RequestTerminationNoticeHandler
         $contract = $command->contract;
         $now = $this->clock->now();
 
-        $terminatesAt = $now->modify('+1 month');
+        // One-month notice; a missing day ends on the month's last day (OZ § 605 odst. 2).
+        $terminatesAt = BillingCalendar::addMonths($now, 1);
 
         $contract->requestTermination($now, $terminatesAt);
 

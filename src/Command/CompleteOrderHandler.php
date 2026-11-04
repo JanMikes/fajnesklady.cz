@@ -35,8 +35,7 @@ final readonly class CompleteOrderHandler
         // is +1 month or +1 year depending on the contract's paymentFrequency
         // (spec 045 — yearly is always MANUAL_RECURRING).
         if (null !== $order->goPayParentPaymentId) {
-            $cadenceStep = $contract->getBillingCadenceStep();
-            $nextBillingDate = $now->modify($cadenceStep);
+            $nextBillingDate = $contract->advanceByCadence($now);
             $paidThroughDate = $nextBillingDate;
 
             // Cap paidThroughDate to the contract end
@@ -56,8 +55,7 @@ final readonly class CompleteOrderHandler
             // their first cycle externally / one-shot — the next one is due in one
             // cadence step. Skip when markExternallyPrepaid already set it (external
             // prepayment path in OrderService::completeOrder).
-            $cadenceStep = $contract->getBillingCadenceStep();
-            $nextBillingDate = $now->modify($cadenceStep);
+            $nextBillingDate = $contract->advanceByCadence($now);
             $paidThroughDate = $nextBillingDate;
 
             if ($paidThroughDate > $contract->endDate) {

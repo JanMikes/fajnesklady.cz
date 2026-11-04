@@ -134,7 +134,7 @@ final readonly class RecurringAmountCalculator
         // schedule the customer was shown at order time (which uses plain dates).
         $billingPeriodStart = $billingPeriodStart->setTime(0, 0);
 
-        $nextFullPeriodEnd = $billingPeriodStart->modify($contract->getBillingCadenceStep());
+        $nextFullPeriodEnd = $contract->advanceByCadence($billingPeriodStart);
 
         if ($nextFullPeriodEnd <= $effectiveEndDate) {
             return $periodAmount;

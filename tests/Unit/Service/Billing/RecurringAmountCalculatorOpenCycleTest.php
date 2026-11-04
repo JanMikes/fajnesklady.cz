@@ -109,6 +109,32 @@ class RecurringAmountCalculatorOpenCycleTest extends TestCase
         self::assertSame(150_000, $this->calculator->calculateForOpenCycle($contract, new \DateTimeImmutable('2026-11-03'), $stale));
     }
 
+    /**
+     * The contract keeps its anchor day: a clamped 30.09 is followed by 31.10,
+     * while an explicit re-anchoring (a prolonged prorated cycle resuming on
+     * the 25th) becomes the new anchor.
+     */
+    public function testContractKeepsItsAnchorDayAcrossShortMonths(): void
+    {
+        $contract = $this->createMonthlyContract(
+            startDate: new \DateTimeImmutable('2026-07-31'),
+            endDate: new \DateTimeImmutable('2027-07-31'),
+            nextBillingDate: new \DateTimeImmutable('2026-08-31 15:15:48'),
+        );
+        self::assertSame(31, $contract->billingAnchorDay);
+
+        $september = $contract->advanceByCadence($contract->nextBillingDate ?? throw new \LogicException());
+        self::assertSame('2026-09-30', $september->format('Y-m-d'));
+        $contract->recordBillingCharge(new \DateTimeImmutable('2026-08-31'), $september, $september);
+        self::assertSame(31, $contract->billingAnchorDay, 'A month-end clamp must not move the anchor.');
+
+        self::assertSame('2026-10-31', $contract->advanceByCadence($september)->format('Y-m-d'));
+
+        $contract->scheduleNextBilling(new \DateTimeImmutable('2026-11-25'), null);
+        self::assertSame(25, $contract->billingAnchorDay, 'An explicit re-anchoring sets the new day.');
+        self::assertSame('2026-12-25', $contract->advanceByCadence(new \DateTimeImmutable('2026-11-25'))->format('Y-m-d'));
+    }
+
     private function createMonthlyContract(
         \DateTimeImmutable $startDate,
         \DateTimeImmutable $endDate,

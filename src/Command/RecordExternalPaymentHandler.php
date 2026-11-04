@@ -69,8 +69,7 @@ final readonly class RecordExternalPaymentHandler
                 throw new \DomainException('Contract has no billing cycle to advance.');
             }
             // The current cycle is covered through the day before the next one.
-            $paidThroughDate = $originalNextBillingDate
-                ->modify($contract->getBillingCadenceStep())
+            $paidThroughDate = $contract->advanceByCadence($originalNextBillingDate)
                 ->modify('-1 day');
         } else {
             $paidThroughDate = $command->paidThroughDate;

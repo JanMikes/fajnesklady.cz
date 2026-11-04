@@ -8,6 +8,7 @@ use App\Entity\Order;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Enum\PaymentFrequency;
+use App\Service\Billing\BillingCalendar;
 use App\Value\PaymentSchedule;
 use App\Value\PaymentScheduleEntry;
 
@@ -232,7 +233,8 @@ final readonly class PriceCalculator
      * Build the authoritative list of charges the customer will see.
      *
      * Mirrors the cadence used by `ChargeRecurringPaymentHandler` (calendar
-     * months via `\DateTimeImmutable::modify('+1 month')`, with a prorated
+     * months via {@see BillingCalendar} — anchor day kept, clamped in short
+     * months — with a prorated
      * tail when the next full month would overshoot the contract end). The
      * order_create / order_accept / order_payment surfaces all show the same
      * schedule; the cron later replays it. Any divergence here breaks the
@@ -481,8 +483,9 @@ final readonly class PriceCalculator
     {
         $entries = [];
         $billingDate = $startDate;
+        $anchorDay = (int) $startDate->format('j');
         while ($billingDate < $endDate) {
-            $nextBillingDate = $billingDate->modify('+1 month');
+            $nextBillingDate = BillingCalendar::addMonths($billingDate, 1, $anchorDay);
             if ($nextBillingDate <= $endDate) {
                 $entries[] = new PaymentScheduleEntry($billingDate, $monthlyRate);
                 $billingDate = $nextBillingDate;
@@ -510,8 +513,9 @@ final readonly class PriceCalculator
     {
         $entries = [];
         $billingDate = $startDate;
+        $anchorDay = (int) $startDate->format('j');
         while ($billingDate < $endDate) {
-            $nextBillingDate = $billingDate->modify('+1 year');
+            $nextBillingDate = BillingCalendar::addMonths($billingDate, 12, $anchorDay);
             if ($nextBillingDate <= $endDate) {
                 $entries[] = new PaymentScheduleEntry($billingDate, $yearlyRate);
                 $billingDate = $nextBillingDate;
@@ -596,9 +600,10 @@ final readonly class PriceCalculator
     {
         $count = 0;
         $billingDate = $startDate;
+        $anchorDay = (int) $startDate->format('j');
         while ($billingDate < $endDate) {
             ++$count;
-            $nextBillingDate = $billingDate->modify('+1 month');
+            $nextBillingDate = BillingCalendar::addMonths($billingDate, 1, $anchorDay);
             if ($nextBillingDate > $endDate) {
                 break;
             }

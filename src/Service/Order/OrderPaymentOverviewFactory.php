@@ -384,7 +384,6 @@ final readonly class OrderPaymentOverviewFactory
 
         $isAutoRecurring = BillingMode::AUTO_RECURRING === $contract->billingMode;
         $endDate = $contract->getEffectiveEndDate();
-        $step = $contract->getBillingCadenceStep();
         $schedule = ManualBillingReminderSchedule::fromOrder($order);
 
         $rows = [];
@@ -392,7 +391,8 @@ final readonly class OrderPaymentOverviewFactory
         $isFirstProjected = true;
 
         while ($periodStart <= $endDate && count($rows) < self::MAX_PROJECTED_CYCLES) {
-            $periodEnd = $periodStart->modify($step)->modify('-1 day');
+            $nextPeriodStart = $contract->advanceByCadence($periodStart);
+            $periodEnd = $nextPeriodStart->modify('-1 day');
             if ($periodEnd > $endDate) {
                 $periodEnd = $endDate;
             }
@@ -439,7 +439,7 @@ final readonly class OrderPaymentOverviewFactory
                 $isFirstProjected = false;
             }
 
-            $periodStart = $periodStart->modify($step);
+            $periodStart = $nextPeriodStart;
         }
 
         return $rows;

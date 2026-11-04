@@ -91,7 +91,7 @@ final readonly class ProcessBankTransferPaymentHandler
     ): void {
         $billingPeriodStart = $contract->nextBillingDate ?? $now;
         $effectiveEndDate = $contract->getEffectiveEndDate();
-        $nextBillingDate = $billingPeriodStart->modify($contract->getBillingCadenceStep());
+        $nextBillingDate = $contract->advanceByCadence($billingPeriodStart);
 
         $manualRequest = $this->manualPaymentRequestRepository->findUnpaidByContractAndPeriod(
             $contract,

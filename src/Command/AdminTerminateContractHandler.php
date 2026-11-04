@@ -8,6 +8,7 @@ use App\Enum\TerminationReason;
 use App\Event\ContractTerminated;
 use App\Event\TerminationNoticeRequested;
 use App\Service\AuditLogger;
+use App\Service\Billing\BillingCalendar;
 use App\Service\ContractService;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -59,7 +60,8 @@ final readonly class AdminTerminateContractHandler
                 occurredOn: $now,
             ));
         } else {
-            $terminatesAt = $now->modify('+1 month');
+            // One-month notice; a missing day ends on the month's last day (OZ § 605 odst. 2).
+            $terminatesAt = BillingCalendar::addMonths($now, 1);
             $contract->requestTermination($now, $terminatesAt);
 
             $this->auditLogger->log(

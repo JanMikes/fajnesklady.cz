@@ -346,7 +346,7 @@ final readonly class ProcessPaymentNotificationHandler
         // Calculate billing dates (same logic as ChargeRecurringPaymentHandler)
         $billingPeriodStart = $contract->nextBillingDate ?? $now;
         $effectiveEndDate = $contract->getEffectiveEndDate();
-        $nextBillingDate = $billingPeriodStart->modify($contract->getBillingCadenceStep());
+        $nextBillingDate = $contract->advanceByCadence($billingPeriodStart);
         $paidThroughDate = $nextBillingDate;
 
         // Last cycle → stop future charges; contracts hard-stop at end (spec 076).
@@ -462,7 +462,7 @@ final readonly class ProcessPaymentNotificationHandler
 
         $billingPeriodStart = $contract->nextBillingDate ?? $now;
         $effectiveEndDate = $contract->getEffectiveEndDate();
-        $nextBillingDate = $billingPeriodStart->modify($contract->getBillingCadenceStep());
+        $nextBillingDate = $contract->advanceByCadence($billingPeriodStart);
         $paidThroughDate = $nextBillingDate;
 
         // Last cycle → stop future charges; contracts hard-stop at end (spec 076).
@@ -534,7 +534,7 @@ final readonly class ProcessPaymentNotificationHandler
     {
         $billingPeriodStart = $contract->nextBillingDate ?? $now;
         $effectiveEndDate = $contract->getEffectiveEndDate();
-        $nextBillingDate = $billingPeriodStart->modify($contract->getBillingCadenceStep());
+        $nextBillingDate = $contract->advanceByCadence($billingPeriodStart);
         $paidThroughDate = $nextBillingDate;
 
         if ($nextBillingDate >= $effectiveEndDate) {

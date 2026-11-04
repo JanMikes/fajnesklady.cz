@@ -16,6 +16,7 @@ use App\Event\OrderCreated;
 use App\Event\OrderExpired;
 use App\Event\OrderPaid;
 use App\Event\OrderPlaced;
+use App\Service\Billing\BillingCalendar;
 use App\Service\PriceCalculator;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -406,10 +407,8 @@ class Order implements EntityWithEvents
      * display surfaces must not call it "Celková cena".
      *
      * Mirrors the split in PriceCalculator::buildUpfrontSchedule(): a 13th
-     * monthly walk entry exists iff 12 iterative '+1 month' steps from
-     * startDate still land strictly before endDate (iterative, because the
-     * walk advances month by month and PHP month-end overflow makes that
-     * differ from a single '+12 months' jump).
+     * monthly walk entry exists iff 12 month steps from startDate still land
+     * strictly before endDate.
      */
     public function isPaidInUpfrontTranches(): bool
     {
@@ -417,12 +416,9 @@ class Order implements EntityWithEvents
             return false;
         }
 
-        $cursor = $this->startDate;
-        for ($i = 0; $i < PriceCalculator::MONTHS_PER_UPFRONT_TRANCHE; ++$i) {
-            $cursor = $cursor->modify('+1 month');
-        }
-
-        return $cursor < $this->endDate;
+        // Month steps keep the start's day (BillingCalendar), so twelve
+        // iterative steps and one twelve-month jump are the same date.
+        return BillingCalendar::addMonths($this->startDate, PriceCalculator::MONTHS_PER_UPFRONT_TRANCHE) < $this->endDate;
     }
 
     /**

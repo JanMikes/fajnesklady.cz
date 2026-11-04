@@ -9,6 +9,7 @@ use App\Enum\PaymentFrequency;
 use App\Enum\TerminationReason;
 use App\Event\ContractPriceChanged;
 use App\Event\ContractProlonged;
+use App\Service\Billing\BillingCalendar;
 use App\Service\PriceCalculator;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -40,6 +41,16 @@ class Contract implements EntityWithEvents
 
     #[ORM\Column(nullable: true)]
     public private(set) ?\DateTimeImmutable $nextBillingDate = null;
+
+    /**
+     * Day of month (1–31) the billing schedule is anchored to. Kept separately
+     * from nextBillingDate because a month-end clamp (31.08 → 30.09) must not
+     * lose the anchor — the next cycle returns to the 31st. Maintained by
+     * {@see self::assignNextBillingDate()}; null on contracts anchored before
+     * this existed, which then fall back to the current anchor's day.
+     */
+    #[ORM\Column(type: Types::SMALLINT, nullable: true)]
+    public private(set) ?int $billingAnchorDay = null;
 
     #[ORM\Column(nullable: true)]
     public private(set) ?\DateTimeImmutable $lastBilledAt = null;
@@ -300,14 +311,14 @@ class Contract implements EntityWithEvents
     public function setRecurringPayment(string $parentPaymentId, ?\DateTimeImmutable $nextBillingDate, \DateTimeImmutable $paidThroughDate): void
     {
         $this->goPayParentPaymentId = $parentPaymentId;
-        $this->nextBillingDate = $nextBillingDate;
+        $this->assignNextBillingDate($nextBillingDate);
         $this->paidThroughDate = $paidThroughDate;
     }
 
     public function recordBillingCharge(\DateTimeImmutable $chargedAt, ?\DateTimeImmutable $nextBillingDate, \DateTimeImmutable $paidThroughDate): void
     {
         $this->lastBilledAt = $chargedAt;
-        $this->nextBillingDate = $nextBillingDate;
+        $this->assignNextBillingDate($nextBillingDate);
         $this->paidThroughDate = $paidThroughDate;
         $this->failedBillingAttempts = 0;
         $this->lastBillingFailedAt = null;
@@ -414,9 +425,9 @@ class Contract implements EntityWithEvents
         // billing resumes the day after (see markExternallyPrepaid()), or the
         // customer would be billed for a day they already paid.
         if ($this->billingMode->isRecurring() && null === $this->nextBillingDate && !$this->isFree()) {
-            $this->nextBillingDate = null === $this->goPayParentPaymentId
+            $this->assignNextBillingDate(null === $this->goPayParentPaymentId
                 ? ($this->paidThroughDate?->modify('+1 day') ?? $previousEndDate)
-                : ($this->paidThroughDate ?? $previousEndDate);
+                : ($this->paidThroughDate ?? $previousEndDate));
         }
 
         $this->recordThat(new ContractProlonged(
@@ -436,7 +447,7 @@ class Contract implements EntityWithEvents
      */
     public function scheduleNextBilling(\DateTimeImmutable $nextBillingDate, ?\DateTimeImmutable $paidThroughDate): void
     {
-        $this->nextBillingDate = $nextBillingDate;
+        $this->assignNextBillingDate($nextBillingDate);
         if (null !== $paidThroughDate) {
             $this->paidThroughDate = $paidThroughDate;
         }
@@ -618,6 +629,50 @@ class Contract implements EntityWithEvents
      * charge. Shared by both AUTO and MANUAL paths so the rule lives in one
      * place — see spec 045 §10.
      */
+    /**
+     * The billing date one cadence step after $from — +1 month (MONTHLY) or
+     * +12 months (YEARLY / upfront tranches) — keeping this contract's anchor
+     * day across short months. Use this, never `modify('+1 month')`
+     * ({@see BillingCalendar}).
+     */
+    public function advanceByCadence(\DateTimeImmutable $from): \DateTimeImmutable
+    {
+        // Contracts anchored before billingAnchorDay existed fall back to their
+        // live anchor's day (not $from's) so walking several cycles ahead from
+        // a clamped date — e.g. the payment-overview projection — keeps the day.
+        $anchorDay = $this->billingAnchorDay ?? ($this->nextBillingDate ?? $from)->format('j');
+
+        return BillingCalendar::addMonths($from, $this->getBillingCadenceMonths(), (int) $anchorDay);
+    }
+
+    public function getBillingCadenceMonths(): int
+    {
+        return '+1 year' === $this->getBillingCadenceStep() ? 12 : 1;
+    }
+
+    /**
+     * Every write of a non-null nextBillingDate goes through here so the
+     * anchor day stays right without callers having to declare intent:
+     *  - a month-end clamp of the current anchor (30.09 for an anchor on the
+     *    31st) keeps the anchor, so the following cycle returns to the 31st;
+     *  - any other date is a (re-)anchoring and becomes the new anchor day —
+     *    e.g. a prolonged prorated cycle resuming on the 25th.
+     */
+    private function assignNextBillingDate(?\DateTimeImmutable $nextBillingDate): void
+    {
+        $this->nextBillingDate = $nextBillingDate;
+
+        if (null === $nextBillingDate) {
+            return;
+        }
+
+        if (null !== $this->billingAnchorDay && BillingCalendar::isClampOf($nextBillingDate, $this->billingAnchorDay)) {
+            return;
+        }
+
+        $this->billingAnchorDay = (int) $nextBillingDate->format('j');
+    }
+
     public function getBillingCadenceStep(): string
     {
         // Spec 078 tranches: an upfront (ONE_TIME) contract with a billing
@@ -682,7 +737,7 @@ class Contract implements EntityWithEvents
         $resumesOn = $paidThroughDate->modify('+1 day');
         // Prepayment covering the whole term leaves no anchor: nothing to bill,
         // nothing for the manual cron to request, nothing for the overdue sweep.
-        $this->nextBillingDate = $resumesOn > $this->endDate ? null : $resumesOn;
+        $this->assignNextBillingDate($resumesOn > $this->endDate ? null : $resumesOn);
     }
 
     /**
@@ -743,7 +798,7 @@ class Contract implements EntityWithEvents
         $this->lastBilledAt = $now;
         $this->paidThroughDate = $paidThroughDate;
         $resumesOn = $paidThroughDate->modify('+1 day');
-        $this->nextBillingDate = $resumesOn > $this->getEffectiveEndDate() ? null : $resumesOn;
+        $this->assignNextBillingDate($resumesOn > $this->getEffectiveEndDate() ? null : $resumesOn);
         $this->failedBillingAttempts = 0;
         $this->lastBillingFailedAt = null;
         $this->pendingRecurringPaymentId = null;

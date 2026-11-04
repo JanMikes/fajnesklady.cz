@@ -79,10 +79,10 @@ final class ContractCardSetupController extends AbstractController
         // Remaining charge count for the "Doba trvání" disclosure: the setup
         // charge itself plus one per cadence step until the contract end.
         $remainingCharges = 1;
-        $cursor = $nextBillingDate->modify($contract->getBillingCadenceStep());
+        $cursor = $contract->advanceByCadence($nextBillingDate);
         while ($cursor < $contract->endDate) {
             ++$remainingCharges;
-            $cursor = $cursor->modify($contract->getBillingCadenceStep());
+            $cursor = $contract->advanceByCadence($cursor);
         }
 
         return $this->render('public/contract_card_setup.html.twig', [

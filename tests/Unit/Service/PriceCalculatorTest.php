@@ -1073,9 +1073,10 @@ class PriceCalculatorTest extends TestCase
             2 * 150000,
             $this->calculator->calculateUpfrontTrancheAmount(150000, new \DateTimeImmutable('2028-01-10'), $end),
         );
-        // Final tranche with prorated tail: 1 month + 10 days.
+        // Final tranche with prorated tail: 31.01 → 29.02 is one month (clamped
+        // to the leap day, not overflowed to 02.03), then 12 days to 12.03.
         $this->assertSame(
-            150000 + 50000,
+            150000 + 60000,
             $this->calculator->calculateUpfrontTrancheAmount(150000, new \DateTimeImmutable('2028-01-31'), new \DateTimeImmutable('2028-03-12')),
         );
     }

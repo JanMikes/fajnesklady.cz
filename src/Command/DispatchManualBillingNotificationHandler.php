@@ -147,7 +147,7 @@ final readonly class DispatchManualBillingNotificationHandler
      */
     private function computePeriodEnd(Contract $contract, \DateTimeImmutable $periodStart): \DateTimeImmutable
     {
-        $nextFullPeriodEnd = $periodStart->modify($contract->getBillingCadenceStep());
+        $nextFullPeriodEnd = $contract->advanceByCadence($periodStart);
         $effectiveEndDate = $contract->getEffectiveEndDate();
 
         if ($nextFullPeriodEnd > $effectiveEndDate) {
