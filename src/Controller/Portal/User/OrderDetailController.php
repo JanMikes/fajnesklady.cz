@@ -99,7 +99,7 @@ final class OrderDetailController extends AbstractController
             // A zero request (credit covers the whole cycle) renders no payment
             // block at all: a 0 Kč QR is a valid but nonsensical instruction.
             $amountToRequest = null !== $pending
-                ? $this->amountCalculator->amountToRequest($contract, $now)
+                ? $this->amountCalculator->amountToRequest($contract, $now, $pending)
                 : 0;
             // Spec 076: manual cycles are paid by bank transfer — surface VS + QR.
             if (null !== $pending && null !== $order->variableSymbol && $amountToRequest > 0) {

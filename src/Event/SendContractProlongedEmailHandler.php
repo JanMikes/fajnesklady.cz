@@ -51,6 +51,11 @@ final readonly class SendContractProlongedEmailHandler
                 'isAutoRecurring' => BillingMode::AUTO_RECURRING === $contract->billingMode,
                 'isFree' => $contract->isFree(),
                 'nextBillingDate' => $contract->nextBillingDate,
+                // Prolonged after the current cycle was already requested: that
+                // payment is still open at the amount we asked for — don't
+                // promise a future e-mail for a date that has passed.
+                'nextBillingIsPastDue' => null !== $contract->nextBillingDate
+                    && $contract->nextBillingDate->setTime(0, 0) <= $event->occurredOn->setTime(0, 0),
                 'statusUrl' => $this->statusUrlGenerator->generate($contract->order),
             ]);
 

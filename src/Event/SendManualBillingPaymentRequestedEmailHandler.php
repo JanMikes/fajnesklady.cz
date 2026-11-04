@@ -97,7 +97,7 @@ final readonly class SendManualBillingPaymentRequestedEmailHandler
         // Spec 091 D3: credit already sitting on the contract reduces what we ask
         // for — the frozen ManualPaymentRequest::$amount stays the full cycle.
         // Computed ONCE so the displayed amount and the QR can never disagree.
-        $amountToRequest = $this->amountCalculator->amountToRequest($contract, $event->occurredOn);
+        $amountToRequest = $this->amountCalculator->amountToRequest($contract, $event->occurredOn, $request);
         // Credit fully covers the cycle → there is nothing to transfer. A QR for
         // 0 Kč is a valid SPD string (`AM:0.00`) but a nonsensical instruction,
         // so drop the whole bank block (the template gates it on `bankAccount`)

@@ -175,12 +175,12 @@ final readonly class OrderService
     /**
      * Confirm payment received.
      *
-     * @param ?int $explicitAmount Halere amount that should be recorded as the
-     *                             initial Payment when it differs from the
-     *                             order's locked-in monthly. Used by the admin
-     *                             migrate flow (lump-sum prepayment); null
-     *                             everywhere else.
-     * @param ?string $goPayPaymentId  GoPay payment that settled the order
+     * @param ?int    $explicitAmount    Halere amount that should be recorded as the
+     *                                   initial Payment when it differs from the
+     *                                   order's locked-in monthly. Used by the admin
+     *                                   migrate flow (lump-sum prepayment); null
+     *                                   everywhere else.
+     * @param ?string $goPayPaymentId    GoPay payment that settled the order
      * @param ?Uuid   $bankTransactionId FIO transaction that settled the order
      *                                   — both recorded as the initial
      *                                   Payment's source (card vs. transfer)

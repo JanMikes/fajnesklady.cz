@@ -9,16 +9,16 @@ use Symfony\Component\Uid\Uuid;
 final readonly class OrderPaid
 {
     /**
-     * @param ?int $amountOverride Halere amount that should be recorded as the
-     *                             initial Payment when it differs from the
-     *                             order's locked-in monthly. Used by the admin
-     *                             migrate flow (lump-sum prepayment). Null for
-     *                             every other path.
-     * @param ?string $goPayPaymentId    The GoPay payment that settled the order
+     * @param ?int    $amountOverride    Halere amount that should be recorded as the
+     *                                   initial Payment when it differs from the
+     *                                   order's locked-in monthly. Used by the admin
+     *                                   migrate flow (lump-sum prepayment). Null for
+     *                                   every other path.
+     * @param ?string $goPayPaymentId    the GoPay payment that settled the order
      *                                   (card / GoPay path) — recorded on the
-     *                                   initial Payment as its source.
-     * @param ?Uuid   $bankTransactionId The FIO transaction that settled the
-     *                                   order (bank-transfer path).
+     *                                   initial Payment as its source
+     * @param ?Uuid   $bankTransactionId the FIO transaction that settled the
+     *                                   order (bank-transfer path)
      */
     public function __construct(
         public Uuid $orderId,

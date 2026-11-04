@@ -8,6 +8,7 @@ use App\Entity\BankAccountMapping;
 use App\Entity\BankTransaction;
 use App\Entity\Order;
 use App\Entity\User;
+use App\Enum\AllocationStepType;
 use App\Repository\BankAccountMappingRepository;
 use App\Repository\BankTransactionAllocationRepository;
 use App\Repository\ContractRepository;
@@ -73,6 +74,7 @@ final readonly class PairBankTransactionHandler
         // rows in place would either count the same money twice against the same
         // order, or leave the previous order credited with money that has just
         // been reassigned elsewhere.
+        $this->reclaimCreditFromPreviousAllocation($transaction);
         $this->allocationRepository->deleteForTransaction($transaction);
 
         $plan = $this->paymentAllocator->plan($order, $contract, $transaction->amount, $now);
@@ -122,6 +124,32 @@ final readonly class PairBankTransactionHandler
         );
 
         $this->rememberSenderAccount($command, $transaction, $order, $admin, $now);
+    }
+
+    /**
+     * Money a previous allocation of this transaction parked as contract credit
+     * is still sitting in that contract's balance. The re-plan below replays the
+     * transaction's FULL amount, so leaving the credit in place would count the
+     * same money twice — an under-paid 1 150 Kč transfer re-paired against a
+     * 1 150 Kč cycle would settle it AND leave 1 150 Kč of phantom credit.
+     *
+     * If part of that credit has since been spent on a later cycle, the money is
+     * no longer here to replay; refuse rather than guess, the admin must resolve
+     * it by hand.
+     */
+    private function reclaimCreditFromPreviousAllocation(BankTransaction $transaction): void
+    {
+        foreach ($this->allocationRepository->findByTransactionAndType($transaction, AllocationStepType::CREDIT) as $creditAllocation) {
+            $contract = $creditAllocation->contract;
+            if (null === $contract) {
+                continue;
+            }
+
+            $reclaimed = $contract->consumeCredit($creditAllocation->amountInHaler);
+            if ($reclaimed < $creditAllocation->amountInHaler) {
+                throw new \DomainException(sprintf('Přeplatek %d Kč z této platby už byl částečně použit na jinou platbu smlouvy — platbu nelze automaticky přepárovat.', intdiv($creditAllocation->amountInHaler, 100)));
+            }
+        }
     }
 
     /**

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service\Billing;
 
 use App\Entity\Contract;
+use App\Entity\ManualPaymentRequest;
 use App\Enum\BillingMode;
 use App\Service\PriceCalculator;
 
@@ -55,9 +56,43 @@ final readonly class RecurringAmountCalculator
      * twice. The two agree: the customer sends 2 700, the allocator sees
      * 400 + 2 700 = 3 100, the cycle settles and the credit drains to zero.
      */
-    public function amountToRequest(Contract $contract, \DateTimeImmutable $now): int
+    public function amountToRequest(Contract $contract, \DateTimeImmutable $now, ?ManualPaymentRequest $openRequest = null): int
     {
-        return max(0, $this->calculate($contract, $now) - $contract->creditBalance);
+        return max(0, $this->calculateForOpenCycle($contract, $now, $openRequest) - $contract->creditBalance);
+    }
+
+    /**
+     * The amount of the manual-track cycle the customer is CURRENTLY being asked
+     * to pay. Once a {@see ManualPaymentRequest} exists for the cycle at the
+     * billing anchor, its frozen amount is the answer — that is the figure the
+     * reminder e-mails, the QR code and the status page have already put in
+     * front of the customer.
+     *
+     * Recomputing from the live contract instead breaks as soon as the contract
+     * changes mid-cycle: a prolongation turns a prorated last cycle (1 150 Kč
+     * up to the old end date) into a full month (1 500 Kč), and the customer who
+     * paid exactly what we asked was then treated as having under-paid. Changes
+     * to the contract apply from the NEXT cycle, which has no request yet.
+     */
+    public function calculateForOpenCycle(Contract $contract, \DateTimeImmutable $now, ?ManualPaymentRequest $openRequest): int
+    {
+        if (null !== $openRequest && $this->isRequestForCurrentCycle($contract, $openRequest)) {
+            return $openRequest->amount;
+        }
+
+        return $this->calculate($contract, $now);
+    }
+
+    /**
+     * A request only stands for the current cycle if it was raised for the
+     * period starting at the contract's billing anchor — a stale row from an
+     * earlier period must never price the cycle that is due now.
+     */
+    public function isRequestForCurrentCycle(Contract $contract, ManualPaymentRequest $request): bool
+    {
+        return $request->contract->id->equals($contract->id)
+            && null !== $contract->nextBillingDate
+            && $request->periodStart->format('Y-m-d') === $contract->nextBillingDate->format('Y-m-d');
     }
 
     /**
@@ -90,7 +125,14 @@ final readonly class RecurringAmountCalculator
 
         $periodAmount = $contract->getEffectiveRecurringAmount();
         $periodDays = $contract->getBillingPeriodDays();
-        $effectiveEndDate = $contract->getEffectiveEndDate();
+        $effectiveEndDate = $contract->getEffectiveEndDate()->setTime(0, 0);
+
+        // Proration counts WHOLE calendar days. The billing anchor carries the
+        // time of day of the payment that set it (e.g. 2026-11-01 15:15:48), and
+        // diff()->days floors the partial day — so 01.11 15:15 → 25.11 counted
+        // 23 days instead of 24 and the last cycle came out 50 Kč short of the
+        // schedule the customer was shown at order time (which uses plain dates).
+        $billingPeriodStart = $billingPeriodStart->setTime(0, 0);
 
         $nextFullPeriodEnd = $billingPeriodStart->modify($contract->getBillingCadenceStep());
 

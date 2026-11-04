@@ -54,7 +54,7 @@ class HandoverProtocolRepository
      * Only protocols inside the handover window qualify: a contract that was
      * prolonged (or otherwise runs on) past it keeps its unit, so nagging the
      * tenant to hand it over would be wrong. Mirrors
-     * {@see \App\Entity\Contract::isWithinHandoverWindow()}.
+     * {@see Contract::isWithinHandoverWindow()}.
      *
      * @return HandoverProtocol[]
      */

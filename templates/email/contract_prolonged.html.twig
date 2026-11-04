@@ -49,7 +49,10 @@
             </p>
         {% else %}
             <p>
-                {% if nextBillingDate %}Před další platbou (splatnou <strong>{{ nextBillingDate|date('d.m.Y') }}</strong>)
+                {% if nextBillingIsPastDue %}Platba splatná <strong>{{ nextBillingDate|date('d.m.Y') }}</strong> zůstává beze změny —
+                uhraďte ji prosím v částce a podle platebních údajů z e-mailu, který jste od nás k ní obdrželi.
+                Prodloužení se do plateb promítne od následujícího období; před každou další platbou Vám pošleme e-mail s platebními údaji a QR kódem.
+                {% elseif nextBillingDate %}Před další platbou (splatnou <strong>{{ nextBillingDate|date('d.m.Y') }}</strong>)
                 {% else %}Před další platbou {% endif %}Vám pošleme e-mail s platebními údaji a QR kódem pro bankovní převod.
             </p>
         {% endif %}

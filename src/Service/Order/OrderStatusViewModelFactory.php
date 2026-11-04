@@ -158,7 +158,7 @@ final readonly class OrderStatusViewModelFactory
             // is holding. A credit that covers the whole cycle leaves nothing to
             // pay, so no payment instruction is rendered at all.
             $amountToRequest = null !== $pendingRequest
-                ? $this->amountCalculator->amountToRequest($contract, $now)
+                ? $this->amountCalculator->amountToRequest($contract, $now, $pendingRequest)
                 : 0;
 
             if (null !== $pendingRequest && null !== $order->variableSymbol && $amountToRequest > 0) {

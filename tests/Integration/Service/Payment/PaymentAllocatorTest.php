@@ -8,6 +8,7 @@ use App\DataFixtures\UserFixtures;
 use App\Entity\BankTransaction;
 use App\Entity\BankTransactionAllocation;
 use App\Entity\Contract;
+use App\Entity\ManualPaymentRequest;
 use App\Entity\Order;
 use App\Entity\Place;
 use App\Entity\StorageType;
@@ -295,9 +296,17 @@ final class PaymentAllocatorTest extends KernelTestCase
             ->getQuery()
             ->getResult();
 
-        self::assertCount(1, $allocations, 'Only the cycle is a recorded obligation; credit is not.');
-        self::assertSame(AllocationStepType::BILLING_CYCLE, $allocations[0]->type);
-        self::assertSame($cycle, $allocations[0]->amountInHaler);
+        $byType = [];
+        foreach ($allocations as $allocation) {
+            $byType[$allocation->type->value] = $allocation->amountInHaler;
+        }
+
+        // The credit row is what lets a later re-pair take this transfer's money
+        // back out of the balance instead of counting it twice.
+        self::assertSame([
+            AllocationStepType::BILLING_CYCLE->value => $cycle,
+            AllocationStepType::CREDIT->value => 40_000,
+        ], $byType);
     }
 
     /**
@@ -409,6 +418,84 @@ final class PaymentAllocatorTest extends KernelTestCase
             'Once the obligation is settled the earlier partial must stop being flagged.',
         );
         self::assertTrue($txA->isMatched());
+    }
+
+    /**
+     * Production incident 2026-11-03 (order 019f98cd): the cycle was requested
+     * as a prorated last month (1 150 Kč up to the old end date), the tenant
+     * then prolonged the contract and paid exactly the requested 1 150 Kč. The
+     * allocator recomputed the cycle against the NEW end date (a full 1 500 Kč
+     * month), flagged an under-payment and parked the money in credit.
+     */
+    public function testPaymentOfTheRequestedAmountSettlesTheCycleEvenAfterTheContractChanged(): void
+    {
+        [$order, $contract] = $this->orderWithManualContract();
+        $fullCycle = $this->cycleAmount($contract);
+        $requested = $fullCycle - 35_000;
+        $this->openRequest($contract, $requested);
+
+        $plan = $this->allocator->plan($order, $contract, $requested, $this->clock->now());
+
+        $cycleStep = $plan->step(AllocationStepType::BILLING_CYCLE);
+        self::assertNotNull($cycleStep);
+        self::assertSame($requested, $cycleStep->expected, 'The open request is what the customer was asked to pay.');
+        self::assertTrue($cycleStep->fullySettled);
+        self::assertSame(0, $plan->creditAdded());
+    }
+
+    public function testRequestFromAnotherPeriodDoesNotPriceTheCurrentCycle(): void
+    {
+        [$order, $contract] = $this->orderWithManualContract();
+        $fullCycle = $this->cycleAmount($contract);
+        $this->openRequest($contract, 1_000, $contract->nextBillingDate?->modify('-1 month'));
+
+        $plan = $this->allocator->plan($order, $contract, $fullCycle, $this->clock->now());
+
+        self::assertSame($fullCycle, $plan->step(AllocationStepType::BILLING_CYCLE)?->expected);
+    }
+
+    /**
+     * Re-pairing an under-paid transfer replays its full amount. The credit its
+     * first allocation parked on the contract is that same money, so it must not
+     * also count as available — otherwise 1 150 Kč settles a 1 150 Kč cycle AND
+     * leaves 1 150 Kč of credit that was never received.
+     */
+    public function testRePairPlanDoesNotCountTheTransactionsOwnCreditTwice(): void
+    {
+        [$order, $contract] = $this->orderWithManualContract();
+        $cycle = $this->cycleAmount($contract);
+        $part = intdiv($cycle, 2);
+        $now = $this->clock->now();
+
+        $tx = $this->transaction($part);
+        $first = $this->allocator->plan($order, $contract, $part, $now);
+        $this->allocator->apply($first, $tx, $order, $contract, $now);
+        $this->entityManager->flush();
+        self::assertSame($part, $contract->creditBalance);
+
+        $naive = $this->allocator->plan($order, $contract, $part, $now);
+        self::assertSame($part * 2, $naive->available, 'Precondition: plain plan() double-counts.');
+
+        $rePair = $this->allocator->planForTransaction($tx, $order, $contract, $now);
+        self::assertSame($part, $rePair->available);
+        self::assertSame(0, $rePair->creditUsed);
+    }
+
+    private function openRequest(Contract $contract, int $amount, ?\DateTimeImmutable $periodStart = null): ManualPaymentRequest
+    {
+        $start = ($periodStart ?? $contract->nextBillingDate ?? $this->clock->now())->setTime(0, 0);
+        $request = new ManualPaymentRequest(
+            id: $this->identityProvider->next(),
+            contract: $contract,
+            periodStart: $start,
+            periodEnd: $start->modify('+24 days'),
+            amount: $amount,
+            createdAt: $this->clock->now(),
+        );
+        $this->entityManager->persist($request);
+        $this->entityManager->flush();
+
+        return $request;
     }
 
     private function cycleAmount(Contract $contract): int

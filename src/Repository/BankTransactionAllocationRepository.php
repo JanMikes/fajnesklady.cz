@@ -92,6 +92,22 @@ final class BankTransactionAllocationRepository
     }
 
     /**
+     * @return list<BankTransactionAllocation>
+     */
+    public function findByTransactionAndType(BankTransaction $transaction, AllocationStepType $type): array
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('a')
+            ->from(BankTransactionAllocation::class, 'a')
+            ->where('a.bankTransaction = :transaction')
+            ->andWhere('a.type = :type')
+            ->setParameter('transaction', $transaction)
+            ->setParameter('type', $type)
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
      * @return BankTransactionAllocation[]
      */
     public function findByOrder(Order $order): array

@@ -14,6 +14,7 @@ use App\Enum\AllocationStepType;
 use App\Enum\BillingMode;
 use App\Repository\BankTransactionAllocationRepository;
 use App\Repository\BankTransactionRepository;
+use App\Repository\ManualPaymentRequestRepository;
 use App\Service\AuditLogger;
 use App\Service\Billing\RecurringAmountCalculator;
 use App\Service\Identity\ProvideIdentity;
@@ -37,6 +38,7 @@ final readonly class PaymentAllocator
     public function __construct(
         private BankTransactionAllocationRepository $allocationRepository,
         private BankTransactionRepository $bankTransactionRepository,
+        private ManualPaymentRequestRepository $manualPaymentRequestRepository,
         private RecurringAmountCalculator $amountCalculator,
         private AuditLogger $auditLogger,
         private ProvideIdentity $identityProvider,
@@ -57,9 +59,31 @@ final readonly class PaymentAllocator
             && $order->canBePaid();
     }
 
-    public function plan(Order $order, ?Contract $contract, int $amountInHaler, \DateTimeImmutable $now): AllocationPlan
+    /**
+     * plan() for re-pairing an existing transaction (admin confirm screen):
+     * whatever an earlier allocation of THIS transaction parked as credit on
+     * the same contract is its own money, about to be replayed in full — it
+     * must not also count as credit available, or the preview shows money
+     * twice. {@see \App\Command\PairBankTransactionHandler} takes that credit
+     * back before planning, so both arrive at the same plan.
+     */
+    public function planForTransaction(BankTransaction $transaction, Order $order, ?Contract $contract, \DateTimeImmutable $now): AllocationPlan
     {
-        $creditAvailable = null !== $contract ? $contract->creditBalance : 0;
+        $ownCredit = 0;
+        if (null !== $contract) {
+            foreach ($this->allocationRepository->findByTransactionAndType($transaction, AllocationStepType::CREDIT) as $creditAllocation) {
+                if (null !== $creditAllocation->contract && $creditAllocation->contract->id->equals($contract->id)) {
+                    $ownCredit += $creditAllocation->amountInHaler;
+                }
+            }
+        }
+
+        return $this->plan($order, $contract, $transaction->amount, $now, $ownCredit);
+    }
+
+    public function plan(Order $order, ?Contract $contract, int $amountInHaler, \DateTimeImmutable $now, int $creditToDisregard = 0): AllocationPlan
+    {
+        $creditAvailable = null !== $contract ? max(0, $contract->creditBalance - $creditToDisregard) : 0;
         $available = $amountInHaler + $creditAvailable;
         $remaining = $available;
 
@@ -134,7 +158,15 @@ final readonly class PaymentAllocator
     private function planCurrentObligation(Order $order, ?Contract $contract, int $remaining, \DateTimeImmutable $now): ?AllocationStep
     {
         if (null !== $contract && $contract->usesManualBillingTrack()) {
-            $expected = $this->amountCalculator->calculate($contract, $now);
+            // Settle against what the customer was ASKED to pay for this cycle
+            // (the open request's frozen amount), not a fresh recalculation:
+            // a prolongation after the request went out re-prices the cycle,
+            // and the customer who then paid the requested amount exactly was
+            // flagged as under-paying and had the money parked in credit.
+            $openRequest = null !== $contract->nextBillingDate
+                ? $this->manualPaymentRequestRepository->findUnpaidByContractAndPeriod($contract, $contract->nextBillingDate)
+                : null;
+            $expected = $this->amountCalculator->calculateForOpenCycle($contract, $now, $openRequest);
 
             if ($expected <= 0) {
                 return null;
@@ -217,12 +249,6 @@ final readonly class PaymentAllocator
                 continue;
             }
 
-            if (AllocationStepType::CREDIT === $step->type) {
-                $contract?->addCredit($step->allocated);
-
-                continue;
-            }
-
             $this->allocationRepository->save(new BankTransactionAllocation(
                 id: $this->identityProvider->next(),
                 bankTransaction: $transaction,
@@ -232,6 +258,16 @@ final readonly class PaymentAllocator
                 createdAt: $now,
                 contract: $contract,
             ));
+
+            // Credit is recorded as an allocation row too, so a later re-pair of
+            // this transaction knows how much of the contract's credit balance
+            // came from it and can take it back before replaying the money
+            // ({@see \App\Command\PairBankTransactionHandler}).
+            if (AllocationStepType::CREDIT === $step->type) {
+                $contract?->addCredit($step->allocated);
+
+                continue;
+            }
 
             if (AllocationStepType::CONTRACT_DEBT === $step->type && null !== $contract) {
                 // Clamped in plan(), but reduceOutstandingDebt() throws on

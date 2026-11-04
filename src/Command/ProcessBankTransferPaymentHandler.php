@@ -92,6 +92,22 @@ final readonly class ProcessBankTransferPaymentHandler
         $billingPeriodStart = $contract->nextBillingDate ?? $now;
         $effectiveEndDate = $contract->getEffectiveEndDate();
         $nextBillingDate = $billingPeriodStart->modify($contract->getBillingCadenceStep());
+
+        $manualRequest = $this->manualPaymentRequestRepository->findUnpaidByContractAndPeriod(
+            $contract,
+            $billingPeriodStart,
+        );
+
+        // The payment settles the cycle the customer was ASKED to pay — the
+        // open request's period, not a recomputed one. When the request was a
+        // prorated last cycle (period ending at the then end date) and the
+        // contract has since been prolonged, the money covers only up to that
+        // old end date; the next cycle starts there. Advancing a full cadence
+        // step instead would hand out the gap for free.
+        if (null !== $manualRequest && $manualRequest->periodEnd < $nextBillingDate->setTime(0, 0)) {
+            $nextBillingDate = $manualRequest->periodEnd;
+        }
+
         $paidThroughDate = $nextBillingDate;
 
         if ($nextBillingDate >= $effectiveEndDate) {
@@ -101,10 +117,6 @@ final readonly class ProcessBankTransferPaymentHandler
 
         $contract->recordBillingCharge($now, $nextBillingDate, $paidThroughDate);
 
-        $manualRequest = $this->manualPaymentRequestRepository->findUnpaidByContractAndPeriod(
-            $contract,
-            $billingPeriodStart,
-        );
         if (null !== $manualRequest) {
             $manualRequest->markPaid($now);
         }

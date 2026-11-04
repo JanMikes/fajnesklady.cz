@@ -111,7 +111,7 @@ final class AdminBankTransactionPairController extends AbstractController
         // by wire is exactly what spec 089 allows. Only the first-payment step is
         // ever refused, and the allocator does that itself.
         $contract = $this->contractRepository->findByOrder($order);
-        $plan = $this->paymentAllocator->plan($order, $contract, $transaction->amount, $this->clock->now());
+        $plan = $this->paymentAllocator->planForTransaction($transaction, $order, $contract, $this->clock->now());
 
         if ([] === $plan->obligationSteps() && 0 === $plan->creditAdded()) {
             $this->addFlash('error', $this->paymentAllocator->isFirstPaymentBlockedForCard($order, $contract)
@@ -150,7 +150,7 @@ final class AdminBankTransactionPairController extends AbstractController
 
         // The plan is pure, so what is rendered here is exactly what the handler
         // will execute on submit.
-        $plan = $this->paymentAllocator->plan($order, $contract, $transaction->amount, $this->clock->now());
+        $plan = $this->paymentAllocator->planForTransaction($transaction, $order, $contract, $this->clock->now());
 
         // Nothing to settle. Either the allocator refused a card order's first
         // payment (spec 091 D1) or the order simply owes nothing — say which.
