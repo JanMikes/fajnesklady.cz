@@ -17,6 +17,9 @@ final class LandlordHandoverFormData
     #[Assert\Length(max: 50, maxMessage: 'Kód zámku nesmí být delší než {{ limit }} znaků.')]
     public ?string $newLockCode = null;
 
+    /** Resolve the tenant side too — the tenant won't have to fill the protocol. */
+    public bool $resolveTenantSide = false;
+
     public bool $issueFine = false;
 
     // Fine fields are flat (not an embedded FineFormData) so their requiredness

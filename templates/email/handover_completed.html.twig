@@ -11,25 +11,50 @@
         .footer { text-align: center; padding: 20px; font-size: 12px; color: #666; }
         .success-message { background-color: #dcfce7; border: 1px solid #22c55e; padding: 15px; border-radius: 5px; margin: 20px 0; text-align: center; }
         .success-message strong { color: #166534; }
+        .button { display: inline-block; padding: 12px 24px; background-color: #22c55e; color: white !important; text-decoration: none; border-radius: 5px; font-weight: bold; }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>Předávací protokol dokončen</h1>
+        <h1>{{ (tenantSkipped ?? false) and (recipient ?? '') == 'tenant' ? 'Sklad převzat' : 'Předávací protokol dokončen' }}</h1>
     </div>
 
     <div class="content">
         <h2>Dobrý den, {{ name }}!</h2>
 
-        <div class="success-message">
-            <strong>Předávací protokol byl úspěšně dokončen.</strong>
-        </div>
+        {% if (tenantSkipped ?? false) and (recipient ?? '') == 'tenant' %}
+            <div class="success-message">
+                <strong>Váš sklad byl převzat a předávací protokol je vyplněn.</strong>
+            </div>
 
-        <p>Obě strany vyplnily předávací protokol pro sklad č. <strong>{{ storageNumber }}</strong> v lokalitě <strong>{{ placeName }}</strong>.</p>
+            <p>Potvrzujeme, že sklad č. <strong>{{ storageNumber }}</strong> v lokalitě <strong>{{ placeName }}</strong> byl převzat a předávací protokol byl vyplněn za obě strany.</p>
 
-        <p>Sklad byl uvolněn a je připraven pro dalšího nájemce.</p>
+            <p>Z vaší strany již <strong>není potřeba nic vyplňovat</strong>.</p>
 
-        <p>Děkujeme za spolupráci.</p>
+            {% if protocolUrl ?? null %}
+                <p style="text-align: center; margin: 30px 0;">
+                    <a href="{{ protocolUrl }}" class="button">Zobrazit předávací protokol</a>
+                </p>
+            {% endif %}
+
+            <p>Děkujeme, že jste využili Fajnesklady.cz.</p>
+        {% else %}
+            <div class="success-message">
+                <strong>Předávací protokol byl úspěšně dokončen.</strong>
+            </div>
+
+            {% if tenantSkipped ?? false %}
+                <p>Předávací protokol pro sklad č. <strong>{{ storageNumber }}</strong> v lokalitě <strong>{{ placeName }}</strong> byl dokončen (strana nájemce byla vyřešena bez jeho vyplnění).</p>
+            {% else %}
+                <p>Obě strany vyplnily předávací protokol pro sklad č. <strong>{{ storageNumber }}</strong> v lokalitě <strong>{{ placeName }}</strong>.</p>
+            {% endif %}
+
+            {% if (recipient ?? '') != 'tenant' %}
+                <p>Sklad byl uvolněn a je připraven pro dalšího nájemce.</p>
+            {% endif %}
+
+            <p>Děkujeme za spolupráci.</p>
+        {% endif %}
 
         <p>S pozdravem,<br>
         <strong>Tým Fajnesklady.cz</strong></p>

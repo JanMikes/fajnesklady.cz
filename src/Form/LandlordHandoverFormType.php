@@ -38,6 +38,10 @@ final class LandlordHandoverFormType extends AbstractType
                     'placeholder' => 'Zadejte kód zámku pro dalšího nájemce',
                 ],
             ])
+            ->add('resolveTenantSide', CheckboxType::class, [
+                'label' => 'Vyřešit předávací protokol i za nájemce',
+                'required' => false,
+            ])
             // Optional inline fine (spec 080). All fine fields are required=false at
             // the form level — requiredness is enforced conditionally by
             // LandlordHandoverFormData::validateFine() only when issueFine is checked.

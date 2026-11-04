@@ -98,7 +98,7 @@ class AdminHandoverViewControllerTest extends WebTestCase
 
         $this->assertResponseIsSuccessful();
         $body = (string) $this->client->getResponse()->getContent();
-        $this->assertStringContainsString('Strana nájemce byla přeskočena administrátorem', $body);
+        $this->assertStringContainsString('Strana nájemce byla vyřešena bez jeho vyplnění', $body);
         $this->assertStringContainsString('Protokol nevyžaduje vyjádření nájemce.', $body);
         // Timeline shows the honest "Přeskočeno" state instead of a completion
         // date. (Time omitted — Twig renders in Europe/Prague, not UTC.)

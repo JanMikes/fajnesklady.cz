@@ -104,7 +104,7 @@ class HandoverProtocolTest extends TestCase
         $protocol->skipTenantSide($this->createUser('admin@example.com'), $this->now->modify('-1 hour'));
 
         $this->expectException(\DomainException::class);
-        $this->expectExceptionMessage('Strana nájemce byla přeskočena administrátorem.');
+        $this->expectExceptionMessage('Strana nájemce již byla vyřešena bez jeho vyplnění.');
 
         $protocol->completeTenantSide('Vyklizeno.', $this->now);
     }

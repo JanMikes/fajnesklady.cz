@@ -61,6 +61,10 @@ final class LandlordHandoverViewController extends AbstractController
         if ($form->isSubmitted() && $form->isValid() && $protocol->needsLandlordCompletion()) {
             $this->denyAccessUnlessGranted(HandoverProtocolVoter::COMPLETE_LANDLORD, $protocol);
 
+            /** @var \App\Entity\User $user */
+            $user = $this->getUser();
+            $resolveTenantSide = $formData->resolveTenantSide && $protocol->needsTenantCompletion();
+
             // Upload photos
             $photos = $request->files->get('photos', []);
             foreach ($photos as $photo) {
@@ -76,6 +80,7 @@ final class LandlordHandoverViewController extends AbstractController
                     handoverProtocolId: $protocol->id,
                     comment: $formData->comment,
                     newLockCode: $formData->newLockCode,
+                    resolveTenantSideById: $resolveTenantSide ? $user->id : null,
                 ));
             } catch (\Throwable $rawException) {
                 $exception = HandlerFailureUnwrap::unwrap($rawException);
@@ -95,13 +100,13 @@ final class LandlordHandoverViewController extends AbstractController
                 throw $rawException;
             }
 
-            $this->addFlash('success', 'Předávací protokol byl úspěšně vyplněn.');
+            $this->addFlash('success', $resolveTenantSide
+                ? 'Předávací protokol byl vyplněn i za nájemce a je dokončen. Nájemci jsme poslali potvrzení e-mailem.'
+                : 'Předávací protokol byl úspěšně vyplněn.');
 
             // Completion-first ordering: if InvalidStorageCode threw above, no
             // fine is issued and the re-rendered form preserves the fine values.
             if ($formData->issueFine) {
-                /** @var \App\Entity\User $user */
-                $user = $this->getUser();
                 assert(null !== $formData->fineType);
                 assert(null !== $formData->fineAmountInCzk);
 

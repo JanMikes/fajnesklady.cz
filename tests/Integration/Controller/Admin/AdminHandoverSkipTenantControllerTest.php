@@ -102,7 +102,7 @@ class AdminHandoverSkipTenantControllerTest extends WebTestCase
         $this->client->followRedirect();
         $this->assertSelectorTextContains('[data-flash-type="success"]', 'Strana nájemce byla přeskočena.');
         $body = (string) $this->client->getResponse()->getContent();
-        $this->assertStringContainsString('Strana nájemce byla přeskočena administrátorem', $body);
+        $this->assertStringContainsString('Strana nájemce byla vyřešena bez jeho vyplnění', $body);
         $this->assertStringContainsString('Přeskočeno', $body);
         $this->assertStringNotContainsString('Přeskočit stranu nájemce', $body);
     }

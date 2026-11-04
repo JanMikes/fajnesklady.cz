@@ -132,7 +132,7 @@
                 {% endif %}
             {% elseif protocol.tenantSkippedAt %}
                 <p class="text-sm text-gray-500">
-                    Strana nájemce byla přeskočena administrátorem {{ protocol.tenantSkippedBy.fullName }} dne {{ protocol.tenantSkippedAt|date('d.m.Y H:i') }}.
+                    Strana nájemce byla vyřešena bez jeho vyplnění — {{ protocol.tenantSkippedBy.fullName }}, dne {{ protocol.tenantSkippedAt|date('d.m.Y H:i') }}.
                     Protokol nevyžaduje vyjádření nájemce.
                 </p>
             {% else %}

@@ -84,7 +84,7 @@ class HandoverProtocol implements EntityWithEvents
             throw new \DomainException('Nájemce již předávací protokol vyplnil.');
         }
         if (null !== $this->tenantSkippedAt) {
-            throw new \DomainException('Strana nájemce byla přeskočena administrátorem.');
+            throw new \DomainException('Strana nájemce již byla vyřešena bez jeho vyplnění.');
         }
 
         $this->tenantComment = $comment;

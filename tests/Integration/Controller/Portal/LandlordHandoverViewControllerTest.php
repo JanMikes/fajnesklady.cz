@@ -13,9 +13,14 @@ use App\Enum\FineType;
 use App\Repository\HandoverProtocolRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Clock\ClockInterface;
+use Symfony\Bridge\Twig\Mime\BodyRenderer;
+use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+use Symfony\Component\Mailer\Messenger\SendEmailMessage;
+use Symfony\Component\Messenger\Transport\InMemory\InMemoryTransport;
 use Symfony\Component\Uid\Uuid;
+use Twig\Environment;
 
 /**
  * Codes-enabled fixture place is "Sklad Praha - Centrum" — REF_CONTRACT_RECURRING
@@ -339,6 +344,162 @@ class LandlordHandoverViewControllerTest extends WebTestCase
         $reloaded = $this->entityManager->find(\App\Entity\Storage::class, $storageId);
         $this->assertNotNull($reloaded);
         $this->assertSame('0611', $reloaded->lockCode, 'The paying tenant\'s code must stay in place.');
+    }
+
+    public function testLandlordCanResolveTenantSideAndTenantIsNotified(): void
+    {
+        $protocol = $this->createPendingHandoverForRecurringContract();
+        $this->assertTrue($protocol->needsTenantCompletion(), 'Precondition: tenant side open.');
+        $tenantEmail = $protocol->contract->user->email;
+
+        $landlord = $this->findUserByEmail('landlord@example.com');
+        $landlordId = $landlord->id;
+        $this->client->loginUser($landlord, 'main');
+
+        $crawler = $this->client->request('GET', '/portal/pronajimatel/predavaci-protokol/'.$protocol->id->toRfc4122());
+        $this->assertCount(1, $crawler->filter('input[name="landlord_handover_form[resolveTenantSide]"]'));
+
+        $this->client->request(
+            'POST',
+            '/portal/pronajimatel/predavaci-protokol/'.$protocol->id->toRfc4122(),
+            [
+                'landlord_handover_form' => [
+                    'comment' => 'Převzato osobně, bez závad.',
+                    'newLockCode' => '',
+                    'resolveTenantSide' => '1',
+                ],
+            ],
+        );
+
+        $this->assertResponseRedirects('/portal/pronajimatel/predavaci-protokol/'.$protocol->id->toRfc4122());
+
+        $email = $this->findRenderedEmailTo($tenantEmail);
+        $this->assertNotNull($email, 'Tenant must be notified about the takeover.');
+        $this->assertStringStartsWith('Sklad převzat, předávací protokol vyplněn', (string) $email->getSubject());
+        $html = (string) $email->getHtmlBody();
+        $this->assertStringContainsString('není potřeba nic vyplňovat', $html);
+        $this->assertStringContainsString('/predavaci-protokol/'.$protocol->id->toRfc4122(), $html);
+        $this->assertStringContainsString('_hash=', $html, 'Protocol link must be the signed tenant URL.');
+
+        $this->entityManager->clear();
+        $reloaded = $this->entityManager->find(HandoverProtocol::class, $protocol->id);
+        \assert($reloaded instanceof HandoverProtocol);
+        $this->assertTrue($reloaded->isFullyCompleted());
+        $this->assertFalse($reloaded->needsTenantCompletion());
+        $this->assertNull($reloaded->tenantCompletedAt);
+        $this->assertNotNull($reloaded->tenantSkippedBy);
+        $this->assertTrue($reloaded->tenantSkippedBy->id->equals($landlordId));
+
+        $audit = $this->entityManager->createQueryBuilder()
+            ->select('a')
+            ->from(\App\Entity\AuditLog::class, 'a')
+            ->where('a.entityId = :id')
+            ->andWhere('a.eventType = :type')
+            ->setParameter('id', $protocol->id->toRfc4122())
+            ->setParameter('type', 'tenant_skipped')
+            ->getQuery()
+            ->getResult();
+        $this->assertCount(1, $audit);
+    }
+
+    public function testAdminCanResolveTenantSide(): void
+    {
+        $protocol = $this->createPendingHandoverForRecurringContract();
+
+        $admin = $this->findUserByEmail('admin@example.com');
+        $adminId = $admin->id;
+        $this->client->loginUser($admin, 'main');
+
+        $this->client->request(
+            'POST',
+            '/portal/pronajimatel/predavaci-protokol/'.$protocol->id->toRfc4122(),
+            [
+                'landlord_handover_form' => [
+                    'comment' => 'Převzato administrátorem.',
+                    'newLockCode' => '',
+                    'resolveTenantSide' => '1',
+                ],
+            ],
+        );
+
+        $this->assertResponseRedirects('/portal/pronajimatel/predavaci-protokol/'.$protocol->id->toRfc4122());
+
+        $this->entityManager->clear();
+        $reloaded = $this->entityManager->find(HandoverProtocol::class, $protocol->id);
+        \assert($reloaded instanceof HandoverProtocol);
+        $this->assertTrue($reloaded->isFullyCompleted());
+        $this->assertNotNull($reloaded->tenantSkippedBy);
+        $this->assertTrue($reloaded->tenantSkippedBy->id->equals($adminId));
+    }
+
+    public function testWithoutResolveCheckboxTenantSideStaysOpen(): void
+    {
+        $protocol = $this->createPendingHandoverForRecurringContract();
+        $tenantEmail = $protocol->contract->user->email;
+
+        $this->client->loginUser($this->findUserByEmail('landlord@example.com'), 'main');
+        $this->client->request(
+            'POST',
+            '/portal/pronajimatel/predavaci-protokol/'.$protocol->id->toRfc4122(),
+            [
+                'landlord_handover_form' => [
+                    'comment' => 'Předáno bez závad.',
+                    'newLockCode' => '',
+                ],
+            ],
+        );
+
+        $this->assertResponseRedirects();
+        $this->assertNull($this->findRenderedEmailTo($tenantEmail), 'No completion mail while tenant side is open.');
+
+        $this->entityManager->clear();
+        $reloaded = $this->entityManager->find(HandoverProtocol::class, $protocol->id);
+        \assert($reloaded instanceof HandoverProtocol);
+        $this->assertTrue($reloaded->needsTenantCompletion());
+        $this->assertFalse($reloaded->isFullyCompleted());
+    }
+
+    public function testResolveCheckboxHiddenWhenTenantAlreadyFilled(): void
+    {
+        $protocol = $this->createPendingHandoverForRecurringContract();
+        $protocol->completeTenantSide('Vyklizeno.', $this->clock->now());
+        $this->entityManager->flush();
+
+        $this->client->loginUser($this->findUserByEmail('landlord@example.com'), 'main');
+        $crawler = $this->client->request('GET', '/portal/pronajimatel/predavaci-protokol/'.$protocol->id->toRfc4122());
+
+        $this->assertResponseIsSuccessful();
+        $this->assertCount(0, $crawler->filter('input[name="landlord_handover_form[resolveTenantSide]"]'));
+    }
+
+    private function findRenderedEmailTo(string $recipient): ?TemplatedEmail
+    {
+        $transport = static::getContainer()->get('test.messenger.transport.async');
+        \assert($transport instanceof InMemoryTransport);
+
+        /** @var Environment $twig */
+        $twig = static::getContainer()->get('test.twig');
+        $renderer = new BodyRenderer($twig);
+
+        foreach ($transport->getSent() as $envelope) {
+            $message = $envelope->getMessage();
+            if (!$message instanceof SendEmailMessage) {
+                continue;
+            }
+            $email = $message->getMessage();
+            if (!$email instanceof TemplatedEmail || 'email/handover_completed.html.twig' !== $email->getHtmlTemplate()) {
+                continue;
+            }
+            foreach ($email->getTo() as $address) {
+                if ($address->getAddress() === $recipient) {
+                    $renderer->render($email);
+
+                    return $email;
+                }
+            }
+        }
+
+        return null;
     }
 
     /**
