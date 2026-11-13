@@ -53,6 +53,7 @@ final class EmailTemplateLabelExtension extends AbstractExtension
         'email/fine_issued' => 'Vystavení pokuty',
         'email/fine_payment_reminder' => 'Připomínka pokuty',
         'email/fine_paid' => 'Potvrzení úhrady pokuty',
+        'email/payment_refunded' => 'Vrácení platby',
         'email/payment_amount_mismatch' => 'Nesouhlasí částka platby',
         'email/bank_transfer_amount_mismatch_admin' => 'Neshoda převodu (admin)',
         'email/bank_transfer_amount_mismatch_customer' => 'Neshoda převodu (zákazník)',

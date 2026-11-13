@@ -48,6 +48,34 @@ class InvoiceRepository
     }
 
     /**
+     * Rent invoices (not fines, not credit notes) of the order with exactly
+     * this amount, issued within the window — the candidates for "the invoice
+     * that documents this payment". Invoice has no Payment FK; issuance runs
+     * right after the money arrives (or via the 5-minute backstop cron), so
+     * order + amount + time is a reliable key when it yields exactly one row.
+     *
+     * @return list<Invoice>
+     */
+    public function findRentInvoicesForAmountIssuedBetween(Order $order, int $amount, \DateTimeImmutable $from, \DateTimeImmutable $to): array
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('i')
+            ->from(Invoice::class, 'i')
+            ->where('i.order = :order')
+            ->andWhere('i.amount = :amount')
+            ->andWhere('i.fine IS NULL')
+            ->andWhere('i.correctionOf IS NULL')
+            ->andWhere('i.issuedAt BETWEEN :from AND :to')
+            ->setParameter('order', $order)
+            ->setParameter('amount', $amount)
+            ->setParameter('from', $from)
+            ->setParameter('to', $to)
+            ->orderBy('i.issuedAt', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
      * @return Invoice[]
      */
     public function findAllByOrder(Order $order): array

@@ -18,6 +18,9 @@ final readonly class PaymentOverviewRow
     public const string STATUS_SCHEDULED = 'scheduled';
     public const string STATUS_COVERED_EXTERNAL = 'covered_external';
     public const string STATUS_CANCELLED = 'cancelled';
+    public const string STATUS_REFUNDED = 'refunded';
+    public const string STATUS_REFUND_PENDING = 'refund_pending';
+    public const string STATUS_REFUND_FAILED = 'refund_failed';
 
     public function __construct(
         public string $label,

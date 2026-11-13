@@ -39,6 +39,21 @@ interface FakturoidClient
 
     public function createRecurringInvoice(int $subjectId, Contract $contract, int $amount, \DateTimeImmutable $billingDate, PaymentMethod $paidVia, ?\DateTimeImmutable $periodStart = null, ?\DateTimeImmutable $periodEnd = null): FakturoidInvoice;
 
+    /**
+     * Credit note (opravný daňový doklad) for a refund: a Fakturoid
+     * "correction" document linked to $correctedInvoiceId (Fakturoid
+     * back-links the original). $amount is the positive refunded sum in
+     * haléře (vč. DPH); the document itself carries it as a negative line.
+     */
+    public function createCreditNote(
+        int $subjectId,
+        int $correctedInvoiceId,
+        int $amount,
+        string $lineName,
+        PaymentMethod $paidVia,
+        ?string $variableSymbol,
+    ): FakturoidInvoice;
+
     public function downloadInvoicePdf(int $invoiceId): string;
 
     public function markInvoiceAsPaid(int $invoiceId, \DateTimeImmutable $paidAt): void;

@@ -8,8 +8,11 @@ use App\Entity\Contract;
 use App\Entity\ManualPaymentRequest;
 use App\Entity\Order;
 use App\Entity\Payment;
+use App\Entity\PaymentRefund;
 use App\Enum\BillingMode;
 use App\Enum\PaymentMethod;
+use App\Enum\PaymentRefundStatus;
+use App\Enum\RefundMode;
 use App\Service\Billing\ManualBillingReminderSchedule;
 use App\Service\Billing\RecurringAmountCalculator;
 
@@ -36,10 +39,11 @@ final readonly class OrderPaymentOverviewFactory
      * Pure function of the passed-in state (no repository access) so the row
      * derivation is unit-testable. The caller fetches:
      *
-     * @param list<Payment>              $payments PaymentRepository::findAllForOrder()
+     * @param list<Payment>              $payments PaymentRepository::findAllForOrder() — includes storno rows
      * @param list<ManualPaymentRequest> $requests ManualPaymentRequestRepository::findAllByContract()
+     * @param list<PaymentRefund>        $refunds  PaymentRefundRepository::findByOrder()
      */
-    public function build(Order $order, ?Contract $contract, array $payments, array $requests, \DateTimeImmutable $now): OrderPaymentOverview
+    public function build(Order $order, ?Contract $contract, array $payments, array $requests, \DateTimeImmutable $now, array $refunds = []): OrderPaymentOverview
     {
         $today = $now->setTime(0, 0, 0);
         $rows = [];
@@ -69,6 +73,10 @@ final readonly class OrderPaymentOverviewFactory
 
         foreach ($this->buildProjectedCycleRows($order, $contract, $requests, $today) as $row) {
             $rows[] = $row;
+        }
+
+        foreach ($refunds as $refund) {
+            $rows[] = $this->buildRefundRow($refund);
         }
 
         // A terminated contract's residual debt is a receivable like any other.
@@ -103,11 +111,19 @@ final readonly class OrderPaymentOverviewFactory
             }
         }
 
+        $refundedTotal = 0;
+        foreach ($refunds as $refund) {
+            if ($refund->isSucceeded()) {
+                $refundedTotal += $refund->amount;
+            }
+        }
+
         return new OrderPaymentOverview(
             rows: $rows,
             totalPaidInHaler: $totalPaid,
             overdueTotalInHaler: $overdueTotal,
             outstandingTotalInHaler: $outstandingTotal,
+            refundedTotalInHaler: $refundedTotal,
         );
     }
 
@@ -165,7 +181,7 @@ final readonly class OrderPaymentOverviewFactory
     {
         $initialPayment = null;
         foreach ($payments as $payment) {
-            if (null !== $payment->order) {
+            if (null !== $payment->order && !$payment->isRefund()) {
                 $initialPayment = $payment;
 
                 break;
@@ -337,6 +353,9 @@ final readonly class OrderPaymentOverviewFactory
 
         $rows = [];
         foreach ($payments as $payment) {
+            if ($payment->isRefund()) {
+                continue; // rendered from its PaymentRefund (buildRefundRow)
+            }
             if (null !== $payment->order) {
                 continue; // first payment, rendered separately
             }
@@ -380,7 +399,7 @@ final readonly class OrderPaymentOverviewFactory
         }
 
         foreach ($payments as $payment) {
-            if (null === $payment->order && $payment->paidAt->format(\DateTimeInterface::ATOM) === $request->paidAt->format(\DateTimeInterface::ATOM)) {
+            if (null === $payment->order && !$payment->isRefund() && $payment->paidAt->format(\DateTimeInterface::ATOM) === $request->paidAt->format(\DateTimeInterface::ATOM)) {
                 return $payment;
             }
         }
@@ -388,6 +407,64 @@ final readonly class OrderPaymentOverviewFactory
         // Not inferred from $request->goPayPaymentId: that is set when the
         // customer opens the card gateway, not when the money arrives.
         return null;
+    }
+
+    /**
+     * A card refund — money going back, so the amount is negative. Succeeded
+     * refunds already sit in totalPaid via their storno Payment row; pending
+     * and failed ones are shown for the record only.
+     */
+    private function buildRefundRow(PaymentRefund $refund): PaymentOverviewRow
+    {
+        $notes = [];
+
+        if (RefundMode::PRORATED === $refund->mode && null !== $refund->periodEnd) {
+            $from = $refund->refundFrom;
+            if (null !== $from && null !== $refund->periodStart && $from < $refund->periodStart) {
+                $from = $refund->periodStart;
+            }
+            $notes[] = sprintf(
+                'Poměrně za %s – %s',
+                $from?->format('d.m.Y') ?? '?',
+                $refund->periodEnd->modify('-1 day')->format('d.m.Y'),
+            );
+        } elseif (RefundMode::FULL === $refund->mode) {
+            $notes[] = 'Celá platba';
+        } else {
+            $notes[] = 'Vráceno mimo aplikaci (administrace GoPay)';
+        }
+
+        $notes[] = sprintf(
+            'z platby %s Kč ze dne %s',
+            number_format($refund->payment->amount / 100, 0, ',', ' '),
+            $refund->payment->paidAt->format('d.m.Y'),
+        );
+
+        if (null !== $refund->creditNote) {
+            $notes[] = sprintf('dobropis č. %s', $refund->creditNote->invoiceNumber);
+        }
+
+        if (null !== $refund->failureReason) {
+            $notes[] = $refund->failureReason;
+        }
+
+        if (null !== $refund->reason && !$refund->isExternal()) {
+            $notes[] = sprintf('Důvod: %s', $refund->reason);
+        }
+
+        return new PaymentOverviewRow(
+            label: 'Vrácení platby na kartu',
+            status: match ($refund->status) {
+                PaymentRefundStatus::SUCCEEDED => PaymentOverviewRow::STATUS_REFUNDED,
+                PaymentRefundStatus::PENDING => PaymentOverviewRow::STATUS_REFUND_PENDING,
+                PaymentRefundStatus::FAILED => PaymentOverviewRow::STATUS_REFUND_FAILED,
+            },
+            dueDate: $refund->requestedAt,
+            amountInHaler: -$refund->amount,
+            paidAt: $refund->isSucceeded() ? $refund->resolvedAt : null,
+            source: $refund->payment->paidVia->label(),
+            note: implode(' · ', $notes),
+        );
     }
 
     /**

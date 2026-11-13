@@ -8,8 +8,10 @@ use App\Entity\Contract;
 use App\Entity\Fine;
 use App\Entity\Invoice;
 use App\Entity\Order;
+use App\Entity\PaymentRefund;
 use App\Entity\User;
 use App\Enum\PaymentMethod;
+use App\Enum\RefundMode;
 use App\Repository\InvoiceRepository;
 use App\Repository\PaymentRepository;
 use App\Repository\UserRepository;
@@ -226,6 +228,93 @@ readonly class InvoicingService
         }
 
         return $invoice;
+    }
+
+    /**
+     * Credit note (Fakturoid "correction") for a confirmed card refund,
+     * linked to the invoice that documented the refunded payment. Stored as
+     * an Invoice with correctionOf + a negative amount so it shows up in every
+     * existing invoice list and download (spec 092).
+     */
+    public function issueCreditNote(PaymentRefund $refund, Invoice $original, \DateTimeImmutable $now): Invoice
+    {
+        if (!$refund->isSucceeded()) {
+            throw new \DomainException('A credit note is issued only for a confirmed refund.');
+        }
+
+        $order = $refund->order;
+        $user = $order->user;
+        $paidVia = $refund->payment->paidVia;
+        self::assertPaymentEvidence($paidVia);
+        $lineName = self::creditNoteLineName($refund);
+        $subjectId = $this->ensureFakturoidSubject($user, $now);
+
+        try {
+            $fakturoidInvoice = $this->fakturoidClient->createCreditNote($subjectId, $original->fakturoidInvoiceId, $refund->amount, $lineName, $paidVia, $order->variableSymbol);
+        } catch (StaleFakturoidSubjectException $e) {
+            $subjectId = $this->recreateFakturoidSubject($user, $now, $e->subjectId);
+            $fakturoidInvoice = $this->fakturoidClient->createCreditNote($subjectId, $original->fakturoidInvoiceId, $refund->amount, $lineName, $paidVia, $order->variableSymbol);
+        }
+
+        // The money is already back on the card — settle the document so the
+        // PDF does not read as an open item.
+        $this->fakturoidClient->markInvoiceAsPaid($fakturoidInvoice->id, $refund->resolvedAt ?? $now);
+
+        $creditNote = new Invoice(
+            id: $this->identityProvider->next(),
+            order: $order,
+            user: $user,
+            fakturoidInvoiceId: $fakturoidInvoice->id,
+            invoiceNumber: $fakturoidInvoice->number,
+            // Fakturoid reports a correction's total as negative; normalise in
+            // case an account setting ever flips the sign.
+            amount: -abs($fakturoidInvoice->total),
+            issuedAt: $now,
+            createdAt: $now,
+            correctionOf: $original,
+        );
+
+        $this->invoiceRepository->save($creditNote);
+        $refund->attachCreditNote($creditNote);
+
+        try {
+            $pdfContent = $this->fakturoidClient->downloadInvoicePdf($fakturoidInvoice->id);
+            $creditNote->attachPdf($this->storePdf($creditNote, $pdfContent));
+        } catch (\Throwable $e) {
+            $this->logger->warning('Failed to download credit note PDF', [
+                'invoice_id' => $fakturoidInvoice->id,
+                'exception' => $e,
+            ]);
+        }
+
+        return $creditNote;
+    }
+
+    public static function creditNoteLineName(PaymentRefund $refund): string
+    {
+        $storage = $refund->payment->storage;
+        $place = $storage->getPlace();
+
+        if (RefundMode::PRORATED === $refund->mode && null !== $refund->periodEnd) {
+            $from = $refund->refundFrom ?? $refund->periodStart;
+            if (null !== $refund->periodStart && null !== $from && $from < $refund->periodStart) {
+                $from = $refund->periodStart;
+            }
+
+            return sprintf(
+                'Vrácení platby za nevyužité období %s – %s, skladovací jednotka %s (%s)',
+                $from?->format('d.m.Y') ?? '',
+                $refund->periodEnd->modify('-1 day')->format('d.m.Y'),
+                $storage->number,
+                $place->name,
+            );
+        }
+
+        return sprintf(
+            'Vrácení platby za pronájem skladovací jednotky %s (%s)',
+            $storage->number,
+            $place->name,
+        );
     }
 
     /**

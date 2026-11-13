@@ -58,6 +58,7 @@ All cron jobs run inside the Docker container on the production server.
 | Command | Schedule | Description |
 |---------|----------|-------------|
 | `app:expire-orders` | Every hour | Expires orders past their reservation deadline (7 days) |
+| `app:reconcile-refunds` | Every hour | Confirms or fails card refunds GoPay accepted for asynchronous processing (backstop for a lost webhook). `--gopay-payment=<id>` books a refund issued in the GoPay console |
 | `app:issue-missing-invoices` | Every 5 minutes | Backstop for paid orders whose synchronous Fakturoid invoice issuance failed (15-min grace) |
 | `app:process-recurring-payments` | Daily at 7:00 | Charges due recurring payments via GoPay |
 | `app:retry-failed-payments` | Daily at 12:00 | Retries failed payments (3 days / 7 days after failure) |

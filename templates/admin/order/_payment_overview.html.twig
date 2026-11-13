@@ -9,13 +9,19 @@
     'scheduled': {label: 'Naplánováno', class: 'bg-gray-100 text-gray-600'},
     'covered_external': {label: 'Pokryto mimo systém', class: 'bg-blue-100 text-blue-800'},
     'cancelled': {label: 'Zrušeno', class: 'bg-gray-100 text-gray-500'},
+    'refunded': {label: 'Vráceno', class: 'bg-purple-100 text-purple-800'},
+    'refund_pending': {label: 'Vrácení čeká na GoPay', class: 'bg-amber-100 text-amber-800'},
+    'refund_failed': {label: 'Vrácení selhalo', class: 'bg-red-100 text-red-800'},
 } %}
 
 <div class="mt-6 mb-6 bg-white shadow overflow-hidden sm:rounded-lg">
     <div class="px-4 py-5 sm:px-6 border-b border-gray-200 flex items-center justify-between">
         <h3 class="text-lg font-medium text-gray-900">Přehled plateb</h3>
         <div class="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm">
-            <span class="text-gray-500">Zaplaceno: <strong class="text-gray-900">{{ (paymentOverview.totalPaidInHaler / 100)|number_format(0, ',', ' ') }} Kč</strong></span>
+            <span class="text-gray-500">Zaplaceno{% if paymentOverview.refundedTotalInHaler > 0 %} (po vrácení){% endif %}: <strong class="text-gray-900">{{ (paymentOverview.totalPaidInHaler / 100)|number_format(0, ',', ' ') }} Kč</strong></span>
+            {% if paymentOverview.refundedTotalInHaler > 0 %}
+                <span class="text-purple-700">Vráceno na kartu: <strong>{{ (paymentOverview.refundedTotalInHaler / 100)|number_format(0, ',', ' ') }} Kč</strong></span>
+            {% endif %}
             {% if paymentOverview.overdueTotalInHaler > 0 %}
                 <span class="text-red-600">Po splatnosti: <strong>{{ (paymentOverview.overdueTotalInHaler / 100)|number_format(0, ',', ' ') }} Kč</strong></span>
             {% endif %}
@@ -41,7 +47,7 @@
                     <tbody class="divide-y divide-gray-200">
                         {% for row in paymentOverview.rows %}
                             {% set badge = statusBadge[row.status] ?? {label: row.status, class: 'bg-gray-100 text-gray-600'} %}
-                            <tr class="{{ row.status == 'overdue' ? 'bg-red-50' : (row.status == 'scheduled' ? 'text-gray-400' : '') }}">
+                            <tr class="{{ row.status == 'overdue' or row.status == 'refund_failed' ? 'bg-red-50' : (row.status == 'scheduled' ? 'text-gray-400' : (row.status == 'refunded' ? 'bg-purple-50' : '')) }}">
                                 <td class="px-3 py-2 text-sm whitespace-nowrap {{ row.status == 'scheduled' ? 'text-gray-400' : 'text-gray-900' }}">
                                     {{ row.dueDate ? row.dueDate|date('d.m.Y') : '—' }}
                                 </td>

@@ -204,6 +204,9 @@ final readonly class PaymentMethodBackfill
 
         $contract = $this->contractRepository->findByOrder($order);
         foreach ($this->paymentRepository->findAllForOrder($order, $contract) as $payment) {
+            if ($payment->isRefund()) {
+                continue; // a storno row never evidences how an invoice was paid
+            }
             if ($payment->amount === $invoice->amount) {
                 $candidates[] = ['at' => $payment->paidAt, 'via' => $this->evidencedMethod($payment, $order)];
             }

@@ -363,6 +363,71 @@ final readonly class FakturoidApiClient implements FakturoidClient
         );
     }
 
+    public function createCreditNote(
+        int $subjectId,
+        int $correctedInvoiceId,
+        int $amount,
+        string $lineName,
+        PaymentMethod $paidVia,
+        ?string $variableSymbol,
+    ): FakturoidInvoice {
+        try {
+            $response = $this->manager->getInvoicesProvider()->create([
+                'subject_id' => $subjectId,
+                'document_type' => 'correction',
+                'correction_id' => $correctedInvoiceId,
+                // Same gross convention as the corrected invoice.
+                'vat_price_mode' => 'from_total_with_vat',
+                // The money already went back to the card — the PDF must not
+                // read like something still to be settled.
+                ...$this->paidDocumentFields($variableSymbol, $paidVia),
+                'lines' => [
+                    [
+                        'name' => $lineName,
+                        // A correction reverses the original supply: negative
+                        // quantity, positive unit price (Fakturoid's own
+                        // "opravný doklad" convention).
+                        'quantity' => -1,
+                        'unit_price' => $amount / 100,
+                        'vat_rate' => $this->vatRate,
+                    ],
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            $context = [
+                'subject_id' => $subjectId,
+                'corrected_invoice_id' => $correctedInvoiceId,
+                'exception' => $e,
+            ];
+
+            if ($e instanceof RequestException) {
+                $body = $e->getResponse()->getBody();
+                $body->rewind();
+                $context['status'] = $e->getResponse()->getStatusCode();
+                $context['body'] = $body->getContents();
+            }
+
+            if ($this->isStaleSubjectError($context)) {
+                $this->logger->info('Fakturoid subject no longer exists; caller will recreate', $context);
+
+                throw new StaleFakturoidSubjectException($subjectId, $e);
+            }
+
+            $this->logger->error('Fakturoid credit note creation failed', $context);
+
+            throw $e;
+        }
+
+        /** @var \stdClass $body */
+        $body = $response->getBody();
+
+        return new FakturoidInvoice(
+            id: (int) $body->id,
+            number: (string) $body->number,
+            total: (int) round((float) $body->total * 100),
+        );
+    }
+
     public function markInvoiceAsPaid(int $invoiceId, \DateTimeImmutable $paidAt): void
     {
         try {

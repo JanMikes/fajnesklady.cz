@@ -7,6 +7,7 @@ namespace App\Service;
 use App\Entity\AuditLog;
 use App\Enum\AllocationStepType;
 use App\Enum\PaymentMethod;
+use App\Enum\RefundMode;
 
 /**
  * Translates an AuditLog (entityType + eventType + payload) into a human-readable
@@ -64,8 +65,59 @@ final readonly class AuditLogDescriptionRenderer
             'manual_payment_request.requested' => $this->describeManualPaymentRequested($log),
             'manual_payment_request.received' => 'Platba na výzvu přijata',
             'order.billing_mode_set' => $this->describeBillingModeSet($log),
+            'payment_refund.requested' => $this->describeRefund('Vrácení platby na kartu zadáno do GoPay', $log),
+            'payment_refund.succeeded' => $this->describeRefund('Platba vrácena na kartu', $log),
+            'payment_refund.refunded_externally' => $this->describeRefund('Platba vrácena mimo aplikaci (administrace GoPay), zapsáno z historie GoPay', $log),
+            'payment_refund.failed', 'payment_refund.request_failed' => $this->describeRefund('Vrácení platby selhalo', $log),
+            'payment_refund.credit_note_issued' => $this->describeRefund('Dobropis vystaven a odeslán zákazníkovi', $log),
+            'payment_refund.credit_note_skipped' => $this->describeRefund('Dobropis nevystaven', $log),
+            'payment_refund.credit_note_failed' => $this->describeRefund('Vystavení dobropisu selhalo', $log),
+            'contract.admin_terminated_immediately' => $this->withReason('Smlouva okamžitě ukončena administrátorem', $log),
+            'contract.admin_termination_notice' => $this->withReason('Výpověď smlouvy podána administrátorem', $log),
             default => sprintf('%s — %s', $log->entityType, $log->eventType),
         };
+    }
+
+    private function describeRefund(string $description, AuditLog $log): string
+    {
+        $p = $log->payload;
+        $parts = [];
+
+        if (is_int($p['amount'] ?? null)) {
+            $parts[] = sprintf('%s Kč', number_format($p['amount'] / 100, 0, ',', ' '));
+        }
+
+        $mode = RefundMode::tryFrom(is_string($p['mode'] ?? null) ? $p['mode'] : '');
+        if (null !== $mode) {
+            $parts[] = $mode->label();
+        }
+
+        if (is_string($p['gopay_payment_id'] ?? null)) {
+            $parts[] = sprintf('GoPay %s', $p['gopay_payment_id']);
+        }
+
+        if (is_string($p['credit_note_number'] ?? null)) {
+            $parts[] = sprintf('dobropis č. %s', $p['credit_note_number']);
+        }
+
+        foreach (['failure_reason', 'credit_note_error'] as $key) {
+            if (is_string($p[$key] ?? null) && '' !== $p[$key]) {
+                $parts[] = $p[$key];
+            }
+        }
+
+        $text = [] !== $parts ? sprintf('%s: %s', $description, implode(', ', $parts)) : $description;
+
+        return $this->withReason($text, $log);
+    }
+
+    private function withReason(string $description, AuditLog $log): string
+    {
+        $reason = $log->payload['reason'] ?? null;
+
+        return is_string($reason) && '' !== $reason
+            ? sprintf('%s (důvod: %s)', $description, $reason)
+            : $description;
     }
 
     private function describeManualPaymentRequested(AuditLog $log): string

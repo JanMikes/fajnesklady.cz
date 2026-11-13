@@ -45,6 +45,11 @@ class Invoice implements EntityWithEvents
         #[ORM\ManyToOne(targetEntity: Fine::class)]
         #[ORM\JoinColumn(nullable: true)]
         private(set) ?Fine $fine = null,
+        // Set only on a credit note (Fakturoid "correction" document, spec 092):
+        // the invoice it corrects. Such a row carries a NEGATIVE amount.
+        #[ORM\ManyToOne(targetEntity: Invoice::class)]
+        #[ORM\JoinColumn(nullable: true)]
+        private(set) ?Invoice $correctionOf = null,
     ) {
         $this->recordThat(new InvoiceCreated(
             invoiceId: $this->id,
@@ -73,6 +78,11 @@ class Invoice implements EntityWithEvents
     public function isEmailed(): bool
     {
         return null !== $this->emailedAt;
+    }
+
+    public function isCreditNote(): bool
+    {
+        return null !== $this->correctionOf;
     }
 
     public function getAmountInCzk(): float

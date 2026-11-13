@@ -123,6 +123,24 @@ The webhook handler (`PaymentNotificationController` →
 the **authoritative source of truth** for payment outcomes — synchronous polling
 in handlers is best-effort. When in doubt, the webhook reconciles.
 
+**Refund notifications (spec 092).** A notification for a payment that already
+has a `Payment` row is normally a duplicate and short-circuits. The exception:
+when GoPay reports the payment `REFUNDED` / `PARTIALLY_REFUNDED`, the handler
+runs `PaymentRefundService::reconcile()`. It compares GoPay's refund history
+(SUCCESS total) with what the app booked, confirms a pending in-app refund
+first, and books any remainder as an EXTERNAL refund (issued in the GoPay
+console) with a negative storno `Payment` row and a
+`payment_refund.refunded_externally` audit entry. GoPay gives refunds no id, so
+the comparison works on totals, which makes it idempotent across re-deliveries.
+`app:reconcile-refunds` (hourly) is the backstop for a lost webhook;
+`--gopay-payment=<id>` reconciles one payment on demand.
+
+**Never persist before an irreversible external call that may be declined.** A
+rolled-back transaction does not detach entities from the UnitOfWork, so an
+entity persisted before the throw is flushed by the NEXT dispatch (e.g. the
+failure-recording command). `PaymentRefundService::refund()` therefore calls
+GoPay first and persists the `PaymentRefund` only when GoPay accepted it.
+
 ## 7. The webhook and the recurring cron race — serialise on the contract row
 
 Because the webhook is authoritative (§6) **and** the cron polls GoPay for up to

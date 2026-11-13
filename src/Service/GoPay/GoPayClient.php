@@ -7,6 +7,7 @@ namespace App\Service\GoPay;
 use App\Entity\Order;
 use App\Value\GoPayPayment;
 use App\Value\GoPayPaymentStatus;
+use App\Value\GoPayRefundHistoryEntry;
 
 interface GoPayClient
 {
@@ -59,6 +60,21 @@ interface GoPayClient
      * Get payment status from GoPay.
      */
     public function getStatus(string $paymentId): GoPayPaymentStatus;
+
+    /**
+     * Return $amount (haléře) of a PAID payment to the payer's card — full or
+     * partial. Returns GoPay's operation result: FINISHED (money returned),
+     * ACCEPTED (queued for asynchronous processing) or FAILED. Throws
+     * GoPayException when the API call itself fails.
+     */
+    public function refundPayment(string $paymentId, int $amount): string;
+
+    /**
+     * GoPay's refund history for a payment, oldest first.
+     *
+     * @return list<GoPayRefundHistoryEntry>
+     */
+    public function getRefundHistory(string $paymentId): array;
 
     /**
      * Get URL for embedding inline gateway JavaScript.

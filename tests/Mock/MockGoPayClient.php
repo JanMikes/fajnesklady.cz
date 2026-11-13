@@ -9,6 +9,7 @@ use App\Service\GoPay\GoPayClient;
 use App\Service\GoPay\GoPayException;
 use App\Value\GoPayPayment;
 use App\Value\GoPayPaymentStatus;
+use App\Value\GoPayRefundHistoryEntry;
 
 final class MockGoPayClient implements GoPayClient
 {
@@ -27,6 +28,15 @@ final class MockGoPayClient implements GoPayClient
     private array $issuedRecurrenceAmounts = [];
 
     private bool $shouldFailNextPayment = false;
+
+    /** @var array<string, list<GoPayRefundHistoryEntry>> refund history by GoPay payment id */
+    private array $refundHistory = [];
+
+    /** @var list<array{paymentId: string, amount: int}> */
+    private array $refundCalls = [];
+
+    /** Result the next refundPayment() returns: FINISHED, ACCEPTED, FAILED or 'THROW'. */
+    private string $nextRefundResult = 'FINISHED';
 
     private bool $shouldFailNextRecurrence = false;
 
@@ -156,6 +166,93 @@ final class MockGoPayClient implements GoPayClient
     {
         return $this->paymentStatuses[$paymentId]
             ?? new GoPayPaymentStatus($paymentId, 'CREATED', null);
+    }
+
+    public function refundPayment(string $paymentId, int $amount): string
+    {
+        $this->refundCalls[] = ['paymentId' => $paymentId, 'amount' => $amount];
+        $result = $this->nextRefundResult;
+        $this->nextRefundResult = 'FINISHED';
+
+        if ('THROW' === $result) {
+            throw new GoPayException('Simulated refund API failure', 409);
+        }
+
+        $state = match ($result) {
+            'FINISHED' => GoPayRefundHistoryEntry::STATE_SUCCESS,
+            'ACCEPTED' => GoPayRefundHistoryEntry::STATE_REQUESTED,
+            default => GoPayRefundHistoryEntry::STATE_FAILED,
+        };
+        $this->refundHistory[$paymentId][] = new GoPayRefundHistoryEntry($state, $amount);
+
+        if ('FINISHED' === $result) {
+            $this->markRefundedState($paymentId);
+        }
+
+        return $result;
+    }
+
+    public function getRefundHistory(string $paymentId): array
+    {
+        return $this->refundHistory[$paymentId] ?? [];
+    }
+
+    public function willReturnRefundResult(string $result): void
+    {
+        $this->nextRefundResult = $result;
+    }
+
+    /**
+     * Settle every REQUESTED refund of the payment with the given final state
+     * (simulates GoPay finishing an ACCEPTED refund asynchronously).
+     */
+    public function settleRequestedRefunds(string $paymentId, string $finalState): void
+    {
+        $this->refundHistory[$paymentId] = array_map(
+            static fn (GoPayRefundHistoryEntry $entry): GoPayRefundHistoryEntry => $entry->isRequested()
+                ? new GoPayRefundHistoryEntry($finalState, $entry->amount)
+                : $entry,
+            $this->refundHistory[$paymentId] ?? [],
+        );
+
+        if (GoPayRefundHistoryEntry::STATE_SUCCESS === $finalState) {
+            $this->markRefundedState($paymentId);
+        }
+    }
+
+    /**
+     * Simulate a refund an operator issued in the GoPay console.
+     */
+    public function simulateExternalRefund(string $paymentId, int $amount): void
+    {
+        $this->refundHistory[$paymentId][] = new GoPayRefundHistoryEntry(GoPayRefundHistoryEntry::STATE_SUCCESS, $amount);
+        $this->markRefundedState($paymentId);
+    }
+
+    /**
+     * @return list<array{paymentId: string, amount: int}>
+     */
+    public function getRefundCalls(): array
+    {
+        return $this->refundCalls;
+    }
+
+    private function markRefundedState(string $paymentId): void
+    {
+        $current = $this->paymentStatuses[$paymentId] ?? null;
+        $refunded = 0;
+        foreach ($this->refundHistory[$paymentId] ?? [] as $entry) {
+            if ($entry->isSuccess()) {
+                $refunded += $entry->amount;
+            }
+        }
+
+        $this->paymentStatuses[$paymentId] = new GoPayPaymentStatus(
+            id: $paymentId,
+            state: null !== $current?->amount && $refunded < $current->amount ? 'PARTIALLY_REFUNDED' : 'REFUNDED',
+            parentId: $current?->parentId,
+            amount: $current?->amount,
+        );
     }
 
     public function getEmbedJsUrl(): string
@@ -332,5 +429,8 @@ final class MockGoPayClient implements GoPayClient
         $this->recurrenceReturnsCreated = false;
         $this->recurrenceStaysPending = false;
         $this->recurrenceGetsCanceled = false;
+        $this->refundHistory = [];
+        $this->refundCalls = [];
+        $this->nextRefundResult = 'FINISHED';
     }
 }

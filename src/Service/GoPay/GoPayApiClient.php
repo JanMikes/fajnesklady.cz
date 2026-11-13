@@ -7,6 +7,7 @@ namespace App\Service\GoPay;
 use App\Entity\Order;
 use App\Value\GoPayPayment;
 use App\Value\GoPayPaymentStatus;
+use App\Value\GoPayRefundHistoryEntry;
 use GoPay\Definition\Language;
 use GoPay\Definition\Payment\Currency;
 use GoPay\Definition\Payment\Recurrence;
@@ -134,6 +135,51 @@ final readonly class GoPayApiClient implements GoPayClient
             parentId: isset($response->json['parent_id']) ? (string) $response->json['parent_id'] : null,
             amount: isset($response->json['amount']) ? (int) $response->json['amount'] : null,
         );
+    }
+
+    public function refundPayment(string $paymentId, int $amount): string
+    {
+        // An int $data makes the SDK send the plain form refund
+        // (amount=…); an array would route to the EET variant.
+        $response = $this->gopay->refundPayment($paymentId, $amount);
+        $this->assertSuccess($response);
+
+        $result = $response->json['result'] ?? null;
+        if (!\is_string($result)) {
+            throw new GoPayException(sprintf('GoPay refund returned no result: %s', json_encode($response->json, JSON_THROW_ON_ERROR)), (int) $response->statusCode);
+        }
+
+        return $result;
+    }
+
+    public function getRefundHistory(string $paymentId): array
+    {
+        $response = $this->gopay->getHistoryRefunds($paymentId);
+        $this->assertSuccess($response);
+
+        $rows = $response->json;
+        if (!\is_array($rows)) {
+            return [];
+        }
+
+        $entries = [];
+        foreach ($rows as $row) {
+            if (!\is_array($row) || !isset($row['state'], $row['amount'])) {
+                continue;
+            }
+
+            $requestedOn = isset($row['date_requested']) && \is_string($row['date_requested'])
+                ? (\DateTimeImmutable::createFromFormat('!Y-m-d', $row['date_requested']) ?: null)
+                : null;
+
+            $entries[] = new GoPayRefundHistoryEntry(
+                state: (string) $row['state'],
+                amount: (int) $row['amount'],
+                requestedOn: $requestedOn,
+            );
+        }
+
+        return $entries;
     }
 
     public function getEmbedJsUrl(): string

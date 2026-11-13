@@ -110,6 +110,56 @@ final class MockFakturoidClient implements FakturoidClient
         return $invoice;
     }
 
+    /** @var array<int, array{correctedInvoiceId: int, amount: int, lineName: string}> */
+    private array $createdCreditNotes = [];
+
+    private bool $failNextCreditNote = false;
+
+    public function createCreditNote(
+        int $subjectId,
+        int $correctedInvoiceId,
+        int $amount,
+        string $lineName,
+        PaymentMethod $paidVia,
+        ?string $variableSymbol,
+    ): FakturoidInvoice {
+        if ($this->failNextCreditNote) {
+            $this->failNextCreditNote = false;
+
+            throw new \RuntimeException('Simulated Fakturoid credit note failure');
+        }
+
+        $invoiceId = $this->nextInvoiceId++;
+        $invoice = new FakturoidInvoice(
+            id: $invoiceId,
+            number: 'OD-'.date('Y').'-'.str_pad((string) $invoiceId, 4, '0', STR_PAD_LEFT),
+            total: -$amount,
+        );
+
+        $this->createdInvoices[$invoice->id] = $invoice;
+        $this->invoicePaymentMethods[$invoice->id] = $paidVia;
+        $this->createdCreditNotes[$invoice->id] = [
+            'correctedInvoiceId' => $correctedInvoiceId,
+            'amount' => $amount,
+            'lineName' => $lineName,
+        ];
+
+        return $invoice;
+    }
+
+    public function willFailNextCreditNote(): void
+    {
+        $this->failNextCreditNote = true;
+    }
+
+    /**
+     * @return array<int, array{correctedInvoiceId: int, amount: int, lineName: string}>
+     */
+    public function getCreatedCreditNotes(): array
+    {
+        return $this->createdCreditNotes;
+    }
+
     public function markInvoiceAsPaid(int $invoiceId, \DateTimeImmutable $paidAt): void
     {
         // No-op in mock
@@ -183,5 +233,7 @@ final class MockFakturoidClient implements FakturoidClient
         $this->invoicePaymentMethods = [];
         $this->lockedInvoiceIds = [];
         $this->pdfContent = '%PDF-1.4 mock content';
+        $this->createdCreditNotes = [];
+        $this->failNextCreditNote = false;
     }
 }

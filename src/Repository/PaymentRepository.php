@@ -11,6 +11,7 @@ use App\Entity\Payment;
 use App\Entity\Place;
 use App\Entity\SelfBillingInvoice;
 use App\Entity\User;
+use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -31,12 +32,23 @@ class PaymentRepository
         return $this->entityManager->find(Payment::class, $id);
     }
 
+    /**
+     * SELECT … FOR UPDATE on the payment — serialises refund reconciliation
+     * (webhook, cron, admin action) so a refund is never booked twice.
+     */
+    public function lockForUpdate(Payment $payment): void
+    {
+        $this->entityManager->lock($payment, LockMode::PESSIMISTIC_WRITE);
+    }
+
     public function findByOrder(Order $order): ?Payment
     {
         return $this->entityManager->createQueryBuilder()
             ->select('p')
             ->from(Payment::class, 'p')
             ->where('p.order = :order')
+            // A refund (storno) row shares the order but is not the payment.
+            ->andWhere('p.refundOf IS NULL')
             ->setParameter('order', $order)
             ->getQuery()
             ->getOneOrNullResult();
@@ -74,6 +86,7 @@ class PaymentRepository
             ->from(Payment::class, 'p')
             ->where('p.contract = :contract')
             ->andWhere('p.paidAt = :paidAt')
+            ->andWhere('p.refundOf IS NULL')
             ->setParameter('contract', $contract)
             ->setParameter('paidAt', $paidAt)
             ->getQuery()
@@ -457,9 +470,64 @@ class PaymentRepository
             ->andWhere('p.goPayPaymentId IS NULL')
             ->andWhere('p.bankTransaction IS NULL')
             ->andWhere('p.amount > 0')
+            ->andWhere('p.refundOf IS NULL')
             ->orderBy('p.paidAt', 'ASC')
             ->getQuery()
             ->getResult();
+    }
+
+    /**
+     * The newest real (non-storno) payment across the order's lifecycle —
+     * the one covering the current/most recent billing period, i.e. the only
+     * candidate for a refund on termination (older periods are consumed).
+     */
+    public function findLatestForOrder(Order $order, ?Contract $contract): ?Payment
+    {
+        $qb = $this->entityManager->createQueryBuilder()
+            ->select('p')
+            ->from(Payment::class, 'p')
+            ->where('p.order = :order')
+            ->setParameter('order', $order);
+
+        if (null !== $contract) {
+            $qb->orWhere('p.contract = :contract')
+                ->setParameter('contract', $contract);
+        }
+
+        // The OR must not swallow the refund filter — wrap it explicitly.
+        $qb->andWhere('p.refundOf IS NULL')
+            ->andWhere('p.amount > 0')
+            ->orderBy('p.paidAt', 'DESC')
+            ->addOrderBy('p.createdAt', 'DESC')
+            ->setMaxResults(1);
+
+        return $qb->getQuery()->getOneOrNullResult();
+    }
+
+    /**
+     * Whether any real (non-storno) payment of the order/contract was made
+     * after $after — used to tell a first payment that still covers the
+     * current period from one superseded by later charges.
+     */
+    public function hasLaterPayment(Order $order, ?Contract $contract, \DateTimeImmutable $after): bool
+    {
+        $qb = $this->entityManager->createQueryBuilder()
+            ->select('1')
+            ->from(Payment::class, 'p')
+            ->where('p.order = :order')
+            ->setParameter('order', $order);
+
+        if (null !== $contract) {
+            $qb->orWhere('p.contract = :contract')
+                ->setParameter('contract', $contract);
+        }
+
+        $qb->andWhere('p.refundOf IS NULL')
+            ->andWhere('p.paidAt > :after')
+            ->setParameter('after', $after)
+            ->setMaxResults(1);
+
+        return null !== $qb->getQuery()->getOneOrNullResult();
     }
 
     public function isBankTransactionLinked(BankTransaction $bankTransaction): bool

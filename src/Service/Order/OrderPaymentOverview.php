@@ -14,6 +14,8 @@ final readonly class OrderPaymentOverview
         public int $totalPaidInHaler,
         public int $overdueTotalInHaler,
         public int $outstandingTotalInHaler,
+        /** Confirmed card refunds — already netted out of totalPaidInHaler. */
+        public int $refundedTotalInHaler = 0,
     ) {
     }
 

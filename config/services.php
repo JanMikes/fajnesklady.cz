@@ -55,6 +55,8 @@ return App::config([
                 '../src/Service/Payment/AllocationPlan.php',
                 '../src/Service/Payment/AllocationStep.php',
                 '../src/Service/Onboarding/OnboardingReminderSchedule.php',
+                '../src/Service/Refund/RefundQuote.php',
+                '../src/Service/Refund/RefundablePayment.php',
             ],
         ],
         'App\\Validator\\' => [

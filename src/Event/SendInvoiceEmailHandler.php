@@ -38,7 +38,9 @@ final readonly class SendInvoiceEmailHandler
     {
         $invoice = $this->invoiceRepository->get($event->invoiceId);
 
-        if ($invoice->isEmailed()) {
+        // A credit note travels with the "Vrácení platby" e-mail
+        // (SendPaymentRefundedEmailHandler) — never as a standalone "Faktura".
+        if ($invoice->isEmailed() || $invoice->isCreditNote()) {
             return;
         }
 

@@ -32,6 +32,14 @@
     'fine.cancelled': 'Pokuta zrušena',
     'platform_settings.surcharge_changed': 'Změna příplatku za bankovní převod',
     'manual_payment_request.received': 'Platba na výzvu přijata',
+    'payment_refund.requested': 'Vrácení platby na kartu zadáno do GoPay',
+    'payment_refund.succeeded': 'Platba vrácena na kartu',
+    'payment_refund.refunded_externally': 'Platba vrácena mimo aplikaci (administrace GoPay) — zapsáno z historie GoPay',
+    'payment_refund.failed': 'Vrácení platby selhalo',
+    'payment_refund.request_failed': 'Vrácení platby selhalo — peníze nebyly vráceny',
+    'payment_refund.credit_note_issued': 'Dobropis vystaven a odeslán zákazníkovi',
+    'payment_refund.credit_note_skipped': 'Dobropis nevystaven — chybí původní faktura',
+    'payment_refund.credit_note_failed': 'Vystavení dobropisu ve Fakturoidu selhalo',
     'created': 'Objednávka vytvořena',
     'reserved': 'Sklad rezervován',
     'signed': 'Podepsáno',
@@ -136,6 +144,14 @@
     'order.payment_chosen': 'blue',
     'contract.credit_converted_to_payment': 'green',
     'fine.paid': 'green',
+    'payment_refund.requested': 'blue',
+    'payment_refund.succeeded': 'amber',
+    'payment_refund.refunded_externally': 'amber',
+    'payment_refund.failed': 'red',
+    'payment_refund.request_failed': 'red',
+    'payment_refund.credit_note_issued': 'blue',
+    'payment_refund.credit_note_skipped': 'amber',
+    'payment_refund.credit_note_failed': 'red',
     'fine.cancelled': 'blue',
     'debt_waived': 'amber',
     'occupied': 'green',
@@ -162,6 +178,14 @@
     'fine': 'pokuta',
     'platform_settings': 'nastavení',
     'user': 'uživatel',
+    'payment_refund': 'vrácení platby',
+} %}
+
+{# App\Enum\RefundMode values. #}
+{% set refundModeLabels = {
+    'full': 'celá platba',
+    'prorated': 'poměrná část',
+    'external': 'mimo aplikaci',
 } %}
 
 {# Keys of payload.payment_method (App\Enum\PaymentMethod values). #}
@@ -294,6 +318,38 @@
                                                     {% endif %}
                                                     {% if item.eventType in ['external_payment_recorded', 'external_first_payment_recorded'] and item.payload.amount is defined and item.payload.amount %}
                                                         <span class="text-gray-500">— {{ (item.payload.amount / 100)|number_format(0, ',', ' ') }} Kč{% if item.payload.paid_through is defined and item.payload.paid_through %}, do {{ item.payload.paid_through|date('d.m.Y') }}{% endif %}</span>
+                                                    {% endif %}
+                                                    {% if item.entityType == 'payment_refund' %}
+                                                        {% set p = item.payload %}
+                                                        <span class="text-gray-500">
+                                                            {%- if p.amount is defined and p.amount %} — {{ (p.amount / 100)|number_format(0, ',', ' ') }} Kč{% endif -%}
+                                                            {%- if p.mode is defined and p.mode %} · {{ refundModeLabels[p.mode] ?? p.mode }}{% endif -%}
+                                                            {%- if p.mode is defined and p.mode == 'prorated' and p.refund_from is defined and p.refund_from and p.period_end is defined and p.period_end %} za {{ max(p.refund_from, p.period_start ?? p.refund_from)|date('d.m.Y') }} – {{ p.period_end|date_modify('-1 day')|date('d.m.Y') }}{% if p.refunded_days is defined and p.refunded_days %} ({{ p.refunded_days }} z {{ p.period_days }} dní){% endif %}{% endif -%}
+                                                            {%- if p.payment_amount is defined and p.payment_amount %} · z platby {{ (p.payment_amount / 100)|number_format(0, ',', ' ') }} Kč{% if p.payment_paid_at is defined and p.payment_paid_at %} ze dne {{ p.payment_paid_at|date('d.m.Y') }}{% endif %}{% endif -%}
+                                                            {%- if p.gopay_payment_id is defined and p.gopay_payment_id %} · GoPay {{ p.gopay_payment_id }}{% endif -%}
+                                                            {%- if p.gopay_result is defined and p.gopay_result == 'ACCEPTED' %} · GoPay přijal ke zpracování, čeká na potvrzení{% endif -%}
+                                                            {%- if p.credit_note_number is defined and p.credit_note_number %} · dobropis č. {{ p.credit_note_number }}{% if p.original_invoice_number is defined and p.original_invoice_number %} k faktuře {{ p.original_invoice_number }}{% endif %}{% endif -%}
+                                                        </span>
+                                                        {% if p.failure_reason is defined and p.failure_reason %}
+                                                            <span class="block text-xs text-red-700">{{ p.failure_reason }}</span>
+                                                        {% endif %}
+                                                        {% if p.credit_note_error is defined and p.credit_note_error %}
+                                                            <span class="block text-xs text-amber-700">{{ p.credit_note_error }}</span>
+                                                        {% endif %}
+                                                        {% if p.reason is defined and p.reason %}
+                                                            <span class="block text-xs text-gray-600">Důvod: {{ p.reason }}</span>
+                                                        {% endif %}
+                                                    {% endif %}
+                                                    {% if item.eventType in ['admin_terminated_immediately', 'admin_termination_notice'] %}
+                                                        {% if item.payload.terminates_at is defined and item.payload.terminates_at %}
+                                                            <span class="text-gray-500">→ k {{ item.payload.terminates_at|date('d.m.Y') }}</span>
+                                                        {% endif %}
+                                                        {% if item.payload.recorded_debt is defined and item.payload.recorded_debt %}
+                                                            <span class="text-gray-500">· evidovaný dluh {{ (item.payload.recorded_debt / 100)|number_format(0, ',', ' ') }} Kč</span>
+                                                        {% endif %}
+                                                        {% if item.payload.reason is defined and item.payload.reason %}
+                                                            <span class="block text-xs text-gray-600">Důvod: {{ item.payload.reason }}</span>
+                                                        {% endif %}
                                                     {% endif %}
                                                     {% if item.eventType == 'payment_deadline_extended' and item.payload.new_deadline is defined %}
                                                         <span class="text-gray-500">→ do {{ item.payload.new_deadline|date('d.m.Y') }}</span>

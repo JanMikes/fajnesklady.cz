@@ -526,7 +526,7 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                 </svg>
                                 <div class="ml-3">
-                                    <p class="text-sm font-medium text-gray-900">{{ invoice.invoiceNumber }}</p>
+                                    <p class="text-sm font-medium text-gray-900">{{ invoice.invoiceNumber }}{% if invoice.isCreditNote() %} <span class="text-xs font-normal text-purple-700">dobropis k faktuře {{ invoice.correctionOf.invoiceNumber }}</span>{% endif %}</p>
                                     <p class="text-xs text-gray-500">{{ invoice.issuedAt|date('d.m.Y') }} - {{ (invoice.amount / 100)|number_format(2, ',', ' ') }} Kč</p>
                                 </div>
                             </div>
@@ -962,7 +962,7 @@
                         <div>
                             <label class="flex items-center gap-2">
                                 <input type="radio" name="termination_type" value="with_notice" checked
-                                       onclick="document.getElementById('terminateDebtChoice')?.classList.add('hidden')"
+                                       onclick="document.getElementById('terminateDebtChoice')?.classList.add('hidden'); document.getElementById('terminateRefundChoice')?.classList.add('hidden')"
                                        class="form-radio accent-red-600 focus:ring-red-500">
                                 <span class="text-sm text-gray-700">S výpovědní dobou (1 měsíc)</span>
                             </label>
@@ -970,7 +970,7 @@
                         <div>
                             <label class="flex items-center gap-2">
                                 <input type="radio" name="termination_type" value="immediate"
-                                       onclick="document.getElementById('terminateDebtChoice')?.classList.remove('hidden')"
+                                       onclick="document.getElementById('terminateDebtChoice')?.classList.remove('hidden'); document.getElementById('terminateRefundChoice')?.classList.remove('hidden')"
                                        class="form-radio accent-red-600 focus:ring-red-500">
                                 <span class="text-sm text-gray-700">Okamžitě pro porušení smlouvy</span>
                             </label>
@@ -990,6 +990,89 @@
                                     <span class="text-sm text-gray-700">Ukončit bez dluhu (odpustit)</span>
                                 </label>
                             </div>
+                        {% endif %}
+                        {% if refundablePayment %}
+                            {# Spec 092 — shown only for immediate termination; the server ignores it otherwise. #}
+                            {% set rp = refundablePayment %}
+                            <div id="terminateRefundChoice" class="hidden pl-6 space-y-2 border-l-2 border-purple-200"
+                                 data-amount="{{ rp.payment.amount }}"
+                                 data-period-start="{{ rp.periodStart ? rp.periodStart|date('Y-m-d', false) : '' }}"
+                                 data-period-end="{{ rp.periodEnd ? rp.periodEnd|date('Y-m-d', false) : '' }}">
+                                <input type="hidden" name="refund_payment_id" value="{{ rp.payment.id }}">
+                                <label class="flex items-center gap-2">
+                                    <input type="checkbox" name="refund" value="1"
+                                           onchange="document.getElementById('terminateRefundOptions').classList.toggle('hidden', !this.checked)"
+                                           class="h-4 w-4 text-purple-600 border-gray-300 rounded">
+                                    <span class="text-sm text-gray-700">Vrátit platbu kartou</span>
+                                </label>
+                                <p class="text-xs text-gray-500">
+                                    Platba {{ (rp.payment.amount / 100)|number_format(0, ',', ' ') }} Kč ze dne {{ rp.payment.paidAt|date('d.m.Y') }} (GoPay {{ rp.goPayPaymentId }})
+                                    {%- if rp.periodStart and rp.periodEnd %}, zaplacené období {{ rp.periodStart|date('d.m.Y', false) }} – {{ rp.periodLastDay|date('d.m.Y', false) }} ({{ rp.periodDays }} dní){% endif %}.
+                                </p>
+                                <div id="terminateRefundOptions" class="hidden space-y-2 pl-6">
+                                    {% if rp.canProrate %}
+                                        <label class="flex items-center gap-2">
+                                            <input type="radio" name="refund_mode" value="prorated" checked
+                                                   class="form-radio accent-purple-600 focus:ring-purple-500">
+                                            <span class="text-sm text-gray-700">Poměrně — vrátit za dny od (včetně)</span>
+                                        </label>
+                                        <div class="pl-6 space-y-1">
+                                            <input type="date" name="refund_from" id="terminateRefundFrom"
+                                                   value="{{ now|date('Y-m-d') }}"
+                                                   min="{{ rp.periodStart|date('Y-m-d', false) }}"
+                                                   max="{{ rp.periodLastDay|date('Y-m-d', false) }}"
+                                                   class="form-input text-sm w-auto">
+                                            <p id="terminateRefundPreview" class="text-xs text-purple-800"></p>
+                                        </div>
+                                    {% endif %}
+                                    <label class="flex items-center gap-2">
+                                        <input type="radio" name="refund_mode" value="full" {{ rp.canProrate ? '' : 'checked' }}
+                                               class="form-radio accent-purple-600 focus:ring-purple-500">
+                                        <span class="text-sm text-gray-700">Celou platbu ({{ (rp.payment.amount / 100)|number_format(0, ',', ' ') }} Kč)</span>
+                                    </label>
+                                    {% if rp.canIssueCreditNote %}
+                                        <label class="flex items-center gap-2">
+                                            <input type="checkbox" name="refund_credit_note" value="1" checked
+                                                   class="h-4 w-4 text-purple-600 border-gray-300 rounded">
+                                            <span class="text-sm text-gray-700">Vystavit dobropis k faktuře {{ rp.originalInvoice.invoiceNumber }} a poslat ho zákazníkovi</span>
+                                        </label>
+                                    {% else %}
+                                        <p class="text-xs text-amber-700">Dobropis nelze vystavit automaticky: {{ rp.creditNoteUnavailableReason }}</p>
+                                    {% endif %}
+                                    <p class="text-xs text-gray-500">Peníze vrátí GoPay na kartu zákazníka a zákazník dostane e-mail „Vrácení platby“. Důvod níže se zapíše do historie objednávky.</p>
+                                </div>
+                            </div>
+                            <script>
+                                (function () {
+                                    const box = document.getElementById('terminateRefundChoice');
+                                    const input = document.getElementById('terminateRefundFrom');
+                                    const preview = document.getElementById('terminateRefundPreview');
+                                    if (!box || !input || !preview || !box.dataset.periodStart || !box.dataset.periodEnd) {
+                                        return;
+                                    }
+                                    // Mirrors App\Service\Refund\RefundCalculator — the server value is authoritative.
+                                    const day = (s) => Date.UTC(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10)) / 86400000;
+                                    const amount = parseInt(box.dataset.amount, 10);
+                                    const start = day(box.dataset.periodStart);
+                                    const end = day(box.dataset.periodEnd);
+                                    const update = () => {
+                                        if (!input.value) {
+                                            preview.textContent = '';
+                                            return;
+                                        }
+                                        const periodDays = end - start;
+                                        const refundedDays = end - Math.max(day(input.value), start);
+                                        if (refundedDays <= 0 || periodDays <= 0) {
+                                            preview.textContent = 'Od zvoleného data už není co vracet.';
+                                            return;
+                                        }
+                                        const czk = Math.round(amount * refundedDays / periodDays / 100);
+                                        preview.textContent = 'Vrátí se ' + czk.toLocaleString('cs-CZ') + ' Kč (' + refundedDays + ' z ' + periodDays + ' dní)';
+                                    };
+                                    input.addEventListener('input', update);
+                                    update();
+                                })();
+                            </script>
                         {% endif %}
                         <div>
                             <label class="block text-sm font-medium text-gray-600">Důvod (volitelný)</label>

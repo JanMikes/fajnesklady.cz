@@ -16,12 +16,14 @@ use App\Repository\HandoverProtocolRepository;
 use App\Repository\InvoiceRepository;
 use App\Repository\ManualPaymentRequestRepository;
 use App\Repository\OrderRepository;
+use App\Repository\PaymentRefundRepository;
 use App\Repository\PaymentRepository;
 use App\Service\ContractService;
 use App\Service\Order\AdminOrderStageFactory;
 use App\Service\Order\OrderPaymentOverviewFactory;
 use App\Service\Overdue\OverdueChecker;
 use App\Service\PriceCalculator;
+use App\Service\Refund\RefundablePaymentResolver;
 use App\Service\Security\OrderVoter;
 use Psr\Clock\ClockInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -54,6 +56,8 @@ final class AdminOrderDetailController extends AbstractController
         private readonly OrderPaymentOverviewFactory $paymentOverviewFactory,
         private readonly AdminOrderStageFactory $stageFactory,
         private readonly ClockInterface $clock,
+        private readonly PaymentRefundRepository $paymentRefundRepository,
+        private readonly RefundablePaymentResolver $refundablePaymentResolver,
     ) {
     }
 
@@ -75,12 +79,16 @@ final class AdminOrderDetailController extends AbstractController
         $daysRemaining = null;
         $canTerminate = false;
         $potentialTerminationDebtInHaler = 0;
+        $refundablePayment = null;
 
         if (null !== $contract) {
             $daysRemaining = $this->contractService->getDaysRemaining($contract, $now);
             $canTerminate = $this->isGranted('CONTRACT_TERMINATE', $contract);
             if (!$contract->isTerminated()) {
                 $potentialTerminationDebtInHaler = $this->contractService->calculateOutstandingDebt($contract, $now);
+                if ($canTerminate) {
+                    $refundablePayment = $this->refundablePaymentResolver->resolve($contract);
+                }
             }
         }
 
@@ -151,6 +159,7 @@ final class AdminOrderDetailController extends AbstractController
             payments: $this->paymentRepository->findAllForOrder($order, $contract),
             requests: null !== $contract ? $this->manualPaymentRequestRepository->findAllByContract($contract) : [],
             now: $now,
+            refunds: $this->paymentRefundRepository->findByOrder($order),
         );
 
         return $this->render('admin/order/detail.html.twig', [
@@ -163,6 +172,7 @@ final class AdminOrderDetailController extends AbstractController
             'daysRemaining' => $daysRemaining,
             'canTerminate' => $canTerminate,
             'potentialTerminationDebtInHaler' => $potentialTerminationDebtInHaler,
+            'refundablePayment' => $refundablePayment,
             'paymentSchedule' => $paymentSchedule,
             'totalPaid' => $totalPaid,
             'isUserOverdue' => $isUserOverdue,

@@ -64,15 +64,19 @@
 
                 {% for invoice in invoices %}
                     {# Fine invoices (spec 081) are 0% VAT — not a daňový doklad in the rent sense. #}
-                    {% set invoiceName = 'Faktura č. ' ~ invoice.invoiceNumber ~ (invoice.fine is not null ? ' (smluvní pokuta)' : '') %}
+                    {% set invoiceName = invoice.isCreditNote()
+                        ? 'Opravný daňový doklad (dobropis) č. ' ~ invoice.invoiceNumber
+                        : 'Faktura č. ' ~ invoice.invoiceNumber ~ (invoice.fine is not null ? ' (smluvní pokuta)' : '') %}
                     {% if invoice.hasPdf() %}
                         {{ _self.documentRow(
                             path('portal_user_invoice_pdf', {id: invoice.id}),
                             path('portal_user_invoice_pdf', {id: invoice.id, download: 1}),
                             invoiceName,
-                            invoice.fine is not null
-                                ? 'Doklad o zaplacení smluvní pokuty'
-                                : 'Daňový doklad za platbu ' ~ ((invoice.amount / 100)|number_format(2, ',', ' ')) ~ ' Kč',
+                            invoice.isCreditNote()
+                                ? 'Vrácení platby ' ~ ((-invoice.amount / 100)|number_format(2, ',', ' ')) ~ ' Kč k faktuře ' ~ invoice.correctionOf.invoiceNumber
+                                : (invoice.fine is not null
+                                    ? 'Doklad o zaplacení smluvní pokuty'
+                                    : 'Daňový doklad za platbu ' ~ ((invoice.amount / 100)|number_format(2, ',', ' ')) ~ ' Kč'),
                             'pdf'
                         ) }}
                     {% else %}

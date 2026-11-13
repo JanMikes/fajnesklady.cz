@@ -24,6 +24,7 @@ use App\Service\Billing\RecurringAmountCalculator;
 use App\Service\GoPay\GoPayClient;
 use App\Service\Onboarding\DebtPaymentService;
 use App\Service\OrderService;
+use App\Service\Refund\PaymentRefundService;
 use App\Value\GoPayPaymentStatus;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Psr\Clock\ClockInterface;
@@ -50,6 +51,7 @@ final readonly class ProcessPaymentNotificationHandler
         private MessageBusInterface $eventBus,
         private ClockInterface $clock,
         private LoggerInterface $logger,
+        private PaymentRefundService $refundService,
     ) {
     }
 
@@ -62,7 +64,22 @@ final readonly class ProcessPaymentNotificationHandler
         // path is the load-bearing case (Payment.goPayPaymentId is populated
         // by RecordPaymentOnRecurringChargeHandler); order-path duplicates
         // remain protected by Order::canBePaid() further down.
-        if ($this->paymentRepository->existsByGoPayPaymentId($command->goPayPaymentId)) {
+        //
+        // Exception: a known payment that GoPay now reports (PARTIALLY_)
+        // REFUNDED is not a duplicate — it is a refund notification. Before
+        // spec 092 this guard swallowed those too (every GoPay-paid Payment
+        // carries its id since 78ad0ef), so a refund issued in the GoPay
+        // console left no trace. Reconcile it against GoPay's refund history.
+        $knownPayment = $this->paymentRepository->findByGoPayPaymentId($command->goPayPaymentId);
+        if (null !== $knownPayment) {
+            $knownStatus = $this->goPayClient->getStatus($command->goPayPaymentId);
+
+            if ($knownStatus->isRefunded()) {
+                $this->refundService->reconcile($knownPayment, $this->clock->now());
+
+                return;
+            }
+
             $this->logger->info('Skipping duplicate GoPay notification', [
                 'gopay_payment_id' => $command->goPayPaymentId,
             ]);
@@ -153,9 +170,10 @@ final readonly class ProcessPaymentNotificationHandler
                 // order 1h after they abandoned the gateway (2026-07-14,
                 // order 019f5cdd-d83c-7e75-85ef-cb83938429f8).
                 if ('REFUNDED' === $status->state) {
-                    // Refunds originate only from manual GoPay-console actions.
-                    // Never mutate order state automatically — surface loudly
-                    // and let the admin reconcile.
+                    // Reached only for an order whose first payment has no
+                    // Payment row (otherwise the known-payment branch at the
+                    // top reconciles the refund). Never mutate order state
+                    // automatically — surface loudly and let the admin reconcile.
                     $this->logger->error('GoPay reports order first payment REFUNDED — manual reconciliation needed', [
                         'order_id' => $order->id->toRfc4122(),
                         'order_status' => $order->status->value,

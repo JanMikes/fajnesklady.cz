@@ -21,6 +21,7 @@ overview so we don't have to grep on every change.
 | 10 | Reklamační formulář (PDF) | static asset | `public/documents/reklamacni-formular.pdf` | direct asset URL |
 | 11 | Návod pro zákazníky (PDF/DOCX) | per-place upload (admin-only) | `public/uploads/{Place.instructionsPath}` | `upload_url()` Twig helper — only when `place.hasInstructions()` |
 | 12 | Faktura za smluvní pokutu (PDF, 0 % DPH — pokuta není předmětem DPH) | Fakturoid → `InvoicingService::issueInvoiceForFine` (called by `SendFinePaidEmailHandler` on `FinePaid`; `Invoice.fine` FK links it to the fine) | `var/invoices/` via `Invoice.pdfPath` | attached to the "Pokuta zaplacena" e-mail; permanently via `/stav` paid-fines list (signed `public_order_invoice_download`), portal order detail fines panel + docs panels (`portal_user_invoice_pdf`), admin & landlord order-detail fines tables. Docs panels label it "Faktura č. X (smluvní pokuta)". No backfill for fines paid before spec 081 |
+| 13 | Opravný daňový doklad / dobropis (PDF) | Fakturoid `document_type: correction` + `correction_id` → `InvoicingService::issueCreditNote` (called by `SendPaymentRefundedEmailHandler` on `PaymentRefunded`, only when the admin ticked "Vystavit dobropis" while refunding on termination, spec 092). Stored as an `Invoice` with `correctionOf` → the original and a **negative** amount | `var/invoices/` via `Invoice.pdfPath` | attached to the "Vrácení platby" e-mail (then `markEmailed`, so `SendInvoiceEmailHandler`, which also skips every credit note, stays silent); portal/`/stav` docs panels label it "Opravný daňový doklad (dobropis) č. X"; admin order detail invoice list marks it "dobropis k faktuře Y". Original invoice found by order + amount + issued within ±1 day of the payment; if not exactly one, no credit note (audit `payment_refund.credit_note_skipped`) and the accountant issues it manually |
 
 ## Email touchpoints
 
@@ -31,12 +32,14 @@ Three customer-facing e-mails map onto three business events:
 | 1 | Customer signed and placed order (pre-payment) | `OrderPlaced` | `SendOrderPlacedEmailHandler` | `email/order_placed.html.twig` | `Potvrzení objednávky - <place>` |
 | 2 | First payment received → rental active | `OrderCompleted` | `SendRentalActivatedEmailHandler` | `email/rental_activated.html.twig` | `Pronájem zahájen - <place>` |
 | 3 | Standalone invoice (recurring charge OR first-payment fallback) | `InvoiceCreated` | `SendInvoiceEmailHandler` | `email/invoice.html.twig` | `Faktura <X> - Fajnesklady.cz` |
+| 4 | Card payment refunded by an admin on termination (spec 092; not sent for refunds issued in the GoPay console) | `PaymentRefunded` | `SendPaymentRefundedEmailHandler` | `email/payment_refunded.html.twig` | `Vrácení platby — Fajnesklady.cz` |
 
 | Email | Attachments | Links to |
 |---|---|---|
 | step 1 (`order_placed`) | signed contract (PDF or DOCX fallback), VOP, poučení spotřebitele, podmínky opakovaných plateb (if recurring) | portal/public status URL (`statusUrl`) |
 | step 2 (`rental_activated`) | **same legal pack as step 1** (signed contract, VOP, poučení, podmínky — byte-identical, attached via shared `OrderEmailAttachments` service) + mapa skladu (PNG), provozní řád (if any), návod pro zákazníky (if any), **invoice PDF (if Fakturoid issuance + PDF download succeeded synchronously)** | public order success / portal detail (`statusUrl`) |
 | step 3 (`invoice`) | invoice PDF | order status link in body |
+| `payment_refunded` | credit note PDF (if requested and Fakturoid succeeded) | order status link (`statusUrl`) |
 
 **How step-2 invoice bundling works.** `SendRentalActivatedEmailHandler` (1) looks up an existing `Invoice` for the order, (2) if none and `firstPaymentPrice > 0`, calls `InvoicingService::issueInvoiceForOrder` synchronously, (3) if the resulting invoice has a downloadable PDF on disk, attaches it inline and calls `Invoice::markEmailed($now)`. `SendInvoiceEmailHandler` short-circuits when `Invoice.emailedAt !== null` — so the standalone "Faktura" e-mail is suppressed for the happy first-payment path.
 

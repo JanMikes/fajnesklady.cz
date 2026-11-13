@@ -38,6 +38,15 @@ class Payment
     #[ORM\Column(nullable: true)]
     public private(set) ?\DateTimeImmutable $periodEnd = null;
 
+    // Set on a refund ("storno") row: a NEGATIVE amount booked when GoPay
+    // confirmed money went back for the referenced payment. Keeping refunds in
+    // the ledger makes every SUM(amount) net revenue with no special-casing.
+    // Such a row is never evidence that something was paid — lookups that mean
+    // "the payment that paid X" must exclude it.
+    #[ORM\ManyToOne(targetEntity: Payment::class)]
+    #[ORM\JoinColumn(nullable: true)]
+    public private(set) ?Payment $refundOf = null;
+
     /**
      * How the money reached us, read off the stored source links: a GoPay id
      * is only ever written once GoPay confirmed the charge, a bank transaction
@@ -47,6 +56,7 @@ class Payment
      */
     public PaymentMethod $paidVia {
         get => match (true) {
+            null !== $this->refundOf => $this->refundOf->paidVia,
             null !== $this->goPayPaymentId => PaymentMethod::GOPAY,
             null !== $this->bankTransaction => PaymentMethod::BANK_TRANSFER,
             default => PaymentMethod::EXTERNAL,
@@ -89,6 +99,26 @@ class Payment
     {
         $this->periodStart = $periodStart;
         $this->periodEnd = $periodEnd;
+    }
+
+    /**
+     * Book this row as the storno of $original — money returned to the payer.
+     */
+    public function markAsRefundOf(Payment $original): void
+    {
+        if ($this->amount >= 0) {
+            throw new \DomainException('A refund row must carry a negative amount.');
+        }
+        if ($original->isRefund()) {
+            throw new \DomainException('Cannot refund a refund row.');
+        }
+
+        $this->refundOf = $original;
+    }
+
+    public function isRefund(): bool
+    {
+        return null !== $this->refundOf;
     }
 
     public function linkToSelfBillingInvoice(SelfBillingInvoice $invoice): void
