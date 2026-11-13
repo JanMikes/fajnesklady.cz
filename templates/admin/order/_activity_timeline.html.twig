@@ -59,6 +59,7 @@
     'recurring_charged': 'Opakovaná platba stržena z karty',
     'recurring_payment_failed': 'Platba selhala',
     'recurring_cancelled': 'Opakované platby zrušeny',
+    'admin_billing_restored': 'Oprava fakturace (obnovena splatnost / převod na platbu převodem)',
     'prolonged': 'Smlouva prodloužena',
     'recurring_consent_given': 'Souhlas s opakovanou platbou (prodloužení)',
     'recurring_established_on_prolong': 'Opakovaná platba nastavena (prodloužení)',
@@ -115,6 +116,7 @@
     'recurring_charged': 'green',
     'recurring_payment_failed': 'red',
     'recurring_cancelled': 'red',
+    'admin_billing_restored': 'amber',
     'prolonged': 'green',
     'recurring_consent_given': 'green',
     'recurring_established_on_prolong': 'green',
@@ -287,6 +289,9 @@
                                                     {% endif %}
                                                     {% if item.eventType == 'recurring_charged' and item.payload.amount is defined %}
                                                         <span class="text-gray-500">— {{ (item.payload.amount / 100)|number_format(0, ',', ' ') }} Kč</span>
+                                                    {% endif %}
+                                                    {% if item.eventType == 'admin_billing_restored' and item.payload.reason is defined %}
+                                                        <span class="block text-gray-500 text-xs mt-0.5">{{ item.payload.reason }}</span>
                                                     {% endif %}
                                                     {% if item.eventType == 'recurring_payment_failed' and item.payload.attempt is defined %}
                                                         <span class="text-gray-500">(pokus {{ item.payload.attempt }})</span>

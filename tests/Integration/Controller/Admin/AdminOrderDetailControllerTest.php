@@ -106,6 +106,30 @@ class AdminOrderDetailControllerTest extends WebTestCase
         $this->assertStringContainsString($contract->user->fullName, $body);
     }
 
+    public function testBillingRepairAuditRowIsReadableInTimeline(): void
+    {
+        // Hand repairs on prod (2026-11-13) write admin_billing_restored rows;
+        // the timeline must show a label + the reason, not the raw key.
+        $contract = $this->findAnyContract();
+        static::getContainer()->get(AuditLogger::class)->log(
+            entityType: 'contract',
+            entityId: $contract->id->toRfc4122(),
+            eventType: 'admin_billing_restored',
+            payload: ['reason' => 'Obnovena splatnost 10.11. po zrušení karty.'],
+            orderId: $contract->order->id,
+        );
+        $this->entityManager->flush();
+
+        $this->client->loginUser($this->findAdmin(), 'main');
+        $this->client->request('GET', '/portal/admin/orders/'.$contract->order->id->toRfc4122());
+
+        $this->assertResponseIsSuccessful();
+        $body = (string) $this->client->getResponse()->getContent();
+        $this->assertStringContainsString('Oprava fakturace', $body);
+        $this->assertStringContainsString('Obnovena splatnost 10.11. po zrušení karty.', $body);
+        $this->assertStringNotContainsString('contract.admin_billing_restored', $body);
+    }
+
     public function testPaidFineWithInvoiceShowsInvoiceLinkInFinesTable(): void
     {
         $contract = $this->findAnyContract();
