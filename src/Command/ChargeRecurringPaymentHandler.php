@@ -112,6 +112,15 @@ final readonly class ChargeRecurringPaymentHandler
             $payment = $this->pollForConfirmation($payment);
         }
 
+        // GoPay already settled the charge as failed (CANCELED / TIMEOUTED /
+        // …) — that is a billing failure NOW, not something to park as
+        // in-flight. Parking it reported "[OK] charged" and delayed the failed
+        // attempt (and the whole retry ladder) by a day (2026-11-11 incident).
+        // Throwing rolls this transaction back; nothing was persisted yet.
+        if ('PAID' !== $payment->state && !PaymentNotConfirmedException::isPendingState($payment->state)) {
+            throw PaymentNotConfirmedException::withState($payment->id, $payment->state);
+        }
+
         if ('PAID' !== $payment->state) {
             // Polling timed out. Record the GoPay payment ID as in-flight so the
             // next cron run reconciles it instead of issuing another charge, and

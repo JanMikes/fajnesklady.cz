@@ -34,6 +34,8 @@ final class MockGoPayClient implements GoPayClient
 
     private bool $recurrenceStaysPending = false;
 
+    private bool $recurrenceGetsCanceled = false;
+
     public function createRecurringPayment(Order $order, string $returnUrl, string $notificationUrl): GoPayPayment
     {
         return $this->doCreatePayment();
@@ -104,7 +106,11 @@ final class MockGoPayClient implements GoPayClient
         // but store as PAID for getStatus (simulates GoPay confirming after a moment)
         $returnState = 'PAID';
         $statusState = 'PAID';
-        if ($this->recurrenceStaysPending) {
+        if ($this->recurrenceGetsCanceled) {
+            $this->recurrenceGetsCanceled = false;
+            $returnState = 'CREATED';
+            $statusState = 'CANCELED';
+        } elseif ($this->recurrenceStaysPending) {
             $this->recurrenceStaysPending = false;
             $returnState = 'CREATED';
             $statusState = 'CREATED';
@@ -270,6 +276,16 @@ final class MockGoPayClient implements GoPayClient
     }
 
     /**
+     * Make the next createRecurrence return CREATED while getStatus reports
+     * CANCELED — the card was declined during GoPay's async processing
+     * (2026-11-11 prod incident).
+     */
+    public function willCancelNextRecurrence(): void
+    {
+        $this->recurrenceGetsCanceled = true;
+    }
+
+    /**
      * Seed a status row directly so tests can simulate a known in-flight
      * GoPay payment without going through createRecurrence first.
      */
@@ -315,5 +331,6 @@ final class MockGoPayClient implements GoPayClient
         $this->shouldFailNextRecurrence = false;
         $this->recurrenceReturnsCreated = false;
         $this->recurrenceStaysPending = false;
+        $this->recurrenceGetsCanceled = false;
     }
 }

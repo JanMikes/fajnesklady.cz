@@ -50,6 +50,11 @@ final class PaymentNotConfirmedException extends \RuntimeException
      */
     public function isPending(): bool
     {
-        return in_array($this->state, self::PENDING_STATES, true);
+        return self::isPendingState($this->state);
+    }
+
+    public static function isPendingState(string $state): bool
+    {
+        return in_array($state, self::PENDING_STATES, true);
     }
 }

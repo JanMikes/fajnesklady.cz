@@ -61,6 +61,7 @@ final class ProcessRecurringPaymentsCommand extends Command
 
         $successCount = 0;
         $failureCount = 0;
+        $unexpectedFailureCount = 0;
 
         foreach ($contracts as $contract) {
             try {
@@ -90,6 +91,9 @@ final class ProcessRecurringPaymentsCommand extends Command
                 }
 
                 ++$failureCount;
+                if (!self::isExpectedFailure($exception)) {
+                    ++$unexpectedFailureCount;
+                }
 
                 $this->recordFailure($contract, $exception, $now);
 
@@ -97,9 +101,24 @@ final class ProcessRecurringPaymentsCommand extends Command
             }
         }
 
-        $io->success(sprintf('Processed: %d success, %d failures.', $successCount, $failureCount));
+        $io->success(sprintf(
+            'Processed: %d success, %d failures (%d unexpected).',
+            $successCount,
+            $failureCount,
+            $unexpectedFailureCount,
+        ));
 
-        return $failureCount > 0 ? Command::FAILURE : Command::SUCCESS;
+        // A declined card is a business event, not a broken job: it is
+        // recorded, the tenant + admins are e-mailed and the retry ladder
+        // takes over. Only unexpected errors fail the run, so the host cron
+        // alert (LilyCronJobFailed) keeps meaning "the job itself is broken".
+        return $unexpectedFailureCount > 0 ? Command::FAILURE : Command::SUCCESS;
+    }
+
+    private static function isExpectedFailure(\Throwable $exception): bool
+    {
+        return $exception instanceof GoPayException
+            || $exception instanceof PaymentNotConfirmedException;
     }
 
     /**
@@ -110,8 +129,7 @@ final class ProcessRecurringPaymentsCommand extends Command
      */
     private function recordFailure(Contract $contract, \Throwable $exception, \DateTimeImmutable $now): void
     {
-        $isExpectedFailure = $exception instanceof GoPayException
-            || $exception instanceof PaymentNotConfirmedException;
+        $isExpectedFailure = self::isExpectedFailure($exception);
 
         try {
             if ($isExpectedFailure) {

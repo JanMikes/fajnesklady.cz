@@ -72,6 +72,27 @@ class ProcessRecurringPaymentsCommandTest extends KernelTestCase
             'GoPayException must be unwrapped from HandlerFailedException and counted as a failure.',
         );
         $this->assertNotNull($refreshed->lastBillingFailedAt);
+        $this->assertSame(0, $tester->getStatusCode(), 'A recorded billing failure must not fail the cron run.');
+    }
+
+    public function testDeclinedCardIsRecordedImmediatelyAndRunSucceeds(): void
+    {
+        // A card declined during GoPay's async processing is an expected
+        // billing failure: recorded on the same run (not parked as in-flight)
+        // and the run exits 0 so the host cron alert does not page.
+        $contract = $this->createDueContract();
+        $this->goPayClient->willCancelNextRecurrence();
+
+        $tester = new CommandTester($this->application->find('app:process-recurring-payments'));
+        $tester->execute([]);
+
+        $this->entityManager->clear();
+        $refreshed = $this->entityManager->find(Contract::class, $contract->id);
+
+        $this->assertSame(0, $tester->getStatusCode());
+        $this->assertSame(1, $refreshed->failedBillingAttempts);
+        $this->assertNull($refreshed->pendingRecurringPaymentId);
+        $this->assertStringNotContainsString('charged successfully', $tester->getDisplay());
     }
 
     public function testPollingTimeoutDoesNotIncrementFailureCounter(): void

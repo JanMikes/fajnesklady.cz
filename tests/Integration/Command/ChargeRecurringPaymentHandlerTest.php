@@ -234,6 +234,30 @@ class ChargeRecurringPaymentHandlerTest extends KernelTestCase
         $this->assertSame(0, $refreshed->failedBillingAttempts, 'A polling timeout is not a failure — webhook will reconcile.');
     }
 
+    public function testTerminalStateDuringPollingThrowsInsteadOfRecordingInFlight(): void
+    {
+        // 2026-11-11: GoPay answered CANCELED within the polling window, but
+        // the handler parked it as in-flight and the cron printed "[OK]
+        // charged". The failure only surfaced a day later.
+        $contract = $this->createContractWithRecurringPayment();
+        $this->goPayClient->willCancelNextRecurrence();
+
+        try {
+            $this->commandBus->dispatch(new ChargeRecurringPaymentCommand($contract));
+            $this->fail('A charge GoPay already canceled must surface as PaymentNotConfirmedException.');
+        } catch (\Symfony\Component\Messenger\Exception\HandlerFailedException $e) {
+            $previous = $e->getPrevious();
+            $this->assertInstanceOf(\App\Service\GoPay\PaymentNotConfirmedException::class, $previous);
+            $this->assertSame('CANCELED', $previous->state);
+        }
+
+        $this->entityManager->clear();
+        $refreshed = $this->entityManager->find(Contract::class, $contract->id);
+
+        $this->assertNull($refreshed->pendingRecurringPaymentId, 'A terminal charge must not be parked as in-flight.');
+        $this->assertNull($refreshed->lastBilledAt);
+    }
+
     public function testReconcilesInFlightChargeOnNextRunWhenGoPayReportsPaid(): void
     {
         // Webhook never arrived (or arrived after the cron). On the next run,
