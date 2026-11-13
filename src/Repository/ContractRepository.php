@@ -12,9 +12,11 @@ use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
 use App\Enum\BillingMode;
+use App\Enum\PaymentMethod;
 use App\Exception\ContractNotFound;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\Query;
 use Doctrine\ORM\QueryBuilder;
 use Symfony\Component\Uid\Uuid;
 
@@ -940,8 +942,14 @@ class ContractRepository
         return $this->entityManager->createQueryBuilder()
             ->select('c')
             ->from(Contract::class, 'c')
+            ->join('c.order', 'ext_o')
             ->where('c.paidThroughDate IS NOT NULL')
             ->andWhere('c.goPayParentPaymentId IS NULL')
+            // A card-started contract whose card was cancelled is not an
+            // external prepayment — it must never get "nastavte automatickou
+            // platbu" (2026-11-12 sent it to a tenant who had just cancelled).
+            ->andWhere('ext_o.paidVia IS NULL OR ext_o.paidVia <> :cardPaid')
+            ->setParameter('cardPaid', PaymentMethod::GOPAY)
             ->andWhere('c.terminatedAt IS NULL')
             ->andWhere('c.paidThroughDate BETWEEN :rangeStart AND :rangeEnd')
             ->andWhere('c.lastAdvanceNoticeSentAt IS NULL OR c.lastAdvanceNoticeSentAt < :rangeStart')
@@ -973,8 +981,14 @@ class ContractRepository
         return $this->entityManager->createQueryBuilder()
             ->select('c')
             ->from(Contract::class, 'c')
+            ->join('c.order', 'ext_o')
             ->where('c.paidThroughDate IS NOT NULL')
             ->andWhere('c.goPayParentPaymentId IS NULL')
+            // A card-started contract whose card was cancelled is not an
+            // external prepayment — it must never get "nastavte automatickou
+            // platbu" (2026-11-12 sent it to a tenant who had just cancelled).
+            ->andWhere('ext_o.paidVia IS NULL OR ext_o.paidVia <> :cardPaid')
+            ->setParameter('cardPaid', PaymentMethod::GOPAY)
             ->andWhere('c.terminatedAt IS NULL')
             ->andWhere('c.paidThroughDate BETWEEN :now AND :threshold')
             // Manual-track + upfront-tranche contracts are not externally prepaid.
@@ -994,8 +1008,14 @@ class ContractRepository
         return (int) $this->entityManager->createQueryBuilder()
             ->select('COUNT(c.id)')
             ->from(Contract::class, 'c')
+            ->join('c.order', 'ext_o')
             ->where('c.paidThroughDate IS NOT NULL')
             ->andWhere('c.goPayParentPaymentId IS NULL')
+            // A card-started contract whose card was cancelled is not an
+            // external prepayment — it must never get "nastavte automatickou
+            // platbu" (2026-11-12 sent it to a tenant who had just cancelled).
+            ->andWhere('ext_o.paidVia IS NULL OR ext_o.paidVia <> :cardPaid')
+            ->setParameter('cardPaid', PaymentMethod::GOPAY)
             ->andWhere('c.terminatedAt IS NULL')
             ->andWhere('c.paidThroughDate BETWEEN :now AND :threshold')
             // Manual-track + upfront-tranche contracts are not externally prepaid.
@@ -1064,6 +1084,12 @@ class ContractRepository
             ->setParameter('paymentId', $parentPaymentId)
             ->getQuery()
             ->setLockMode(LockMode::PESSIMISTIC_WRITE)
+            // The row may already be in the identity map (e.g. the payment
+            // return page loads the order before dispatching): without the
+            // refresh hint Doctrine waits for the lock and then hands back the
+            // STALE in-memory copy, so the loser of the race re-runs the work
+            // (2026-11-12: contract.order_id unique violation, FAJNE-SKLADY-N).
+            ->setHint(Query::HINT_REFRESH, true)
             ->getOneOrNullResult();
     }
 
@@ -1092,6 +1118,12 @@ class ContractRepository
             ->setParameter('paymentId', $paymentId)
             ->getQuery()
             ->setLockMode(LockMode::PESSIMISTIC_WRITE)
+            // The row may already be in the identity map (e.g. the payment
+            // return page loads the order before dispatching): without the
+            // refresh hint Doctrine waits for the lock and then hands back the
+            // STALE in-memory copy, so the loser of the race re-runs the work
+            // (2026-11-12: contract.order_id unique violation, FAJNE-SKLADY-N).
+            ->setHint(Query::HINT_REFRESH, true)
             ->getOneOrNullResult();
     }
 

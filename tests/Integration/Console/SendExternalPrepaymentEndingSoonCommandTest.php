@@ -63,6 +63,24 @@ class SendExternalPrepaymentEndingSoonCommandTest extends KernelTestCase
         $this->assertStringContainsString('Notice dispatched', $output);
     }
 
+    public function testCardContractWithCancelledCardIsNotTreatedAsExternalPrepayment(): void
+    {
+        // 2026-11-12: a tenant who had just cancelled her card got "Vaše
+        // předplatné brzy končí — nastavte automatickou platbu" (and admins
+        // "Externí předplatné brzy končí" ×5) — she was never prepaid.
+        $now = $this->clock->now();
+        $contract = $this->createPrepaidContract('cron-card-cancelled', $now->modify('+5 days'));
+        $contract->order->markPaid($now->modify('-25 days'), goPayPaymentId: 'gp-first');
+        $contract->order->popEvents();
+        $this->entityManager->flush();
+
+        $tester = new CommandTester($this->application->find('app:send-external-prepayment-ending-soon'));
+        $tester->execute([]);
+
+        $tester->assertCommandIsSuccessful();
+        $this->assertStringNotContainsString('Notice dispatched', $tester->getDisplay());
+    }
+
     public function testNoNoticeWhenPrepaymentEndsBeyondWindow(): void
     {
         $now = $this->clock->now();
