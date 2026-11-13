@@ -55,7 +55,13 @@ final class TerminateOverdueContractsCommand extends Command
         $now = $this->clock->now();
 
         $days = $this->settingsRepository->getSettings()->overdueTerminationDays;
-        $overdueSince = $now->modify(sprintf('-%d days', $days));
+        // VOP čl. XI.4.b allows no-notice termination only when the tenant is
+        // in arrears for MORE than N days. Arrears start the day after the due
+        // date, so a cycle due on day D is terminable from day D + N + 1:
+        // due 10.11 → paying on 17.11 is still in time, termination 18.11.
+        // Compared on whole days (due < today − N) so the time of day a due
+        // date carries, or the hour the cron runs, can never pull it earlier.
+        $overdueSince = $now->setTime(0, 0)->modify(sprintf('-%d days', $days));
 
         $contracts = array_filter(
             $this->contractRepository->findOverdueForTermination($overdueSince),
@@ -97,7 +103,7 @@ final class TerminateOverdueContractsCommand extends Command
                     // 086): a still-active grace makes $dueDate future and bails.
                     $dueDate = $contract->effectiveDunningAnchor();
 
-                    if ($contract->isTerminated() || $contract->isFree() || null === $dueDate || $dueDate > $overdueSince) {
+                    if ($contract->isTerminated() || $contract->isFree() || null === $dueDate || $dueDate >= $overdueSince) {
                         return;
                     }
 

@@ -620,7 +620,7 @@ class ContractRepository
             // Spec 086: an admin extension (paymentGraceUntil) re-anchors the
             // termination countdown to the extended date — measure overdue
             // against it, not the raw billing anchor.
-            ->andWhere('COALESCE(c.paymentGraceUntil, c.nextBillingDate) <= :overdueSince')
+            ->andWhere('COALESCE(c.paymentGraceUntil, c.nextBillingDate) < :overdueSince')
             ->setParameter('overdueSince', $overdueSince)
             ->orderBy('c.nextBillingDate', 'ASC')
             ->getQuery()

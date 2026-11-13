@@ -21,6 +21,7 @@ use Psr\Clock\ClockInterface;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
+use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Console\Tester\CommandTester;
 use Symfony\Component\Mailer\Event\MessageEvent;
 use Symfony\Component\Mime\Email;
@@ -107,7 +108,7 @@ class RetryFailedPaymentsCommandTest extends KernelTestCase
         }
     }
 
-    public function testSweepTerminatesContractTheSameDayAfterFinalFailedRetry(): void
+    public function testSweepTerminatesTheDayAfterFinalFailedRetry(): void
     {
         $contract = $this->createCardContractOnFinalRetry('retry-pair');
         $this->goPayClient->willFailNextRecurrence();
@@ -116,8 +117,19 @@ class RetryFailedPaymentsCommandTest extends KernelTestCase
         $retryTester->execute([]);
         $retryTester->assertCommandIsSuccessful();
 
-        // 12:30 sweep, 30 minutes after the 12:00 final retry: same-day termination.
+        // The final retry runs on day 7 after the due date. VOP čl. XI.4.b
+        // only allows termination once the tenant is MORE than 7 days in
+        // arrears, so the same-day sweep must leave the contract alone…
         $sweepTester = new CommandTester($this->application->find('app:terminate-overdue-contracts'));
+        $sweepTester->execute([]);
+        $sweepTester->assertCommandIsSuccessful();
+        $this->assertStringContainsString('No contracts overdue more than 7 days.', $sweepTester->getDisplay());
+
+        // …and the next day's sweep terminates it.
+        /** @var MockClock $clock */
+        $clock = $this->clock;
+        $clock->modify('+1 day');
+
         $sweepTester->execute([]);
         $sweepTester->assertCommandIsSuccessful();
         $this->assertStringContainsString('Found 1 contracts overdue more than 7 days.', $sweepTester->getDisplay());

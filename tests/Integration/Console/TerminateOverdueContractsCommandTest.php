@@ -30,7 +30,7 @@ use Twig\Environment;
 
 /**
  * Spec 078: the VOP čl. XI sweep — every active non-free contract whose
- * nextBillingDate is ≥ N days in the past is terminated for payment default,
+ * tenant is in arrears for MORE than N days (VOP čl. XI.4.b) is terminated for payment default,
  * regardless of payment track (card, manual bank transfer, lapsed external
  * prepayment).
  */
@@ -159,6 +159,31 @@ class TerminateOverdueContractsCommandTest extends KernelTestCase
         $reloaded = $this->entityManager->find(Contract::class, $contract->id);
         self::assertNotNull($reloaded);
         self::assertFalse($reloaded->isTerminated());
+    }
+
+    public function testExactlySevenDaysInArrearsIsNotYetTerminated(): void
+    {
+        // VOP čl. XI.4.b: termination only when in arrears for MORE than 7
+        // days. Due 7 days ago (e.g. due 10.11, today 17.11) means the tenant
+        // is exactly 7 days late — still in time; termination comes tomorrow.
+        $sevenDays = $this->createOverdueContract('sweep-boundary-7', dueDaysAgo: 7);
+        $sevenDays->applyBillingMode(BillingMode::MANUAL_RECURRING);
+        $sevenDaysLateTime = $this->createContract('sweep-boundary-7-late');
+        // Same day, but the due date carries a late time of day (card
+        // contracts keep the signing time, e.g. 16:03) — must not change the day count.
+        $lateDue = $this->clock->now()->modify('-7 days')->setTime(23, 30);
+        $sevenDaysLateTime->scheduleNextBilling($lateDue, $lateDue);
+        $sevenDaysLateTime->applyBillingMode(BillingMode::MANUAL_RECURRING);
+        $eightDays = $this->createOverdueContract('sweep-boundary-8', dueDaysAgo: 8);
+        $eightDays->applyBillingMode(BillingMode::MANUAL_RECURRING);
+        $this->entityManager->flush();
+
+        $this->runSweep();
+
+        $this->entityManager->clear();
+        self::assertFalse($this->entityManager->find(Contract::class, $sevenDays->id)?->isTerminated());
+        self::assertFalse($this->entityManager->find(Contract::class, $sevenDaysLateTime->id)?->isTerminated());
+        self::assertTrue($this->entityManager->find(Contract::class, $eightDays->id)?->isTerminated());
     }
 
     public function testFreeContractIsNeverTerminated(): void
