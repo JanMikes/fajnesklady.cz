@@ -92,7 +92,20 @@ class ProcessRecurringPaymentsCommandTest extends KernelTestCase
         $this->assertSame(0, $tester->getStatusCode());
         $this->assertSame(1, $refreshed->failedBillingAttempts);
         $this->assertNull($refreshed->pendingRecurringPaymentId);
-        $this->assertStringNotContainsString('charged successfully', $tester->getDisplay());
+        $this->assertStringNotContainsString('[OK] Contract', $tester->getDisplay());
+        $this->assertStringContainsString('0 charged', $tester->getDisplay());
+    }
+
+    public function testConfirmedChargeIsReportedAsCharged(): void
+    {
+        $this->createDueContract();
+
+        $tester = new CommandTester($this->application->find('app:process-recurring-payments'));
+        $tester->execute([]);
+
+        $this->assertSame(0, $tester->getStatusCode());
+        $this->assertStringContainsString('payment confirmed by GoPay', $tester->getDisplay());
+        $this->assertStringContainsString('1 charged, 0 still processing', $tester->getDisplay());
     }
 
     public function testPollingTimeoutDoesNotIncrementFailureCounter(): void
@@ -110,6 +123,9 @@ class ProcessRecurringPaymentsCommandTest extends KernelTestCase
         $refreshed = $this->entityManager->find(Contract::class, $contract->id);
 
         $this->assertSame(0, $refreshed->failedBillingAttempts, 'Polling timeout is not a failure.');
+        $this->assertStringNotContainsString('[OK] Contract', $tester->getDisplay(), 'An unconfirmed charge must never be reported as OK.');
+        $this->assertStringContainsString('NOT charged yet', $tester->getDisplay());
+        $this->assertStringContainsString('0 charged, 1 still processing', $tester->getDisplay());
         $this->assertNotNull(
             $refreshed->pendingRecurringPaymentId,
             'In-flight payment ID must be recorded for next-run reconciliation.',

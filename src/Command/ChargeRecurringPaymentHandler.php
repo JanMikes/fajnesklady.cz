@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Command;
 
 use App\Entity\Contract;
+use App\Enum\RecurringChargeOutcome;
 use App\Event\RecurringPaymentCharged;
 use App\Repository\ContractRepository;
 use App\Repository\PaymentRepository;
@@ -45,7 +46,7 @@ final readonly class ChargeRecurringPaymentHandler
     ) {
     }
 
-    public function __invoke(ChargeRecurringPaymentCommand $command): void
+    public function __invoke(ChargeRecurringPaymentCommand $command): RecurringChargeOutcome
     {
         $contract = $command->contract;
         $now = $this->clock->now();
@@ -64,7 +65,7 @@ final readonly class ChargeRecurringPaymentHandler
                 'lastBilledAt' => $contract->lastBilledAt,
             ]);
 
-            return;
+            return RecurringChargeOutcome::SKIPPED_RECENTLY_BILLED;
         }
 
         if (!$contract->hasActiveRecurringPayment()) {
@@ -79,9 +80,7 @@ final readonly class ChargeRecurringPaymentHandler
         // method throws so the cron records a failure and the retry cron
         // picks the contract up under the 3-day / 7-day ladder).
         if ($contract->hasPendingRecurringCharge()) {
-            $this->reconcilePendingCharge($contract, $now);
-
-            return;
+            return $this->reconcilePendingCharge($contract, $now);
         }
 
         /** @var string $parentPaymentId */
@@ -95,7 +94,7 @@ final readonly class ChargeRecurringPaymentHandler
                 'contract_id' => $contract->id->toRfc4122(),
             ]);
 
-            return;
+            return RecurringChargeOutcome::SKIPPED_ZERO_AMOUNT;
         }
 
         // Charge via GoPay
@@ -133,10 +132,10 @@ final readonly class ChargeRecurringPaymentHandler
                 'contract_id' => $contract->id->toRfc4122(),
             ]);
 
-            return;
+            return RecurringChargeOutcome::STILL_PROCESSING;
         }
 
-        $this->finalizeCharge($contract, $payment->id, $amount, $now);
+        return $this->finalizeCharge($contract, $payment->id, $amount, $now);
     }
 
     /**
@@ -146,7 +145,7 @@ final readonly class ChargeRecurringPaymentHandler
      *  - terminal → throw {@see PaymentNotConfirmedException} so the cron
      *               records a normal billing failure
      */
-    private function reconcilePendingCharge(Contract $contract, \DateTimeImmutable $now): void
+    private function reconcilePendingCharge(Contract $contract, \DateTimeImmutable $now): RecurringChargeOutcome
     {
         /** @var string $pendingId */
         $pendingId = $contract->pendingRecurringPaymentId;
@@ -154,14 +153,14 @@ final readonly class ChargeRecurringPaymentHandler
 
         if ($status->isPaid()) {
             $amount = $status->amount ?? $contract->getEffectiveMonthlyAmount();
-            $this->finalizeCharge($contract, $status->id, $amount, $now);
+            $outcome = $this->finalizeCharge($contract, $status->id, $amount, $now);
 
             $this->logger->info('Recurring payment reconciled inline from in-flight state', [
                 'contract_id' => $contract->id->toRfc4122(),
                 'gopay_payment_id' => $status->id,
             ]);
 
-            return;
+            return $outcome;
         }
 
         if ($status->isPending()) {
@@ -171,7 +170,7 @@ final readonly class ChargeRecurringPaymentHandler
                 'state' => $status->state,
             ]);
 
-            return;
+            return RecurringChargeOutcome::STILL_PROCESSING;
         }
 
         // Terminal failure (CANCELED / TIMEOUTED / REFUNDED). Clear in-flight
@@ -183,7 +182,7 @@ final readonly class ChargeRecurringPaymentHandler
         throw PaymentNotConfirmedException::withState($pendingId, $status->state);
     }
 
-    private function finalizeCharge(Contract $contract, string $paymentId, int $amount, \DateTimeImmutable $now): void
+    private function finalizeCharge(Contract $contract, string $paymentId, int $amount, \DateTimeImmutable $now): RecurringChargeOutcome
     {
         // GoPay delivers the recurrence webhook to the web container while we
         // are still polling above, so ProcessPaymentNotificationHandler may be
@@ -204,7 +203,7 @@ final readonly class ChargeRecurringPaymentHandler
                 'gopay_payment_id' => $paymentId,
             ]);
 
-            return;
+            return RecurringChargeOutcome::ALREADY_RECORDED;
         }
 
         // Use nextBillingDate as billing period start for deterministic proration
@@ -247,6 +246,8 @@ final readonly class ChargeRecurringPaymentHandler
             periodEnd: $paidThroughDate,
             occurredOn: $now,
         ));
+
+        return RecurringChargeOutcome::CHARGED;
     }
 
     /**

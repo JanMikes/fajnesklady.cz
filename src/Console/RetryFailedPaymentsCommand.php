@@ -6,6 +6,7 @@ namespace App\Console;
 
 use App\Command\ChargeRecurringPaymentCommand;
 use App\Entity\Contract;
+use App\Enum\RecurringChargeOutcome;
 use App\Event\PaymentDemandSent;
 use App\Event\RecurringPaymentFailed;
 use App\Repository\ContractRepository;
@@ -24,7 +25,9 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Component\Messenger\Stamp\HandledStamp;
 
 #[AsCommand(
     name: 'app:retry-failed-payments',
@@ -62,6 +65,7 @@ final class RetryFailedPaymentsCommand extends Command
         $io->info(sprintf('Found %d contracts needing payment retry.', count($contracts)));
 
         $successCount = 0;
+        $pendingCount = 0;
         $failedCount = 0;
 
         foreach ($contracts as $contract) {
@@ -69,9 +73,20 @@ final class RetryFailedPaymentsCommand extends Command
             $isLastAttempt = $attemptsBefore >= 2; // 2 in DB = this is the 3rd attempt
 
             try {
-                $this->commandBus->dispatch(new ChargeRecurringPaymentCommand($contract));
-                ++$successCount;
-                $io->text(sprintf('  [OK] Contract %s retry successful.', $contract->id));
+                $outcome = self::outcomeOf($this->commandBus->dispatch(new ChargeRecurringPaymentCommand($contract)));
+
+                if ($outcome->isPaid()) {
+                    ++$successCount;
+                } else {
+                    ++$pendingCount;
+                }
+
+                $io->text(sprintf(
+                    '  [%s] Contract %s retry: %s.',
+                    $outcome->isPaid() ? 'OK' : 'PENDING',
+                    $contract->id,
+                    $outcome->describe(),
+                ));
             } catch (\Throwable $rawException) {
                 $exception = HandlerFailureUnwrap::unwrap($rawException);
                 $isExpectedFailure = $exception instanceof GoPayException
@@ -90,7 +105,7 @@ final class RetryFailedPaymentsCommand extends Command
             }
         }
 
-        $io->success(sprintf('Processed: %d success, %d failed.', $successCount, $failedCount));
+        $io->success(sprintf('Processed: %d charged, %d not charged yet, %d failed.', $successCount, $pendingCount, $failedCount));
 
         return Command::SUCCESS;
     }
@@ -174,7 +189,9 @@ final class RetryFailedPaymentsCommand extends Command
                     ));
                 }
 
-                $this->logger->error('Recurring payment retry failed', [
+                // Warning, not error: a declined card is a business event the
+                // admins are e-mailed about — Sentry errors stay for bugs.
+                $this->logger->warning('Recurring payment retry failed', [
                     'contract_id' => $contract->id->toRfc4122(),
                     'attempt' => $contract->failedBillingAttempts,
                     'is_last_attempt' => $isLastAttempt,
@@ -196,6 +213,17 @@ final class RetryFailedPaymentsCommand extends Command
 
             $this->doctrine->resetManager();
         }
+    }
+
+    private static function outcomeOf(Envelope $envelope): RecurringChargeOutcome
+    {
+        $result = $envelope->last(HandledStamp::class)?->getResult();
+
+        if (!$result instanceof RecurringChargeOutcome) {
+            throw new \LogicException('ChargeRecurringPaymentHandler must return a RecurringChargeOutcome.');
+        }
+
+        return $result;
     }
 
     private function getEntityManager(): EntityManagerInterface

@@ -6,6 +6,7 @@ namespace App\Console;
 
 use App\Command\ChargeRecurringPaymentCommand;
 use App\Entity\Contract;
+use App\Enum\RecurringChargeOutcome;
 use App\Event\RecurringPaymentFailed;
 use App\Repository\ContractRepository;
 use App\Service\AuditLogger;
@@ -23,7 +24,9 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Component\Messenger\Stamp\HandledStamp;
 
 #[AsCommand(
     name: 'app:process-recurring-payments',
@@ -59,15 +62,30 @@ final class ProcessRecurringPaymentsCommand extends Command
 
         $io->info(sprintf('Found %d contracts due for billing.', count($contracts)));
 
-        $successCount = 0;
+        $chargedCount = 0;
+        $processingCount = 0;
+        $skippedCount = 0;
         $failureCount = 0;
         $unexpectedFailureCount = 0;
 
         foreach ($contracts as $contract) {
             try {
-                $this->commandBus->dispatch(new ChargeRecurringPaymentCommand($contract));
-                ++$successCount;
-                $io->text(sprintf('  [OK] Contract %s charged successfully.', $contract->id));
+                $outcome = self::outcomeOf($this->commandBus->dispatch(new ChargeRecurringPaymentCommand($contract)));
+
+                if ($outcome->isPaid()) {
+                    ++$chargedCount;
+                } elseif (RecurringChargeOutcome::STILL_PROCESSING === $outcome) {
+                    ++$processingCount;
+                } else {
+                    ++$skippedCount;
+                }
+
+                $io->text(sprintf(
+                    '  [%s] Contract %s: %s.',
+                    $outcome->isPaid() ? 'OK' : 'PENDING',
+                    $contract->id,
+                    $outcome->describe(),
+                ));
             } catch (\Throwable $rawException) {
                 $exception = HandlerFailureUnwrap::unwrap($rawException);
 
@@ -78,7 +96,7 @@ final class ProcessRecurringPaymentsCommand extends Command
                 // that is a charged cycle, not a billing failure. Counting it as
                 // one would page on-call and, worse, feed the retry ladder.
                 if ($this->isDuplicateGoPayPayment($exception)) {
-                    ++$successCount;
+                    ++$chargedCount;
                     $this->doctrine->resetManager();
 
                     $this->logger->warning('Recurring charge already recorded by the GoPay webhook', [
@@ -102,8 +120,10 @@ final class ProcessRecurringPaymentsCommand extends Command
         }
 
         $io->success(sprintf(
-            'Processed: %d success, %d failures (%d unexpected).',
-            $successCount,
+            'Processed: %d charged, %d still processing at GoPay, %d skipped, %d failed (%d unexpected).',
+            $chargedCount,
+            $processingCount,
+            $skippedCount,
             $failureCount,
             $unexpectedFailureCount,
         ));
@@ -113,6 +133,17 @@ final class ProcessRecurringPaymentsCommand extends Command
         // takes over. Only unexpected errors fail the run, so the host cron
         // alert (LilyCronJobFailed) keeps meaning "the job itself is broken".
         return $unexpectedFailureCount > 0 ? Command::FAILURE : Command::SUCCESS;
+    }
+
+    private static function outcomeOf(Envelope $envelope): RecurringChargeOutcome
+    {
+        $result = $envelope->last(HandledStamp::class)?->getResult();
+
+        if (!$result instanceof RecurringChargeOutcome) {
+            throw new \LogicException('ChargeRecurringPaymentHandler must return a RecurringChargeOutcome.');
+        }
+
+        return $result;
     }
 
     private static function isExpectedFailure(\Throwable $exception): bool
@@ -159,7 +190,9 @@ final class ProcessRecurringPaymentsCommand extends Command
                     occurredOn: $now,
                 ));
 
-                $this->logger->error('Recurring payment processing failed', [
+                // Warning, not error: a declined card is a business event the
+                // admins are e-mailed about — Sentry errors stay for bugs.
+                $this->logger->warning('Recurring payment processing failed', [
                     'contract_id' => $contract->id->toRfc4122(),
                     'attempt' => $contract->failedBillingAttempts,
                     'exception' => $exception,
