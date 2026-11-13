@@ -9,6 +9,7 @@ use App\Entity\ManualPaymentRequest;
 use App\Exception\ManualPaymentRequestNotFound;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\Query;
 use Symfony\Component\Uid\Uuid;
 
 final class ManualPaymentRequestRepository
@@ -79,6 +80,12 @@ final class ManualPaymentRequestRepository
             ->setParameter('paymentId', $paymentId)
             ->getQuery()
             ->setLockMode(LockMode::PESSIMISTIC_WRITE)
+            // The row may already be in the identity map (e.g. the payment
+            // return page loads the order before dispatching): without the
+            // refresh hint Doctrine waits for the lock and then hands back the
+            // STALE in-memory copy, so the loser of the race re-runs the work
+            // (2026-11-12: contract.order_id unique violation, FAJNE-SKLADY-N).
+            ->setHint(Query::HINT_REFRESH, true)
             ->getOneOrNullResult();
     }
 
@@ -101,6 +108,12 @@ final class ManualPaymentRequestRepository
             ->setParameter('periodStart', $periodStart->setTime(0, 0, 0))
             ->getQuery()
             ->setLockMode(LockMode::PESSIMISTIC_WRITE)
+            // The row may already be in the identity map (e.g. the payment
+            // return page loads the order before dispatching): without the
+            // refresh hint Doctrine waits for the lock and then hands back the
+            // STALE in-memory copy, so the loser of the race re-runs the work
+            // (2026-11-12: contract.order_id unique violation, FAJNE-SKLADY-N).
+            ->setHint(Query::HINT_REFRESH, true)
             ->getOneOrNullResult();
     }
 

@@ -34,6 +34,44 @@ class OrderRepositoryTest extends KernelTestCase
         $this->entityManager = $doctrine->getManager();
     }
 
+    public function testLockedLookupReturnsFreshRowEvenWhenTheOrderIsAlreadyLoaded(): void
+    {
+        // FAJNE-SKLADY-N (2026-11-12): the payment return page loads the order
+        // and dispatches; meanwhile the GoPay webhook completes it. The return
+        // request waits on FOR UPDATE, but Doctrine used to hand back the
+        // stale in-memory order — so it completed the order a second time.
+        $connection = $this->entityManager->getConnection();
+        $orderId = $connection->fetchOne('SELECT id FROM orders LIMIT 1');
+        self::assertIsString($orderId, 'Fixtures need at least one order.');
+        $connection->executeStatement(
+            'UPDATE orders SET go_pay_payment_id = :pid WHERE id = :id',
+            ['pid' => 'gp-stale-lock-test', 'id' => $orderId],
+        );
+        $this->entityManager->clear();
+
+        $loaded = $this->entityManager->find(Order::class, Uuid::fromString($orderId));
+        self::assertInstanceOf(Order::class, $loaded);
+        $paymentId = $loaded->goPayPaymentId;
+        self::assertNotNull($paymentId);
+        $originalStatus = $loaded->status;
+        $otherStatus = OrderStatus::CANCELLED === $originalStatus ? OrderStatus::EXPIRED : OrderStatus::CANCELLED;
+
+        // "The other process" commits a change to the row.
+        $this->entityManager->getConnection()->executeStatement(
+            'UPDATE orders SET status = :status WHERE id = :id',
+            ['status' => $otherStatus->value, 'id' => $orderId],
+        );
+
+        // FOR UPDATE needs an open ORM transaction (the command bus provides
+        // one in production).
+        $locked = $this->entityManager->wrapInTransaction(
+            fn (): ?Order => $this->repository->findByGoPayPaymentIdForUpdate($paymentId),
+        );
+
+        self::assertSame($loaded, $locked, 'Same managed instance…');
+        self::assertSame($otherStatus, $locked->status, '…but refreshed with the committed row.');
+    }
+
     private function createUser(string $email): User
     {
         $user = new User(Uuid::v7(), $email, 'password', 'Test', 'User', new \DateTimeImmutable());
