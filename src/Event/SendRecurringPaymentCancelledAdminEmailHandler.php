@@ -7,6 +7,8 @@ namespace App\Event;
 use App\Enum\UserRole;
 use App\Repository\ContractRepository;
 use App\Repository\UserRepository;
+use App\Service\Billing\CardPaymentStopSummaryFactory;
+use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\Mailer\MailerInterface;
@@ -21,6 +23,8 @@ final readonly class SendRecurringPaymentCancelledAdminEmailHandler
         private UserRepository $userRepository,
         private MailerInterface $mailer,
         private LoggerInterface $logger,
+        private CardPaymentStopSummaryFactory $summaryFactory,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -37,12 +41,13 @@ final readonly class SendRecurringPaymentCancelledAdminEmailHandler
         $storage = $contract->storage;
         $storageType = $storage->storageType;
         $place = $storage->getPlace();
+        $summary = $this->summaryFactory->create($contract, $this->clock->now());
 
         foreach ($admins as $admin) {
             $email = (new TemplatedEmail())
                 ->from(new Address('noreply@fajnesklady.cz', 'Fajnesklady.cz'))
                 ->to(new Address($admin->email, $admin->fullName))
-                ->subject(sprintf('Pravidelná platba zrušena - %s', $user->fullName))
+                ->subject(sprintf('Platba kartou zrušena - %s', $user->fullName))
                 ->htmlTemplate('email/recurring_payment_cancelled_admin.html.twig')
                 ->context([
                     'adminName' => $admin->fullName,
@@ -51,6 +56,8 @@ final readonly class SendRecurringPaymentCancelledAdminEmailHandler
                     'placeName' => $place->name,
                     'storageType' => $storageType->name,
                     'storageNumber' => $storage->number,
+                    'summary' => $summary,
+                    'variableSymbol' => $contract->order->variableSymbol,
                 ]);
 
             $email->getHeaders()->addTextHeader('X-Order-Id', $contract->order->id->toRfc4122());

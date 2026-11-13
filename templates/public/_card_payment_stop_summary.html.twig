@@ -1,0 +1,26 @@
+{# What the tenant still owes after stopping card payments (CardPaymentStopSummary). #}
+<div class="text-left bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4 text-sm text-gray-700 space-y-1">
+    {% if summary.paidThroughDate %}
+        <p>Zaplaceno do: <strong>{{ summary.paidThroughDate|date('d.m.Y') }}</strong></p>
+    {% endif %}
+    <p>Smlouva trvá do: <strong>{{ summary.endDate|date('d.m.Y') }}</strong></p>
+    {% if summary.hasMoreToPay %}
+        <p>Další platba: <strong>{{ (summary.nextAmount / 100)|number_format(0, ',', ' ') }} Kč</strong>, splatná {{ summary.nextDueDate|date('d.m.Y') }}</p>
+    {% endif %}
+</div>
+
+{% if summary.hasMoreToPay %}
+    {% if summary.isOverdue %}
+        <div class="text-left bg-red-50 border border-red-200 rounded-lg p-4 mb-4 text-sm text-red-800">
+            <p><strong>Platba je po splatnosti.</strong> Uhraďte ji prosím nejpozději {{ summary.lastDayToPay|date('d.m.Y') }}. Pokud do té doby nebude uhrazena, smlouva bude ukončena bez výpovědní doby podle čl. XI Všeobecných obchodních podmínek a dlužná částka bude evidována.</p>
+        </div>
+    {% endif %}
+    <p class="text-sm text-gray-600 mb-4 text-left">
+        Platební údaje pro bankovní převod (číslo účtu, variabilní symbol a QR kód) Vám pošleme e-mailem{% if not summary.isOverdue %} před splatností{% endif %}. Pohodlnější je nastavit novou platební kartu — platby pak poběží dál automaticky.
+    </p>
+    {% if summary.cardSetupUrl %}
+        <a href="{{ summary.cardSetupUrl }}" class="btn btn-primary w-full justify-center mb-2">Nastavit novou platební kartu</a>
+    {% endif %}
+{% else %}
+    <p class="text-sm text-gray-600 mb-4">Nájem je zaplacen do konce smlouvy, žádná další platba Vás nečeká.</p>
+{% endif %}

@@ -17,10 +17,13 @@ use App\Tests\Mock\MockGoPayClient;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\Persistence\ManagerRegistry;
 use Psr\Clock\ClockInterface;
+use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Console\Tester\CommandTester;
+use Symfony\Component\Mailer\Event\MessageEvent;
 use Symfony\Component\Messenger\MessageBusInterface;
+use Twig\Environment;
 
 class ProcessRecurringPaymentsCommandTest extends KernelTestCase
 {
@@ -30,6 +33,9 @@ class ProcessRecurringPaymentsCommandTest extends KernelTestCase
     private ClockInterface $clock;
     private MockGoPayClient $goPayClient;
     private Application $application;
+
+    /** @var list<TemplatedEmail> */
+    private array $sentEmails = [];
 
     protected function setUp(): void
     {
@@ -48,6 +54,14 @@ class ProcessRecurringPaymentsCommandTest extends KernelTestCase
         $this->goPayClient->reset();
 
         $this->application = new Application(self::$kernel);
+
+        $this->sentEmails = [];
+        $container->get('event_dispatcher')->addListener(MessageEvent::class, function (MessageEvent $event): void {
+            $message = $event->getMessage();
+            if ($message instanceof TemplatedEmail) {
+                $this->sentEmails[] = clone $message;
+            }
+        }, priority: 1024);
     }
 
     public function testGoPayApiFailureIsRecordedAsFailedAttempt(): void
@@ -94,6 +108,23 @@ class ProcessRecurringPaymentsCommandTest extends KernelTestCase
         $this->assertNull($refreshed->pendingRecurringPaymentId);
         $this->assertStringNotContainsString('[OK] Contract', $tester->getDisplay());
         $this->assertStringContainsString('0 charged', $tester->getDisplay());
+
+        // The tenant e-mail leads with paying (new card / bank transfer) and
+        // states amount + deadline — a bare red "cancel" button made a tenant
+        // cancel and never pay (2026-11-12).
+        $failedEmails = array_values(array_filter(
+            $this->sentEmails,
+            static fn (TemplatedEmail $e): bool => str_contains((string) $e->getSubject(), 'Platba za pronájem se nepodařila'),
+        ));
+        self::assertCount(1, $failedEmails);
+        /** @var Environment $twig */
+        $twig = static::getContainer()->get('test.twig');
+        $template = $failedEmails[0]->getHtmlTemplate();
+        \assert(null !== $template);
+        $body = $twig->render($template, $failedEmails[0]->getContext());
+        $this->assertStringContainsString('Změnit kartu nebo platit převodem', $body);
+        $this->assertStringContainsString('Kč za období od', $body);
+        $this->assertStringNotContainsString('Zrušit opakovanou platbu', $body);
     }
 
     public function testConfirmedChargeIsReportedAsCharged(): void

@@ -400,8 +400,12 @@ final readonly class AuditLogger
             entityId: $contract->id->toRfc4122(),
             eventType: 'recurring_cancelled',
             payload: [
+                // Billing mode AFTER the cancellation: manual_recurring means
+                // the unpaid remainder continues by bank transfer.
                 'billing_mode' => $contract->billingMode->value,
                 'end_date' => $contract->endDate->format('Y-m-d'),
+                'paid_through_date' => $contract->paidThroughDate?->format('Y-m-d'),
+                'next_billing_date' => $contract->nextBillingDate?->format('Y-m-d'),
             ],
             orderId: $contract->order->id,
             userIdContext: $contract->user->id,

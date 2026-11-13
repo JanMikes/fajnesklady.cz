@@ -26,7 +26,7 @@
         <h2>{{ adminName }},</h2>
 
         <div class="alert-box">
-            <p><strong>Pravidelná platba byla zrušena</strong> pro následujícího zákazníka.</p>
+            <p><strong>Zákazník zrušil opakovanou platbu kartou.</strong> Nájem pokračuje (Podmínky opakovaných plateb čl. VI){% if summary.hasMoreToPay %} a další platby se mu nyní posílají k úhradě bankovním převodem{% endif %}.</p>
         </div>
 
         <div class="details">
@@ -47,8 +47,33 @@
                     <td>Číslo skladovací jednotky:</td>
                     <td>{{ storageNumber }}</td>
                 </tr>
+                <tr>
+                    <td>Zaplaceno do:</td>
+                    <td>{{ summary.paidThroughDate ? summary.paidThroughDate|date('d.m.Y') : '—' }}</td>
+                </tr>
+                <tr>
+                    <td>Smlouva do:</td>
+                    <td>{{ summary.endDate|date('d.m.Y') }}</td>
+                </tr>
+                {% if summary.hasMoreToPay %}
+                <tr>
+                    <td>Další platba:</td>
+                    <td>{{ (summary.nextAmount / 100)|number_format(0, ',', ' ') }} Kč, splatná {{ summary.nextDueDate|date('d.m.Y') }}{% if variableSymbol %} (VS {{ variableSymbol }}){% endif %}</td>
+                </tr>
+                {% endif %}
             </table>
         </div>
+
+        {% if summary.isOverdue %}
+        <div class="alert-box">
+            <p><strong>Platba je {{ summary.daysOverdue }} {{ summary.daysOverdue == 1 ? 'den' : (summary.daysOverdue < 5 ? 'dny' : 'dní') }} po splatnosti — zákazník užívá sklad bez zaplacení.</strong></p>
+            <p>Pokud nezaplatí do {{ summary.lastDayToPay|date('d.m.Y') }}, smlouva bude {{ summary.terminationFrom|date('d.m.Y') }} automaticky ukončena (VOP čl. XI) a dluh evidován. Termín lze případně prodloužit na detailu objednávky.</p>
+        </div>
+        {% elseif summary.hasMoreToPay %}
+        <p>{% if summary.paidThroughDate %}Zákazník má zaplaceno do {{ summary.paidThroughDate|date('d.m.Y') }}. {% endif %}Výzvy k platbě převodem odejdou automaticky před splatností; pokud zákazník nastaví novou kartu, platby kartou se obnoví.</p>
+        {% else %}
+        <p>Smlouva je zaplacena do konce, nic dalšího se neúčtuje.</p>
+        {% endif %}
     </div>
 
     <div class="footer">

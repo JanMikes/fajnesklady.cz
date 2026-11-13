@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Event;
 
 use App\Repository\ContractRepository;
+use App\Service\Billing\CardPaymentStopSummaryFactory;
 use App\Service\OrderStatusUrlGenerator;
 use App\Service\RecurringPaymentCancelUrlGenerator;
+use Psr\Clock\ClockInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
 use Symfony\Component\Mailer\MailerInterface;
@@ -22,6 +24,8 @@ final readonly class SendRecurringPaymentFailedEmailHandler
         private RecurringPaymentCancelUrlGenerator $cancelUrlGenerator,
         private OrderStatusUrlGenerator $statusUrlGenerator,
         private LoggerInterface $logger,
+        private CardPaymentStopSummaryFactory $summaryFactory,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -36,7 +40,7 @@ final readonly class SendRecurringPaymentFailedEmailHandler
         $subject = match ($event->attempt) {
             1 => 'Platba za pronájem se nepodařila - Fajnesklady.cz',
             2 => 'Druhá neúspěšná platba za pronájem - Fajnesklady.cz',
-            default => 'Opakovaná neúspěšná platba - pronájem bude zrušen - Fajnesklady.cz',
+            default => 'Poslední pokus o platbu selhal, hrozí ukončení smlouvy - Fajnesklady.cz',
         };
         $isFirstAttempt = 1 === $event->attempt;
 
@@ -53,7 +57,12 @@ final readonly class SendRecurringPaymentFailedEmailHandler
                 'attempt' => $event->attempt,
                 'isFirstAttempt' => $isFirstAttempt,
                 'reason' => $event->reason,
-                'cancelUrl' => $contract->hasActiveRecurringPayment() ? $this->cancelUrlGenerator->generate($contract) : null,
+                // The signed cancel page leads with "change card", and its
+                // fallback moves the contract to bank transfer — the tenant's
+                // two ways to pay. A bare "cancel" button here made a tenant
+                // cancel and then never pay (2026-11-12).
+                'paymentOptionsUrl' => $contract->hasActiveRecurringPayment() ? $this->cancelUrlGenerator->generate($contract) : null,
+                'summary' => $this->summaryFactory->create($contract, $this->clock->now()),
                 'statusUrl' => $this->statusUrlGenerator->generate($contract->order),
             ]);
 

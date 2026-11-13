@@ -12,7 +12,7 @@ use App\Repository\ContractRepository;
 use App\Repository\StorageRepository;
 use App\Repository\UserRepository;
 use App\Service\AuditLogger;
-use App\Service\GoPay\GoPayClient;
+use App\Service\Billing\CardToBankTransferSwitch;
 use App\Service\Payment\VariableSymbolGenerator;
 use App\Service\StorageAvailabilityChecker;
 use Psr\Clock\ClockInterface;
@@ -25,7 +25,7 @@ final readonly class ProlongContractHandler
         private ContractRepository $contractRepository,
         private StorageRepository $storageRepository,
         private StorageAvailabilityChecker $availabilityChecker,
-        private GoPayClient $goPayClient,
+        private CardToBankTransferSwitch $cardToBankTransferSwitch,
         private VariableSymbolGenerator $variableSymbolGenerator,
         private UserRepository $userRepository,
         private AuditLogger $auditLogger,
@@ -87,11 +87,7 @@ final readonly class ProlongContractHandler
             // Card → bank: void the token now; the manual cron takes over from
             // the date the card had paid through.
             $nextBillingDate = $contract->nextBillingDate ?? $contract->paidThroughDate ?? $previousEndDate;
-            $this->goPayClient->voidRecurrence($contract->goPayParentPaymentId);
-            $contract->cancelRecurringPayment();
-            $contract->applyBillingMode(BillingMode::MANUAL_RECURRING);
-            $contract->scheduleNextBilling($nextBillingDate, null);
-            $contract->order->setPaymentMethod(PaymentMethod::BANK_TRANSFER);
+            $this->cardToBankTransferSwitch->switch($contract, $nextBillingDate);
         }
 
         // Every manual-track contract needs a variable symbol for the reminder

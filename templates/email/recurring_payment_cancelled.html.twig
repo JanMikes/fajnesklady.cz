@@ -66,14 +66,15 @@
 </head>
 <body>
     <div class="header">
-        <h1>Pravidelná platba zrušena</h1>
+        <h1>Platba kartou zrušena</h1>
     </div>
 
     <div class="content">
         <h2>{{ name }},</h2>
 
         <div class="info-box">
-            <p>Informujeme Vás, že pravidelná platba za Váš skladový box byla zrušena.</p>
+            <p>na Vaši žádost jsme zrušili opakovanou platbu kartou. Z Vaší karty už nebudeme nic strhávat.</p>
+            <p><strong>Nájem tím nekončí</strong> — smlouva trvá do {{ summary.endDate|date('d.m.Y') }} a platby za nájem je potřeba hradit i nadále (Podmínky opakovaných plateb čl. VI).</p>
         </div>
 
         <div class="storage-details">
@@ -90,12 +91,49 @@
                     <td>Číslo skladovací jednotky:</td>
                     <td>{{ storageNumber }}</td>
                 </tr>
+                {% if summary.paidThroughDate %}
+                <tr>
+                    <td>Zaplaceno do:</td>
+                    <td>{{ summary.paidThroughDate|date('d.m.Y') }}</td>
+                </tr>
+                {% endif %}
+                <tr>
+                    <td>Smlouva trvá do:</td>
+                    <td>{{ summary.endDate|date('d.m.Y') }}</td>
+                </tr>
             </table>
         </div>
 
-        <p>Pokud si přejete obnovit pronájem, prosím kontaktujte nás nebo vytvořte novou objednávku na našich webových stránkách.</p>
+        {% if summary.hasMoreToPay %}
+            {% if summary.isOverdue %}
+                <div class="info-box" style="background-color: #fef2f2; border-color: #dc2626;">
+                    <p><strong>Platba {{ (summary.nextAmount / 100)|number_format(0, ',', ' ') }} Kč za období od {{ summary.nextDueDate|date('d.m.Y') }} je po splatnosti.</strong></p>
+                    <p>Uhraďte ji prosím nejpozději <strong>{{ summary.lastDayToPay|date('d.m.Y') }}</strong>. Pokud do té doby nebude uhrazena, smlouva bude ukončena bez výpovědní doby podle čl. XI Všeobecných obchodních podmínek a dlužná částka bude evidována.</p>
+                </div>
+            {% else %}
+                <p>Další platba <strong>{{ (summary.nextAmount / 100)|number_format(0, ',', ' ') }} Kč</strong> je splatná <strong>{{ summary.nextDueDate|date('d.m.Y') }}</strong>.</p>
+            {% endif %}
 
-        <p>Děkujeme, že jste využívali naše služby!</p>
+            <p>Jak dál platit:</p>
+            <ul>
+                <li><strong>Novou platební kartou</strong> — pokud jste jen měnili kartu, nastavte novou a platby poběží dál automaticky (částku a datum první platby uvidíte před potvrzením).</li>
+                <li><strong>Bankovním převodem</strong> — platební údaje (číslo účtu, variabilní symbol a QR kód) Vám pošleme e-mailem {% if summary.isOverdue %}v samostatné zprávě{% else %}před splatností{% endif %}.</li>
+            </ul>
+
+            {% if summary.cardSetupUrl %}
+            <div style="text-align: center; margin: 20px 0;">
+                <a href="{{ summary.cardSetupUrl }}" style="display: inline-block; background-color: #2563eb; color: white; padding: 12px 28px; text-decoration: none; border-radius: 5px; font-size: 15px; font-weight: bold;">Nastavit novou platební kartu</a>
+            </div>
+            {% endif %}
+        {% else %}
+            <p>Nájem je zaplacen do konce smlouvy, žádná další platba Vás nečeká.</p>
+        {% endif %}
+
+        <div style="text-align: center; margin: 20px 0;">
+            <a href="{{ statusUrl }}" style="display: inline-block; color: #2563eb; padding: 6px 12px; font-size: 14px;">Zobrazit stav objednávky</a>
+        </div>
+
+        <p>V případě dotazů nás kontaktujte na <a href="mailto:simek@fajnesklady.cz">simek@fajnesklady.cz</a>, tel. 774 302 684.</p>
 
         <p>S pozdravem,<br>
         <strong>Tým Fajnesklady.cz</strong></p>

@@ -68,10 +68,17 @@ final class ContractTerminateController extends AbstractController
         // persisted here after dispatch() returns would never be flushed.
         $this->commandBus->dispatch(new CancelRecurringPaymentCommand($contract));
 
-        $this->addFlash('success', sprintf(
-            'Opakované platby byly zrušeny. Smlouva skončí %s.',
-            $contract->endDate->format('d.m.Y'),
-        ));
+        // Podmínky opakovaných plateb čl. VI: the lease and the duty to pay
+        // continue — say so, the old "smlouva skončí" read as a free exit.
+        $this->addFlash('success', null !== $contract->nextBillingDate
+            ? sprintf(
+                'Platba kartou byla zrušena. Nájem trvá do %s — další platby Vám pošleme k úhradě bankovním převodem (nebo si nastavte novou kartu).',
+                $contract->endDate->format('d.m.Y'),
+            )
+            : sprintf(
+                'Platba kartou byla zrušena. Nájem je zaplacen do konce smlouvy (%s).',
+                $contract->endDate->format('d.m.Y'),
+            ));
 
         return $this->redirectToRoute('portal_user_order_detail', ['id' => $contract->order->id]);
     }

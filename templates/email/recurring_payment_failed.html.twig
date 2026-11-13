@@ -66,26 +66,29 @@
 </head>
 <body>
     <div class="header">
-        <h1>{% if isFirstAttempt %}Platba se nepodařila{% elseif attempt == 2 %}Druhá neúspěšná platba{% else %}Pronájem bude zrušen{% endif %}</h1>
+        <h1>{% if isFirstAttempt %}Platba se nepodařila{% elseif attempt == 2 %}Druhá neúspěšná platba{% else %}Hrozí ukončení smlouvy{% endif %}</h1>
     </div>
 
     <div class="content">
         <h2>{{ name }},</h2>
 
+        {% set amountText = summary.nextAmount is not null ? (summary.nextAmount / 100)|number_format(0, ',', ' ') ~ ' Kč' : null %}
+        {% set periodText = summary.nextDueDate ? ' za období od ' ~ summary.nextDueDate|date('d.m.Y') : '' %}
+
         {% if isFirstAttempt %}
             <div class="warning-box">
-                <p><strong>Upozornění:</strong> Pravidelná platba za Váš skladový box se nepodařila.</p>
-                <p>Platbu se automaticky pokusíme opakovat za 3 dny. Prosím, zkontrolujte, že máte na účtu dostatek prostředků.</p>
+                <p><strong>Upozornění:</strong> platbu{% if amountText %} {{ amountText }}{% endif %}{{ periodText }} se nepodařilo strhnout z Vaší karty.</p>
+                <p>Platbu se automaticky pokusíme opakovat za 3 dny. Zkontrolujte prosím, že je karta platná a máte na účtu dostatek prostředků. Pokud máte novou kartu, můžete ji nastavit hned.</p>
             </div>
         {% elseif attempt == 2 %}
             <div class="warning-box">
-                <p><strong>Důležité:</strong> Druhý pokus o platbu za Váš skladový box selhal.</p>
-                <p>Poslední pokus o platbu proběhne za 7 dní. Pokud selže, smlouva bude ukončena. Prosím, zajistěte dostatek prostředků na účtu.</p>
+                <p><strong>Důležité:</strong> ani druhý pokus o stržení platby{% if amountText %} {{ amountText }}{% endif %}{{ periodText }} nebyl úspěšný.</p>
+                <p>Poslední pokus proběhne za 4 dny.{% if summary.lastDayToPay %} Pokud platba nebude uhrazena nejpozději {{ summary.lastDayToPay|date('d.m.Y') }}, smlouva bude ukončena bez výpovědní doby podle čl. XI Všeobecných obchodních podmínek a dlužná částka bude evidována.{% endif %}</p>
             </div>
         {% else %}
             <div class="warning-box">
-                <p><strong>Důležité:</strong> Opakované pokusy o platbu za Váš skladový box selhaly.</p>
-                <p>Pravidelná platba byla zrušena. Pro obnovení pronájmu nás prosím kontaktujte.</p>
+                <p><strong>Důležité:</strong> ani poslední pokus o stržení platby{% if amountText %} {{ amountText }}{% endif %}{{ periodText }} nebyl úspěšný.</p>
+                <p>{% if summary.lastDayToPay %}Pokud platbu neuhradíte nejpozději {{ summary.lastDayToPay|date('d.m.Y') }}, smlouva{% else %}Pokud platbu neuhradíte obratem, smlouva{% endif %} bude ukončena bez výpovědní doby podle čl. XI Všeobecných obchodních podmínek a dlužná částka bude evidována. Uhradit ji můžete novou platební kartou nebo bankovním převodem.</p>
             </div>
         {% endif %}
 
@@ -106,9 +109,9 @@
             </table>
         </div>
 
-        {% if cancelUrl is defined and cancelUrl %}
+        {% if paymentOptionsUrl is defined and paymentOptionsUrl %}
         <div style="text-align: center; margin: 20px 0;">
-            <a href="{{ cancelUrl }}" style="display: inline-block; background-color: #ef4444; color: white; padding: 10px 24px; text-decoration: none; border-radius: 5px; font-size: 14px;">Zrušit opakovanou platbu</a>
+            <a href="{{ paymentOptionsUrl }}" style="display: inline-block; background-color: #16a34a; color: white; padding: 12px 28px; text-decoration: none; border-radius: 5px; font-size: 15px; font-weight: bold;">Změnit kartu nebo platit převodem</a>
         </div>
         {% endif %}
 
