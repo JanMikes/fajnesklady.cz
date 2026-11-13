@@ -139,6 +139,18 @@ export default class extends Controller {
             }
         };
 
+        // A modal <dialog> (showModal) lives in the browser's top layer; a
+        // calendar appended to <body> would render BEHIND it, invisible and
+        // unclickable. Append it to the dialog and position it relative to
+        // the dialog. NOT `static: true` — that wraps the input in a new div,
+        // the move disconnects/reconnects this controller and re-initialises
+        // flatpickr forever (frozen page).
+        const dialog = this.element.closest('dialog');
+        if (dialog) {
+            config.appendTo = dialog;
+            config.position = (picker, customElement) => positionInDialog(picker, dialog, customElement);
+        }
+
         if (this.minDateValue) {
             config.minDate = this.minDateValue;
         }
@@ -258,4 +270,23 @@ function makeDate(year, month, day) {
         return undefined;
     }
     return d;
+}
+
+// flatpickr positions its calendar in page coordinates; inside a modal
+// <dialog> the calendar's containing block is the dialog itself, so place it
+// under the visible input in dialog coordinates.
+function positionInDialog(picker, dialog, customElement) {
+    const calendar = picker.calendarContainer;
+    const anchor = customElement ?? picker._positionElement ?? picker.altInput ?? picker.input;
+    if (!calendar || !anchor) {
+        return;
+    }
+    const inputRect = anchor.getBoundingClientRect();
+    const dialogRect = dialog.getBoundingClientRect();
+
+    calendar.style.top = `${inputRect.bottom - dialogRect.top + dialog.scrollTop + 2}px`;
+    calendar.style.left = `${inputRect.left - dialogRect.left + dialog.scrollLeft}px`;
+    calendar.style.right = 'auto';
+    calendar.classList.add('arrowTop', 'arrowLeft');
+    calendar.classList.remove('arrowBottom', 'arrowCenter', 'arrowRight');
 }

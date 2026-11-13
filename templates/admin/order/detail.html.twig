@@ -1021,7 +1021,10 @@
                                                    value="{{ now|date('Y-m-d') }}"
                                                    min="{{ rp.periodStart|date('Y-m-d', false) }}"
                                                    max="{{ rp.periodLastDay|date('Y-m-d', false) }}"
-                                                   class="form-input text-sm w-auto">
+                                                   data-controller="datepicker"
+                                                   data-datepicker-min-date-value="{{ rp.periodStart|date('Y-m-d', false) }}"
+                                                   data-datepicker-max-date-value="{{ rp.periodLastDay|date('Y-m-d', false) }}"
+                                                   class="form-input text-sm">
                                             <p id="terminateRefundPreview" class="text-xs text-purple-800"></p>
                                         </div>
                                     {% endif %}
