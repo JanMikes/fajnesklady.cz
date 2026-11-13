@@ -35,8 +35,13 @@
                 </div>
 
                 <p class="text-sm text-gray-700 mb-6">
-                    Nyní zaplatíte kartou platbu za nadcházející období
-                    (<strong>{{ amountInCzk|number_format(0, ',', ' ') }} Kč vč. DPH</strong>, splatnou {{ nextBillingDate|date('d.m.Y') }}).
+                    {% if isOverdue|default(false) %}
+                        Nyní zaplatíte kartou dlužnou platbu za období od {{ nextBillingDate|date('d.m.Y') }}
+                        (<strong>{{ amountInCzk|number_format(0, ',', ' ') }} Kč vč. DPH</strong>, po splatnosti od {{ nextBillingDate|date('d.m.Y') }}).
+                    {% else %}
+                        Nyní zaplatíte kartou platbu za nadcházející období
+                        (<strong>{{ amountInCzk|number_format(0, ',', ' ') }} Kč vč. DPH</strong>, splatnou {{ nextBillingDate|date('d.m.Y') }}).
+                    {% endif %}
                     Tím se karta uloží na bráně GoPay a další platby se již strhávají automaticky.
                 </p>
 

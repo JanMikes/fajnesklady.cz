@@ -166,6 +166,30 @@ class CancelRecurringPaymentControllerTest extends WebTestCase
         $adminBody = $this->renderedEmail('admin@example.com', 'Platba kartou zrušena');
         $this->assertStringContainsString('3 dny po splatnosti', $adminBody);
         $this->assertStringContainsString($lastDayToPay, $adminBody);
+
+        // The new-card page calls the overdue cycle a debt, not "the upcoming period".
+        $cardLink = (string) $this->client->getCrawler()->selectLink('Nastavit novou platební kartu')->attr('href');
+        $this->request('GET', $cardLink);
+        $this->assertResponseIsSuccessful();
+        $cardPage = (string) $this->client->getResponse()->getContent();
+        $this->assertStringContainsString('dlužnou platbu', $cardPage);
+        $this->assertStringNotContainsString('nadcházející období', $cardPage);
+    }
+
+    public function testCardFailureCountIsClearedWhenBillingMovesToBankTransfer(): void
+    {
+        $contract = $this->createCardContract('gp_failed_then_cancel', nextBillingInDays: -3);
+        $contract->recordFailedBillingAttempt($this->clock->now()->modify('-1 day'));
+        $this->entityManager->flush();
+
+        $this->request('POST', $this->cancelUrlGenerator->generate($contract), ['action' => 'cancel']);
+
+        $this->entityManager->clear();
+        $reloaded = $this->entityManager->find(Contract::class, $contract->id);
+        self::assertNotNull($reloaded);
+        self::assertSame(0, $reloaded->failedBillingAttempts);
+        self::assertNull($reloaded->lastBillingFailedAt);
+        self::assertNotNull($reloaded->nextBillingDate, 'Still overdue via the kept anchor.');
     }
 
     public function testChangeCardRedirectsToCardSetup(): void

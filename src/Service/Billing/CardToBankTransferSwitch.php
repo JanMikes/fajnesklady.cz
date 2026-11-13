@@ -36,6 +36,7 @@ final readonly class CardToBankTransferSwitch
 
         // Clears the token AND the anchor — the anchor is restored right below.
         $contract->cancelRecurringPayment();
+        $contract->clearCardRetryLadder();
         $contract->applyBillingMode(BillingMode::MANUAL_RECURRING);
         $contract->scheduleNextBilling($nextBillingDate, null);
         $contract->order->setPaymentMethod(PaymentMethod::BANK_TRANSFER);

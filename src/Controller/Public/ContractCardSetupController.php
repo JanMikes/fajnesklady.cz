@@ -90,6 +90,8 @@ final class ContractCardSetupController extends AbstractController
             'amountInCzk' => $amountInHaler / 100,
             'monthlyAmountInCzk' => $contract->getEffectiveRecurringAmount() / 100,
             'nextBillingDate' => $nextBillingDate,
+            // An overdue cycle is a debt, not "the upcoming period" — say so.
+            'isOverdue' => $nextBillingDate->setTime(0, 0) < $now->setTime(0, 0),
             'remainingCharges' => $remainingCharges,
             'recurringPaymentLegalMaxInCzk' => PriceCalculator::MAX_RECURRING_PAYMENT_AMOUNT_IN_HALER / 100,
             'goPayEmbedJs' => $this->goPayClient->getEmbedJsUrl(),

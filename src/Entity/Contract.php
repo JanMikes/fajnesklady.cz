@@ -356,6 +356,18 @@ class Contract implements EntityWithEvents
         return null !== $this->pendingRecurringPaymentId;
     }
 
+    /**
+     * The card retry ladder (attempts 1–3) no longer applies once billing
+     * moved off the card — a leftover count would read as "nezaplatil výzvu
+     * (1×)" on the bank-transfer track. The failure itself stays in the
+     * audit log.
+     */
+    public function clearCardRetryLadder(): void
+    {
+        $this->failedBillingAttempts = 0;
+        $this->lastBillingFailedAt = null;
+    }
+
     public function cancelRecurringPayment(): void
     {
         $this->goPayParentPaymentId = null;
