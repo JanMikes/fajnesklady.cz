@@ -34,6 +34,35 @@ class InvoiceRepository
         return $this->find($id) ?? throw InvoiceNotFound::withId($id);
     }
 
+    /**
+     * DQL condition (alias `i`) for "this row may document the order's first
+     * payment": a FIRST_PAYMENT invoice, or an unclassified legacy row that is
+     * neither a fine nor a credit note — counted conservatively so history
+     * not yet run through app:backfill-invoice-kinds can never cause a
+     * duplicate first-payment invoice.
+     */
+    public const string FIRST_PAYMENT_CONDITION =
+        '(i.kind = \'first_payment\' OR (i.kind IS NULL AND i.fine IS NULL AND i.correctionOf IS NULL))';
+
+    /**
+     * The invoice documenting the order's first payment — never its onboarding
+     * debt, a recurring cycle, a fine or a credit note (2026-11: the debt
+     * invoice of order 019f5d05 was taken for its first-payment invoice).
+     */
+    public function findFirstPaymentInvoice(Order $order): ?Invoice
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('i')
+            ->from(Invoice::class, 'i')
+            ->where('i.order = :order')
+            ->andWhere(self::FIRST_PAYMENT_CONDITION)
+            ->setParameter('order', $order)
+            ->orderBy('i.issuedAt', 'ASC')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
     public function findByOrder(Order $order): ?Invoice
     {
         return $this->entityManager->createQueryBuilder()
@@ -168,6 +197,22 @@ class InvoiceRepository
         return $this->entityManager->createQueryBuilder()
             ->select('i')
             ->from(Invoice::class, 'i')
+            ->orderBy('i.issuedAt', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Invoices issued before Invoice::$kind existed (app:backfill-invoice-kinds).
+     *
+     * @return list<Invoice>
+     */
+    public function findWithoutKind(): array
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('i')
+            ->from(Invoice::class, 'i')
+            ->where('i.kind IS NULL')
             ->orderBy('i.issuedAt', 'ASC')
             ->getQuery()
             ->getResult();

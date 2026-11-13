@@ -166,7 +166,9 @@ final readonly class SendRentalActivatedEmailHandler
 
     private function issueOrFindInvoice(Order $order, \DateTimeImmutable $now): ?Invoice
     {
-        $invoice = $this->invoiceRepository->findByOrder($order);
+        // The FIRST-PAYMENT invoice — an onboarding debt paid earlier already
+        // has its own invoice on this order (2026-11, order 019f5d05).
+        $invoice = $this->invoiceRepository->findFirstPaymentInvoice($order);
         if (null !== $invoice) {
             return $invoice;
         }

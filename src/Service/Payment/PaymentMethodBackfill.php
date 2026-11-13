@@ -10,6 +10,7 @@ use App\Entity\Order;
 use App\Entity\Payment;
 use App\Enum\AllocationStepType;
 use App\Enum\BankTransactionStatus;
+use App\Enum\InvoiceKind;
 use App\Enum\PaymentMethod;
 use App\Repository\AuditLogRepository;
 use App\Repository\BankTransactionAllocationRepository;
@@ -223,9 +224,45 @@ final readonly class PaymentMethodBackfill
                 : null;
         }
 
+        $best = $this->bestRentCandidate($invoice);
+
+        if (null === $best || null === $best['via']) {
+            return null;
+        }
+
+        return new InvoicePaymentSource($best['via'], $best['goPayPaymentId']);
+    }
+
+    /**
+     * What the invoice documents, for history issued before Invoice::$kind
+     * existed. Same matching as {@see self::resolveInvoicePaymentSource()}:
+     * credit note via correctionOf, fine via the FK, otherwise the same-amount
+     * onboarding debt or Payment closest in time (24 h). A Payment without a
+     * billing period is the order's first payment; one with a period is a
+     * recurring cycle. Null when nothing matches — the caller leaves the row
+     * unclassified (which the first-payment checks treat conservatively).
+     */
+    public function resolveInvoiceKind(Invoice $invoice): ?InvoiceKind
+    {
+        if (null !== $invoice->correctionOf) {
+            return InvoiceKind::CREDIT_NOTE;
+        }
+
+        if (null !== $invoice->fine) {
+            return InvoiceKind::FINE;
+        }
+
+        return $this->bestRentCandidate($invoice)['kind'] ?? null;
+    }
+
+    /**
+     * @return array{at: \DateTimeImmutable, via: ?PaymentMethod, goPayPaymentId: ?string, kind: InvoiceKind}|null
+     */
+    private function bestRentCandidate(Invoice $invoice): ?array
+    {
         $order = $invoice->order;
 
-        /** @var list<array{at: \DateTimeImmutable, via: ?PaymentMethod, goPayPaymentId: ?string}> $candidates */
+        /** @var list<array{at: \DateTimeImmutable, via: ?PaymentMethod, goPayPaymentId: ?string, kind: InvoiceKind}> $candidates */
         $candidates = [];
 
         if (null !== $order->debtPaidAt && $order->onboardingDebtInHaler === $invoice->amount) {
@@ -233,6 +270,7 @@ final readonly class PaymentMethodBackfill
                 'at' => $order->debtPaidAt,
                 'via' => $order->debtPaidVia,
                 'goPayPaymentId' => PaymentMethod::GOPAY === $order->debtPaidVia ? $order->debtGoPayPaymentId : null,
+                'kind' => InvoiceKind::ONBOARDING_DEBT,
             ];
         }
 
@@ -242,7 +280,12 @@ final readonly class PaymentMethodBackfill
                 continue; // a storno row never evidences how an invoice was paid
             }
             if ($payment->amount === $invoice->amount) {
-                $candidates[] = ['at' => $payment->paidAt, 'via' => $this->evidencedMethod($payment, $order), 'goPayPaymentId' => $payment->goPayPaymentId];
+                $candidates[] = [
+                    'at' => $payment->paidAt,
+                    'via' => $this->evidencedMethod($payment, $order),
+                    'goPayPaymentId' => $payment->goPayPaymentId,
+                    'kind' => null === $payment->periodStart ? InvoiceKind::FIRST_PAYMENT : InvoiceKind::RECURRING,
+                ];
             }
         }
 
@@ -256,11 +299,7 @@ final readonly class PaymentMethodBackfill
             }
         }
 
-        if (null === $best || null === $best['via']) {
-            return null;
-        }
-
-        return new InvoicePaymentSource($best['via'], $best['goPayPaymentId']);
+        return $best;
     }
 
     /**

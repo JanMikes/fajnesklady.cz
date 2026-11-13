@@ -224,7 +224,9 @@ class OrderRepository
             ->andWhere('o.paymentMethod IS NULL OR o.paymentMethod != :external')
             // No invoice without payment evidence (InvoicingService enforces it too).
             ->andWhere('o.paidVia IS NULL OR o.paidVia != :external')
-            ->andWhere('NOT EXISTS (SELECT 1 FROM App\\Entity\\Invoice i WHERE i.order = o)')
+            // Only a first-payment invoice settles this — the order's
+            // onboarding-debt / recurring / fine / credit-note invoices don't.
+            ->andWhere('NOT EXISTS (SELECT 1 FROM App\\Entity\\Invoice i WHERE i.order = o AND '.InvoiceRepository::FIRST_PAYMENT_CONDITION.')')
             ->setParameter('completed', OrderStatus::COMPLETED)
             ->setParameter('external', PaymentMethod::EXTERNAL)
             ->setParameter('cutoff', $cutoff)

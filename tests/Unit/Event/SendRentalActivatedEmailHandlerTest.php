@@ -95,7 +95,7 @@ class SendRentalActivatedEmailHandlerTest extends TestCase
             ->willReturn($issuedInvoice);
 
         $invoiceRepository = $this->createStub(InvoiceRepository::class);
-        $invoiceRepository->method('findByOrder')->willReturn(null);
+        $invoiceRepository->method('findFirstPaymentInvoice')->willReturn(null);
 
         $sentEmail = $this->dispatch(
             $contract,
@@ -123,7 +123,7 @@ class SendRentalActivatedEmailHandlerTest extends TestCase
         $invoicingService->expects($this->never())->method('issueInvoiceForOrder');
 
         $invoiceRepository = $this->createStub(InvoiceRepository::class);
-        $invoiceRepository->method('findByOrder')->willReturn(null);
+        $invoiceRepository->method('findFirstPaymentInvoice')->willReturn(null);
 
         $sentEmail = $this->dispatch(
             $contract,
@@ -152,7 +152,7 @@ class SendRentalActivatedEmailHandlerTest extends TestCase
         $invoicingService->expects($this->never())->method('issueInvoiceForOrder');
 
         $invoiceRepository = $this->createStub(InvoiceRepository::class);
-        $invoiceRepository->method('findByOrder')->willReturn(null);
+        $invoiceRepository->method('findFirstPaymentInvoice')->willReturn(null);
 
         $sentEmail = $this->dispatch(
             $contract,
@@ -182,7 +182,7 @@ class SendRentalActivatedEmailHandlerTest extends TestCase
             ->willThrowException(new \RuntimeException('Fakturoid 503'));
 
         $invoiceRepository = $this->createStub(InvoiceRepository::class);
-        $invoiceRepository->method('findByOrder')->willReturn(null);
+        $invoiceRepository->method('findFirstPaymentInvoice')->willReturn(null);
 
         $sentEmail = $this->dispatch(
             $contract,
@@ -259,7 +259,7 @@ class SendRentalActivatedEmailHandlerTest extends TestCase
     ): ?Email {
         if (null === $invoiceRepository) {
             $invoiceRepository = $this->createStub(InvoiceRepository::class);
-            $invoiceRepository->method('findByOrder')->willReturn($existingInvoice);
+            $invoiceRepository->method('findFirstPaymentInvoice')->willReturn($existingInvoice);
         }
 
         if (null === $invoicingService) {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use App\Enum\InvoiceKind;
 use App\Event\InvoiceCreated;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Types\UuidType;
@@ -55,6 +56,12 @@ class Invoice implements EntityWithEvents
         // Null for bank-transfer documents and not-yet-backfilled history.
         #[ORM\Column(length: 50, nullable: true)]
         public private(set) ?string $goPayPaymentId = null,
+        // What this document is for. Every InvoicingService path sets it; null
+        // only on history not (yet) classified by app:backfill-invoice-kinds —
+        // such rows are treated as possibly being the first-payment invoice,
+        // so an unclassified row can never trigger a duplicate.
+        #[ORM\Column(length: 20, nullable: true, enumType: InvoiceKind::class)]
+        public private(set) ?InvoiceKind $kind = null,
     ) {
         $this->recordThat(new InvoiceCreated(
             invoiceId: $this->id,
@@ -96,6 +103,18 @@ class Invoice implements EntityWithEvents
         }
 
         $this->goPayPaymentId = $goPayPaymentId;
+    }
+
+    /**
+     * One-off classification of invoices issued before the kind was stored.
+     */
+    public function backfillKind(InvoiceKind $kind): void
+    {
+        if (null !== $this->kind) {
+            throw new \DomainException('The invoice already has a kind.');
+        }
+
+        $this->kind = $kind;
     }
 
     public function isCreditNote(): bool

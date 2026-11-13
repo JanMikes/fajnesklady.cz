@@ -10,6 +10,7 @@ use App\Entity\Invoice;
 use App\Entity\Order;
 use App\Entity\PaymentRefund;
 use App\Entity\User;
+use App\Enum\InvoiceKind;
 use App\Enum\PaymentMethod;
 use App\Enum\RefundMode;
 use App\Repository\InvoiceRepository;
@@ -64,6 +65,7 @@ readonly class InvoicingService
             issuedAt: $now,
             createdAt: $now,
             goPayPaymentId: $goPayPaymentId,
+            kind: InvoiceKind::FIRST_PAYMENT,
         );
 
         // Save invoice first so InvoiceCreated event fires (email sent even without PDF)
@@ -116,6 +118,7 @@ readonly class InvoicingService
             issuedAt: $now,
             createdAt: $now,
             goPayPaymentId: $goPayPaymentId,
+            kind: InvoiceKind::ONBOARDING_DEBT,
         );
 
         // Save invoice first so InvoiceCreated event fires (email sent even without PDF)
@@ -168,6 +171,7 @@ readonly class InvoicingService
             createdAt: $now,
             fine: $fine,
             goPayPaymentId: $goPayPaymentId,
+            kind: InvoiceKind::FINE,
         );
 
         // Save invoice first so InvoiceCreated event fires (email sent even without PDF)
@@ -223,6 +227,7 @@ readonly class InvoicingService
             issuedAt: $chargedAt,
             createdAt: $chargedAt,
             goPayPaymentId: $goPayPaymentId,
+            kind: InvoiceKind::RECURRING,
         );
 
         $this->invoiceRepository->save($invoice);
@@ -288,6 +293,7 @@ readonly class InvoicingService
             createdAt: $now,
             correctionOf: $original,
             goPayPaymentId: $goPayPaymentId,
+            kind: InvoiceKind::CREDIT_NOTE,
         );
 
         $this->invoiceRepository->save($creditNote);

@@ -7,6 +7,7 @@ namespace App\DataFixtures;
 use App\Entity\Invoice;
 use App\Entity\Order;
 use App\Entity\User;
+use App\Enum\InvoiceKind;
 use Doctrine\Bundle\FixturesBundle\Fixture;
 use Doctrine\Common\DataFixtures\DependentFixtureInterface;
 use Doctrine\Persistence\ObjectManager;
@@ -59,6 +60,7 @@ final class InvoiceFixtures extends Fixture implements DependentFixtureInterface
             amount: $orderCompleted->firstPaymentPrice,
             issuedAt: $now->modify('-5 days'),
             createdAt: $now->modify('-5 days'),
+            kind: InvoiceKind::FIRST_PAYMENT,
         );
         $this->attachTestPdf($invoiceCompleted);
         $invoiceCompleted->popEvents();
@@ -75,6 +77,7 @@ final class InvoiceFixtures extends Fixture implements DependentFixtureInterface
             amount: $orderRecurring->firstPaymentPrice,
             issuedAt: $now->modify('-34 days'),
             createdAt: $now->modify('-34 days'),
+            kind: InvoiceKind::FIRST_PAYMENT,
         );
         $this->attachTestPdf($invoiceRecurring);
         $invoiceRecurring->popEvents();
@@ -91,6 +94,7 @@ final class InvoiceFixtures extends Fixture implements DependentFixtureInterface
             amount: $orderExpiringSoon->firstPaymentPrice,
             issuedAt: $now->modify('-27 days'),
             createdAt: $now->modify('-27 days'),
+            kind: InvoiceKind::FIRST_PAYMENT,
         );
         $this->attachTestPdf($invoiceExpiring);
         $invoiceExpiring->popEvents();

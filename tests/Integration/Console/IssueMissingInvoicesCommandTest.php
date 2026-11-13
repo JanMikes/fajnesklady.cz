@@ -8,6 +8,7 @@ use App\DataFixtures\InvoiceFixtures;
 use App\DataFixtures\OrderFixtures;
 use App\Entity\Invoice;
 use App\Entity\Order;
+use App\Enum\InvoiceKind;
 use App\Enum\PaymentMethod;
 use App\Repository\InvoiceRepository;
 use App\Tests\Mock\MockFakturoidClient;
@@ -129,6 +130,51 @@ class IssueMissingInvoicesCommandTest extends KernelTestCase
             ->getSingleScalarResult();
 
         $this->assertSame(1, (int) $invoicesForOrder, 'Cron must not create a duplicate invoice when one already exists.');
+    }
+
+    public function testOnboardingDebtInvoiceDoesNotCountAsTheFirstPaymentInvoice(): void
+    {
+        // 2026-11 (order 019f5d05): the onboarding-debt invoice existed before
+        // the first card payment, so the first payment was never invoiced.
+        $order = $this->getOrder(OrderFixtures::REF_ORDER_COMPLETED);
+        $this->setKindViaSql('2025-0001', InvoiceKind::ONBOARDING_DEBT);
+
+        $this->runCommand()->assertCommandIsSuccessful();
+        $this->entityManager->clear();
+
+        $firstPayment = $this->invoiceRepository->findFirstPaymentInvoice($this->getOrder(OrderFixtures::REF_ORDER_COMPLETED));
+        $this->assertNotNull($firstPayment, 'The backstop must issue the missing first-payment invoice.');
+        $this->assertSame(InvoiceKind::FIRST_PAYMENT, $firstPayment->kind);
+        $this->assertNotSame('2025-0001', $firstPayment->invoiceNumber);
+        $this->assertSame($order->id->toRfc4122(), $firstPayment->order->id->toRfc4122());
+    }
+
+    public function testUnclassifiedLegacyInvoiceStillCountsAsTheFirstPaymentInvoice(): void
+    {
+        // History not yet classified by app:backfill-invoice-kinds must never
+        // trigger a duplicate first-payment invoice.
+        $this->setKindViaSql('2025-0001', null);
+
+        $this->runCommand()->assertCommandIsSuccessful();
+        $this->entityManager->clear();
+
+        $count = (int) $this->entityManager->createQueryBuilder()
+            ->select('COUNT(i.id)')
+            ->from(Invoice::class, 'i')
+            ->where('i.order = :order')
+            ->setParameter('order', $this->getOrder(OrderFixtures::REF_ORDER_COMPLETED))
+            ->getQuery()
+            ->getSingleScalarResult();
+        $this->assertSame(1, $count);
+    }
+
+    private function setKindViaSql(string $invoiceNumber, ?InvoiceKind $kind): void
+    {
+        $this->entityManager->getConnection()->executeStatement(
+            'UPDATE invoice SET kind = :kind WHERE invoice_number = :number',
+            ['kind' => $kind?->value, 'number' => $invoiceNumber],
+        );
+        $this->entityManager->clear();
     }
 
     private function runCommand(): CommandTester
