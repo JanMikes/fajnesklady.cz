@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\Entity\Contract;
+use App\Entity\Invoice;
 use App\Entity\Order;
 use App\Entity\Payment;
 use App\Entity\PaymentRefund;
@@ -63,6 +64,17 @@ class PaymentRefundRepository
             ->orderBy('r.requestedAt', 'ASC')
             ->getQuery()
             ->getResult();
+    }
+
+    public function findByCreditNote(Invoice $creditNote): ?PaymentRefund
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('r')
+            ->from(PaymentRefund::class, 'r')
+            ->where('r.creditNote = :creditNote')
+            ->setParameter('creditNote', $creditNote)
+            ->getQuery()
+            ->getOneOrNullResult();
     }
 
     public function hasActiveRefundForContract(Contract $contract): bool

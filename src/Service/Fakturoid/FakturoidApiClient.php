@@ -111,7 +111,7 @@ final readonly class FakturoidApiClient implements FakturoidClient
         }
     }
 
-    public function createInvoice(int $subjectId, Order $order, PaymentMethod $paidVia): FakturoidInvoice
+    public function createInvoice(int $subjectId, Order $order, PaymentMethod $paidVia, ?string $goPayPaymentId): FakturoidInvoice
     {
         $storage = $order->storage;
         $storageType = $storage->storageType;
@@ -126,7 +126,7 @@ final readonly class FakturoidApiClient implements FakturoidClient
                 // these two fields Fakturoid defaults the VS to the invoice number and the
                 // PDF shows a due date — customers have paid such invoices a second time,
                 // with a VS the bank matcher cannot resolve.
-                ...$this->paidDocumentFields($order->variableSymbol, $paidVia),
+                ...$this->paidDocumentFields($order->variableSymbol, $paidVia, $goPayPaymentId),
                 'lines' => [
                     [
                         'name' => sprintf(
@@ -178,7 +178,7 @@ final readonly class FakturoidApiClient implements FakturoidClient
         );
     }
 
-    public function createDebtInvoice(int $subjectId, Order $order, PaymentMethod $paidVia): FakturoidInvoice
+    public function createDebtInvoice(int $subjectId, Order $order, PaymentMethod $paidVia, ?string $goPayPaymentId): FakturoidInvoice
     {
         $place = $order->storage->getPlace();
 
@@ -187,7 +187,7 @@ final readonly class FakturoidApiClient implements FakturoidClient
                 'subject_id' => $subjectId,
                 // The debt amount is gross (vč. DPH); Fakturoid must back-calculate VAT, not add it on top.
                 'vat_price_mode' => 'from_total_with_vat',
-                ...$this->paidDocumentFields($order->variableSymbol, $paidVia),
+                ...$this->paidDocumentFields($order->variableSymbol, $paidVia, $goPayPaymentId),
                 'lines' => [
                     [
                         // The debt is from a previous arrangement — name it generically, tagged by place for the books.
@@ -235,7 +235,7 @@ final readonly class FakturoidApiClient implements FakturoidClient
         );
     }
 
-    public function createFineInvoice(int $subjectId, Fine $fine, PaymentMethod $paidVia): FakturoidInvoice
+    public function createFineInvoice(int $subjectId, Fine $fine, PaymentMethod $paidVia, ?string $goPayPaymentId): FakturoidInvoice
     {
         $place = $fine->contract->storage->getPlace();
 
@@ -245,7 +245,7 @@ final readonly class FakturoidApiClient implements FakturoidClient
                 // Kept for symmetry with the other invoices: were the rate ever
                 // flipped to a non-zero one, the gross amount must stay gross.
                 'vat_price_mode' => 'from_total_with_vat',
-                ...$this->paidDocumentFields($fine->variableSymbol, $paidVia),
+                ...$this->paidDocumentFields($fine->variableSymbol, $paidVia, $goPayPaymentId),
                 'lines' => [
                     [
                         'name' => sprintf('Smluvní pokuta — %s (%s)', $fine->type->label(), $place->name),
@@ -293,7 +293,7 @@ final readonly class FakturoidApiClient implements FakturoidClient
         );
     }
 
-    public function createRecurringInvoice(int $subjectId, Contract $contract, int $amount, \DateTimeImmutable $billingDate, PaymentMethod $paidVia, ?\DateTimeImmutable $periodStart = null, ?\DateTimeImmutable $periodEnd = null): FakturoidInvoice
+    public function createRecurringInvoice(int $subjectId, Contract $contract, int $amount, \DateTimeImmutable $billingDate, PaymentMethod $paidVia, ?string $goPayPaymentId, ?\DateTimeImmutable $periodStart = null, ?\DateTimeImmutable $periodEnd = null): FakturoidInvoice
     {
         $storage = $contract->storage;
         $storageType = $storage->storageType;
@@ -312,7 +312,7 @@ final readonly class FakturoidApiClient implements FakturoidClient
                 'subject_id' => $subjectId,
                 // Prices in our system are gross (vč. DPH); Fakturoid must back-calculate VAT, not add it on top.
                 'vat_price_mode' => 'from_total_with_vat',
-                ...$this->paidDocumentFields($contract->order->variableSymbol, $paidVia),
+                ...$this->paidDocumentFields($contract->order->variableSymbol, $paidVia, $goPayPaymentId),
                 'lines' => [
                     [
                         'name' => sprintf(
@@ -369,6 +369,7 @@ final readonly class FakturoidApiClient implements FakturoidClient
         int $amount,
         string $lineName,
         PaymentMethod $paidVia,
+        ?string $goPayPaymentId,
         ?string $variableSymbol,
     ): FakturoidInvoice {
         try {
@@ -380,7 +381,7 @@ final readonly class FakturoidApiClient implements FakturoidClient
                 'vat_price_mode' => 'from_total_with_vat',
                 // The money already went back to the card — the PDF must not
                 // read like something still to be settled.
-                ...$this->paidDocumentFields($variableSymbol, $paidVia),
+                ...$this->paidDocumentFields($variableSymbol, $paidVia, $goPayPaymentId),
                 'lines' => [
                     [
                         'name' => $lineName,
@@ -451,6 +452,13 @@ final readonly class FakturoidApiClient implements FakturoidClient
         // Throws on failure (e.g. 403 document_locked) — the backfill command
         // reports each invoice it could not update.
         $this->manager->getInvoicesProvider()->update($invoiceId, $this->paymentMethodFields($paidVia));
+    }
+
+    public function updateInvoiceGoPayPaymentId(int $invoiceId, string $goPayPaymentId): void
+    {
+        // Throws on failure (e.g. 403 document_locked) — the backfill command
+        // reports each invoice it could not update.
+        $this->manager->getInvoicesProvider()->update($invoiceId, $this->goPayPaymentIdFields($goPayPaymentId));
     }
 
     public function downloadInvoicePdf(int $invoiceId): string
@@ -528,19 +536,24 @@ final readonly class FakturoidApiClient implements FakturoidClient
      * sends a VS the bank matcher resolves straight to the order.
      *
      * The payment method is printed on the PDF ("Způsob platby") — it is how
-     * the accountant tells a card payment from a bank transfer.
+     * the accountant tells a card payment from a bank transfer. A card
+     * payment also carries its GoPay payment ID, see goPayPaymentIdFields().
      *
      * NOT used by createSelfBillingInvoice — that one is a proforma we still
      * owe money on.
      *
      * @return array<string, mixed>
      */
-    private function paidDocumentFields(?string $variableSymbol, PaymentMethod $paidVia): array
+    private function paidDocumentFields(?string $variableSymbol, PaymentMethod $paidVia, ?string $goPayPaymentId): array
     {
         $fields = [
             'show_already_paid_note_in_pdf' => true,
             ...$this->paymentMethodFields($paidVia),
         ];
+
+        if (null !== $goPayPaymentId && '' !== $goPayPaymentId) {
+            $fields = [...$fields, ...$this->goPayPaymentIdFields($goPayPaymentId)];
+        }
 
         if (null !== $variableSymbol && '' !== $variableSymbol) {
             $fields['variable_symbol'] = $variableSymbol;
@@ -555,6 +568,20 @@ final readonly class FakturoidApiClient implements FakturoidClient
     private function paymentMethodFields(PaymentMethod $paidVia): array
     {
         return ['payment_method' => $paidVia->fakturoidPaymentMethod()];
+    }
+
+    /**
+     * The paying GoPay payment ID goes to `order_number` ("Číslo objednávky")
+     * — the ONLY invoice field Fakturoid exports to ISDOC (as
+     * OrderReference/ExternalOrderID; custom_id, tags and private_note are
+     * not exported, verified 2026-11-13). Bare ID, no prefix, so the
+     * accountant's software can match it against the GoPay statement as is.
+     *
+     * @return array<string, string>
+     */
+    private function goPayPaymentIdFields(string $goPayPaymentId): array
+    {
+        return ['order_number' => $goPayPaymentId];
     }
 
     /**

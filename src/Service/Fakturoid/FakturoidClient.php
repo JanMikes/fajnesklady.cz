@@ -21,23 +21,26 @@ interface FakturoidClient
 
     /**
      * Every customer invoice carries HOW it was paid ($paidVia) — Fakturoid
-     * prints it on the PDF as "Způsob platby".
+     * prints it on the PDF as "Způsob platby" — and, for a card payment, the
+     * paying GoPay payment ID ($goPayPaymentId) as "Číslo objednávky", the
+     * only field Fakturoid exports to ISDOC (OrderReference/ExternalOrderID).
+     * It is how the accountant pairs GoPay payouts with invoices (spec 093).
      */
-    public function createInvoice(int $subjectId, Order $order, PaymentMethod $paidVia): FakturoidInvoice;
+    public function createInvoice(int $subjectId, Order $order, PaymentMethod $paidVia, ?string $goPayPaymentId): FakturoidInvoice;
 
     /**
      * Invoice for the pre-existing onboarding debt (Order.onboardingDebtInHaler).
      * The amount is gross (vč. DPH), taxed like rent — see createInvoice.
      */
-    public function createDebtInvoice(int $subjectId, Order $order, PaymentMethod $paidVia): FakturoidInvoice;
+    public function createDebtInvoice(int $subjectId, Order $order, PaymentMethod $paidVia, ?string $goPayPaymentId): FakturoidInvoice;
 
     /**
      * Invoice for a paid smluvní pokuta. Unlike rent/debt, a contractual
      * penalty is not consideration for a taxable supply — vat_rate is 0 %.
      */
-    public function createFineInvoice(int $subjectId, Fine $fine, PaymentMethod $paidVia): FakturoidInvoice;
+    public function createFineInvoice(int $subjectId, Fine $fine, PaymentMethod $paidVia, ?string $goPayPaymentId): FakturoidInvoice;
 
-    public function createRecurringInvoice(int $subjectId, Contract $contract, int $amount, \DateTimeImmutable $billingDate, PaymentMethod $paidVia, ?\DateTimeImmutable $periodStart = null, ?\DateTimeImmutable $periodEnd = null): FakturoidInvoice;
+    public function createRecurringInvoice(int $subjectId, Contract $contract, int $amount, \DateTimeImmutable $billingDate, PaymentMethod $paidVia, ?string $goPayPaymentId, ?\DateTimeImmutable $periodStart = null, ?\DateTimeImmutable $periodEnd = null): FakturoidInvoice;
 
     /**
      * Credit note (opravný daňový doklad) for a refund: a Fakturoid
@@ -51,6 +54,7 @@ interface FakturoidClient
         int $amount,
         string $lineName,
         PaymentMethod $paidVia,
+        ?string $goPayPaymentId,
         ?string $variableSymbol,
     ): FakturoidInvoice;
 
@@ -63,6 +67,13 @@ interface FakturoidClient
      * refuses — e.g. a locked document.
      */
     public function updateInvoicePaymentMethod(int $invoiceId, PaymentMethod $paidVia): void;
+
+    /**
+     * Stamp the paying GoPay payment ID on an already issued invoice
+     * (backfill, spec 093). Throws when Fakturoid refuses — e.g. a locked
+     * document.
+     */
+    public function updateInvoiceGoPayPaymentId(int $invoiceId, string $goPayPaymentId): void;
 
     /**
      * Create a self-billing invoice in Fakturoid.

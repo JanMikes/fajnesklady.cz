@@ -383,6 +383,20 @@ final class MockGoPayClient implements GoPayClient
     }
 
     /**
+     * Seed the status GoPay reports for a historical payment (e.g. PAID with
+     * its amount) — for code that verifies stored ids against GoPay.
+     */
+    public function seedPaymentStatus(string $paymentId, string $state, ?int $amount): void
+    {
+        $this->paymentStatuses[$paymentId] = new GoPayPaymentStatus(
+            id: $paymentId,
+            state: $state,
+            parentId: null,
+            amount: $amount,
+        );
+    }
+
+    /**
      * Seed a status row directly so tests can simulate a known in-flight
      * GoPay payment without going through createRecurrence first.
      */

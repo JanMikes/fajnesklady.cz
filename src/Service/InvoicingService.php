@@ -39,13 +39,14 @@ readonly class InvoicingService
 
         $paidVia = $this->firstPaymentMethod($order);
         self::assertPaymentEvidence($paidVia);
+        $goPayPaymentId = PaymentMethod::GOPAY === $paidVia ? $this->firstPaymentGoPayId($order) : null;
         $subjectId = $this->ensureFakturoidSubject($user, $now);
 
         try {
-            $fakturoidInvoice = $this->fakturoidClient->createInvoice($subjectId, $order, $paidVia);
+            $fakturoidInvoice = $this->fakturoidClient->createInvoice($subjectId, $order, $paidVia, $goPayPaymentId);
         } catch (StaleFakturoidSubjectException $e) {
             $subjectId = $this->recreateFakturoidSubject($user, $now, $e->subjectId);
-            $fakturoidInvoice = $this->fakturoidClient->createInvoice($subjectId, $order, $paidVia);
+            $fakturoidInvoice = $this->fakturoidClient->createInvoice($subjectId, $order, $paidVia, $goPayPaymentId);
         }
 
         // Invoice is created after payment, so mark it as paid immediately
@@ -62,6 +63,7 @@ readonly class InvoicingService
             amount: $fakturoidInvoice->total,
             issuedAt: $now,
             createdAt: $now,
+            goPayPaymentId: $goPayPaymentId,
         );
 
         // Save invoice first so InvoiceCreated event fires (email sent even without PDF)
@@ -89,13 +91,16 @@ readonly class InvoicingService
         // Set by Order::markDebtPaid() before OnboardingDebtPaid fires this.
         $paidVia = $order->debtPaidVia ?? PaymentMethod::EXTERNAL;
         self::assertPaymentEvidence($paidVia);
+        // The webhook finds the debt order BY this id, and a paid debt never
+        // opens another session — it is the payment that settled the debt.
+        $goPayPaymentId = PaymentMethod::GOPAY === $paidVia ? $order->debtGoPayPaymentId : null;
         $subjectId = $this->ensureFakturoidSubject($user, $now);
 
         try {
-            $fakturoidInvoice = $this->fakturoidClient->createDebtInvoice($subjectId, $order, $paidVia);
+            $fakturoidInvoice = $this->fakturoidClient->createDebtInvoice($subjectId, $order, $paidVia, $goPayPaymentId);
         } catch (StaleFakturoidSubjectException $e) {
             $subjectId = $this->recreateFakturoidSubject($user, $now, $e->subjectId);
-            $fakturoidInvoice = $this->fakturoidClient->createDebtInvoice($subjectId, $order, $paidVia);
+            $fakturoidInvoice = $this->fakturoidClient->createDebtInvoice($subjectId, $order, $paidVia, $goPayPaymentId);
         }
 
         // The debt is already paid when this runs, so mark the invoice paid immediately.
@@ -110,6 +115,7 @@ readonly class InvoicingService
             amount: $fakturoidInvoice->total,
             issuedAt: $now,
             createdAt: $now,
+            goPayPaymentId: $goPayPaymentId,
         );
 
         // Save invoice first so InvoiceCreated event fires (email sent even without PDF)
@@ -137,13 +143,15 @@ readonly class InvoicingService
         // Set by Fine::markPaid() before FinePaid fires this.
         $paidVia = $fine->paidVia ?? PaymentMethod::EXTERNAL;
         self::assertPaymentEvidence($paidVia);
+        // Same argument as the debt: the webhook settles the fine found by this id.
+        $goPayPaymentId = PaymentMethod::GOPAY === $paidVia ? $fine->goPayPaymentId : null;
         $subjectId = $this->ensureFakturoidSubject($user, $now);
 
         try {
-            $fakturoidInvoice = $this->fakturoidClient->createFineInvoice($subjectId, $fine, $paidVia);
+            $fakturoidInvoice = $this->fakturoidClient->createFineInvoice($subjectId, $fine, $paidVia, $goPayPaymentId);
         } catch (StaleFakturoidSubjectException $e) {
             $subjectId = $this->recreateFakturoidSubject($user, $now, $e->subjectId);
-            $fakturoidInvoice = $this->fakturoidClient->createFineInvoice($subjectId, $fine, $paidVia);
+            $fakturoidInvoice = $this->fakturoidClient->createFineInvoice($subjectId, $fine, $paidVia, $goPayPaymentId);
         }
 
         // The fine is already paid when this runs, so mark the invoice paid immediately.
@@ -159,6 +167,7 @@ readonly class InvoicingService
             issuedAt: $now,
             createdAt: $now,
             fine: $fine,
+            goPayPaymentId: $goPayPaymentId,
         );
 
         // Save invoice first so InvoiceCreated event fires (email sent even without PDF)
@@ -184,19 +193,21 @@ readonly class InvoicingService
         int $amount,
         \DateTimeImmutable $chargedAt,
         PaymentMethod $paidVia,
+        ?string $goPayPaymentId,
         ?\DateTimeImmutable $periodStart = null,
         ?\DateTimeImmutable $periodEnd = null,
     ): Invoice {
         self::assertPaymentEvidence($paidVia);
+        $goPayPaymentId = PaymentMethod::GOPAY === $paidVia ? $goPayPaymentId : null;
         $user = $contract->user;
 
         $subjectId = $this->ensureFakturoidSubject($user, $chargedAt);
 
         try {
-            $fakturoidInvoice = $this->fakturoidClient->createRecurringInvoice($subjectId, $contract, $amount, $chargedAt, $paidVia, $periodStart, $periodEnd);
+            $fakturoidInvoice = $this->fakturoidClient->createRecurringInvoice($subjectId, $contract, $amount, $chargedAt, $paidVia, $goPayPaymentId, $periodStart, $periodEnd);
         } catch (StaleFakturoidSubjectException $e) {
             $subjectId = $this->recreateFakturoidSubject($user, $chargedAt, $e->subjectId);
-            $fakturoidInvoice = $this->fakturoidClient->createRecurringInvoice($subjectId, $contract, $amount, $chargedAt, $paidVia, $periodStart, $periodEnd);
+            $fakturoidInvoice = $this->fakturoidClient->createRecurringInvoice($subjectId, $contract, $amount, $chargedAt, $paidVia, $goPayPaymentId, $periodStart, $periodEnd);
         }
 
         // Recurring payments are charged immediately, so mark as paid
@@ -211,6 +222,7 @@ readonly class InvoicingService
             amount: $fakturoidInvoice->total,
             issuedAt: $chargedAt,
             createdAt: $chargedAt,
+            goPayPaymentId: $goPayPaymentId,
         );
 
         $this->invoiceRepository->save($invoice);
@@ -246,14 +258,17 @@ readonly class InvoicingService
         $user = $order->user;
         $paidVia = $refund->payment->paidVia;
         self::assertPaymentEvidence($paidVia);
+        // GoPay books a refund under the refunded payment's own id — the
+        // accountant pairs the credit note with the same id.
+        $goPayPaymentId = PaymentMethod::GOPAY === $paidVia ? $refund->payment->goPayPaymentId : null;
         $lineName = self::creditNoteLineName($refund);
         $subjectId = $this->ensureFakturoidSubject($user, $now);
 
         try {
-            $fakturoidInvoice = $this->fakturoidClient->createCreditNote($subjectId, $original->fakturoidInvoiceId, $refund->amount, $lineName, $paidVia, $order->variableSymbol);
+            $fakturoidInvoice = $this->fakturoidClient->createCreditNote($subjectId, $original->fakturoidInvoiceId, $refund->amount, $lineName, $paidVia, $goPayPaymentId, $order->variableSymbol);
         } catch (StaleFakturoidSubjectException $e) {
             $subjectId = $this->recreateFakturoidSubject($user, $now, $e->subjectId);
-            $fakturoidInvoice = $this->fakturoidClient->createCreditNote($subjectId, $original->fakturoidInvoiceId, $refund->amount, $lineName, $paidVia, $order->variableSymbol);
+            $fakturoidInvoice = $this->fakturoidClient->createCreditNote($subjectId, $original->fakturoidInvoiceId, $refund->amount, $lineName, $paidVia, $goPayPaymentId, $order->variableSymbol);
         }
 
         // The money is already back on the card — settle the document so the
@@ -272,6 +287,7 @@ readonly class InvoicingService
             issuedAt: $now,
             createdAt: $now,
             correctionOf: $original,
+            goPayPaymentId: $goPayPaymentId,
         );
 
         $this->invoiceRepository->save($creditNote);
@@ -339,6 +355,21 @@ readonly class InvoicingService
         return $order->paidVia
             ?? $this->paymentRepository->findByOrder($order)->paidVia
             ?? PaymentMethod::EXTERNAL;
+    }
+
+    /**
+     * The GoPay payment that settled a card-paid order: its first Payment row
+     * records it (RecordPaymentOnOrderPaidHandler). Fallback — that row is
+     * written by a sibling OrderPaid handler and may not exist yet — the
+     * order's own session id: markPaid() records GOPAY only after GoPay
+     * confirmed THAT id (webhook / return page both look it up by the order's
+     * id), and a paid order never opens another session.
+     */
+    private function firstPaymentGoPayId(Order $order): ?string
+    {
+        $payment = $this->paymentRepository->findByOrder($order);
+
+        return $payment->goPayPaymentId ?? $order->goPayPaymentId;
     }
 
     private function ensureFakturoidSubject(User $user, \DateTimeImmutable $now): int

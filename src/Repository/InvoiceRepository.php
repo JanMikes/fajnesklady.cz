@@ -172,4 +172,38 @@ class InvoiceRepository
             ->getQuery()
             ->getResult();
     }
+
+    /**
+     * Invoices Fakturoid has not been given a GoPay payment id for — the
+     * spec-093 backfill queue, oldest first.
+     *
+     * @return list<Invoice>
+     */
+    public function findWithoutGoPayPaymentId(): array
+    {
+        return $this->entityManager->createQueryBuilder()
+            ->select('i')
+            ->from(Invoice::class, 'i')
+            ->where('i.goPayPaymentId IS NULL')
+            ->orderBy('i.issuedAt', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
+
+    /**
+     * Whether a non-credit-note invoice already documents this GoPay payment
+     * — one payment is invoiced once; only its credit notes share the id.
+     */
+    public function existsInvoiceForGoPayPaymentId(string $goPayPaymentId): bool
+    {
+        return null !== $this->entityManager->createQueryBuilder()
+            ->select('i.id')
+            ->from(Invoice::class, 'i')
+            ->where('i.goPayPaymentId = :goPayPaymentId')
+            ->andWhere('i.correctionOf IS NULL')
+            ->setParameter('goPayPaymentId', $goPayPaymentId)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
 }

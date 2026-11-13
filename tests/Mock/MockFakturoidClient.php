@@ -28,6 +28,9 @@ final class MockFakturoidClient implements FakturoidClient
     /** @var array<int, PaymentMethod> invoice id => method it was issued / re-labelled with */
     private array $invoicePaymentMethods = [];
 
+    /** @var array<int, ?string> invoice id => GoPay payment id sent as order_number */
+    private array $invoiceGoPayPaymentIds = [];
+
     /** @var list<int> invoice ids whose update must fail like a locked document */
     private array $lockedInvoiceIds = [];
 
@@ -50,7 +53,7 @@ final class MockFakturoidClient implements FakturoidClient
         // No-op in mock
     }
 
-    public function createInvoice(int $subjectId, Order $order, PaymentMethod $paidVia): FakturoidInvoice
+    public function createInvoice(int $subjectId, Order $order, PaymentMethod $paidVia, ?string $goPayPaymentId): FakturoidInvoice
     {
         $invoiceId = $this->nextInvoiceId++;
         $invoice = new FakturoidInvoice(
@@ -61,11 +64,12 @@ final class MockFakturoidClient implements FakturoidClient
 
         $this->createdInvoices[$invoice->id] = $invoice;
         $this->invoicePaymentMethods[$invoice->id] = $paidVia;
+        $this->invoiceGoPayPaymentIds[$invoice->id] = $goPayPaymentId;
 
         return $invoice;
     }
 
-    public function createDebtInvoice(int $subjectId, Order $order, PaymentMethod $paidVia): FakturoidInvoice
+    public function createDebtInvoice(int $subjectId, Order $order, PaymentMethod $paidVia, ?string $goPayPaymentId): FakturoidInvoice
     {
         $invoiceId = $this->nextInvoiceId++;
         $invoice = new FakturoidInvoice(
@@ -76,11 +80,12 @@ final class MockFakturoidClient implements FakturoidClient
 
         $this->createdInvoices[$invoice->id] = $invoice;
         $this->invoicePaymentMethods[$invoice->id] = $paidVia;
+        $this->invoiceGoPayPaymentIds[$invoice->id] = $goPayPaymentId;
 
         return $invoice;
     }
 
-    public function createFineInvoice(int $subjectId, Fine $fine, PaymentMethod $paidVia): FakturoidInvoice
+    public function createFineInvoice(int $subjectId, Fine $fine, PaymentMethod $paidVia, ?string $goPayPaymentId): FakturoidInvoice
     {
         $invoiceId = $this->nextInvoiceId++;
         $invoice = new FakturoidInvoice(
@@ -91,11 +96,12 @@ final class MockFakturoidClient implements FakturoidClient
 
         $this->createdInvoices[$invoice->id] = $invoice;
         $this->invoicePaymentMethods[$invoice->id] = $paidVia;
+        $this->invoiceGoPayPaymentIds[$invoice->id] = $goPayPaymentId;
 
         return $invoice;
     }
 
-    public function createRecurringInvoice(int $subjectId, Contract $contract, int $amount, \DateTimeImmutable $billingDate, PaymentMethod $paidVia, ?\DateTimeImmutable $periodStart = null, ?\DateTimeImmutable $periodEnd = null): FakturoidInvoice
+    public function createRecurringInvoice(int $subjectId, Contract $contract, int $amount, \DateTimeImmutable $billingDate, PaymentMethod $paidVia, ?string $goPayPaymentId, ?\DateTimeImmutable $periodStart = null, ?\DateTimeImmutable $periodEnd = null): FakturoidInvoice
     {
         $invoiceId = $this->nextInvoiceId++;
         $invoice = new FakturoidInvoice(
@@ -106,6 +112,7 @@ final class MockFakturoidClient implements FakturoidClient
 
         $this->createdInvoices[$invoice->id] = $invoice;
         $this->invoicePaymentMethods[$invoice->id] = $paidVia;
+        $this->invoiceGoPayPaymentIds[$invoice->id] = $goPayPaymentId;
 
         return $invoice;
     }
@@ -121,6 +128,7 @@ final class MockFakturoidClient implements FakturoidClient
         int $amount,
         string $lineName,
         PaymentMethod $paidVia,
+        ?string $goPayPaymentId,
         ?string $variableSymbol,
     ): FakturoidInvoice {
         if ($this->failNextCreditNote) {
@@ -138,6 +146,7 @@ final class MockFakturoidClient implements FakturoidClient
 
         $this->createdInvoices[$invoice->id] = $invoice;
         $this->invoicePaymentMethods[$invoice->id] = $paidVia;
+        $this->invoiceGoPayPaymentIds[$invoice->id] = $goPayPaymentId;
         $this->createdCreditNotes[$invoice->id] = [
             'correctedInvoiceId' => $correctedInvoiceId,
             'amount' => $amount,
@@ -172,6 +181,20 @@ final class MockFakturoidClient implements FakturoidClient
         }
 
         $this->invoicePaymentMethods[$invoiceId] = $paidVia;
+    }
+
+    public function updateInvoiceGoPayPaymentId(int $invoiceId, string $goPayPaymentId): void
+    {
+        if (in_array($invoiceId, $this->lockedInvoiceIds, true)) {
+            throw new \RuntimeException(sprintf('Invoice %d is locked (document_locked).', $invoiceId));
+        }
+
+        $this->invoiceGoPayPaymentIds[$invoiceId] = $goPayPaymentId;
+    }
+
+    public function goPayPaymentIdOf(int $invoiceId): ?string
+    {
+        return $this->invoiceGoPayPaymentIds[$invoiceId] ?? null;
     }
 
     public function willRefuseUpdateOf(int $invoiceId): void
@@ -231,6 +254,7 @@ final class MockFakturoidClient implements FakturoidClient
         $this->createdSubjects = [];
         $this->createdInvoices = [];
         $this->invoicePaymentMethods = [];
+        $this->invoiceGoPayPaymentIds = [];
         $this->lockedInvoiceIds = [];
         $this->pdfContent = '%PDF-1.4 mock content';
         $this->createdCreditNotes = [];

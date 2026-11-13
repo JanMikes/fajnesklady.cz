@@ -17,7 +17,9 @@ use App\Repository\BankTransactionRepository;
 use App\Repository\ContractRepository;
 use App\Repository\FineRepository;
 use App\Repository\OrderRepository;
+use App\Repository\PaymentRefundRepository;
 use App\Repository\PaymentRepository;
+use App\Value\InvoicePaymentSource;
 
 /**
  * One-off repair behind app:backfill-payment-methods: works out HOW each
@@ -48,6 +50,7 @@ final readonly class PaymentMethodBackfill
         private FineRepository $fineRepository,
         private ContractRepository $contractRepository,
         private AuditLogRepository $auditLogRepository,
+        private PaymentRefundRepository $paymentRefundRepository,
     ) {
     }
 
@@ -189,17 +192,48 @@ final readonly class PaymentMethodBackfill
      */
     public function resolveInvoicePaymentMethod(Invoice $invoice): ?PaymentMethod
     {
+        return $this->resolveInvoicePaymentSource($invoice)?->method;
+    }
+
+    /**
+     * The money an issued invoice documents: how it arrived and, for a card
+     * payment, the GoPay payment id. Credit notes and fine invoices are linked
+     * explicitly; every other invoice has no link to its Payment, so it is the
+     * same-amount payment (or debt settlement) closest in time to the invoice,
+     * within a day. Null when nothing proves the source.
+     *
+     * The GoPay id is whatever the platform stored — it is NOT verified here
+     * (legacy rows once carried bank-transaction UUIDs); callers writing it to
+     * a tax document must confirm it with GoPay first.
+     */
+    public function resolveInvoicePaymentSource(Invoice $invoice): ?InvoicePaymentSource
+    {
+        if (null !== $invoice->correctionOf) {
+            // A GoPay refund lives under the refunded payment's own id.
+            $payment = $this->paymentRefundRepository->findByCreditNote($invoice)?->payment;
+
+            return null !== $payment ? new InvoicePaymentSource($payment->paidVia, $payment->goPayPaymentId) : null;
+        }
+
         if (null !== $invoice->fine) {
-            return $invoice->fine->paidVia;
+            $fine = $invoice->fine;
+
+            return null !== $fine->paidVia
+                ? new InvoicePaymentSource($fine->paidVia, PaymentMethod::GOPAY === $fine->paidVia ? $fine->goPayPaymentId : null)
+                : null;
         }
 
         $order = $invoice->order;
 
-        /** @var list<array{at: \DateTimeImmutable, via: ?PaymentMethod}> $candidates */
+        /** @var list<array{at: \DateTimeImmutable, via: ?PaymentMethod, goPayPaymentId: ?string}> $candidates */
         $candidates = [];
 
         if (null !== $order->debtPaidAt && $order->onboardingDebtInHaler === $invoice->amount) {
-            $candidates[] = ['at' => $order->debtPaidAt, 'via' => $order->debtPaidVia];
+            $candidates[] = [
+                'at' => $order->debtPaidAt,
+                'via' => $order->debtPaidVia,
+                'goPayPaymentId' => PaymentMethod::GOPAY === $order->debtPaidVia ? $order->debtGoPayPaymentId : null,
+            ];
         }
 
         $contract = $this->contractRepository->findByOrder($order);
@@ -208,7 +242,7 @@ final readonly class PaymentMethodBackfill
                 continue; // a storno row never evidences how an invoice was paid
             }
             if ($payment->amount === $invoice->amount) {
-                $candidates[] = ['at' => $payment->paidAt, 'via' => $this->evidencedMethod($payment, $order)];
+                $candidates[] = ['at' => $payment->paidAt, 'via' => $this->evidencedMethod($payment, $order), 'goPayPaymentId' => $payment->goPayPaymentId];
             }
         }
 
@@ -222,7 +256,11 @@ final readonly class PaymentMethodBackfill
             }
         }
 
-        return $best['via'] ?? null;
+        if (null === $best || null === $best['via']) {
+            return null;
+        }
+
+        return new InvoicePaymentSource($best['via'], $best['goPayPaymentId']);
     }
 
     /**

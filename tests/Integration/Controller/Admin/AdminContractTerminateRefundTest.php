@@ -115,6 +115,9 @@ class AdminContractTerminateRefundTest extends WebTestCase
         $creditNotes = $this->fakturoid->getCreatedCreditNotes();
         $this->assertCount(1, $creditNotes);
         $this->assertSame($invoice->fakturoidInvoiceId, array_values($creditNotes)[0]['correctedInvoiceId']);
+        // GoPay books the refund under the refunded payment's id — the accountant pairs by it (spec 093).
+        $this->assertSame(self::GOPAY_ID, $refund->creditNote->goPayPaymentId);
+        $this->assertSame(self::GOPAY_ID, $this->fakturoid->goPayPaymentIdOf($refund->creditNote->fakturoidInvoiceId));
 
         $email = $this->findEmail('Vrácení platby — Fajnesklady.cz');
         $this->assertNotNull($email);

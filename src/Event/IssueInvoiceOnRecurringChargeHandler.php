@@ -30,6 +30,7 @@ final readonly class IssueInvoiceOnRecurringChargeHandler
                 $event->amount,
                 $event->occurredOn,
                 null !== $event->goPayPaymentId ? PaymentMethod::GOPAY : PaymentMethod::BANK_TRANSFER,
+                $event->goPayPaymentId,
                 $event->periodStart,
                 $event->periodEnd,
             );

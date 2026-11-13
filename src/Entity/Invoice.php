@@ -50,6 +50,11 @@ class Invoice implements EntityWithEvents
         #[ORM\ManyToOne(targetEntity: Invoice::class)]
         #[ORM\JoinColumn(nullable: true)]
         private(set) ?Invoice $correctionOf = null,
+        // The GoPay payment that paid this document (a credit note: the one it
+        // refunds) — what Fakturoid got as "Číslo objednávky" (spec 093).
+        // Null for bank-transfer documents and not-yet-backfilled history.
+        #[ORM\Column(length: 50, nullable: true)]
+        public private(set) ?string $goPayPaymentId = null,
     ) {
         $this->recordThat(new InvoiceCreated(
             invoiceId: $this->id,
@@ -78,6 +83,19 @@ class Invoice implements EntityWithEvents
     public function isEmailed(): bool
     {
         return null !== $this->emailedAt;
+    }
+
+    /**
+     * One-off repair for invoices issued before the ID was stored — called
+     * only after Fakturoid accepted the same value.
+     */
+    public function backfillGoPayPaymentId(string $goPayPaymentId): void
+    {
+        if (null !== $this->goPayPaymentId) {
+            throw new \DomainException('The invoice already carries a GoPay payment ID.');
+        }
+
+        $this->goPayPaymentId = $goPayPaymentId;
     }
 
     public function isCreditNote(): bool

@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Service;
 
+use App\Entity\Contract;
+use App\Entity\Invoice;
 use App\Entity\Order;
+use App\Entity\Payment;
 use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
@@ -184,6 +187,105 @@ class InvoicingServiceTest extends TestCase
         );
 
         $service->issueInvoiceForOrder($order, new \DateTimeImmutable('2025-06-15 12:00:00'));
+    }
+
+    /**
+     * Spec 093: the paying GoPay id goes to Fakturoid ("Číslo objednávky" —
+     * the only field exported to ISDOC) and is stored on the invoice. The
+     * first Payment row is the record; the order's session id is the fallback
+     * while the sibling OrderPaid handler has not written that row yet.
+     */
+    public function testFirstPaymentInvoiceCarriesThePayingGoPayId(): void
+    {
+        $user = $this->createUser();
+        $user->setFakturoidSubjectId(54321, new \DateTimeImmutable('2025-06-15 12:00:00'));
+        $order = $this->createOrder($user);
+        $order->setGoPayPaymentId('3100000001');
+
+        $payment = new Payment(Uuid::v7(), $order, null, $order->storage, 35000, new \DateTimeImmutable('2025-06-15 11:00:00'), new \DateTimeImmutable('2025-06-15 11:00:00'));
+        $payment->setGoPayPaymentId('3100000002');
+        $withRow = $this->createStub(PaymentRepository::class);
+        $withRow->method('findByOrder')->willReturn($payment);
+
+        $this->assertSame('3100000002', $this->issueOrderInvoiceExpectingGoPayId($order, $withRow, PaymentMethod::GOPAY, '3100000002')->goPayPaymentId);
+        $this->assertSame('3100000001', $this->issueOrderInvoiceExpectingGoPayId($order, $this->createStub(PaymentRepository::class), PaymentMethod::GOPAY, '3100000001')->goPayPaymentId);
+    }
+
+    /**
+     * Order 019f83e5 shape: a GoPay session was opened, then the money came by
+     * transfer. The abandoned session id must never reach the tax document.
+     */
+    public function testTransferPaidInvoiceCarriesNoGoPayId(): void
+    {
+        $user = $this->createUser();
+        $user->setFakturoidSubjectId(54321, new \DateTimeImmutable('2025-06-15 12:00:00'));
+        $order = $this->createOrder($user);
+        $order->setGoPayPaymentId('3100000003');
+        $order->markPaid(new \DateTimeImmutable('2025-06-15 11:00:00'), bankTransactionId: Uuid::v7());
+
+        $invoice = $this->issueOrderInvoiceExpectingGoPayId($order, $this->createStub(PaymentRepository::class), PaymentMethod::BANK_TRANSFER, null);
+
+        $this->assertNull($invoice->goPayPaymentId);
+    }
+
+    public function testDebtInvoiceCarriesTheGoPayIdThatSettledTheDebt(): void
+    {
+        $user = $this->createUser();
+        $user->setFakturoidSubjectId(54321, new \DateTimeImmutable('2025-06-15 12:00:00'));
+        $order = $this->createOrder($user);
+        $order->setOnboardingDebt(120_000);
+        $order->setDebtGoPayPaymentId('3100000004');
+        $order->markDebtPaid(new \DateTimeImmutable('2025-06-15 10:00:00'), PaymentMethod::GOPAY);
+
+        $fakturoidClient = $this->createMock(FakturoidClient::class);
+        $fakturoidClient->expects($this->once())
+            ->method('createDebtInvoice')
+            ->with(54321, $order, PaymentMethod::GOPAY, '3100000004')
+            ->willReturn(new FakturoidInvoice(70002, 'FV-2025-DEBT2', 120_000));
+        $fakturoidClient->method('downloadInvoicePdf')->willReturn('%PDF-1.4');
+
+        $invoice = $this->createService($fakturoidClient)->issueInvoiceForDebt($order, new \DateTimeImmutable('2025-06-15 12:00:00'));
+
+        $this->assertSame('3100000004', $invoice->goPayPaymentId);
+    }
+
+    /**
+     * @return iterable<string, array{PaymentMethod, ?string}>
+     */
+    public static function recurringCharges(): iterable
+    {
+        yield 'card charge' => [PaymentMethod::GOPAY, '3100000005'];
+        yield 'bank transfer' => [PaymentMethod::BANK_TRANSFER, null];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('recurringCharges')]
+    public function testRecurringInvoiceCarriesTheChargeGoPayIdOnlyForACardCharge(PaymentMethod $paidVia, ?string $expectedId): void
+    {
+        $user = $this->createUser();
+        $user->setFakturoidSubjectId(54321, new \DateTimeImmutable('2025-06-15 12:00:00'));
+        $order = $this->createOrder($user);
+        $contract = new Contract(
+            id: Uuid::v7(),
+            order: $order,
+            user: $user,
+            storage: $order->storage,
+            startDate: new \DateTimeImmutable('2025-06-20'),
+            endDate: new \DateTimeImmutable('2026-06-20'),
+            createdAt: new \DateTimeImmutable('2025-06-15 12:00:00'),
+        );
+        $chargedAt = new \DateTimeImmutable('2025-06-15 12:00:00');
+
+        $fakturoidClient = $this->createMock(FakturoidClient::class);
+        $fakturoidClient->expects($this->once())
+            ->method('createRecurringInvoice')
+            ->with(54321, $contract, 35000, $chargedAt, $paidVia, $expectedId)
+            ->willReturn(new FakturoidInvoice(70003, 'FV-2025-REC', 35000));
+        $fakturoidClient->method('downloadInvoicePdf')->willReturn('%PDF-1.4');
+
+        // A stray id next to a non-card method (defensive) is dropped, never sent.
+        $invoice = $this->createService($fakturoidClient)->issueInvoiceForRecurringPayment($contract, 35000, $chargedAt, $paidVia, '3100000005');
+
+        $this->assertSame($expectedId, $invoice->goPayPaymentId);
     }
 
     /**
@@ -404,6 +506,34 @@ class InvoicingServiceTest extends TestCase
         $this->assertDirectoryExists($nestedDir);
         $this->assertNotNull($invoice->pdfPath);
         $this->assertFileExists($invoice->pdfPath);
+    }
+
+    private function issueOrderInvoiceExpectingGoPayId(Order $order, PaymentRepository $paymentRepository, PaymentMethod $paidVia, ?string $goPayPaymentId): Invoice
+    {
+        $fakturoidClient = $this->createMock(FakturoidClient::class);
+        $fakturoidClient->expects($this->once())
+            ->method('createInvoice')
+            ->with(54321, $order, $paidVia, $goPayPaymentId)
+            ->willReturn(new FakturoidInvoice(66667, 'FV-2025-0004', 35000));
+        $fakturoidClient->method('downloadInvoicePdf')->willReturn('%PDF-1.4');
+
+        return $this->createService($fakturoidClient, $paymentRepository)->issueInvoiceForOrder($order, new \DateTimeImmutable('2025-06-15 12:00:00'));
+    }
+
+    private function createService(FakturoidClient $fakturoidClient, ?PaymentRepository $paymentRepository = null): InvoicingService
+    {
+        $identityProvider = $this->createStub(ProvideIdentity::class);
+        $identityProvider->method('next')->willReturn(Uuid::v7());
+
+        return new InvoicingService(
+            $fakturoidClient,
+            $identityProvider,
+            $this->createStub(InvoiceRepository::class),
+            $this->createStub(UserRepository::class),
+            $paymentRepository ?? $this->createStub(PaymentRepository::class),
+            new NullLogger(),
+            $this->tempDir,
+        );
     }
 
     private function createUser(): User
