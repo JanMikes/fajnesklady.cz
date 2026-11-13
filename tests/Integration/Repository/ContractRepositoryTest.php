@@ -619,6 +619,42 @@ class ContractRepositoryTest extends KernelTestCase
         $this->assertContains($tenant->id->toRfc4122(), $userIds);
     }
 
+    public function testUnscheduledUnpaidContractIsOverdueEverywhere(): void
+    {
+        $now = new \DateTimeImmutable('2025-06-15 12:00:00');
+
+        // Isolate so exact counts are assertable (DAMA rolls back).
+        $this->entityManager->getConnection()->executeStatement('DELETE FROM contract');
+
+        $tenant = $this->createUser('overdue-unscheduled@test.com');
+        $place = $this->createPlace();
+        $storageType = $this->createStorageType();
+
+        // 2026-11 regression shape: card cancelled → billing anchor wiped while
+        // the contract still runs past paidThroughDate. Must count as overdue.
+        $storageLost = $this->createStorage($storageType, $place, 'UNS1');
+        $orderLost = $this->createOrder($tenant, $storageLost, $now->modify('-30 days'), $now->modify('+30 days'));
+        $contractLost = $this->createContract($orderLost, $tenant, $storageLost, $now->modify('-30 days'), $now->modify('+30 days'));
+        $contractLost->setRecurringPayment('parent-lost', $now->modify('-2 days'), $now->modify('-2 days'));
+        $contractLost->cancelRecurringPayment();
+
+        // Paid to the end, no anchor — legitimately done, must NOT count.
+        $storageDone = $this->createStorage($storageType, $place, 'UNS2');
+        $orderDone = $this->createOrder($tenant, $storageDone, $now->modify('-30 days'), $now->modify('+30 days'));
+        $contractDone = $this->createContract($orderDone, $tenant, $storageDone, $now->modify('-30 days'), $now->modify('+30 days'));
+        $contractDone->setRecurringPayment('parent-done', $now->modify('+30 days'), $now->modify('+30 days'));
+        $contractDone->recordBillingCharge($now->modify('-2 days'), null, $contractDone->endDate);
+
+        $this->entityManager->flush();
+
+        self::assertTrue($contractLost->hasUnscheduledUnpaidPeriod());
+        self::assertFalse($contractDone->hasUnscheduledUnpaidPeriod());
+        $this->assertSame(1, $this->repository->countOverdueContracts($now));
+        $issues = $this->repository->findWithPaymentIssues($now);
+        $this->assertCount(1, $issues);
+        $this->assertTrue($issues[0]->id->equals($contractLost->id));
+    }
+
     public function testActivePaymentGraceSuppressesContractAcrossEveryOverdueSurface(): void
     {
         $now = new \DateTimeImmutable('2025-06-15 12:00:00');

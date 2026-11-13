@@ -49,7 +49,14 @@ class ContractRepository
     private const string OVERDUE_PREDICATE =
         '(c.terminatedAt IS NULL AND (c.paymentGraceUntil IS NULL OR c.paymentGraceUntil < :graceThreshold) '
         .'AND (c.failedBillingAttempts > 0 OR '
-        .'(c.nextBillingDate IS NOT NULL AND c.nextBillingDate < :overdueThreshold))) OR '
+        .'(c.nextBillingDate IS NOT NULL AND c.nextBillingDate < :overdueThreshold) OR '
+        // Unscheduled unpaid time: still running past paidThroughDate with no
+        // billing anchor at all — nothing will ever bill, remind or terminate
+        // it, so it must surface here (2026-11 card cancels wiped anchors).
+        // Mirrors Contract::hasUnscheduledUnpaidPeriod().
+        .'(c.nextBillingDate IS NULL AND c.paidThroughDate IS NOT NULL AND c.paidThroughDate < c.endDate '
+        .'AND c.paidThroughDate < :overdueThreshold '
+        .'AND (c.individualMonthlyAmount IS NULL OR c.individualMonthlyAmount <> 0)))) OR '
         .'(c.outstandingDebtAmount IS NOT NULL AND c.outstandingDebtAmount > 0)';
 
     public function __construct(

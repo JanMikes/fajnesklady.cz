@@ -200,6 +200,17 @@ final readonly class AdminOrderStageFactory
             );
         }
 
+        if ($contract->hasUnscheduledUnpaidPeriod()) {
+            /** @var \DateTimeImmutable $paidThrough */
+            $paidThrough = $contract->paidThroughDate;
+
+            return sprintf(
+                'POZOR: zaplaceno jen do %s, smlouva trvá do %s, ale žádná platba není naplánována — systém nic nevyúčtuje ani neupomene. Vyřešte ručně (výzva k platbě, nebo ukončení).',
+                $paidThrough->format('d.m.Y'),
+                $contract->endDate->format('d.m.Y'),
+            );
+        }
+
         if (null === $contract->nextBillingDate) {
             return null !== $contract->paidThroughDate
                 ? sprintf('Zaplaceno do konce smlouvy (%s) — nic dalšího se neúčtuje.', $contract->paidThroughDate->format('d.m.Y'))

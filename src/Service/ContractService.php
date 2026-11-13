@@ -6,7 +6,6 @@ namespace App\Service;
 
 use App\Entity\Contract;
 use App\Entity\Order;
-use App\Enum\BillingMode;
 use App\Enum\TerminationReason;
 use App\Repository\ContractRepository;
 use App\Repository\HandoverProtocolRepository;
@@ -100,29 +99,7 @@ final readonly class ContractService
      */
     public function calculateOutstandingDebt(Contract $contract, \DateTimeImmutable $terminationDate): int
     {
-        if (null === $contract->paidThroughDate) {
-            return 0;
-        }
-
-        if ($contract->paidThroughDate >= $terminationDate) {
-            return 0; // Paid through or past the termination date
-        }
-
-        $unpaidDays = (int) $contract->paidThroughDate->diff($terminationDate)->days;
-
-        if ($unpaidDays <= 0) {
-            return 0;
-        }
-
-        // Spec 078 tranches: upfront contracts owe at the LOCKED order rate
-        // (firstPaymentPrice / 12), not the live storage price — the debt must
-        // match the tranche the customer failed to pay.
-        $monthlyRate = BillingMode::ONE_TIME === $contract->billingMode && $contract->order->isPaidInUpfrontTranches()
-            ? $contract->order->getUpfrontLockedMonthlyRate()
-            : $contract->getEffectiveMonthlyAmount();
-        $dailyRate = $monthlyRate / 30;
-
-        return (int) round($unpaidDays * $dailyRate);
+        return $contract->calculateOutstandingDebt($terminationDate);
     }
 
     /**

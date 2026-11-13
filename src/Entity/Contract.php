@@ -720,6 +720,54 @@ class Contract implements EntityWithEvents
         return null !== $this->individualMonthlyAmount;
     }
 
+    /**
+     * Unpaid usage between paidThroughDate and $terminationDate, prorated at
+     * the monthly rate over a 30-day month. 0 when paid through that date.
+     */
+    public function calculateOutstandingDebt(\DateTimeImmutable $terminationDate): int
+    {
+        if (null === $this->paidThroughDate) {
+            return 0;
+        }
+
+        if ($this->paidThroughDate >= $terminationDate) {
+            return 0; // Paid through or past the termination date
+        }
+
+        $unpaidDays = (int) $this->paidThroughDate->diff($terminationDate)->days;
+
+        if ($unpaidDays <= 0) {
+            return 0;
+        }
+
+        // Spec 078 tranches: upfront contracts owe at the LOCKED order rate
+        // (firstPaymentPrice / 12), not the live storage price — the debt must
+        // match the tranche the customer failed to pay.
+        $monthlyRate = BillingMode::ONE_TIME === $this->billingMode && $this->order->isPaidInUpfrontTranches()
+            ? $this->order->getUpfrontLockedMonthlyRate()
+            : $this->getEffectiveMonthlyAmount();
+        $dailyRate = $monthlyRate / 30;
+
+        return (int) round($unpaidDays * $dailyRate);
+    }
+
+    /**
+     * The contract runs past what was paid, yet nothing is scheduled to bill
+     * it: no billing anchor, so no charge, payment request, overdue sweep or
+     * expiry-time debt will ever pick it up. Legitimate states never look like
+     * this (a fully-paid contract has paidThroughDate == endDate); it only
+     * arises from a wiped anchor — must be flagged to admins, not shown as
+     * "zaplaceno". Mirrors the unscheduled branch of the overdue predicate.
+     */
+    public function hasUnscheduledUnpaidPeriod(): bool
+    {
+        return !$this->isTerminated()
+            && !$this->isFree()
+            && null === $this->nextBillingDate
+            && null !== $this->paidThroughDate
+            && $this->paidThroughDate->format('Y-m-d') < $this->endDate->format('Y-m-d');
+    }
+
     public function isFree(): bool
     {
         return 0 === $this->individualMonthlyAmount;

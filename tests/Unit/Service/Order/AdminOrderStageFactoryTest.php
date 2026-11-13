@@ -199,6 +199,26 @@ class AdminOrderStageFactoryTest extends TestCase
         $this->assertStringContainsString('Zaplaceno do konce smlouvy', $stage->nextStep);
     }
 
+    public function testUnpaidTimeWithNothingScheduledIsNeverShownAsPaid(): void
+    {
+        // 2026-11: a card cancel wiped the billing anchor; the admin page said
+        // "Zaplaceno do konce smlouvy (12.11.2026)" for a contract running to
+        // 14.11 — nothing would ever bill it.
+        $order = $this->createOrder();
+        $order->markPaid($this->now);
+        $contract = $this->completeWithContract($order);
+        $paidThrough = $this->now->modify('-2 days');
+        $contract->setRecurringPayment('gp-token', $paidThrough, $paidThrough);
+        $contract->cancelRecurringPayment();
+
+        $stage = $this->factory->build($order, $contract, null, null, 0, $this->now);
+
+        $this->assertNotNull($stage->nextStep);
+        $this->assertStringNotContainsString('Zaplaceno do konce smlouvy', $stage->nextStep);
+        $this->assertStringContainsString('POZOR', $stage->nextStep);
+        $this->assertStringContainsString('žádná platba není naplánována', $stage->nextStep);
+    }
+
     public function testSignedOnboardingOrderWaitingForBankTransfer(): void
     {
         $order = $this->createOrder();

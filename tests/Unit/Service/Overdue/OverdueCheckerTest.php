@@ -45,6 +45,38 @@ class OverdueCheckerTest extends TestCase
         $this->assertSame('Strhnutí splatné', $views[0]->reasonLabel);
     }
 
+    public function testContractRunningPastPaidThroughWithNothingScheduledIsFlagged(): void
+    {
+        // 2026-11 regression: a card cancel wiped the billing anchor; the
+        // admin page showed "Zaplaceno do konce smlouvy" while the tenant
+        // kept the unit unpaid and nothing would ever bill or remind.
+        $now = $this->clock->now();
+        $contract = $this->createRecurringContract($now->modify('-2 days'));
+        $contract->cancelRecurringPayment();
+        self::assertTrue($contract->hasUnscheduledUnpaidPeriod());
+
+        $repository = $this->createStub(ContractRepository::class);
+        $repository->method('findWithPaymentIssues')->willReturn([$contract]);
+
+        $views = (new OverdueChecker($repository))->findOverdueViews($now);
+
+        $this->assertCount(1, $views);
+        $this->assertSame(OverdueSeverity::ERROR, $views[0]->severity);
+        $this->assertSame(2, $views[0]->daysOverdue);
+        $this->assertSame($contract->calculateOutstandingDebt($contract->endDate), $views[0]->overdueAmount);
+        $this->assertGreaterThan(0, $views[0]->overdueAmount);
+        $this->assertStringContainsString('žádná platba není naplánována', $views[0]->reasonLabel);
+    }
+
+    public function testContractPaidToTheEndIsNotUnscheduled(): void
+    {
+        $now = $this->clock->now();
+        $contract = $this->createRecurringContract($now->modify('-2 days'));
+        $contract->recordBillingCharge($now, null, $contract->endDate);
+
+        self::assertFalse($contract->hasUnscheduledUnpaidPeriod());
+    }
+
     public function testOneFailedAttemptProducesError(): void
     {
         $now = $this->clock->now();

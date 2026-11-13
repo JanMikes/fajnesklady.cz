@@ -127,6 +127,22 @@ final readonly class OverdueChecker
             );
         }
 
+        if ($contract->hasUnscheduledUnpaidPeriod()) {
+            /** @var \DateTimeImmutable $paidThrough */
+            $paidThrough = $contract->paidThroughDate;
+
+            return new OverdueContractView(
+                contract: $contract,
+                daysOverdue: max(1, (int) $paidThrough->diff($now)->days),
+                // Everything from paidThroughDate to the contract end is unpaid
+                // and nothing will request it.
+                overdueAmount: $contract->calculateOutstandingDebt($contract->endDate),
+                severity: OverdueSeverity::ERROR,
+                reasonLabel: 'Nezaplaceno — žádná platba není naplánována, nutno řešit ručně',
+                anchorDate: $paidThrough,
+            );
+        }
+
         $anchor = $contract->nextBillingDate ?? $now;
         $monthlyRate = $contract->order->firstPaymentPrice;
         $attempts = $contract->failedBillingAttempts;
