@@ -6,6 +6,7 @@ namespace App\Event;
 
 use App\Repository\ContractRepository;
 use App\Repository\ManualPaymentRequestRepository;
+use App\Service\Billing\CardSetupOffer;
 use App\Service\Billing\CzechDayCount;
 use App\Service\Billing\ManualBillingReminderSchedule;
 use App\Service\Billing\RecurringAmountCalculator;
@@ -29,6 +30,7 @@ final readonly class SendManualBillingPaymentRequestedEmailHandler
         private ContractRepository $contractRepository,
         private ManualPaymentRequestRepository $manualPaymentRequestRepository,
         private OrderStatusUrlGenerator $statusUrlGenerator,
+        private CardSetupOffer $cardSetupOffer,
         private MailerInterface $mailer,
         private LoggerInterface $logger,
         private QrPaymentGenerator $qrPaymentGenerator,
@@ -122,6 +124,7 @@ final readonly class SendManualBillingPaymentRequestedEmailHandler
                 'daysUntilDue' => $daysUntilDue,
                 'dueWhen' => $dueWhen,
                 'statusUrl' => $statusUrl,
+                'cardSetupUrl' => $this->cardSetupOffer->urlFor($contract, $event->occurredOn),
                 'bankAccount' => $hasAmountToPay ? $this->qrPaymentGenerator->getBankAccountFormatted() : null,
                 'variableSymbol' => $order->variableSymbol,
                 'qrCodeDataUri' => $hasAmountToPay && null !== $order->variableSymbol

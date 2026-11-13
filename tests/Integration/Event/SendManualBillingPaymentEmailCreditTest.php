@@ -133,6 +133,45 @@ class SendManualBillingPaymentEmailCreditTest extends KernelTestCase
         $this->assertStringContainsString('0,00 Kč vč. DPH', $body);
     }
 
+    public function testFormerCardPayerIsOfferedANewCardInPaymentEmails(): void
+    {
+        // Tenant whose card track was stopped (e.g. card change) — every
+        // bank-transfer request offers the one-click way back to the card.
+        [$contract, $request] = $this->createManualCycle(credit: 0, originallyPaidByCard: true);
+
+        ($this->overdueHandler)(new ManualBillingPaymentOverdue(
+            $contract->id,
+            $request->id,
+            ManualBillingReminderSchedule::STAGE_OVERDUE_FIRST,
+            $this->clock->now(),
+        ));
+
+        $email = $this->lastTemplatedEmail();
+        $context = $email->getContext();
+        $this->assertIsString($context['cardSetupUrl']);
+        $this->assertStringContainsString('/smlouva/'.$contract->id->toRfc4122().'/prodlouzit/karta', $context['cardSetupUrl']);
+        $body = $this->twig->render((string) $email->getHtmlTemplate(), $context);
+        $this->assertStringContainsString('Nastavit novou platební kartu', $body);
+        $this->assertStringContainsString('Platební údaje pro bankovní převod', $body, 'Bank transfer stays available.');
+    }
+
+    public function testBankTransferCustomerIsNotNudgedToCard(): void
+    {
+        [$contract, $request] = $this->createManualCycle(credit: 0);
+
+        ($this->requestedHandler)(new ManualBillingPaymentRequested(
+            $contract->id,
+            $request->id,
+            ManualBillingReminderSchedule::STAGE_INITIAL,
+            $this->clock->now(),
+        ));
+
+        $email = $this->lastTemplatedEmail();
+        $this->assertNull($email->getContext()['cardSetupUrl']);
+        $body = $this->twig->render((string) $email->getHtmlTemplate(), $email->getContext());
+        $this->assertStringNotContainsString('Nastavit novou platební kartu', $body);
+    }
+
     public function testOverdueEmailWithoutCreditAsksForTheFullCycle(): void
     {
         [$contract, $request] = $this->createManualCycle(credit: 0);
@@ -206,7 +245,7 @@ class SendManualBillingPaymentEmailCreditTest extends KernelTestCase
      *
      * @return array{Contract, ManualPaymentRequest}
      */
-    private function createManualCycle(int $credit): array
+    private function createManualCycle(int $credit, bool $originallyPaidByCard = false): array
     {
         $source = $this->entityManager->createQueryBuilder()
             ->select('o')
@@ -234,6 +273,9 @@ class SendManualBillingPaymentEmailCreditTest extends KernelTestCase
         );
         $order->setBillingMode(BillingMode::MANUAL_RECURRING);
         $order->assignVariableSymbol('9100000123');
+        if ($originallyPaidByCard) {
+            $order->markPaid($now, goPayPaymentId: 'gp-original-card');
+        }
         $order->popEvents();
         $this->entityManager->persist($order);
 

@@ -71,6 +71,14 @@
             </div>
         {% endif %}
 
+        {% if cardSetupUrl|default(null) %}
+            <p style="text-align: center; margin: 24px 0 8px;">Raději platit kartou automaticky?</p>
+            <p style="text-align: center; margin: 0 0 20px;">
+                <a href="{{ cardSetupUrl }}" style="display: inline-block; background-color: #2563eb; color: #fff; padding: 12px 28px; text-decoration: none; border-radius: 5px; font-size: 15px; font-weight: bold;">Nastavit novou platební kartu</a>
+            </p>
+            <p style="text-align: center; font-size: 13px; color: #6b7280; margin: 0 0 20px;">Kartou rovnou uhradíte tuto platbu a další platby se budou strhávat automaticky — převod pak už neposílejte.</p>
+        {% endif %}
+
         <p style="text-align: center; margin: 20px 0;">
             <a href="{{ statusUrl }}" class="secondary-cta">Zobrazit stav objednávky</a>
         </p>

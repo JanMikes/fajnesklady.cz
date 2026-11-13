@@ -186,6 +186,29 @@ class TerminateOverdueContractsCommandTest extends KernelTestCase
         self::assertTrue($this->entityManager->find(Contract::class, $eightDays->id)?->isTerminated());
     }
 
+    public function testDebtOfContractSweptAfterItsEndStopsAtTheEndDate(): void
+    {
+        // Unpaid last 2-day cycle (paid through D, lease ends D+2) swept 8
+        // days later: rent is owed up to the lease end, not the sweep day
+        // (2026-11 Veronika case: 2 days, not 9).
+        $now = $this->clock->now();
+        $paidThrough = $now->modify('-9 days')->setTime(0, 0);
+        $endDate = $paidThrough->modify('+2 days');
+        $contract = $this->createContract('sweep-past-end', $endDate);
+        $contract->scheduleNextBilling($paidThrough, $paidThrough);
+        $contract->applyBillingMode(BillingMode::MANUAL_RECURRING);
+        $this->entityManager->flush();
+
+        $this->runSweep();
+
+        $this->entityManager->clear();
+        $reloaded = $this->entityManager->find(Contract::class, $contract->id);
+        self::assertNotNull($reloaded);
+        self::assertTrue($reloaded->isTerminated());
+        // 2 days × 35 000 / 30 = 2 333 haléřů.
+        self::assertSame(2333, $reloaded->outstandingDebtAmount);
+    }
+
     public function testFreeContractIsNeverTerminated(): void
     {
         $now = $this->clock->now();
@@ -340,7 +363,7 @@ class TerminateOverdueContractsCommandTest extends KernelTestCase
         return $contract;
     }
 
-    private function createContract(string $seed): Contract
+    private function createContract(string $seed, ?\DateTimeImmutable $endDate = null): Contract
     {
         $now = $this->clock->now();
 
@@ -386,7 +409,7 @@ class TerminateOverdueContractsCommandTest extends KernelTestCase
         $this->entityManager->persist($storage);
 
         $startDate = $now->modify('-90 days');
-        $endDate = $startDate->modify('+12 months');
+        $endDate ??= $startDate->modify('+12 months');
 
         $order = new Order(
             id: Uuid::v7(),

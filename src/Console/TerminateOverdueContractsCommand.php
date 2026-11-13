@@ -109,7 +109,11 @@ final class TerminateOverdueContractsCommand extends Command
 
                     $daysOverdue = (int) $dueDate->diff($now)->days;
 
-                    $outstandingDebt = $this->contractService->calculateOutstandingDebt($contract, $now);
+                    // Rent accrues only within the lease: a contract swept after
+                    // its end date (unpaid last cycle kept it in grace) owes up to
+                    // the end, not up to the sweep day.
+                    $debtUntil = min($now, $contract->endDate);
+                    $outstandingDebt = $this->contractService->calculateOutstandingDebt($contract, $debtUntil);
                     if ($outstandingDebt > 0) {
                         $contract->setOutstandingDebt($outstandingDebt);
                     }

@@ -55,12 +55,7 @@ final class ContractCardSetupController extends AbstractController
         $statusUrl = $this->statusUrlGenerator->generate($contract->order);
 
         // Recurring track without a live token (mirrors InitiateCardSetupHandler).
-        $eligible = $contract->billingMode->isRecurring()
-            && null === $contract->goPayParentPaymentId
-            && !$contract->isFree()
-            && !$contract->isYearly()
-            && !$contract->isTerminated()
-            && $contract->endDate >= $now->setTime(0, 0);
+        $eligible = $contract->isEligibleForCardSetup($now);
 
         if (!$eligible) {
             return $this->render('public/contract_card_setup.html.twig', [

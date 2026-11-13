@@ -752,6 +752,21 @@ class Contract implements EntityWithEvents
     }
 
     /**
+     * Can the tenant set up a (new) card on the spec-077 card-setup page?
+     * Recurring track without a live token, not free/yearly/terminated, and
+     * the contract has not ended yet.
+     */
+    public function isEligibleForCardSetup(\DateTimeImmutable $now): bool
+    {
+        return $this->billingMode->isRecurring()
+            && null === $this->goPayParentPaymentId
+            && !$this->isFree()
+            && !$this->isYearly()
+            && !$this->isTerminated()
+            && $this->endDate >= $now->setTime(0, 0);
+    }
+
+    /**
      * The contract runs past what was paid, yet nothing is scheduled to bill
      * it: no billing anchor, so no charge, payment request, overdue sweep or
      * expiry-time debt will ever pick it up. Legitimate states never look like
