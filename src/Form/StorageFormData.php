@@ -7,6 +7,7 @@ namespace App\Form;
 use App\Entity\Storage;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Component\Validator\Context\ExecutionContextInterface;
 
 final class StorageFormData
 {
@@ -58,6 +59,18 @@ final class StorageFormData
     public ?float $commissionRate = null;
 
     /**
+     * Not a form field: the storage type's 6+ month rate (CZK), the fallback
+     * the yearly override is checked against when no own monthly override is
+     * set. Only populated when the per-storage price fields are editable
+     * (non-uniform type) — a violation on an unrendered field would bubble to
+     * the form root as a silent 422.
+     */
+    public ?float $typeDefaultPricePerMonthLongTerm = null;
+
+    /** Not a form field: the storage type's yearly rate (CZK), see above. */
+    public ?float $typeDefaultPricePerYear = null;
+
+    /**
      * @var UploadedFile[]
      */
     #[Assert\All([
@@ -68,6 +81,26 @@ final class StorageFormData
         ),
     ])]
     public array $photos = [];
+
+    #[Assert\Callback]
+    public function validateYearlyPrice(ExecutionContextInterface $context): void
+    {
+        // Only this storage's own overrides are judged here — a bad type
+        // default is the storage-type form's job and must not block editing
+        // an unrelated storage. But an override on EITHER side is checked
+        // against the effective other side (own override or type default).
+        if (null === $this->typeDefaultPricePerMonthLongTerm
+            || (null === $this->pricePerYear && null === $this->pricePerMonthLongTerm)) {
+            return;
+        }
+
+        YearlyPriceGuard::validate(
+            $context,
+            $this->pricePerYear ?? $this->typeDefaultPricePerYear,
+            $this->pricePerMonthLongTerm ?? $this->typeDefaultPricePerMonthLongTerm,
+            'pricePerYear',
+        );
+    }
 
     public static function fromStorage(Storage $storage): self
     {
@@ -84,6 +117,10 @@ final class StorageFormData
         $formData->pricePerMonth = null !== $storage->pricePerMonth ? $storage->pricePerMonth / 100 : null;
         $formData->pricePerMonthLongTerm = null !== $storage->pricePerMonthLongTerm ? $storage->pricePerMonthLongTerm / 100 : null;
         $formData->pricePerYear = null !== $storage->pricePerYear ? $storage->pricePerYear / 100 : null;
+        if (!$storage->storageType->uniformStorages) {
+            $formData->typeDefaultPricePerMonthLongTerm = $storage->storageType->getDefaultPricePerMonthLongTermInCzk();
+            $formData->typeDefaultPricePerYear = $storage->storageType->getDefaultPricePerYearInCzk();
+        }
         // Cast through float to ensure numeric-string for bcmul
         $formData->commissionRate = null !== $storage->commissionRate
             ? (float) bcmul((string) (float) $storage->commissionRate, '100', 0)

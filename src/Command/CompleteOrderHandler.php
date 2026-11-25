@@ -10,6 +10,7 @@ use App\Service\ContractService;
 use App\Service\OrderService;
 use App\Service\PriceCalculator;
 use Psr\Clock\ClockInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 #[AsMessageHandler]
@@ -20,6 +21,7 @@ final readonly class CompleteOrderHandler
         private ContractService $contractService,
         private PriceCalculator $priceCalculator,
         private ClockInterface $clock,
+        private LoggerInterface $logger,
     ) {
     }
 
@@ -29,55 +31,36 @@ final readonly class CompleteOrderHandler
         $order = $command->order;
         $contract = $this->orderService->completeOrder($order, $now);
 
-        // Set up recurring billing dates. AUTO needs the GoPay parent token to be
-        // stored on the contract; MANUAL has no token but still needs nextBillingDate
-        // populated so SendManualBillingPaymentRequestsCommand picks it up. Cadence
-        // is +1 month or +1 year depending on the contract's paymentFrequency
-        // (spec 045 — yearly is always MANUAL_RECURRING).
+        // An admin-recorded external prepayment (OrderService::completeOrder →
+        // markExternallyPrepaid) already decided the billing state — including
+        // "paid to the end of the term", which deliberately leaves NO anchor.
+        // Never re-seed over it, or a fully prepaid customer gets billed.
+        $externallyPrepaid = null !== $order->paidThroughDate;
+
+        // Set up recurring billing. AUTO needs the GoPay parent token stored on
+        // the contract; MANUAL has no token but still needs nextBillingDate so
+        // SendManualBillingPaymentRequestsCommand picks it up. Every payment
+        // type follows the same rule (2026-11-25): the first payment pays the
+        // first quoted period [start, start + cadence); later periods are due on
+        // the first payment's day of month (the recurring consent's "vždy ke
+        // stejnému dni v měsíci jako první platba"), the last one prorated to
+        // the real end — see Contract::startBilling().
         if (null !== $order->goPayParentPaymentId) {
-            $nextBillingDate = $contract->advanceByCadence($now);
-            $paidThroughDate = $nextBillingDate;
-
-            // Cap paidThroughDate to the contract end
-            if ($paidThroughDate > $contract->endDate) {
-                $paidThroughDate = $contract->endDate;
-            }
-
-            // If contract ends before next billing, this is the only billing cycle
-            if ($nextBillingDate >= $contract->endDate) {
-                $nextBillingDate = null;
-            }
-
-            $contract->setRecurringPayment($order->goPayParentPaymentId, $nextBillingDate, $paidThroughDate);
-        } elseif (BillingMode::MANUAL_RECURRING === $contract->billingMode && null === $contract->nextBillingDate && !$contract->isFree()) {
-            // MANUAL_RECURRING + no external prepayment: seed the first nextBillingDate
-            // so the per-cycle reminder cron has an anchor. The customer just paid
-            // their first cycle externally / one-shot — the next one is due in one
-            // cadence step. Skip when markExternallyPrepaid already set it (external
-            // prepayment path in OrderService::completeOrder).
-            $nextBillingDate = $contract->advanceByCadence($now);
-            $paidThroughDate = $nextBillingDate;
-
-            if ($paidThroughDate > $contract->endDate) {
-                $paidThroughDate = $contract->endDate;
-            }
-
-            if ($nextBillingDate >= $contract->endDate) {
-                $nextBillingDate = null;
-            }
-
-            $contract->recordBillingCharge($now, $nextBillingDate, $paidThroughDate);
-        } elseif (BillingMode::ONE_TIME === $contract->billingMode && null === $contract->nextBillingDate) {
+            $contract->attachCardToken($order->goPayParentPaymentId);
+            $this->startBilling($contract, $now, recordAsBilled: false);
+        } elseif (BillingMode::MANUAL_RECURRING === $contract->billingMode && !$externallyPrepaid && !$contract->isFree()) {
+            $this->startBilling($contract, $now);
+        } elseif (BillingMode::ONE_TIME === $contract->billingMode && !$externallyPrepaid) {
             // Spec 078 tranches: an upfront rental longer than 12 months is
-            // paid in yearly tranches. The first tranche was just paid — anchor
-            // the second tranche on the canonical partition date so the
-            // manual-billing cron requests it (bank details + QR + VS) per the
-            // e-mail rules. A ≤ 12-month upfront rental yields a single tranche
-            // and keeps NO anchor: it stays outside every billing cron.
+            // paid in yearly tranches. The first tranche was just paid — the
+            // second one (the period from start + 12 months) is due on the
+            // first payment's day, like every other cycle, so the manual-billing
+            // cron requests it (bank details + QR + VS). A ≤ 12-month upfront
+            // rental yields a single tranche and keeps NO anchor: it stays
+            // outside every billing cron.
             $tranches = $this->priceCalculator->buildScheduleFromOrder($order)->entries;
             if (count($tranches) > 1) {
-                $secondTrancheDate = $tranches[1]->chargeDate;
-                $contract->recordBillingCharge($now, $secondTrancheDate, $secondTrancheDate);
+                $this->startBilling($contract, $now);
             }
         }
 
@@ -86,5 +69,38 @@ final readonly class CompleteOrderHandler
         $this->contractService->signContract($contract, $now);
 
         return $contract;
+    }
+
+    /**
+     * Fallback: if the first period has already run out (payment a whole
+     * cadence late), there is no future period to anchor on — keep the
+     * payment-time single walk, never a due date in the past (a second card
+     * charge the same day, or a brand-new manual contract landing straight in
+     * the overdue stages).
+     */
+    private function startBilling(Contract $contract, \DateTimeImmutable $now, bool $recordAsBilled = true): void
+    {
+        if ($contract->firstCycleEnd() > $now->setTime(0, 0)) {
+            $contract->startBilling($now, $recordAsBilled);
+
+            return;
+        }
+
+        $this->logger->warning('First payment arrived after the whole first billing period; anchoring billing on the payment date.', [
+            'contract_id' => $contract->id->toRfc4122(),
+            'start_date' => $contract->startDate->format('Y-m-d'),
+            'paid_at' => $now->format(\DATE_ATOM),
+        ]);
+
+        $nextBillingDate = $contract->advanceByCadence($now);
+        $endDate = $contract->endDate;
+        $paidThroughDate = $nextBillingDate >= $endDate ? $endDate : $nextBillingDate;
+        $nextBillingDate = $nextBillingDate >= $endDate ? null : $nextBillingDate;
+        if (!$recordAsBilled && null !== $contract->goPayParentPaymentId) {
+            // Card: same as before two-walk billing — not a "billed" cycle.
+            $contract->setRecurringPayment($contract->goPayParentPaymentId, $nextBillingDate, $paidThroughDate);
+        } else {
+            $contract->recordBillingCharge($now, $nextBillingDate, $paidThroughDate);
+        }
     }
 }

@@ -10,6 +10,7 @@ use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
+use App\Enum\BillingMode;
 use App\Enum\PaymentFrequency;
 use App\Enum\PaymentMethod;
 use App\Service\Order\CustomerBillingSituation;
@@ -71,13 +72,35 @@ class CustomerBillingSituationTest extends TestCase
         );
     }
 
-    public function testFromContractReturnsExternallyPrepaidWhenMarkedAndNoGoPayToken(): void
+    public function testFromContractReturnsExternallyPrepaidWhenAdminRecordedPrepayment(): void
     {
         $contract = $this->createContract();
+        // What OrderService::completeOrder() does: the marker lives on the order.
+        $contract->order->setOnboardingBillingTerms(null, new \DateTimeImmutable('2026-12-31'));
         $contract->markExternallyPrepaid(new \DateTimeImmutable('2026-12-31'));
 
         $this->assertSame(
             CustomerBillingSituation::EXTERNALLY_PREPAID,
+            CustomerBillingSituation::fromContract($contract),
+        );
+    }
+
+    /**
+     * Production 2026-11: every customer who paid by bank transfer has a
+     * paidThroughDate and no card token — and was told "předplacen externě".
+     */
+    public function testFromContractCustomerPaidBankTransferIsNotExternallyPrepaid(): void
+    {
+        $contract = $this->createContract();
+        $contract->applyBillingMode(BillingMode::MANUAL_RECURRING);
+        $contract->recordBillingCharge(
+            new \DateTimeImmutable('2025-06-15 12:00:00'),
+            null,
+            $contract->endDate,
+        );
+
+        $this->assertSame(
+            CustomerBillingSituation::GOPAY_FIRST_CHARGE,
             CustomerBillingSituation::fromContract($contract),
         );
     }

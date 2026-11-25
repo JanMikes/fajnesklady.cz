@@ -361,18 +361,6 @@ final readonly class ProcessPaymentNotificationHandler
             return;
         }
 
-        // Calculate billing dates (same logic as ChargeRecurringPaymentHandler)
-        $billingPeriodStart = $contract->nextBillingDate ?? $now;
-        $effectiveEndDate = $contract->getEffectiveEndDate();
-        $nextBillingDate = $contract->advanceByCadence($billingPeriodStart);
-        $paidThroughDate = $nextBillingDate;
-
-        // Last cycle → stop future charges; contracts hard-stop at end (spec 076).
-        if ($nextBillingDate >= $effectiveEndDate) {
-            $nextBillingDate = null;
-            $paidThroughDate = $effectiveEndDate;
-        }
-
         // GoPay is the source of truth for what was actually charged. If it
         // disagrees with what we computed, RECORD WHAT GOPAY SAYS but emit
         // a mismatch event so admin can investigate (the last cycle of a
@@ -398,7 +386,12 @@ final readonly class ProcessPaymentNotificationHandler
             ));
         }
 
-        $contract->recordBillingCharge($now, $nextBillingDate, $paidThroughDate);
+        // Same advance as ChargeRecurringPaymentHandler (amount computed above,
+        // BEFORE the walk moves on); last cycle stops billing (spec 076).
+        $cycle = $contract->recordCyclePaid($now);
+        $nextBillingDate = $contract->nextBillingDate;
+        /** @var \DateTimeImmutable $paidThroughDate */
+        $paidThroughDate = $contract->paidThroughDate;
 
         // Same audit row the cron writes in ChargeRecurringPaymentHandler::
         // finalizeCharge(). Without it a webhook-settled cycle left no trace at
@@ -432,8 +425,8 @@ final readonly class ProcessPaymentNotificationHandler
                 contractId: $contract->id,
                 goPayPaymentId: $status->id,
                 amount: $receivedAmount,
-                periodStart: $billingPeriodStart,
-                periodEnd: $paidThroughDate,
+                periodStart: $cycle->start,
+                periodEnd: $cycle->end,
                 occurredOn: $now,
             ));
         } catch (HandlerFailedException $e) {
@@ -478,17 +471,6 @@ final readonly class ProcessPaymentNotificationHandler
             return;
         }
 
-        $billingPeriodStart = $contract->nextBillingDate ?? $now;
-        $effectiveEndDate = $contract->getEffectiveEndDate();
-        $nextBillingDate = $contract->advanceByCadence($billingPeriodStart);
-        $paidThroughDate = $nextBillingDate;
-
-        // Last cycle → stop future charges; contracts hard-stop at end (spec 076).
-        if ($nextBillingDate >= $effectiveEndDate) {
-            $nextBillingDate = null;
-            $paidThroughDate = $effectiveEndDate;
-        }
-
         $expectedAmount = $this->amountCalculator->calculate($contract, $now);
         $receivedAmount = $status->amount ?? $expectedAmount;
 
@@ -509,7 +491,9 @@ final readonly class ProcessPaymentNotificationHandler
             ));
         }
 
-        $contract->recordBillingCharge($now, $nextBillingDate, $paidThroughDate);
+        // Advance AFTER the expected amount was computed for this period; last
+        // cycle stops billing (spec 076).
+        $cycle = $contract->recordCyclePaid($now);
         $manualRequest->markPaid($now);
         $this->auditLogger->logManualPaymentReceived($manualRequest);
 
@@ -518,8 +502,8 @@ final readonly class ProcessPaymentNotificationHandler
                 contractId: $contract->id,
                 goPayPaymentId: $status->id,
                 amount: $receivedAmount,
-                periodStart: $billingPeriodStart,
-                periodEnd: $paidThroughDate,
+                periodStart: $cycle->start,
+                periodEnd: $cycle->end,
                 occurredOn: $now,
             ));
         } catch (HandlerFailedException $e) {
@@ -550,24 +534,21 @@ final readonly class ProcessPaymentNotificationHandler
      */
     private function completeCardSetup(Contract $contract, GoPayPaymentStatus $status, \DateTimeImmutable $now): void
     {
-        $billingPeriodStart = $contract->nextBillingDate ?? $now;
-        $effectiveEndDate = $contract->getEffectiveEndDate();
-        $nextBillingDate = $contract->advanceByCadence($billingPeriodStart);
-        $paidThroughDate = $nextBillingDate;
-
-        if ($nextBillingDate >= $effectiveEndDate) {
-            $nextBillingDate = null;
-            $paidThroughDate = $effectiveEndDate;
-        }
-
-        $contract->completeCardSetup($status->id, $nextBillingDate, $paidThroughDate);
-        $contract->recordBillingCharge($now, $nextBillingDate, $paidThroughDate);
-        $contract->order->setPaymentMethod(PaymentMethod::GOPAY);
-
         // The setup charge settles the cycle any outstanding manual request
         // covers — mark it paid so the reminder cron stops chasing a bank
         // transfer for a period the card just paid (double-charge guard).
+        // Looked up BEFORE the walk advances: the request is keyed on the due
+        // date of exactly that period.
         $outstandingRequest = $this->manualPaymentRequestRepository->findPendingForCurrentCycle($contract, $now);
+
+        // Pays the period the contract is due for; card charges then follow
+        // the setup payment's day of month ("jako tato platba").
+        $cycle = $contract->completeCardSetup($status->id, $now);
+        $nextBillingDate = $contract->nextBillingDate;
+        /** @var \DateTimeImmutable $paidThroughDate */
+        $paidThroughDate = $contract->paidThroughDate;
+        $contract->order->setPaymentMethod(PaymentMethod::GOPAY);
+
         if (null !== $outstandingRequest) {
             $outstandingRequest->markPaid($now);
         }
@@ -600,8 +581,8 @@ final readonly class ProcessPaymentNotificationHandler
                 contractId: $contract->id,
                 goPayPaymentId: $status->id,
                 amount: $status->amount ?? $contract->getEffectiveRecurringAmount(),
-                periodStart: $billingPeriodStart,
-                periodEnd: $paidThroughDate,
+                periodStart: $cycle->start,
+                periodEnd: $cycle->end,
                 occurredOn: $now,
             ));
         } catch (HandlerFailedException $e) {

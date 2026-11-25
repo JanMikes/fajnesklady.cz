@@ -7,6 +7,7 @@ namespace App\Command;
 use App\Enum\TerminationReason;
 use App\Event\ContractTerminated;
 use App\Event\TerminationNoticeRequested;
+use App\Repository\ManualPaymentRequestRepository;
 use App\Service\AuditLogger;
 use App\Service\Billing\BillingCalendar;
 use App\Service\ContractService;
@@ -24,6 +25,7 @@ final readonly class AdminTerminateContractHandler
         #[Autowire(service: 'event.bus')]
         private MessageBusInterface $eventBus,
         private AuditLogger $auditLogger,
+        private ManualPaymentRequestRepository $manualPaymentRequestRepository,
     ) {
     }
 
@@ -62,7 +64,14 @@ final readonly class AdminTerminateContractHandler
         } else {
             // One-month notice; a missing day ends on the month's last day (OZ § 605 odst. 2).
             $terminatesAt = BillingCalendar::addMonths($now, 1);
+            $dueBefore = $contract->nextBillingDate;
             $contract->requestTermination($now, $terminatesAt);
+
+            // See RequestTerminationNoticeHandler: a pending request keyed on a
+            // due date the notice moved/dropped must not keep chasing.
+            if (null !== $dueBefore && $dueBefore->format('Y-m-d') !== $contract->nextBillingDate?->format('Y-m-d')) {
+                $this->manualPaymentRequestRepository->findUnpaidByContractAndPeriod($contract, $dueBefore)?->cancel();
+            }
 
             $this->auditLogger->log(
                 'contract',

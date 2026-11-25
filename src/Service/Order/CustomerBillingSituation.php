@@ -17,6 +17,10 @@ use App\Entity\Order;
  * factory entry points exist because some surfaces run before contract
  * creation (sign page / signing-link email) and some after (rental
  * activated email).
+ *
+ * GOPAY_FIRST_CHARGE means "the customer pays the first charge themselves" —
+ * by card OR bank transfer (fromOrder() returns it for both); surfaces branch
+ * on the payment method where the wording differs.
  */
 enum CustomerBillingSituation: string
 {
@@ -41,7 +45,12 @@ enum CustomerBillingSituation: string
         if ($contract->isFree()) {
             return self::FREE;
         }
-        if (null !== $contract->paidThroughDate && null === $contract->goPayParentPaymentId) {
+        // Only an admin-recorded prepayment on the ORDER is "externally
+        // prepaid". The contract's own paidThroughDate is set by every
+        // customer payment too (bank transfer, one-shot, tranche) — keying on
+        // it told customers who had just paid by bank transfer that their
+        // rental was "předplacen externě".
+        if (null !== $contract->order->paidThroughDate) {
             return self::EXTERNALLY_PREPAID;
         }
 

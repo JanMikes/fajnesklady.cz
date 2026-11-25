@@ -69,7 +69,9 @@ class HandoverProtocolRepository
             ->join('hp.contract', 'c')
             ->where('hp.status != :completed')
             ->andWhere('(hp.lastReminderSentAt IS NULL AND hp.createdAt <= :threshold) OR hp.lastReminderSentAt <= :threshold')
-            ->andWhere('c.terminatedAt IS NOT NULL OR COALESCE(c.terminatesAt, c.endDate) <= :windowEnd')
+            // Effective end = the EARLIER of endDate and a pending notice
+            // (Contract::getEffectiveEndDate()).
+            ->andWhere('c.terminatedAt IS NOT NULL OR c.endDate <= :windowEnd OR (c.terminatesAt IS NOT NULL AND c.terminatesAt <= :windowEnd)')
             ->setParameter('completed', HandoverStatus::COMPLETED->value)
             ->setParameter('threshold', $reminderThreshold)
             ->setParameter('windowEnd', $windowEnd)

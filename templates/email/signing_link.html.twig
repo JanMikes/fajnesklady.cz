@@ -89,7 +89,7 @@
 
         {% if content.situation.value == 'externally_prepaid' %}
             <div class="banner banner-green">
-                <strong>Pronájem je již předplacen externě do {{ content.paidThroughDate|date('d.m.Y') }}</strong>
+                <strong>{% if content.futureBillingLine is null %}Nájemné máte uhrazené do konce smlouvy{% else %}Nájemné máte uhrazené do {{ content.paidThroughDate|date('d.m.Y') }}{% endif %}</strong>
                 <br>
                 <span style="font-size: 13px;">Po podpisu smlouvy nyní nic neplatíte.</span>
                 {% if content.futureBillingLine %}

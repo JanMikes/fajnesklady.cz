@@ -11,6 +11,7 @@ use App\Event\ContractPriceChanged;
 use App\Event\ContractProlonged;
 use App\Service\Billing\BillingCalendar;
 use App\Service\PriceCalculator;
+use App\Value\BillingCycle;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Types\UuidType;
@@ -51,6 +52,32 @@ class Contract implements EntityWithEvents
      */
     #[ORM\Column(type: Types::SMALLINT, nullable: true)]
     public private(set) ?int $billingAnchorDay = null;
+
+    /**
+     * Two-walk billing (2026-11-25). Rental PERIODS follow the contract start
+     * (the schedule the customer was quoted); DUE dates follow the first
+     * payment's day of month — the recurring consent's "vždy ke stejnému dni v
+     * měsíci jako první platba", applied to every payment type. In this mode:
+     *  - nextBillingDate = due date of the next unpaid period (every cron,
+     *    reminder, dunning and overdue query keeps reading it as a due date);
+     *  - nextPeriodStart = first day of that period (prices it, see
+     *    {@see self::nextPeriodStart()});
+     *  - billingAnchorDay = the first payment's day of month;
+     *  - periodAnchorDay = the period walk's day (contract start day);
+     *  - chargeMonthOffset = due month relative to the period month: 1 = the
+     *    month before (paid early across a month boundary), 0 = same month,
+     *    -1 = the month after (paid late across a month boundary).
+     * All three are null in single-walk mode (legacy contracts, admin
+     * prepayments, prolongation re-anchors): the period starts on its due date.
+     */
+    #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
+    public private(set) ?\DateTimeImmutable $nextPeriodStart = null;
+
+    #[ORM\Column(type: Types::SMALLINT, nullable: true)]
+    public private(set) ?int $periodAnchorDay = null;
+
+    #[ORM\Column(type: Types::SMALLINT, nullable: true)]
+    public private(set) ?int $chargeMonthOffset = null;
 
     #[ORM\Column(nullable: true)]
     public private(set) ?\DateTimeImmutable $lastBilledAt = null;
@@ -308,6 +335,11 @@ class Contract implements EntityWithEvents
         return null !== $this->documentPath;
     }
 
+    public function attachCardToken(string $parentPaymentId): void
+    {
+        $this->goPayParentPaymentId = $parentPaymentId;
+    }
+
     public function setRecurringPayment(string $parentPaymentId, ?\DateTimeImmutable $nextBillingDate, \DateTimeImmutable $paidThroughDate): void
     {
         $this->goPayParentPaymentId = $parentPaymentId;
@@ -372,6 +404,17 @@ class Contract implements EntityWithEvents
     {
         $this->goPayParentPaymentId = null;
         $this->nextBillingDate = null;
+        $this->clearPeriodWalk();
+    }
+
+    /**
+     * Void the card token only — the billing anchors (due date AND period
+     * walk) stay, so the unpaid remainder moves to the bank-transfer track
+     * without shifting a single day ({@see \App\Service\Billing\CardToBankTransferSwitch}).
+     */
+    public function dropCardToken(): void
+    {
+        $this->goPayParentPaymentId = null;
     }
 
     public function hasActiveRecurringPayment(): bool
@@ -431,15 +474,8 @@ class Contract implements EntityWithEvents
         // Resume billing when the final (prorated) cycle already closed the
         // schedule; mid-term prolongations keep their running cadence and the
         // amount calculator prorates against the new end automatically.
-        // Two anchor conventions coexist: token-holding (AUTO) cycles keep
-        // nextBillingDate == paidThroughDate, while tokenless anchors (external
-        // prepayment, manual track) mean "paid THROUGH that day inclusive" —
-        // billing resumes the day after (see markExternallyPrepaid()), or the
-        // customer would be billed for a day they already paid.
         if ($this->billingMode->isRecurring() && null === $this->nextBillingDate && !$this->isFree()) {
-            $this->assignNextBillingDate(null === $this->goPayParentPaymentId
-                ? ($this->paidThroughDate?->modify('+1 day') ?? $previousEndDate)
-                : ($this->paidThroughDate ?? $previousEndDate));
+            $this->assignNextBillingDate($this->resumeBillingAfterProlongation($previousEndDate));
         }
 
         $this->recordThat(new ContractProlonged(
@@ -449,6 +485,35 @@ class Contract implements EntityWithEvents
             prolongedBy: $prolongedBy,
             occurredOn: $now,
         ));
+    }
+
+    /**
+     * Where billing resumes when a contract with no live anchor is prolonged.
+     *
+     * Paid exactly to the previous end — every customer-paid final cycle (card
+     * or bank transfer, also after the card was cancelled) and the canonical
+     * fully-prepaid state (see applyInclusivePaidThrough()) — the extension's
+     * first cycle starts ON the previous end: the contract term is
+     * [start, end), so that day was never paid. Before 2026-11 a tokenless
+     * contract always resumed the day after, leaving the end day unbilled.
+     *
+     * Otherwise the token-holding (AUTO) convention keeps
+     * nextBillingDate == paidThroughDate, and a tokenless admin date (paid
+     * BEYOND the end, or a legacy partial value) is the inclusive last paid
+     * day — billing resumes the day after.
+     */
+    private function resumeBillingAfterProlongation(\DateTimeImmutable $previousEndDate): \DateTimeImmutable
+    {
+        if (null === $this->paidThroughDate) {
+            return $previousEndDate;
+        }
+
+        if (null !== $this->goPayParentPaymentId
+            || $this->paidThroughDate->format('Y-m-d') === $previousEndDate->format('Y-m-d')) {
+            return $this->paidThroughDate;
+        }
+
+        return $this->paidThroughDate->modify('+1 day');
     }
 
     /**
@@ -475,11 +540,27 @@ class Contract implements EntityWithEvents
         $this->pendingCardSetupPaymentId = $paymentId;
     }
 
-    public function completeCardSetup(string $parentPaymentId, ?\DateTimeImmutable $nextBillingDate, \DateTimeImmutable $paidThroughDate): void
+    /**
+     * The PAID card-setup charge (spec 077) becomes the ON_DEMAND parent token
+     * and pays the period the contract is currently due for. Card charges then
+     * follow the setup payment's day of month — the setup page's consent says
+     * "vždy ke stejnému dni v měsíci jako tato platba".
+     *
+     * @return BillingCycle the period the setup charge paid
+     */
+    public function completeCardSetup(string $parentPaymentId, \DateTimeImmutable $paidAt): BillingCycle
     {
         $this->billingMode = BillingMode::AUTO_RECURRING;
         $this->pendingCardSetupPaymentId = null;
-        $this->setRecurringPayment($parentPaymentId, $nextBillingDate, $paidThroughDate);
+        $this->goPayParentPaymentId = $parentPaymentId;
+
+        $periodStart = $this->nextPeriodStart() ?? $paidAt->setTime(0, 0);
+        $periodAnchorDay = $this->periodAnchorDay ?? $this->billingAnchorDay ?? (int) $periodStart->format('j');
+
+        $cycle = $this->seedPeriodWalk($periodStart, $periodAnchorDay, $paidAt);
+        $this->markCyclePaid($paidAt);
+
+        return $cycle;
     }
 
     public function clearCardSetup(): void
@@ -499,6 +580,40 @@ class Contract implements EntityWithEvents
 
         $this->terminationNoticedAt = $noticedAt;
         $this->terminatesAt = $terminatesAt;
+
+        $endDay = $terminatesAt->format('Y-m-d');
+        $periodStart = $this->nextPeriodStart();
+        if (null === $this->nextBillingDate || null === $periodStart) {
+            return;
+        }
+
+        // The next unpaid period starts on/after the new end: it lies wholly
+        // outside the rental — nothing is left to bill (an early payer giving
+        // notice must never be charged for a period after the end).
+        if ($periodStart->format('Y-m-d') >= $endDay) {
+            $this->clearPeriodWalk();
+            $this->nextBillingDate = null;
+            // Canonical fully-paid state (an admin prepayment stores the
+            // inclusive last day, one below the end) and no stale card retry.
+            $end = $this->getEffectiveEndDate();
+            if (null === $this->paidThroughDate || $this->paidThroughDate->format('Y-m-d') < $end->format('Y-m-d')) {
+                $this->paidThroughDate = $end;
+            }
+            $this->failedBillingAttempts = 0;
+            $this->lastBillingFailedAt = null;
+
+            return;
+        }
+
+        // Two-walk billing: a late payer's due date follows its period start.
+        // If the notice moves the end on/before that due date while the period
+        // itself still starts before the end, re-derive the due date (it then
+        // clamps to the period start) — otherwise the last, shortened period
+        // would never be billed (the charge cron skips anything due after the
+        // termination date). Compared by DAY: terminatesAt carries a time.
+        if (null !== $this->nextPeriodStart && $this->nextBillingDate->format('Y-m-d') >= $endDay) {
+            $this->nextBillingDate = $this->dueDateForPeriod($this->nextPeriodStart);
+        }
     }
 
     public function hasPendingTermination(): bool
@@ -511,9 +626,19 @@ class Contract implements EntityWithEvents
         return $this->hasPendingTermination() && $now >= $this->terminatesAt;
     }
 
+    /**
+     * When the rental actually ends: the earlier of the contract end and a
+     * pending notice. A one-month notice given less than a month before the
+     * end must not stretch the rental (and its billing) past the end date
+     * (2026-11-25: notice on 25.11 → 25.12 for a contract ending 21.12).
+     */
     public function getEffectiveEndDate(): \DateTimeImmutable
     {
-        return $this->terminatesAt ?? $this->endDate;
+        if (null !== $this->terminatesAt && $this->terminatesAt < $this->endDate) {
+            return $this->terminatesAt;
+        }
+
+        return $this->endDate;
     }
 
     /**
@@ -657,6 +782,278 @@ class Contract implements EntityWithEvents
         return BillingCalendar::addMonths($from, $this->getBillingCadenceMonths(), (int) $anchorDay);
     }
 
+    /**
+     * End of the first rental period: one cadence step from the contract START
+     * — the walk {@see PriceCalculator::buildPaymentSchedule()} quoted.
+     */
+    public function firstCycleEnd(): \DateTimeImmutable
+    {
+        $start = $this->startDate->setTime(0, 0);
+
+        return BillingCalendar::addMonths($start, $this->getBillingCadenceMonths(), (int) $start->format('j'));
+    }
+
+    /**
+     * The first payment arrived at $firstPaidAt and paid the first period
+     * [start, start + cadence) — whether it came before the start (bank
+     * transfer a week ahead, an order placed months ahead) or a few days after
+     * it (admin onboarding). Later periods are due on the first payment's day
+     * of month, as close before (or, for a late payer, after) each period as
+     * that day falls.
+     *
+     * Callers handle the "a whole cycle late" case themselves (firstCycleEnd()
+     * already passed): there is no future period to anchor then.
+     *
+     * $recordAsBilled: false for the card order's first payment — it never
+     * counted as a "billed" cycle (lastBilledAt drives the ≥ 6-month advance
+     * notice and the 5-minute double-charge guard of the card cron).
+     *
+     * @return BillingCycle the first period, now paid
+     */
+    public function startBilling(\DateTimeImmutable $firstPaidAt, bool $recordAsBilled = true): BillingCycle
+    {
+        $start = $this->startDate->setTime(0, 0);
+        $cycle = $this->seedPeriodWalk($start, (int) $start->format('j'), $firstPaidAt);
+        if ($recordAsBilled) {
+            $this->markCyclePaid($firstPaidAt);
+        }
+
+        return $cycle;
+    }
+
+    /**
+     * Record that the period the contract is currently due for has been paid
+     * (card charge, bank transfer, GoPay payment link) and move both walks one
+     * cadence step. The single place billing advances after a payment.
+     *
+     * $settledPeriodEnd: the open payment request covered a SHORTER period
+     * than the contract would now compute (a prolonged prorated cycle settled
+     * at its requested amount, 2026-11-03) — billing resumes exactly there, as
+     * a single walk.
+     *
+     * @return BillingCycle the period this payment paid
+     */
+    public function recordCyclePaid(\DateTimeImmutable $paidAt, ?\DateTimeImmutable $settledPeriodEnd = null): BillingCycle
+    {
+        $periodStart = $this->nextPeriodStart() ?? $paidAt->setTime(0, 0);
+        $end = $this->getEffectiveEndDate()->setTime(0, 0);
+        $periodEnd = $this->advancePeriod($periodStart);
+
+        if (null !== $settledPeriodEnd && $settledPeriodEnd->format('Y-m-d') < $periodEnd->format('Y-m-d')) {
+            $periodEnd = $settledPeriodEnd->setTime(0, 0);
+            if ($periodEnd >= $end) {
+                $this->finishBilling($end);
+            } else {
+                $this->clearPeriodWalk();
+                $this->assignNextBillingDate($periodEnd);
+                $this->paidThroughDate = $periodEnd;
+            }
+        } elseif ($periodEnd >= $end) {
+            $periodEnd = $end;
+            $this->finishBilling($end);
+        } elseif (null === $this->nextPeriodStart) {
+            // Single walk: the next period starts on its due date.
+            $this->assignNextBillingDate($periodEnd);
+            $this->paidThroughDate = $periodEnd;
+        } else {
+            $this->nextPeriodStart = $periodEnd;
+            $this->nextBillingDate = $this->dueDateForPeriod($periodEnd);
+            $this->paidThroughDate = $periodEnd;
+        }
+
+        $this->markCyclePaid($paidAt);
+
+        return new BillingCycle($periodStart, $periodEnd);
+    }
+
+    /**
+     * First day of the rental period the next payment pays — what the amount
+     * is computed from. Equals the due date in single-walk mode.
+     */
+    public function nextPeriodStart(): ?\DateTimeImmutable
+    {
+        // Single walk keeps the anchor's time of day, exactly like the
+        // pre-two-walk code (cron timing is unchanged for legacy contracts).
+        return $this->nextPeriodStart ?? $this->nextBillingDate;
+    }
+
+    /**
+     * The rental period the next payment pays, end capped at the effective end.
+     */
+    public function currentBillingPeriod(): ?BillingCycle
+    {
+        $start = $this->nextPeriodStart();
+        if (null === $start) {
+            return null;
+        }
+
+        $end = $this->getEffectiveEndDate()->setTime(0, 0);
+        $periodEnd = $this->advancePeriod($start);
+
+        return new BillingCycle($start, $periodEnd < $end ? $periodEnd : $end);
+    }
+
+    /**
+     * One cadence step along the PERIOD walk (contract start day). In
+     * single-walk mode identical to {@see self::advanceByCadence()}.
+     */
+    public function advancePeriod(\DateTimeImmutable $periodStart): \DateTimeImmutable
+    {
+        if (null === $this->periodAnchorDay) {
+            return $this->advanceByCadence($periodStart);
+        }
+
+        return BillingCalendar::addMonths($periodStart->setTime(0, 0), $this->getBillingCadenceMonths(), $this->periodAnchorDay);
+    }
+
+    /**
+     * Due date of the period starting on $periodStart: the first payment's day
+     * of month (clamped to short months) in the month chargeMonthOffset away —
+     * never on or after the effective end (a late payer's last, short period
+     * is then due on its own first day).
+     */
+    public function dueDateForPeriod(\DateTimeImmutable $periodStart): \DateTimeImmutable
+    {
+        $periodStart = $periodStart->setTime(0, 0);
+        if (null === $this->chargeMonthOffset || null === $this->billingAnchorDay) {
+            return $periodStart;
+        }
+
+        $dueMonth = BillingCalendar::addMonths($periodStart->setDate((int) $periodStart->format('Y'), (int) $periodStart->format('n'), 1), -$this->chargeMonthOffset, 1);
+        $due = $dueMonth->setDate(
+            (int) $dueMonth->format('Y'),
+            (int) $dueMonth->format('n'),
+            min($this->billingAnchorDay, (int) $dueMonth->format('t')),
+        );
+
+        return $due >= $this->getEffectiveEndDate()->setTime(0, 0) ? $periodStart : $due;
+    }
+
+    /**
+     * $paidAt paid the period starting on $paidPeriodStart (period walk day
+     * $periodAnchorDay). Seed both walks for the following period.
+     */
+    private function seedPeriodWalk(\DateTimeImmutable $paidPeriodStart, int $periodAnchorDay, \DateTimeImmutable $paidAt): BillingCycle
+    {
+        $paidPeriodStart = $paidPeriodStart->setTime(0, 0);
+        // The payment's calendar day as the customer sees it (Prague), not the
+        // server's UTC day — a payment at 00:30 Prague time is "the 15th".
+        $paidDay = new \DateTimeImmutable(
+            $paidAt->setTimezone(new \DateTimeZone('Europe/Prague'))->format('Y-m-d'),
+            $paidPeriodStart->getTimezone(),
+        );
+        $chargeDay = (int) $paidDay->format('j');
+        $end = $this->getEffectiveEndDate()->setTime(0, 0);
+
+        $this->periodAnchorDay = $periodAnchorDay;
+        $nextPeriodStart = $this->advancePeriod($paidPeriodStart);
+
+        if ($nextPeriodStart >= $end) {
+            $this->finishBilling($end);
+
+            return new BillingCycle($paidPeriodStart, $end);
+        }
+
+        // Paid on/before its period: due in the period's month when the
+        // payment day comes no later than the period day, else the month
+        // before. Paid after it: same month when the payment day is no earlier
+        // than the period day, else the month after.
+        $chargeMonthOffset = $paidDay <= $paidPeriodStart
+            ? ($chargeDay <= $periodAnchorDay ? 0 : 1)
+            : ($chargeDay >= $periodAnchorDay ? 0 : -1);
+
+        $this->nextPeriodStart = $nextPeriodStart;
+        $this->billingAnchorDay = $chargeDay;
+        $this->chargeMonthOffset = $chargeMonthOffset;
+        $due = $this->dueDateForPeriod($nextPeriodStart);
+
+        if ($due <= $paidDay) {
+            // Safety net: never schedule a charge on or before the payment that
+            // just happened (payment far behind its period). Fall back to the
+            // single walk from the next period (anchored on the period day).
+            $this->clearPeriodWalk();
+            $this->billingAnchorDay = $periodAnchorDay;
+            $this->assignNextBillingDate($nextPeriodStart);
+        } else {
+            $this->nextBillingDate = $due;
+        }
+        $this->paidThroughDate = $nextPeriodStart;
+
+        return new BillingCycle($paidPeriodStart, $nextPeriodStart);
+    }
+
+    private function finishBilling(\DateTimeImmutable $end): void
+    {
+        $this->clearPeriodWalk();
+        $this->nextBillingDate = null;
+        $this->paidThroughDate = $end;
+    }
+
+    private function clearPeriodWalk(): void
+    {
+        $this->nextPeriodStart = null;
+        $this->periodAnchorDay = null;
+        $this->chargeMonthOffset = null;
+    }
+
+    private function markCyclePaid(\DateTimeImmutable $paidAt): void
+    {
+        $this->lastBilledAt = $paidAt;
+        $this->failedBillingAttempts = 0;
+        $this->lastBillingFailedAt = null;
+        $this->pendingRecurringPaymentId = null;
+        $this->paymentDemandSentAt = null;
+        $this->paymentGraceUntil = null;
+    }
+
+    /**
+     * Nothing left to bill: the rental is paid to the end of its (effective)
+     * term. Holds for both paid-through conventions — customer-paid cycles
+     * store the exclusive end, admin prepayments are canonicalised to it.
+     */
+    public function isPaidToEndOfTerm(): bool
+    {
+        return null === $this->nextBillingDate
+            && null !== $this->paidThroughDate
+            && $this->paidThroughDate->format('Y-m-d') >= $this->getEffectiveEndDate()->format('Y-m-d');
+    }
+
+    /**
+     * The last day the customer has paid for — the ONLY value customer-facing
+     * "Zaplaceno do …" wording may print. Never print paidThroughDate raw: it
+     * is the first UNPAID day for customer-paid cycles but the last paid day
+     * for admin prepayments, which produced "uhrazeno do X. Od X …".
+     *
+     * The day before the next unpaid PERIOD starts — means the same in every
+     * mode and convention (with two-walk billing the due date is earlier).
+     * Null when it can't be known: no payment yet, a one-shot rental, or a
+     * wiped anchor.
+     */
+    public function lastPaidDay(): ?\DateTimeImmutable
+    {
+        $nextPeriodStart = $this->nextPeriodStart();
+        if (null !== $nextPeriodStart) {
+            return $nextPeriodStart->setTime(0, 0)->modify('-1 day');
+        }
+
+        if ($this->isPaidToEndOfTerm()) {
+            return $this->getEffectiveEndDate()->setTime(0, 0)->modify('-1 day');
+        }
+
+        return null;
+    }
+
+    /**
+     * The date to print after a customer-facing "Zaplaceno do …": the contract
+     * end when nothing is left to pay (so it reads the same as the contract's
+     * own "od … do …" and the "Smlouva trvá do" row next to it), otherwise the
+     * last paid day — the day before the next payment is due.
+     */
+    public function displayPaidUntil(): ?\DateTimeImmutable
+    {
+        return $this->isPaidToEndOfTerm() ? $this->getEffectiveEndDate() : $this->lastPaidDay();
+    }
+
     public function getBillingCadenceMonths(): int
     {
         return '+1 year' === $this->getBillingCadenceStep() ? 12 : 1;
@@ -672,6 +1069,9 @@ class Contract implements EntityWithEvents
      */
     private function assignNextBillingDate(?\DateTimeImmutable $nextBillingDate): void
     {
+        // Every caller writes a SINGLE-walk anchor (period starts on its due
+        // date) — drop any two-walk state so the two never disagree.
+        $this->clearPeriodWalk();
         $this->nextBillingDate = $nextBillingDate;
 
         if (null === $nextBillingDate) {
@@ -775,6 +1175,10 @@ class Contract implements EntityWithEvents
             && !$this->isFree()
             && !$this->isYearly()
             && !$this->isTerminated()
+            // Nothing scheduled (paid to the end) → nothing for the setup
+            // charge to pay; it would bill a period from today and move
+            // paidThroughDate backwards.
+            && null !== $this->nextBillingDate
             && $this->endDate >= $now->setTime(0, 0);
     }
 
@@ -792,7 +1196,7 @@ class Contract implements EntityWithEvents
             && !$this->isFree()
             && null === $this->nextBillingDate
             && null !== $this->paidThroughDate
-            && $this->paidThroughDate->format('Y-m-d') < $this->endDate->format('Y-m-d');
+            && $this->paidThroughDate->format('Y-m-d') < $this->getEffectiveEndDate()->format('Y-m-d');
     }
 
     public function isFree(): bool
@@ -808,11 +1212,34 @@ class Contract implements EntityWithEvents
      */
     public function markExternallyPrepaid(\DateTimeImmutable $paidThroughDate): void
     {
-        $this->paidThroughDate = $paidThroughDate;
-        $resumesOn = $paidThroughDate->modify('+1 day');
-        // Prepayment covering the whole term leaves no anchor: nothing to bill,
-        // nothing for the manual cron to request, nothing for the overdue sweep.
-        $this->assignNextBillingDate($resumesOn > $this->endDate ? null : $resumesOn);
+        $this->applyInclusivePaidThrough($paidThroughDate);
+    }
+
+    /**
+     * Admin-entered "paid through X" (external prepayment, off-system payment)
+     * is the INCLUSIVE last paid day; billing resumes the day after.
+     *
+     * Paid to the end of the term — X is the day before the end or later (the
+     * admin form steers "do konce smlouvy" to the end date itself) — becomes the
+     * canonical fully-paid state shared with customer-paid cycles: no anchor
+     * (nothing to bill, request or chase) and paidThroughDate >= end. Leaving
+     * an anchor ON the end date instead would make the manual cron request a
+     * one-day cycle and block the contract's expiry.
+     */
+    private function applyInclusivePaidThrough(\DateTimeImmutable $lastPaidDay): void
+    {
+        $end = $this->getEffectiveEndDate()->format('Y-m-d');
+        $resumesOn = $lastPaidDay->modify('+1 day');
+
+        if ($resumesOn->format('Y-m-d') >= $end) {
+            $this->paidThroughDate = $lastPaidDay->format('Y-m-d') >= $end ? $lastPaidDay : $this->getEffectiveEndDate();
+            $this->assignNextBillingDate(null);
+
+            return;
+        }
+
+        $this->paidThroughDate = $lastPaidDay;
+        $this->assignNextBillingDate($resumesOn);
     }
 
     /**
@@ -835,6 +1262,27 @@ class Contract implements EntityWithEvents
     public function effectiveDunningAnchor(): ?\DateTimeImmutable
     {
         return $this->paymentGraceUntil ?? $this->nextBillingDate;
+    }
+
+    /**
+     * The date the VOP čl. XI termination countdown runs from. Like
+     * {@see self::effectiveDunningAnchor()}, but a customer whose due date
+     * precedes the period it pays (paid N days early, two-walk billing) is
+     * never terminated while still inside a period they already paid for:
+     * the countdown starts when the unpaid period does (owner decision
+     * 2026-11-25). Dunning e-mails still run from the due date.
+     */
+    public function terminationCountdownAnchor(): ?\DateTimeImmutable
+    {
+        $anchor = $this->effectiveDunningAnchor();
+        $periodStart = null !== $this->nextBillingDate ? $this->nextPeriodStart() : null;
+        if (null === $anchor || null === $periodStart) {
+            return $anchor;
+        }
+
+        // An admin extension (spec 086) can only push the countdown further,
+        // never below the end of the already-paid period.
+        return $periodStart->setTime(0, 0) > $anchor->setTime(0, 0) ? $periodStart->setTime(0, 0) : $anchor;
     }
 
     /**
@@ -871,9 +1319,7 @@ class Contract implements EntityWithEvents
     public function recordExternalPayment(\DateTimeImmutable $paidThroughDate, \DateTimeImmutable $now): void
     {
         $this->lastBilledAt = $now;
-        $this->paidThroughDate = $paidThroughDate;
-        $resumesOn = $paidThroughDate->modify('+1 day');
-        $this->assignNextBillingDate($resumesOn > $this->getEffectiveEndDate() ? null : $resumesOn);
+        $this->applyInclusivePaidThrough($paidThroughDate);
         $this->failedBillingAttempts = 0;
         $this->lastBillingFailedAt = null;
         $this->pendingRecurringPaymentId = null;

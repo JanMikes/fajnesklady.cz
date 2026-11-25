@@ -78,10 +78,10 @@ final readonly class SigningEmailContent
         if ($order->prepaidCoversWholeTerm()) {
             return new self(
                 situation: $situation,
-                subject: 'Podepište smlouvu — předplaceno do '.$paidThroughFormatted,
+                subject: 'Podepište smlouvu — uhrazeno do konce smlouvy',
                 headline: 'Podpis smlouvy',
                 nextStepLine: sprintf(
-                    'Pronájem je předplacen externě do konce smlouvy (%s) — po podpisu Vás už žádné platby nečekají.',
+                    'Nájemné máte uhrazené do konce smlouvy (%s) — po podpisu Vás už žádné platby nečekají.',
                     $order->endDate?->format('d.m.Y') ?? $paidThroughFormatted,
                 ),
                 buttonLabel: 'Podepsat smlouvu',
@@ -96,7 +96,7 @@ final readonly class SigningEmailContent
             subject: 'Podepište smlouvu — předplaceno do '.$paidThroughFormatted,
             headline: 'Podpis smlouvy',
             nextStepLine: sprintf(
-                'Pronájem je předplacen externě do %s — po podpisu nemusíte nic platit.',
+                'Nájemné máte uhrazené do %s — po podpisu nemusíte nic platit.',
                 $paidThroughFormatted,
             ),
             buttonLabel: 'Podepsat smlouvu',

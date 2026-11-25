@@ -36,7 +36,7 @@
 
                 <p class="text-sm text-gray-700 mb-6">
                     {% if isOverdue|default(false) %}
-                        Nyní zaplatíte kartou dlužnou platbu za období od {{ nextBillingDate|date('d.m.Y') }}
+                        Nyní zaplatíte kartou dlužnou platbu za období od {{ (periodStart ?? nextBillingDate)|date('d.m.Y') }}
                         (<strong>{{ amountInCzk|number_format(0, ',', ' ') }} Kč vč. DPH</strong>, po splatnosti od {{ nextBillingDate|date('d.m.Y') }}).
                     {% else %}
                         Nyní zaplatíte kartou platbu za nadcházející období

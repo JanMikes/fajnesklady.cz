@@ -131,6 +131,37 @@ class AdminOrderRecordExternalPaymentControllerTest extends WebTestCase
         $this->assertNotNull($this->findAuditRow($contractId, 'external_payment_recorded'));
     }
 
+    /**
+     * Whole-cycle payment of the (prorated) FINAL cycle used to write
+     * "paid through" past the contract end and leave an anchor ON the end
+     * date — the manual cron then asked for a one-day cycle and the contract
+     * could neither expire nor stop being chased.
+     */
+    public function testRecordWholeFinalCycleLeavesContractPaidToTheEnd(): void
+    {
+        $endDate = $this->clock->now()->modify('+10 days')->setTime(0, 0);
+        [$order, $contract] = $this->createRunningContract(endDate: $endDate);
+        $this->entityManager->flush();
+        $contractId = $contract->id->toRfc4122();
+
+        $this->client->loginUser($this->findUserByEmail('admin@example.com'), 'main');
+        $this->client->request('POST', $this->url($order), [
+            'external_payment_form' => [
+                'coverage' => 'whole_cycle',
+                'amountInCzk' => '140',
+            ],
+        ]);
+
+        $this->assertResponseRedirects('/portal/admin/orders/'.$order->id->toRfc4122());
+
+        $this->entityManager->clear();
+        $reloaded = $this->entityManager->find(Contract::class, Uuid::fromString($contractId));
+        $this->assertInstanceOf(Contract::class, $reloaded);
+        $this->assertNull($reloaded->nextBillingDate, 'nothing left to bill — no one-day cycle on the end date');
+        $this->assertTrue($reloaded->isPaidToEndOfTerm());
+        $this->assertSame($endDate->format('Y-m-d'), $reloaded->paidThroughDate?->format('Y-m-d'));
+    }
+
     private function url(Order $order): string
     {
         return '/portal/admin/orders/'.$order->id->toRfc4122().'/record-external-payment';
@@ -139,9 +170,10 @@ class AdminOrderRecordExternalPaymentControllerTest extends WebTestCase
     /**
      * @return array{0: Order, 1: Contract}
      */
-    private function createRunningContract(bool $signed = true): array
+    private function createRunningContract(bool $signed = true, ?\DateTimeImmutable $endDate = null): array
     {
         $now = $this->clock->now();
+        $endDate ??= $now->modify('-2 months')->modify('+12 months');
         $tenant = $this->findUserByEmail('tenant@example.com');
 
         $place = new Place(
@@ -186,7 +218,7 @@ class AdminOrderRecordExternalPaymentControllerTest extends WebTestCase
             storage: $storage,
             paymentFrequency: PaymentFrequency::MONTHLY,
             startDate: $now->modify('-2 months'),
-            endDate: $now->modify('-2 months')->modify('+12 months'),
+            endDate: $endDate,
             firstPaymentPrice: 35000,
             expiresAt: $now->modify('+7 days'),
             createdAt: $now->modify('-2 months'),
@@ -203,7 +235,7 @@ class AdminOrderRecordExternalPaymentControllerTest extends WebTestCase
             user: $tenant,
             storage: $storage,
             startDate: $now->modify('-2 months'),
-            endDate: $now->modify('-2 months')->modify('+12 months'),
+            endDate: $endDate,
             createdAt: $now->modify('-2 months'),
         );
         $contract->applyBillingMode(BillingMode::MANUAL_RECURRING);

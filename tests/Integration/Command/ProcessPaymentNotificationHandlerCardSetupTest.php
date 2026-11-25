@@ -69,8 +69,14 @@ final class ProcessPaymentNotificationHandlerCardSetupTest extends KernelTestCas
         self::assertSame(PaymentMethod::GOPAY, $reloaded->order->paymentMethod);
         self::assertEquals(
             $originalNextBilling->modify('+1 month')->format('Y-m-d'),
-            $reloaded->nextBillingDate?->format('Y-m-d'),
-            'The setup charge pays the next cycle, so billing advances one cadence step.',
+            $reloaded->nextPeriodStart()?->format('Y-m-d'),
+            'The setup charge pays the next cycle, so the rental period advances one cadence step.',
+        );
+        // The setup page's consent: "vždy ke stejnému dni v měsíci jako tato
+        // platba" — card charges now follow the setup payment's day.
+        self::assertSame(
+            (int) $this->clock->now()->format('j'),
+            (int) $reloaded->nextBillingDate?->format('j'),
         );
 
         // The RecurringPaymentCharged fan-out must have produced a Payment row

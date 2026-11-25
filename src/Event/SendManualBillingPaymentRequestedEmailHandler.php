@@ -120,6 +120,7 @@ final readonly class SendManualBillingPaymentRequestedEmailHandler
                 'storageNumber' => $storage->number,
                 'amountInCzk' => number_format($amountToRequest / 100, 2, ',', ' '),
                 'periodStart' => $request->periodStart,
+                'rentalPeriodStart' => $request->rentalPeriodStart(),
                 'periodEnd' => $request->periodEnd,
                 'daysUntilDue' => $daysUntilDue,
                 'dueWhen' => $dueWhen,

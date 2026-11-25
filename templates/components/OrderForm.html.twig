@@ -410,7 +410,7 @@
                                         <ul class="space-y-1 text-xs text-gray-600">
                                             {% for entry in schedule.entries %}
                                                 <li class="flex items-center justify-between">
-                                                    <span>Platba na rok {{ loop.index }} <span class="text-gray-400">({{ entry.chargeDate|date('d.m.Y') }})</span></span>
+                                                    <span>Platba na rok {{ loop.index }} <span class="text-gray-400">(období od {{ entry.chargeDate|date('d.m.Y') }})</span></span>
                                                     <span class="font-medium text-gray-800">{{ entry.amountInCzk|number_format(0, ',', ' ') }} Kč</span>
                                                 </li>
                                             {% endfor %}
@@ -433,7 +433,7 @@
                                         <ul class="space-y-1 text-xs text-gray-600">
                                             {% for entry in schedule.entries %}
                                                 <li class="flex items-center justify-between">
-                                                    <span>{{ loop.index }}. platba <span class="text-gray-400">({{ entry.chargeDate|date('d.m.Y') }})</span></span>
+                                                    <span>{{ loop.index }}. platba <span class="text-gray-400">(období od {{ entry.chargeDate|date('d.m.Y') }})</span></span>
                                                     <span class="font-medium text-gray-800">{{ entry.amountInCzk|number_format(0, ',', ' ') }} Kč</span>
                                                 </li>
                                             {% endfor %}
@@ -458,7 +458,7 @@
                                     <ul class="space-y-1 text-xs text-gray-600">
                                         {% for entry in schedule.entries %}
                                             <li class="flex items-center justify-between">
-                                                <span>{{ loop.first ? '1. platba' : (loop.last ? 'doplatek' : (loop.index ~ '. platba')) }} <span class="text-gray-400">({{ entry.chargeDate|date('d.m.Y') }})</span></span>
+                                                <span>{{ loop.first ? '1. platba' : (loop.last ? 'doplatek' : (loop.index ~ '. platba')) }} <span class="text-gray-400">(období od {{ entry.chargeDate|date('d.m.Y') }})</span></span>
                                                 <span class="font-medium text-gray-800">{{ entry.amountInCzk|number_format(0, ',', ' ') }} Kč</span>
                                             </li>
                                         {% endfor %}

@@ -103,11 +103,13 @@ class ContractProlongTest extends TestCase
         self::assertEquals($previousEnd, $contract->nextBillingDate, 'Billing must resume where the paid period ends.');
     }
 
-    public function testProlongFullyPrepaidContractResumesBillingDayAfterPaidThrough(): void
+    public function testProlongFullyPrepaidContractResumesBillingOnPreviousEnd(): void
     {
         // Spec 085: external prepayment covering the whole term leaves no
-        // billing anchor (markExternallyPrepaid caps at endDate). Prolonging
-        // must resume the day AFTER the inclusive paid-through day — not on it.
+        // billing anchor. "Předplaceno do = konec smlouvy" means the whole
+        // [start, end) term (owner decision 2026-11-25), so the extension's
+        // first cycle starts ON the previous end — like every customer-paid
+        // contract.
         $contract = $this->createContract();
         $contract->applyBillingMode(BillingMode::MANUAL_RECURRING);
         $previousEnd = $contract->endDate;
@@ -116,7 +118,50 @@ class ContractProlongTest extends TestCase
 
         $contract->prolong($previousEnd->modify('+3 months'), null, $this->now);
 
-        self::assertEquals($previousEnd->modify('+1 day'), $contract->nextBillingDate, 'Customer already paid through the previous end date inclusive.');
+        self::assertEquals($previousEnd, $contract->nextBillingDate, 'The extension starts where the prepaid term ended.');
+    }
+
+    /**
+     * A customer who paid the final cycle by bank transfer has no card token
+     * and paidThroughDate == endDate (the first unpaid day). Prolonging used to
+     * resume the day AFTER it, so the end day was never billed.
+     */
+    public function testProlongFullyPaidBankTransferContractResumesOnPreviousEnd(): void
+    {
+        $contract = $this->createContract();
+        $contract->applyBillingMode(BillingMode::MANUAL_RECURRING);
+        $previousEnd = $contract->endDate;
+        $contract->recordBillingCharge($this->now, null, $previousEnd);
+
+        $contract->prolong($previousEnd->modify('+3 months'), null, $this->now);
+
+        self::assertEquals($previousEnd, $contract->nextBillingDate);
+    }
+
+    public function testProlongCardContractCancelledAfterFinalChargeResumesOnPreviousEnd(): void
+    {
+        $contract = $this->createContract();
+        $contract->applyBillingMode(BillingMode::MANUAL_RECURRING);
+        $previousEnd = $contract->endDate;
+        $contract->setRecurringPayment('gp_parent', null, $previousEnd);
+        $contract->cancelRecurringPayment();
+
+        $contract->prolong($previousEnd->modify('+3 months'), null, $this->now);
+
+        self::assertEquals($previousEnd, $contract->nextBillingDate);
+    }
+
+    public function testProlongPrepaidBeyondEndResumesDayAfterLastPaidDay(): void
+    {
+        $contract = $this->createContract();
+        $contract->applyBillingMode(BillingMode::MANUAL_RECURRING);
+        $previousEnd = $contract->endDate;
+        $contract->markExternallyPrepaid($previousEnd->modify('+10 days'));
+        self::assertNull($contract->nextBillingDate);
+
+        $contract->prolong($previousEnd->modify('+3 months'), null, $this->now);
+
+        self::assertEquals($previousEnd->modify('+11 days'), $contract->nextBillingDate);
     }
 
     public function testProlongOneTimeContractDoesNotReseedBilling(): void

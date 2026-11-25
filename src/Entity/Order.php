@@ -398,6 +398,17 @@ class Order implements EntityWithEvents
     }
 
     /**
+     * Paid by card on the recurring GoPay track (ON_DEMAND token, monthly
+     * charges) — the customer is bound by Podmínky opakovaných plateb.
+     */
+    public function isCardRecurring(): bool
+    {
+        return PaymentMethod::GOPAY === $this->paymentMethod
+            && BillingMode::AUTO_RECURRING === $this->billingMode
+            && $this->isRecurring();
+    }
+
+    /**
      * Whether firstPaymentPrice is a PER-YEAR figure. Display surfaces must
      * never label it "/ měsíc" for yearly orders — the recurring cadence (and
      * the meaning of the locked amount) follows the payment frequency.
@@ -467,9 +478,12 @@ class Order implements EntityWithEvents
 
     public function prepaidCoversWholeTerm(): bool
     {
+        // paidThroughDate is the admin's inclusive last paid day; the term is
+        // [start, end), so the day before the end already covers all of it
+        // (same rule as Contract::applyInclusivePaidThrough()).
         return null !== $this->paidThroughDate
             && null !== $this->endDate
-            && $this->paidThroughDate >= $this->endDate;
+            && $this->paidThroughDate->modify('+1 day')->format('Y-m-d') >= $this->endDate->format('Y-m-d');
     }
 
     public function attachSignature(

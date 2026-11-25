@@ -289,7 +289,9 @@ final class AdminOnboardingForm extends AbstractController
         // prepayment is on, or a backdated start forces it ('free' returned above).
         $prepaidUntil = ($data->isExternallyPrepaid || $data->startsInPast()) ? $data->paidThroughDate : null;
 
-        if (null !== $prepaidUntil && $prepaidUntil >= $endDate) {
+        // The last rental day of a [start, end) term already covers it all —
+        // same rule as Contract::applyInclusivePaidThrough().
+        if (null !== $prepaidUntil && $prepaidUntil->modify('+1 day')->format('Y-m-d') >= $endDate->format('Y-m-d')) {
             return new OnboardingSchedulePreview(schedule: null, isFullyPrepaid: true, prepaidUntil: $prepaidUntil);
         }
 

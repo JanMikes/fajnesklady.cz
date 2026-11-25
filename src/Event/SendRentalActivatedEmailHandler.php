@@ -9,6 +9,7 @@ use App\Entity\Order;
 use App\Enum\PaymentMethod;
 use App\Repository\ContractRepository;
 use App\Repository\InvoiceRepository;
+use App\Service\Billing\RecurringAmountCalculator;
 use App\Service\InvoicingService;
 use App\Service\Order\OrderReferenceFormatter;
 use App\Service\Order\RentalActivatedEmailContent;
@@ -54,6 +55,7 @@ final readonly class SendRentalActivatedEmailHandler
         private StorageMapImageGenerator $mapImageGenerator,
         private PlaceAddressFormatter $addressFormatter,
         private OrderReferenceFormatter $orderReferenceFormatter,
+        private RecurringAmountCalculator $recurringAmountCalculator,
         private ClockInterface $clock,
         private LoggerInterface $logger,
         private string $uploadsDirectory,
@@ -90,7 +92,13 @@ final readonly class SendRentalActivatedEmailHandler
             }
         }
 
-        $content = RentalActivatedEmailContent::fromContract($contract);
+        $content = RentalActivatedEmailContent::fromContract(
+            $contract,
+            $now,
+            null !== $contract->nextBillingDate
+                ? $this->recurringAmountCalculator->calculate($contract, $now)
+                : null,
+        );
 
         $email = (new TemplatedEmail())
             ->from(new Address('noreply@fajnesklady.cz', 'Fajnesklady.cz'))

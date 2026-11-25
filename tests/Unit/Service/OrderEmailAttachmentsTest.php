@@ -9,6 +9,8 @@ use App\Entity\Place;
 use App\Entity\Storage;
 use App\Entity\StorageType;
 use App\Entity\User;
+use App\Enum\BillingMode;
+use App\Enum\PaymentMethod;
 use App\Enum\SigningMethod;
 use App\Repository\ContractRepository;
 use App\Service\ContractDocumentGenerator;
@@ -51,7 +53,7 @@ class OrderEmailAttachmentsTest extends TestCase
         $names = $this->attachmentNames($email);
         $this->assertContains('pouceni-spotrebitele.pdf', $names);
         $this->assertNotEmpty(array_filter($names, static fn ($n) => str_starts_with((string) $n, 'vop-')));
-        $this->assertNotContains('podminky-opakovanych-plateb.pdf', $names, 'Recurring terms are legacy open-ended only.');
+        $this->assertNotContains('podminky-opakovanych-plateb.pdf', $names, 'No card recurring payment on this order.');
 
         $this->assertTrue($context['hasContract']);
         $this->assertTrue($context['hasVop']);
@@ -69,6 +71,36 @@ class OrderEmailAttachmentsTest extends TestCase
         $names = $this->attachmentNames($email);
         $this->assertContains('podminky-opakovanych-plateb.pdf', $names);
         $this->assertTrue($context['hasRecurringTerms']);
+    }
+
+    /**
+     * Since spec 076 every order is fixed-term and cards are recurring-only:
+     * the recurring terms stopped being attached to ANY card customer.
+     */
+    public function testAttachesRecurringTermsForFixedTermCardRental(): void
+    {
+        $order = $this->createOrder(endDate: new \DateTimeImmutable('+6 months'), withSignature: true);
+        $order->setPaymentMethod(PaymentMethod::GOPAY);
+        $order->setBillingMode(BillingMode::AUTO_RECURRING);
+        $email = new TemplatedEmail();
+
+        $context = $this->buildService()->attachLegalDocuments($email, $order);
+
+        $this->assertContains('podminky-opakovanych-plateb.pdf', $this->attachmentNames($email));
+        $this->assertTrue($context['hasRecurringTerms']);
+    }
+
+    public function testDoesNotAttachRecurringTermsForBankTransferRental(): void
+    {
+        $order = $this->createOrder(endDate: new \DateTimeImmutable('+6 months'), withSignature: true);
+        $order->setPaymentMethod(PaymentMethod::BANK_TRANSFER);
+        $order->setBillingMode(BillingMode::MANUAL_RECURRING);
+        $email = new TemplatedEmail();
+
+        $context = $this->buildService()->attachLegalDocuments($email, $order);
+
+        $this->assertNotContains('podminky-opakovanych-plateb.pdf', $this->attachmentNames($email));
+        $this->assertFalse($context['hasRecurringTerms']);
     }
 
     public function testContractFilenameMatchesDocumentNumberPrintedInsideTheDocument(): void

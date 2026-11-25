@@ -44,10 +44,9 @@ final class CustomerSigningCompleteController extends AbstractController
             ),
             CustomerBillingSituation::EXTERNALLY_PREPAID => new CompletionPageViewModel(
                 situation: $situation,
-                headline: sprintf(
-                    'Vše vyřízeno — pronájem je předplacen do %s',
-                    $order->paidThroughDate?->format('d.m.Y') ?? '',
-                ),
+                headline: $order->prepaidCoversWholeTerm()
+                    ? 'Vše vyřízeno — nájemné máte uhrazené do konce smlouvy'
+                    : sprintf('Vše vyřízeno — nájemné máte uhrazené do %s', $order->paidThroughDate?->format('d.m.Y') ?? ''),
                 body: self::externallyPrepaidBody(SigningPriceViewModel::fromOrder($order)),
                 statusUrl: $statusUrl,
                 ctaLabel: 'Zobrazit pronájem',
@@ -69,7 +68,7 @@ final class CustomerSigningCompleteController extends AbstractController
     private static function externallyPrepaidBody(SigningPriceViewModel $price): string
     {
         if ($price->prepaidCoversWholeTerm) {
-            return 'Předplatné pokrývá celou dobu trvání smlouvy — žádné další platby Vás nečekají. Detail pronájmu a všechny dokumenty najdete na následující stránce.';
+            return 'Nájemné máte uhrazené na celou dobu trvání smlouvy — žádné další platby Vás nečekají. Detail pronájmu a všechny dokumenty najdete na následující stránce.';
         }
 
         return sprintf(

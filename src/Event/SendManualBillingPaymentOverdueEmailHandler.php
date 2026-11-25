@@ -104,6 +104,7 @@ final readonly class SendManualBillingPaymentOverdueEmailHandler
                 'storageNumber' => $storage->number,
                 'amountInCzk' => number_format($amountToRequest / 100, 2, ',', ' '),
                 'periodStart' => $request->periodStart,
+                'rentalPeriodStart' => $request->rentalPeriodStart(),
                 'periodEnd' => $request->periodEnd,
                 'overdueDays' => $overdueDays,
                 'statusUrl' => $statusUrl,

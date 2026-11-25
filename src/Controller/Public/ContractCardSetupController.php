@@ -68,16 +68,19 @@ final class ContractCardSetupController extends AbstractController
             ]);
         }
 
+        // Due date of the cycle the setup charge pays, and the rental period it
+        // covers (later than the due date with two-walk billing).
         $nextBillingDate = $contract->nextBillingDate ?? $contract->paidThroughDate ?? $contract->endDate;
+        $periodStart = $contract->nextPeriodStart() ?? $nextBillingDate;
         $amountInHaler = $this->amountCalculator->calculate($contract, $now);
 
         // Remaining charge count for the "Doba trvání" disclosure: the setup
-        // charge itself plus one per cadence step until the contract end.
+        // charge itself plus one per remaining rental period until the end.
         $remainingCharges = 1;
-        $cursor = $contract->advanceByCadence($nextBillingDate);
+        $cursor = $contract->advancePeriod($periodStart);
         while ($cursor < $contract->endDate) {
             ++$remainingCharges;
-            $cursor = $contract->advanceByCadence($cursor);
+            $cursor = $contract->advancePeriod($cursor);
         }
 
         return $this->render('public/contract_card_setup.html.twig', [
@@ -90,6 +93,7 @@ final class ContractCardSetupController extends AbstractController
             'amountInCzk' => $amountInHaler / 100,
             'monthlyAmountInCzk' => $contract->getEffectiveRecurringAmount() / 100,
             'nextBillingDate' => $nextBillingDate,
+            'periodStart' => $periodStart,
             // An overdue cycle is a debt, not "the upcoming period" — say so.
             'isOverdue' => $nextBillingDate->setTime(0, 0) < $now->setTime(0, 0),
             'remainingCharges' => $remainingCharges,

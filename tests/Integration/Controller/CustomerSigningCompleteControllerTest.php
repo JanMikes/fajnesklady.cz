@@ -65,7 +65,7 @@ class CustomerSigningCompleteControllerTest extends WebTestCase
         $this->assertResponseIsSuccessful();
         $content = $this->client->getResponse()->getContent();
         \assert(is_string($content));
-        $this->assertStringContainsString('předplacen do 31.12.2026', $content);
+        $this->assertStringContainsString('nájemné máte uhrazené do 31.12.2026', $content);
         $this->assertStringContainsString('Od 01.01.2027', $content);
         $this->assertStringContainsString('800 Kč / měsíc', $content);
         $this->assertStringContainsString('QR kódem pro bankovní převod', $content);

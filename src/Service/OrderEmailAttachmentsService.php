@@ -66,8 +66,12 @@ final readonly class OrderEmailAttachmentsService implements OrderEmailAttachmen
             $result['hasConsumerNotice'] = true;
         }
 
-        // Recurring conditions only apply to unlimited rentals.
-        if (null === $order->endDate) {
+        // Podmínky opakovaných plateb govern every card rental: since spec 076
+        // cards are recurring-only (GoPay ON_DEMAND, charged monthly), on a
+        // fixed term too. The old "open-ended only" rule (pre-076, when a
+        // fixed term meant a one-shot charge) silently stopped attaching them
+        // once every order got an end date. Legacy open-ended orders keep them.
+        if (null === $order->endDate || $order->isCardRecurring()) {
             $recurringPaymentsPath = $this->projectDir.'/public/documents/podminky-opakovanych-plateb.pdf';
             if (file_exists($recurringPaymentsPath)) {
                 $email->attachFromPath($recurringPaymentsPath, 'podminky-opakovanych-plateb.pdf', 'application/pdf');

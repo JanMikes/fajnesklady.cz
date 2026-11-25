@@ -68,7 +68,8 @@ class CustomerSigningControllerTest extends WebTestCase
         $this->assertResponseIsSuccessful();
         $content = $this->client->getResponse()->getContent();
         \assert(is_string($content));
-        $this->assertStringContainsString('předplacen externě do 31.12.2026', $content);
+        $this->assertStringContainsString('Nájemné máte uhrazené do 31.12.2026', $content);
+        $this->assertStringNotContainsString('externě', $content);
         // The customer must see what comes after the prepaid window (spec 085).
         $this->assertStringContainsString('01.01.2027', $content);
         $this->assertStringContainsString('800 Kč / měsíc', $content);

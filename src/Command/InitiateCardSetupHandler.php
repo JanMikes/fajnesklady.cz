@@ -29,15 +29,15 @@ final readonly class InitiateCardSetupHandler
         // Recurring track without a live token — covers the manual bank track
         // and card contracts whose recurring was cancelled. ONE_TIME never
         // reaches this handler (prolongation converts it to MANUAL first).
-        if (!$contract->billingMode->isRecurring()
-            || null !== $contract->goPayParentPaymentId
-            || $contract->isFree()
-            || $contract->isYearly()
-            || $contract->isTerminated()) {
+        // Same gate as the page (Contract::isEligibleForCardSetup) — incl. "a
+        // cycle is still scheduled": a setup charge with nothing due would pay
+        // a period from today and move paidThroughDate backwards (the page may
+        // have been opened before the last cycle got paid).
+        $now = $this->clock->now();
+        if (!$contract->isEligibleForCardSetup($now)) {
             throw new \DomainException('Přechod na platbu kartou není pro tuto smlouvu dostupný.');
         }
 
-        $now = $this->clock->now();
         $amount = $this->amountCalculator->calculate($contract, $now);
 
         // The setup charge REPLACES the next manual cycle — the webhook

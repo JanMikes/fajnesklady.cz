@@ -85,7 +85,8 @@ final readonly class SendPaymentDefaultEmailHandler
                     'outstandingDebt' => $debtCzk,
                     'hasDebt' => $event->outstandingDebtAmount > 0,
                     'isCardPayment' => $isCardPayment,
-                    'paidThroughDate' => $contract->paidThroughDate,
+                    // Last paid day, not the raw (first-unpaid-day) value.
+                    'paidThroughDate' => $contract->displayPaidUntil() ?? $contract->paidThroughDate,
                     'terminatedAt' => $contract->terminatedAt,
                 ]);
 

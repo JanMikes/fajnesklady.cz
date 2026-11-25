@@ -791,7 +791,12 @@ class ContractTest extends TestCase
         $this->assertNull($contract->nextBillingDate, 'nothing to bill — no anchor for the manual cron or the overdue sweep');
     }
 
-    public function testMarkExternallyPrepaidLastDayBeforeEndKeepsAnchorOnEndDate(): void
+    /**
+     * The last rental day of a [start, end) term covers the whole term. It
+     * used to leave an anchor ON the end date: the manual cron then asked for
+     * a one-day cycle and the contract could never expire.
+     */
+    public function testMarkExternallyPrepaidThroughLastRentalDayIsCanonicalFullyPaid(): void
     {
         $contract = $this->createContract(
             startDate: new \DateTimeImmutable('2025-07-01'),
@@ -800,7 +805,38 @@ class ContractTest extends TestCase
 
         $contract->markExternallyPrepaid(new \DateTimeImmutable('2026-06-30'));
 
-        $this->assertEquals(new \DateTimeImmutable('2026-07-01'), $contract->nextBillingDate);
+        $this->assertNull($contract->nextBillingDate);
+        $this->assertEquals(new \DateTimeImmutable('2026-07-01'), $contract->paidThroughDate);
+        $this->assertTrue($contract->isPaidToEndOfTerm());
+        $this->assertFalse($contract->hasUnscheduledUnpaidPeriod());
+    }
+
+    public function testMarkExternallyPrepaidBeyondEndKeepsTheAdminDate(): void
+    {
+        $contract = $this->createContract(
+            startDate: new \DateTimeImmutable('2025-07-01'),
+            endDate: new \DateTimeImmutable('2026-07-01'),
+        );
+
+        $contract->markExternallyPrepaid(new \DateTimeImmutable('2026-07-10'));
+
+        $this->assertNull($contract->nextBillingDate);
+        $this->assertEquals(new \DateTimeImmutable('2026-07-10'), $contract->paidThroughDate);
+    }
+
+    public function testRecordExternalPaymentThroughLastRentalDayLeavesNoAnchor(): void
+    {
+        $contract = $this->createContract(
+            startDate: new \DateTimeImmutable('2025-07-01'),
+            endDate: new \DateTimeImmutable('2026-07-01'),
+        );
+        $contract->applyBillingMode(BillingMode::MANUAL_RECURRING);
+        $contract->recordBillingCharge(new \DateTimeImmutable('2026-05-01'), new \DateTimeImmutable('2026-06-01'), new \DateTimeImmutable('2026-06-01'));
+
+        $contract->recordExternalPayment(new \DateTimeImmutable('2026-06-30'), new \DateTimeImmutable('2026-06-02'));
+
+        $this->assertNull($contract->nextBillingDate, 'no one-day cycle on the end date');
+        $this->assertTrue($contract->isPaidToEndOfTerm());
     }
 
     public function testDaysUntilExternalPrepaymentEndsReturnsNullWhenNotPrepaid(): void
@@ -1206,5 +1242,85 @@ class ContractTest extends TestCase
             endDate: new \DateTimeImmutable('2026-01-01'),
         );
         $this->assertSame(35000, $longTerm->getEffectiveMonthlyAmount());
+    }
+
+    public function testFirstCycleEndIsOneCadenceFromContractStart(): void
+    {
+        $monthly = $this->createContract(
+            startDate: new \DateTimeImmutable('2026-12-01'),
+            endDate: new \DateTimeImmutable('2027-12-01'),
+        );
+        $this->assertEquals(new \DateTimeImmutable('2027-01-01'), $monthly->firstCycleEnd());
+
+        $yearly = $this->createContract(
+            startDate: new \DateTimeImmutable('2026-12-01'),
+            endDate: new \DateTimeImmutable('2027-12-01'),
+        );
+        $yearly->applyPaymentFrequency(PaymentFrequency::YEARLY);
+        $this->assertEquals(new \DateTimeImmutable('2027-12-01'), $yearly->firstCycleEnd());
+    }
+
+    public function testStartOnThe31stKeepsReturningToThe31stAfterAClamp(): void
+    {
+        $contract = $this->createContract(
+            startDate: new \DateTimeImmutable('2026-01-31'),
+            endDate: new \DateTimeImmutable('2026-07-31'),
+        );
+        $contract->applyBillingMode(BillingMode::MANUAL_RECURRING);
+
+        $contract->startBilling(new \DateTimeImmutable('2026-01-31 10:00'));
+
+        $this->assertEquals(new \DateTimeImmutable('2026-02-28'), $contract->nextBillingDate);
+        $this->assertEquals(new \DateTimeImmutable('2026-02-28'), $contract->nextPeriodStart());
+
+        $contract->recordCyclePaid(new \DateTimeImmutable('2026-02-28 10:00'));
+
+        $this->assertEquals(new \DateTimeImmutable('2026-03-31'), $contract->nextBillingDate);
+        $this->assertEquals(new \DateTimeImmutable('2026-03-31'), $contract->nextPeriodStart());
+    }
+
+    public function testLastPaidDayIsTheDayBeforeTheNextDueDateInBothConventions(): void
+    {
+        // Customer-paid cycle: paidThroughDate is the first UNPAID day.
+        $customerPaid = $this->createContract(
+            startDate: new \DateTimeImmutable('2026-12-01'),
+            endDate: new \DateTimeImmutable('2027-12-01'),
+        );
+        $customerPaid->applyBillingMode(BillingMode::MANUAL_RECURRING);
+        $customerPaid->recordBillingCharge(new \DateTimeImmutable('2026-11-24'), new \DateTimeImmutable('2027-01-01'), new \DateTimeImmutable('2027-01-01'));
+        $this->assertEquals(new \DateTimeImmutable('2026-12-31'), $customerPaid->lastPaidDay());
+        $this->assertEquals(new \DateTimeImmutable('2026-12-31'), $customerPaid->displayPaidUntil());
+        $this->assertFalse($customerPaid->isPaidToEndOfTerm());
+
+        // Admin prepayment: paidThroughDate is the INCLUSIVE last paid day.
+        $prepaid = $this->createContract(
+            startDate: new \DateTimeImmutable('2026-12-01'),
+            endDate: new \DateTimeImmutable('2027-12-01'),
+        );
+        $prepaid->markExternallyPrepaid(new \DateTimeImmutable('2026-12-31'));
+        $this->assertEquals(new \DateTimeImmutable('2026-12-31'), $prepaid->lastPaidDay());
+    }
+
+    public function testFullyPaidContractDisplaysTheContractEnd(): void
+    {
+        $contract = $this->createContract(
+            startDate: new \DateTimeImmutable('2026-12-01'),
+            endDate: new \DateTimeImmutable('2027-12-01'),
+        );
+        $contract->applyBillingMode(BillingMode::MANUAL_RECURRING);
+        $contract->recordBillingCharge(new \DateTimeImmutable('2026-11-24'), null, new \DateTimeImmutable('2027-12-01'));
+
+        $this->assertTrue($contract->isPaidToEndOfTerm());
+        $this->assertEquals(new \DateTimeImmutable('2027-11-30'), $contract->lastPaidDay());
+        $this->assertEquals(new \DateTimeImmutable('2027-12-01'), $contract->displayPaidUntil(), 'reads the same as the contract\'s "do 01.12.2027"');
+    }
+
+    public function testNothingPaidYetHasNoPaidUntil(): void
+    {
+        $contract = $this->createContract();
+
+        $this->assertNull($contract->lastPaidDay());
+        $this->assertNull($contract->displayPaidUntil());
+        $this->assertFalse($contract->isPaidToEndOfTerm());
     }
 }

@@ -34,15 +34,16 @@ final readonly class RecurringAmountCalculator
      *  - Last cycle → prorated by remaining days.
      *  - Regular cycle → full cadence-period rate.
      *
-     * The "billing period start" is the contract's `nextBillingDate` if set,
-     * otherwise $now — matches the deterministic anchor used by the cron.
+     * The billing period is the contract's next unpaid RENTAL period
+     * ({@see Contract::nextPeriodStart()} — with two-walk billing it starts
+     * after the due date), otherwise $now.
      * For YEARLY contracts the rate is the yearly amount and proration uses
      * 365 days; for MONTHLY it's the (possibly individual) monthly amount
      * over a 30-day month.
      */
     public function calculate(Contract $contract, \DateTimeImmutable $now): int
     {
-        return $this->calculateForPeriodStart($contract, $contract->nextBillingDate ?? $now);
+        return $this->calculateForPeriodStart($contract, $contract->nextPeriodStart() ?? $now);
     }
 
     /**
@@ -134,7 +135,7 @@ final readonly class RecurringAmountCalculator
         // schedule the customer was shown at order time (which uses plain dates).
         $billingPeriodStart = $billingPeriodStart->setTime(0, 0);
 
-        $nextFullPeriodEnd = $contract->advanceByCadence($billingPeriodStart);
+        $nextFullPeriodEnd = $contract->advancePeriod($billingPeriodStart);
 
         if ($nextFullPeriodEnd <= $effectiveEndDate) {
             return $periodAmount;

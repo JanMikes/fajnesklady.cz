@@ -121,9 +121,15 @@ class ProcessIncomingBankTransactionUpfrontTest extends KernelTestCase
         self::assertSame(BillingMode::ONE_TIME, $contract->billingMode);
         self::assertSame(PaymentFrequency::ONE_TIME, $contract->paymentFrequency);
         self::assertNotNull($contract->nextBillingDate, 'second tranche must be anchored');
+        // The second tranche PAYS the quoted period from entries[1] and is due
+        // on the first payment's day of month (two-walk billing).
         self::assertSame(
             $displaySchedule->entries[1]->chargeDate->format('Y-m-d'),
-            $contract->nextBillingDate->format('Y-m-d'),
+            $contract->nextPeriodStart()?->format('Y-m-d'),
+        );
+        self::assertSame(
+            (int) $this->clock->now()->format('j'),
+            (int) $contract->nextBillingDate->format('j'),
         );
         self::assertNotNull($contract->paidThroughDate);
         self::assertSame(

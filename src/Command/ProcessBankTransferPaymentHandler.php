@@ -89,13 +89,11 @@ final readonly class ProcessBankTransferPaymentHandler
         int $effectiveAmount,
         \DateTimeImmutable $now,
     ): void {
-        $billingPeriodStart = $contract->nextBillingDate ?? $now;
-        $effectiveEndDate = $contract->getEffectiveEndDate();
-        $nextBillingDate = $contract->advanceByCadence($billingPeriodStart);
-
+        // Payment requests are keyed on the cycle's DUE date (nextBillingDate);
+        // the rental period it pays may start later (two-walk billing).
         $manualRequest = $this->manualPaymentRequestRepository->findUnpaidByContractAndPeriod(
             $contract,
-            $billingPeriodStart,
+            $contract->nextBillingDate ?? $now,
         );
 
         // The payment settles the cycle the customer was ASKED to pay — the
@@ -104,18 +102,8 @@ final readonly class ProcessBankTransferPaymentHandler
         // contract has since been prolonged, the money covers only up to that
         // old end date; the next cycle starts there. Advancing a full cadence
         // step instead would hand out the gap for free.
-        if (null !== $manualRequest && $manualRequest->periodEnd < $nextBillingDate->setTime(0, 0)) {
-            $nextBillingDate = $manualRequest->periodEnd;
-        }
-
-        $paidThroughDate = $nextBillingDate;
-
-        if ($nextBillingDate >= $effectiveEndDate) {
-            $nextBillingDate = null;
-            $paidThroughDate = $effectiveEndDate;
-        }
-
-        $contract->recordBillingCharge($now, $nextBillingDate, $paidThroughDate);
+        $cycle = $contract->recordCyclePaid($now, $manualRequest?->periodEnd);
+        $billingPeriodStart = $cycle->start;
 
         if (null !== $manualRequest) {
             $manualRequest->markPaid($now);
@@ -125,8 +113,8 @@ final readonly class ProcessBankTransferPaymentHandler
             contractId: $contract->id,
             bankTransactionId: $transaction->id,
             amount: $effectiveAmount,
-            periodStart: $billingPeriodStart,
-            periodEnd: $paidThroughDate,
+            periodStart: $cycle->start,
+            periodEnd: $cycle->end,
             occurredOn: $now,
         ));
 

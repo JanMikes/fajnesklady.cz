@@ -34,11 +34,15 @@ final readonly class CardToBankTransferSwitch
             $this->goPayClient->voidRecurrence($contract->goPayParentPaymentId);
         }
 
-        // Clears the token AND the anchor — the anchor is restored right below.
-        $contract->cancelRecurringPayment();
+        // Void the token only — the due date and the rental-period walk stay
+        // untouched, so the bank-transfer track bills exactly the days the card
+        // would have. $nextBillingDate seeds an anchor only when there is none.
+        $contract->dropCardToken();
         $contract->clearCardRetryLadder();
         $contract->applyBillingMode(BillingMode::MANUAL_RECURRING);
-        $contract->scheduleNextBilling($nextBillingDate, null);
+        if (null === $contract->nextBillingDate) {
+            $contract->scheduleNextBilling($nextBillingDate, null);
+        }
         $contract->order->setPaymentMethod(PaymentMethod::BANK_TRANSFER);
 
         // Every manual-track contract needs a variable symbol for the payment

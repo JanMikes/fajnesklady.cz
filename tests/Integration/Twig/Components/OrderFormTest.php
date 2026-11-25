@@ -238,7 +238,7 @@ final class OrderFormTest extends KernelTestCase
                 <ul>
                     {% for entry in schedule.entries %}
                         <li>
-                            <span>{{ loop.first ? '1. platba' : (loop.last ? 'doplatek' : (loop.index ~ '. platba')) }} ({{ entry.chargeDate|date('d.m.Y') }})</span>
+                            <span>{{ loop.first ? '1. platba' : (loop.last ? 'doplatek' : (loop.index ~ '. platba')) }} (období od {{ entry.chargeDate|date('d.m.Y') }})</span>
                             <span>{{ entry.amountInCzk|number_format(0, ',', ' ') }} Kč</span>
                         </li>
                     {% endfor %}

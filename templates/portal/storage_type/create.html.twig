@@ -88,7 +88,7 @@
                                 {{ form_errors(form.defaultPricePerMonthLongTerm) }}
                             </div>
                             <div>
-                                <label for="{{ form.defaultPricePerYear.vars.id }}" class="block text-xs text-gray-500 mb-1">Sazba roční předem <span class="text-gray-400">(cena za rok)</span></label>
+                                <label for="{{ form.defaultPricePerYear.vars.id }}" class="block text-xs text-gray-500 mb-1">Sazba roční předem <span class="text-gray-400">(cena za celý rok, ne za měsíc)</span></label>
                                 {{ form_widget(form.defaultPricePerYear, {'attr': {'placeholder':'0'}}) }}
                                 {{ form_errors(form.defaultPricePerYear) }}
                             </div>

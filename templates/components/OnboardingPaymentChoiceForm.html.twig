@@ -125,7 +125,7 @@
                     <ul class="text-xs text-gray-600 space-y-1 max-h-40 overflow-y-auto">
                         {% for entry in schedule.entries %}
                             <li class="flex justify-between">
-                                <span>{{ entry.chargeDate|date('d.m.Y') }}</span>
+                                <span>období od {{ entry.chargeDate|date('d.m.Y') }}</span>
                                 <span class="font-medium">{{ (entry.amount / 100)|number_format(0, ',', ' ') }} Kč</span>
                             </li>
                         {% endfor %}

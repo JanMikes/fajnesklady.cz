@@ -16,11 +16,13 @@ use App\Event\OrderCompleted;
 use App\Event\SendRentalActivatedEmailHandler;
 use App\Repository\ContractRepository;
 use App\Repository\InvoiceRepository;
+use App\Service\Billing\RecurringAmountCalculator;
 use App\Service\InvoicingService;
 use App\Service\Order\OrderReferenceFormatter;
 use App\Service\OrderEmailAttachments;
 use App\Service\OrderStatusUrlGenerator;
 use App\Service\Place\PlaceAddressFormatter;
+use App\Service\PriceCalculator;
 use App\Service\RecurringPaymentCancelUrlGenerator;
 use App\Service\StorageMapImageGenerator;
 use PHPUnit\Framework\TestCase;
@@ -48,7 +50,7 @@ class SendRentalActivatedEmailHandlerTest extends TestCase
         $this->removeDirectory($this->tempDir);
     }
 
-    public function testSubjectIsPronajemZahajen(): void
+    public function testSubjectAnnouncesFutureStartInsteadOfPronajemZahajen(): void
     {
         $contract = $this->createContract();
         $invoice = $this->buildInvoice($contract->order, withPdf: true);
@@ -56,7 +58,9 @@ class SendRentalActivatedEmailHandlerTest extends TestCase
 
         $this->assertNotNull($sentEmail);
         $this->assertNotNull($sentEmail->getSubject());
-        $this->assertStringStartsWith('Pronájem zahájen — ', $sentEmail->getSubject());
+        // The fixture rental starts 20.06.2025, after the mocked "now"
+        // (15.06.2025): it has not started yet.
+        $this->assertStringStartsWith('Pronájem začne 20.06.2025 — platba přijata — ', $sentEmail->getSubject());
     }
 
     public function testBundlesInvoicePdfAndMarksInvoiceEmailedWhenAvailable(): void
@@ -307,6 +311,7 @@ class SendRentalActivatedEmailHandlerTest extends TestCase
             $mapGenerator,
             new PlaceAddressFormatter(),
             new OrderReferenceFormatter(),
+            new RecurringAmountCalculator(new PriceCalculator()),
             new MockClock('2025-06-15 12:00:00'),
             new NullLogger(),
             $this->tempDir,

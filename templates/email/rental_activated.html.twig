@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pronájem zahájen</title>
+    <title>{{ content.title }}</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -80,7 +80,7 @@
 </head>
 <body>
     <div class="header">
-        <h1>✓ Pronájem zahájen</h1>
+        <h1>✓ {{ content.title }}</h1>
     </div>
 
     <div class="content">
@@ -196,7 +196,7 @@
 
         <h3>Co dál?</h3>
         <ul>
-            <li>Váš sklad je nyní připraven k použití od {{ startDate }}</li>
+            <li>Sklad můžete začít používat od {{ startDate }}</li>
             <li>Před prvním uložením věcí si pořiďte vlastní zámek (kvůli pojištění)</li>
             <li>Smlouvu si prosím pečlivě přečtěte a uschovejte</li>
             <li>V případě dotazů nás neváhejte kontaktovat</li>

@@ -57,7 +57,8 @@ class SigningEmailContentTest extends TestCase
 
         $this->assertSame(CustomerBillingSituation::EXTERNALLY_PREPAID, $content->situation);
         $this->assertSame('Podepište smlouvu — předplaceno do 31.12.2026', $content->subject);
-        $this->assertStringContainsString('předplacen externě do 31.12.2026', $content->nextStepLine);
+        $this->assertStringContainsString('Nájemné máte uhrazené do 31.12.2026', $content->nextStepLine);
+        $this->assertStringNotContainsString('extern', $content->nextStepLine);
         $this->assertSame('Podepsat smlouvu', $content->buttonLabel);
         $this->assertSame(80_000, $content->monthlyPriceInHaler);
         $this->assertNotNull($content->paidThroughDate);
@@ -82,8 +83,23 @@ class SigningEmailContentTest extends TestCase
         $this->assertSame(CustomerBillingSituation::EXTERNALLY_PREPAID, $content->situation);
         $this->assertStringContainsString('do konce smlouvy', $content->nextStepLine);
         $this->assertStringContainsString('žádné platby nečekají', $content->nextStepLine);
+        $this->assertSame('Podepište smlouvu — uhrazeno do konce smlouvy', $content->subject);
         $this->assertNull($content->futureBillingLine);
         $this->assertNull($content->billingResumesOn);
+    }
+
+    public function testPrepaidThroughLastRentalDayCountsAsWholeTerm(): void
+    {
+        // The term is [start, end): the day before the end already covers it.
+        $order = $this->createOrder(placeName: 'Sklady Praha');
+        \assert(null !== $order->endDate);
+        $order->setOnboardingBillingTerms(80_000, $order->endDate->modify('-1 day'));
+
+        $content = SigningEmailContent::fromOrder($order);
+
+        $this->assertTrue($order->prepaidCoversWholeTerm());
+        $this->assertStringContainsString('do konce smlouvy', $content->nextStepLine);
+        $this->assertNull($content->futureBillingLine, 'no "Od {end} činí nájemné" for a cycle that never comes');
     }
 
     public function testFreeContent(): void

@@ -264,7 +264,7 @@ final readonly class OrderPaymentOverviewFactory
     {
         $label = sprintf(
             'Období %s – %s',
-            $request->periodStart->format('d.m.Y'),
+            $request->rentalPeriodStart()->format('d.m.Y'),
             $request->periodEnd->format('d.m.Y'),
         );
 
@@ -273,7 +273,7 @@ final readonly class OrderPaymentOverviewFactory
                 label: $label,
                 status: PaymentOverviewRow::STATUS_PAID,
                 dueDate: $request->periodStart,
-                periodStart: $request->periodStart,
+                periodStart: $request->rentalPeriodStart(),
                 periodEnd: $request->periodEnd,
                 amountInHaler: $request->amount,
                 paidAt: $request->paidAt,
@@ -286,7 +286,7 @@ final readonly class OrderPaymentOverviewFactory
                 label: $label,
                 status: PaymentOverviewRow::STATUS_CANCELLED,
                 dueDate: $request->periodStart,
-                periodStart: $request->periodStart,
+                periodStart: $request->rentalPeriodStart(),
                 periodEnd: $request->periodEnd,
                 amountInHaler: $request->amount,
             );
@@ -308,7 +308,7 @@ final readonly class OrderPaymentOverviewFactory
                 label: $label,
                 status: PaymentOverviewRow::STATUS_OVERDUE,
                 dueDate: $dueDate,
-                periodStart: $request->periodStart,
+                periodStart: $request->rentalPeriodStart(),
                 periodEnd: $request->periodEnd,
                 amountInHaler: $request->amount,
                 note: implode(' · ', array_filter([$vsNote, $lastStageNote])),
@@ -320,7 +320,7 @@ final readonly class OrderPaymentOverviewFactory
             label: $label,
             status: PaymentOverviewRow::STATUS_PENDING,
             dueDate: $dueDate,
-            periodStart: $request->periodStart,
+            periodStart: $request->rentalPeriodStart(),
             periodEnd: $request->periodEnd,
             amountInHaler: $request->amount,
             note: implode(' · ', array_filter([
@@ -469,8 +469,10 @@ final readonly class OrderPaymentOverviewFactory
 
     /**
      * Future billing cycles that exist only as a projection — nothing in the
-     * database yet. Walks the contract's cadence from nextBillingDate to the
-     * effective end date.
+     * database yet. Walks the contract's RENTAL periods from the next unpaid
+     * one to the effective end date; each is due on
+     * {@see Contract::dueDateForPeriod()} (the first payment's day of month
+     * with two-walk billing, else the period start).
      *
      * @param list<ManualPaymentRequest> $requests
      *
@@ -492,22 +494,29 @@ final readonly class OrderPaymentOverviewFactory
         $schedule = ManualBillingReminderSchedule::fromOrder($order);
 
         $rows = [];
-        $periodStart = $contract->nextBillingDate->setTime(0, 0, 0);
+        /** @var \DateTimeImmutable $firstPeriodStart */
+        $firstPeriodStart = $contract->nextPeriodStart();
+        $periodStart = $firstPeriodStart->setTime(0, 0, 0);
         $isFirstProjected = true;
 
-        while ($periodStart <= $endDate && count($rows) < self::MAX_PROJECTED_CYCLES) {
-            $nextPeriodStart = $contract->advanceByCadence($periodStart);
+        while ($periodStart < $endDate && count($rows) < self::MAX_PROJECTED_CYCLES) {
+            $nextPeriodStart = $contract->advancePeriod($periodStart);
             $periodEnd = $nextPeriodStart->modify('-1 day');
             if ($periodEnd > $endDate) {
                 $periodEnd = $endDate;
             }
+            // The live cycle keeps its stored due date (it may carry a
+            // prolongation re-anchor); later ones follow the walk.
+            $dueDate = $isFirstProjected && $periodStart == $firstPeriodStart->setTime(0, 0, 0)
+                ? $contract->nextBillingDate->setTime(0, 0, 0)
+                : $contract->dueDateForPeriod($periodStart);
 
-            if (!isset($existingPeriods[$periodStart->format('Y-m-d')])) {
+            if (!isset($existingPeriods[$dueDate->format('Y-m-d')])) {
                 // A cycle whose start already passed without any request or
                 // payment row is due NOW (auto-recurring charge overdue, or a
                 // manual request the cron hasn't issued yet) — an admin-granted
                 // grace keeps it "waiting" instead of "overdue".
-                $isDue = $periodStart <= $today;
+                $isDue = $dueDate <= $today;
                 $inGrace = $isDue && null !== $contract->paymentGraceUntil
                     && $contract->paymentGraceUntil->setTime(0, 0, 0) >= $today;
 
@@ -515,7 +524,7 @@ final readonly class OrderPaymentOverviewFactory
                 $daysOverdue = null;
                 if ($isDue) {
                     $status = $inGrace ? PaymentOverviewRow::STATUS_PENDING : PaymentOverviewRow::STATUS_OVERDUE;
-                    $daysOverdue = $inGrace ? null : max(1, (int) $periodStart->diff($today)->days);
+                    $daysOverdue = $inGrace ? null : max(1, (int) $dueDate->diff($today)->days);
                 }
 
                 $note = null;
@@ -527,13 +536,13 @@ final readonly class OrderPaymentOverviewFactory
                 } elseif ($isFirstProjected) {
                     $note = $isAutoRecurring
                         ? 'Strhne se automaticky z karty.'
-                        : sprintf('Výzva k platbě se odešle %s.', $periodStart->modify(sprintf('%d days', $schedule->offsetInitial))->format('d.m.Y'));
+                        : sprintf('Výzva k platbě se odešle %s.', $dueDate->modify(sprintf('%d days', $schedule->offsetInitial))->format('d.m.Y'));
                 }
 
                 $rows[] = new PaymentOverviewRow(
                     label: sprintf('Období %s – %s', $periodStart->format('d.m.Y'), $periodEnd->format('d.m.Y')),
                     status: $status,
-                    dueDate: $periodStart,
+                    dueDate: $dueDate,
                     periodStart: $periodStart,
                     periodEnd: $periodEnd,
                     amountInHaler: $this->amountCalculator->calculateForPeriodStart($contract, $periodStart),

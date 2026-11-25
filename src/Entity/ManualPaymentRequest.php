@@ -62,8 +62,25 @@ class ManualPaymentRequest
         private(set) int $amount,
         #[ORM\Column]
         private(set) \DateTimeImmutable $createdAt,
+        /**
+         * First day of the rental period this request pays when it differs
+         * from the due date (two-walk billing, 2026-11-25: due on the first
+         * payment's day of month, period aligned to the contract start).
+         * periodStart stays the DUE date — the cycle key every lookup,
+         * reminder stage and "Datum splatnosti" line uses.
+         */
+        #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
+        private(set) ?\DateTimeImmutable $rentalPeriodStart = null,
     ) {
         $this->status = self::STATUS_PENDING;
+    }
+
+    /**
+     * The rental period this request pays starts here (the "Období" line).
+     */
+    public function rentalPeriodStart(): \DateTimeImmutable
+    {
+        return $this->rentalPeriodStart ?? $this->periodStart;
     }
 
     public function attachGoPayPayment(string $paymentId, string $gatewayUrl): void

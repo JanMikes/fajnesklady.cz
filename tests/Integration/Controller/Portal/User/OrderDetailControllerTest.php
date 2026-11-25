@@ -111,9 +111,9 @@ class OrderDetailControllerTest extends WebTestCase
 
         $this->assertResponseIsSuccessful();
         $body = (string) $this->client->getResponse()->getContent();
-        $this->assertStringContainsString('Předplaceno externě do', $body);
+        $this->assertStringContainsString('Nájemné máte uhrazené do', $body);
         $this->assertStringContainsString('Po tomto datu se obnoví běžné měsíční platby.', $body);
-        $this->assertStringNotContainsString('Externí předplatné brzy končí.', $body);
+        $this->assertStringNotContainsString('Předplacené nájemné brzy končí.', $body);
     }
 
     public function testExternalPrepaymentEndingSoonRendersAmberBanner(): void
@@ -126,7 +126,7 @@ class OrderDetailControllerTest extends WebTestCase
 
         $this->assertResponseIsSuccessful();
         $body = (string) $this->client->getResponse()->getContent();
-        $this->assertStringContainsString('Externí předplatné brzy končí.', $body);
+        $this->assertStringContainsString('Předplacené nájemné brzy končí.', $body);
         $this->assertStringContainsString('simek@fajnesklady.cz', $body);
     }
 
@@ -140,8 +140,8 @@ class OrderDetailControllerTest extends WebTestCase
         $this->assertResponseIsSuccessful();
         $body = (string) $this->client->getResponse()->getContent();
         $this->assertStringNotContainsString('Pronájem zdarma', $body);
-        $this->assertStringNotContainsString('Předplaceno externě', $body);
-        $this->assertStringNotContainsString('Externí předplatné brzy končí', $body);
+        $this->assertStringNotContainsString('Nájemné máte uhrazené do', $body);
+        $this->assertStringNotContainsString('Předplacené nájemné brzy končí', $body);
     }
 
     public function testPaidFineWithInvoiceShowsInvoiceDownloadLink(): void

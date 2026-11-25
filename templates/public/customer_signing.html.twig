@@ -39,9 +39,9 @@
                 {# Situation banner — first thing the customer reads, before the order summary. #}
                 {% if priceViewModel.situation.value == 'externally_prepaid' %}
                     <div class="rounded-lg bg-green-50 border-2 border-green-300 p-4 mb-6 text-center">
-                        <strong class="text-green-900 text-lg">Pronájem je již předplacen externě do {{ priceViewModel.paidThroughDate|date('d.m.Y') }}</strong>
+                        <strong class="text-green-900 text-lg">{% if priceViewModel.prepaidCoversWholeTerm %}Nájemné máte uhrazené do konce smlouvy ({{ order.endDate|date('d.m.Y') }}){% else %}Nájemné máte uhrazené do {{ priceViewModel.paidThroughDate|date('d.m.Y') }}{% endif %}</strong>
                         {% if priceViewModel.prepaidCoversWholeTerm %}
-                            <p class="mt-2 text-green-800 text-sm">Předplatné pokrývá celou dobu trvání smlouvy (do {{ order.endDate|date('d.m.Y') }}). Po podpisu smlouvy Vás už žádné platby nečekají.</p>
+                            <p class="mt-2 text-green-800 text-sm">Po podpisu smlouvy Vás už žádné platby nečekají.</p>
                         {% else %}
                             <p class="mt-2 text-green-800 text-sm">Po podpisu smlouvy nyní nic neplatíte. Od <strong>{{ priceViewModel.billingResumesOn|date('d.m.Y') }}</strong> činí nájemné <strong>{{ (priceViewModel.recurringAmountInHaler / 100)|number_format(0, ',', ' ') }} Kč / {{ priceViewModel.cadenceLabel }}</strong> <span class="text-xs">vč. DPH</span>.</p>
                             <p class="mt-1 text-green-800 text-sm">Před každou splatností ({{ priceViewModel.reminderDaysBefore }} {{ priceViewModel.reminderDaysBefore == 1 ? 'den' : (priceViewModel.reminderDaysBefore <= 4 ? 'dny' : 'dní') }} předem) Vám pošleme e-mail s platebními údaji a QR kódem pro bankovní převod — nemusíte nic nastavovat.</p>

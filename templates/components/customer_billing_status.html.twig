@@ -18,10 +18,11 @@
 #}
 {% if contract is not null %}
     {% if contract.isYearly() and not contract.isFree() %}
-        {# YEARLY cadence — billed once a year via manual cron. paidThroughDate
-           doubles as the next-billing anchor; daysUntilExternalPrepaymentEnds
-           explicitly returns null for yearly contracts so the prepayment banner
-           never fires here. #}
+        {# YEARLY cadence — billed once a year via manual cron.
+           daysUntilExternalPrepaymentEnds explicitly returns null for yearly
+           contracts so the prepayment banner never fires here. Dates come from
+           lastPaidDay()/isPaidToEndOfTerm(), never paidThroughDate raw (that is
+           the first UNPAID day for customer-paid cycles). #}
         <div class="mb-4 rounded-lg border border-teal-200 bg-teal-50 p-4">
             <div class="flex items-start gap-3">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-teal-600 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -29,8 +30,10 @@
                 </svg>
                 <div class="flex-1 text-sm text-teal-900">
                     <strong>Platíte ročně.</strong>
-                    {% if contract.paidThroughDate %}
-                        Předplaceno do {{ contract.paidThroughDate|date('d.m.Y') }}. Před vypršením Vám pošleme e-mail s platebními údaji pro bankovní převod.
+                    {% if contract.isPaidToEndOfTerm() %}
+                        Nájemné je uhrazeno do konce smlouvy ({{ contract.getEffectiveEndDate()|date('d.m.Y') }}).
+                    {% elseif contract.lastPaidDay() %}
+                        Uhrazeno do {{ contract.lastPaidDay()|date('d.m.Y') }}. Před další platbou Vám pošleme e-mail s platebními údaji pro bankovní převod.
                     {% else %}
                         Před každou roční platbou Vám pošleme e-mail s platebními údaji pro bankovní převod.
                     {% endif %}
@@ -73,13 +76,17 @@
                     </svg>
                     <div class="flex-1 text-sm text-blue-900">
                         <strong>Platby probíhají ručně.</strong>
-                        {% if contract.paidThroughDate is not null and contract.paidThroughDate|date('Y-m-d') >= now|date('Y-m-d') %}
-                            Zaplaceno do {{ contract.paidThroughDate|date('d.m.Y') }}.
+                        {% if contract.isPaidToEndOfTerm() %}
+                            Zaplaceno do konce smlouvy ({{ contract.getEffectiveEndDate()|date('d.m.Y') }}).
+                        {% elseif contract.lastPaidDay() and contract.lastPaidDay()|date('Y-m-d') >= now|date('Y-m-d') %}
+                            Zaplaceno do {{ contract.lastPaidDay()|date('d.m.Y') }}.
                         {% endif %}
-                        Výše platby: <strong>{{ (contract.getEffectiveRecurringAmount() / 100)|number_format(0, ',', ' ') }} Kč / {{ contract.isYearly() ? 'rok' : 'měsíc' }}</strong> vč. DPH.
-                        Před každou platbou (7 dní předem) Vám pošleme e-mail s platebními údaji a QR kódem pro bankovní převod.
-                        {% if nextManualDate is defined and nextManualDate is not null %}
-                            Příští: <strong>{{ nextManualDate|date('d.m.Y') }}</strong>.
+                        {% if not contract.isPaidToEndOfTerm() %}
+                            Výše platby: <strong>{{ (contract.getEffectiveRecurringAmount() / 100)|number_format(0, ',', ' ') }} Kč / {{ contract.isYearly() ? 'rok' : 'měsíc' }}</strong> vč. DPH.
+                            Před každou platbou (7 dní předem) Vám pošleme e-mail s platebními údaji a QR kódem pro bankovní převod.
+                            {% if nextManualDate is defined and nextManualDate is not null %}
+                                Příští: <strong>{{ nextManualDate|date('d.m.Y') }}</strong>.
+                            {% endif %}
                         {% endif %}
                     </div>
                 </div>
@@ -92,7 +99,10 @@
             </span>
             <span class="text-sm text-green-800">Tato smlouva nepodléhá platbám.</span>
         </div>
-    {% else %}
+    {% elseif contract.order.paidThroughDate is not null %}
+        {# Admin-recorded prepayment only. A card contract whose token was
+           cancelled after its final charge also has no token and a
+           paidThroughDate, but it was never prepaid. #}
         {% set daysLeft = contract.daysUntilExternalPrepaymentEnds(now) %}
         {% if daysLeft is not null and daysLeft >= 0 %}
             {% if daysLeft <= 7 %}
@@ -102,8 +112,8 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                         </svg>
                         <div class="flex-1 text-sm text-amber-900">
-                            <strong>Externí předplatné brzy končí.</strong>
-                            Předplatné vyprší {{ contract.paidThroughDate|date('d.m.Y') }}.
+                            <strong>Předplacené nájemné brzy končí.</strong>
+                            Nájemné máte uhrazené do {{ contract.paidThroughDate|date('d.m.Y') }}.
                             Pro pokračování bez přerušení nás prosím kontaktujte na
                             <a href="mailto:simek@fajnesklady.cz" class="link font-medium">simek@fajnesklady.cz</a>
                             a nastavíme automatickou platbu.
@@ -117,7 +127,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         <div class="flex-1 text-sm text-blue-900">
-                            <strong>Předplaceno externě do {{ contract.paidThroughDate|date('d.m.Y') }}.</strong>
+                            <strong>Nájemné máte uhrazené do {{ contract.paidThroughDate|date('d.m.Y') }}.</strong>
                             Po tomto datu se obnoví běžné měsíční platby.
                         </div>
                     </div>

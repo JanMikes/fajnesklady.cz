@@ -7,6 +7,7 @@ namespace App\Form;
 use App\Entity\StorageType;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\Validator\Constraints as Assert;
+use Symfony\Component\Validator\Context\ExecutionContextInterface;
 
 final class StorageTypeFormData
 {
@@ -76,6 +77,12 @@ final class StorageTypeFormData
         ),
     ])]
     public array $photos = [];
+
+    #[Assert\Callback]
+    public function validateYearlyPrice(ExecutionContextInterface $context): void
+    {
+        YearlyPriceGuard::validate($context, $this->defaultPricePerYear, $this->defaultPricePerMonthLongTerm, 'defaultPricePerYear');
+    }
 
     public static function fromStorageType(StorageType $storageType): self
     {

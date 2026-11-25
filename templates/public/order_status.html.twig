@@ -335,10 +335,10 @@
                                         <dd class="font-medium text-gray-900">{{ contract.lastBilledAt|date('d.m.Y') }}</dd>
                                     </div>
                                 {% endif %}
-                                {% if contract.paidThroughDate %}
+                                {% if contract.displayPaidUntil() %}
                                     <div>
                                         <dt class="text-gray-500">Zaplaceno do</dt>
-                                        <dd class="font-medium text-gray-900">{{ contract.paidThroughDate|date('d.m.Y') }}</dd>
+                                        <dd class="font-medium text-gray-900">{{ contract.displayPaidUntil()|date('d.m.Y') }}</dd>
                                     </div>
                                 {% endif %}
                             </dl>

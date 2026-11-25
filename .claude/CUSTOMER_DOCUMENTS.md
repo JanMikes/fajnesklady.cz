@@ -15,7 +15,7 @@ overview so we don't have to grep on every change.
 | 4 | Mapa skladu (PNG, vyznačená jednotka) | `StorageMapImageGenerator::generate(Storage)` | not persisted (regenerated on every fetch) | `OrderMapDownloadController` at `/objednavka/{id}/dokumenty/mapa.png` (public, UUID-gated, COMPLETED only) |
 | 5 | VOP (PDF, per-order, signed) | `VopDocumentGenerator` + `VopPdfStamper` | DOCX persisted at `var/vop/vop_{orderId}.docx`; PDF rendered on demand | `OrderVopDownloadController` (public, UriSigner-gated) + `VopPdfController` (auth, `OrderVoter::VIEW`) |
 | 6 | Poučení spotřebitele (PDF) | static asset | `public/documents/pouceni-spotrebitele.pdf` | direct asset URL |
-| 7 | Podmínky opakovaných plateb (PDF) | static asset | `public/documents/podminky-opakovanych-plateb.pdf` | direct asset URL — only relevant for recurring rentals (`order.endDate is null`) |
+| 7 | Podmínky opakovaných plateb (PDF) | static asset | `public/documents/podminky-opakovanych-plateb.pdf` | direct asset URL; attached to the order-placed + rental-activated e-mails for card rentals (`Order::isCardRecurring()`: GoPay + AUTO_RECURRING, spec 076 cards are recurring-only) and legacy open-ended orders — before 2026-11-25 only the latter, so no fixed-term card customer received it |
 | 8 | Provozní řád pobočky (PDF/DOCX) | per-place upload | `public/uploads/{Place.operatingRulesPath}` | `upload_url()` Twig helper — only when `place.hasOperatingRules()` |
 | 9 | Formulář odstoupení od smlouvy (PDF) | static asset | `public/documents/formular-odstoupeni-od-smlouvy.pdf` | direct asset URL |
 | 10 | Reklamační formulář (PDF) | static asset | `public/documents/reklamacni-formular.pdf` | direct asset URL |
@@ -30,7 +30,7 @@ Three customer-facing e-mails map onto three business events:
 | # | Business event | Trigger event | Handler | Template | Subject |
 |---|---|---|---|---|---|
 | 1 | Customer signed and placed order (pre-payment) | `OrderPlaced` | `SendOrderPlacedEmailHandler` | `email/order_placed.html.twig` | `Potvrzení objednávky - <place>` |
-| 2 | First payment received → rental active | `OrderCompleted` | `SendRentalActivatedEmailHandler` | `email/rental_activated.html.twig` | `Pronájem zahájen - <place>` |
+| 2 | First payment received → rental active | `OrderCompleted` | `SendRentalActivatedEmailHandler` | `email/rental_activated.html.twig` | `Pronájem zahájen — … — <place>`, or `Pronájem začne DD.MM.YYYY — … — <place>` when paid before the start date (title + headline follow) |
 | 3 | Standalone invoice (recurring charge OR first-payment fallback) | `InvoiceCreated` | `SendInvoiceEmailHandler` | `email/invoice.html.twig` | `Faktura <X> - Fajnesklady.cz` |
 | 4 | Card payment refunded by an admin on termination (spec 092; not sent for refunds issued in the GoPay console) | `PaymentRefunded` | `SendPaymentRefundedEmailHandler` | `email/payment_refunded.html.twig` | `Vrácení platby — Fajnesklady.cz` |
 

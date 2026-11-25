@@ -221,7 +221,10 @@ final readonly class AdminOrderStageFactory
             return sprintf('Další automatická platba kartou %s.', $contract->nextBillingDate->format('d.m.Y'));
         }
 
-        return sprintf('Další období začíná %s — výzva k platbě se odešle e-mailem.', $contract->nextBillingDate->format('d.m.Y'));
+        /** @var \DateTimeImmutable $periodStart */
+        $periodStart = $contract->nextPeriodStart();
+
+        return sprintf('Další období začíná %s, platba je splatná %s — výzva k platbě se odešle e-mailem.', $periodStart->format('d.m.Y'), $contract->nextBillingDate->format('d.m.Y'));
     }
 
     /**

@@ -160,8 +160,10 @@ final class RetryFailedPaymentsCommand extends Command
                     $contract->recordPaymentDemandSent($now);
 
                     $days = $this->settingsRepository->getSettings()->overdueTerminationDays;
+                    // Termination countdown anchor: the due date, or the end of
+                    // an already-paid period if later (two-walk billing).
                     /** @var \DateTimeImmutable $dueDate */
-                    $dueDate = $contract->nextBillingDate; // set while a charge is unpaid
+                    $dueDate = $contract->terminationCountdownAnchor(); // set while a charge is unpaid
                     $deadline = max($now, $dueDate->modify(sprintf('+%d days', $days)));
 
                     $this->auditLogger->log(

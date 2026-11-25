@@ -69,13 +69,21 @@ final readonly class DispatchManualBillingNotificationHandler
 
         if (null === $request) {
             $amount = $this->amountCalculator->calculate($contract, $now);
+            // periodStart = the cycle's DUE date (the key); the rental period
+            // it pays comes from the contract's period walk, which starts later
+            // when the customer's payment day precedes the period (two-walk).
+            $period = null !== $contract->nextBillingDate
+                && $contract->nextBillingDate->format('Y-m-d') === $command->periodStart->format('Y-m-d')
+                ? $contract->currentBillingPeriod()
+                : null;
             $request = new ManualPaymentRequest(
                 id: $this->identityProvider->next(),
                 contract: $contract,
                 periodStart: $command->periodStart->setTime(0, 0, 0),
-                periodEnd: $this->computePeriodEnd($contract, $command->periodStart),
+                periodEnd: $period->end ?? $this->computePeriodEnd($contract, $command->periodStart),
                 amount: $amount,
                 createdAt: $now,
+                rentalPeriodStart: null !== $contract->nextPeriodStart ? $period?->start : null,
             );
             $this->manualPaymentRequestRepository->save($request);
         }

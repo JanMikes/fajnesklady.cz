@@ -101,7 +101,9 @@ final class TerminateOverdueContractsCommand extends Command
                     // token clears nextBillingDate via cancelRecurringPayment().
                     // effectiveDunningAnchor honours an admin extension (spec
                     // 086): a still-active grace makes $dueDate future and bails.
-                    $dueDate = $contract->effectiveDunningAnchor();
+                    // terminationCountdownAnchor() additionally waits until the
+                    // already-paid period ends (two-walk billing, 2026-11-25).
+                    $dueDate = $contract->terminationCountdownAnchor();
 
                     if ($contract->isTerminated() || $contract->isFree() || null === $dueDate || $dueDate >= $overdueSince) {
                         return;

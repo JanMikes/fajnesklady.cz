@@ -206,22 +206,13 @@ final readonly class ChargeRecurringPaymentHandler
             return RecurringChargeOutcome::ALREADY_RECORDED;
         }
 
-        // Use nextBillingDate as billing period start for deterministic proration
-        /** @var \DateTimeImmutable $billingPeriodStart */
-        $billingPeriodStart = $contract->nextBillingDate ?? $now;
-        $effectiveEndDate = $contract->getEffectiveEndDate();
-        $nextBillingDate = $contract->advanceByCadence($billingPeriodStart);
-        $paidThroughDate = $nextBillingDate;
-
-        // If this was the last billing cycle, stop future charges — every
-        // contract hard-stops at its end date (spec 076); continuation is an
-        // explicit prolongation, never an auto-extension.
-        if ($nextBillingDate >= $effectiveEndDate) {
-            $nextBillingDate = null;
-            $paidThroughDate = $effectiveEndDate;
-        }
-
-        $contract->recordBillingCharge($now, $nextBillingDate, $paidThroughDate);
+        // Pay the contract's next unpaid period and advance both walks; the
+        // last cycle stops billing — every contract hard-stops at its end date
+        // (spec 076); continuation is an explicit prolongation.
+        $cycle = $contract->recordCyclePaid($now);
+        $nextBillingDate = $contract->nextBillingDate;
+        /** @var \DateTimeImmutable $paidThroughDate */
+        $paidThroughDate = $contract->paidThroughDate;
 
         $this->auditLogger->log(
             entityType: 'contract',
@@ -242,8 +233,8 @@ final readonly class ChargeRecurringPaymentHandler
             contractId: $contract->id,
             goPayPaymentId: $paymentId,
             amount: $amount,
-            periodStart: $billingPeriodStart,
-            periodEnd: $paidThroughDate,
+            periodStart: $cycle->start,
+            periodEnd: $cycle->end,
             occurredOn: $now,
         ));
 

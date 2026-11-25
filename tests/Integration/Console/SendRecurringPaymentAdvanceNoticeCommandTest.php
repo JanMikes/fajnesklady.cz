@@ -69,6 +69,31 @@ class SendRecurringPaymentAdvanceNoticeCommandTest extends KernelTestCase
         $this->assertStringContainsString('Notice dispatched', $output);
     }
 
+    /**
+     * Two-walk billing: a card order paid more than 6 months before its first
+     * recurring charge (start far ahead) — the order's first payment counts as
+     * the last successful charge (Podmínky opakovaných plateb čl. V).
+     */
+    public function testCommandDispatchesNoticeWhenTheFirstPaymentWasOverSixMonthsAgo(): void
+    {
+        $now = $this->clock->now();
+
+        $this->createDueContract(
+            emailSeed: 'cron-far-ahead',
+            lastBilledAt: null,
+            nextBillingDate: $now->modify('+9 days'),
+            orderPaidAt: $now->modify('-7 months'),
+        );
+        $this->entityManager->flush();
+
+        $command = $this->application->find('app:send-recurring-payment-advance-notice');
+        $tester = new CommandTester($command);
+        $tester->execute([]);
+
+        $tester->assertCommandIsSuccessful();
+        $this->assertStringContainsString('Found 1 contracts requiring 7-day advance notice', $tester->getDisplay());
+    }
+
     public function testCommandReportsNoWorkWhenNothingDue(): void
     {
         // Active contract recently charged → must NOT trigger notice.
@@ -90,8 +115,9 @@ class SendRecurringPaymentAdvanceNoticeCommandTest extends KernelTestCase
 
     private function createDueContract(
         string $emailSeed,
-        \DateTimeImmutable $lastBilledAt,
+        ?\DateTimeImmutable $lastBilledAt,
         \DateTimeImmutable $nextBillingDate,
+        ?\DateTimeImmutable $orderPaidAt = null,
     ): Contract {
         $now = $this->clock->now();
 
@@ -134,7 +160,7 @@ class SendRecurringPaymentAdvanceNoticeCommandTest extends KernelTestCase
         );
         $this->entityManager->persist($storage);
 
-        $startDate = $lastBilledAt->modify('-1 month');
+        $startDate = ($lastBilledAt ?? $orderPaidAt ?? $now)->modify('-1 month');
         $endDate = $startDate->modify('+12 months');
 
         $order = new Order(
@@ -148,6 +174,9 @@ class SendRecurringPaymentAdvanceNoticeCommandTest extends KernelTestCase
             expiresAt: $now->modify('+7 days'),
             createdAt: $startDate,
         );
+        if (null !== $orderPaidAt) {
+            $order->markPaid($orderPaidAt);
+        }
         $this->entityManager->persist($order);
 
         $contract = new Contract(
@@ -164,7 +193,9 @@ class SendRecurringPaymentAdvanceNoticeCommandTest extends KernelTestCase
             $nextBillingDate,
             $nextBillingDate,
         );
-        $contract->recordBillingCharge($lastBilledAt, $nextBillingDate, $nextBillingDate);
+        if (null !== $lastBilledAt) {
+            $contract->recordBillingCharge($lastBilledAt, $nextBillingDate, $nextBillingDate);
+        }
         $this->entityManager->persist($contract);
 
         return $contract;

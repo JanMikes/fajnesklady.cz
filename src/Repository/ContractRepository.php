@@ -56,7 +56,11 @@ class ContractRepository
         // billing anchor at all — nothing will ever bill, remind or terminate
         // it, so it must surface here (2026-11 card cancels wiped anchors).
         // Mirrors Contract::hasUnscheduledUnpaidPeriod().
+        // Effective end = the EARLIER of endDate and a pending termination
+        // (Contract::getEffectiveEndDate()): paid up to it is paid, not
+        // unscheduled.
         .'(c.nextBillingDate IS NULL AND c.paidThroughDate IS NOT NULL AND c.paidThroughDate < c.endDate '
+        .'AND (c.terminatesAt IS NULL OR c.paidThroughDate < c.terminatesAt) '
         .'AND c.paidThroughDate < :overdueThreshold '
         .'AND (c.individualMonthlyAmount IS NULL OR c.individualMonthlyAmount <> 0)))) OR '
         .'(c.outstandingDebtAmount IS NOT NULL AND c.outstandingDebtAmount > 0)';
@@ -502,19 +506,26 @@ class ContractRepository
     {
         $windowStart = $now->modify('+8 days');
         $windowEnd = $now->modify('+10 days');
-        $sixMonthsAgo = $now->modify('-6 months');
+        // Measured at the charge (end of the 8–10 day window), not today: a gap
+        // of 6 months + a few days must still trigger the notice (Podmínky čl. V).
+        $sixMonthsAgo = $windowEnd->modify('-6 months');
         $idempotencyCutoff = $now->modify('-90 days');
 
         return $this->entityManager->createQueryBuilder()
             ->select('c')
             ->from(Contract::class, 'c')
+            ->join('c.order', 'o')
             ->where('c.goPayParentPaymentId IS NOT NULL')
             ->andWhere('c.terminatedAt IS NULL')
             ->andWhere('c.nextBillingDate IS NOT NULL')
             ->andWhere('c.nextBillingDate >= :windowStart')
             ->andWhere('c.nextBillingDate <= :windowEnd')
-            ->andWhere('c.lastBilledAt IS NOT NULL')
-            ->andWhere('c.lastBilledAt <= :sixMonthsAgo')
+            // The card order's first payment leaves lastBilledAt null; with
+            // two-walk billing an order paid months ahead can reach its first
+            // recurring charge > 6 months later (Podmínky čl. V) — count from
+            // the first payment then.
+            ->andWhere('COALESCE(c.lastBilledAt, o.paidAt) IS NOT NULL')
+            ->andWhere('COALESCE(c.lastBilledAt, o.paidAt) <= :sixMonthsAgo')
             ->andWhere('c.lastAdvanceNoticeSentAt IS NULL OR c.lastAdvanceNoticeSentAt <= :idempotencyCutoff')
             ->setParameter('windowStart', $windowStart)
             ->setParameter('windowEnd', $windowEnd)
@@ -629,6 +640,9 @@ class ContractRepository
             // Spec 086: an admin extension (paymentGraceUntil) re-anchors the
             // termination countdown to the extended date — measure overdue
             // against it, not the raw billing anchor.
+            // Candidate superset: the caller re-checks under lock with
+            // Contract::terminationCountdownAnchor(), which also waits until an
+            // already-paid period ends (due date precedes the period).
             ->andWhere('COALESCE(c.paymentGraceUntil, c.nextBillingDate) < :overdueSince')
             ->setParameter('overdueSince', $overdueSince)
             ->orderBy('c.nextBillingDate', 'ASC')

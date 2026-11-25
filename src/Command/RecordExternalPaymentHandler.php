@@ -64,17 +64,19 @@ final readonly class RecordExternalPaymentHandler
             if (null === $originalNextBillingDate) {
                 throw new \DomainException('Contract has no billing cycle to advance.');
             }
-            // The current cycle is covered through the day before the next one.
-            $paidThroughDate = $contract->advanceByCadence($originalNextBillingDate)
-                ->modify('-1 day');
+            // The cycle the contract is due for is paid in full — the same
+            // advance as a card charge or bank transfer (keeps the charge day;
+            // the final cycle ends at the contract end, never past it).
+            $contract->recordCyclePaid($now);
+            /** @var \DateTimeImmutable $paidThroughDate */
+            $paidThroughDate = $contract->paidThroughDate;
         } else {
             $paidThroughDate = $command->paidThroughDate;
             if (null === $paidThroughDate) {
                 throw new \InvalidArgumentException('paidThroughDate is required for a specific-date external payment.');
             }
+            $contract->recordExternalPayment($paidThroughDate, $now);
         }
-
-        $contract->recordExternalPayment($paidThroughDate, $now);
 
         if (null !== $originalNextBillingDate) {
             $request = $this->manualPaymentRequestRepository->findUnpaidByContractAndPeriod(
